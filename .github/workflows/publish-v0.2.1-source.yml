@@ -1,0 +1,110 @@
+name: Publish v0.2.1 experimental source pre-release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v0.2.1-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: latebrake-v0.2.1-source-preview
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Test portable C++20 / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure C++20 tests
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      - name: Compile source tests
+        run: cmake --build Tests/Standalone/build --config Release --parallel
+      - name: Execute racing, AI and rewards tests
+        run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
+
+  publish:
+    name: Publish clearly labeled SOURCE-ONLY pre-release
+    needs: [tests]
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish source revision as v0.2.1 pre-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const tag = 'v0.2.1';
+            const sha = context.sha;
+            const expectedParent = 'v0.2.0';
+            await github.rest.repos.getReleaseByTag({owner, repo, tag: expectedParent});
+            const notes = [
+              '## Source-only developer preview — NOT a playable game release',
+              '',
+              '**No verified Unreal Engine executable, Android APK, AAB or gameplay build is included.**',
+              'GitHub automatic ZIP/tar source downloads contain uncompiled source. All Unreal 5.8 game classes and packaged behavior still need an authorized UE build, manual playtesting and hardware qualification.',
+              '',
+              '### v0.2.1 changes',
+              '- Portable autonomous waypoint route tracking and approximate rival completed-loop diagnostics.',
+              '- Stalled-rival detection with recovery after eight seconds of low-speed driving, retaining route progress.',
+              '- Same-frame autonomous steering/braking command application and anticipatory braking before waypoints.',
+              '- Shared frame-step steering smoothing for starter player and rival controls.',
+              '- HUD diagnostics for approximate AI route laps and recoveries.',
+              '- Additional C++20 regression suites for route progression, stuck recovery and steering filtering.',
+              '',
+              '### What passed',
+              '- The tagged source revision was tested by this workflow using standalone CMake/CTest on Ubuntu, Windows and macOS.',
+              '- Those checks do not compile UE 5.8 Editor/UHT, demonstrate gameplay, or create a distributable game.',
+              '',
+              '### Still missing',
+              '- Authored cookable maps and art, validated Chaos Vehicles wheels/suspension, gameplay behavior, full AI standings and real Windows/Android packages.',
+              '- Release qualification remains open: https://github.com/sanskarIN/latebrake/issues/2',
+              '',
+              'Previous source preview: https://github.com/sanskarIN/latebrake/releases/tag/v0.2.0',
+              'License: BSD-3-Clause for authored source, separate Epic terms for Unreal Engine.'
+            ].join('\\n');
+
+            let tagRef;
+            try {
+              const existingTag = await github.rest.git.getRef({owner, repo, ref: 'tags/' + tag});
+              tagRef = existingTag.data.object;
+              if (tagRef.type !== 'commit' || tagRef.sha !== sha) {
+                throw new Error('Tag already exists at a different revision: refusing to retag.');
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({owner, repo, ref: 'refs/tags/' + tag, sha});
+              core.info('Created ' + tag + ' at ' + sha);
+            }
+
+            let release;
+            try {
+              release = (await github.rest.repos.getReleaseByTag({owner, repo, tag})).data;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              release = (await github.rest.repos.createRelease({
+                owner, repo,
+                tag_name: tag,
+                target_commitish: sha,
+                name: 'Latebrake v0.2.1 — Rival Reliability & Steering (Source Pre-release)',
+                body: notes,
+                draft: false,
+                prerelease: true,
+                make_latest: 'false',
+                generate_release_notes: false
+              })).data;
+            }
+            if (release.draft || !release.prerelease || release.tag_name !== tag) {
+              throw new Error('v0.2.1 must be published as a non-draft source-only pre-release.');
+            }
+            core.notice('Published/verified: ' + release.html_url + ' @ ' + sha);
