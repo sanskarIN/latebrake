@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest a feature or game design improvement
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposal
+      description: What would this feature do in Latebrake?
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: Player value and acceptance criteria
+      description: Explain who benefits and how we can know the feature works.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope, platforms and licensing
+      description: Include possible dependencies, platform requirements, accessibility and asset licensing.

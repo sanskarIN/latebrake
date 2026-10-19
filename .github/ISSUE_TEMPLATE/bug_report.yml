@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a verified defect in Latebrake
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What went wrong? Describe expected versus actual results.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest steps that trigger the issue.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      placeholder: Commit SHA or unreleased development branch
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and tests
+      description: Unreal Engine version, OS, hardware, controller type, and relevant log excerpts (without private data).
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked existing issues and removed credentials/private data from logs.
+          required: true
