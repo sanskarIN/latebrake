@@ -115,6 +115,22 @@ int main()
           "nonfinite velocity rejected");
     Check(!CanPassCircuitGate(0, 500.0, 0.0, -1.0), "invalid speed requirement rejected");
 
+    // Recovery must not provide a free time advantage.
+    RaceProgress penalized(1, 1);
+    penalized.Advance(10.0);
+    Check(penalized.AddTimePenalty(5.0), "valid recovery penalty accepted");
+    Check(std::abs(penalized.GetElapsedSeconds() - 15.0) < 1e-9,
+        "penalty increases race clock");
+    Check(!penalized.AddTimePenalty(-1.0), "negative penalty rejected");
+    Check(!penalized.AddTimePenalty(std::numeric_limits<double>::infinity()),
+        "infinite penalty rejected");
+    Check(!penalized.AddTimePenalty(std::numeric_limits<double>::quiet_NaN()),
+        "NaN penalty rejected");
+    Check(penalized.PassCheckpoint(0), "penalized race finishes");
+    Check(!penalized.AddTimePenalty(5.0), "cannot penalize finished race");
+    Check(std::abs(penalized.GetElapsedSeconds() - 15.0) < 1e-9,
+        "finish clock remains frozen after rejected penalty");
+
     std::cout << "All Latebrake portable race tests passed.\n";
     return EXIT_SUCCESS;
 }

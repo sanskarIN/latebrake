@@ -36,6 +36,19 @@ void RaceProgress::Advance(double deltaSeconds) noexcept
     }
 }
 
+bool RaceProgress::AddTimePenalty(double penaltySeconds) noexcept
+{
+    if (State != RaceState::Running || !std::isfinite(penaltySeconds) ||
+        penaltySeconds <= 0.0 ||
+        penaltySeconds > std::numeric_limits<double>::max() - ElapsedSeconds)
+    {
+        return false;
+    }
+
+    ElapsedSeconds += penaltySeconds;
+    return true;
+}
+
 bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
 {
     if (State != RaceState::Running || checkpointIndex != NextCheckpoint)

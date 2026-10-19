@@ -206,6 +206,8 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         FRotator(0.f, 180.f, 0.f),
         FRotator(0.f, -90.f, 0.f)
     };
+    // A five-second penalty discourages skipping sectors by teleporting.
+    Race.AddTimePenalty(5.0);
     const int Index = FMath::Clamp(Race.GetNextCheckpoint(), 0, 3);
     Car->RecoverTo(RecoveryPoints[Index], RecoveryRotations[Index]);
 }

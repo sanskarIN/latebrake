@@ -18,6 +18,8 @@ public:
 
     void Reset() noexcept;
     void Advance(double deltaSeconds) noexcept;
+    // Only accepts valid positive penalties while racing (e.g. recovery).
+    bool AddTimePenalty(double penaltySeconds) noexcept;
     bool PassCheckpoint(int checkpointIndex) noexcept;
 
     int GetCheckpointCount() const noexcept { return CheckpointCount; }
