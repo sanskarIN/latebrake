@@ -1,6 +1,19 @@
 # Changelog
 
-## v0.2.0 — experimental development (source-only pre-release candidate)
+## v0.2.1 — source-only development preview (pending release)
+
+### Improved
+- Pure C++20 rival route state tracks approximate waypoint laps and recovery requests after eight seconds at low speed.
+- Experimental Unreal rival now uses route progress, recovers in place without resetting tracked lap progress, and applies pilot commands before the base car physics step.
+- Basic corner-anticipation braking in the portable rival planner, with invalid negative speed handling.
+- Shared deterministic steering slew limiter for both player and AI controls, including engine-independent tests and overflow guard.
+- HUD shows approximate rival laps and number of AI recoveries, without claiming competitive race standings.
+- Regression tests added for invalid route/sensor values, recovery/reset, corner braking and steering smoothing.
+
+### Not yet verified
+- Unreal Engine 5.8 reflection/build, actual driving/rival behavior, packaged Windows/Android binaries and physical device tests.
+
+## v0.2.0 — published source-only pre-release
 
 ### Added
 - Offline race event definitions for three-lap Circuit and one-lap Time Attack.

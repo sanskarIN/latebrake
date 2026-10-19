@@ -50,3 +50,13 @@ Unreal-specific checklist:
 - [ ] Player gate order and required directional speed still work
 - [ ] Credits awarded once, survive save/reload and ignore unearned wins
 - [ ] Android viewport labels, gamepad and mobile touch are tested on real devices
+
+## v0.2.1 additional regression coverage
+
+The portable RivalRoute suite checks waypoint wrapping, approximate lap completion, invalid distance/speed/delta rejection, stuck recovery after 8 seconds, movement reset of the stuck timer, full finish lockout and route reset. SteeringFilter tests cover bounded steering steps, reversals, invalid frame deltas, out-of-range steering inputs, NaN, overflow and convergence. RivalPilot additionally tests early corner braking and negative speed rejection.
+
+Unreal validation still required:
+- [ ] Rival consumes planned commands before base physics and recovers without resetting its route
+- [ ] Stuck detection works near barriers, with no oscillating recovery loop
+- [ ] Rival approximate lap display never claims an authoritative finish position
+- [ ] New steering responsiveness is driveable at varied frame rates on real devices

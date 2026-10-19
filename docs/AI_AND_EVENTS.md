@@ -22,3 +22,9 @@ The rival is **not yet** a properly qualified competitive opponent. Its cornerin
 Portable CTest suites validate basic planner controls, angle wrapping, invalid numbers, event settings, reward calculations and previous race invariants. Unreal integration still needs manual checks for spawn, despawn, physics response, collision, laps, UI and saves. Only the **local player's pawn** can trigger their own checkpoint scoring.
 
 The roadmap anticipates more sophisticated path following, original vehicle rigs, traffic and race-aware controllers in later pre-releases once hardware performance and engine behavior have been measured.
+
+## v0.2.1 stabilization
+
+A portable `RivalRouteProgress` object tracks ordered waypoint approaches, approximate completed loops and low-speed stalls. Eight seconds of low-speed telemetry requests a recovery, with a bounded recovery counter. The Unreal rival uses that request to teleport to a lane-aligned point near the next target and preserve its approximate route history. The pilot has anticipation braking for close waypoints; the car base class uses a shared deterministic steering filter.
+
+**Important:** waypoint loops remain approximations of AI route completion. Rival rank, valid gate crossings, finish time and head-to-head competition are not implemented. The latest portable CTest and the Unreal in-editor gameplay must be evaluated independently.
