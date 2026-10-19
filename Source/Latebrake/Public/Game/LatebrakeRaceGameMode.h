@@ -5,6 +5,7 @@
 #include "Racing/RaceProgress.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
+#include "Garage/GarageTuningKey.h"
 #include "LatebrakeRaceGameMode.generated.h"
 
 class AController;
@@ -48,6 +49,7 @@ public:
     int32 GetGripUpgradeLevel() const { return Garage.GripLevel(); }
     int32 GetNextLockedVehicleCost() const;
     FString GetGarageFeedback() const { return GarageFeedback; }
+    bool HasProgressSaveError() const { return bProgressSaveFailed; }
     int32 GetNextEngineUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine); }
     int32 GetNextGripUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip); }
     void GarageNextVehicle();
@@ -75,6 +77,9 @@ private:
     float PersonalBestLapSeconds = 0.f;
     int32 CompletedRaceCount = 0;
     latebrake::GarageState Garage;
+    latebrake::GarageTuningKey LastAppliedTuning;
+    TWeakObjectPtr<ALatebrakeCarPawn> LastTunedPawn;
+    bool bProgressSaveFailed = false;
     FString GarageFeedback = TEXT("Q unlock | E select | U engine | I grip");
     int32 LastRaceCredits = 0;
     int32 RecoveriesThisRace = 0;

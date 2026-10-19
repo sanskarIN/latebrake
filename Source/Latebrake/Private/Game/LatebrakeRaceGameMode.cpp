@@ -242,12 +242,20 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     {
         return;
     }
+    const latebrake::GarageTuningKey Requested = latebrake::MakeGarageTuningKey(Garage.Snapshot());
+    if (LastTunedPawn.Get() == Car && Requested == LastAppliedTuning)
+    {
+        // Credits and garage ownership alone do not affect live handling.
+        return;
+    }
     const latebrake::VehiclePerformance Performance = Garage.Performance();
     Car->SetGarageTuning(
         static_cast<float>(Performance.Acceleration),
         static_cast<float>(Performance.Grip),
         static_cast<float>(Performance.TopSpeed),
         Garage.SelectedVehicle());
+    LastTunedPawn = Car;
+    LastAppliedTuning = Requested;
 }
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
@@ -422,6 +430,8 @@ void ALatebrakeRaceGameMode::SaveRecords()
         UGameplayStatics::CreateSaveGameObject(ULatebrakePlayerSave::StaticClass()));
     if (!Save)
     {
+        bProgressSaveFailed = true;
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: unable to create SaveGame object"));
         return;
     }
     Save->BestRaceSeconds = PersonalBestSeconds;
@@ -434,8 +444,9 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->SelectedVehicleId = Profile.SelectedVehicle;
     Save->EngineUpgradeLevel = Profile.EngineLevel;
     Save->GripUpgradeLevel = Profile.GripLevel;
-    if (!UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser))
+    bProgressSaveFailed = !UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser);
+    if (bProgressSaveFailed)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Latebrake: failed to persist race results"));
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: progress could not be saved; verify disk permissions"));
     }
 }
