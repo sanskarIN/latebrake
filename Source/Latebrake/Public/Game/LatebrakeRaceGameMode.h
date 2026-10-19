@@ -10,6 +10,7 @@ class AController;
 class APlayerStart;
 class AStaticMeshActor;
 class ALatebrakeCarPawn;
+class ALatebrakeRivalCar;
 
 UCLASS()
 class LATEBRAKE_API ALatebrakeRaceGameMode : public AGameModeBase
@@ -45,6 +46,7 @@ private:
         const FVector& Scale, const FLinearColor& Color);
     void LoadRecords();
     void SaveRecords();
+    void RefreshRival();
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
     latebrake::RaceProgress Race{4, 3};
@@ -55,4 +57,7 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<APlayerStart> RuntimePlayerStart;
+
+    UPROPERTY(Transient)
+    TObjectPtr<ALatebrakeRivalCar> RivalCar;
 };

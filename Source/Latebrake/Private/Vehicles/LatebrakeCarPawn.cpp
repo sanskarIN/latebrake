@@ -96,6 +96,13 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FollowCamera->bUsePawnControlRotation = false;
 }
 
+void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake)
+{
+    Throttle = FMath::Clamp(InThrottle, -1.f, 1.f);
+    Steering = FMath::Clamp(InSteering, -1.f, 1.f);
+    bBraking = bInBrake;
+}
+
 void ALatebrakeCarPawn::ThrottleInput(float Value)
 {
     Throttle = FMath::Clamp(Value, -1.f, 1.f);

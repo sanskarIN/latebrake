@@ -15,6 +15,7 @@
 #include "Racing/LatebrakeCheckpoint.h"
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
+#include "AI/LatebrakeRivalCar.h"
 
 namespace
 {
@@ -57,6 +58,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     LoadRecords();
     BuildCircuit();
     Race.Reset();
+    RefreshRival();
 }
 
 void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
@@ -187,11 +189,44 @@ void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
     const latebrake::RaceEvent Definition = latebrake::GetRaceEvent(SelectedEvent);
     Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
     RestartRace();
+    RefreshRival();
 }
 
 float ALatebrakeRaceGameMode::GetEventBestSeconds() const
 {
     return SelectedEvent == latebrake::EventKind::TimeAttack ? BestTimeAttackSeconds : PersonalBestSeconds;
+}
+
+void ALatebrakeRaceGameMode::RefreshRival()
+{
+    const bool bNeedsRival = latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
+    if (!bNeedsRival)
+    {
+        if (IsValid(RivalCar))
+        {
+            RivalCar->Destroy();
+            RivalCar = nullptr;
+        }
+        return;
+    }
+
+    if (!IsValid(RivalCar))
+    {
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        RivalCar = GetWorld()->SpawnActor<ALatebrakeRivalCar>(
+            ALatebrakeRivalCar::StaticClass(), FVector(-2250.f, -1450.f, 180.f),
+            FRotator::ZeroRotator, Params);
+        if (!IsValid(RivalCar))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Latebrake: starter AI rival failed to spawn"));
+        }
+    }
+    else
+    {
+        RivalCar->RecoverTo(FVector(-2250.f, -1450.f, 180.f), FRotator::ZeroRotator);
+        RivalCar->ResetPilot();
+    }
 }
 
 void ALatebrakeRaceGameMode::RestartRace()
@@ -200,6 +235,11 @@ void ALatebrakeRaceGameMode::RestartRace()
     if (ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
     {
         Car->RecoverTo(GetStartPosition(), GetStartRotation());
+    }
+    if (IsValid(RivalCar))
+    {
+        RivalCar->RecoverTo(FVector(-2250.f, -1450.f, 180.f), FRotator::ZeroRotator);
+        RivalCar->ResetPilot();
     }
 }
 

@@ -8,6 +8,7 @@
 #include "Game/LatebrakeRaceGameMode.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Kismet/GameplayStatics.h"
 
 ALatebrakeCheckpoint::ALatebrakeCheckpoint()
 {
@@ -39,7 +40,9 @@ void ALatebrakeCheckpoint::OnTriggerOverlap(UPrimitiveComponent* OverlappedCompo
     int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
     const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(OtherActor);
-    if (!Car)
+    // Rivals and traffic may overlap the same gates, but only the local
+    // player's pawn can advance their own RaceProgress.
+    if (!Car || OtherActor != UGameplayStatics::GetPlayerPawn(this, 0))
     {
         return;
     }

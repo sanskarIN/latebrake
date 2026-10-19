@@ -33,6 +33,7 @@ public:
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
     float GetSpeedKmH() const;
+    void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
 
     UFUNCTION(BlueprintCallable, Category = "Latebrake|Vehicle")
