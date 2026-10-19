@@ -1,6 +1,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "Track/CircuitMap.h"
 #include "Engine/Engine.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
@@ -79,6 +80,41 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Mode->HasRivalFinishedRoute() ? TEXT(" | DONE") : TEXT(""))
                 : FString(TEXT("RIVAL UNAVAILABLE")), Primary);
         }
+    }
+
+    // Prototype north-up circuit overview: the next checkpoint and live car
+    // position share the same track geometry as the race and AI systems.
+    // Hidden on compact viewports until a production adaptive UI is authored.
+    if (!bCompact && Canvas->SizeX >= 1120)
+    {
+        const float MapSize = 150.f * Scale;
+        const float MapLeft = Canvas->SizeX - MapSize - 22.f * Scale;
+        const float MapTop = 72.f * Scale;
+        const auto ToScreen = [&](latebrake::CircuitPoint Position)
+        {
+            const latebrake::CircuitMapPoint M = latebrake::NormalizeCircuitMap(Position);
+            return FVector2D(MapLeft + static_cast<float>(M.U) * MapSize,
+                             MapTop + static_cast<float>(1.0 - M.V) * MapSize);
+        };
+
+        DrawText(TEXT("CIRCUIT / NORTH UP"), Accent,
+            MapLeft, MapTop - 30.f * Scale, GEngine->GetSmallFont(), 0.8f * Scale);
+        for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)
+        {
+            const FVector2D From = ToScreen(latebrake::CircuitGate(Index));
+            const FVector2D To = ToScreen(latebrake::CircuitGate(
+                (Index + 1) % latebrake::CircuitGateCount));
+            DrawLine(From.X, From.Y, To.X, To.Y,
+                FLinearColor(0.75f, 0.78f, 0.85f), 2.f * Scale);
+        }
+        const FVector2D Next = ToScreen(latebrake::CircuitGate(Race.GetNextCheckpoint()));
+        DrawRect(Accent, Next.X - 5.f * Scale, Next.Y - 5.f * Scale,
+                 10.f * Scale, 10.f * Scale);
+        const FVector CarPosition = Car->GetActorLocation();
+        const FVector2D Player = ToScreen({CarPosition.X, CarPosition.Y});
+        DrawRect(FLinearColor(0.08f, 0.80f, 0.95f),
+                 Player.X - 4.f * Scale, Player.Y - 4.f * Scale,
+                 8.f * Scale, 8.f * Scale);
     }
 
     if (Mode->GetEventBestSeconds() > 0.f)
