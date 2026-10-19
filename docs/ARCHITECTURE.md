@@ -47,3 +47,9 @@ The checkpoint rules are intentionally isolated from Unreal so CI compiles the s
 - `ULatebrakePlayerSave` preserves the existing credits field and introduces optional garage properties with safe old-profile defaults.
 
 No network payments, real-money entitlements or finalized garage UI are implemented.
+
+## v0.3.1 validation boundaries
+
+- `GarageState` handles negative ownership-mask recovery and transaction selection/quotes. The Unreal adapter publishes feedback but should not independently calculate prices or unlock order.
+- `RecordValidation.h` is portable and bounds malformed saved race times plus saturates completion counts; Unreal SaveGame file IO remains untested by CI.
+- `HudLayout.h` computes adaptive compact/normal layout measurements independently from Unreal; `ALatebrakeRaceHUD` formats game-facing text using those measurements.

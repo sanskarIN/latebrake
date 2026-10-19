@@ -1,6 +1,20 @@
 # Changelog
 
-## v0.3.0 — garage foundation, source-only preview candidate
+## v0.3.1 — garage and HUD hardening (source-only development)
+
+### Improved
+- Reject negative/malformed garage ownership bitmasks without granting free cars.
+- Centralize next-locked and next-owned vehicle lookups in the portable garage model.
+- In-game feedback for unlock successes, shortfalls, maximum upgrade levels and car selection.
+- Upgrade price previews exposed to the HUD; reduce repeated garage selection logic.
+- Viewport-adaptive compact racing HUD with control footer and garage information.
+- Record sanitation for implausible, negative or nonfinite saved best times and saturating completed race counter.
+- Added pure C++20 regression targets for viewport layout and saved record validation, plus expanded garage tests.
+
+### Still missing
+- Unreal Engine-specific compilation/UHT test, real HUD/device layout check, real SaveGame migration validation, playable Win64/Android artifacts.
+
+## v0.3.0 — published source-only pre-release
 
 ### Added
 - Three fictional vehicle profiles and asset-free silhouette variants.

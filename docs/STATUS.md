@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-19
-**Current code milestone:** v0.3.0 offline garage and tuning source development.
+**Current code milestone:** v0.3.1 source stabilization — garage transactions, HUD and save validation.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -9,7 +9,19 @@
 - [v0.1.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.1.0) — published pre-release of the original C++ project and racing foundation.
 - [v0.1.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.1.1) — published pre-release of racing timing, fastest lap and checkpoint stability.
 
+- [v0.2.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.2.0) — offline circuit/time-attack and experimental rival source.
+- [v0.2.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.2.1) — AI steering/recovery source stabilization.
+- [v0.3.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.0) — garage source foundation.
+
 These tags are source previews. They are **not downloadable playable game installers**.
+
+## v0.3.1 changes
+
+- Corrupt negative garage mask now resets ownership to Arrow, not all prototypes.
+- Garage model exposes next affordable unlock, next owned car and upgrade prices; game-mode actions provide feedback to the HUD.
+- HUD text layout adapts to viewport width/height and offers condensed information for small screens, though Unreal render tests are still required.
+- Saved race times are checked for invalid/malformed values; race completion counter saturates instead of overflowing.
+- Portable C++20 tests cover malformed saves, feedback-related garage model queries, responsive HUD metrics and record bounds.
 
 ## v0.3.0 added in this development branch
 

@@ -42,3 +42,11 @@ The original Unreal SaveGame `TotalCredits` field remains the balance store for 
 - Full Unreal Editor, Win64 and Android playtests
 
 See [engineering status](STATUS.md) and [release qualification](https://github.com/sanskarIN/latebrake/issues/2).
+
+## v0.3.1 transaction feedback and defensive migration
+
+Garage purchases and selection now use the same portable `GarageState` lookup rules, rather than independent assumptions about car order in the Unreal game mode. The HUD displays whether a purchase or upgrade succeeded, lacked credits, or is already maxed. The UI also previews the next Engine and Grip upgrade prices (zero means fully upgraded).
+
+Malformed negative ownership masks are treated as the starter-car-only state, avoiding the previous risk of granting every vehicle due to a sign bit. Valid positive known ownership bits remain preserved. The portable tests also check that old zero/missing profile fields do not remove the Arrow starter car.
+
+These are code-level behaviors only; real Unreal SaveGame serialization, controller mappings and HUD rendering require manual editor/hardware verification.
