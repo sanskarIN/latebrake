@@ -28,6 +28,7 @@ public:
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
     float GetPersonalBestSeconds() const { return PersonalBestSeconds; }
+    float GetPersonalBestLapSeconds() const { return PersonalBestLapSeconds; }
     int32 GetCompletedRaceCount() const { return CompletedRaceCount; }
 
     static FVector GetStartPosition();
@@ -42,6 +43,7 @@ private:
 
     latebrake::RaceProgress Race{4, 3};
     float PersonalBestSeconds = 0.f;
+    float PersonalBestLapSeconds = 0.f;
     int32 CompletedRaceCount = 0;
 
     UPROPERTY(Transient)

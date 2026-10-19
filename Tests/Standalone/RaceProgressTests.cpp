@@ -1,4 +1,5 @@
 #include "Racing/RaceProgress.h"
+#include "Racing/GateValidation.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -63,6 +64,72 @@ int main()
     Check(single.GetRequiredLaps() == 1, "clamp invalid lap count");
     Check(single.PassCheckpoint(0), "single checkpoint race passes");
     Check(single.IsFinished(), "single checkpoint race finishes");
+
+    // v0.1.1 regression coverage: ordered sector and fastest lap timing.
+    RaceProgress timed(2, 3);
+    timed.Advance(4.0);
+    Check(timed.PassCheckpoint(0), "lap one first gate");
+    Check(std::abs(timed.GetLastSectorSeconds() - 4.0) < 1e-9, "first sector time");
+    timed.Advance(6.0);
+    Check(timed.PassCheckpoint(1), "lap one finish");
+    Check(std::abs(timed.GetLastLapSeconds() - 10.0) < 1e-9, "first lap time");
+    Check(std::abs(timed.GetBestLapSeconds() - 10.0) < 1e-9, "initial fastest lap");
+    Check(std::abs(timed.GetCurrentLapSeconds()) < 1e-9, "lap clock restarts");
+    timed.Advance(3.0);
+    Check(!timed.PassCheckpoint(1), "wrong gate cannot generate fake split");
+    Check(std::abs(timed.GetLastSectorSeconds() - 6.0) < 1e-9, "invalid gate preserves split");
+    Check(timed.PassCheckpoint(0), "lap two first gate");
+    timed.Advance(5.0);
+    Check(timed.PassCheckpoint(1), "lap two finish");
+    Check(std::abs(timed.GetLastLapSeconds() - 8.0) < 1e-9, "second lap time");
+    Check(std::abs(timed.GetBestLapSeconds() - 8.0) < 1e-9, "new fastest lap");
+    timed.Advance(10.0);
+    Check(timed.PassCheckpoint(0), "lap three first gate");
+    timed.Advance(2.0);
+    Check(timed.PassCheckpoint(1), "lap three finish");
+    Check(timed.IsFinished(), "timed race finished");
+    Check(std::abs(timed.GetLastLapSeconds() - 12.0) < 1e-9, "last completed lap");
+    Check(std::abs(timed.GetBestLapSeconds() - 8.0) < 1e-9, "slower lap preserves fastest");
+    timed.Reset();
+    Check(timed.GetBestLapSeconds() == 0.0, "reset best lap");
+    Check(timed.GetLastSectorSeconds() == 0.0, "reset splits");
+
+    RaceProgress overflow(1, 1);
+    overflow.Advance(std::numeric_limits<double>::max());
+    overflow.Advance(std::numeric_limits<double>::max());
+    Check(std::isfinite(overflow.GetElapsedSeconds()), "overflow does not poison clock");
+    Check(overflow.GetElapsedSeconds() == std::numeric_limits<double>::max(),
+        "overflowing addition is ignored");
+
+    // The four course gates only register forward, meaningful crossing.
+    using latebrake::CanPassCircuitGate;
+    Check(CanPassCircuitGate(0, 151.0, 0.0), "eastbound gate accepts eastward speed");
+    Check(CanPassCircuitGate(1, 0.0, 151.0), "northbound gate accepts northward speed");
+    Check(CanPassCircuitGate(2, -151.0, 0.0), "westbound gate accepts westward speed");
+    Check(CanPassCircuitGate(3, 0.0, -151.0), "southbound gate accepts southward speed");
+    Check(!CanPassCircuitGate(0, -500.0, 0.0), "wrong way rejected");
+    Check(!CanPassCircuitGate(1, 500.0, 0.0), "wrong axis rejected");
+    Check(!CanPassCircuitGate(0, 149.0, 0.0), "below minimum velocity rejected");
+    Check(!CanPassCircuitGate(4, 500.0, 0.0), "invalid gate index rejected");
+    Check(!CanPassCircuitGate(0, std::numeric_limits<double>::quiet_NaN(), 0.0),
+          "nonfinite velocity rejected");
+    Check(!CanPassCircuitGate(0, 500.0, 0.0, -1.0), "invalid speed requirement rejected");
+
+    // Recovery must not provide a free time advantage.
+    RaceProgress penalized(1, 1);
+    penalized.Advance(10.0);
+    Check(penalized.AddTimePenalty(5.0), "valid recovery penalty accepted");
+    Check(std::abs(penalized.GetElapsedSeconds() - 15.0) < 1e-9,
+        "penalty increases race clock");
+    Check(!penalized.AddTimePenalty(-1.0), "negative penalty rejected");
+    Check(!penalized.AddTimePenalty(std::numeric_limits<double>::infinity()),
+        "infinite penalty rejected");
+    Check(!penalized.AddTimePenalty(std::numeric_limits<double>::quiet_NaN()),
+        "NaN penalty rejected");
+    Check(penalized.PassCheckpoint(0), "penalized race finishes");
+    Check(!penalized.AddTimePenalty(5.0), "cannot penalize finished race");
+    Check(std::abs(penalized.GetElapsedSeconds() - 15.0) < 1e-9,
+        "finish clock remains frozen after rejected penalty");
 
     std::cout << "All Latebrake portable race tests passed.\n";
     return EXIT_SUCCESS;

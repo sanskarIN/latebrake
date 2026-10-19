@@ -2,6 +2,18 @@
 
 All notable verified changes will be recorded here. Version labels below describe source development, **not published releases**.
 
+## Unreleased — v0.1.1 stabilization branch
+
+### Added
+- Per-sector, current lap, last lap, in-race fastest-lap timing and HUD readout.
+- Saved all-time fastest completed lap (backward-compatible default field).
+- Direction-checked circuit checkpoint overlaps with a minimum entry speed.\n- Recovery clock penalty and post-finish/invalid-penalty rejection.
+- Regression tests for wrong-way gates, lap splits and timer overflow.
+
+### Validation
+- Portable C++20 checks can run without Unreal Engine; full editor/gameplay/platform builds still require qualification.
+- This branch must not be advertised as v0.1.1 prerelease before v0.1.0 packages are verified and published.
+
 ## Unreleased — v0.1.0 development
 
 ### Added

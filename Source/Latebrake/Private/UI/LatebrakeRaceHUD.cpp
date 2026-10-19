@@ -40,21 +40,34 @@ void ALatebrakeRaceHUD::DrawHUD()
         Primary, 35.f, 142.f, GEngine->GetMediumFont());
     DrawText(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds),
         Accent, 35.f, 176.f, GEngine->GetMediumFont());
+    DrawText(FString::Printf(TEXT("LAP TIME  %.2fs"), Race.GetCurrentLapSeconds()),
+        Primary, 35.f, 210.f, GEngine->GetSmallFont());
+    DrawText(FString::Printf(TEXT("LAST LAP  %.2fs    FASTEST THIS RACE  %.2fs"),
+        Race.GetLastLapSeconds(), Race.GetBestLapSeconds()),
+        Primary, 35.f, 232.f, GEngine->GetSmallFont());
+    DrawText(FString::Printf(TEXT("LAST SPLIT  %.2fs"), Race.GetLastSectorSeconds()),
+        Primary, 35.f, 254.f, GEngine->GetSmallFont());
     if (Mode->GetPersonalBestSeconds() > 0.f)
     {
         DrawText(FString::Printf(TEXT("BEST RACE  %.2fs"), Mode->GetPersonalBestSeconds()),
-            Primary, 35.f, 212.f, GEngine->GetSmallFont());
+            Primary, 35.f, 275.f, GEngine->GetSmallFont());
     }
+    if (Mode->GetPersonalBestLapSeconds() > 0.f)
+    {
+        DrawText(FString::Printf(TEXT("ALL-TIME BEST LAP  %.2fs"), Mode->GetPersonalBestLapSeconds()),
+            Accent, 35.f, 292.f, GEngine->GetSmallFont());
+    }
+
     DrawText(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"),
-        Primary, 35.f, 242.f, GEngine->GetSmallFont());
+        Primary, 35.f, 317.f, GEngine->GetSmallFont());
 
     if (UGameplayStatics::IsGamePaused(this))
     {
-        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 290.f, GEngine->GetLargeFont());
+        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 365.f, GEngine->GetLargeFont());
     }
     else if (Race.IsFinished())
     {
-        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 290.f, GEngine->GetLargeFont(), 1.15f);
+        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 365.f, GEngine->GetLargeFont(), 1.15f);
     }
 
 #if PLATFORM_ANDROID

@@ -1,4 +1,5 @@
 #include "Racing/LatebrakeCheckpoint.h"
+#include "Racing/GateValidation.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -37,7 +38,14 @@ void ALatebrakeCheckpoint::OnTriggerOverlap(UPrimitiveComponent* OverlappedCompo
     AActor* OtherActor, UPrimitiveComponent* OtherComponent,
     int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    if (!Cast<ALatebrakeCarPawn>(OtherActor))
+    const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(OtherActor);
+    if (!Car)
+    {
+        return;
+    }
+
+    const FVector Velocity = Car->GetVelocity();
+    if (!latebrake::CanPassCircuitGate(CheckpointIndex, Velocity.X, Velocity.Y))
     {
         return;
     }

@@ -62,3 +62,6 @@ pwsh ./scripts/Build-PreRelease.ps1 -EngineRoot 'C:/Program Files/Epic Games/UE_
 Android requires Unreal's supported Android toolchain plus real touch/lifecycle testing. Confirm the built-in entry map is cookable or add a project-owned map if needed. These commands have **not** yet succeeded in this environment. The script does not assert a build succeeded unless Unreal returns a success exit and candidate platform files exist.
 
 After real hardware gameplay tests, record honest evidence using `docs/releases/test-evidence.example.json` and validate package structure plus SHA-256 hashes using `scripts/Verify-ReleaseArtifacts.ps1`. An actual release still requires passing the acceptance checklist in `docs/releases/v0.1.0.md`.
+## Packaging gate for prereleases
+
+Create real Win64 and Android packages using your authorized UE 5.8 build environment, record actual device and gameplay verification in a JSON file based on `docs/releases/test-evidence.example.json`, and check package structure and hashes with `scripts/Verify-ReleaseArtifacts.ps1`. The verification script performs only **basic structural checks**, not a UE compile, malware audit, or gameplay qualification. Never publish a v0.1.0 pre-release from CI's standalone test executable.

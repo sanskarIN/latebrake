@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace latebrake
 {
@@ -17,16 +18,35 @@ void RaceProgress::Reset() noexcept
     NextCheckpoint = 0;
     CompletedLaps = 0;
     ElapsedSeconds = 0.0;
+    LapStartSeconds = 0.0;
+    LastCheckpointSeconds = 0.0;
+    LastLapSeconds = 0.0;
+    BestLapSeconds = 0.0;
+    LastSectorSeconds = 0.0;
     State = RaceState::Running;
 }
 
 void RaceProgress::Advance(double deltaSeconds) noexcept
 {
     // Avoid corrupting the clock from engine pause/physics anomalies.
-    if (State == RaceState::Running && std::isfinite(deltaSeconds) && deltaSeconds > 0.0)
+    if (State == RaceState::Running && std::isfinite(deltaSeconds) && deltaSeconds > 0.0 &&
+        deltaSeconds <= std::numeric_limits<double>::max() - ElapsedSeconds)
     {
         ElapsedSeconds += deltaSeconds;
     }
+}
+
+bool RaceProgress::AddTimePenalty(double penaltySeconds) noexcept
+{
+    if (State != RaceState::Running || !std::isfinite(penaltySeconds) ||
+        penaltySeconds <= 0.0 ||
+        penaltySeconds > std::numeric_limits<double>::max() - ElapsedSeconds)
+    {
+        return false;
+    }
+
+    ElapsedSeconds += penaltySeconds;
+    return true;
 }
 
 bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
@@ -36,11 +56,20 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
         return false;
     }
 
+    LastSectorSeconds = ElapsedSeconds - LastCheckpointSeconds;
+    LastCheckpointSeconds = ElapsedSeconds;
     ++NextCheckpoint;
     if (NextCheckpoint == CheckpointCount)
     {
         NextCheckpoint = 0;
         ++CompletedLaps;
+        LastLapSeconds = ElapsedSeconds - LapStartSeconds;
+        if (LastLapSeconds > 0.0 &&
+            (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds))
+        {
+            BestLapSeconds = LastLapSeconds;
+        }
+        LapStartSeconds = ElapsedSeconds;
         if (CompletedLaps >= RequiredLaps)
         {
             State = RaceState::Finished;
