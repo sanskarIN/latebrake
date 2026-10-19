@@ -1,0 +1,18 @@
+{
+  "unreal_version": "5.8",
+  "windows_playtested": false,
+  "windows_hardware": "",
+  "android_playtested": false,
+  "android_device": "",
+  "checks": {
+    "win64_launch": false,
+    "three_laps": false,
+    "restart": false,
+    "save_reload": false,
+    "keyboard": false,
+    "gamepad": false,
+    "android_touch": false,
+    "android_resume": false
+  },
+  "notes": "Example only. Never mark checks as passed without actual test evidence."
+}
