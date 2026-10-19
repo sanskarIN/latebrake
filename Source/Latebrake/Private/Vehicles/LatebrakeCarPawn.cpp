@@ -166,7 +166,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
-    if (!Chassis->IsSimulatingPhysics() || DeltaSeconds <= 0.f)
+    if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
         return;
     }
@@ -189,6 +189,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const FVector Forward = GetActorForwardVector();
     const FVector Right = GetActorRightVector();
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
+    if (!FMath::IsFinite(Velocity.X) || !FMath::IsFinite(Velocity.Y) ||
+        !FMath::IsFinite(Velocity.Z))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: physics velocity was nonfinite; clearing vehicle motion"));
+        Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
+        ClearDriverInputs();
+        return;
+    }
     const FVector FlatVelocity(Velocity.X, Velocity.Y, 0.f);
     const float Speed = FlatVelocity.Size();
     const float LongitudinalSpeed = FVector::DotProduct(FlatVelocity, Forward);
@@ -292,6 +300,10 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex, const FVector&
         return;
     }
 
+    if (!FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
+    {
+        return;
+    }
     const int32 FingerId = static_cast<int32>(FingerIndex);
     if (SteeringFinger == FingerId ||
         (SteeringFinger == INDEX_NONE && PedalFinger != FingerId &&
