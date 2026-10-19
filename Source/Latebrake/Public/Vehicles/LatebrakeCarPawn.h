@@ -70,6 +70,7 @@ private:
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
+    void TogglePause();
     void SelectArcade();
     void SelectSimulation();
 

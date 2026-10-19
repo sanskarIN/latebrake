@@ -6,6 +6,8 @@
 #include "Engine/StaticMesh.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
 namespace
@@ -15,8 +17,10 @@ void ConfigureDecorativeMesh(UStaticMeshComponent* Component, UStaticMesh* Mesh,
     Component->SetStaticMesh(Mesh);
     Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Component->SetSimulatePhysics(false);
-    Component->SetRelativeLocation(RelativeLocation);
-    Component->SetRelativeScale3D(Scale);
+    // Chassis is physically scaled; compensate its scale on attached meshes.
+    const FVector RootScale(3.8f, 1.8f, 0.65f);
+    Component->SetRelativeLocation(RelativeLocation / RootScale);
+    Component->SetRelativeScale3D(Scale / RootScale);
 }
 }
 
@@ -78,6 +82,8 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
 
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(Chassis);
+    CameraBoom->SetAbsolute(false, false, true);
+    CameraBoom->SetRelativeRotation(FRotator(-12.f, 0.f, 0.f));
     CameraBoom->TargetArmLength = 560.f;
     CameraBoom->SocketOffset = FVector(0.f, 0.f, 120.f);
     CameraBoom->bUsePawnControlRotation = false;
@@ -200,6 +206,11 @@ void ALatebrakeCarPawn::ChangeCamera()
     CameraBoom->TargetArmLength = bNearCamera ? 270.f : 560.f;
 }
 
+void ALatebrakeCarPawn::TogglePause()
+{
+    UGameplayStatics::SetGamePaused(this, !UGameplayStatics::IsGamePaused(this));
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -222,6 +233,8 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
+    FInputActionBinding& PauseAction = PlayerInputComponent->BindAction(TEXT("Pause"), IE_Pressed, this, &ALatebrakeCarPawn::TogglePause);
+    PauseAction.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }

@@ -2,6 +2,8 @@
 
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/SkyLight.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "Engine/StaticMeshActor.h"
@@ -80,7 +82,9 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label, const F
         return nullptr;
     }
 
+    #if WITH_EDITOR
     Block->SetActorLabel(Label);
+    #endif
     UStaticMeshComponent* Mesh = Block->GetStaticMeshComponent();
     Mesh->SetMobility(EComponentMobility::Movable);
     Mesh->SetStaticMesh(Cube);
@@ -99,6 +103,17 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label, const F
 
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
+    // Runtime sunlight so the starter track remains visible without map assets.
+    if (ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>())
+    {
+        Sun->SetActorRotation(FRotator(-55.f, -30.f, 0.f));
+        Sun->GetLightComponent()->SetIntensity(6.f);
+    }
+    if (ASkyLight* Sky = GetWorld()->SpawnActor<ASkyLight>())
+    {
+        Sky->GetLightComponent()->SetIntensity(1.f);
+    }
+
     // World-space units are centimetres. All geometry references stock engine
     // primitives; this repository does not ship or redistribute Epic assets.
     SpawnBlock(TEXT("Ground"), FVector(0.f, 0.f, -100.f),

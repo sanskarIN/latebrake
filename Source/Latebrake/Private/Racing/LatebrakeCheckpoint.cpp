@@ -3,6 +3,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/World.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "UObject/ConstructorHelpers.h"

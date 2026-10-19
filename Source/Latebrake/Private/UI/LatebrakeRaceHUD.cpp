@@ -1,6 +1,9 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "Engine/Engine.h"
+#include "Engine/Canvas.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/PlayerController.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -45,11 +48,15 @@ void ALatebrakeRaceHUD::DrawHUD()
     DrawText(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"),
         Primary, 35.f, 242.f, GEngine->GetSmallFont());
 
-    if (Race.IsFinished())
+    if (UGameplayStatics::IsGamePaused(this))
+    {
+        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 290.f, GEngine->GetLargeFont());
+    }
+    else if (Race.IsFinished())
     {
         DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 290.f, GEngine->GetLargeFont(), 1.15f);
     }
 
-    DrawText(TEXT("W/S throttle  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling"),
+    DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause"),
         Primary, 35.f, Canvas->SizeY - 45.f, GEngine->GetSmallFont(), 0.82f);
 }
