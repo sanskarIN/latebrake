@@ -6,6 +6,7 @@
 #include "Engine/StaticMesh.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
@@ -125,10 +126,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     }
 
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
+    const float EffectiveThrottle = bTouchThrottle ? 1.f : Throttle;
+    const float EffectiveSteering = SteeringFinger != INDEX_NONE ? TouchSteering : Steering;
+    const bool bEffectiveBraking = bBraking || bTouchBrake;
     const float DriveForce = bArcade ? 1500000.f : 1030000.f;
     const float MaxSpeed = bArcade ? 6500.f : 5400.f; // cm/s
     const float GripRate = bArcade ? 8.5f : 4.25f;
-    const float BrakeRate = bBraking ? 7.f : 0.55f;
+    const float BrakeRate = bEffectiveBraking ? 7.f : 0.55f;
 
     const FVector Forward = GetActorForwardVector();
     const FVector Right = GetActorRightVector();
@@ -139,11 +143,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float LateralSpeed = FVector::DotProduct(FlatVelocity, Right);
     const float Mass = Chassis->GetMass();
 
-    if (!bBraking && (FMath::Abs(Throttle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(Throttle) || Speed < 100.f))
+    if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
-        Chassis->AddForce(Forward * DriveForce * Throttle);
+        Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
     }
-    else if (!bBraking)
+    else if (!bEffectiveBraking)
     {
         // Opposite throttle acts as engine braking until the car slows.
         Chassis->AddForce(-Forward * LongitudinalSpeed * Mass * 3.f);
@@ -151,14 +155,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     // Anti-slide assistance is stronger in Arcade; both presets remain tunable.
     Chassis->AddForce(-Right * LateralSpeed * Mass * GripRate);
-    if (bBraking || FMath::Abs(Throttle) < 0.02f)
+    if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)
     {
         Chassis->AddForce(-Forward * LongitudinalSpeed * Mass * BrakeRate);
     }
 
     const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
     const float SteerDirection = LongitudinalSpeed < -75.f ? -1.f : 1.f;
-    const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) * Steering * SteeringAuthority * SteerDirection;
+    const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) * EffectiveSteering * SteeringAuthority * SteerDirection;
     Chassis->AddTorqueInRadians(FVector(0.f, 0.f, TurnTorque));
 
     if (Speed > MaxSpeed)
@@ -182,6 +186,11 @@ void ALatebrakeCarPawn::RecoverTo(const FVector& Position, const FRotator& Rotat
     Throttle = 0.f;
     Steering = 0.f;
     bBraking = false;
+    SteeringFinger = INDEX_NONE;
+    PedalFinger = INDEX_NONE;
+    TouchSteering = 0.f;
+    bTouchThrottle = false;
+    bTouchBrake = false;
 }
 
 void ALatebrakeCarPawn::RecoverPressed()
@@ -211,6 +220,63 @@ void ALatebrakeCarPawn::TogglePause()
     UGameplayStatics::SetGamePaused(this, !UGameplayStatics::IsGamePaused(this));
 }
 
+void ALatebrakeCarPawn::TouchPressed(ETouchIndex::Type FingerIndex, FVector Location)
+{
+    ApplyTouch(FingerIndex, Location);
+}
+
+void ALatebrakeCarPawn::TouchMoved(ETouchIndex::Type FingerIndex, FVector Location)
+{
+    ApplyTouch(FingerIndex, Location);
+}
+
+void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location)
+{
+    const APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC)
+    {
+        return;
+    }
+    int32 Width = 0;
+    int32 Height = 0;
+    PC->GetViewportSize(Width, Height);
+    if (Width <= 0 || Height <= 0)
+    {
+        return;
+    }
+
+    const int32 FingerId = static_cast<int32>(FingerIndex);
+    if (Location.X < static_cast<float>(Width) * 0.5f &&
+        (SteeringFinger == INDEX_NONE || SteeringFinger == FingerId))
+    {
+        SteeringFinger = FingerId;
+        TouchSteering = FMath::Clamp((Location.X / static_cast<float>(Width) - 0.25f) * 4.f, -1.f, 1.f);
+    }
+    else if (Location.X >= static_cast<float>(Width) * 0.5f &&
+        (PedalFinger == INDEX_NONE || PedalFinger == FingerId))
+    {
+        PedalFinger = FingerId;
+        bTouchBrake = Location.Y > static_cast<float>(Height) * 0.68f;
+        bTouchThrottle = !bTouchBrake;
+    }
+}
+
+void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Location)
+{
+    const int32 FingerId = static_cast<int32>(FingerIndex);
+    if (SteeringFinger == FingerId)
+    {
+        SteeringFinger = INDEX_NONE;
+        TouchSteering = 0.f;
+    }
+    if (PedalFinger == FingerId)
+    {
+        PedalFinger = INDEX_NONE;
+        bTouchThrottle = false;
+        bTouchBrake = false;
+    }
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -233,6 +299,9 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
+    PlayerInputComponent->BindTouch(IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
+    PlayerInputComponent->BindTouch(IE_Repeat, this, &ALatebrakeCarPawn::TouchMoved);
+    PlayerInputComponent->BindTouch(IE_Released, this, &ALatebrakeCarPawn::TouchReleased);
     FInputActionBinding& PauseAction = PlayerInputComponent->BindAction(TEXT("Pause"), IE_Pressed, this, &ALatebrakeCarPawn::TogglePause);
     PauseAction.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);

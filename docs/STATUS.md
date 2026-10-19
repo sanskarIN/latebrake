@@ -7,7 +7,7 @@
 ## Implemented in repository source
 
 - UE 5.8 C++ game/editor target and module.
-- Physics-rigid-body car pawn, desktop controls, braking, reverse, recover, two handling presets, camera-distance toggle, pause.
+- Physics-rigid-body car pawn, desktop controls, braking, reverse, recover, two handling presets, camera-distance toggle, pause, and initial two-finger touch-region bindings.
 - Procedural starter circuit built from runtime engine primitive references.
 - Four ordered gates and three-lap finite race state machine.
 - HUD with speed, race clock, lap/gate status and personal best.
@@ -27,7 +27,7 @@
 - No authored vehicle rigs, Chaos Vehicles suspension/wheel implementation or realistic drivetrains.
 - No original production-quality 3D vehicle/track/lighting/FX/audio assets.
 - No authored .umap; runtime startup currently relies on a built-in engine entry map.
-- No Android touch UI, tilt controls or mobile performance testing.
+- Touch-region bindings added in C++ but **not tested on an Android device**; visual touch buttons, tilt controls and mobile performance testing remain missing.
 - No AI opponent, traffic, career, garage, event browser, world exploration or multiplayer.
 - No verified engine build failures because an Unreal build has not been attempted here.
 

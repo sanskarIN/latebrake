@@ -8,7 +8,7 @@
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.
 - A physics-simulated, keyboard/gamepad controlled starter car assembled from engine-built-in shapes.
-- Arcade and simulation-inspired force/grip presets, braking, camera switching, recovery and pause.
+- Arcade and simulation-inspired force/grip presets, braking, camera switching, recovery, pause and experimental two-finger touch regions.
 - A generated four-checkpoint circuit, three-lap ordered race rules, HUD, race restart and finish state.
 - A locally saved race best-time record and completed-races counter.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
@@ -25,7 +25,7 @@ The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** imple
 
 The game mode is selected via `Config/DefaultEngine.ini`, which points at a built-in engine entry map and generates its starter track at runtime. Check **[Build instructions](docs/BUILDING.md)** for limitations and packaging prerequisites.
 
-### Current desktop controls
+### Current controls
 
 | Control | Action |
 | --- | --- |
@@ -39,7 +39,7 @@ The game mode is selected via `Config/DefaultEngine.ini`, which points at a buil
 | Esc | Pause or resume |
 | Gamepad | Triggers, left stick, face buttons and shoulder button (see input config) |
 
-No Android touch controls are implemented; Android builds have not been validated.
+Experimental touch bindings: drag in the left half to steer, hold upper-right to accelerate, hold lower-right to brake. **No Android build or touch behavior has been verified**, and accessible visual touch controls still need work.
 
 ## Test the portable race logic
 

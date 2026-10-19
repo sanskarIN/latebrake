@@ -3,6 +3,8 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Engine/DirectionalLight.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Components/SkyLightComponent.h"
 #include "Engine/SkyLight.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
@@ -82,9 +84,11 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label, const F
         return nullptr;
     }
 
-    #if WITH_EDITOR
+#if WITH_EDITOR
     Block->SetActorLabel(Label);
-    #endif
+#else
+    (void)Label;
+#endif
     UStaticMeshComponent* Mesh = Block->GetStaticMeshComponent();
     Mesh->SetMobility(EComponentMobility::Movable);
     Mesh->SetStaticMesh(Cube);

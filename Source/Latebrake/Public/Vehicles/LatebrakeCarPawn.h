@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "InputCoreTypes.h"
 #include "LatebrakeCarPawn.generated.h"
 
 class UCameraComponent;
@@ -71,6 +72,10 @@ private:
     void RestartPressed();
     void ChangeCamera();
     void TogglePause();
+    void TouchPressed(ETouchIndex::Type FingerIndex, FVector Location);
+    void TouchMoved(ETouchIndex::Type FingerIndex, FVector Location);
+    void TouchReleased(ETouchIndex::Type FingerIndex, FVector Location);
+    void ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location);
     void SelectArcade();
     void SelectSimulation();
 
@@ -78,6 +83,11 @@ private:
     float Steering = 0.f;
     bool bBraking = false;
     bool bNearCamera = false;
+    int32 SteeringFinger = INDEX_NONE;
+    int32 PedalFinger = INDEX_NONE;
+    float TouchSteering = 0.f;
+    bool bTouchThrottle = false;
+    bool bTouchBrake = false;
 
     UPROPERTY(EditAnywhere, Category = "Vehicle")
     ELatebrakeHandlingMode HandlingMode = ELatebrakeHandlingMode::Arcade;
