@@ -17,3 +17,7 @@ The `RivalRoute` target verifies waypoint/lap tracking and eight-second stuck re
 ## v0.3.1 tests
 
 `HudLayout` exercises viewport-dependent UI spacing and corrupted geometry; `RecordValidation` guards saved race time and completion counters. Updated `GarageState` tests cover invalid masks, owned-car cycling, costs and affordability. All are pure C++20 checks and do not certify Unreal Engine runtime rendering, game builds or SaveGame IO.
+
+## v0.3.2 tests
+
+`DriverInputSafety` covers normalized axis/touch input, nonfinite sensor values, frame invalidity and throttle smoothing. `GarageTuningKey` covers when live vehicle tuning should be reapplied versus when a balance change is irrelevant. These suites test real portable header implementations only; game-mode, physics, Android touch, camera and saving still require a licensed Unreal Engine build and manual validation.

@@ -50,3 +50,9 @@ Garage purchases and selection now use the same portable `GarageState` lookup ru
 Malformed negative ownership masks are treated as the starter-car-only state, avoiding the previous risk of granting every vehicle due to a sign bit. Valid positive known ownership bits remain preserved. The portable tests also check that old zero/missing profile fields do not remove the Arrow starter car.
 
 These are code-level behaviors only; real Unreal SaveGame serialization, controller mappings and HUD rendering require manual editor/hardware verification.
+
+## v0.3.2 live handling optimization
+
+The garage change key consists of selected vehicle, engine level and grip level. Earning credits or unlocking an unselected car does not cause per-frame physics tuning changes. A car selection, an upgrade, or replacement/respawn of the player pawn triggers a live tuning refresh. This logic is checked by C++20 unit tests, while Unreal lifecycle and rendered HUD behavior require further validation.
+
+The HUD also displays a warning when its local SaveGame write fails. In-memory progress may exist without being persisted across restarts; investigate disk permissions/free space before claiming durability.
