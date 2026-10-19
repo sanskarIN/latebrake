@@ -64,6 +64,42 @@ int main()
     Check(single.PassCheckpoint(0), "single checkpoint race passes");
     Check(single.IsFinished(), "single checkpoint race finishes");
 
+    // v0.1.1 regression coverage: ordered sector and fastest lap timing.
+    RaceProgress timed(2, 3);
+    timed.Advance(4.0);
+    Check(timed.PassCheckpoint(0), "lap one first gate");
+    Check(std::abs(timed.GetLastSectorSeconds() - 4.0) < 1e-9, "first sector time");
+    timed.Advance(6.0);
+    Check(timed.PassCheckpoint(1), "lap one finish");
+    Check(std::abs(timed.GetLastLapSeconds() - 10.0) < 1e-9, "first lap time");
+    Check(std::abs(timed.GetBestLapSeconds() - 10.0) < 1e-9, "initial fastest lap");
+    Check(std::abs(timed.GetCurrentLapSeconds()) < 1e-9, "lap clock restarts");
+    timed.Advance(3.0);
+    Check(!timed.PassCheckpoint(1), "wrong gate cannot generate fake split");
+    Check(std::abs(timed.GetLastSectorSeconds() - 6.0) < 1e-9, "invalid gate preserves split");
+    Check(timed.PassCheckpoint(0), "lap two first gate");
+    timed.Advance(5.0);
+    Check(timed.PassCheckpoint(1), "lap two finish");
+    Check(std::abs(timed.GetLastLapSeconds() - 8.0) < 1e-9, "second lap time");
+    Check(std::abs(timed.GetBestLapSeconds() - 8.0) < 1e-9, "new fastest lap");
+    timed.Advance(10.0);
+    Check(timed.PassCheckpoint(0), "lap three first gate");
+    timed.Advance(2.0);
+    Check(timed.PassCheckpoint(1), "lap three finish");
+    Check(timed.IsFinished(), "timed race finished");
+    Check(std::abs(timed.GetLastLapSeconds() - 12.0) < 1e-9, "last completed lap");
+    Check(std::abs(timed.GetBestLapSeconds() - 8.0) < 1e-9, "slower lap preserves fastest");
+    timed.Reset();
+    Check(timed.GetBestLapSeconds() == 0.0, "reset best lap");
+    Check(timed.GetLastSectorSeconds() == 0.0, "reset splits");
+
+    RaceProgress overflow(1, 1);
+    overflow.Advance(std::numeric_limits<double>::max());
+    overflow.Advance(std::numeric_limits<double>::max());
+    Check(std::isfinite(overflow.GetElapsedSeconds()), "overflow does not poison clock");
+    Check(overflow.GetElapsedSeconds() == std::numeric_limits<double>::max(),
+        "overflowing addition is ignored");
+
     std::cout << "All Latebrake portable race tests passed.\n";
     return EXIT_SUCCESS;
 }
