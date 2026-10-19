@@ -34,6 +34,7 @@ public:
 
     float GetSpeedKmH() const;
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
+    void ClearDriverInputs();
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
@@ -91,6 +92,7 @@ private:
     float Throttle = 0.f;
     float Steering = 0.f;
     float SmoothedSteering = 0.f;
+    float SmoothedThrottle = 0.f;
     float GarageAcceleration = 1.f;
     float GarageGrip = 1.f;
     float GarageTopSpeed = 1.f;
