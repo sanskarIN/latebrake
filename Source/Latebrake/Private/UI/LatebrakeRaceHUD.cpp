@@ -60,7 +60,8 @@ void ALatebrakeRaceHUD::DrawHUD()
 #if PLATFORM_ANDROID
     DrawText(TEXT("LEFT HALF: STEER   RIGHT UPPER: GAS   RIGHT LOWER: BRAKE"),
         Accent, 35.f, Canvas->SizeY - 80.f, GEngine->GetSmallFont(), 0.82f);
-#endif
+#else
     DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause"),
         Primary, 35.f, Canvas->SizeY - 45.f, GEngine->GetSmallFont(), 0.82f);
+#endif
 }

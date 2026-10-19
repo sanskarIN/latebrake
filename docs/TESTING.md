@@ -26,3 +26,7 @@ GitHub Actions matrix: Ubuntu, Windows and macOS. This validates portable C++ so
 - [ ] At least one release packaging workflow produces verifiable artifacts
 
 Track the engine version, machine, GPU, driver, device temperatures, resolution, frame times, loading time, memory, and crash logs for every qualification.
+
+## Observed CI result
+
+As of 2026-10-19, commit `f8723f7937faf9503734719f9a1aeaacf640727b` passed the Ubuntu, Windows and macOS portable C++20 jobs: https://github.com/sanskarIN/latebrake/actions/runs/39221329905 . Later commits require their own verification.

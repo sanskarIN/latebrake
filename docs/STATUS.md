@@ -18,7 +18,7 @@
 ## Verified
 
 - RaceProgress C++20 logic compiles and its standalone test passes with a local GNU C++ compiler.
-- GitHub Actions portable C++20 test workflow has reported success on the branch's earlier pushed commits across its OS matrix; reconfirm against the final head of this branch.
+- GitHub Actions reported **success on Ubuntu, Windows and macOS** for commit `f8723f7937faf9503734719f9a1aeaacf640727b` ([run 39221329905](https://github.com/sanskarIN/latebrake/actions/runs/39221329905)). Later commits require independent verification.
 
 ## Not verified / missing
 

@@ -246,14 +246,16 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex, const FVector&
     }
 
     const int32 FingerId = static_cast<int32>(FingerIndex);
-    if (Location.X < static_cast<float>(Width) * 0.5f &&
-        (SteeringFinger == INDEX_NONE || SteeringFinger == FingerId))
+    if (SteeringFinger == FingerId ||
+        (SteeringFinger == INDEX_NONE && PedalFinger != FingerId &&
+         Location.X < static_cast<float>(Width) * 0.5f))
     {
         SteeringFinger = FingerId;
         TouchSteering = FMath::Clamp((Location.X / static_cast<float>(Width) - 0.25f) * 4.f, -1.f, 1.f);
     }
-    else if (Location.X >= static_cast<float>(Width) * 0.5f &&
-        (PedalFinger == INDEX_NONE || PedalFinger == FingerId))
+    else if (PedalFinger == FingerId ||
+        (PedalFinger == INDEX_NONE && SteeringFinger != FingerId &&
+         Location.X >= static_cast<float>(Width) * 0.5f))
     {
         PedalFinger = FingerId;
         bTouchBrake = Location.Y > static_cast<float>(Height) * 0.68f;
@@ -263,6 +265,7 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex, const FVector&
 
 void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Location)
 {
+    (void)Location;
     const int32 FingerId = static_cast<int32>(FingerIndex);
     if (SteeringFinger == FingerId)
     {
