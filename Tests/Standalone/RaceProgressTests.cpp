@@ -1,4 +1,5 @@
 #include "Racing/RaceProgress.h"
+#include "Racing/GateValidation.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -99,6 +100,20 @@ int main()
     Check(std::isfinite(overflow.GetElapsedSeconds()), "overflow does not poison clock");
     Check(overflow.GetElapsedSeconds() == std::numeric_limits<double>::max(),
         "overflowing addition is ignored");
+
+    // The four course gates only register forward, meaningful crossing.
+    using latebrake::CanPassCircuitGate;
+    Check(CanPassCircuitGate(0, 151.0, 0.0), "eastbound gate accepts eastward speed");
+    Check(CanPassCircuitGate(1, 0.0, 151.0), "northbound gate accepts northward speed");
+    Check(CanPassCircuitGate(2, -151.0, 0.0), "westbound gate accepts westward speed");
+    Check(CanPassCircuitGate(3, 0.0, -151.0), "southbound gate accepts southward speed");
+    Check(!CanPassCircuitGate(0, -500.0, 0.0), "wrong way rejected");
+    Check(!CanPassCircuitGate(1, 500.0, 0.0), "wrong axis rejected");
+    Check(!CanPassCircuitGate(0, 149.0, 0.0), "below minimum velocity rejected");
+    Check(!CanPassCircuitGate(4, 500.0, 0.0), "invalid gate index rejected");
+    Check(!CanPassCircuitGate(0, std::numeric_limits<double>::quiet_NaN(), 0.0),
+          "nonfinite velocity rejected");
+    Check(!CanPassCircuitGate(0, 500.0, 0.0, -1.0), "invalid speed requirement rejected");
 
     std::cout << "All Latebrake portable race tests passed.\n";
     return EXIT_SUCCESS;
