@@ -1,0 +1,142 @@
+name: Publish labeled source-only pre-releases
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-source-previews.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: latebrake-source-preview-releases
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Create truthful v0.1.0 and v0.1.1 pre-releases
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish source-only preview tags and releases
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const releases = [
+              {
+                tag: 'v0.1.0',
+                sha: '5425f8a2c3a46619cb36b6a90f174ce9310d0a10',
+                name: 'Latebrake v0.1.0 — Developer Source Preview (Pre-release)',
+                notes: [
+                  '## Source-only developer preview — NOT a playable game release',
+                  '',
+                  '**No compiled Windows EXE, Android APK/AAB, or tested playable build is included.**',
+                  'Unreal Engine 5.8 gameplay code has not yet been successfully compiled or playtested on a licensed Unreal installation. The GitHub-provided Source code ZIP/tarball contains project source only.',
+                  '',
+                  '### Included source',
+                  '- Unreal Engine 5.8 C++20 project and starter rigid-body vehicle.',
+                  '- Runtime circuit with four ordered checkpoints and three-lap race loop.',
+                  '- Racing HUD, keyboard/gamepad and experimental touch input, pause and recovery.',
+                  '- Local best-race record saves.',
+                  '- Portable C++20 regression tests and Unreal packaging preparation scripts.',
+                  '',
+                  '### Verified',
+                  '- Portable C++20 logic and release-script syntax checks passed in GitHub Actions on the source baseline. These checks do **not** validate a playable Unreal build.',
+                  '',
+                  '### Still required for a playable release',
+                  '- Licensed UE 5.8 game/editor build, an original cookable project map, real Win64 and Android packages, physical device/input testing and artifact verification.',
+                  '- Track outstanding work at https://github.com/sanskarIN/latebrake/issues/2',
+                  '',
+                  'License: BSD-3-Clause for authored source code. Unreal Engine and its built-in assets remain governed by Epic\'s separate license.'
+                ].join('\n')
+              },
+              {
+                tag: 'v0.1.1',
+                sha: '848c1c40bafdde9f7c39eb6f91529a41aa335b12',
+                name: 'Latebrake v0.1.1 — Racing Stability Source Preview (Pre-release)',
+                notes: [
+                  '## Source-only racing-stability preview — NOT a playable game release',
+                  '',
+                  '**No compiled Windows EXE, Android APK/AAB, or tested playable build is included.**',
+                  'Unreal Engine 5.8 game-specific compilation and gameplay/device testing have not yet been validated. The automatic GitHub Source code ZIP/tarball is source only.',
+                  '',
+                  '### Changes since the source-only v0.1.0 preview',
+                  '- Current, last, and fastest lap times plus sector splits.',
+                  '- Persistent best-lap result with backward-compatible default save field.',
+                  '- Reject wrong-way or stationary passes through checkpoint gates.',
+                  '- Add a five-second time penalty for vehicle recovery.',
+                  '- More portable C++20 regression tests for racing, timing and checkpoint behavior.',
+                  '',
+                  '### Verification and limitations',
+                  '- Portable C++20 and packaging-script-syntax GitHub Actions checks passed for the tagged branch revision.',
+                  '- Actual Unreal engine build, authored cookable map, real Windows/Android packages and physical playtests remain outstanding.',
+                  '- This source snapshot comes from feat/v0.1.1-race-stability (draft PR #3); publishing this preview does **not** merge the PR into main.',
+                  '- Track gameplay packaging requirements at https://github.com/sanskarIN/latebrake/issues/2',
+                  '- Review the source development at https://github.com/sanskarIN/latebrake/pull/3'
+                ].join('\n')
+              }
+            ];
+            
+            const dev = await github.rest.repos.getBranch({
+              owner, repo, branch: 'feat/v0.1.1-race-stability'
+            });
+            if (dev.data.commit.sha !== releases[1].sha) {
+              throw new Error('v0.1.1 branch head moved; refusing to publish an unreviewed revision.');
+            }
+            const baseCommit = await github.rest.repos.getCommit({
+              owner, repo, ref: releases[0].sha
+            });
+            if (baseCommit.data.sha !== releases[0].sha) {
+              throw new Error('v0.1.0 baseline commit was not found.');
+            }
+            
+            for (const item of releases) {
+              let tagFound = false;
+              try {
+                const existingRef = await github.rest.git.getRef({
+                  owner, repo, ref: 'tags/' + item.tag
+                });
+                if (existingRef.data.object.type !== 'commit' ||
+                    existingRef.data.object.sha !== item.sha) {
+                  throw new Error(item.tag + ' exists at a different object; refusing to overwrite tag.');
+                }
+                tagFound = true;
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+              if (!tagFound) {
+                await github.rest.git.createRef({
+                  owner, repo, ref: 'refs/tags/' + item.tag, sha: item.sha
+                });
+                core.info('Created lightweight tag ' + item.tag + ' at ' + item.sha);
+              }
+            
+              let existing;
+              try {
+                existing = await github.rest.repos.getReleaseByTag({
+                  owner, repo, tag: item.tag
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+              if (!existing) {
+                existing = await github.rest.repos.createRelease({
+                  owner, repo, tag_name: item.tag,
+                  target_commitish: item.sha,
+                  name: item.name,
+                  body: item.notes,
+                  draft: false,
+                  prerelease: true,
+                  generate_release_notes: false,
+                  make_latest: 'false'
+                });
+              }
+              if (existing.data.draft || !existing.data.prerelease ||
+                  existing.data.tag_name !== item.tag) {
+                throw new Error(item.tag + ' must be published as a non-draft pre-release.');
+              }
+              core.info('Verified source-only pre-release: ' + existing.data.html_url);
+            }
