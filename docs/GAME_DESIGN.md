@@ -14,7 +14,7 @@ Spawn on the starter loop; follow the four checkpoints in order; complete three 
 
 ## Future modes and systems
 
-Circuit, sprint, time attack, drifting, opponent AI, championship progression, open-world traffic, garage customization and optional multiplayer are future milestones until implemented and tested. Offline racing remains a product requirement independent of online services.
+v0.2.0 source adds experimental circuit rival AI, one-lap Time Attack and offline finish rewards; actual Unreal gameplay and AI race results remain unverified. Sprint, drifting, championships, traffic, garage and multiplayer are future milestones. Offline racing remains a product requirement independent of online services.
 
 ## Accessibility and design standards
 

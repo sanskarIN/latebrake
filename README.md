@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Development status: v0.1.0 in progress, not released.** The repository contains a coded starter driving/racing experience, but a full UE 5.8 editor compile, in-engine playtest, Windows package, and Android package have **not** been verified. Do not describe it as a finished or downloadable game yet.
+> **Development status: v0.2.0 source-preview development; v0.1.0 and v0.1.1 source-only pre-releases have been published.** The repository contains a coded starter driving/racing experience, but a full UE 5.8 editor compile, in-engine playtest, Windows package, and Android package have **not** been verified. Do not describe it as a finished or downloadable game yet.
 
 ## What's in source today?
 
@@ -10,7 +10,8 @@
 - A physics-simulated, keyboard/gamepad controlled starter car assembled from engine-built-in shapes.
 - Arcade and simulation-inspired force/grip presets, braking, camera switching, recovery, pause and experimental two-finger touch regions.
 - A generated four-checkpoint circuit, three-lap ordered race rules, HUD, race restart and finish state.
-- A locally saved race best-time record and completed-races counter.
+- Locally saved race best times (separate circuit and time attack), fastest lap, earned offline credits and completion counter.
+- Two racing event definitions, experimental one-car circuit AI and reward rules.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
 
 The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, career menus, or Android touch interfaces yet.
@@ -37,11 +38,12 @@ The game mode is selected via `Config/DefaultEngine.ini`, which points at a buil
 | C | Camera distance |
 | 1 / 2 | Arcade / simulation-inspired handling |
 | Esc | Pause or resume |
+| 3 / 4 | Circuit Race / Time Attack (restarts current race) |
 | Gamepad | Triggers, left stick, face buttons and shoulder button (see input config) |
 
 Experimental touch bindings: drag in the left half to steer, hold upper-right to accelerate, hold lower-right to brake. **No Android build or touch behavior has been verified**, and accessible visual touch controls still need work.
 
-## Test the portable race logic
+## Test the portable race, pilot and rewards logic
 
 ```sh
 cmake -S Tests/Standalone -B Tests/Standalone/build
@@ -64,7 +66,7 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Development and releases
 
-First milestone: **v0.1.0 pre-release**, only after verified compilation, playtesting, and real packaging. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No release files have been fabricated. The separate [v0.1.1 stabilization plan](docs/releases/v0.1.1-plan.md) covers newer source-only gameplay improvements, not an already released game.
+**v0.1.0** and **v0.1.1** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.2.0** is the next source-preview milestone; see [experimental AI and events](docs/AI_AND_EVENTS.md) and [v0.2.0 release notes](docs/releases/v0.2.0.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
 
 ## License and contributions
 

@@ -30,3 +30,11 @@ The checkpoint rules are intentionally isolated from Unreal so CI compiles the s
 - Generated scenery is not a scalable world-streaming strategy. Replace with an original packaged map, level instances or World Partition as scope grows.
 - Version and migrate saved profile data before introducing complex career/garage state.
 - Keep offline core racing independent from future optional services.
+
+## v0.2.0 event, AI and reward boundaries
+
+- `latebrake::RaceEvents` is a portable, compile-time catalog; the Unreal game mode chooses event-specific lap counts and personal-best slots.
+- `latebrake::RivalPilot` is a pure C++20 waypoint planner tested without Unreal; `ALatebrakeRivalCar` hosts its output and applies physics inputs.
+- `ALatebrakeCheckpoint` checks the overlapping pawn is the real local-player pawn, not a rival, before crediting player race progress.
+- `latebrake::RaceRewards` computes bounded nonfinancial offline credits, awarded once when the player's race transitions to finished. The SaveGame record stores accumulated credits.
+- The rival is **experimental** and has no validated standings, collision avoidance, overtaking or synced race results.

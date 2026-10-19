@@ -36,3 +36,17 @@ As of 2026-10-19, commit `f8723f7937faf9503734719f9a1aeaacf640727b` passed the U
 Tests now cover current/last/best lap, sector splits, a slower finish that does not overwrite the fastest lap, invalid checkpoint sequences, timer overflow, invalid directional crossings and minimum speed checks. Unreal-specific QA must test the actual car overlap velocity, save migration, HUD layout and lap recording.
 
 Recovery penalty assertions verify positive additions, rejection of NaN/infinity/negative durations and frozen finish clock behavior. In Unreal, verify that a manual recovery adds five seconds, does not count a skipped gate, and that restart clears the penalty along with the run.
+
+## v0.2.0 portable and engine qualification
+
+Additional CTest targets: RivalPilot (heading/turn, overspeed braking, wraparound, invalid inputs) and RaceRewards (event thresholds, clean recovery bonus, invalid inputs), along with the existing lap and event catalog tests.
+
+Unreal-specific checklist:
+- [ ] Compile new `ALatebrakeRivalCar` reflection class in UE 5.8 and validate actor initialization
+- [ ] Circuit mode spawns exactly one rival and restart reinitializes its pilot
+- [ ] Time Attack mode removes the rival and resets to one lap
+- [ ] Keys 3 and 4 select modes with independent best times
+- [ ] Rival overlaps never advance player checkpoints or trigger player results
+- [ ] Player gate order and required directional speed still work
+- [ ] Credits awarded once, survive save/reload and ignore unearned wins
+- [ ] Android viewport labels, gamepad and mobile touch are tested on real devices
