@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-19
-**Current code milestone:** v0.3.1 source stabilization — garage transactions, HUD and save validation.
+**Current code milestone:** v0.3.2 source stabilization — input safety, throttle, garage caching and save warnings.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -14,6 +14,17 @@
 - [v0.3.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.0) — garage source foundation.
 
 These tags are source previews. They are **not downloadable playable game installers**.
+
+## v0.3.2 development branch
+
+- Pure C++20 input neutralization for nonfinite/overflowing values, touch scaling and smoothed throttle commands.
+- Player/AI throttle inputs are sanitized; pause and recovery clear analog and touch controls.
+- Simulated car tick ignores nonfinite frame time and resets corrupt/nonfinite physics linear velocity.
+- The game mode caches selected garage tuning and only updates when selected vehicle/upgrade levels/pawn change.
+- Failed SaveGame writes set an explicit HUD warning.
+- Added portable tests for input safety and garage tuning cache keys.
+
+This does not constitute an Unreal 5.8 engine build, an instrumented driving test, or a ready-to-install game package.
 
 ## v0.3.1 changes
 

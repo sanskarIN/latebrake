@@ -53,3 +53,10 @@ No network payments, real-money entitlements or finalized garage UI are implemen
 - `GarageState` handles negative ownership-mask recovery and transaction selection/quotes. The Unreal adapter publishes feedback but should not independently calculate prices or unlock order.
 - `RecordValidation.h` is portable and bounds malformed saved race times plus saturates completion counts; Unreal SaveGame file IO remains untested by CI.
 - `HudLayout.h` computes adaptive compact/normal layout measurements independently from Unreal; `ALatebrakeRaceHUD` formats game-facing text using those measurements.
+
+## v0.3.2 input and live tuning boundaries
+
+- `DriverInputSafety.h` owns portable normalization and throttle slew, shared by player and autonomous drivers; braking remains immediate.
+- `ALatebrakeCarPawn` clears latent touch/axis commands on pause and recovery and prevents invalid frame-time/velocity values from entering force integration.
+- `GarageTuningKey.h` derives the live physics revision from selected vehicle and engine/grip levels, excluding credits/ownership. Game mode caches the current weak player pawn plus key to avoid repetitive tuning setter work every tick.
+- Failed local saves are flagged to the HUD and logged; they are **not silently treated as successful persistence**. Actual Unreal SaveGame IO and editor render testing remain outside standalone CI.

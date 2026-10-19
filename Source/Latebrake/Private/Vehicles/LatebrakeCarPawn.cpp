@@ -1,5 +1,6 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
+#include "Vehicles/DriverInputSafety.h"
 #include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
@@ -100,8 +101,8 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
 
 void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake)
 {
-    Throttle = FMath::Clamp(InThrottle, -1.f, 1.f);
-    Steering = FMath::Clamp(InSteering, -1.f, 1.f);
+    Throttle = static_cast<float>(latebrake::SanitizeDriveAxis(InThrottle));
+    Steering = static_cast<float>(latebrake::SanitizeDriveAxis(InSteering));
     bBraking = bInBrake;
 }
 
@@ -127,14 +128,28 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageVehicleId = SafeId;
 }
 
+void ALatebrakeCarPawn::ClearDriverInputs()
+{
+    Throttle = 0.f;
+    Steering = 0.f;
+    SmoothedThrottle = 0.f;
+    SmoothedSteering = 0.f;
+    bBraking = false;
+    SteeringFinger = INDEX_NONE;
+    PedalFinger = INDEX_NONE;
+    TouchSteering = 0.f;
+    bTouchThrottle = false;
+    bTouchBrake = false;
+}
+
 void ALatebrakeCarPawn::ThrottleInput(float Value)
 {
-    Throttle = FMath::Clamp(Value, -1.f, 1.f);
+    Throttle = static_cast<float>(latebrake::SanitizeDriveAxis(Value));
 }
 
 void ALatebrakeCarPawn::SteerInput(float Value)
 {
-    Steering = FMath::Clamp(Value, -1.f, 1.f);
+    Steering = static_cast<float>(latebrake::SanitizeDriveAxis(Value));
 }
 
 void ALatebrakeCarPawn::BrakePressed()
@@ -151,13 +166,16 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
-    if (!Chassis->IsSimulatingPhysics() || DeltaSeconds <= 0.f)
+    if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
         return;
     }
 
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
-    const float EffectiveThrottle = bTouchThrottle ? 1.f : Throttle;
+    SmoothedThrottle = static_cast<float>(latebrake::SmoothThrottle(
+        SmoothedThrottle, bTouchThrottle ? 1.0 : static_cast<double>(Throttle),
+        static_cast<double>(DeltaSeconds)));
+    const float EffectiveThrottle = SmoothedThrottle;
     const float EffectiveSteering = SteeringFinger != INDEX_NONE ? TouchSteering : Steering;
     SmoothedSteering = static_cast<float>(latebrake::SmoothSteering(
         SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
@@ -171,6 +189,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const FVector Forward = GetActorForwardVector();
     const FVector Right = GetActorRightVector();
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
+    if (!FMath::IsFinite(Velocity.X) || !FMath::IsFinite(Velocity.Y) ||
+        !FMath::IsFinite(Velocity.Z))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: physics velocity was nonfinite; clearing vehicle motion"));
+        Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
+        ClearDriverInputs();
+        return;
+    }
     const FVector FlatVelocity(Velocity.X, Velocity.Y, 0.f);
     const float Speed = FlatVelocity.Size();
     const float LongitudinalSpeed = FVector::DotProduct(FlatVelocity, Forward);
@@ -217,15 +243,7 @@ void ALatebrakeCarPawn::RecoverTo(const FVector& Position, const FRotator& Rotat
     Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
     Chassis->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
     SetActorLocationAndRotation(Position, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
-    Throttle = 0.f;
-    Steering = 0.f;
-    SmoothedSteering = 0.f;
-    bBraking = false;
-    SteeringFinger = INDEX_NONE;
-    PedalFinger = INDEX_NONE;
-    TouchSteering = 0.f;
-    bTouchThrottle = false;
-    bTouchBrake = false;
+    ClearDriverInputs();
 }
 
 void ALatebrakeCarPawn::RecoverPressed()
@@ -252,6 +270,8 @@ void ALatebrakeCarPawn::ChangeCamera()
 
 void ALatebrakeCarPawn::TogglePause()
 {
+    // Drop held analog/touch input on both edges of a pause transition.
+    ClearDriverInputs();
     UGameplayStatics::SetGamePaused(this, !UGameplayStatics::IsGamePaused(this));
 }
 
@@ -280,13 +300,17 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex, const FVector&
         return;
     }
 
+    if (!FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
+    {
+        return;
+    }
     const int32 FingerId = static_cast<int32>(FingerIndex);
     if (SteeringFinger == FingerId ||
         (SteeringFinger == INDEX_NONE && PedalFinger != FingerId &&
          Location.X < static_cast<float>(Width) * 0.5f))
     {
         SteeringFinger = FingerId;
-        TouchSteering = FMath::Clamp((Location.X / static_cast<float>(Width) - 0.25f) * 4.f, -1.f, 1.f);
+        TouchSteering = static_cast<float>(latebrake::SanitizeTouchSteering(Location.X, Width));
     }
     else if (PedalFinger == FingerId ||
         (PedalFinger == INDEX_NONE && SteeringFinger != FingerId &&

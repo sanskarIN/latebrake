@@ -1,6 +1,19 @@
 # Changelog
 
-## v0.3.1 — garage and HUD hardening (source-only development)
+## v0.3.2 — control safety and garage caching (source-only development)
+
+### Added and improved
+- Portable C++20 driving-axis normalization, normalized touch steering, and bounded throttle smoothing, with numerical-edge-case tests.
+- Sanitize keyboard, AI and mobile touch input; discard held controls on pause, resume and vehicle recovery.
+- Reject invalid frame time or nonfinite vehicle velocities before physics integration.
+- Cache garage tuning application based on selected car, engine/grip level and player pawn; do not reapply unchanged handling every tick.
+- Expose local SaveGame write failures to the racing HUD rather than silently reporting progress as persisted.
+- Portable tests validate tuning cache invalidation versus earned credits and vehicle unlocks.
+
+### Not yet verified
+- No UE 5.8 editor compilation, physics or touch device testing, Windows/Android packages, or in-game SaveGame write-failure playtest.
+
+## v0.3.1 — published source-only pre-release
 
 ### Improved
 - Reject negative/malformed garage ownership bitmasks without granting free cars.

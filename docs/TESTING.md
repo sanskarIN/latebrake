@@ -83,3 +83,16 @@ Additional Unreal playtest gates:
 - [ ] HUD readable on desktop, portrait/narrow screens and Android without overlap or clipping.
 - [ ] Deserialize corrupted/old SaveGame values and confirm recovered safe progression.
 - [ ] Existing race, rival, touch and car movement remain functional after v0.3.1 changes.
+
+## v0.3.2 verification and in-engine regression gates
+
+Portable `DriverInputSafety` exercises keyboard/AI axis sanitation, invalid viewport/touch coordinates, throttle-rise limiting, reversal limiting, invalid frame deltas and overflow cases. `GarageTuningKey` asserts the live-physics key changes for selection/upgrade but not for credit or purchase balance updates. Cross-platform CI compiles these exact header-only C++ routines.
+
+Engine tests remain required:
+- [ ] Unreal 5.8 project/game targets compile after cache, input and save changes
+- [ ] Keyboard/gamepad/touch controls recover from pause without held acceleration/braking
+- [ ] Verify smoothed throttle remains responsive in Arcade and simulation-inspired modes
+- [ ] Validate fatal/nonfinite simulated motion recovery without crashes
+- [ ] Ensure every selection or upgrade changes player tuning exactly once, including respawn
+- [ ] Test failed/unwritable SaveGame slots to confirm the warning appears and clears after success
+- [ ] Build real Win64 and Android archives and test physics, race events and saves on hardware

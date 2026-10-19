@@ -100,6 +100,10 @@ void ALatebrakeRaceHUD::DrawHUD()
     }
     Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
     Line(Mode->GetGarageFeedback(), Primary);
+    if (Mode->HasProgressSaveError())
+    {
+        Line(TEXT("WARNING: LOCAL PROGRESS COULD NOT BE SAVED"), Accent);
+    }
 
     if (Race.IsFinished())
     {
