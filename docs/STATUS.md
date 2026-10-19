@@ -1,10 +1,10 @@
 # Engineering status
 
-**Milestone:** v0.1.0 pre-release candidate development (**not release-ready**)
+**Milestones:** v0.1.0 unshipped, v0.1.1 stabilization branch in development (**neither release-ready**).
 
 **Date:** 2026-10-19
 
-## Implemented in repository source
+## Added on v0.1.1 stabilization branch\n\n- Pure C++ race-sector/fastest-lap timing and timer overflow guard.\n- Race HUD new split telemetry and all-time fastest lap persisted in a backward-compatible SaveGame property.\n- Reject stationary and reverse-direction checkpoint entries on the four-gate starter course.\n- Expanded regression tests; see GitHub Actions for the most recent branch-head status.\n\n## Implemented in repository source
 
 - UE 5.8 C++ game/editor target and module.
 - Physics-rigid-body car pawn, desktop controls, braking, reverse, recover, two handling presets, camera-distance toggle, pause, and initial two-finger touch-region bindings.

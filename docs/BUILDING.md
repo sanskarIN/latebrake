@@ -49,3 +49,7 @@ These compile the **same RaceProgress.cpp** used by the game. They cannot valida
 - Starter camera, physics values, and checkpoint dimensions need iteration inside the engine.
 - Development runtime creates road and props using engine built-in primitive assets; no project-owned cooked map/art package is checked in.
 - No packaged executable, APK, AAB, or platform benchmarks exist yet.
+
+## Packaging gate for prereleases
+
+Create real Win64 and Android packages using your authorized UE 5.8 build environment, record actual device and gameplay verification in a JSON file based on `docs/releases/test-evidence.example.json`, and check package structure and hashes with `scripts/Verify-ReleaseArtifacts.ps1`. The verification script performs only **basic structural checks**, not a UE compile, malware audit, or gameplay qualification. Never publish a v0.1.0 pre-release from CI's standalone test executable.
