@@ -7,7 +7,7 @@ All notable verified changes will be recorded here. Version labels below describ
 ### Added
 - Per-sector, current lap, last lap, in-race fastest-lap timing and HUD readout.
 - Saved all-time fastest completed lap (backward-compatible default field).
-- Direction-checked circuit checkpoint overlaps with a minimum entry speed.
+- Direction-checked circuit checkpoint overlaps with a minimum entry speed.\n- Recovery clock penalty and post-finish/invalid-penalty rejection.
 - Regression tests for wrong-way gates, lap splits and timer overflow.
 
 ### Validation

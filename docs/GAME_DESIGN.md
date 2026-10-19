@@ -10,7 +10,7 @@ Accessible Arcade mode provides more acceleration and lateral assistance. Simula
 
 ## First-play loop
 
-Spawn on the starter loop; follow the four checkpoints in order; complete three laps; compare the finished time with your saved personal best; press T to replay. Players can recover and pause without losing offline access.
+Spawn on the starter loop; follow the four checkpoints in order; complete three laps; compare the finished time with your saved personal best; press T to replay. Players can recover and pause without losing offline access. On the v0.1.1 development branch, each recovery during an active race adds five seconds to discourage skipping course sectors.
 
 ## Future modes and systems
 

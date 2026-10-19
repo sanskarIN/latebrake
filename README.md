@@ -64,7 +64,7 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Development and releases
 
-First milestone: **v0.1.0 pre-release**, only after verified compilation, playtesting, and real packaging. See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No release files have been fabricated.
+First milestone: **v0.1.0 pre-release**, only after verified compilation, playtesting, and real packaging. A separate **v0.1.1 stabilization branch** adds lap/sector telemetry, gate direction rules and a five-second recovery penalty; it is not released. See [candidate v0.1.0 notes](docs/releases/v0.1.0.md) and [v0.1.1 plan](docs/releases/v0.1.1-plan.md). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No release files have been fabricated.
 
 ## License and contributions
 
