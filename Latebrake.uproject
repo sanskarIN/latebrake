@@ -1,0 +1,19 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.8",
+  "Category": "Games",
+  "Description": "Latebrake - Race Beyond Limits.",
+  "Modules": [
+    {
+      "Name": "Latebrake",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "ChaosVehiclesPlugin",
+      "Enabled": true
+    }
+  ]
+}

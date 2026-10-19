@@ -1,0 +1,28 @@
+# Unreal Engine generated files
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+.idea/
+.vscode/
+*.sln
+*.suo
+*.VC.db
+*.VC.opendb
+*.xcworkspace
+*.xcodeproj
+*.opensdf
+*.tmp
+*.log
+# Preserve project-authored assets inside Content/
+Content/**/*.uasset.tmp
+Content/**/*.umap.tmp
+# Local builds and outputs
+Build/Android/
+Build/Windows/
+dist/
+out/
+Tests/Standalone/build/
+CMakeFiles/
+CMakeCache.txt
