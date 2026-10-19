@@ -1,5 +1,6 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
+#include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
@@ -112,7 +113,18 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
     GarageGrip = FMath::IsFinite(Grip) ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
     GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
-    GarageVehicleId = FMath::Clamp(VehicleId, 0, 2);
+    const int32 SafeId = FMath::Clamp(VehicleId, 0, 2);
+    if (SafeId != GarageVehicleId && IsValid(Cabin))
+    {
+        // Engine-built-in primitives only; distinguish prototype silhouettes
+        // without introducing third-party vehicle meshes or other assets.
+        const latebrake::VehicleSpec Spec = latebrake::GarageState::Definition(SafeId);
+        Cabin->SetRelativeScale3D(FVector(
+            (1.75f / 3.8f) * Spec.CabinLength,
+            (1.48f / 1.8f),
+            (0.55f / 0.65f) * Spec.CabinHeight));
+    }
+    GarageVehicleId = SafeId;
 }
 
 void ALatebrakeCarPawn::ThrottleInput(float Value)

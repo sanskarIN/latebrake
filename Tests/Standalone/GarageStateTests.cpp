@@ -80,6 +80,15 @@ int main()
             "max upgrade price is zero");
     Require(GarageState::Definition(999).Id == 0, "invalid definition falls back safely");
 
+    // Fictional prototype silhouettes remain bounded and have distinct cabins.
+    const auto arrow = GarageState::Definition(0);
+    const auto kestrel = GarageState::Definition(1);
+    const auto phantom = GarageState::Definition(2);
+    Require(arrow.CabinLength > 0.5 && arrow.CabinHeight > 0.5,
+            "starter cabin dimensions positive");
+    Require(kestrel.CabinLength > arrow.CabinLength, "kestrel has a longer canopy");
+    Require(phantom.CabinHeight > arrow.CabinHeight, "phantom has a higher canopy");
+    Require(phantom.CabinLength < arrow.CabinLength, "phantom has shorter canopy");
     std::cout << "Garage economy and profile tests passed.\n";
     return EXIT_SUCCESS;
 }

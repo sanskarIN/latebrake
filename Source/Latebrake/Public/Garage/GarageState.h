@@ -16,13 +16,15 @@ struct VehicleSpec final
     double Acceleration;
     double Grip;
     double TopSpeed;
+    double CabinLength;
+    double CabinHeight;
 };
 
 inline constexpr VehicleSpec Vehicles[] =
 {
-    {0, "Arrow", 0,    1.00, 1.00, 1.00},
-    {1, "Kestrel", 600, 1.12, 0.94, 0.98},
-    {2, "Phantom", 1200, 0.96, 1.12, 1.08}
+    {0, "Arrow", 0,    1.00, 1.00, 1.00, 1.00, 1.00},
+    {1, "Kestrel", 600, 1.12, 0.94, 0.98, 1.20, 0.88},
+    {2, "Phantom", 1200, 0.96, 1.12, 1.08, 0.88, 1.18}
 };
 
 enum class UpgradeKind { Engine, Grip };
