@@ -16,6 +16,7 @@
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
 #include "Track/CircuitLayout.h"
+#include "Track/TrackDecorations.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -132,16 +133,81 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         FVector(110.f, 85.f, 1.25f), FLinearColor(0.15f, 0.30f, 0.12f));
 
     const FLinearColor Asphalt(0.09f, 0.10f, 0.13f);
-    SpawnBlock(TEXT("SouthStraight"), FVector(0.f, -1800.f, -22.f), FVector(80.f, 16.f, 0.42f), Asphalt);
-    SpawnBlock(TEXT("NorthStraight"), FVector(0.f, 1800.f, -22.f), FVector(80.f, 16.f, 0.42f), Asphalt);
-    SpawnBlock(TEXT("EastStraight"), FVector(2800.f, 0.f, -22.f), FVector(16.f, 52.f, 0.42f), Asphalt);
-    SpawnBlock(TEXT("WestStraight"), FVector(-2800.f, 0.f, -22.f), FVector(16.f, 52.f, 0.42f), Asphalt);
+    SpawnBlock(TEXT("SouthStraight"), FVector(0.0, latebrake::SouthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
+    SpawnBlock(TEXT("NorthStraight"), FVector(0.0, latebrake::NorthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
+    SpawnBlock(TEXT("EastStraight"), FVector(latebrake::EastX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
+    SpawnBlock(TEXT("WestStraight"), FVector(latebrake::WestX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
 
     const FLinearColor BarrierColor(0.80f, 0.15f, 0.05f);
     SpawnBlock(TEXT("NorthBarrier"), FVector(0.f, 2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
     SpawnBlock(TEXT("SouthBarrier"), FVector(0.f, -2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
     SpawnBlock(TEXT("EastBarrier"), FVector(3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
     SpawnBlock(TEXT("WestBarrier"), FVector(-3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
+
+    // Track furnishings are lightweight Unreal built-in cubes with collision
+    // disabled, so painted curbs/stripes never become invisible tire barriers.
+    // The current source prototype still uses separate actors; a production
+    // pass will batch these as instanced meshes to reduce mobile draw calls.
+    const auto Decoration = [this](const TCHAR* Name, const FVector& Pos,
+                                   const FVector& Dimensions, const FLinearColor& Color)
+    {
+        if (AStaticMeshActor* Actor = SpawnBlock(Name, Pos, Dimensions, Color))
+        {
+            Actor->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        }
+    };
+    const FLinearColor Stripe(0.94f, 0.94f, 0.89f);
+    const FLinearColor CurbRed(0.83f, 0.11f, 0.09f);
+    const FLinearColor CurbWhite(0.96f, 0.95f, 0.89f);
+    for (int32 Straight = 0; Straight < latebrake::StraightCount; ++Straight)
+    {
+        for (int32 Segment = 0; Segment < latebrake::MarkersPerStraight; ++Segment)
+        {
+            const latebrake::TrackMarker Dash = latebrake::LaneStripe(Straight, Segment);
+            if (Dash.Valid)
+            {
+                Decoration(TEXT("LaneStripe"),
+                    FVector(Dash.Center.X, Dash.Center.Y, 4.0),
+                    FVector(Dash.ScaleX, Dash.ScaleY, 0.025), Stripe);
+            }
+            for (int32 Edge = 0; Edge < 2; ++Edge)
+            {
+                const latebrake::TrackMarker Curb =
+                    latebrake::TrackCurb(Straight, Segment, Edge != 0);
+                if (Curb.Valid)
+                {
+                    Decoration(TEXT("Curbstone"),
+                        FVector(Curb.Center.X, Curb.Center.Y, 6.0),
+                        FVector(Curb.ScaleX, Curb.ScaleY, 0.08),
+                        ((Segment + Edge) % 2 == 0) ? CurbRed : CurbWhite);
+                }
+            }
+        }
+    }
+
+    // Primitive-only grandstand terraces outside the drivable asphalt.
+    // Their presentation and clipping are still pending Unreal playtesting.
+    for (int32 Stand = 0; Stand < latebrake::GrandstandCount; ++Stand)
+    {
+        const latebrake::CircuitPoint Center = latebrake::GrandstandCenter(Stand);
+        Decoration(TEXT("GrandstandBase"),
+            FVector(Center.X, Center.Y, 5.0),
+            FVector(15.0, 5.5, 0.9), FLinearColor(0.18f, 0.21f, 0.26f));
+        for (int32 Tier = 0; Tier < 3; ++Tier)
+        {
+            const double Direction = Stand == 0 ? 1.0 : -1.0;
+            Decoration(TEXT("GrandstandTier"),
+                FVector(Center.X, Center.Y + Direction * (Tier - 1) * 155.0,
+                        62.0 + Tier * 32.0),
+                FVector(13.0, 1.25, 0.48), 
+                (Tier % 2 == 0) ? FLinearColor(0.35f, 0.43f, 0.60f)
+                                : FLinearColor(0.26f, 0.31f, 0.42f));
+        }
+    }
+
+    Decoration(TEXT("StartFinishBanner"),
+        FVector(-2150.0, latebrake::SouthY, 390.0),
+        FVector(8.0, 0.32, 1.5), FLinearColor(0.90f, 0.60f, 0.08f));
 
     for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)
     {
