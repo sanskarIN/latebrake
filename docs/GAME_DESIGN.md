@@ -27,3 +27,7 @@ Use original fictional vehicles, fictional locations, independently authored sou
 ## Garage prototype — v0.3.0
 
 Three fictional tunable prototype vehicles (Arrow, Kestrel and Phantom) allow offline choice between acceleration, handling and top speed. Vehicle unlocks and engine/grip upgrades spend credits earned only from completed races. Donations never affect garage progression. The current user interface consists of keyboard shortcuts and HUD status; original 3D vehicle art, a full garage menu and gamepad/mobile interactions remain future work.
+
+## v0.4.0 circuit presentation
+
+The first rectangular circuit gains engine-primitive painted lane marks, alternating red-white curbs, two out-of-road grandstand structures and a lightweight floating start banner. A desktop-only north-up track map highlights the next checkpoint and current player position. Decoration has no collision and does not change race time, gate positions or the existing event balance. These are prototype visuals, not licensed production scenery or selectable new tracks. See `docs/TRACK.md` for design and known limits.

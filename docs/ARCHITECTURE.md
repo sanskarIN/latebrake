@@ -60,3 +60,14 @@ No network payments, real-money entitlements or finalized garage UI are implemen
 - `ALatebrakeCarPawn` clears latent touch/axis commands on pause and recovery and prevents invalid frame-time/velocity values from entering force integration.
 - `GarageTuningKey.h` derives the live physics revision from selected vehicle and engine/grip levels, excluding credits/ownership. Game mode caches the current weak player pawn plus key to avoid repetitive tuning setter work every tick.
 - Failed local saves are flagged to the HUD and logged; they are **not silently treated as successful persistence**. Actual Unreal SaveGame IO and editor render testing remain outside standalone CI.
+
+## v0.4.0 track definition and decoration boundary
+
+- `Track/CircuitLayout.h` is the single portable source for four gate positions, starting poses, player and rival recovery points and asphalt coverage.
+- `ALatebrakeRaceGameMode` spawns one temporary rectangular circuit using Unreal engine shapes and these shared gate definitions.
+- `ALatebrakeRivalCar` uses the same gate and recovery coordinates for its deterministic waypoint pilot.
+- `Track/TrackDecorations.h` plans cosmetic stripes, curbs and stands. The runtime spawns each with collision disabled, avoiding interference with car physics. Production performance work will consolidate them into instanced meshes.
+- `Track/CircuitMap.h` translates world coordinates to clamped normalized positions; `ALatebrakeRaceHUD` draws the map on spacious desktop viewports.
+- Race rules, checkpoints and lap counts remain unchanged and isolated in portable domain code.
+
+These source-only improvements do not constitute engine compilation or a cooked map.

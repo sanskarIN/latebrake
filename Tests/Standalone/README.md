@@ -21,3 +21,7 @@ The `RivalRoute` target verifies waypoint/lap tracking and eight-second stuck re
 ## v0.3.2 tests
 
 `DriverInputSafety` covers normalized axis/touch input, nonfinite sensor values, frame invalidity and throttle smoothing. `GarageTuningKey` covers when live vehicle tuning should be reapplied versus when a balance change is irrelevant. These suites test real portable header implementations only; game-mode, physics, Android touch, camera and saving still require a licensed Unreal Engine build and manual validation.
+
+## v0.4.0 track suites
+
+`CircuitLayout` tests road-gate-recovery consistency against the same pure geometry read by Unreal player/rival code. `TrackDecorations` validates that 28 planned lane stripes and 56 curb markers remain on asphalt while spectator stands are outside the drivable road. `CircuitMap` validates minimap normalization, clamping and NaN/infinite-position safeguards. None test Unreal asset cooking, drawing, physics/collision or real gameplay.

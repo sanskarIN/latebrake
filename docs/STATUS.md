@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-19
-**Current code milestone:** v0.3.2 source stabilization — input safety, throttle, garage caching and save warnings.
+**Current code milestone:** v0.4.0 track and environment source development.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -13,7 +13,19 @@
 - [v0.2.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.2.1) — AI steering/recovery source stabilization.
 - [v0.3.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.0) — garage source foundation.
 
+- [v0.3.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.1) — garage and HUD source hardening.
+- [v0.3.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.2) — driving input and cache safety.
+
 These tags are source previews. They are **not downloadable playable game installers**.
+
+## v0.4.0 changes
+
+- Centralized race circuit reference data for player spawn, gate checkpoints, recovery and rival AI waypoints; reduces divergence among duplicated literals.
+- Added pure C++20 decoration plan and runtime primitive road marking, curb, spectator stand and banner source code.
+- Added nonblocking cosmetic geometry (still one static-mesh actor per piece; future instanced-mesh optimization needed).
+- Added north-up minimap projection and experimental desktop HUD circuit visual, player position and next gate.
+- Expanded standalone C++20 tests for course consistency, decoration placement, and invalid/outside positions.
+- No new drivable track variant, Unreal Editor validation, cookable original map, or playable binary claims.
 
 ## v0.3.2 development branch
 
