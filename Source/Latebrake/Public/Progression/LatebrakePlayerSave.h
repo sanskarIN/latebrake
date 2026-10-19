@@ -14,6 +14,10 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
     float BestRaceSeconds = 0.f;
 
+    // Added in v0.1.1: older SaveGame slots default to zero.
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
+    float BestLapSeconds = 0.f;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
     int32 CompletedRaces = 0;
 };

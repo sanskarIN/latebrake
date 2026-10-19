@@ -165,6 +165,12 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         {
             PersonalBestSeconds = FinishedSeconds;
         }
+        const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
+        if (FinishedBestLap > 0.f &&
+            (PersonalBestLapSeconds <= 0.f || FinishedBestLap < PersonalBestLapSeconds))
+        {
+            PersonalBestLapSeconds = FinishedBestLap;
+        }
         SaveRecords();
     }
 }
@@ -209,7 +215,8 @@ void ALatebrakeRaceGameMode::LoadRecords()
     if (const ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
             UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser)))
     {
-        PersonalBestSeconds = FMath::Max(0.f, Save->BestRaceSeconds);
+        PersonalBestSeconds = FMath::IsFinite(Save->BestRaceSeconds) ? FMath::Max(0.f, Save->BestRaceSeconds) : 0.f;
+        PersonalBestLapSeconds = FMath::IsFinite(Save->BestLapSeconds) ? FMath::Max(0.f, Save->BestLapSeconds) : 0.f;
         CompletedRaceCount = FMath::Max(0, Save->CompletedRaces);
     }
 }
@@ -223,6 +230,7 @@ void ALatebrakeRaceGameMode::SaveRecords()
         return;
     }
     Save->BestRaceSeconds = PersonalBestSeconds;
+    Save->BestLapSeconds = PersonalBestLapSeconds;
     Save->CompletedRaces = CompletedRaceCount;
     if (!UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser))
     {
