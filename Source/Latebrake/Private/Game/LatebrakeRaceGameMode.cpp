@@ -161,9 +161,11 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     {
         ++CompletedRaceCount;
         const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
-        if (PersonalBestSeconds <= 0.f || FinishedSeconds < PersonalBestSeconds)
+        float& EventRecord = (SelectedEvent == latebrake::EventKind::TimeAttack)
+            ? BestTimeAttackSeconds : PersonalBestSeconds;
+        if (EventRecord <= 0.f || FinishedSeconds < EventRecord)
         {
-            PersonalBestSeconds = FinishedSeconds;
+            EventRecord = FinishedSeconds;
         }
         const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
         if (FinishedBestLap > 0.f &&
@@ -173,6 +175,23 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         }
         SaveRecords();
     }
+}
+
+void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
+{
+    if (!latebrake::IsValidEvent(Kind) || Kind == SelectedEvent)
+    {
+        return;
+    }
+    SelectedEvent = Kind;
+    const latebrake::RaceEvent Definition = latebrake::GetRaceEvent(SelectedEvent);
+    Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
+    RestartRace();
+}
+
+float ALatebrakeRaceGameMode::GetEventBestSeconds() const
+{
+    return SelectedEvent == latebrake::EventKind::TimeAttack ? BestTimeAttackSeconds : PersonalBestSeconds;
 }
 
 void ALatebrakeRaceGameMode::RestartRace()
@@ -219,6 +238,7 @@ void ALatebrakeRaceGameMode::LoadRecords()
     {
         PersonalBestSeconds = FMath::IsFinite(Save->BestRaceSeconds) ? FMath::Max(0.f, Save->BestRaceSeconds) : 0.f;
         PersonalBestLapSeconds = FMath::IsFinite(Save->BestLapSeconds) ? FMath::Max(0.f, Save->BestLapSeconds) : 0.f;
+        BestTimeAttackSeconds = FMath::IsFinite(Save->BestTimeAttackSeconds) ? FMath::Max(0.f, Save->BestTimeAttackSeconds) : 0.f;
         CompletedRaceCount = FMath::Max(0, Save->CompletedRaces);
     }
 }
@@ -233,6 +253,7 @@ void ALatebrakeRaceGameMode::SaveRecords()
     }
     Save->BestRaceSeconds = PersonalBestSeconds;
     Save->BestLapSeconds = PersonalBestLapSeconds;
+    Save->BestTimeAttackSeconds = BestTimeAttackSeconds;
     Save->CompletedRaces = CompletedRaceCount;
     if (!UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser))
     {

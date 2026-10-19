@@ -280,6 +280,22 @@ void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Loc
     }
 }
 
+void ALatebrakeCarPawn::SelectCircuit()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->SelectRaceEvent(latebrake::EventKind::Circuit);
+    }
+}
+
+void ALatebrakeCarPawn::SelectTimeAttack()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->SelectRaceEvent(latebrake::EventKind::TimeAttack);
+    }
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -307,6 +323,8 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindTouch(IE_Released, this, &ALatebrakeCarPawn::TouchReleased);
     FInputActionBinding& PauseAction = PlayerInputComponent->BindAction(TEXT("Pause"), IE_Pressed, this, &ALatebrakeCarPawn::TogglePause);
     PauseAction.bExecuteWhenPaused = true;
+    PlayerInputComponent->BindAction(TEXT("CircuitEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectCircuit);
+    PlayerInputComponent->BindAction(TEXT("TimeAttackEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectTimeAttack);
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }

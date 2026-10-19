@@ -19,5 +19,8 @@ public:
     float BestLapSeconds = 0.f;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
+    float BestTimeAttackSeconds = 0.f;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
     int32 CompletedRaces = 0;
 };

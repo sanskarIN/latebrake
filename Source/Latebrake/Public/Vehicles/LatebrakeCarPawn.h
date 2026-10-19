@@ -76,6 +76,8 @@ private:
     void TouchMoved(ETouchIndex::Type FingerIndex, FVector Location);
     void TouchReleased(ETouchIndex::Type FingerIndex, FVector Location);
     void ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location);
+    void SelectCircuit();
+    void SelectTimeAttack();
     void SelectArcade();
     void SelectSimulation();
 

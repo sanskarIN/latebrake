@@ -24,6 +24,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     }
 
     const latebrake::RaceProgress& Race = Mode->GetRace();
+    const bool bTimeAttack = Mode->GetSelectedEvent() == latebrake::EventKind::TimeAttack;
     const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
     const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);
 
@@ -33,6 +34,8 @@ void ALatebrakeRaceHUD::DrawHUD()
     const double Seconds = Elapsed - static_cast<double>(Minutes) * 60.0;
 
     DrawText(TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"), Accent, 35.f, 30.f, GEngine->GetMediumFont(), 1.10f);
+    DrawText(bTimeAttack ? TEXT("EVENT  TIME ATTACK") : TEXT("EVENT  CIRCUIT RACE"),
+        Accent, 35.f, 56.f, GEngine->GetSmallFont());
     DrawText(FString::Printf(TEXT("SPEED  %03.0f km/h"), Car->GetSpeedKmH()), Primary, 35.f, 72.f, GEngine->GetMediumFont());
     DrawText(FString::Printf(TEXT("LAP  %d / %d"), DisplayLap, Race.GetRequiredLaps()),
         Primary, 35.f, 108.f, GEngine->GetMediumFont());
@@ -47,9 +50,9 @@ void ALatebrakeRaceHUD::DrawHUD()
         Primary, 35.f, 232.f, GEngine->GetSmallFont());
     DrawText(FString::Printf(TEXT("LAST SPLIT  %.2fs"), Race.GetLastSectorSeconds()),
         Primary, 35.f, 254.f, GEngine->GetSmallFont());
-    if (Mode->GetPersonalBestSeconds() > 0.f)
+    if (Mode->GetEventBestSeconds() > 0.f)
     {
-        DrawText(FString::Printf(TEXT("BEST RACE  %.2fs"), Mode->GetPersonalBestSeconds()),
+        DrawText(FString::Printf(TEXT("BEST RACE  %.2fs"), Mode->GetEventBestSeconds()),
             Primary, 35.f, 275.f, GEngine->GetSmallFont());
     }
     if (Mode->GetPersonalBestLapSeconds() > 0.f)
@@ -74,7 +77,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     DrawText(TEXT("LEFT HALF: STEER   RIGHT UPPER: GAS   RIGHT LOWER: BRAKE"),
         Accent, 35.f, Canvas->SizeY - 80.f, GEngine->GetSmallFont(), 0.82f);
 #else
-    DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause"),
+    DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause  3/4 event"),
         Primary, 35.f, Canvas->SizeY - 45.f, GEngine->GetSmallFont(), 0.82f);
 #endif
 }
