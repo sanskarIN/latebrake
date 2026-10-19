@@ -96,6 +96,13 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FollowCamera->bUsePawnControlRotation = false;
 }
 
+void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake)
+{
+    Throttle = FMath::Clamp(InThrottle, -1.f, 1.f);
+    Steering = FMath::Clamp(InSteering, -1.f, 1.f);
+    bBraking = bInBrake;
+}
+
 void ALatebrakeCarPawn::ThrottleInput(float Value)
 {
     Throttle = FMath::Clamp(Value, -1.f, 1.f);
@@ -280,6 +287,22 @@ void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Loc
     }
 }
 
+void ALatebrakeCarPawn::SelectCircuit()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->SelectRaceEvent(latebrake::EventKind::Circuit);
+    }
+}
+
+void ALatebrakeCarPawn::SelectTimeAttack()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->SelectRaceEvent(latebrake::EventKind::TimeAttack);
+    }
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -307,6 +330,8 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindTouch(IE_Released, this, &ALatebrakeCarPawn::TouchReleased);
     FInputActionBinding& PauseAction = PlayerInputComponent->BindAction(TEXT("Pause"), IE_Pressed, this, &ALatebrakeCarPawn::TogglePause);
     PauseAction.bExecuteWhenPaused = true;
+    PlayerInputComponent->BindAction(TEXT("CircuitEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectCircuit);
+    PlayerInputComponent->BindAction(TEXT("TimeAttackEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectTimeAttack);
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }

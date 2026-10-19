@@ -1,4 +1,5 @@
 #include "Racing/RaceProgress.h"
+#include "Racing/RaceEvents.h"
 #include "Racing/GateValidation.h"
 
 #include <cmath>
@@ -130,6 +131,22 @@ int main()
     Check(!penalized.AddTimePenalty(5.0), "cannot penalize finished race");
     Check(std::abs(penalized.GetElapsedSeconds() - 15.0) < 1e-9,
         "finish clock remains frozen after rejected penalty");
+
+    // v0.2.0: event catalog is deterministic and suitable for offline use.
+    using latebrake::EventKind;
+    Check(latebrake::IsValidEvent(EventKind::Circuit), "circuit is recognized");
+    Check(latebrake::IsValidEvent(EventKind::TimeAttack), "time attack is recognized");
+    Check(!latebrake::IsValidEvent(static_cast<EventKind>(123)), "unknown event rejected");
+    const auto circuitEvent = latebrake::GetRaceEvent(EventKind::Circuit);
+    const auto timeTrial = latebrake::GetRaceEvent(EventKind::TimeAttack);
+    Check(circuitEvent.RequiredLaps == 3, "circuit has three laps");
+    Check(circuitEvent.CheckpointCount == 4, "circuit has four gates");
+    Check(circuitEvent.SpawnRival, "circuit enables a rival");
+    Check(timeTrial.RequiredLaps == 1, "time attack runs one lap");
+    Check(timeTrial.CheckpointCount == 4, "time attack keeps ordered gates");
+    Check(!timeTrial.SpawnRival, "time attack disables rivals");
+    Check(latebrake::GetRaceEvent(static_cast<EventKind>(123)).Kind == EventKind::Circuit,
+        "invalid event falls back to circuit configuration");
 
     std::cout << "All Latebrake portable race tests passed.\n";
     return EXIT_SUCCESS;

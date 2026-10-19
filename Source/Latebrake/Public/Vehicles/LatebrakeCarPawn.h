@@ -33,6 +33,7 @@ public:
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
     float GetSpeedKmH() const;
+    void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
 
     UFUNCTION(BlueprintCallable, Category = "Latebrake|Vehicle")
@@ -76,6 +77,8 @@ private:
     void TouchMoved(ETouchIndex::Type FingerIndex, FVector Location);
     void TouchReleased(ETouchIndex::Type FingerIndex, FVector Location);
     void ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location);
+    void SelectCircuit();
+    void SelectTimeAttack();
     void SelectArcade();
     void SelectSimulation();
 

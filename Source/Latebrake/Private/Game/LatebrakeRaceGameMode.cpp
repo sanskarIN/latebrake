@@ -13,8 +13,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Racing/LatebrakeCheckpoint.h"
+#include "Racing/RaceRewards.h"
+#include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
+#include "AI/LatebrakeRivalCar.h"
 
 namespace
 {
@@ -57,6 +60,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     LoadRecords();
     BuildCircuit();
     Race.Reset();
+    RefreshRival();
 }
 
 void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
@@ -161,9 +165,11 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     {
         ++CompletedRaceCount;
         const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
-        if (PersonalBestSeconds <= 0.f || FinishedSeconds < PersonalBestSeconds)
+        float& EventRecord = (SelectedEvent == latebrake::EventKind::TimeAttack)
+            ? BestTimeAttackSeconds : PersonalBestSeconds;
+        if (EventRecord <= 0.f || FinishedSeconds < EventRecord)
         {
-            PersonalBestSeconds = FinishedSeconds;
+            EventRecord = FinishedSeconds;
         }
         const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
         if (FinishedBestLap > 0.f &&
@@ -171,22 +177,84 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         {
             PersonalBestLapSeconds = FinishedBestLap;
         }
+        LastRaceCredits = latebrake::CalculateRaceCredits(
+            SelectedEvent, Race.GetElapsedSeconds(), RecoveriesThisRace);
+        const int32 Capacity = std::numeric_limits<int32>::max() - TotalCredits;
+        TotalCredits += FMath::Min(LastRaceCredits, Capacity);
         SaveRecords();
+    }
+}
+
+void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
+{
+    if (!latebrake::IsValidEvent(Kind) || Kind == SelectedEvent)
+    {
+        return;
+    }
+    SelectedEvent = Kind;
+    const latebrake::RaceEvent Definition = latebrake::GetRaceEvent(SelectedEvent);
+    Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
+    RestartRace();
+    RefreshRival();
+}
+
+float ALatebrakeRaceGameMode::GetEventBestSeconds() const
+{
+    return SelectedEvent == latebrake::EventKind::TimeAttack ? BestTimeAttackSeconds : PersonalBestSeconds;
+}
+
+void ALatebrakeRaceGameMode::RefreshRival()
+{
+    const bool bNeedsRival = latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
+    if (!bNeedsRival)
+    {
+        if (IsValid(RivalCar))
+        {
+            RivalCar->Destroy();
+            RivalCar = nullptr;
+        }
+        return;
+    }
+
+    if (!IsValid(RivalCar))
+    {
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        RivalCar = GetWorld()->SpawnActor<ALatebrakeRivalCar>(
+            ALatebrakeRivalCar::StaticClass(), FVector(-2250.f, -1450.f, 180.f),
+            FRotator::ZeroRotator, Params);
+        if (!IsValid(RivalCar))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Latebrake: starter AI rival failed to spawn"));
+        }
+    }
+    else
+    {
+        RivalCar->RecoverTo(FVector(-2250.f, -1450.f, 180.f), FRotator::ZeroRotator);
+        RivalCar->ResetPilot();
     }
 }
 
 void ALatebrakeRaceGameMode::RestartRace()
 {
     Race.Reset();
+    LastRaceCredits = 0;
+    RecoveriesThisRace = 0;
     if (ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
     {
         Car->RecoverTo(GetStartPosition(), GetStartRotation());
+    }
+    if (IsValid(RivalCar))
+    {
+        RivalCar->RecoverTo(FVector(-2250.f, -1450.f, 180.f), FRotator::ZeroRotator);
+        RivalCar->ResetPilot();
     }
 }
 
 void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
 {
-    if (!IsValid(Car))
+    if (!IsValid(Car) || Car != UGameplayStatics::GetPlayerPawn(this, 0) ||
+        Race.IsFinished())
     {
         return;
     }
@@ -207,7 +275,11 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         FRotator(0.f, -90.f, 0.f)
     };
     // A five-second penalty discourages skipping sectors by teleporting.
-    Race.AddTimePenalty(5.0);
+    if (Race.AddTimePenalty(5.0) &&
+        RecoveriesThisRace < std::numeric_limits<int32>::max())
+    {
+        ++RecoveriesThisRace;
+    }
     const int Index = FMath::Clamp(Race.GetNextCheckpoint(), 0, 3);
     Car->RecoverTo(RecoveryPoints[Index], RecoveryRotations[Index]);
 }
@@ -219,7 +291,9 @@ void ALatebrakeRaceGameMode::LoadRecords()
     {
         PersonalBestSeconds = FMath::IsFinite(Save->BestRaceSeconds) ? FMath::Max(0.f, Save->BestRaceSeconds) : 0.f;
         PersonalBestLapSeconds = FMath::IsFinite(Save->BestLapSeconds) ? FMath::Max(0.f, Save->BestLapSeconds) : 0.f;
+        BestTimeAttackSeconds = FMath::IsFinite(Save->BestTimeAttackSeconds) ? FMath::Max(0.f, Save->BestTimeAttackSeconds) : 0.f;
         CompletedRaceCount = FMath::Max(0, Save->CompletedRaces);
+        TotalCredits = FMath::Max(0, Save->TotalCredits);
     }
 }
 
@@ -233,7 +307,9 @@ void ALatebrakeRaceGameMode::SaveRecords()
     }
     Save->BestRaceSeconds = PersonalBestSeconds;
     Save->BestLapSeconds = PersonalBestLapSeconds;
+    Save->BestTimeAttackSeconds = BestTimeAttackSeconds;
     Save->CompletedRaces = CompletedRaceCount;
+    Save->TotalCredits = TotalCredits;
     if (!UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser))
     {
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: failed to persist race results"));

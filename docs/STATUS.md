@@ -1,44 +1,48 @@
-# Engineering status
+# Latebrake engineering status
 
-**Milestones:** v0.1.0 unshipped, v0.1.1 stabilization branch in development (**neither release-ready**).
+**Updated:** 2026-10-19
+**Current code milestone:** v0.2.0 experimental source development.
+**Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
-**Date:** 2026-10-19
+## GitHub releases (source-only)
 
-## Added on v0.1.1 stabilization branch\n\n- Pure C++ race-sector/fastest-lap timing and timer overflow guard.\n- Race HUD new split telemetry and all-time fastest lap persisted in a backward-compatible SaveGame property.\n- Reject stationary and reverse-direction checkpoint entries on the four-gate starter course.\n- Add a validated five-second time penalty when recovering during a running race.\n- Expanded regression tests; see GitHub Actions for the most recent branch-head status.\n\n## Implemented in repository source
+- [v0.1.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.1.0) — published pre-release of the original C++ project and racing foundation.
+- [v0.1.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.1.1) — published pre-release of racing timing, fastest lap and checkpoint stability.
 
-- UE 5.8 C++ game/editor target and module.
-- Physics-rigid-body car pawn, desktop controls, braking, reverse, recover, two handling presets, camera-distance toggle, pause, and initial two-finger touch-region bindings.
-- Procedural starter circuit built from runtime engine primitive references.
-- Four ordered gates and three-lap finite race state machine.
-- HUD with speed, race clock, lap/gate status and personal best.
-- Local USaveGame storage of the best race time and completion count.
-- Portable race-progression tests and a cross-platform GitHub Actions workflow.
-- Core open-source and contributor documentation.
+These tags are source previews. They are **not downloadable playable game installers**.
 
-## Verified
+## v0.2.0 implementation on the feature branch
 
-- RaceProgress C++20 logic compiles and its standalone test passes with a local GNU C++ compiler.
-- GitHub Actions reported **success on Ubuntu, Windows and macOS** for commit `f8723f7937faf9503734719f9a1aeaacf640727b` ([run 39221329905](https://github.com/sanskarIN/latebrake/actions/runs/39221329905)). Later commits require independent verification.
+- Portable offline event catalog: three-lap Circuit Race and one-lap Time Attack, both using the starter four-checkpoint circuit.
+- Keyboard bindings `3` and `4` switch events and restart the active race.
+- Separate personal-best race records by event; backward-compatible SaveGame field for Time Attack.
+- Portable waypoint pilot computes steering, throttle and braking from the target, heading and speed.
+- Experimental autonomous rival pawn follows four circuit waypoints in Circuit Race; the rival is removed in Time Attack.
+- Player-only checkpoint registration prevents the rival from advancing the player's lap count.
+- Offline event completion rewards, recovery-aware clean bonus, accumulated and bounded credits.
+- Portable C++20 tests for event configuration, pilot inputs, lap rules, gate validation and credits.
 
-## Not verified / missing
+## Successfully verified
 
-- **No Unreal 5.8 gameplay code compilation, PIE test or cooked build.**
-- No native Windows executable, Android APK/AAB or Linux package.
-- No authored vehicle rigs, Chaos Vehicles suspension/wheel implementation or realistic drivetrains.
-- No original production-quality 3D vehicle/track/lighting/FX/audio assets.
-- No authored .umap; runtime startup currently relies on a built-in engine entry map.
-- Touch-region bindings added in C++ but **not tested on an Android device**; visual touch buttons, tilt controls and mobile performance testing remain missing.
-- No AI opponent, traffic, career, garage, event browser, world exploration or multiplayer.
-- No verified engine build failures because an Unreal build has not been attempted here.
+- GitHub Actions builds and executes the portable C++20 test suite on Windows, Ubuntu and macOS for earlier v0.2.0 development commits.
+- Check the newest branch-head workflow before tagging a pre-release.
+- GitHub CI does **not** have Unreal Engine source/SDK/tooling available.
 
-## Acceptance gate for v0.1.0
+## Not implemented or not qualified
 
-1. Compile and open project in a real UE 5.8 development setup.
-2. Confirm spawn, physics, camera, keyboard/gamepad controls and collision/visibility.
-3. Validate first gate, order enforcement, lap count, time, finish screen and restart.
-4. Validate save/reload and invalid/corrupt-slot handling.
-5. Author a distributable project map and test real Win64 and Android packaging (including mobile controls).
-6. Record actual hardware test observations, resolutions and limitations.
-7. Publish pre-release only with real working artifacts and honest release notes.
+- Unreal 5.8 compilation, Unreal Header Tool generation, in-editor driving/playtesting, performance profiling or packaged hardware testing.
+- A cooked project-owned map, original finished vehicle model, Chaos Vehicles wheel/suspension rig, optimized Android touch controls and tested phone lifecycle behavior.
+- Race-aware overtaking, full AI opponent ranking/finished times, traffic, vehicle upgrades, garage, championships and multiplayer.
+- Tested save migrations, touch inputs, actual vehicle/rival cornering, AI avoidance, pause/resume and HUD at varied viewports.
+- Windows EXE, Android APK/AAB or Linux native binary **not available**.
 
-The portable unit-test workflow is **not** a substitute for these gates.
+## Next acceptance gates
+
+1. Install licensed UE 5.8 + platform SDKs on a supported workstation and compile all Unreal-targeted C++.
+2. Test event switching, Time Attack/circuit result separation, rival spawn/despawn, waypoint motion and player-only gate scoring.
+3. Verify credit rewards paid exactly once, personal-best saves/migration, recovery penalties and race restarts.
+4. Author a cookable .umap and validate real Win64 and Android packages/device playtests.
+5. Investigate Chaos Vehicles suspension and steering; replace provisional rigid-body mechanics after measurement.
+6. Publish **stable v1.0.0 only** after complete declared release scope and tested Win64/Android artifacts.
+
+Track the first playable-release gates in [issue #2](https://github.com/sanskarIN/latebrake/issues/2).
