@@ -29,6 +29,10 @@ public:
     void SelectRaceEvent(latebrake::EventKind Kind);
     latebrake::EventKind GetSelectedEvent() const { return SelectedEvent; }
     float GetEventBestSeconds() const;
+    bool HasRival() const;
+    int32 GetRivalApproximateLaps() const;
+    int32 GetRivalRecoveryCount() const;
+    bool HasRivalFinishedRoute() const;
 
     void RecoverPlayer(ALatebrakeCarPawn* Car);
 

@@ -84,6 +84,7 @@ private:
 
     float Throttle = 0.f;
     float Steering = 0.f;
+    float SmoothedSteering = 0.f;
     bool bBraking = false;
     bool bNearCamera = false;
     int32 SteeringFinger = INDEX_NONE;

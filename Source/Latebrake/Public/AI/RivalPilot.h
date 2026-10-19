@@ -23,6 +23,7 @@ inline PilotCommand PlanRivalTurn(
 {
     const bool valid = std::isfinite(positionX) && std::isfinite(positionY) &&
         std::isfinite(headingRadians) && std::isfinite(speedCmPerSecond) &&
+        speedCmPerSecond >= 0.0 &&
         std::isfinite(waypointX) && std::isfinite(waypointY) &&
         std::isfinite(arrivalRadiusCm) && arrivalRadiusCm > 0.0;
     if (!valid)
@@ -52,8 +53,14 @@ inline PilotCommand PlanRivalTurn(
     // Approach corners at lower target speed. No instantaneous heading jumps.
     const double turnFactor = std::clamp(
         errorMagnitude / (std::numbers::pi / 2.0), 0.0, 1.0);
-    const double targetSpeed = 4100.0 - 2950.0 * turnFactor;
-    const double speed = std::max(0.0, speedCmPerSecond);
+    // Brake in advance rather than waiting until a sharp steering error.
+    const double desiredCruiseSpeed = 4100.0 - 2950.0 * turnFactor;
+    const double approachDistance = std::max(900.0, speedCmPerSecond * 0.7);
+    const bool approachingCorner = distance < approachDistance;
+    const double targetSpeed = approachingCorner
+        ? std::min(desiredCruiseSpeed, 1550.0)
+        : desiredCruiseSpeed;
+    const double speed = speedCmPerSecond;
     const bool braking = speed > targetSpeed + 220.0;
     const double throttle = (!braking && speed < targetSpeed - 100.0) ? 0.85 : 0.0;
 

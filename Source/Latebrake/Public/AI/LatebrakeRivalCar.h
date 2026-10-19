@@ -1,13 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AI/RivalRouteProgress.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
 /**
- * Experimental autonomous competitor, driving the same starter rigid-body car
- * as the player via the shared portable waypoint pilot.
- * A future release will replace this with a race-aware Chaos Vehicles AI.
+ * Experimental circuit rival, not yet qualified as competitive race AI.
+ * Portable route tracking counts approximate waypoint laps and recovers when
+ * physically stuck; authoritative player rewards remain separate.
  */
 UCLASS()
 class LATEBRAKE_API ALatebrakeRivalCar : public ALatebrakeCarPawn
@@ -17,8 +18,11 @@ class LATEBRAKE_API ALatebrakeRivalCar : public ALatebrakeCarPawn
 public:
     ALatebrakeRivalCar();
     virtual void Tick(float DeltaSeconds) override;
-    void ResetPilot() { NextWaypoint = 0; }
+    void ResetPilot();
+    int32 GetApproximateLaps() const { return Route.GetCompletedLaps(); }
+    int32 GetPilotRecoveries() const { return Route.GetRecoveryCount(); }
+    bool HasCompletedRoute() const { return Route.IsFinished(); }
 
 private:
-    int32 NextWaypoint = 0;
+    latebrake::RivalRouteProgress Route{4, 3};
 };

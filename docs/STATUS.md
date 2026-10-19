@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-19
-**Current code milestone:** v0.2.0 experimental source development.
+**Current code milestone:** v0.2.1 source-only AI and input stabilization.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -11,7 +11,16 @@
 
 These tags are source previews. They are **not downloadable playable game installers**.
 
-## v0.2.0 implementation on the feature branch
+## v0.2.1 improvements on development branch
+
+- Deterministic rival waypoint-lap and stalled-car state tracker with bounded recovery count.
+- Integrates self-recovery after eight seconds of sustained near-zero speed, preserving route progress.
+- Moves AI planning ahead of its own base-car physics tick; additional steering smoothing for both human and autonomous inputs.
+- Starts braking earlier near a waypoint; rejects negative speed readings.
+- HUD now labels route laps explicitly as approximate AI telemetry, not scored race placement.
+- Adds pure C++20 CTest targets for route progress and steering filter.
+
+## v0.2.0 implementation (merged and source-preview published)
 
 - Portable offline event catalog: three-lap Circuit Race and one-lap Time Attack, both using the starter four-checkpoint circuit.
 - Keyboard bindings `3` and `4` switch events and restart the active race.
@@ -25,7 +34,7 @@ These tags are source previews. They are **not downloadable playable game instal
 ## Successfully verified
 
 - GitHub Actions builds and executes the portable C++20 test suite on Windows, Ubuntu and macOS for earlier v0.2.0 development commits.
-- Check the newest branch-head workflow before tagging a pre-release.
+- Check the newest branch-head workflow before tagging a pre-release; tests cannot exercise Unreal gameplay symbols.
 - GitHub CI does **not** have Unreal Engine source/SDK/tooling available.
 
 ## Not implemented or not qualified
