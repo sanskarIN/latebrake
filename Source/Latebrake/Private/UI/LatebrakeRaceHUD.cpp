@@ -1,0 +1,67 @@
+#include "UI/LatebrakeRaceHUD.h"
+
+#include "Engine/Engine.h"
+#include "Engine/Canvas.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
+#include "Game/LatebrakeRaceGameMode.h"
+#include "GameFramework/PlayerController.h"
+#include "Vehicles/LatebrakeCarPawn.h"
+
+void ALatebrakeRaceHUD::DrawHUD()
+{
+    Super::DrawHUD();
+    if (!GEngine || !PlayerOwner)
+    {
+        return;
+    }
+
+    const ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>();
+    const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(PlayerOwner->GetPawn());
+    if (!Mode || !Car)
+    {
+        return;
+    }
+
+    const latebrake::RaceProgress& Race = Mode->GetRace();
+    const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
+    const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);
+
+    const int32 DisplayLap = FMath::Min(Race.GetCompletedLaps() + 1, Race.GetRequiredLaps());
+    const double Elapsed = Race.GetElapsedSeconds();
+    const int32 Minutes = FMath::FloorToInt(Elapsed / 60.0);
+    const double Seconds = Elapsed - static_cast<double>(Minutes) * 60.0;
+
+    DrawText(TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"), Accent, 35.f, 30.f, GEngine->GetMediumFont(), 1.10f);
+    DrawText(FString::Printf(TEXT("SPEED  %03.0f km/h"), Car->GetSpeedKmH()), Primary, 35.f, 72.f, GEngine->GetMediumFont());
+    DrawText(FString::Printf(TEXT("LAP  %d / %d"), DisplayLap, Race.GetRequiredLaps()),
+        Primary, 35.f, 108.f, GEngine->GetMediumFont());
+    DrawText(FString::Printf(TEXT("NEXT GATE  %d / %d"), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()),
+        Primary, 35.f, 142.f, GEngine->GetMediumFont());
+    DrawText(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds),
+        Accent, 35.f, 176.f, GEngine->GetMediumFont());
+    if (Mode->GetPersonalBestSeconds() > 0.f)
+    {
+        DrawText(FString::Printf(TEXT("BEST RACE  %.2fs"), Mode->GetPersonalBestSeconds()),
+            Primary, 35.f, 212.f, GEngine->GetSmallFont());
+    }
+    DrawText(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"),
+        Primary, 35.f, 242.f, GEngine->GetSmallFont());
+
+    if (UGameplayStatics::IsGamePaused(this))
+    {
+        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 290.f, GEngine->GetLargeFont());
+    }
+    else if (Race.IsFinished())
+    {
+        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 290.f, GEngine->GetLargeFont(), 1.15f);
+    }
+
+#if PLATFORM_ANDROID
+    DrawText(TEXT("LEFT HALF: STEER   RIGHT UPPER: GAS   RIGHT LOWER: BRAKE"),
+        Accent, 35.f, Canvas->SizeY - 80.f, GEngine->GetSmallFont(), 0.82f);
+#else
+    DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause"),
+        Primary, 35.f, Canvas->SizeY - 45.f, GEngine->GetSmallFont(), 0.82f);
+#endif
+}

@@ -1,0 +1,28 @@
+name: C++ race logic
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-tests:
+    name: Portable C++20 tests / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build Tests/Standalone/build --config Release --parallel
+      - name: Test
+        run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure

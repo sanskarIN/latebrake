@@ -1,0 +1,49 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/GameModeBase.h"
+#include "Racing/RaceProgress.h"
+#include "LatebrakeRaceGameMode.generated.h"
+
+class AController;
+class APlayerStart;
+class AStaticMeshActor;
+class ALatebrakeCarPawn;
+
+UCLASS()
+class LATEBRAKE_API ALatebrakeRaceGameMode : public AGameModeBase
+{
+    GENERATED_BODY()
+
+public:
+    ALatebrakeRaceGameMode();
+
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;
+    virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+    void RegisterCheckpoint(int32 CheckpointIndex);
+    void RestartRace();
+    void RecoverPlayer(ALatebrakeCarPawn* Car);
+
+    const latebrake::RaceProgress& GetRace() const { return Race; }
+    float GetPersonalBestSeconds() const { return PersonalBestSeconds; }
+    int32 GetCompletedRaceCount() const { return CompletedRaceCount; }
+
+    static FVector GetStartPosition();
+    static FRotator GetStartRotation();
+
+private:
+    void BuildCircuit();
+    AStaticMeshActor* SpawnBlock(const TCHAR* Label, const FVector& Position,
+        const FVector& Scale, const FLinearColor& Color);
+    void LoadRecords();
+    void SaveRecords();
+
+    latebrake::RaceProgress Race{4, 3};
+    float PersonalBestSeconds = 0.f;
+    int32 CompletedRaceCount = 0;
+
+    UPROPERTY(Transient)
+    TObjectPtr<APlayerStart> RuntimePlayerStart;
+};
