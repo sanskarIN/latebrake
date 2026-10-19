@@ -49,3 +49,16 @@ These compile the **same RaceProgress.cpp** used by the game. They cannot valida
 - Starter camera, physics values, and checkpoint dimensions need iteration inside the engine.
 - Development runtime creates road and props using engine built-in primitive assets; no project-owned cooked map/art package is checked in.
 - No packaged executable, APK, AAB, or platform benchmarks exist yet.
+
+## Candidate packaging helpers (unverified until executed with UE 5.8)
+
+On a licensed Windows Unreal Engine build workstation, the optional helper `scripts/Build-PreRelease.ps1` calls Epic's own `RunUAT.bat BuildCookRun` and checks for a real platform package. Example:
+
+```powershell
+pwsh ./scripts/Build-PreRelease.ps1 -EngineRoot 'C:/Program Files/Epic Games/UE_5.8' -Platform Win64 -OutputDirectory 'D:/LatebrakeBuilds/Win64'
+pwsh ./scripts/Build-PreRelease.ps1 -EngineRoot 'C:/Program Files/Epic Games/UE_5.8' -Platform Android -OutputDirectory 'D:/LatebrakeBuilds/Android'
+```
+
+Android requires Unreal's supported Android toolchain plus real touch/lifecycle testing. Confirm the built-in entry map is cookable or add a project-owned map if needed. These commands have **not** yet succeeded in this environment. The script does not assert a build succeeded unless Unreal returns a success exit and candidate platform files exist.
+
+After real hardware gameplay tests, record honest evidence using `docs/releases/test-evidence.example.json` and validate package structure plus SHA-256 hashes using `scripts/Verify-ReleaseArtifacts.ps1`. An actual release still requires passing the acceptance checklist in `docs/releases/v0.1.0.md`.

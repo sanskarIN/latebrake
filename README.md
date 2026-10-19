@@ -64,7 +64,7 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Development and releases
 
-First milestone: **v0.1.0 pre-release**, only after verified compilation, playtesting, and real packaging. See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No release files have been fabricated.
+First milestone: **v0.1.0 pre-release**, only after verified compilation, playtesting, and real packaging. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No release files have been fabricated.
 
 ## License and contributions
 
