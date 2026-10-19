@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-19
-**Current code milestone:** v0.2.1 source-only AI and input stabilization.
+**Current code milestone:** v0.3.0 offline garage and tuning source development.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -11,7 +11,16 @@
 
 These tags are source previews. They are **not downloadable playable game installers**.
 
-## v0.2.1 improvements on development branch
+## v0.3.0 added in this development branch
+
+- Original fictional starter garage profiles, with different force/grip/speed multipliers and primitive-only cabin silhouettes.
+- Offline earned-credit unlocks and 3-level Engine/Grip upgrades with saturation and validation.
+- SaveGame fields to persist selected car, owned vehicles and upgrade levels (legacy fallback).
+- HUD and keyboard controls for garage operations (Q/E/U/I).
+- New C++20 garage economy/progression regression tests.
+- Does not include authored complete car models, wheel suspension, a production garage menu, or any tested game packages.
+
+## v0.2.1 improvements (merged and source preview published)
 
 - Deterministic rival waypoint-lap and stalled-car state tracker with bounded recovery count.
 - Integrates self-recovery after eight seconds of sustained near-zero speed, preserving route progress.

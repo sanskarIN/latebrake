@@ -60,3 +60,15 @@ Unreal validation still required:
 - [ ] Stuck detection works near barriers, with no oscillating recovery loop
 - [ ] Rival approximate lap display never claims an authoritative finish position
 - [ ] New steering responsiveness is driveable at varied frame rates on real devices
+
+## v0.3.0 garage qualification
+
+The portable `GarageState` target tests vehicle ownership and purchase costs, preventing repeat charges, insufficient credit handling, bounded balance, upgrade-level caps, invalid vehicle IDs, invalid saved fields, snapshot restoration and the fictional preset cabin dimensions. The existing five portable test targets must still pass.
+
+Unreal integration required:
+- [ ] Starter player pawn receives garage performance modifiers without affecting the AI rival
+- [ ] Three garage silhouettes and tuning differences render and feel correct in editor
+- [ ] Q/E/U/I correctly unlock, select and upgrade only with earned credits
+- [ ] Garage SaveGame fields survive save/restart/reload, including older v0.2.x slots
+- [ ] HUD is readable at 720p, 1080p, ultrawide and Android sizes
+- [ ] Win64/Android real game packages can launch, race and preserve garage progression

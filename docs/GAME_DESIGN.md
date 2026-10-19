@@ -23,3 +23,7 @@ Readable race telemetry, separate keyboard/gamepad/touch control layouts, remapp
 ## Art ownership
 
 Use original fictional vehicles, fictional locations, independently authored sound/music, and fully documented asset provenance. Avoid unlicensed manufacturer logos, copied tracks, leaked or restricted engine resources.
+
+## Garage prototype — v0.3.0
+
+Three fictional tunable prototype vehicles (Arrow, Kestrel and Phantom) allow offline choice between acceleration, handling and top speed. Vehicle unlocks and engine/grip upgrades spend credits earned only from completed races. Donations never affect garage progression. The current user interface consists of keyboard shortcuts and HUD status; original 3D vehicle art, a full garage menu and gamepad/mobile interactions remain future work.

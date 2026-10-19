@@ -1,6 +1,18 @@
 # Changelog
 
-## v0.2.1 — source-only development preview (pending release)
+## v0.3.0 — garage foundation, source-only preview candidate
+
+### Added
+- Three fictional vehicle profiles and asset-free silhouette variants.
+- Offline credit-based vehicle unlocking and engine/grip upgrades, with capped deterministic pricing and performance.
+- Backward-compatible SaveGame garage ownership, selected profile and upgrade levels.
+- Keyboard Q/E/U/I garage shortcuts and HUD profile, unlock and tuning readouts.
+- Portable garage C++20 regression tests for purchases, profile sanitization and credit overflow.
+
+### Still outstanding
+- Unreal Engine editor/UHT compilation, original 3D vehicle models, real game packages, physical hardware and save serialization tests.
+
+## v0.2.1 — published source-only pre-release
 
 ### Improved
 - Pure C++20 rival route state tracks approximate waypoint laps and recovery requests after eight seconds at low speed.
