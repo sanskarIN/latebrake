@@ -1,4 +1,5 @@
 #include "Vehicles/LatebrakeCarPawn.h"
+#include "Vehicles/SteeringFilter.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
@@ -133,6 +134,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     }
 
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
+    SmoothedSteering = static_cast<float>(latebrake::SmoothSteering(
+        SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
+        bArcade ? 3.8 : 2.4));
     const float EffectiveThrottle = bTouchThrottle ? 1.f : Throttle;
     const float EffectiveSteering = SteeringFinger != INDEX_NONE ? TouchSteering : Steering;
     const bool bEffectiveBraking = bBraking || bTouchBrake;
@@ -169,7 +173,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
     const float SteerDirection = LongitudinalSpeed < -75.f ? -1.f : 1.f;
-    const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) * EffectiveSteering * SteeringAuthority * SteerDirection;
+    const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) * SmoothedSteering * SteeringAuthority * SteerDirection;
     Chassis->AddTorqueInRadians(FVector(0.f, 0.f, TurnTorque));
 
     if (Speed > MaxSpeed)
@@ -192,6 +196,7 @@ void ALatebrakeCarPawn::RecoverTo(const FVector& Position, const FRotator& Rotat
     SetActorLocationAndRotation(Position, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
     Throttle = 0.f;
     Steering = 0.f;
+    SmoothedSteering = 0.f;
     bBraking = false;
     SteeringFinger = INDEX_NONE;
     PedalFinger = INDEX_NONE;
