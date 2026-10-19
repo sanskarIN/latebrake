@@ -26,3 +26,22 @@ jobs:
         run: cmake --build Tests/Standalone/build --config Release --parallel
       - name: Test
         run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
+
+  packaging-script-syntax:
+    name: Release PowerShell syntax
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse package and verification scripts
+        shell: pwsh
+        run: |
+          foreach ($script in @('scripts/Build-PreRelease.ps1', 'scripts/Verify-ReleaseArtifacts.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$script : $_" }
+              exit 1
+            }
+            Write-Host "PowerShell syntax OK: $script"
+          }

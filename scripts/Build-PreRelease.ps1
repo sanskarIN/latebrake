@@ -29,7 +29,7 @@ $project = (Resolve-Path -LiteralPath $project).Path
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $out = (Resolve-Path -LiteralPath $OutputDirectory).Path
 
-$args = @(
+$uatArguments = @(
     'BuildCookRun',
     "-project=$project",
     '-noP4',
@@ -44,12 +44,12 @@ $args = @(
     '-utf8output'
 )
 if ($Platform -eq 'Android') {
-    $args += '-package'
+    $uatArguments += '-package'
 } else {
     $args += '-prereqs'
 }
 Write-Host "Running Unreal automation for $Platform. A successful process exit does not replace real playtesting."
-& $uat @args
+& $uat @uatArguments
 if ($LASTEXITCODE -ne 0) {
     throw "Unreal BuildCookRun failed, exit code $LASTEXITCODE"
 }
