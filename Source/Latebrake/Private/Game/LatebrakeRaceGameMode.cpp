@@ -1,0 +1,212 @@
+#include "Game/LatebrakeRaceGameMode.h"
+
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerStart.h"
+#include "Engine/StaticMeshActor.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Kismet/GameplayStatics.h"
+#include "Progression/LatebrakePlayerSave.h"
+#include "Racing/LatebrakeCheckpoint.h"
+#include "UI/LatebrakeRaceHUD.h"
+#include "Vehicles/LatebrakeCarPawn.h"
+
+namespace
+{
+constexpr TCHAR SaveSlot[] = TEXT("LatebrakeProfile");
+constexpr int32 SaveUser = 0;
+}
+
+ALatebrakeRaceGameMode::ALatebrakeRaceGameMode()
+{
+    PrimaryActorTick.bCanEverTick = true;
+    DefaultPawnClass = ALatebrakeCarPawn::StaticClass();
+    HUDClass = ALatebrakeRaceHUD::StaticClass();
+}
+
+FVector ALatebrakeRaceGameMode::GetStartPosition()
+{
+    return FVector(-2550.f, -1800.f, 180.f);
+}
+
+FRotator ALatebrakeRaceGameMode::GetStartRotation()
+{
+    return FRotator(0.f, 0.f, 0.f);
+}
+
+AActor* ALatebrakeRaceGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+    if (!IsValid(RuntimePlayerStart))
+    {
+        FActorSpawnParameters Parameters;
+        Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        RuntimePlayerStart = GetWorld()->SpawnActor<APlayerStart>(
+            APlayerStart::StaticClass(), GetStartPosition(), GetStartRotation(), Parameters);
+    }
+    return RuntimePlayerStart;
+}
+
+void ALatebrakeRaceGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+    LoadRecords();
+    BuildCircuit();
+    Race.Reset();
+}
+
+void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+    Race.Advance(static_cast<double>(DeltaSeconds));
+}
+
+AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label, const FVector& Position,
+    const FVector& Scale, const FLinearColor& Color)
+{
+    UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+    if (!Cube)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Latebrake: built-in Cube mesh not found, cannot build track"));
+        return nullptr;
+    }
+
+    FActorSpawnParameters Parameters;
+    Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AStaticMeshActor* Block = GetWorld()->SpawnActor<AStaticMeshActor>(
+        AStaticMeshActor::StaticClass(), Position, FRotator::ZeroRotator, Parameters);
+    if (!Block)
+    {
+        return nullptr;
+    }
+
+    Block->SetActorLabel(Label);
+    UStaticMeshComponent* Mesh = Block->GetStaticMeshComponent();
+    Mesh->SetMobility(EComponentMobility::Movable);
+    Mesh->SetStaticMesh(Cube);
+    Mesh->SetCollisionProfileName(TEXT("BlockAll"));
+    Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    Block->SetActorScale3D(Scale);
+
+    // BasicShapeMaterial is part of the editor's engine content; do not copy it.
+    if (UMaterialInstanceDynamic* Material = Mesh->CreateAndSetMaterialInstanceDynamic(0))
+    {
+        Material->SetVectorParameterValue(TEXT("Color"), Color);
+    }
+
+    return Block;
+}
+
+void ALatebrakeRaceGameMode::BuildCircuit()
+{
+    // World-space units are centimetres. All geometry references stock engine
+    // primitives; this repository does not ship or redistribute Epic assets.
+    SpawnBlock(TEXT("Ground"), FVector(0.f, 0.f, -100.f),
+        FVector(110.f, 85.f, 1.25f), FLinearColor(0.15f, 0.30f, 0.12f));
+
+    const FLinearColor Asphalt(0.09f, 0.10f, 0.13f);
+    SpawnBlock(TEXT("SouthStraight"), FVector(0.f, -1800.f, -22.f), FVector(80.f, 16.f, 0.42f), Asphalt);
+    SpawnBlock(TEXT("NorthStraight"), FVector(0.f, 1800.f, -22.f), FVector(80.f, 16.f, 0.42f), Asphalt);
+    SpawnBlock(TEXT("EastStraight"), FVector(2800.f, 0.f, -22.f), FVector(16.f, 52.f, 0.42f), Asphalt);
+    SpawnBlock(TEXT("WestStraight"), FVector(-2800.f, 0.f, -22.f), FVector(16.f, 52.f, 0.42f), Asphalt);
+
+    const FLinearColor BarrierColor(0.80f, 0.15f, 0.05f);
+    SpawnBlock(TEXT("NorthBarrier"), FVector(0.f, 2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
+    SpawnBlock(TEXT("SouthBarrier"), FVector(0.f, -2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
+    SpawnBlock(TEXT("EastBarrier"), FVector(3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
+    SpawnBlock(TEXT("WestBarrier"), FVector(-3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
+
+    const FVector Gates[] =
+    {
+        FVector(2800.f, -1800.f, 38.f),
+        FVector(2800.f, 1800.f, 38.f),
+        FVector(-2800.f, 1800.f, 38.f),
+        FVector(-2800.f, -1800.f, 38.f)
+    };
+
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        FActorSpawnParameters Parameters;
+        Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        if (ALatebrakeCheckpoint* Checkpoint = GetWorld()->SpawnActor<ALatebrakeCheckpoint>(
+                ALatebrakeCheckpoint::StaticClass(), Gates[Index], FRotator::ZeroRotator, Parameters))
+        {
+            Checkpoint->SetCheckpointIndex(Index);
+        }
+    }
+}
+
+void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
+{
+    if (Race.PassCheckpoint(CheckpointIndex) && Race.IsFinished())
+    {
+        ++CompletedRaceCount;
+        const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
+        if (PersonalBestSeconds <= 0.f || FinishedSeconds < PersonalBestSeconds)
+        {
+            PersonalBestSeconds = FinishedSeconds;
+        }
+        SaveRecords();
+    }
+}
+
+void ALatebrakeRaceGameMode::RestartRace()
+{
+    Race.Reset();
+    if (ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
+    {
+        Car->RecoverTo(GetStartPosition(), GetStartRotation());
+    }
+}
+
+void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
+{
+    if (!IsValid(Car))
+    {
+        return;
+    }
+
+    // Reorient behind the next expected gate, keeping prior lap progress.
+    const FVector RecoveryPoints[] =
+    {
+        FVector(-2550.f, -1800.f, 180.f),
+        FVector(2800.f, -1300.f, 180.f),
+        FVector(2300.f, 1800.f, 180.f),
+        FVector(-2800.f, 1300.f, 180.f)
+    };
+    const FRotator RecoveryRotations[] =
+    {
+        FRotator(0.f, 0.f, 0.f),
+        FRotator(0.f, 90.f, 0.f),
+        FRotator(0.f, 180.f, 0.f),
+        FRotator(0.f, -90.f, 0.f)
+    };
+    const int Index = FMath::Clamp(Race.GetNextCheckpoint(), 0, 3);
+    Car->RecoverTo(RecoveryPoints[Index], RecoveryRotations[Index]);
+}
+
+void ALatebrakeRaceGameMode::LoadRecords()
+{
+    if (const ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
+            UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser)))
+    {
+        PersonalBestSeconds = FMath::Max(0.f, Save->BestRaceSeconds);
+        CompletedRaceCount = FMath::Max(0, Save->CompletedRaces);
+    }
+}
+
+void ALatebrakeRaceGameMode::SaveRecords()
+{
+    ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
+        UGameplayStatics::CreateSaveGameObject(ULatebrakePlayerSave::StaticClass()));
+    if (!Save)
+    {
+        return;
+    }
+    Save->BestRaceSeconds = PersonalBestSeconds;
+    Save->CompletedRaces = CompletedRaceCount;
+    if (!UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: failed to persist race results"));
+    }
+}
