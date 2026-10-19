@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace latebrake
 {
@@ -17,6 +18,10 @@ inline double SmoothSteering(double current, double requested,
         return std::isfinite(current) ? std::clamp(current, -1.0, 1.0) : 0.0;
     }
     const double from = std::clamp(current, -1.0, 1.0);
+    if (deltaSeconds > std::numeric_limits<double>::max() / ratePerSecond)
+    {
+        return from;
+    }
     const double target = std::clamp(requested, -1.0, 1.0);
     const double difference = target - from;
     const double maxStep = std::min(2.0, deltaSeconds * ratePerSecond);

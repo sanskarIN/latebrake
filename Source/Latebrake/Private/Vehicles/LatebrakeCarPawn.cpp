@@ -134,11 +134,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     }
 
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
+    const float EffectiveThrottle = bTouchThrottle ? 1.f : Throttle;
+    const float EffectiveSteering = SteeringFinger != INDEX_NONE ? TouchSteering : Steering;
     SmoothedSteering = static_cast<float>(latebrake::SmoothSteering(
         SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
         bArcade ? 3.8 : 2.4));
-    const float EffectiveThrottle = bTouchThrottle ? 1.f : Throttle;
-    const float EffectiveSteering = SteeringFinger != INDEX_NONE ? TouchSteering : Steering;
     const bool bEffectiveBraking = bBraking || bTouchBrake;
     const float DriveForce = bArcade ? 1500000.f : 1030000.f;
     const float MaxSpeed = bArcade ? 6500.f : 5400.f; // cm/s
