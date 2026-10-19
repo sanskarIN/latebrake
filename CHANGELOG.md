@@ -1,6 +1,19 @@
 # Changelog
 
-## v0.3.2 — control safety and garage caching (source-only development)
+## v0.4.0 — starter course and environment expansion (source-only candidate)
+
+### Added and changed
+- Shared engine-independent course geometry for four gates, spawn, player/rival recovery and rival AI navigation targets.
+- Primitive road stripes, alternating red-white curbs, trackside grandstand tiers and start/finish banner on the existing single starter circuit.
+- Decorative actors have collision disabled; core drivable roads/barriers and race rules are unchanged.
+- Compact desktop course map that shows the circuit path, next gate and live player position; hidden on smaller viewports.
+- C++20 standalone regression targets validate road/gate/recovery consistency, ornament placement bounds and minimap coordinate normalization.
+
+### Still to verify
+- Unreal Engine 5.8 actor compilation and visual playtest; geometry material appearance, shadowing, physics, HUD overlap and draw-call performance on actual Windows/Android builds.
+- No additional selectable tracks, real instanced-mesh optimization, shipped playable packages or original production environment art.
+
+## v0.3.2 — published source-only pre-release
 
 ### Added and improved
 - Portable C++20 driving-axis normalization, normalized touch steering, and bounded throttle smoothing, with numerical-edge-case tests.

@@ -96,3 +96,16 @@ Engine tests remain required:
 - [ ] Ensure every selection or upgrade changes player tuning exactly once, including respawn
 - [ ] Test failed/unwritable SaveGame slots to confirm the warning appears and clears after success
 - [ ] Build real Win64 and Android archives and test physics, race events and saves on hardware
+
+## v0.4.0 course and environment checks
+
+New `CircuitLayout` portable test target checks shared four-gate geometry, road coverage, legal recovery positions, gate driving direction and invalid indexes; `TrackDecorations` verifies the deterministic lane/curb arrays stay on the road with the two grandstands outside it; `CircuitMap` verifies normalized minimap projection, viewport bound clamping and invalid-value handling.
+
+Unreal Editor and physical performance gates:
+- [ ] Launch UE 5.8 starter course and ensure asset references, lighting, collision, road surface and gates function
+- [ ] Drive in circuit and time attack; ensure gate positions and recovery orientations align with visible roads and AI route
+- [ ] Confirm decoration meshes have NO physics collision and never block a vehicle or compromise performance
+- [ ] Verify no floating/overlapping grandstands, curbs, stripes or start banner from driving camera
+- [ ] Test minimap next checkpoint, player marker and HUD collision at 1080p, ultrawide and compact sizes
+- [ ] Measure draw calls, FPS and memory on Windows and Android; batch decorative actors into instanced meshes if needed
+- [ ] Produce and test real packaged games before claiming gameplay or stable release readiness
