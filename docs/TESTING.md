@@ -72,3 +72,14 @@ Unreal integration required:
 - [ ] Garage SaveGame fields survive save/restart/reload, including older v0.2.x slots
 - [ ] HUD is readable at 720p, 1080p, ultrawide and Android sizes
 - [ ] Win64/Android real game packages can launch, race and preserve garage progression
+
+## v0.3.1 regression tests
+
+Portable `HudLayout` checks standard/compact screen dimensions and invalid viewport values; `RecordValidation` checks invalid saved times, NaN/infinity, negative race totals and saturating record counters; expanded `GarageState` covers negative ownership masks and model-defined purchase/upgrading quotes.
+
+Additional Unreal playtest gates:
+- [ ] Garage feedback text visible and correct for successful/unaffordable transactions.
+- [ ] Q/E/U/I do not charge any credits for invalid operations; test with both fresh and old profiles.
+- [ ] HUD readable on desktop, portrait/narrow screens and Android without overlap or clipping.
+- [ ] Deserialize corrupted/old SaveGame values and confirm recovered safe progression.
+- [ ] Existing race, rival, touch and car movement remain functional after v0.3.1 changes.

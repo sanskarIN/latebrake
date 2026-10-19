@@ -89,6 +89,34 @@ int main()
     Require(kestrel.CabinLength > arrow.CabinLength, "kestrel has a longer canopy");
     Require(phantom.CabinHeight > arrow.CabinHeight, "phantom has a higher canopy");
     Require(phantom.CabinLength < arrow.CabinLength, "phantom has shorter canopy");
+    // v0.3.1: the UI and game-mode share portable transaction selection
+    // rules; invalid masks can no longer accidentally unlock every vehicle.
+    GarageState chooser;
+    Require(chooser.NextLockedVehicle() == 1, "first locked car is Kestrel");
+    Require(chooser.NextOwnedVehicle() == 0, "single owned car cycles to itself");
+    Require(!chooser.CanUnlock(1) && !chooser.CanUnlock(-1), "affordability validated");
+    chooser.EarnCredits(600);
+    Require(chooser.CanUnlock(1), "enough credits unlocks first vehicle");
+    Require(chooser.Unlock(1), "unlock first vehicle");
+    Require(chooser.NextLockedVehicle() == 2, "second unlock is Phantom");
+    Require(chooser.NextOwnedVehicle() == 1, "next owned car cycles predictably");
+    Require(chooser.Select(1), "select Kestrel for cycling");
+    Require(chooser.NextOwnedVehicle() == 0, "cycle wraps to Arrow");
+    Require(chooser.NextUpgradeCost(UpgradeKind::Engine) == 200, "engine preview cost");
+    Require(chooser.NextUpgradeCost(UpgradeKind::Grip) == 150, "grip preview cost");
+    Require(chooser.NextUpgradeCost(static_cast<UpgradeKind>(99)) == 0,
+            "unknown upgrade cannot be quoted");
+    chooser.Load({700, -1, 2, 1, 2});
+    Require(!chooser.Owns(1) && !chooser.Owns(2),
+            "negative ownership mask never grants free unlocks");
+    Require(chooser.SelectedVehicle() == 0 && chooser.Credits() == 700,
+            "corrupt ownership restores free car while preserving credits");
+    chooser.Load({10000, 7, 2, 3, 3});
+    Require(chooser.NextLockedVehicle() == -1, "no remaining locked vehicles");
+    Require(chooser.NextUpgradeCost(UpgradeKind::Engine) == 0,
+            "maxed engine has no upgrade price");
+    Require(chooser.NextUpgradeCost(UpgradeKind::Grip) == 0,
+            "maxed grip has no upgrade price");
     std::cout << "Garage economy and profile tests passed.\n";
     return EXIT_SUCCESS;
 }

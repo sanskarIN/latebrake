@@ -12,6 +12,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
+#include "Progression/RecordValidation.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
 #include <limits>
@@ -164,7 +165,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
     if (Race.PassCheckpoint(CheckpointIndex) && Race.IsFinished())
     {
-        ++CompletedRaceCount;
+        CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
         const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
         float& EventRecord = (SelectedEvent == latebrake::EventKind::TimeAttack)
             ? BestTimeAttackSeconds : PersonalBestSeconds;
@@ -230,14 +231,8 @@ FString ALatebrakeRaceGameMode::GetSelectedVehicleName() const
 
 int32 ALatebrakeRaceGameMode::GetNextLockedVehicleCost() const
 {
-    for (int32 Id = 1; Id < 3; ++Id)
-    {
-        if (!Garage.Owns(Id))
-        {
-            return latebrake::GarageState::Definition(Id).UnlockCost;
-        }
-    }
-    return 0;
+    const int32 NextId = Garage.NextLockedVehicle();
+    return NextId >= 0 ? latebrake::GarageState::Definition(NextId).UnlockCost : 0;
 }
 
 void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
@@ -257,49 +252,68 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
-    for (int32 Offset = 1; Offset <= 3; ++Offset)
+    const int32 Previous = Garage.SelectedVehicle();
+    const int32 Next = Garage.NextOwnedVehicle();
+    if (Next == Previous)
     {
-        const int32 Candidate = (Garage.SelectedVehicle() + Offset) % 3;
-        if (Garage.Owns(Candidate) && Candidate != Garage.SelectedVehicle())
-        {
-            Garage.Select(Candidate);
-            ApplyGarageToPlayer();
-            SaveRecords();
-            return;
-        }
+        GarageFeedback = TEXT("Unlock another vehicle with Q first.");
+        return;
+    }
+    if (Garage.Select(Next))
+    {
+        ApplyGarageToPlayer();
+        GarageFeedback = FString::Printf(TEXT("Selected %s."), *GetSelectedVehicleName());
+        SaveRecords();
     }
 }
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
-    for (int32 Id = 1; Id < 3; ++Id)
+    const int32 Next = Garage.NextLockedVehicle();
+    if (Next < 0)
     {
-        if (!Garage.Owns(Id))
-        {
-            if (Garage.Unlock(Id))
-            {
-                SaveRecords();
-            }
-            return;
-        }
+        GarageFeedback = TEXT("Every prototype profile is already unlocked.");
+        return;
     }
+    const int32 Cost = latebrake::GarageState::Definition(Next).UnlockCost;
+    if (!Garage.Unlock(Next))
+    {
+        GarageFeedback = FString::Printf(TEXT("Need %d credits; currently %d."), Cost, Garage.Credits());
+        return;
+    }
+    GarageFeedback = FString::Printf(TEXT("Unlocked %s!"), UTF8_TO_TCHAR(latebrake::GarageState::Definition(Next).Name));
+    SaveRecords();
 }
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
+    const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
     if (Garage.Upgrade(latebrake::UpgradeKind::Engine))
     {
+        GarageFeedback = FString::Printf(TEXT("Engine upgraded to level %d."), Garage.EngineLevel());
         ApplyGarageToPlayer();
         SaveRecords();
+    }
+    else
+    {
+        GarageFeedback = Cost <= 0 ? TEXT("Engine is already fully upgraded.")
+            : FString::Printf(TEXT("Engine needs %d credits; have %d."), Cost, Garage.Credits());
     }
 }
 
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
+    const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);
     if (Garage.Upgrade(latebrake::UpgradeKind::Grip))
     {
+        GarageFeedback = FString::Printf(TEXT("Grip upgraded to level %d."), Garage.GripLevel());
         ApplyGarageToPlayer();
         SaveRecords();
+    }
+    else
+    {
+        GarageFeedback = Cost <= 0 ? TEXT("Grip is already fully upgraded.")
+            : FString::Printf(TEXT("Grip needs %d credits; have %d."), Cost, Garage.Credits());
     }
 }
 
@@ -390,10 +404,10 @@ void ALatebrakeRaceGameMode::LoadRecords()
     if (const ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
             UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser)))
     {
-        PersonalBestSeconds = FMath::IsFinite(Save->BestRaceSeconds) ? FMath::Max(0.f, Save->BestRaceSeconds) : 0.f;
-        PersonalBestLapSeconds = FMath::IsFinite(Save->BestLapSeconds) ? FMath::Max(0.f, Save->BestLapSeconds) : 0.f;
-        BestTimeAttackSeconds = FMath::IsFinite(Save->BestTimeAttackSeconds) ? FMath::Max(0.f, Save->BestTimeAttackSeconds) : 0.f;
-        CompletedRaceCount = FMath::Max(0, Save->CompletedRaces);
+        PersonalBestSeconds = latebrake::SanitizeBestTime(Save->BestRaceSeconds);
+        PersonalBestLapSeconds = latebrake::SanitizeBestTime(Save->BestLapSeconds);
+        BestTimeAttackSeconds = latebrake::SanitizeBestTime(Save->BestTimeAttackSeconds);
+        CompletedRaceCount = latebrake::SanitizeCompletedRaces(Save->CompletedRaces);
         // Old save slots have zero for fields added after v0.2.x.
         // Garage.Load repairs the owned mask and preserves the starter car.
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
