@@ -72,7 +72,7 @@ jobs:
               '',
               'Previous source preview: https://github.com/sanskarIN/latebrake/releases/tag/v0.2.0',
               'License: BSD-3-Clause for authored source, separate Epic terms for Unreal Engine.'
-            ].join('\\n');
+            ].join('\n');
 
             let tagRef;
             try {
