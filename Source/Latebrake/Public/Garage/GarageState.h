@@ -51,7 +51,10 @@ public:
     void Load(GarageSnapshot saved) noexcept
     {
         Data.Credits = std::max(0, saved.Credits);
-        Data.OwnedVehicleMask = (saved.OwnedVehicleMask & 7) | 1;
+        // Reject negative/corrupt masks: a negative value must not unlock
+        // every car through sign bits. Preserve known valid positive bits.
+        Data.OwnedVehicleMask = (saved.OwnedVehicleMask < 0)
+            ? 1 : ((saved.OwnedVehicleMask & 7) | 1);
         Data.SelectedVehicle = Owns(saved.SelectedVehicle) ? saved.SelectedVehicle : 0;
         Data.EngineLevel = std::clamp(saved.EngineLevel, 0, 3);
         Data.GripLevel = std::clamp(saved.GripLevel, 0, 3);
@@ -69,6 +72,37 @@ public:
         return IsVehicle(id) && (Data.OwnedVehicleMask & (1 << id)) != 0;
     }
 
+    int NextLockedVehicle() const noexcept
+    {
+        for (int id = 1; id < 3; ++id)
+        {
+            if (!Owns(id)) return id;
+        }
+        return -1;
+    }
+
+    int NextOwnedVehicle() const noexcept
+    {
+        for (int offset = 1; offset < 3; ++offset)
+        {
+            const int id = (Data.SelectedVehicle + offset) % 3;
+            if (Owns(id)) return id;
+        }
+        return Data.SelectedVehicle;
+    }
+
+    bool CanUnlock(int id) const noexcept
+    {
+        return IsVehicle(id) && !Owns(id) && Data.Credits >= Definition(id).UnlockCost;
+    }
+
+    int NextUpgradeCost(UpgradeKind kind) const noexcept
+    {
+        if (kind != UpgradeKind::Engine && kind != UpgradeKind::Grip) return 0;
+        const int level = kind == UpgradeKind::Engine ? Data.EngineLevel : Data.GripLevel;
+        return UpgradeCost(kind, level);
+    }
+
     static VehicleSpec Definition(int id) noexcept
     {
         return Vehicles[IsVehicle(id) ? id : 0];
@@ -82,7 +116,7 @@ public:
 
     bool Unlock(int id) noexcept
     {
-        if (!IsVehicle(id) || Owns(id) || Data.Credits < Definition(id).UnlockCost)
+        if (!CanUnlock(id))
             return false;
         Data.Credits -= Definition(id).UnlockCost;
         Data.OwnedVehicleMask |= 1 << id;
