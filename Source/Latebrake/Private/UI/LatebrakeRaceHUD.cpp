@@ -1,5 +1,6 @@
 #include "UI/LatebrakeRaceHUD.h"
 
+#include "UI/HudLayout.h"
 #include "Engine/Engine.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
@@ -11,7 +12,7 @@
 void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
-    if (!GEngine || !PlayerOwner)
+    if (!GEngine || !PlayerOwner || !Canvas)
     {
         return;
     }
@@ -23,101 +24,106 @@ void ALatebrakeRaceHUD::DrawHUD()
         return;
     }
 
-    const latebrake::RaceProgress& Race = Mode->GetRace();
-    const bool bTimeAttack = Mode->GetSelectedEvent() == latebrake::EventKind::TimeAttack;
+    const latebrake::HudLayout Layout = latebrake::CalculateHudLayout(
+        static_cast<double>(Canvas->SizeX), static_cast<double>(Canvas->SizeY));
+    bool bCompact = Layout.Compact;
+#if PLATFORM_ANDROID
+    bCompact = true;
+#endif
+
     const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
     const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);
+    const float Scale = static_cast<float>(Layout.Scale);
+    const float Left = static_cast<float>(Layout.Left);
+    const float Step = static_cast<float>(Layout.LineHeight);
+    float Y = static_cast<float>(Layout.Top);
 
+    const auto Line = [&](const FString& Content, const FLinearColor& Color, bool bHeading = false)
+    {
+        DrawText(Content, Color, Left, Y,
+            bHeading ? GEngine->GetMediumFont() : GEngine->GetSmallFont(),
+            Scale * (bHeading ? 1.08f : 1.0f));
+        Y += Step;
+    };
+
+    const latebrake::RaceProgress& Race = Mode->GetRace();
+    const bool bTimeAttack = Mode->GetSelectedEvent() == latebrake::EventKind::TimeAttack;
     const int32 DisplayLap = FMath::Min(Race.GetCompletedLaps() + 1, Race.GetRequiredLaps());
-    const double Elapsed = Race.GetElapsedSeconds();
+    const double Elapsed = FMath::Clamp(Race.GetElapsedSeconds(), 0.0, 3599999.0);
     const int32 Minutes = FMath::FloorToInt(Elapsed / 60.0);
     const double Seconds = Elapsed - static_cast<double>(Minutes) * 60.0;
 
-    DrawText(TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"), Accent, 35.f, 30.f, GEngine->GetMediumFont(), 1.10f);
-    DrawText(bTimeAttack ? TEXT("EVENT  TIME ATTACK") : TEXT("EVENT  CIRCUIT RACE"),
-        Accent, 35.f, 56.f, GEngine->GetSmallFont());
-    DrawText(FString::Printf(TEXT("SPEED  %03.0f km/h"), Car->GetSpeedKmH()), Primary, 35.f, 72.f, GEngine->GetMediumFont());
-    DrawText(FString::Printf(TEXT("LAP  %d / %d"), DisplayLap, Race.GetRequiredLaps()),
-        Primary, 35.f, 108.f, GEngine->GetMediumFont());
-    DrawText(FString::Printf(TEXT("NEXT GATE  %d / %d"), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()),
-        Primary, 35.f, 142.f, GEngine->GetMediumFont());
-    DrawText(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds),
-        Accent, 35.f, 176.f, GEngine->GetMediumFont());
-    DrawText(FString::Printf(TEXT("LAP TIME  %.2fs"), Race.GetCurrentLapSeconds()),
-        Primary, 35.f, 210.f, GEngine->GetSmallFont());
-    DrawText(FString::Printf(TEXT("LAST LAP  %.2fs    FASTEST THIS RACE  %.2fs"),
-        Race.GetLastLapSeconds(), Race.GetBestLapSeconds()),
-        Primary, 35.f, 232.f, GEngine->GetSmallFont());
-    DrawText(FString::Printf(TEXT("LAST SPLIT  %.2fs"), Race.GetLastSectorSeconds()),
-        Primary, 35.f, 254.f, GEngine->GetSmallFont());
+    Line(TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"), Accent, true);
+    Line(bTimeAttack ? TEXT("TIME ATTACK") : TEXT("CIRCUIT RACE"), Accent);
+    Line(FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
+    Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
+        DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
+    Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+
+    if (!bCompact)
+    {
+        Line(FString::Printf(TEXT("CURRENT LAP  %.2fs  |  LAST  %.2fs"),
+            Race.GetCurrentLapSeconds(), Race.GetLastLapSeconds()), Primary);
+        Line(FString::Printf(TEXT("FASTEST LAP  %.2fs  |  LAST SPLIT  %.2fs"),
+            Race.GetBestLapSeconds(), Race.GetLastSectorSeconds()), Primary);
+        if (Mode->GetPersonalBestLapSeconds() > 0.f)
+        {
+            Line(FString::Printf(TEXT("ALL-TIME FASTEST LAP  %.2fs"),
+                Mode->GetPersonalBestLapSeconds()), Accent);
+        }
+        if (!bTimeAttack)
+        {
+            Line(Mode->HasRival()
+                ? FString::Printf(TEXT("RIVAL ROUTE  %d LAPS | RECOVERIES  %d%s"),
+                    Mode->GetRivalApproximateLaps(), Mode->GetRivalRecoveryCount(),
+                    Mode->HasRivalFinishedRoute() ? TEXT(" | DONE") : TEXT(""))
+                : FString(TEXT("RIVAL UNAVAILABLE")), Primary);
+        }
+    }
+
     if (Mode->GetEventBestSeconds() > 0.f)
     {
-        DrawText(FString::Printf(TEXT("BEST RACE  %.2fs"), Mode->GetEventBestSeconds()),
-            Primary, 35.f, 275.f, GEngine->GetSmallFont());
+        Line(FString::Printf(TEXT("BEST EVENT  %.2fs"), Mode->GetEventBestSeconds()), Primary);
     }
-    if (Mode->GetPersonalBestLapSeconds() > 0.f)
+    Line(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
+        ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"), Primary);
+    Line(FString::Printf(TEXT("GARAGE  %s"), *Mode->GetSelectedVehicleName()), Accent);
+    Line(FString::Printf(TEXT("ENGINE %d/3 (NEXT %d) | GRIP %d/3 (NEXT %d)"),
+        Mode->GetEngineUpgradeLevel(), Mode->GetNextEngineUpgradeCost(),
+        Mode->GetGripUpgradeLevel(), Mode->GetNextGripUpgradeCost()), Primary);
+    if (!bCompact)
     {
-        DrawText(FString::Printf(TEXT("ALL-TIME BEST LAP  %.2fs"), Mode->GetPersonalBestLapSeconds()),
-            Accent, 35.f, 292.f, GEngine->GetSmallFont());
+        const int32 Cost = Mode->GetNextLockedVehicleCost();
+        Line(Cost > 0
+            ? FString::Printf(TEXT("NEXT CAR UNLOCK  %d CREDITS"), Cost)
+            : FString(TEXT("ALL PROTOTYPE PROFILES UNLOCKED")), Primary);
     }
+    Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
+    Line(Mode->GetGarageFeedback(), Primary);
 
-    if (!bTimeAttack)
-    {
-        if (Mode->HasRival())
-        {
-            DrawText(FString::Printf(TEXT("RIVAL WAYPOINT LAPS  %d / %d  |  RECOVERIES  %d%s"),
-                Mode->GetRivalApproximateLaps(), Race.GetRequiredLaps(),
-                Mode->GetRivalRecoveryCount(),
-                Mode->HasRivalFinishedRoute() ? TEXT("  |  ROUTE DONE") : TEXT("")),
-                Primary, 35.f, 365.f, GEngine->GetSmallFont());
-        }
-        else
-        {
-            DrawText(TEXT("RIVAL UNAVAILABLE"), Primary, 35.f, 365.f, GEngine->GetSmallFont());
-        }
-    }
-    DrawText(FString::Printf(TEXT("GARAGE  %s  |  VEHICLE %d / 3"),
-        *Mode->GetSelectedVehicleName(), Mode->GetSelectedVehicleId() + 1),
-        Accent, 35.f, 393.f, GEngine->GetSmallFont());
-    DrawText(FString::Printf(TEXT("TUNING  ENGINE %d/3  |  GRIP %d/3"),
-        Mode->GetEngineUpgradeLevel(), Mode->GetGripUpgradeLevel()),
-        Primary, 35.f, 414.f, GEngine->GetSmallFont());
-    if (Mode->GetNextLockedVehicleCost() > 0)
-    {
-        DrawText(FString::Printf(TEXT("NEXT UNLOCK  %d CREDITS"),
-            Mode->GetNextLockedVehicleCost()),
-            Primary, 35.f, 435.f, GEngine->GetSmallFont());
-    }
-    else
-    {
-        DrawText(TEXT("ALL VEHICLE PROFILES UNLOCKED"),
-            Primary, 35.f, 435.f, GEngine->GetSmallFont());
-    }
-    DrawText(FString::Printf(TEXT("EARNED CREDITS  %d"), Mode->GetTotalCredits()),
-        Accent, 35.f, 458.f, GEngine->GetSmallFont());
     if (Race.IsFinished())
     {
-        DrawText(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"), Mode->GetLastRaceCredits()),
-            Accent, 35.f, 480.f, GEngine->GetSmallFont());
+        Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
+            Mode->GetLastRaceCredits()), Accent);
     }
-
-    DrawText(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"),
-        Primary, 35.f, 317.f, GEngine->GetSmallFont());
-
     if (UGameplayStatics::IsGamePaused(this))
     {
-        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 530.f, GEngine->GetLargeFont());
+        Line(TEXT("PAUSED  -  ESC TO RESUME"), Accent, true);
     }
     else if (Race.IsFinished())
     {
-        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 530.f, GEngine->GetLargeFont(), 1.15f);
+        Line(TEXT("FINISHED! PRESS T TO RACE AGAIN"), Accent, true);
     }
 
+    // Keep controls visible without overlapping the main telemetry panel.
+    const float FooterY = FMath::Max(Y + 3.f, Canvas->SizeY - 28.f * Scale);
 #if PLATFORM_ANDROID
-    DrawText(TEXT("LEFT HALF: STEER   RIGHT UPPER: GAS   RIGHT LOWER: BRAKE"),
-        Accent, 35.f, Canvas->SizeY - 80.f, GEngine->GetSmallFont(), 0.82f);
+    DrawText(TEXT("TOUCH: LEFT STEER  |  RIGHT TOP GAS  |  RIGHT BOTTOM BRAKE"),
+        Accent, Left, FooterY, GEngine->GetSmallFont(), Scale);
 #else
-    DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause  3/4 event  Q unlock  E car  U/I tuning"),
-        Primary, 35.f, Canvas->SizeY - 45.f, GEngine->GetSmallFont(), 0.82f);
+    DrawText(bCompact
+        ? TEXT("W/S GAS  A/D STEER  SPACE BRAKE  T RESTART")
+        : TEXT("W/S DRIVE  A/D STEER  SPACE BRAKE  R RECOVER  T RESTART  C CAMERA  1/2 HANDLING  3/4 EVENT  Q/E GARAGE  U/I TUNING"),
+        Primary, Left, FooterY, GEngine->GetSmallFont(), Scale * (bCompact ? 0.90f : 0.78f));
 #endif
 }
