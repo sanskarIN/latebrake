@@ -12,6 +12,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
+#include "Progression/RecordValidation.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
 #include <limits>
@@ -164,7 +165,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
     if (Race.PassCheckpoint(CheckpointIndex) && Race.IsFinished())
     {
-        ++CompletedRaceCount;
+        CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
         const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
         float& EventRecord = (SelectedEvent == latebrake::EventKind::TimeAttack)
             ? BestTimeAttackSeconds : PersonalBestSeconds;
@@ -403,10 +404,10 @@ void ALatebrakeRaceGameMode::LoadRecords()
     if (const ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
             UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser)))
     {
-        PersonalBestSeconds = FMath::IsFinite(Save->BestRaceSeconds) ? FMath::Max(0.f, Save->BestRaceSeconds) : 0.f;
-        PersonalBestLapSeconds = FMath::IsFinite(Save->BestLapSeconds) ? FMath::Max(0.f, Save->BestLapSeconds) : 0.f;
-        BestTimeAttackSeconds = FMath::IsFinite(Save->BestTimeAttackSeconds) ? FMath::Max(0.f, Save->BestTimeAttackSeconds) : 0.f;
-        CompletedRaceCount = FMath::Max(0, Save->CompletedRaces);
+        PersonalBestSeconds = latebrake::SanitizeBestTime(Save->BestRaceSeconds);
+        PersonalBestLapSeconds = latebrake::SanitizeBestTime(Save->BestLapSeconds);
+        BestTimeAttackSeconds = latebrake::SanitizeBestTime(Save->BestTimeAttackSeconds);
+        CompletedRaceCount = latebrake::SanitizeCompletedRaces(Save->CompletedRaces);
         // Old save slots have zero for fields added after v0.2.x.
         // Garage.Load repairs the owned mask and preserves the starter car.
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
