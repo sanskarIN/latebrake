@@ -34,6 +34,8 @@ public:
 
     float GetSpeedKmH() const;
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
+    void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
+    int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
 
     UFUNCTION(BlueprintCallable, Category = "Latebrake|Vehicle")
@@ -79,12 +81,20 @@ private:
     void ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location);
     void SelectCircuit();
     void SelectTimeAttack();
+    void NextGarageVehicle();
+    void UnlockGarageVehicle();
+    void UpgradeGarageEngine();
+    void UpgradeGarageGrip();
     void SelectArcade();
     void SelectSimulation();
 
     float Throttle = 0.f;
     float Steering = 0.f;
     float SmoothedSteering = 0.f;
+    float GarageAcceleration = 1.f;
+    float GarageGrip = 1.f;
+    float GarageTopSpeed = 1.f;
+    int32 GarageVehicleId = 0;
     bool bBraking = false;
     bool bNearCamera = false;
     int32 SteeringFinger = INDEX_NONE;
