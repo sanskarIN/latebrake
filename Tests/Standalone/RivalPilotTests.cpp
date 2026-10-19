@@ -54,6 +54,15 @@ int main()
     const auto noRadius = PlanRivalTurn(0.0, 0.0, 0.0, 500.0, 3000.0, 0.0, 0.0);
     Require(noRadius.Brake, "invalid waypoint arrival radius rejected");
 
+    const auto anticipatory = PlanRivalTurn(0.0, 0.0, 0.0, 2900.0, 650.0, 0.0);
+    Require(anticipatory.Brake && anticipatory.Throttle == 0.0,
+            "high-speed approach brakes before a waypoint");
+    const auto steadyApproach = PlanRivalTurn(0.0, 0.0, 0.0, 850.0, 650.0, 0.0);
+    Require(!steadyApproach.Brake, "slow controlled waypoint approach does not overbrake");
+    const auto invalidSpeed = PlanRivalTurn(0.0, 0.0, 0.0, -2.0, 3000.0, 0.0);
+    Require(invalidSpeed.Brake && invalidSpeed.Throttle == 0.0,
+            "negative speed sensor fails safely");
+
     std::cout << "Rival pilot logic tests passed.\n";
     return EXIT_SUCCESS;
 }
