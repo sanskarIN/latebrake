@@ -23,4 +23,7 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
     int32 CompletedRaces = 0;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
+    int32 TotalCredits = 0;
 };

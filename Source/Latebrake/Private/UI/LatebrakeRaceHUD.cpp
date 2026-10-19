@@ -61,16 +61,24 @@ void ALatebrakeRaceHUD::DrawHUD()
             Accent, 35.f, 292.f, GEngine->GetSmallFont());
     }
 
+    DrawText(FString::Printf(TEXT("EARNED CREDITS  %d"), Mode->GetTotalCredits()),
+        Accent, 35.f, 343.f, GEngine->GetSmallFont());
+    if (Race.IsFinished())
+    {
+        DrawText(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"), Mode->GetLastRaceCredits()),
+            Accent, 35.f, 388.f, GEngine->GetSmallFont());
+    }
+
     DrawText(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"),
         Primary, 35.f, 317.f, GEngine->GetSmallFont());
 
     if (UGameplayStatics::IsGamePaused(this))
     {
-        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 365.f, GEngine->GetLargeFont());
+        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 415.f, GEngine->GetLargeFont());
     }
     else if (Race.IsFinished())
     {
-        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 365.f, GEngine->GetLargeFont(), 1.15f);
+        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 415.f, GEngine->GetLargeFont(), 1.15f);
     }
 
 #if PLATFORM_ANDROID

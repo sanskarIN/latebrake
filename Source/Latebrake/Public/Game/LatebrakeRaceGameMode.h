@@ -36,6 +36,8 @@ public:
     float GetPersonalBestSeconds() const { return PersonalBestSeconds; }
     float GetPersonalBestLapSeconds() const { return PersonalBestLapSeconds; }
     int32 GetCompletedRaceCount() const { return CompletedRaceCount; }
+    int32 GetTotalCredits() const { return TotalCredits; }
+    int32 GetLastRaceCredits() const { return LastRaceCredits; }
 
     static FVector GetStartPosition();
     static FRotator GetStartRotation();
@@ -54,6 +56,9 @@ private:
     float BestTimeAttackSeconds = 0.f;
     float PersonalBestLapSeconds = 0.f;
     int32 CompletedRaceCount = 0;
+    int32 TotalCredits = 0;
+    int32 LastRaceCredits = 0;
+    int32 RecoveriesThisRace = 0;
 
     UPROPERTY(Transient)
     TObjectPtr<APlayerStart> RuntimePlayerStart;
