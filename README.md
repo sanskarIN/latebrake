@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Development status: v0.2.1 source-preview development; v0.1.0, v0.1.1 and v0.2.0 source-only pre-releases have been published.** The repository contains a coded starter driving/racing experience, but a full UE 5.8 editor compile, in-engine playtest, Windows package, and Android package have **not** been verified. Do not describe it as a finished or downloadable game yet.
+> **Development status: v0.3.0 source-preview development; v0.1.0, v0.1.1, v0.2.0 and v0.2.1 source-only pre-releases have been published.** The repository contains a coded starter driving/racing experience, but a full UE 5.8 editor compile, in-engine playtest, Windows package, and Android package have **not** been verified. Do not describe it as a finished or downloadable game yet.
 
 ## What's in source today?
 
@@ -13,6 +13,7 @@
 - Locally saved race best times (separate circuit and time attack), fastest lap, earned offline credits and completion counter.
 - Two racing event definitions, experimental one-car circuit AI and reward rules.
 - v0.2.1 improvements: AI approximate route-lap tracking, recovery after sustained stalls, anticipatory waypoint braking, live AI diagnostic telemetry and shared input steering smoothing.
+- v0.3.0: three fictional garage tuning profiles, offline unlocks and upgrades with SaveGame persistence, shortcuts, and prototype cabin silhouettes.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
 
 The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, career menus, or Android touch interfaces yet.
@@ -40,11 +41,13 @@ The game mode is selected via `Config/DefaultEngine.ini`, which points at a buil
 | 1 / 2 | Arcade / simulation-inspired handling |
 | Esc | Pause or resume |
 | 3 / 4 | Circuit Race / Time Attack (restarts current race) |
+| Q / E | Unlock next vehicle / select next owned vehicle |
+| U / I | Upgrade engine / grip using in-game earned credits |
 | Gamepad | Triggers, left stick, face buttons and shoulder button (see input config) |
 
 Experimental touch bindings: drag in the left half to steer, hold upper-right to accelerate, hold lower-right to brake. **No Android build or touch behavior has been verified**, and accessible visual touch controls still need work.
 
-## Test the portable race, pilot and rewards logic
+## Test the portable race, rival, rewards and garage logic
 
 ```sh
 cmake -S Tests/Standalone -B Tests/Standalone/build
@@ -67,7 +70,7 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Development and releases
 
-**v0.1.0**, **v0.1.1**, and **v0.2.0** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.2.1** is the next source-preview milestone; see [experimental AI and events](docs/AI_AND_EVENTS.md), [v0.2.1 release notes](docs/releases/v0.2.1.md) and [v0.2.0 history](docs/releases/v0.2.0.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
+**v0.1.0**, **v0.1.1**, **v0.2.0**, and **v0.2.1** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.3.0** adds an experimental [garage and tuning foundation](docs/GARAGE.md); see [v0.3.0 release notes](docs/releases/v0.3.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
 
 ## License and contributions
 

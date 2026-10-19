@@ -67,6 +67,7 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
     Race.Advance(static_cast<double>(DeltaSeconds));
+    ApplyGarageToPlayer();
 }
 
 AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label, const FVector& Position,
@@ -179,8 +180,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         }
         LastRaceCredits = latebrake::CalculateRaceCredits(
             SelectedEvent, Race.GetElapsedSeconds(), RecoveriesThisRace);
-        const int32 Capacity = std::numeric_limits<int32>::max() - TotalCredits;
-        TotalCredits += FMath::Min(LastRaceCredits, Capacity);
+        Garage.EarnCredits(LastRaceCredits);
         SaveRecords();
     }
 }
@@ -223,6 +223,86 @@ bool ALatebrakeRaceGameMode::HasRivalFinishedRoute() const
     return IsValid(RivalCar) && RivalCar->HasCompletedRoute();
 }
 
+FString ALatebrakeRaceGameMode::GetSelectedVehicleName() const
+{
+    return FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Garage.SelectedVehicle()).Name));
+}
+
+int32 ALatebrakeRaceGameMode::GetNextLockedVehicleCost() const
+{
+    for (int32 Id = 1; Id < 3; ++Id)
+    {
+        if (!Garage.Owns(Id))
+        {
+            return latebrake::GarageState::Definition(Id).UnlockCost;
+        }
+    }
+    return 0;
+}
+
+void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
+{
+    ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+    if (!IsValid(Car))
+    {
+        return;
+    }
+    const latebrake::VehiclePerformance Performance = Garage.Performance();
+    Car->SetGarageTuning(
+        static_cast<float>(Performance.Acceleration),
+        static_cast<float>(Performance.Grip),
+        static_cast<float>(Performance.TopSpeed),
+        Garage.SelectedVehicle());
+}
+
+void ALatebrakeRaceGameMode::GarageNextVehicle()
+{
+    for (int32 Offset = 1; Offset <= 3; ++Offset)
+    {
+        const int32 Candidate = (Garage.SelectedVehicle() + Offset) % 3;
+        if (Garage.Owns(Candidate) && Candidate != Garage.SelectedVehicle())
+        {
+            Garage.Select(Candidate);
+            ApplyGarageToPlayer();
+            SaveRecords();
+            return;
+        }
+    }
+}
+
+void ALatebrakeRaceGameMode::GarageUnlockNext()
+{
+    for (int32 Id = 1; Id < 3; ++Id)
+    {
+        if (!Garage.Owns(Id))
+        {
+            if (Garage.Unlock(Id))
+            {
+                SaveRecords();
+            }
+            return;
+        }
+    }
+}
+
+void ALatebrakeRaceGameMode::GarageUpgradeEngine()
+{
+    if (Garage.Upgrade(latebrake::UpgradeKind::Engine))
+    {
+        ApplyGarageToPlayer();
+        SaveRecords();
+    }
+}
+
+void ALatebrakeRaceGameMode::GarageUpgradeGrip()
+{
+    if (Garage.Upgrade(latebrake::UpgradeKind::Grip))
+    {
+        ApplyGarageToPlayer();
+        SaveRecords();
+    }
+}
+
 void ALatebrakeRaceGameMode::RefreshRival()
 {
     const bool bNeedsRival = latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
@@ -258,6 +338,7 @@ void ALatebrakeRaceGameMode::RefreshRival()
 void ALatebrakeRaceGameMode::RestartRace()
 {
     Race.Reset();
+    ApplyGarageToPlayer();
     LastRaceCredits = 0;
     RecoveriesThisRace = 0;
     if (ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
@@ -313,7 +394,11 @@ void ALatebrakeRaceGameMode::LoadRecords()
         PersonalBestLapSeconds = FMath::IsFinite(Save->BestLapSeconds) ? FMath::Max(0.f, Save->BestLapSeconds) : 0.f;
         BestTimeAttackSeconds = FMath::IsFinite(Save->BestTimeAttackSeconds) ? FMath::Max(0.f, Save->BestTimeAttackSeconds) : 0.f;
         CompletedRaceCount = FMath::Max(0, Save->CompletedRaces);
-        TotalCredits = FMath::Max(0, Save->TotalCredits);
+        // Old save slots have zero for fields added after v0.2.x.
+        // Garage.Load repairs the owned mask and preserves the starter car.
+        Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
+                     Save->SelectedVehicleId, Save->EngineUpgradeLevel,
+                     Save->GripUpgradeLevel});
     }
 }
 
@@ -329,7 +414,12 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->BestLapSeconds = PersonalBestLapSeconds;
     Save->BestTimeAttackSeconds = BestTimeAttackSeconds;
     Save->CompletedRaces = CompletedRaceCount;
-    Save->TotalCredits = TotalCredits;
+    const latebrake::GarageSnapshot Profile = Garage.Snapshot();
+    Save->TotalCredits = Profile.Credits;
+    Save->OwnedVehicleMask = Profile.OwnedVehicleMask;
+    Save->SelectedVehicleId = Profile.SelectedVehicle;
+    Save->EngineUpgradeLevel = Profile.EngineLevel;
+    Save->GripUpgradeLevel = Profile.GripLevel;
     if (!UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser))
     {
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: failed to persist race results"));

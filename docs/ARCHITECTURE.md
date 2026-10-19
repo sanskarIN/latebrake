@@ -38,3 +38,12 @@ The checkpoint rules are intentionally isolated from Unreal so CI compiles the s
 - `ALatebrakeCheckpoint` checks the overlapping pawn is the real local-player pawn, not a rival, before crediting player race progress.
 - `latebrake::RaceRewards` computes bounded nonfinancial offline credits, awarded once when the player's race transitions to finished. The SaveGame record stores accumulated credits.
 - The rival is **experimental** and has no validated standings, collision avoidance, overtaking or synced race results.
+
+## v0.3.0 garage domain
+
+- `latebrake::GarageState` is an Unreal-independent C++20 domain model: immutable fictional vehicle definitions, owned bitmask, bounded credits, deterministic upgrades, validated snapshots and performance multipliers.
+- `ALatebrakeRaceGameMode` is responsible for persistence and player-only application of garage tuning. Event completion feeds the garage's earned balance.
+- `ALatebrakeCarPawn` accepts garage performance factors, restricting nonfinite inputs and applying them to its force-based controller. The prototype cabin silhouette is derived from a spec; no third-party car model is added.
+- `ULatebrakePlayerSave` preserves the existing credits field and introduces optional garage properties with safe old-profile defaults.
+
+No network payments, real-money entitlements or finalized garage UI are implemented.

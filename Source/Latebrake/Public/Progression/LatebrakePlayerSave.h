@@ -26,4 +26,18 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Progression")
     int32 TotalCredits = 0;
+
+    // Added in v0.3.0. Legacy SaveGame objects deserialize as zero and
+    // GarageState::Load repairs the missing starter-vehicle ownership bit.
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
+    int32 OwnedVehicleMask = 1;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
+    int32 SelectedVehicleId = 0;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
+    int32 EngineUpgradeLevel = 0;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
+    int32 GripUpgradeLevel = 0;
 };

@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/RaceEvents.h"
+#include "Garage/GarageState.h"
 #include "LatebrakeRaceGameMode.generated.h"
 
 class AController;
@@ -40,7 +41,16 @@ public:
     float GetPersonalBestSeconds() const { return PersonalBestSeconds; }
     float GetPersonalBestLapSeconds() const { return PersonalBestLapSeconds; }
     int32 GetCompletedRaceCount() const { return CompletedRaceCount; }
-    int32 GetTotalCredits() const { return TotalCredits; }
+    int32 GetTotalCredits() const { return Garage.Credits(); }
+    int32 GetSelectedVehicleId() const { return Garage.SelectedVehicle(); }
+    FString GetSelectedVehicleName() const;
+    int32 GetEngineUpgradeLevel() const { return Garage.EngineLevel(); }
+    int32 GetGripUpgradeLevel() const { return Garage.GripLevel(); }
+    int32 GetNextLockedVehicleCost() const;
+    void GarageNextVehicle();
+    void GarageUnlockNext();
+    void GarageUpgradeEngine();
+    void GarageUpgradeGrip();
     int32 GetLastRaceCredits() const { return LastRaceCredits; }
 
     static FVector GetStartPosition();
@@ -53,6 +63,7 @@ private:
     void LoadRecords();
     void SaveRecords();
     void RefreshRival();
+    void ApplyGarageToPlayer();
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
     latebrake::RaceProgress Race{4, 3};
@@ -60,7 +71,7 @@ private:
     float BestTimeAttackSeconds = 0.f;
     float PersonalBestLapSeconds = 0.f;
     int32 CompletedRaceCount = 0;
-    int32 TotalCredits = 0;
+    latebrake::GarageState Garage;
     int32 LastRaceCredits = 0;
     int32 RecoveriesThisRace = 0;
 

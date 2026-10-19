@@ -1,5 +1,6 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
+#include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
@@ -104,6 +105,28 @@ void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering
     bBraking = bInBrake;
 }
 
+void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
+                                     int32 VehicleId)
+{
+    // The garage uses bounded, engine-independent multipliers; defend the
+    // physics integration from corrupt or nonfinite gameplay state anyway.
+    GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
+    GarageGrip = FMath::IsFinite(Grip) ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
+    GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
+    const int32 SafeId = FMath::Clamp(VehicleId, 0, 2);
+    if (SafeId != GarageVehicleId && IsValid(Cabin))
+    {
+        // Engine-built-in primitives only; distinguish prototype silhouettes
+        // without introducing third-party vehicle meshes or other assets.
+        const latebrake::VehicleSpec Spec = latebrake::GarageState::Definition(SafeId);
+        Cabin->SetRelativeScale3D(FVector(
+            (1.75f / 3.8f) * Spec.CabinLength,
+            (1.48f / 1.8f),
+            (0.55f / 0.65f) * Spec.CabinHeight));
+    }
+    GarageVehicleId = SafeId;
+}
+
 void ALatebrakeCarPawn::ThrottleInput(float Value)
 {
     Throttle = FMath::Clamp(Value, -1.f, 1.f);
@@ -140,9 +163,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
         bArcade ? 3.8 : 2.4));
     const bool bEffectiveBraking = bBraking || bTouchBrake;
-    const float DriveForce = bArcade ? 1500000.f : 1030000.f;
-    const float MaxSpeed = bArcade ? 6500.f : 5400.f; // cm/s
-    const float GripRate = bArcade ? 8.5f : 4.25f;
+    const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
+    const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
+    const float GripRate = (bArcade ? 8.5f : 4.25f) * GarageGrip;
     const float BrakeRate = bEffectiveBraking ? 7.f : 0.55f;
 
     const FVector Forward = GetActorForwardVector();
@@ -308,6 +331,38 @@ void ALatebrakeCarPawn::SelectTimeAttack()
     }
 }
 
+void ALatebrakeCarPawn::NextGarageVehicle()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->GarageNextVehicle();
+    }
+}
+
+void ALatebrakeCarPawn::UnlockGarageVehicle()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->GarageUnlockNext();
+    }
+}
+
+void ALatebrakeCarPawn::UpgradeGarageEngine()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->GarageUpgradeEngine();
+    }
+}
+
+void ALatebrakeCarPawn::UpgradeGarageGrip()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->GarageUpgradeGrip();
+    }
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -337,6 +392,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PauseAction.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("CircuitEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectCircuit);
     PlayerInputComponent->BindAction(TEXT("TimeAttackEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectTimeAttack);
+    PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
+    PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
+    PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
+    PlayerInputComponent->BindAction(TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }
