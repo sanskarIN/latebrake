@@ -76,12 +76,29 @@ void ALatebrakeRaceHUD::DrawHUD()
             DrawText(TEXT("RIVAL UNAVAILABLE"), Primary, 35.f, 365.f, GEngine->GetSmallFont());
         }
     }
+    DrawText(FString::Printf(TEXT("GARAGE  %s  |  VEHICLE %d / 3"),
+        *Mode->GetSelectedVehicleName(), Mode->GetSelectedVehicleId() + 1),
+        Accent, 35.f, 393.f, GEngine->GetSmallFont());
+    DrawText(FString::Printf(TEXT("TUNING  ENGINE %d/3  |  GRIP %d/3"),
+        Mode->GetEngineUpgradeLevel(), Mode->GetGripUpgradeLevel()),
+        Primary, 35.f, 414.f, GEngine->GetSmallFont());
+    if (Mode->GetNextLockedVehicleCost() > 0)
+    {
+        DrawText(FString::Printf(TEXT("NEXT UNLOCK  %d CREDITS"),
+            Mode->GetNextLockedVehicleCost()),
+            Primary, 35.f, 435.f, GEngine->GetSmallFont());
+    }
+    else
+    {
+        DrawText(TEXT("ALL VEHICLE PROFILES UNLOCKED"),
+            Primary, 35.f, 435.f, GEngine->GetSmallFont());
+    }
     DrawText(FString::Printf(TEXT("EARNED CREDITS  %d"), Mode->GetTotalCredits()),
-        Accent, 35.f, 343.f, GEngine->GetSmallFont());
+        Accent, 35.f, 458.f, GEngine->GetSmallFont());
     if (Race.IsFinished())
     {
         DrawText(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"), Mode->GetLastRaceCredits()),
-            Accent, 35.f, 388.f, GEngine->GetSmallFont());
+            Accent, 35.f, 480.f, GEngine->GetSmallFont());
     }
 
     DrawText(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"),
@@ -89,18 +106,18 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     if (UGameplayStatics::IsGamePaused(this))
     {
-        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 440.f, GEngine->GetLargeFont());
+        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 530.f, GEngine->GetLargeFont());
     }
     else if (Race.IsFinished())
     {
-        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 440.f, GEngine->GetLargeFont(), 1.15f);
+        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 530.f, GEngine->GetLargeFont(), 1.15f);
     }
 
 #if PLATFORM_ANDROID
     DrawText(TEXT("LEFT HALF: STEER   RIGHT UPPER: GAS   RIGHT LOWER: BRAKE"),
         Accent, 35.f, Canvas->SizeY - 80.f, GEngine->GetSmallFont(), 0.82f);
 #else
-    DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause  3/4 event"),
+    DrawText(TEXT("W/S drive  A/D steer  SPACE brake  R recover  T restart  C camera  1/2 handling  ESC pause  3/4 event  Q unlock  E car  U/I tuning"),
         Primary, 35.f, Canvas->SizeY - 45.f, GEngine->GetSmallFont(), 0.82f);
 #endif
 }
