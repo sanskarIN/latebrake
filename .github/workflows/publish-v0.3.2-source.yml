@@ -1,0 +1,109 @@
+name: Publish v0.3.2 control-safety source pre-release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v0.3.2-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: latebrake-v0.3.2-source-preview
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Test portable C++20 / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure C++20 tests
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      - name: Compile source tests
+        run: cmake --build Tests/Standalone/build --config Release --parallel
+      - name: Execute racing, AI and rewards tests
+        run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
+
+  publish:
+    name: Publish clearly labeled SOURCE-ONLY pre-release
+    needs: [tests]
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish source revision as v0.3.2 pre-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const tag = 'v0.3.2';
+            const sha = context.sha;
+            const expectedParent = 'v0.3.1';
+            await github.rest.repos.getReleaseByTag({owner, repo, tag: expectedParent});
+            const notes = [
+              '## Latebrake v0.3.2 — Developer source-only pre-release',
+              '',
+              '**NOT A PLAYABLE GAME. No verified Win64 executable, Android APK/AAB or Linux package is included.**',
+              'GitHub source ZIP/tar downloads contain Unreal C++ source only. Licensed Unreal Engine 5.8 editor/UHT compilation and real gameplay, device and save tests have not been performed.',
+              '',
+              '### Improvements in this source revision',
+              '- Numeric sanitation for keyboard/gamepad, experimental touch and autonomous driving inputs.',
+              '- Smoothed throttle transitions with immediate braking; pause/recovery clear held inputs.',
+              '- Reject nonfinite physics frame times, velocity and invalid touch coordinates.',
+              '- Cached player garage tuning to avoid recalculation when only credits/owned unselected profiles change.',
+              '- Visible HUD warning if local SaveGame progress cannot be persisted.',
+              '- Portable C++20 tests for input bounds, overflow cases, throttle smoothing and garage tuning cache keys.',
+              '',
+              '### Test gate',
+              '- The release workflow compiled and ran portable CMake/CTest on Windows, Ubuntu and macOS against this exact merge revision before publishing.',
+              '- This does NOT prove Unreal game-class compilation, functional playable racing, mobile control behavior or SaveGame reliability.',
+              '',
+              '### Outstanding',
+              '- Real UE 5.8 editor and UHT compilation, authored cookable level and finished assets, Win64/Android package creation, gameplay/physics and real device testing.',
+              '- See https://github.com/sanskarIN/latebrake/issues/2 and docs/releases/v0.3.2.md for qualification gaps.',
+              '',
+              'Authored source BSD-3-Clause. Unreal Engine and its built-in assets follow Epic terms.'
+            ].join('\n');
+
+            let tagRef;
+            try {
+              const existingTag = await github.rest.git.getRef({owner, repo, ref: 'tags/' + tag});
+              tagRef = existingTag.data.object;
+              if (tagRef.type !== 'commit' || tagRef.sha !== sha) {
+                throw new Error('Tag already exists at a different revision: refusing to retag.');
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({owner, repo, ref: 'refs/tags/' + tag, sha});
+              core.info('Created ' + tag + ' at ' + sha);
+            }
+
+            let release;
+            try {
+              release = (await github.rest.repos.getReleaseByTag({owner, repo, tag})).data;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              release = (await github.rest.repos.createRelease({
+                owner, repo,
+                tag_name: tag,
+                target_commitish: sha,
+                name: 'Latebrake v0.3.2 — Control Safety & Garage Reliability (Source Pre-release)',
+                body: notes,
+                draft: false,
+                prerelease: true,
+                make_latest: 'false',
+                generate_release_notes: false
+              })).data;
+            }
+            if (release.draft || !release.prerelease || release.tag_name !== tag) {
+              throw new Error('v0.3.2 must be published as a non-draft source-only pre-release.');
+            }
+            core.notice('Published/verified: ' + release.html_url + ' @ ' + sha);
