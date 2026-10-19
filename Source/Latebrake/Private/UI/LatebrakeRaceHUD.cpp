@@ -61,6 +61,21 @@ void ALatebrakeRaceHUD::DrawHUD()
             Accent, 35.f, 292.f, GEngine->GetSmallFont());
     }
 
+    if (!bTimeAttack)
+    {
+        if (Mode->HasRival())
+        {
+            DrawText(FString::Printf(TEXT("RIVAL WAYPOINT LAPS  %d / %d  |  RECOVERIES  %d%s"),
+                Mode->GetRivalApproximateLaps(), Race.GetRequiredLaps(),
+                Mode->GetRivalRecoveryCount(),
+                Mode->HasRivalFinishedRoute() ? TEXT("  |  ROUTE DONE") : TEXT("")),
+                Primary, 35.f, 365.f, GEngine->GetSmallFont());
+        }
+        else
+        {
+            DrawText(TEXT("RIVAL UNAVAILABLE"), Primary, 35.f, 365.f, GEngine->GetSmallFont());
+        }
+    }
     DrawText(FString::Printf(TEXT("EARNED CREDITS  %d"), Mode->GetTotalCredits()),
         Accent, 35.f, 343.f, GEngine->GetSmallFont());
     if (Race.IsFinished())
@@ -74,11 +89,11 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     if (UGameplayStatics::IsGamePaused(this))
     {
-        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 415.f, GEngine->GetLargeFont());
+        DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, 35.f, 440.f, GEngine->GetLargeFont());
     }
     else if (Race.IsFinished())
     {
-        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 415.f, GEngine->GetLargeFont(), 1.15f);
+        DrawText(TEXT("FINISH!  PRESS T TO RACE AGAIN"), Accent, 35.f, 440.f, GEngine->GetLargeFont(), 1.15f);
     }
 
 #if PLATFORM_ANDROID

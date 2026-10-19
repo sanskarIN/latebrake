@@ -203,6 +203,26 @@ float ALatebrakeRaceGameMode::GetEventBestSeconds() const
     return SelectedEvent == latebrake::EventKind::TimeAttack ? BestTimeAttackSeconds : PersonalBestSeconds;
 }
 
+bool ALatebrakeRaceGameMode::HasRival() const
+{
+    return IsValid(RivalCar);
+}
+
+int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps() const
+{
+    return IsValid(RivalCar) ? RivalCar->GetApproximateLaps() : 0;
+}
+
+int32 ALatebrakeRaceGameMode::GetRivalRecoveryCount() const
+{
+    return IsValid(RivalCar) ? RivalCar->GetPilotRecoveries() : 0;
+}
+
+bool ALatebrakeRaceGameMode::HasRivalFinishedRoute() const
+{
+    return IsValid(RivalCar) && RivalCar->HasCompletedRoute();
+}
+
 void ALatebrakeRaceGameMode::RefreshRival()
 {
     const bool bNeedsRival = latebrake::GetRaceEvent(SelectedEvent).SpawnRival;

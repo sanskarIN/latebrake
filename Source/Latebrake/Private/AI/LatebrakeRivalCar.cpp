@@ -6,7 +6,7 @@
 
 namespace
 {
-constexpr FVector RivalStart(-2250.f, -1450.f, 180.f);
+const FVector RivalStart(-2250.f, -1450.f, 180.f);
 const FVector CircuitWaypoints[] =
 {
     FVector(2800.f, -1800.f, 0.f),
