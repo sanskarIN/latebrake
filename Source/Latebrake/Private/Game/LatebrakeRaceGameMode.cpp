@@ -15,6 +15,7 @@
 #include "Progression/RecordValidation.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
+#include "Track/CircuitLayout.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -35,12 +36,13 @@ ALatebrakeRaceGameMode::ALatebrakeRaceGameMode()
 
 FVector ALatebrakeRaceGameMode::GetStartPosition()
 {
-    return FVector(-2550.f, -1800.f, 180.f);
+    return FVector(latebrake::PlayerStart.Position.X,
+                   latebrake::PlayerStart.Position.Y, 180.0);
 }
 
 FRotator ALatebrakeRaceGameMode::GetStartRotation()
 {
-    return FRotator(0.f, 0.f, 0.f);
+    return FRotator(0.0, latebrake::PlayerStart.HeadingDegrees, 0.0);
 }
 
 AActor* ALatebrakeRaceGameMode::ChoosePlayerStart_Implementation(AController* Player)
@@ -141,20 +143,15 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     SpawnBlock(TEXT("EastBarrier"), FVector(3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
     SpawnBlock(TEXT("WestBarrier"), FVector(-3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
 
-    const FVector Gates[] =
-    {
-        FVector(2800.f, -1800.f, 38.f),
-        FVector(2800.f, 1800.f, 38.f),
-        FVector(-2800.f, 1800.f, 38.f),
-        FVector(-2800.f, -1800.f, 38.f)
-    };
-
-    for (int32 Index = 0; Index < 4; ++Index)
+    for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)
     {
         FActorSpawnParameters Parameters;
         Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
         if (ALatebrakeCheckpoint* Checkpoint = GetWorld()->SpawnActor<ALatebrakeCheckpoint>(
-                ALatebrakeCheckpoint::StaticClass(), Gates[Index], FRotator::ZeroRotator, Parameters))
+                ALatebrakeCheckpoint::StaticClass(),
+                FVector(latebrake::CircuitGate(Index).X,
+                        latebrake::CircuitGate(Index).Y, 38.0),
+                FRotator::ZeroRotator, Parameters))
         {
             Checkpoint->SetCheckpointIndex(Index);
         }
@@ -343,7 +340,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
         FActorSpawnParameters Params;
         Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
         RivalCar = GetWorld()->SpawnActor<ALatebrakeRivalCar>(
-            ALatebrakeRivalCar::StaticClass(), FVector(-2250.f, -1450.f, 180.f),
+            ALatebrakeRivalCar::StaticClass(), FVector(latebrake::RivalStart.Position.X,
+                    latebrake::RivalStart.Position.Y, 180.0),
             FRotator::ZeroRotator, Params);
         if (!IsValid(RivalCar))
         {
@@ -352,7 +350,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
     }
     else
     {
-        RivalCar->RecoverTo(FVector(-2250.f, -1450.f, 180.f), FRotator::ZeroRotator);
+        RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
+                    latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
         RivalCar->ResetPilot();
     }
 }
@@ -369,7 +368,8 @@ void ALatebrakeRaceGameMode::RestartRace()
     }
     if (IsValid(RivalCar))
     {
-        RivalCar->RecoverTo(FVector(-2250.f, -1450.f, 180.f), FRotator::ZeroRotator);
+        RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
+                    latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
         RivalCar->ResetPilot();
     }
 }
@@ -382,29 +382,18 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         return;
     }
 
-    // Reorient behind the next expected gate, keeping prior lap progress.
-    const FVector RecoveryPoints[] =
-    {
-        FVector(-2550.f, -1800.f, 180.f),
-        FVector(2800.f, -1300.f, 180.f),
-        FVector(2300.f, 1800.f, 180.f),
-        FVector(-2800.f, 1300.f, 180.f)
-    };
-    const FRotator RecoveryRotations[] =
-    {
-        FRotator(0.f, 0.f, 0.f),
-        FRotator(0.f, 90.f, 0.f),
-        FRotator(0.f, 180.f, 0.f),
-        FRotator(0.f, -90.f, 0.f)
-    };
+    // Player recovery and AI recovery consume the same course definition.
+    const latebrake::CircuitPose Pose =
+        latebrake::PlayerRecovery(Race.GetNextCheckpoint());
     // A five-second penalty discourages skipping sectors by teleporting.
     if (Race.AddTimePenalty(5.0) &&
         RecoveriesThisRace < std::numeric_limits<int32>::max())
     {
         ++RecoveriesThisRace;
     }
-    const int Index = FMath::Clamp(Race.GetNextCheckpoint(), 0, 3);
-    Car->RecoverTo(RecoveryPoints[Index], RecoveryRotations[Index]);
+    Car->RecoverTo(
+        FVector(Pose.Position.X, Pose.Position.Y, 180.0),
+        FRotator(0.0, Pose.HeadingDegrees, 0.0));
 }
 
 void ALatebrakeRaceGameMode::LoadRecords()

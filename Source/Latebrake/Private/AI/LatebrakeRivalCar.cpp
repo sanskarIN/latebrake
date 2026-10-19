@@ -1,35 +1,9 @@
 #include "AI/LatebrakeRivalCar.h"
 
 #include "AI/RivalPilot.h"
+#include "Track/CircuitLayout.h"
 #include "Engine/World.h"
 #include "Game/LatebrakeRaceGameMode.h"
-
-namespace
-{
-const FVector RivalStart(-2250.f, -1450.f, 180.f);
-const FVector CircuitWaypoints[] =
-{
-    FVector(2800.f, -1800.f, 0.f),
-    FVector(2800.f, 1800.f, 0.f),
-    FVector(-2800.f, 1800.f, 0.f),
-    FVector(-2800.f, -1800.f, 0.f)
-};
-const FVector RecoveryPositions[] =
-{
-    RivalStart,
-    FVector(2800.f, -1300.f, 180.f),
-    FVector(2300.f, 1800.f, 180.f),
-    FVector(-2800.f, 1300.f, 180.f)
-};
-const FRotator RecoveryRotations[] =
-{
-    FRotator::ZeroRotator,
-    FRotator(0.f, 90.f, 0.f),
-    FRotator(0.f, 180.f, 0.f),
-    FRotator(0.f, -90.f, 0.f)
-};
-static_assert(UE_ARRAY_COUNT(CircuitWaypoints) == UE_ARRAY_COUNT(RecoveryPositions));
-}
 
 ALatebrakeRivalCar::ALatebrakeRivalCar()
 {
@@ -61,7 +35,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const double FlatSpeed = FVector(Velocity.X, Velocity.Y, 0.f).Size();
     const double Heading = FMath::DegreesToRadians(static_cast<double>(GetActorRotation().Yaw));
     const int32 Next = Route.GetNextWaypoint();
-    const FVector Target = CircuitWaypoints[Next];
+    const latebrake::CircuitPoint Waypoint = latebrake::CircuitGate(Next);
+    const FVector Target(Waypoint.X, Waypoint.Y, 0.0);
     const double Distance = FVector::Dist2D(Position, Target);
 
     const latebrake::RouteObservation Observation = Route.Observe(
@@ -70,7 +45,9 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     if (Observation.NeedsRecovery)
     {
         const int32 RecoveryIndex = Route.GetNextWaypoint();
-        RecoverTo(RecoveryPositions[RecoveryIndex], RecoveryRotations[RecoveryIndex]);
+        const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
+        RecoverTo(FVector(Pose.Position.X, Pose.Position.Y, 180.0),
+                  FRotator(0.0, Pose.HeadingDegrees, 0.0));
         // Reset controls but keep waypoint/lap count and recovery history.
         SetAutonomousControls(0.f, 0.f, false);
         Super::Tick(DeltaSeconds);
@@ -84,7 +61,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         return;
     }
 
-    const FVector NextTarget = CircuitWaypoints[Route.GetNextWaypoint()];
+    const latebrake::CircuitPoint NextTarget =
+        latebrake::CircuitGate(Route.GetNextWaypoint());
     const latebrake::PilotCommand Command = latebrake::PlanRivalTurn(
         Position.X, Position.Y, Heading, FlatSpeed,
         NextTarget.X, NextTarget.Y);
