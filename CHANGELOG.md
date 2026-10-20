@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased — v0.5.1 executable readiness
+
+- Configured future cooked game/default map path for a real project-owned
+  Unreal Editor generated starter level, without pretending that asset
+  is already committed.
+- Removed unused ChaosVehicles dependency; added editor-target-only
+  Python map-authoring plugin registration.
+- Added genuine UE 5.8 UBT Editor compilation, map-authoring and
+  Win64/Android UAT BuildCookRun PowerShell scripts.
+- Added independent per-platform package/evidence validation, deliberate
+  negative-fixture packaging regression tests, and optional manual
+  self-hosted Unreal candidate-build workflow.
+- Corrected packaging-script PowerShell errors found by CI.
+- No Unreal binaries, real Unreal map, Android testing, stable release,
+  or new v0.5.1 GitHub release is claimed.
+
+
 ## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
 ### Implemented in Unreal-independent C++20
