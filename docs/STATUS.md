@@ -172,3 +172,17 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   the game resumes. Real Unreal focus/lifecycle behavior still requires QA.
 - No Win64 EXE or Android APK has yet been produced or attached.
   Issues #2 and #13 remain open.
+
+### Additional pre-release engine-readiness work — no executable yet
+
+- Android runtime source now includes a dedicated local PlayerController for
+  game-only input and custom touch UI, connected to RaceGameMode.
+- UE map-authoring now demands a **fresh successful editor save receipt**,
+  rather than trusting process exit code and preexisting map alone; failure
+  paths are covered by engine-free stub tests.
+- The runtime circuit emits a **4/4 checkpoint launch marker**; an independent
+  PowerShell script can check a real installed-game log after Unreal/packaging
+  actually runs. CI deliberately tests only failure cases with synthetic text.
+- These changes have **not** been compiled against UE 5.8 or device tested;
+  v0.5.0 is still the source-only published pre-release, with issues #2 and
+  #13 open pending actual game binaries and QA.

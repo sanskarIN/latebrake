@@ -160,3 +160,20 @@ safeguards, not a licensed UE Editor, UHT or installed platform run**.
 Pending hardware regression: when pause/menu is open, Escape, gamepad Pause
 and Android pause/close must return to driving *without* resuming behind
 the menu. Verify with an actual Unreal executable.
+
+## New executable preflight safeguards (unreleased)
+
+- An editor Python script writes a **fresh success receipt** under `Saved/`
+  only after a genuine loaded/created level has been saved; the PowerShell
+  launcher clears any stale receipt before invocation and validates
+  map/package name plus saved file length. Offline stub tests verify
+  successful receipts and the absence of receipts on failed saves.
+- A C++ GameMode startup marker logs the number of checkpoint actors
+  instantiated by the runtime-built circuit.
+  `scripts/Verify-RuntimeStartupLog.ps1` accepts exactly one
+  `LATEBRAKE_STARTUP_READY` with four gates from a **real packaged game
+  log**. CI includes only negative fixtures (missing/garbage logs) so it
+  cannot falsely claim a genuine runnable game.
+- The dedicated Android PlayerController configures touch-event delivery
+  and disables stock virtual joysticks, pending actual UE compilation and
+  physical two-finger QA.

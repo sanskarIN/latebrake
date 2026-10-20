@@ -52,6 +52,17 @@ try {
         & (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $fakeMap
     }
 
+    # Neither a missing log nor a fabricated log without our marker is
+    # evidence that a real Unreal game started.
+    $fakeRuntimeLog = Join-Path $temp 'NOT_A_REAL_ENGINE_RUN.log'
+    Expect-Rejection 'Missing real runtime smoke log' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, ('NOT A REAL ENGINE LOG. No startup evidence.' * 6))
+    Expect-Rejection 'Random text is not Unreal GameMode startup evidence' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+
     # The fixtures are deliberately too small and are not legitimate packages.
     $windows = Join-Path $temp 'windows'
     New-Item -ItemType Directory -Path $windows -Force | Out-Null
