@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-20
-**Current code milestone:** v0.5.0 career/championship source development; published latest is v0.4.1 source-only pre-release.
+**Current code milestone:** v0.5.0 career/championship source-only pre-release published; no verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -17,6 +17,7 @@
 - [v0.3.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.2) — driving input and cache safety.
 - [v0.4.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.4.0) — circuit decorations and north-up minimap.
 - [v0.4.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.4.1) — experimental Android control HUD and touch reliability.
+- [v0.5.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.0) — career, two championship series, challenges, offline progression and source-level development menu.
 
 These tags are source previews. They are **not downloadable playable game installers**.
 
@@ -111,7 +112,7 @@ This does not constitute an Unreal 5.8 engine build, an instrumented driving tes
 
 Track the first playable-release gates in [issue #2](https://github.com/sanskarIN/latebrake/issues/2).
 
-## v0.5.0 source development audit (2026-10-20)
+## v0.5.0 published source pre-release audit (2026-10-20)
 
 | Subsystem | Source state | Remaining gate |
 | --- | --- | --- |
@@ -132,5 +133,4 @@ source CI cannot close them. The current in-container environment has a
 C++ toolchain but **no Unreal Engine 5.8 installation**, and the GitHub
 connection cannot manufacture validated game packages.
 
-The proposed v0.5.0 tag must be clearly labeled **source-only pre-release**
-unless actual engine/game packages become available and are tested.
+The published v0.5.0 tag is an immutable **source-only pre-release** at merge commit `ad17b47886b8d3f9633299f74d85b4949aa1b5a8`. Release and core CI each passed Windows, Ubuntu and macOS portable tests; PowerShell syntax validation also passed. GitHub contains no attached executable assets. These checks do not validate the Unreal runtime or physical device behavior.
