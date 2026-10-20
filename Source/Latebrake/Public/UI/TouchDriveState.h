@@ -49,7 +49,14 @@ public:
     void Move(const TouchControlLayout& layout, int finger, double x, double y) noexcept
     {
         if (finger < 0) return;
-        if (!layout.Valid || !std::isfinite(x) || !std::isfinite(y))
+        if (!layout.Valid)
+        {
+            // A global viewport interruption invalidates BOTH fingers,
+            // even if only one generates a move after rotation or resize.
+            Clear();
+            return;
+        }
+        if (!std::isfinite(x) || !std::isfinite(y))
         {
             Cancel(finger);
             return;
