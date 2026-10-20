@@ -424,6 +424,11 @@ void ALatebrakeRaceGameMode::RefreshRival()
 
 void ALatebrakeRaceGameMode::RestartRace()
 {
+    // Restarting from the mobile PAUSE screen must return to a live race.
+    if (UGameplayStatics::IsGamePaused(this))
+    {
+        UGameplayStatics::SetGamePaused(this, false);
+    }
     Race.Reset();
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
