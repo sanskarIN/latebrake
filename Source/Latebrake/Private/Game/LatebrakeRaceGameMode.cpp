@@ -262,7 +262,8 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
             Race.GetSlowestLapSeconds(),
             Race.GetCompletedLaps(),
             RecoveriesThisRace,
-            Garage.SelectedVehicle(),
+            (Garage.SelectedVehicle() == CareerStartedVehicleId)
+                ? CareerStartedVehicleId : -1,
             true
         };
         LastCareerAward = Career.CommitFinish(Career.SelectedEvent(), Finish);
@@ -354,6 +355,12 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
         return false;
     }
     CareerMenuSelection = Id;
+    if (Event->RequiredVehicle >= 0)
+    {
+        Garage.Select(Event->RequiredVehicle);
+        ApplyGarageToPlayer();
+    }
+    CareerStartedVehicleId = Garage.SelectedVehicle();
     bCareerRace = true;
     SelectedEvent = Event->SpawnRival
         ? latebrake::EventKind::Circuit : latebrake::EventKind::TimeAttack;
