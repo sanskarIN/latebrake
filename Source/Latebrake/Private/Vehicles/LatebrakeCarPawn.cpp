@@ -336,6 +336,7 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         {
             if (Region == latebrake::TouchControl::CareerNext) MenuNext();
             else if (Region == latebrake::TouchControl::CareerStart) MenuActivate();
+            else if (Region == latebrake::TouchControl::MenuBrowse) CareerNext();
             else if (Region == latebrake::TouchControl::Pause) MenuToggle();
         }
         return;
