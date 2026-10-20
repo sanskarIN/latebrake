@@ -168,7 +168,9 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Event->Round + 1), Primary);
         }
     }
-    Line(FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
+    Line(Mode->UsesMilesPerHour()
+        ? FString::Printf(TEXT("SPEED  %.0f mph"), Car->GetSpeedKmH() * 0.621371f)
+        : FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
     Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
         DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
