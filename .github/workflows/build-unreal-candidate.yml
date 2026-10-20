@@ -1,0 +1,53 @@
+name: Unreal 5.8 game packaging (manual authorized runner ONLY)
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform SDK already installed on the authorized UE 5.8 Windows runner'
+        type: choice
+        required: true
+        options:
+          - Win64
+          - Android
+
+# Never run on pull_request or ordinary GitHub-hosted runners. The optional
+# operator-provided Unreal Engine installation and SDK are not in this repo.
+permissions:
+  contents: read
+
+jobs:
+  real-engine-candidate:
+    name: Genuine ${{ inputs.platform }} candidate — NOT device qualified
+    runs-on: [self-hosted, Windows, X64, unreal-5-8]
+    timeout-minutes: 180
+    steps:
+      - name: Checkout source and real authored Git LFS assets
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Verify authorized Windows UE 5.8 environment
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:LATEBRAKE_UNREAL_ROOT)) {
+            throw 'Configure LATEBRAKE_UNREAL_ROOT for the runner service with your licensed Unreal Engine 5.8 directory.'
+          }
+          $engine = Join-Path $env:LATEBRAKE_UNREAL_ROOT 'Engine/Build/BatchFiles/Build.bat'
+          if (-not (Test-Path -LiteralPath $engine -PathType Leaf)) {
+            throw "Unreal Build.bat not found on runner: $engine"
+          }
+
+      - name: Compile Editor, create actual map and cook real candidate
+        shell: pwsh
+        run: |
+          ./scripts/Build-PlayableCandidate.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT -Platform '${{ inputs.platform }}' -OutputDirectory "./dist/candidates/${{ inputs.platform }}"
+
+      - name: Save UNVERIFIED candidate for on-device QA (NOT GitHub Release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: LateBrake-${{ inputs.platform }}-UNVERIFIED-candidate
+          path: dist/candidates/${{ inputs.platform }}/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

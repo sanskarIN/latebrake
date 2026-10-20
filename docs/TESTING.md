@@ -127,3 +127,18 @@ Mandatory **unverified** Unreal/device checks include UHT reflection,
 real level cooking, career action routing, HUD viewport/safe-area overlap,
 multi-finger interruption recovery, SaveGame v2 round-trips, and installed
 Android/Win64 gameplay/performance. No CTest run can close these gates.
+
+## Engine-free packaging regression coverage (v0.5.1 development)
+
+On ordinary GitHub runners, Windows PowerShell checks the syntax of all
+authoring, compilation, packaging and verification scripts. The
+`Test-PackagingPolicy.ps1` suite deliberately generates temporary,
+invalid EXE/APK fixtures, checks they are rejected, then deletes them;
+**no synthetic executable is uploaded**. An editor-only Python source
+syntax check compiles `CreateStarterMap.py` without running Unreal.
+The existing C++20 CMake test suite still runs on all three OS runners.
+
+These checks do not compile the Unreal game or serialize a real `.umap`.
+The first real Windows and Android build must satisfy
+[the installed gameplay matrix](EXECUTABLE_BUILD_PIPELINE.md), with
+truthful platform-specific test evidence and package hashes.

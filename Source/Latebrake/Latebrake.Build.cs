@@ -9,9 +9,5 @@ public class Latebrake : ModuleRules
         {
             "Core", "CoreUObject", "Engine", "InputCore", "PhysicsCore"
         });
-        PrivateDependencyModuleNames.AddRange(new[]
-        {
-            "ChaosVehicles"
-        });
     }
 }

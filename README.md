@@ -117,3 +117,19 @@ Unreal gameplay tests.
 - See [career](docs/CAREER.md), [championships](docs/CHAMPIONSHIPS.md),
   [challenges](docs/CHALLENGES.md), [save migration](docs/SAVE_MIGRATION.md)
   and the [v0.5.0 release candidate notes](docs/releases/v0.5.0.md).
+
+## v0.5.1 development — real executable build path (not a release)
+
+A reproducible **Windows-hosted Unreal Engine 5.8 candidate pipeline** is
+being prepared. It compiles the Unreal Editor target, creates an actual
+project-owned level via Unreal Editor, packages Win64 or Android through UAT,
+then requires independently recorded installed-playtest evidence before
+uploading real packages. The default game/cook map is now
+`/Game/Maps/LatebrakeCircuit`; it is **not included until an authorized
+Unreal Editor generates and saves the binary map**. Editor scripting
+dependencies are editor-target-only, not part of the racing runtime.
+
+**No executable files have been produced or uploaded from this development
+branch.** A licensed Unreal installation and target hardware are still
+mandatory. See the [step-by-step executable build pipeline](docs/EXECUTABLE_BUILD_PIPELINE.md).
+The v0.5.0 source-only pre-release is unchanged.

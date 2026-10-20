@@ -35,3 +35,12 @@ and hardware evidence. No additional source-only pre-release implies
 a playable game. Completing [issue #2](https://github.com/sanskarIN/latebrake/issues/2)
 and [issue #13](https://github.com/sanskarIN/latebrake/issues/13)
 is a prerequisite for closing the main quality gate.
+
+### Immediate v0.5.1 developer work
+
+Create and verify an engine-authored starter `.umap`, compile Unreal
+Editor and game targets, cook/assemble a genuine Win64 game candidate,
+run installed QA, then follow with Android candidate and mobile controls.
+A manual authorized self-hosted runner may execute the new pipeline; the
+ordinary CI cannot package Unreal games. No new version is being published
+solely because packaging helper scripts now exist.
