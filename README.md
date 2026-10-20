@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Development status: v0.5.0 career/championship source code under development; v0.4.1 remains the latest published pre-release.** A verified Unreal 5.8 Editor compile, a project-owned cooked map, Win64/Android game executables and installed playtests are outstanding. v0.5.0 may be published only as a clearly labeled source pre-release until those checks exist.
+> **Development status: [v0.5.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.0) is published as a SOURCE-ONLY pre-release (20 October 2026).** Career and championship logic is implemented in source and the portable CI passed on Windows, Ubuntu and macOS. The Unreal 5.8 Editor build, project-owned cooked map, Win64/Android game packages and installed playtests remain unverified.
 
 ## What's in source today?
 
@@ -16,10 +16,11 @@
 - v0.3.0: three fictional garage tuning profiles, offline unlocks and upgrades with SaveGame persistence, shortcuts, and prototype cabin silhouettes.
 - v0.3.1: safer corrupt-save handling, centralized purchase lookup, upgrade-price previews, visible transaction feedback, compact HUD layout and bounded racing record counters.
 - v0.3.2: invalid input and physics-value guards, smoother throttle, pause/recovery input clearing, cached garage tuning updates, and a HUD warning for failed saves.
-- v0.4.1 candidate: shared input/HUD touch geometry with visible Android steering, gas, brake, pause, restart and recovery pads; safety-first pedal movement and compact telemetry.
+- v0.4.1: source-only Android touch HUD with visible steering, gas, brake, pause, restart and recovery pads.
+- v0.5.0: offline career/championship and challenge rules, versioned career progression saves, prototype menu/navigation, and extended portable tests.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
 
-The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, career menus, or Android touch interfaces yet.
+The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, production-quality career menus or verified Android touch interfaces yet.
 
 ## Quick start (source)
 
