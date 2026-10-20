@@ -1,4 +1,5 @@
 #include "Game/LatebrakeRaceGameMode.h"
+#include "Game/LatebrakePlayerController.h"
 
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -32,6 +33,7 @@ ALatebrakeRaceGameMode::ALatebrakeRaceGameMode()
 {
     PrimaryActorTick.bCanEverTick = true;
     DefaultPawnClass = ALatebrakeCarPawn::StaticClass();
+    PlayerControllerClass = ALatebrakePlayerController::StaticClass();
     HUDClass = ALatebrakeRaceHUD::StaticClass();
 }
 
