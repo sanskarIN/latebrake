@@ -54,6 +54,18 @@
   and device failure/restore tests remain necessary. No new binaries or
   GitHub release published.
 
+### Unreleased v0.5.1 touch input safety
+
+- Introduced `TouchDriveState`, the portable two-finger driving capture
+  state machine, and replaced the pawn's duplicated touch input fields.
+- Prevented held steering/pedal drags from being interpreted as new
+  restart/pause/recover presses or stealing another finger's controls.
+- Made neutral pedal gaps, invalid coordinates, viewport interruptions
+  and paused input fail closed; steering horizontal clamping remains.
+- Added strict Windows/macOS/Linux C++20 tests for touch ownership,
+  drag transitions and lifecycle resets. Real Android compilation,
+  installation and touch QA are still outstanding.
+
 ## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
 ### Implemented in Unreal-independent C++20

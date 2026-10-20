@@ -201,3 +201,23 @@ the one-time reward is actually persisted after reloading the game.
 Test garage purchases/upgrades, the settings toggle, app interruption
 and an already-existing save profile. Source-level tests cannot prove
 the engine's filesystem durability or handle power-loss corruption.
+
+## v0.5.1 portable multi-touch driving state tests
+
+A new `TouchDriveState` C++20 test target runs in the existing three-OS
+portable CI matrix. It checks two independent held fingers for steering
+and gas, gas-to-brake drag with an immediate neutral gap, bounded steering
+beyond horizontal pad edges, neutral steering after leaving its vertical
+band, ownership isolation from extra fingers, cancellation of NaN/Infinity
+and invalid viewport geometry, release/cancel idempotency, and suppression
+of moves after lifecycle/menu reset. Dragging an already captured finger
+over PAUSE is **not** a discrete press and must not activate UI commands.
+
+The pawn now uses this state machine for HUD highlights and physics input,
+with a standalone-pause gate that rejects pedal and steering presses while
+paused. These tests run without Unreal Engine; the C++ Unreal adapter and
+its actual Android touch events are **not** compiled by these checks.
+
+An actual UE 5.8 APK must be installed on a phone to validate simultaneous
+touches, pad coordinates, pause/resume, app focus, and orientation. Save
+screenshots/videos and performance data only from real playtests.

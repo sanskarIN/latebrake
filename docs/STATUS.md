@@ -201,3 +201,18 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   UE SaveGame serialization, disk-failure simulation, hardware QA or
   executable has run here. v0.5.0 is still source-only and issues #2/#13
   remain open.
+
+### v0.5.1 held-touch input stabilization (unreleased)
+
+- Engine-independent `TouchDriveState` now owns two-finger driving input;
+  the Unreal pawn routes press/move/release and lifecycle/menu clears
+  through it rather than duplicating mutable finger flags.
+- Control safety: second/third fingers cannot steal controls; dragging
+  from telemetry cannot activate pedals; pedal neutral gaps, vertical
+  steering departures, and invalid coordinates neutralize input.
+- A standalone pause suppresses new gas/brake/steering capture until
+  an explicit resume. Held control HUD states share the physics input
+  source. Strict portable C++20 tests cover the state machine.
+- The tests can pass on all three OSs without the Unreal SDK, **but this
+  is not proof of Android input delivery or a working Unreal executable**.
+  The same real map/engine/platform build blockers remain open.

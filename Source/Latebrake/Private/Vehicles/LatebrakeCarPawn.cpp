@@ -169,11 +169,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedThrottle = 0.f;
     SmoothedSteering = 0.f;
     bBraking = false;
-    SteeringFinger = INDEX_NONE;
-    PedalFinger = INDEX_NONE;
-    TouchSteering = 0.f;
-    bTouchThrottle = false;
-    bTouchBrake = false;
+    TouchDrive.Clear();
 }
 
 void ALatebrakeCarPawn::ThrottleInput(float Value)
@@ -207,14 +203,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
     SmoothedThrottle = static_cast<float>(latebrake::SmoothThrottle(
-        SmoothedThrottle, bTouchThrottle ? 1.0 : static_cast<double>(Throttle),
+        SmoothedThrottle, TouchDrive.ThrottleActive() ? 1.0 : static_cast<double>(Throttle),
         static_cast<double>(DeltaSeconds)));
     const float EffectiveThrottle = SmoothedThrottle;
-    const float EffectiveSteering = SteeringFinger != INDEX_NONE ? TouchSteering : Steering;
+    const float EffectiveSteering = TouchDrive.SteeringActive()
+        ? static_cast<float>(TouchDrive.Steering()) : Steering;
     SmoothedSteering = static_cast<float>(latebrake::SmoothSteering(
         SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
         bArcade ? 3.8 : 2.4));
-    const bool bEffectiveBraking = bBraking || bTouchBrake;
+    const bool bEffectiveBraking = bBraking || TouchDrive.BrakeActive();
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
     const float GripRate = (bArcade ? 8.5f : 4.25f) * GarageGrip;
@@ -333,37 +330,28 @@ void ALatebrakeCarPawn::TouchMoved(ETouchIndex::Type FingerIndex, FVector Locati
 void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
                                   const FVector& Location, bool bAllowAcquire)
 {
+    const int32 FingerId = static_cast<int32>(FingerIndex);
     const APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
     {
+        TouchDrive.Clear();
         return;
     }
     int32 Width = 0;
     int32 Height = 0;
     PC->GetViewportSize(Width, Height);
-
-    const int32 FingerId = static_cast<int32>(FingerIndex);
     const latebrake::TouchControlLayout Layout =
         latebrake::CalculateTouchControlLayout(Width, Height);
-    if (!Layout.Valid || !FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
+    if (!Layout.Valid)
     {
-        // A corrupt coordinate must not keep a previously held accelerator.
-        if (SteeringFinger == FingerId)
-        {
-            TouchSteering = 0.f;
-        }
-        if (PedalFinger == FingerId)
-        {
-            bTouchThrottle = false;
-            bTouchBrake = false;
-        }
+        // Orientation or resize invalidates the geometry of every held
+        // finger, not just the one that happened to move first.
+        TouchDrive.Clear();
         return;
     }
-
-    if (SteeringFinger == FingerId)
+    if (!FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
     {
-        TouchSteering = static_cast<float>(
-            latebrake::TouchSteeringValue(Layout, Location.X));
+        TouchDrive.Cancel(FingerId);
         return;
     }
 
@@ -373,8 +361,9 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (Mode && Mode->IsMenuOpen())
     {
-        // While the menu owns focus, touches NEVER reach throttle/steering
-        // or restart/recovery shortcuts. Only explicit navigation taps work.
+        // Menus own focus: never acquire or move driving fingers while paused.
+        // Only a distinct new press can activate the visible navigation pads.
+        TouchDrive.Clear();
         if (bAllowAcquire)
         {
             if (Region == latebrake::TouchControl::CareerNext) MenuNext();
@@ -384,73 +373,64 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         }
         return;
     }
-    if (PedalFinger == FingerId)
+    if (UGameplayStatics::IsGamePaused(this))
     {
-        // Moving into the neutral gap releases both pedals immediately.
-        bTouchThrottle = Region == latebrake::TouchControl::Throttle;
-        bTouchBrake = Region == latebrake::TouchControl::Brake;
+        // A standalone Escape/gamepad pause has no menu focus. Reject new
+        // gas, brake and steering presses until explicit unpause; otherwise
+        // a finger pressed while paused could unexpectedly accelerate later.
+        TouchDrive.Clear();
+        if (bAllowAcquire && Region == latebrake::TouchControl::Pause)
+        {
+            TogglePause();
+        }
         return;
     }
 
-    if (bAllowAcquire)
-    {
-        // Discrete race actions only respond to the initial press. Dragging
-        // over these buttons cannot pause/restart/recover by accident.
-        switch (Region)
-        {
-        case latebrake::TouchControl::Pause:
-            TogglePause();
-            return;
-        case latebrake::TouchControl::Restart:
-            RestartPressed();
-            return;
-        case latebrake::TouchControl::Recover:
-            RecoverPressed();
-            return;
-        case latebrake::TouchControl::CareerNext:
-            CareerNext();
-            return;
-        case latebrake::TouchControl::CareerStart:
-            CareerStart();
-            return;
-        default:
-            break;
-        }
-    }
     if (!bAllowAcquire)
+    {
+        // A move can update only a finger captured on its original press.
+        TouchDrive.Move(Layout, FingerId, Location.X, Location.Y);
+        return;
+    }
+
+    // Duplicate Pressed notifications from a held driving finger should not
+    // cause menu or race actions when it happens to overlap an action pad.
+    if (FingerId == TouchDrive.SteeringOwner() ||
+        FingerId == TouchDrive.PedalOwner())
     {
         return;
     }
-    if (Region == latebrake::TouchControl::Steering && SteeringFinger == INDEX_NONE)
+
+    // Discrete actions fire only on press. Dragging a steering/pedal finger
+    // over them cannot restart, recover, open menus or collect rewards.
+    switch (Region)
     {
-        SteeringFinger = FingerId;
-        TouchSteering = static_cast<float>(
-            latebrake::TouchSteeringValue(Layout, Location.X));
+    case latebrake::TouchControl::Pause:
+        TogglePause();
+        return;
+    case latebrake::TouchControl::Restart:
+        RestartPressed();
+        return;
+    case latebrake::TouchControl::Recover:
+        RecoverPressed();
+        return;
+    case latebrake::TouchControl::CareerNext:
+        CareerNext();
+        return;
+    case latebrake::TouchControl::CareerStart:
+        CareerStart();
+        return;
+    default:
+        break;
     }
-    else if ((Region == latebrake::TouchControl::Throttle ||
-              Region == latebrake::TouchControl::Brake) && PedalFinger == INDEX_NONE)
-    {
-        PedalFinger = FingerId;
-        bTouchThrottle = Region == latebrake::TouchControl::Throttle;
-        bTouchBrake = Region == latebrake::TouchControl::Brake;
-    }
+
+    TouchDrive.Press(Layout, FingerId, Location.X, Location.Y);
 }
 
 void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Location)
 {
     (void)Location;
-    const int32 FingerId = static_cast<int32>(FingerIndex);
-    if (SteeringFinger == FingerId)
-    {
-        SteeringFinger = INDEX_NONE;
-        TouchSteering = 0.f;
-    }
-    if (PedalFinger == FingerId)
-    {
-        PedalFinger = INDEX_NONE;
-        bTouchThrottle = false;
-        bTouchBrake = false;
-    }
+    TouchDrive.Release(static_cast<int32>(FingerIndex));
 }
 
 void ALatebrakeCarPawn::SelectCircuit()

@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
+#include "UI/TouchDriveState.h"
 #include "LatebrakeCarPawn.generated.h"
 
 class UCameraComponent;
@@ -43,9 +44,9 @@ public:
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
-    bool IsTouchSteeringActive() const { return SteeringFinger != INDEX_NONE; }
-    bool IsTouchThrottleActive() const { return bTouchThrottle; }
-    bool IsTouchBrakeActive() const { return bTouchBrake; }
+    bool IsTouchSteeringActive() const { return TouchDrive.SteeringActive(); }
+    bool IsTouchThrottleActive() const { return TouchDrive.ThrottleActive(); }
+    bool IsTouchBrakeActive() const { return TouchDrive.BrakeActive(); }
 
     UFUNCTION(BlueprintCallable, Category = "Latebrake|Vehicle")
     void RecoverTo(const FVector& Position, const FRotator& Rotation);
@@ -118,11 +119,7 @@ private:
     int32 GarageVehicleId = 0;
     bool bBraking = false;
     bool bNearCamera = false;
-    int32 SteeringFinger = INDEX_NONE;
-    int32 PedalFinger = INDEX_NONE;
-    float TouchSteering = 0.f;
-    bool bTouchThrottle = false;
-    bool bTouchBrake = false;
+    latebrake::TouchDriveState TouchDrive;
 
     UPROPERTY(EditAnywhere, Category = "Vehicle")
     ELatebrakeHandlingMode HandlingMode = ELatebrakeHandlingMode::Arcade;

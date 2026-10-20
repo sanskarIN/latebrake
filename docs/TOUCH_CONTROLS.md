@@ -113,3 +113,41 @@ finger release after leaving a pad, opening the prototype menu with fingers
 held, pause/resume, background/foreground lifecycle neutralization, small
 screen layout and touch re-acquisition after focus returns. Android code
 still has **not** been compiled or played on hardware in this branch.
+
+## v0.5.1 development: held-finger ownership safety (not device-qualified)
+
+`UI/TouchDriveState.h` now owns all driving finger capture state.
+The Unreal pawn forwards press, move, release, menu and lifecycle events to
+that engine-independent state machine rather than keeping separate mutable
+steering and pedal flags. A held finger can **never** turn into an unrelated
+new press by dragging across a restart, recovery or pause button.
+
+- Only a **new press** inside the steering pad or a pedal pad can acquire
+  that control. Dragging in from empty telemetry or the menu cannot acquire.
+- Two different fingers can steer and accelerate/brake concurrently. Other
+  fingers cannot steal or release an active drive control.
+- Steering clamps on horizontal drags; leaving the steering pad's vertical
+  band immediately neutralizes its axis. Releasing the finger frees ownership.
+- One captured pedal finger can slide `GAS → neutral gap → BRAKE` or back.
+  The neutral gap and any other UI region immediately release acceleration.
+- Invalid NaN/infinite coordinates cancel the affected finger. A globally
+  invalid viewport layout cancels **both** held controls on the first
+  observed touch event after a resize or orientation change.
+- Menu ownership, the standalone pause state and app foreground/background
+  interruptions neutralize captured drive input; late touch moves after
+  cancellation cannot reacquire anything without a new press.
+- On the Android HUD, held control highlights use the **same** shared
+  capture state as the physics update; they are not simulated indicators.
+
+Portable `TouchDriveStateTests.cpp` validates capture, ownership, multi-finger
+input, horizontal steering, release, invalid touch events, neutral drag,
+menu-action drag avoidance and cancellation on all three CI operating systems.
+**It does not mean that actual Android devices or Unreal touch bindings
+have been compiled, installed or tested.**
+
+First real Android package acceptance checks should include: two physical
+fingers held together, a second/third finger trying to steal a pedal,
+moving one pedal finger across the neutral gap, dragging from gas over
+PAUSE without activating the button, dragging steering vertically away
+from the pad, rotating/resizing the viewport, background/foreground
+transitions and opening/closing the menu during held input.
