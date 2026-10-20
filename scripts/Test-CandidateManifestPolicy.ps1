@@ -19,6 +19,16 @@ function Expect-Rejection {
     Write-Host "Rejected invalid manifest fixture: $Label"
 }
 
+function Expect-RejectionMatching {
+    param([string]$Label, [string]$Pattern, [scriptblock]$Action)
+    $message = $null
+    try { & $Action *> $null } catch { $message = $_.Exception.Message }
+    if ([string]::IsNullOrWhiteSpace($message) -or $message -notmatch $Pattern) {
+        throw "Expected QA rejection '$Pattern' for $Label; received '$message'"
+    }
+    Write-Host "Rejected incomplete QA: $Label"
+}
+
 $verifier = Join-Path $PSScriptRoot 'Test-CandidateManifest.ps1'
 $temp = Join-Path ([IO.Path]::GetTempPath()) ("LatebrakeManifestFixture-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temp -Force | Out-Null
@@ -116,7 +126,52 @@ try {
     }
     & $verifier -ManifestJson $manifestPath -Platform Win64
     if (-not $?) { throw 'Fixture failed to recover a valid manifest state.' }
-    Write-Host 'All candidate manifest policy fixtures passed. No usable binaries created.'
+    # Prove a truthful platform QA checklist is REQUIRED *before* any
+    # structural EXE validation can pass. The test archive remains text-only.
+    $qaPath = Join-Path $temp 'test-only-qa.json'
+    $qa = [ordered]@{
+        platform = 'Win64'
+        installed_and_playtested = $true
+        unreal_version = '5.8.0'
+        build_commit = ('a' * 40)
+        test_hardware = 'TEST ONLY - NOT REAL HARDWARE'
+        tester = 'offline regression'
+        test_date = '2000-01-01'
+        test_notes = 'Synthetic QA fixture: never publish'
+        checks = [ordered]@{
+            launch = $true
+            driving = $false
+            camera = $true
+            lap_finish = $true
+            career = $true
+            save_load = $true
+            menu_input = $true
+            performance = $true
+        }
+    }
+    function Write-QA {
+        $qa | ConvertTo-Json -Depth 10 |
+            Set-Content -LiteralPath $qaPath -Encoding utf8NoBOM
+    }
+    Write-QA
+    $platformVerifier = Join-Path $PSScriptRoot 'Verify-PlatformPackage.ps1'
+    Expect-RejectionMatching 'failed Windows driving QA' 'Required Win64 installed-game QA check not passed: driving' {
+        & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
+    }
+    $qa.checks.driving = $true
+    $qa.build_commit = ('c' * 40)
+    Write-QA
+    Expect-RejectionMatching 'different tested source revision' 'build_commit does not match' {
+        & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
+    }
+    $qa.build_commit = ('a' * 40)
+    $qa.checks.performance = $false
+    Write-QA
+    Expect-RejectionMatching 'failed Windows performance QA' 'Required Win64 installed-game QA check not passed: performance' {
+        & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
+    }
+
+    Write-Host 'All candidate manifest and QA policy fixtures passed. No usable binaries created.'
 } finally {
     Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
 }
