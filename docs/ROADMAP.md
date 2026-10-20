@@ -13,7 +13,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.4.0 (pre) | First explorable fictional region and traffic | Streaming and UI |
 | v0.4.1 (pre) | Experimental visible mobile steering/pedals plus pause/restart/recover touch pads | Engine compile, phone input and layout testing outstanding |
 | v0.4.2 (pre, proposed) | Touch cancellation, input remapping and mobile performance pass | Low/mid-range real-device metrics |
-| v0.5.0 (pre, source candidate) | Two 3-round championships, six challenges, medals, career save v2 and prototype menu source | Portable CI, Unreal integration/device QA pending |
+| v0.5.0 (published source pre-release) | Two 3-round championships, six challenges, medals, career save v2 and prototype menu source | Three-OS portable CI passed; Unreal and device qualification pending |
 | v0.5.1 (pre) | Accessibility and progression polish | Usability checks |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
