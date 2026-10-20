@@ -37,6 +37,10 @@ int main()
           "career pads do not intersect pause");
     Check(layout.CareerNext.Y + layout.CareerNext.Height < layout.CareerStart.Y,
           "career browse and start pads are separated");
+    Check(layout.CareerStart.Y + layout.CareerStart.Height < layout.MenuBrowse.Y,
+          "menu browse separate from career start");
+    Check(layout.MenuBrowse.Y + layout.MenuBrowse.Height < layout.Throttle.Y,
+          "menu browse stays clear of pedals");
 
     const double steerMiddle = layout.Steering.X + layout.Steering.Width * 0.5;
     Check(HitTestTouchControl(layout, steerMiddle, layout.Steering.Y + 10.0) ==
@@ -58,6 +62,8 @@ int main()
           layout.CareerNext.Y + 10.0) == TouchControl::CareerNext, "career browse");
     Check(HitTestTouchControl(layout, layout.CareerStart.X + 10.0,
           layout.CareerStart.Y + 10.0) == TouchControl::CareerStart, "career start");
+    Check(HitTestTouchControl(layout, layout.MenuBrowse.X + 10.0,
+          layout.MenuBrowse.Y + 10.0) == TouchControl::MenuBrowse, "browse active career");
     Check(HitTestTouchControl(layout, 15.0, 15.0) == TouchControl::None,
           "race telemetry region cannot accelerate");
 
