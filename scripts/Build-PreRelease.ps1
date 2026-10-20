@@ -41,9 +41,8 @@ $requiredMap = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
 if (-not (Test-Path -LiteralPath $requiredMap -PathType Leaf)) {
     throw 'Genuine Content/Maps/LatebrakeCircuit.umap is absent. Run New-StarterMap.ps1 inside Unreal Editor first.'
 }
-if ((Get-Item -LiteralPath $requiredMap).Length -lt 1024) {
-    throw 'Starter .umap is suspiciously small or an unpulled Git LFS pointer.'
-}
+& (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $requiredMap
+if (-not $?) { throw 'Refusing to cook a file that is not a plausible engine-authored Unreal map.' }
 $config = Get-Content -LiteralPath (Join-Path $repo 'Config/DefaultEngine.ini') -Raw
 if ($config -notmatch '(?m)^GameDefaultMap=/Game/Maps/LatebrakeCircuit\s*$' -or
     $config -notmatch '(?m)^\+MapsToCook=\(FilePath="/Game/Maps/LatebrakeCircuit"\)\s*$') {
