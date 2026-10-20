@@ -289,6 +289,97 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     SaveRecords();
 }
 
+void ALatebrakeRaceGameMode::ToggleMenu()
+{
+    Menu.Toggle();
+    // Always neutralize held inputs before changing input focus.
+    if (ALatebrakeCarPawn* Car =
+        Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
+    {
+        Car->ClearDriverInputs();
+    }
+    UGameplayStatics::SetGamePaused(this, Menu.IsOpen());
+}
+
+void ALatebrakeRaceGameMode::MenuNext()
+{
+    Menu.Next();
+}
+
+void ALatebrakeRaceGameMode::MenuPrevious()
+{
+    Menu.Previous();
+}
+
+void ALatebrakeRaceGameMode::MenuActivate()
+{
+    if (!Menu.IsOpen()) return;
+    const latebrake::MenuPage Page = Menu.Current();
+    if (Page == latebrake::MenuPage::Main)
+    {
+        Menu.Open(latebrake::MenuPage::QuickRace);
+    }
+    else if (Page == latebrake::MenuPage::QuickRace)
+    {
+        Menu.Close();
+        UGameplayStatics::SetGamePaused(this, false);
+        SelectRaceEvent(latebrake::EventKind::Circuit);
+        RestartRace();
+    }
+    else if (Page == latebrake::MenuPage::Career)
+    {
+        if (StartCareerEvent(CareerMenuSelection)) Menu.Close();
+    }
+    else if (Page == latebrake::MenuPage::Championships)
+    {
+        int32 Target = -1;
+        for (int32 Id = 0; Id < 6; ++Id)
+        {
+            if (Career.Status(Id) == latebrake::CareerStatus::Available)
+            {
+                Target = Id;
+                break;
+            }
+        }
+        if (Target < 0) Target = 0; // Replay an already accessible round.
+        if (StartCareerEvent(Target)) Menu.Close();
+    }
+    else if (Page == latebrake::MenuPage::Challenges)
+    {
+        int32 Target = -1;
+        for (int32 Id = 6; Id < latebrake::CareerEventCount; ++Id)
+        {
+            if (Career.Status(Id) == latebrake::CareerStatus::Available)
+            {
+                Target = Id;
+                break;
+            }
+        }
+        if (Target < 0) Target = 6;
+        if (StartCareerEvent(Target)) Menu.Close();
+    }
+    else if (Page == latebrake::MenuPage::Garage)
+    {
+        GarageNextVehicle();
+    }
+    else if (Page == latebrake::MenuPage::Results)
+    {
+        Menu.Close();
+        UGameplayStatics::SetGamePaused(this, false);
+        RestartRace();
+    }
+    else if (Page == latebrake::MenuPage::Pause)
+    {
+        ToggleMenu();
+    }
+    else if (Page == latebrake::MenuPage::Settings)
+    {
+        bMilesPerHour = !bMilesPerHour;
+        SaveRecords();
+    }
+    // Profile is deliberately informational; no money or unlock is created.
+}
+
 void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
 {
     if (!latebrake::IsValidEvent(Kind) || (Kind == SelectedEvent && !bCareerRace))
