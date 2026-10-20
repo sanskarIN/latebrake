@@ -47,6 +47,11 @@ int main()
           "neutral pedal gap immediately disables both pedals");
     drive.Move(layout, 2, gasX, gasY);
     Check(drive.ThrottleActive(), "owned finger resumes gas only in correct pad");
+    drive.Move(layout, 2, layout.Pause.X + 10, layout.Pause.Y + 10);
+    Check(!drive.ThrottleActive() && !drive.BrakeActive() &&
+          drive.PedalOwner() == 2, "pedal drag over pause never performs a press action");
+    drive.Move(layout, 2, gasX, gasY);
+    Check(drive.ThrottleActive(), "pedal press ownership remains stable across neutral drag");
 
     drive.Press(layout, 3, center, sy);
     drive.Press(layout, 4, gasX, brakeY);
