@@ -68,6 +68,27 @@ if ($evidence.platform -ne $Platform -or
     [string]::IsNullOrWhiteSpace([string]$evidence.test_notes)) {
     throw 'Incomplete platform-specific test evidence; actual installed UE 5.8 playtest is required.'
 }
+# A generic installed_and_playtested=true is not enough for a stable
+# game release. Every required check in the platform's reviewed QA template
+# must be explicitly true, or the release gate fails closed.
+$requiredChecks = if ($Platform -eq 'Win64') {
+    @('launch', 'driving', 'camera', 'lap_finish', 'career',
+      'save_load', 'menu_input', 'performance')
+} else {
+    @('install_launch', 'two_finger_controls', 'focus_loss',
+      'pause_resume', 'portrait_landscape', 'career_save_reload',
+      'performance')
+}
+if ($null -eq $evidence.checks) {
+    throw 'QA evidence lacks the platform-specific required checks object.'
+}
+foreach ($check in $requiredChecks) {
+    $property = $evidence.checks.PSObject.Properties[$check]
+    if ($null -eq $property -or $property.Value -ne $true) {
+        throw "Required $Platform installed-game QA check not passed: $check"
+    }
+}
+
 # Human QA must refer to the identical source revision as the archive:
 # a hardware test of some OTHER executable is not qualifying evidence.
 $buildManifest = Get-Content -LiteralPath $ManifestJson -Raw |
