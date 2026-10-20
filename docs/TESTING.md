@@ -177,3 +177,27 @@ the menu. Verify with an actual Unreal executable.
 - The dedicated Android PlayerController configures touch-event delivery
   and disables stock virtual joysticks, pending actual UE compilation and
   physical two-finger QA.
+
+## Unreleased v0.5.1 — failed SaveGame write regression
+
+The new portable C++20 `ProfileWriteCheckpoint` tests exercise the
+same garage/career/record state machine used by the Unreal GameMode.
+They cover failed-save rollback of credits, medals, unlocked rounds,
+completed races, race and lap records, car purchases and tuning,
+successful write commit, repeated rollback idempotency, scope-exit
+fallback, retry after failure and a one-time championship bonus after
+an unsaved final round.
+
+The actual `ALatebrakeRaceGameMode` adapter now snapshots state before
+race awards and rolls it back when `SaveGameToSlot` reports failure.
+Garage vehicle selection, unlocking, engine/grip spending and the speed
+unit toggle also revert unsaved changes and show a warning.
+
+**Still requires Unreal/device validation:** force a genuine local
+SaveGame failure (for example unavailable storage or app sandbox
+write denial), finish both a quick race and a career round, verify
+credits and medals revert, restore storage, retry the round, and verify
+the one-time reward is actually persisted after reloading the game.
+Test garage purchases/upgrades, the settings toggle, app interruption
+and an already-existing save profile. Source-level tests cannot prove
+the engine's filesystem durability or handle power-loss corruption.

@@ -21,7 +21,24 @@ prerequisites, and unknown selected event IDs are rejected.
 On finishing a valid career event, the medal state and earned credit balance
 are placed in the **same** new SaveGame object before `SaveGameToSlot`.
 Repeat completion after loading cannot award initial credits or championship
-bonus again. Failed saving is shown in the HUD as a warning, not a success.
+bonus again. Unreleased v0.5.1 source uses
+`Progression/ProfileWriteCheckpoint.h` to capture the last in-memory garage,
+career, completed-race count and personal records **before** awarding a
+new finish. Only a successful `SaveGameToSlot` commits the new values.
+On a reported write failure the existing bank balance, medal unlocks,
+race count and best times are restored immediately, and the HUD reports
+an unsaved reward rather than a spendable win. A later genuine replay can
+still earn its one-time first-completion award.
+
+Vehicle selections, purchases, engine and grip upgrades similarly revert
+their balance/ownership/tuning changes on a failed SaveGame write. The
+speed-display unit toggle also restores the previous setting if its write
+fails. Transient race results and the active running event are **not**
+automatically resumed after disk repair; players can retry the event.
+
+**Limit of the guarantee:** this is only an in-memory rollback when Unreal
+reports a failure. It does not make filesystem writes transactional, detect
+a partially corrupted save, or guarantee durability after OS power loss.
 There is no crash-safe transactional backup implemented yet; offline
 storage integrity and interrupted-write recovery require real device tests.
 

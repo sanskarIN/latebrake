@@ -13,6 +13,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
+#include "Progression/ProfileWriteCheckpoint.h"
 #include "Progression/RecordValidation.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
@@ -256,6 +257,12 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         return;
     }
 
+    // Only the SaveGame write decides if a finish becomes a durable reward.
+    // In-memory first-completion medals, credits and best times must not
+    // survive a failed disk write as misleading spendable progress.
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
     const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
     if (!bCareerRace)
@@ -318,6 +325,23 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     }
     Garage.EarnCredits(LastRaceCredits);
     SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        SavedProfile.Rollback();
+        LastRaceCredits = 0;
+        LastCareerAward = {};
+        CareerFeedback = TEXT("Progress was NOT saved. Rewards and records reverted; retry after storage is fixed.");
+        GarageFeedback = TEXT("WARNING: Save failed; rewards were rolled back.");
+        ApplyGarageToPlayer();
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: race finish was not persisted; restoring previous garage/career/records in memory"));
+    }
+    else
+    {
+        // SaveGameToSlot returned success: preserve the newly earned medal,
+        // credit balance, race count and personal bests.
+        SavedProfile.Commit();
+    }
 }
 
 void ALatebrakeRaceGameMode::ToggleMenu()
@@ -410,8 +434,15 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Settings)
     {
+        const bool PreviousMilesPerHour = bMilesPerHour;
         bMilesPerHour = !bMilesPerHour;
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            bMilesPerHour = PreviousMilesPerHour;
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: speed display unit change was not saved; restoring prior setting"));
+        }
     }
     // Profile is deliberately informational; no money or unlock is created.
 }
@@ -581,11 +612,24 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
         GarageFeedback = TEXT("Unlock another vehicle with Q first.");
         return;
     }
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     if (Garage.Select(Next))
     {
         ApplyGarageToPlayer();
         GarageFeedback = FString::Printf(TEXT("Selected %s."), *GetSelectedVehicleName());
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            SavedProfile.Rollback();
+            ApplyGarageToPlayer();
+            GarageFeedback = TEXT("Vehicle selection not saved. Previous vehicle restored.");
+        }
+        else
+        {
+            SavedProfile.Commit();
+        }
     }
 }
 
@@ -598,23 +642,53 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
         return;
     }
     const int32 Cost = latebrake::GarageState::Definition(Next).UnlockCost;
-    if (!Garage.Unlock(Next))
+    if (!Garage.CanUnlock(Next))
     {
         GarageFeedback = FString::Printf(TEXT("Need %d credits; currently %d."), Cost, Garage.Credits());
         return;
     }
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
+    if (!Garage.Unlock(Next))
+    {
+        GarageFeedback = TEXT("Vehicle unlock rejected.");
+        return;
+    }
     GarageFeedback = FString::Printf(TEXT("Unlocked %s!"), UTF8_TO_TCHAR(latebrake::GarageState::Definition(Next).Name));
     SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        SavedProfile.Rollback();
+        GarageFeedback = TEXT("Vehicle purchase not saved. Credits and locked vehicle restored.");
+    }
+    else
+    {
+        SavedProfile.Commit();
+    }
 }
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     if (Garage.Upgrade(latebrake::UpgradeKind::Engine))
     {
         GarageFeedback = FString::Printf(TEXT("Engine upgraded to level %d."), Garage.EngineLevel());
         ApplyGarageToPlayer();
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            SavedProfile.Rollback();
+            ApplyGarageToPlayer();
+            GarageFeedback = TEXT("Engine upgrade not saved. Credits and tuning restored.");
+        }
+        else
+        {
+            SavedProfile.Commit();
+        }
     }
     else
     {
@@ -626,11 +700,24 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     if (Garage.Upgrade(latebrake::UpgradeKind::Grip))
     {
         GarageFeedback = FString::Printf(TEXT("Grip upgraded to level %d."), Garage.GripLevel());
         ApplyGarageToPlayer();
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            SavedProfile.Rollback();
+            ApplyGarageToPlayer();
+            GarageFeedback = TEXT("Grip upgrade not saved. Credits and tuning restored.");
+        }
+        else
+        {
+            SavedProfile.Commit();
+        }
     }
     else
     {
