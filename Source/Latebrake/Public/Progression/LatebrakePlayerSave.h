@@ -52,4 +52,7 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Career")
     TArray<uint8> CareerMedals;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Settings")
+    bool bSpeedInMilesPerHour = false;
+
 };
