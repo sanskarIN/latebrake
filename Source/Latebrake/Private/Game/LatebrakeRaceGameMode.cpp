@@ -402,7 +402,8 @@ void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
 
 FString ALatebrakeRaceGameMode::GetCareerEventName() const
 {
-    const int32 Id = bCareerRace ? Career.SelectedEvent() : CareerMenuSelection;
+    const int32 Id = (Menu.IsOpen() || !bCareerRace)
+        ? CareerMenuSelection : Career.SelectedEvent();
     const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
     return Event ? FString(UTF8_TO_TCHAR(Event->Name)) : TEXT("No Career Event");
 }
