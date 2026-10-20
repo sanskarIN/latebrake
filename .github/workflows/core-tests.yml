@@ -56,3 +56,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Parse Unreal Editor automation source
         run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py
+      - name: Test editor map automation decisions with disposable stub (NO Unreal SDK)
+        run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
