@@ -20,6 +20,7 @@ $project = Join-Path $repo 'Latebrake.uproject'
 $editor = Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe'
 $python = Join-Path $PSScriptRoot 'Unreal/CreateStarterMap.py'
 $map = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
+$receipt = Join-Path $repo 'Saved/LatebrakeAutomation/starter-map-result.json'
 
 if (-not (Test-Path -LiteralPath $project -PathType Leaf)) {
     throw "Unreal project missing: $project"
@@ -36,12 +37,27 @@ $python = (Resolve-Path -LiteralPath $python).Path
 
 Write-Host "Launching actual Unreal Editor to create/check /Game/Maps/LatebrakeCircuit."
 Write-Host 'Editor-only Python Script and Editor Scripting Utilities plugins must be available.'
+# Do not accept a receipt from a previous Editor run. Python exceptions may
+# not force a nonzero UnrealEditor.exe exit status in every engine build.
+if (Test-Path -LiteralPath $receipt -PathType Leaf) {
+    Remove-Item -LiteralPath $receipt -Force
+}
 & $editor $project "-ExecutePythonScript=$python" '-unattended' '-nop4' '-nosplash'
 if ($LASTEXITCODE -ne 0) {
     throw "Unreal Editor map authoring failed (exit code $LASTEXITCODE). Read the Editor log."
 }
 if (-not (Test-Path -LiteralPath $map -PathType Leaf)) {
     throw "Unreal exited without writing the required real project map: $map"
+}
+if (-not (Test-Path -LiteralPath $receipt -PathType Leaf)) {
+    throw 'Unreal Editor did not write a fresh successful map-authoring receipt. Check Python/Unreal logs even if the process exited zero.'
+}
+$result = Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json -ErrorAction Stop
+if ($result.status -ne 'saved_by_unreal_editor' -or
+    $result.map -ne '/Game/Maps/LatebrakeCircuit' -or
+    $result.operation -notin @('created', 'loaded') -or
+    $result.bytes -ne (Get-Item -LiteralPath $map).Length) {
+    throw 'The fresh map-authoring receipt does not match the actual project level.'
 }
 & (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $map
 if (-not $?) { throw 'Unreal starter map failed serialized-package header sanity check.' }
