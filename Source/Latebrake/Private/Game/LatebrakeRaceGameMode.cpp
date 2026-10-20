@@ -251,15 +251,80 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 
 void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
 {
-    if (!latebrake::IsValidEvent(Kind) || Kind == SelectedEvent)
+    if (!latebrake::IsValidEvent(Kind) || (Kind == SelectedEvent && !bCareerRace))
     {
         return;
     }
+    bCareerRace = false;
+    LastCareerAward = {};
     SelectedEvent = Kind;
     const latebrake::RaceEvent Definition = latebrake::GetRaceEvent(SelectedEvent);
     Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
     RestartRace();
     RefreshRival();
+}
+
+FString ALatebrakeRaceGameMode::GetCareerEventName() const
+{
+    const int32 Id = bCareerRace ? Career.SelectedEvent() : CareerMenuSelection;
+    const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+    return Event ? FString(UTF8_TO_TCHAR(Event->Name)) : TEXT("No Career Event");
+}
+
+void ALatebrakeRaceGameMode::CycleCareerEvent()
+{
+    const int32 Original = CareerMenuSelection;
+    for (int32 Delta = 1; Delta <= latebrake::CareerEventCount; ++Delta)
+    {
+        const int32 Id = (Original + Delta) % latebrake::CareerEventCount;
+        if (Career.Status(Id) != latebrake::CareerStatus::Locked)
+        {
+            CareerMenuSelection = Id;
+            const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+            CareerFeedback = FString::Printf(TEXT("Career selected: %s (%d/%d). M start."),
+                UTF8_TO_TCHAR(Event->Name), Id + 1, latebrake::CareerEventCount);
+            return;
+        }
+    }
+}
+
+void ALatebrakeRaceGameMode::StartNextAvailableCareerEvent()
+{
+    const int32 Next = Career.NextAvailable();
+    StartCareerEvent(Next >= 0 ? Next : CareerMenuSelection);
+}
+
+bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
+{
+    const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+    if (!Event || Career.Status(Id) == latebrake::CareerStatus::Locked)
+    {
+        CareerFeedback = TEXT("Career event is locked or unknown.");
+        return false;
+    }
+    if (Event->RequiredVehicle >= 0 && !Garage.Owns(Event->RequiredVehicle))
+    {
+        CareerFeedback = TEXT("Unlock the required vehicle in the garage first.");
+        return false;
+    }
+    // A career race uses the real player checkpoint clock. Rival telemetry is
+    // never interpreted as a competitive finish or championship placement.
+    if (!Career.Select(Id))
+    {
+        CareerFeedback = TEXT("Career selection was rejected.");
+        return false;
+    }
+    CareerMenuSelection = Id;
+    bCareerRace = true;
+    SelectedEvent = Event->SpawnRival
+        ? latebrake::EventKind::Circuit : latebrake::EventKind::TimeAttack;
+    Race = latebrake::RaceProgress(4, Event->Laps);
+    LastCareerAward = {};
+    RestartRace();
+    RefreshRival();
+    CareerFeedback = FString::Printf(TEXT("Career: %s | %d laps | N browse, M next available"),
+        UTF8_TO_TCHAR(Event->Name), Event->Laps);
+    return true;
 }
 
 float ALatebrakeRaceGameMode::GetEventBestSeconds() const
