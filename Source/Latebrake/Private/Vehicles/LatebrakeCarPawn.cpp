@@ -12,6 +12,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
+#include "Misc/CoreDelegates.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -98,6 +99,38 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+}
+
+void ALatebrakeCarPawn::BeginPlay()
+{
+    Super::BeginPlay();
+    // OS interruptions must never leave an accelerator finger latched.
+    BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
+        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+    DeactivatedInputHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
+        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+    ForegroundInputHandle = FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(
+        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+}
+
+void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundInputHandle);
+    FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(DeactivatedInputHandle);
+    FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
+    ClearDriverInputs();
+    Super::EndPlay(EndPlayReason);
+}
+
+void ALatebrakeCarPawn::UnPossessed()
+{
+    ClearDriverInputs();
+    Super::UnPossessed();
+}
+
+void ALatebrakeCarPawn::HandleAppInputInterruption()
+{
+    ClearDriverInputs();
 }
 
 void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake)
