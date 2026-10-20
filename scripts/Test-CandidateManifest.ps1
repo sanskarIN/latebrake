@@ -50,7 +50,7 @@ foreach ($entry in $entries) {
     $name = [string]$entry.path
     if ([string]::IsNullOrWhiteSpace($name) -or
         $name.StartsWith('/') -or
-        $name.Contains('\\') -or
+        $name.Contains('\') -or
         $name.Contains(':') -or
         $name.Contains('//') -or
         $name -match '(^|/)\.\.?(/|$)' -or
@@ -86,7 +86,7 @@ foreach ($item in $physicalFiles) {
     if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
         throw "Candidate contains unexpected symlink/reparse point: $($item.FullName)"
     }
-    $relative = [System.IO.Path]::GetRelativePath($root, $item.FullName).Replace('\\', '/')
+    $relative = [System.IO.Path]::GetRelativePath($root, $item.FullName).Replace('\', '/')
     if (-not $seen.Contains($relative)) {
         throw "Candidate contains a file missing from manifest: $relative"
     }
