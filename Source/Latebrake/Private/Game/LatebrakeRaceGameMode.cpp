@@ -13,6 +13,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
+#include "Progression/ProfileWriteCheckpoint.h"
 #include "Progression/RecordValidation.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
@@ -256,6 +257,12 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         return;
     }
 
+    // Only the SaveGame write decides if a finish becomes a durable reward.
+    // In-memory first-completion medals, credits and best times must not
+    // survive a failed disk write as misleading spendable progress.
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
     const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
     if (!bCareerRace)
@@ -318,6 +325,23 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     }
     Garage.EarnCredits(LastRaceCredits);
     SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        SavedProfile.Rollback();
+        LastRaceCredits = 0;
+        LastCareerAward = {};
+        CareerFeedback = TEXT("Progress was NOT saved. Rewards and records reverted; retry after storage is fixed.");
+        GarageFeedback = TEXT("WARNING: Save failed; rewards were rolled back.");
+        ApplyGarageToPlayer();
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: race finish was not persisted; restoring previous garage/career/records in memory"));
+    }
+    else
+    {
+        // SaveGameToSlot returned success: preserve the newly earned medal,
+        // credit balance, race count and personal bests.
+        SavedProfile.Commit();
+    }
 }
 
 void ALatebrakeRaceGameMode::ToggleMenu()
