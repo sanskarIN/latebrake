@@ -203,7 +203,11 @@ After the **actual UAT package** has been installed/playtested, the
 The exact EXE/APK must be inside the manifest archive. The QA evidence's
 `build_commit` must match the manifest's `source_commit`. Complete
 the separate win64/android QA templates with **true** installed gameplay
-observations and a full 40-character source commit.
+observations and a full 40-character source commit. Every entry
+under the template's `checks` object must also be explicitly `true`
+after a real successful test. A missing, false, or not-yet-tested
+driving, save/load, mobile focus, performance or other required check
+blocks release; `installed_and_playtested` alone is insufficient.
 
 For a combined, manually reviewed Win64 + Android release, run:
 
