@@ -31,7 +31,9 @@ function Expect-RejectionMatching {
 
 $verifier = Join-Path $PSScriptRoot 'Test-CandidateManifest.ps1'
 $temp = Join-Path ([IO.Path]::GetTempPath()) ("LatebrakeManifestFixture-" + [Guid]::NewGuid().ToString('N'))
+$qaTemp = Join-Path ([IO.Path]::GetTempPath()) ("LatebrakeQAOutsideArchive-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temp -Force | Out-Null
+New-Item -ItemType Directory -Path $qaTemp -Force | Out-Null
 try {
     $payloadPath = Join-Path $temp 'TEST_ONLY_NOT_A_GAME.bin'
     $manifestPath = Join-Path $temp 'Latebrake-candidate-manifest.json'
@@ -128,7 +130,7 @@ try {
     if (-not $?) { throw 'Fixture failed to recover a valid manifest state.' }
     # Prove a truthful platform QA checklist is REQUIRED *before* any
     # structural EXE validation can pass. The test archive remains text-only.
-    $qaPath = Join-Path $temp 'test-only-qa.json'
+    $qaPath = Join-Path $qaTemp 'test-only-qa.json'
     $qa = [ordered]@{
         platform = 'Win64'
         installed_and_playtested = $true
@@ -174,4 +176,5 @@ try {
     Write-Host 'All candidate manifest and QA policy fixtures passed. No usable binaries created.'
 } finally {
     Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $qaTemp -Recurse -Force -ErrorAction SilentlyContinue
 }
