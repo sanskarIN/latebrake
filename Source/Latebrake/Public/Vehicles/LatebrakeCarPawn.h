@@ -86,6 +86,8 @@ private:
                     bool bAllowAcquire);
     void SelectCircuit();
     void SelectTimeAttack();
+    void CareerNext();
+    void CareerStart();
     void NextGarageVehicle();
     void UnlockGarageVehicle();
     void UpgradeGarageEngine();
