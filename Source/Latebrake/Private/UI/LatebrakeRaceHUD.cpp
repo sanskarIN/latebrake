@@ -68,11 +68,13 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(TEXT("Rookie Cup: %d/30 pts | Prologue Cup: %d/30 pts"),
                 Mode->GetCareer().ChampionshipPoints(0),
                 Mode->GetCareer().ChampionshipPoints(1)));
-            MenuLine(TEXT("Select to start the next available series round."));
+            MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
+            MenuLine(TEXT("BROWSE/N selects an eligible round; select starts."));
             break;
         case latebrake::MenuPage::Challenges:
             MenuLine(TEXT("Clock, clean, precision, consistency, Kestrel, endurance."));
-            MenuLine(TEXT("Select to start the next available challenge."));
+            MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
+            MenuLine(TEXT("BROWSE/N selects an eligible challenge; select starts."));
             break;
         case latebrake::MenuPage::Garage:
             MenuLine(FString::Printf(TEXT("%s | Credits: %d"),
@@ -122,6 +124,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             };
             DrawMenuPad(Pads.CareerNext, TEXT("NEXT"));
             DrawMenuPad(Pads.CareerStart, TEXT("SELECT"));
+            DrawMenuPad(Pads.MenuBrowse, TEXT("BROWSE"));
             DrawMenuPad(Pads.Pause, TEXT("CLOSE"));
         }
 #endif
