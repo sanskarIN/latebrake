@@ -65,3 +65,27 @@ After real hardware gameplay tests, record honest evidence using `docs/releases/
 ## Packaging gate for prereleases
 
 Create real Win64 and Android packages using your authorized UE 5.8 build environment, record actual device and gameplay verification in a JSON file based on `docs/releases/test-evidence.example.json`, and check package structure and hashes with `scripts/Verify-ReleaseArtifacts.ps1`. The verification script performs only **basic structural checks**, not a UE compile, malware audit, or gameplay qualification. Never publish a v0.1.0 pre-release from CI's standalone test executable.
+
+## v0.5.0 executable qualification gate
+
+This repository's portable C++20 CMake/CTest builds do **not** produce
+a playable Windows EXE or Android APK/AAB. The current environment and
+GitHub-hosted CI do not include an installed/licensed UE 5.8 Editor,
+Unreal Header Tool, cookable project-owned `.umap`, Android toolchain
+configured with UE, or physical game-device QA.
+
+An authorized maintainer must use a local or appropriately licensed
+runner with Unreal Engine 5.8 and required SDKs to:
+1. Compile `LatebrakeEditor` and `Latebrake` game targets; fix UHT and
+   C++ issues, including lifecycle delegate and menu input APIs.
+2. Create/save a **real** Unreal level through the editor under project
+   `Content`, set appropriate default map/package cooking entries, and
+   verify the saved level is included.
+3. Build signed/installed Win64 game and Android APK/AAB from Unreal, not
+   renamed portable test binaries or source archives.
+4. Test game startup, controls/inputs, career awards, save migration,
+   menus, performance and application interruptions on real hardware.
+5. Attach artifacts only with SHA256 hashes and tested device/build
+   evidence. Keep issue #2/#13 open until those acceptance criteria pass.
+
+Source-only pre-releases must never imply or attach fake playable binaries.
