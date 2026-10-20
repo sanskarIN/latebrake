@@ -156,3 +156,19 @@ The published v0.5.0 tag is an immutable **source-only pre-release** at merge co
   does not add executable assets to the immutable v0.5.0 release.
 
 See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
+
+### Current post-v0.5.0 development changes (not a release)
+
+- Fixed editor-map existence checking that erroneously queried the
+  `EditorAssetLibrary` API for a **level**; Unreal documents that API as
+  excluding levels. Existing levels are now preserved and loaded.
+- Added seven isolated Unreal Editor script flow tests using disposable
+  fake engine objects, **not** engine assets.
+- Candidate packaging refuses nonempty output folders, unreadable or
+  forged `.umap` headers and missing real engine/map prerequisites.
+- Added UNVERIFIED build provenance manifest (source commit, engine/map
+  and per-file SHA256); no gameplay success is inferred from hashes.
+- Fixed pause key handling so an open development menu closes before
+  the game resumes. Real Unreal focus/lifecycle behavior still requires QA.
+- No Win64 EXE or Android APK has yet been produced or attached.
+  Issues #2 and #13 remain open.
