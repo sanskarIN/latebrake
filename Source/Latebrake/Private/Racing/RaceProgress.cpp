@@ -22,6 +22,7 @@ void RaceProgress::Reset() noexcept
     LastCheckpointSeconds = 0.0;
     LastLapSeconds = 0.0;
     BestLapSeconds = 0.0;
+    SlowestLapSeconds = 0.0;
     LastSectorSeconds = 0.0;
     State = RaceState::Running;
 }
@@ -68,6 +69,10 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
             (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds))
         {
             BestLapSeconds = LastLapSeconds;
+        }
+        if (LastLapSeconds > SlowestLapSeconds)
+        {
+            SlowestLapSeconds = LastLapSeconds;
         }
         LapStartSeconds = ElapsedSeconds;
         if (CompletedLaps >= RequiredLaps)
