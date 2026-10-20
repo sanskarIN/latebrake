@@ -94,6 +94,42 @@ int main()
               best == 90.f && lap == 25.f, "quick race save failure rolled back");
     }
 
+    // The one-time championship bonus must also remain claimable if the
+    // last round's first-completion SaveGame write failed.
+    {
+        GarageState seriesBank;
+        CareerProgress series;
+        int seriesRaces = 2;
+        float seriesBest = 120.f;
+        float seriesLap = 35.f;
+        float seriesAttack = 110.f;
+        Check(series.Select(0), "championship fixture selects first round");
+        const auto first = series.CommitFinish(0, ValidRookieFinish());
+        seriesBank.EarnCredits(first.Credits);
+        Check(series.Select(1), "championship fixture selects second round");
+        const auto second = series.CommitFinish(1, {180., 60., 64., 2, 0, 0, true});
+        seriesBank.EarnCredits(second.Credits);
+        Check(series.Select(2), "championship fixture selects third round");
+        const int bankBeforeFinalRound = seriesBank.Credits();
+        {
+            ProfileWriteCheckpoint checkpoint(seriesBank, series, seriesRaces,
+                                             seriesBest, seriesLap, seriesAttack);
+            const auto third = series.CommitFinish(2, {270., 84., 95., 3, 0, 0, true});
+            Check(third.FirstCompletion && third.ChampionshipBonus == 350,
+                  "final round offers one-time championship bonus");
+            seriesBank.EarnCredits(third.Credits);
+            Check(series.ChampionshipComplete(0), "championship is temporarily complete");
+            checkpoint.Rollback();
+        }
+        Check(!series.ChampionshipComplete(0) &&
+              series.Status(2) == CareerStatus::Available &&
+              seriesBank.Credits() == bankBeforeFinalRound,
+              "unsaved championship completion does not consume its bonus");
+        const auto repeat = series.CommitFinish(2, {270., 84., 95., 3, 0, 0, true});
+        Check(repeat.FirstCompletion && repeat.ChampionshipBonus == 350,
+              "retry after save failure may still earn the one-time series bonus");
+    }
+
     // Once committed, destruction must never erase the successfully saved
     // progression even if subsequent gameplay changes the in-memory state.
     {
