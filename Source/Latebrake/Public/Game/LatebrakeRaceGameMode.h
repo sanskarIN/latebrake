@@ -7,6 +7,7 @@
 #include "Garage/GarageState.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
+#include "UI/MenuNavigation.h"
 #include "LatebrakeRaceGameMode.generated.h"
 
 class AController;
@@ -33,6 +34,14 @@ public:
     bool StartCareerEvent(int32 Id);
     void StartNextAvailableCareerEvent();
     void CycleCareerEvent();
+    void ToggleMenu();
+    void MenuNext();
+    void MenuPrevious();
+    void MenuActivate();
+    bool IsMenuOpen() const { return Menu.IsOpen(); }
+    latebrake::MenuPage GetMenuPage() const { return Menu.Current(); }
+    FString GetMenuPageTitle() const { return FString(UTF8_TO_TCHAR(Menu.Title())); }
+    bool UsesMilesPerHour() const { return bMilesPerHour; }
     bool IsCareerRace() const { return bCareerRace; }
     int32 GetActiveCareerEventId() const { return bCareerRace ? Career.SelectedEvent() : -1; }
     int32 GetMenuCareerEventId() const { return CareerMenuSelection; }
@@ -83,6 +92,8 @@ private:
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
     latebrake::CareerProgress Career;
+    latebrake::MenuNavigation Menu;
+    bool bMilesPerHour = false;
     latebrake::CareerAward LastCareerAward;
     bool bCareerRace = false;
     bool bFutureSaveSchema = false;
