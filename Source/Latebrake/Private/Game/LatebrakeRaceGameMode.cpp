@@ -226,27 +226,66 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 
 void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
-    if (Race.PassCheckpoint(CheckpointIndex) && Race.IsFinished())
+    // RaceProgress only flips to Finished on a valid ordered player gate.
+    // Once finished all subsequent overlap callbacks return false.
+    if (!Race.PassCheckpoint(CheckpointIndex) || !Race.IsFinished())
     {
-        CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
-        const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
+        return;
+    }
+
+    CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
+    const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
+    if (!bCareerRace)
+    {
         float& EventRecord = (SelectedEvent == latebrake::EventKind::TimeAttack)
             ? BestTimeAttackSeconds : PersonalBestSeconds;
         if (EventRecord <= 0.f || FinishedSeconds < EventRecord)
         {
             EventRecord = FinishedSeconds;
         }
-        const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
-        if (FinishedBestLap > 0.f &&
-            (PersonalBestLapSeconds <= 0.f || FinishedBestLap < PersonalBestLapSeconds))
+    }
+    const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
+    if (FinishedBestLap > 0.f &&
+        (PersonalBestLapSeconds <= 0.f || FinishedBestLap < PersonalBestLapSeconds))
+    {
+        PersonalBestLapSeconds = FinishedBestLap;
+    }
+
+    LastCareerAward = {};
+    if (bCareerRace)
+    {
+        // No authoritative AI finishing position exists. Only validated
+        // player checkpoint/lap state is used for career scoring.
+        const latebrake::CareerFinish Finish{
+            Race.GetElapsedSeconds(),
+            Race.GetBestLapSeconds(),
+            Race.GetSlowestLapSeconds(),
+            Race.GetCompletedLaps(),
+            RecoveriesThisRace,
+            Garage.SelectedVehicle(),
+            true
+        };
+        LastCareerAward = Career.CommitFinish(Career.SelectedEvent(), Finish);
+        LastRaceCredits = LastCareerAward.Credits;
+        if (LastCareerAward.FirstCompletion)
         {
-            PersonalBestLapSeconds = FinishedBestLap;
+            CareerFeedback = FString::Printf(
+                TEXT("Career medal %d, +%d credits; championship bonus %d."),
+                static_cast<int32>(LastCareerAward.Medal),
+                LastRaceCredits, LastCareerAward.ChampionshipBonus);
         }
+        else
+        {
+            CareerFeedback = TEXT("Career replay: personal best medal kept, no duplicate completion credits.");
+        }
+    }
+    else
+    {
         LastRaceCredits = latebrake::CalculateRaceCredits(
             SelectedEvent, Race.GetElapsedSeconds(), RecoveriesThisRace);
-        Garage.EarnCredits(LastRaceCredits);
-        SaveRecords();
     }
+    Garage.EarnCredits(LastRaceCredits);
+    SaveRecords();
 }
 
 void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
