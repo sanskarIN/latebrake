@@ -34,6 +34,10 @@ Write-Host "Stage 3/3: cook and package real $Platform candidate."
 & (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $EngineRoot -Platform $Platform -OutputDirectory $OutputDirectory
 if (-not $?) { throw 'BuildCookRun/package stage failed.' }
 
+Write-Host 'Recording traceable source/engine/map and package SHA256 data.'
+& (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -Platform $Platform -PackageDirectory $OutputDirectory -EngineRoot $EngineRoot
+if (-not $?) { throw 'Candidate fingerprint manifest stage failed.' }
+
 Write-Host "Candidate outputs: $OutputDirectory"
 Write-Host 'NOT QUALIFIED: install and test this package on target hardware before release.'
 Write-Host 'Use Verify-PlatformPackage.ps1 with accurate tester evidence for subsequent gating.'
