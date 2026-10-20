@@ -693,11 +693,24 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     if (Garage.Upgrade(latebrake::UpgradeKind::Grip))
     {
         GarageFeedback = FString::Printf(TEXT("Grip upgraded to level %d."), Garage.GripLevel());
         ApplyGarageToPlayer();
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            SavedProfile.Rollback();
+            ApplyGarageToPlayer();
+            GarageFeedback = TEXT("Grip upgrade not saved. Credits and tuning restored.");
+        }
+        else
+        {
+            SavedProfile.Commit();
+        }
     }
     else
     {
