@@ -14,5 +14,6 @@
     "android_touch": false,
     "android_resume": false
   },
-  "notes": "Example only. Never mark checks as passed without actual test evidence."
+  "notes": "LEGACY EXAMPLE ONLY: this combined yes/no schema cannot qualify a release. Use win64-qa.example.json and android-qa.example.json separately, with every gameplay check verified true after real installed testing, plus both matching UAT candidate manifests.",
+  "deprecated": true
 }
