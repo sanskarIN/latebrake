@@ -23,6 +23,8 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "AI/LatebrakeRivalCar.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
+
 namespace
 {
 constexpr TCHAR SaveSlot[] = TEXT("LatebrakeProfile");
@@ -211,6 +213,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         FVector(-2150.0, latebrake::SouthY, 390.0),
         FVector(8.0, 0.32, 1.5), FLinearColor(0.90f, 0.60f, 0.08f));
 
+    int32 SpawnedCheckpoints = 0;
     for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)
     {
         FActorSpawnParameters Parameters;
@@ -222,7 +225,25 @@ void ALatebrakeRaceGameMode::BuildCircuit()
                 FRotator::ZeroRotator, Parameters))
         {
             Checkpoint->SetCheckpointIndex(Index);
+            ++SpawnedCheckpoints;
         }
+    }
+    // A real installed-package QA session can grep for this log marker.
+    // It proves only that the GameMode reached BeginPlay and spawned all
+    // checkpoint actors; it does NOT certify rendering, input or gameplay.
+    if (SpawnedCheckpoints == latebrake::CircuitGateCount)
+    {
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_STARTUP_READY map=%s checkpoints=%d/%d"),
+            *GetWorld()->GetMapName(), SpawnedCheckpoints,
+            latebrake::CircuitGateCount);
+    }
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_STARTUP_BLOCKED map=%s checkpoints=%d/%d"),
+            *GetWorld()->GetMapName(), SpawnedCheckpoints,
+            latebrake::CircuitGateCount);
     }
 }
 
