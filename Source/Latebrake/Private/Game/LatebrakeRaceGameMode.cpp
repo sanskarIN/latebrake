@@ -664,11 +664,24 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     if (Garage.Upgrade(latebrake::UpgradeKind::Engine))
     {
         GarageFeedback = FString::Printf(TEXT("Engine upgraded to level %d."), Garage.EngineLevel());
         ApplyGarageToPlayer();
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            SavedProfile.Rollback();
+            ApplyGarageToPlayer();
+            GarageFeedback = TEXT("Engine upgrade not saved. Credits and tuning restored.");
+        }
+        else
+        {
+            SavedProfile.Commit();
+        }
     }
     else
     {
