@@ -35,6 +35,7 @@ public:
     void CycleCareerEvent();
     bool IsCareerRace() const { return bCareerRace; }
     int32 GetActiveCareerEventId() const { return bCareerRace ? Career.SelectedEvent() : -1; }
+    int32 GetMenuCareerEventId() const { return CareerMenuSelection; }
     const latebrake::CareerProgress& GetCareer() const { return Career; }
     const latebrake::CareerAward& GetLastCareerAward() const { return LastCareerAward; }
     FString GetCareerEventName() const;
@@ -85,6 +86,7 @@ private:
     latebrake::CareerAward LastCareerAward;
     bool bCareerRace = false;
     bool bFutureSaveSchema = false;
+    int32 CareerMenuSelection = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
     float PersonalBestSeconds = 0.f;
