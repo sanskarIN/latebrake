@@ -29,6 +29,17 @@
 - Fixed menu Pause/Escape routing to avoid resuming a race behind its menu.
 - No actual Unreal Editor/game compilation or shipped executable is claimed.
 
+### Further unreleased game runtime and build preflight
+
+- Registered an Android-aware player controller for custom multi-touch
+  controls without conflicting default virtual joysticks.
+- Added a fresh Unreal Editor map-save result receipt, validated after
+  every editor run to catch silent Python scripting failures.
+- Added GameMode startup diagnostic markers checking all four gate actors
+  and a narrowly scoped real-log verifier with negative regression tests.
+- Portable source tests do not substitute for Unreal compilation or
+  installed-device verification. No executable files are published.
+
 ## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
 ### Implemented in Unreal-independent C++20
