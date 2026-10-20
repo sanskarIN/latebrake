@@ -142,3 +142,21 @@ These checks do not compile the Unreal game or serialize a real `.umap`.
 The first real Windows and Android build must satisfy
 [the installed gameplay matrix](EXECUTABLE_BUILD_PIPELINE.md), with
 truthful platform-specific test evidence and package hashes.
+
+## Additional v0.5.1 automation checks
+
+The `Tests/Editor/UnrealMapScriptTests.py` suite exercises seven
+**fake-engine-only** cases: new level, existing level preservation, failed
+load, failed creation, failed save, undersized output and missing editor
+subsystem. Synthetic map fixtures exist only under deleted temporary test
+directories; no fixture is a real Unreal asset.
+
+The PowerShell packaging policy now rejects renamed random bytes or
+unpulled Git LFS pointers as maps, and refuses to write a candidate manifest
+without real package/engine prerequisites. Package output must start empty
+to prevent stale EXE/APK false positives. These are **source-level
+safeguards, not a licensed UE Editor, UHT or installed platform run**.
+
+Pending hardware regression: when pause/menu is open, Escape, gamepad Pause
+and Android pause/close must return to driving *without* resuming behind
+the menu. Verify with an actual Unreal executable.

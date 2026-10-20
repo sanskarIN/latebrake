@@ -304,7 +304,17 @@ void ALatebrakeCarPawn::ChangeCamera()
 
 void ALatebrakeCarPawn::TogglePause()
 {
-    // Drop held analog/touch input on both edges of a pause transition.
+    // Escape/gamepad Pause must not resume gameplay behind a still-open
+    // menu. The same handler closes the menu and restores race input.
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr)
+    {
+        if (Mode->IsMenuOpen())
+        {
+            Mode->ToggleMenu();
+            return;
+        }
+    }
     ClearDriverInputs();
     UGameplayStatics::SetGamePaused(this, !UGameplayStatics::IsGamePaused(this));
 }

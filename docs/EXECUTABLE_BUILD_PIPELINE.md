@@ -115,3 +115,30 @@ and [Android real-device issue #13](https://github.com/sanskarIN/latebrake/issue
 Official Epic documentation:
 - https://dev.epicgames.com/documentation/en-us/unreal-engine/scripting-the-unreal-editor-using-python
 - https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/LevelEditorSubsystem
+
+### Build-integrity hardening after v0.5.0
+
+- Epic's Unreal Python API documents `EditorAssetLibrary.does_asset_exist`
+  as excluding **levels**. The level automation now checks for an existing
+  project-owned `.umap` on disk, then calls `LevelEditorSubsystem.load_level`
+  if it exists; it never calls `new_level` over an existing level.
+  Seven offline mock tests cover the creation/load/failure decisions. They
+  do **not** run Unreal or create release-ready map assets.
+- `Verify-UnrealMapHeader.ps1` rejects tiny/fake `.umap` and Git LFS
+  pointers by checking the Unreal package tag. It is a basic sanity check,
+  **not** a substitute for engine load/cook verification.
+- `Build-PreRelease.ps1` requires a **fresh, empty output directory** for
+  every build. It refuses to reuse an old archive: a stale EXE/APK must not
+  pass a new build just because it was already present on disk.
+- After a genuine successful Unreal package,
+  `Write-CandidateManifest.ps1` writes
+  `Latebrake-candidate-manifest.json` inside the candidate directory,
+  fingerprinting the source commit, engine version, authored map SHA256 and
+  all produced package files. It labels results
+  `UNVERIFIED_CANDIDATE_NOT_PLAYTESTED`, not playable or stable.
+- Existing keyboard/gamepad Escape and pause requests now close a
+  still-open development menu before unpausing driving.
+
+To retry a candidate build, choose a **different empty directory** instead
+of overwriting any earlier output. The manifest provides traceability, not
+evidence that packaged gameplay functions correctly.

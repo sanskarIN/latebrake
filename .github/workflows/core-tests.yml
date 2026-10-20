@@ -35,7 +35,7 @@ jobs:
       - name: Parse package and verification scripts
         shell: pwsh
         run: |
-          foreach ($script in @('scripts/Build-Editor.ps1', 'scripts/New-StarterMap.ps1', 'scripts/Build-PlayableCandidate.ps1', 'scripts/Build-PreRelease.ps1', 'scripts/Verify-ReleaseArtifacts.ps1', 'scripts/Verify-PlatformPackage.ps1', 'scripts/Test-PackagingPolicy.ps1')) {
+          foreach ($script in @('scripts/Build-Editor.ps1', 'scripts/New-StarterMap.ps1', 'scripts/Build-PlayableCandidate.ps1', 'scripts/Build-PreRelease.ps1', 'scripts/Verify-ReleaseArtifacts.ps1', 'scripts/Verify-PlatformPackage.ps1', 'scripts/Write-CandidateManifest.ps1', 'scripts/Verify-UnrealMapHeader.ps1', 'scripts/Test-PackagingPolicy.ps1')) {
             $tokens = $null
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors)
@@ -56,3 +56,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Parse Unreal Editor automation source
         run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py
+      - name: Test editor map automation decisions with disposable stub (NO Unreal SDK)
+        run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
