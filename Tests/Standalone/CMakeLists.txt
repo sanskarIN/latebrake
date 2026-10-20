@@ -152,7 +152,7 @@ endif()
 add_test(NAME TouchControlLayout COMMAND latebrake_touch_layout_tests)
 
 # Independent career rules: no Unreal SDK or licensed assets required.
-foreach(name IN ITEMS CareerCatalog CareerProgress CareerChallenges)
+foreach(name IN ITEMS CareerCatalog CareerProgress CareerChallenges MenuNavigation)
     add_executable(latebrake_${name}_tests ${name}Tests.cpp)
     target_include_directories(latebrake_${name}_tests PRIVATE ../../Source/Latebrake/Public)
     target_compile_features(latebrake_${name}_tests PRIVATE cxx_std_20)
