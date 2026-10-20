@@ -31,3 +31,21 @@ Three fictional tunable prototype vehicles (Arrow, Kestrel and Phantom) allow of
 ## v0.4.0 circuit presentation
 
 The first rectangular circuit gains engine-primitive painted lane marks, alternating red-white curbs, two out-of-road grandstand structures and a lightweight floating start banner. A desktop-only north-up track map highlights the next checkpoint and current player position. Decoration has no collision and does not change race time, gate positions or the existing event balance. These are prototype visuals, not licensed production scenery or selectable new tracks. See `docs/TRACK.md` for design and known limits.
+
+## v0.5.0 offline progression loop (source implementation)
+
+The prototype's new flow is **race → finish valid checkpoints → evaluate
+objective → award best medal → unlock prerequisite → save with credits**.
+There are two cups with three timed/clean/endurance rounds each and six
+standalone challenges. The world is still a single temporary test circuit.
+Silver/gold improve championship scores but cannot regenerate one-time
+completion credits. The experimental AI has no official place/rank.
+
+The development menu includes main, quick race, career, championships,
+challenges, garage, results, pause, settings and profile summary panels.
+The settings panel switches HUD KM/H/MPH, and the garage action switches
+owned fictional cars. This is an engine-unverified Canvas UI, not full
+production menus or accessibility certification.
+
+Original Arrow/Kestrel/Phantom progress persists with schema v2. Earned
+credits never rely on optional support/donation links.
