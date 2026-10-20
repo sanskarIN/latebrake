@@ -43,9 +43,8 @@ if ($LASTEXITCODE -ne 0) {
 if (-not (Test-Path -LiteralPath $map -PathType Leaf)) {
     throw "Unreal exited without writing the required real project map: $map"
 }
-if ((Get-Item -LiteralPath $map).Length -lt 1024) {
-    throw 'Project map is too small to be considered a plausible serialized Unreal level.'
-}
+& (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $map
+if (-not $?) { throw 'Unreal starter map failed serialized-package header sanity check.' }
 Write-Host "Unreal created/confirmed map: $map"
 Write-Host 'Commit the actual binary Content/Maps/LatebrakeCircuit.umap via Git LFS if appropriate.'
 Write-Host 'Next: compile Editor + game targets, cook/package and perform real installation QA.'
