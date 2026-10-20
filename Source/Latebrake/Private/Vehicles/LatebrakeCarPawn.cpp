@@ -349,6 +349,12 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         case latebrake::TouchControl::Recover:
             RecoverPressed();
             return;
+        case latebrake::TouchControl::CareerNext:
+            CareerNext();
+            return;
+        case latebrake::TouchControl::CareerStart:
+            CareerStart();
+            return;
         default:
             break;
         }
@@ -402,6 +408,26 @@ void ALatebrakeCarPawn::SelectTimeAttack()
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->SelectRaceEvent(latebrake::EventKind::TimeAttack);
+    }
+}
+
+void ALatebrakeCarPawn::CareerNext()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->CycleCareerEvent();
+    }
+}
+
+void ALatebrakeCarPawn::CareerStart()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->StartCareerEvent(Mode->GetMenuCareerEventId());
     }
 }
 
@@ -468,6 +494,8 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PauseAction.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("CircuitEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectCircuit);
     PlayerInputComponent->BindAction(TEXT("TimeAttackEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectTimeAttack);
+    PlayerInputComponent->BindAction(TEXT("CareerNext"), IE_Pressed, this, &ALatebrakeCarPawn::CareerNext);
+    PlayerInputComponent->BindAction(TEXT("CareerStart"), IE_Pressed, this, &ALatebrakeCarPawn::CareerStart);
     PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
