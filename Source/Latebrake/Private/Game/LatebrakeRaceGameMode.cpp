@@ -275,9 +275,17 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
                 static_cast<int32>(LastCareerAward.Medal),
                 LastRaceCredits, LastCareerAward.ChampionshipBonus);
         }
+        else if (!LastCareerAward.ValidFinish)
+        {
+            CareerFeedback = TEXT("Career result rejected: invalid race or vehicle data.");
+        }
+        else if (LastCareerAward.Medal == latebrake::CareerMedal::None)
+        {
+            CareerFeedback = TEXT("Career objective missed: retry for a bronze medal.");
+        }
         else
         {
-            CareerFeedback = TEXT("Career replay: personal best medal kept, no duplicate completion credits.");
+            CareerFeedback = TEXT("Career replay: best medal kept; no duplicate completion credits.");
         }
     }
     else
