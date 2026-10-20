@@ -33,6 +33,101 @@ void ALatebrakeRaceHUD::DrawHUD()
     bCompact = true;
 #endif
 
+    if (Mode->IsMenuOpen())
+    {
+        // This is a functional asset-free development UI, NOT a polished
+        // production UMG menu. Navigation stays paused and cannot steer.
+        const float UIScale = static_cast<float>(Layout.Scale);
+        const float X = static_cast<float>(Layout.Left);
+        float Y = static_cast<float>(Layout.Top);
+        const FLinearColor White(0.96f, 0.97f, 1.f);
+        const FLinearColor Gold(1.f, 0.73f, 0.17f);
+        const auto MenuLine = [&](const FString& Value, bool bAccent = false)
+        {
+            DrawText(Value, bAccent ? Gold : White, X, Y,
+                GEngine->GetSmallFont(), UIScale);
+            Y += 28.f * UIScale;
+        };
+        MenuLine(FString::Printf(TEXT("LATEBRAKE / %s"), *Mode->GetMenuPageTitle()), true);
+        MenuLine(TEXT("TAB CLOSE | PAGE DOWN/UP NAVIGATE | ENTER SELECT"));
+        switch (Mode->GetMenuPage())
+        {
+        case latebrake::MenuPage::Main:
+            MenuLine(TEXT("Offline racing. Select to open Quick Race."));
+            break;
+        case latebrake::MenuPage::QuickRace:
+            MenuLine(TEXT("Select to start the original 3-lap circuit."));
+            break;
+        case latebrake::MenuPage::Career:
+            MenuLine(FString::Printf(TEXT("Event: %s"), *Mode->GetCareerEventName()));
+            MenuLine(FString::Printf(TEXT("Completed: %d / %d | N browse events"),
+                Mode->GetCareer().CompletedCount(), latebrake::CareerEventCount));
+            MenuLine(TEXT("Select to start; medals unlock following rounds."));
+            break;
+        case latebrake::MenuPage::Championships:
+            MenuLine(FString::Printf(TEXT("Rookie Cup: %d/30 pts | Prologue Cup: %d/30 pts"),
+                Mode->GetCareer().ChampionshipPoints(0),
+                Mode->GetCareer().ChampionshipPoints(1)));
+            MenuLine(TEXT("Select to start the next available series round."));
+            break;
+        case latebrake::MenuPage::Challenges:
+            MenuLine(TEXT("Clock, clean, precision, consistency, Kestrel, endurance."));
+            MenuLine(TEXT("Select to start the next available challenge."));
+            break;
+        case latebrake::MenuPage::Garage:
+            MenuLine(FString::Printf(TEXT("%s | Credits: %d"),
+                *Mode->GetSelectedVehicleName(), Mode->GetTotalCredits()));
+            MenuLine(TEXT("Select next owned vehicle; Q/U/I unlock and tune."));
+            MenuLine(Mode->GetGarageFeedback());
+            break;
+        case latebrake::MenuPage::Results:
+            MenuLine(FString::Printf(TEXT("Last event reward: +%d credits"),
+                Mode->GetLastRaceCredits()));
+            MenuLine(TEXT("Select to retry the current event."));
+            break;
+        case latebrake::MenuPage::Pause:
+            MenuLine(TEXT("Select to resume the paused race."));
+            break;
+        case latebrake::MenuPage::Settings:
+            MenuLine(Mode->UsesMilesPerHour()
+                ? TEXT("Speed display: MPH") : TEXT("Speed display: KM/H"));
+            MenuLine(TEXT("Select to switch speed units and save."));
+            break;
+        case latebrake::MenuPage::Profile:
+            MenuLine(FString::Printf(TEXT("Completed races: %d | Career medals: %d"),
+                Mode->GetCompletedRaceCount(), Mode->GetCareer().CompletedCount()));
+            MenuLine(FString::Printf(TEXT("Banked credits: %d"),
+                Mode->GetTotalCredits()));
+            break;
+        default: break;
+        }
+        if (Mode->HasProgressSaveError())
+        {
+            MenuLine(TEXT("WARNING: PROGRESS NOT SAVED"), true);
+        }
+#if PLATFORM_ANDROID
+        const auto Pads = latebrake::CalculateTouchControlLayout(
+            Canvas->SizeX, Canvas->SizeY);
+        if (Pads.Valid)
+        {
+            const auto DrawMenuPad = [&](const latebrake::TouchRect& Rect,
+                                         const TCHAR* Label)
+            {
+                DrawRect(FLinearColor(0.15f, 0.23f, 0.32f, 0.65f),
+                    static_cast<float>(Rect.X), static_cast<float>(Rect.Y),
+                    static_cast<float>(Rect.Width), static_cast<float>(Rect.Height));
+                DrawText(FString(Label), Gold, static_cast<float>(Rect.X + 5.0),
+                    static_cast<float>(Rect.Y + 4.0),
+                    GEngine->GetSmallFont(), UIScale);
+            };
+            DrawMenuPad(Pads.CareerNext, TEXT("NEXT"));
+            DrawMenuPad(Pads.CareerStart, TEXT("SELECT"));
+            DrawMenuPad(Pads.Pause, TEXT("CLOSE"));
+        }
+#endif
+        return;
+    }
+
     const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
     const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);
     const float Scale = static_cast<float>(Layout.Scale);
