@@ -87,6 +87,7 @@ private:
     bool bCareerRace = false;
     bool bFutureSaveSchema = false;
     int32 CareerMenuSelection = 0;
+    int32 CareerStartedVehicleId = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
     float PersonalBestSeconds = 0.f;
