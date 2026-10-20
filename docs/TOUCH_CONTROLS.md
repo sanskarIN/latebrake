@@ -130,8 +130,9 @@ new press by dragging across a restart, recovery or pause button.
   band immediately neutralizes its axis. Releasing the finger frees ownership.
 - One captured pedal finger can slide `GAS → neutral gap → BRAKE` or back.
   The neutral gap and any other UI region immediately release acceleration.
-- Invalid coordinates or invalid viewport geometry cancel that finger,
-  including impossible NaN/infinite touch coordinates.
+- Invalid NaN/infinite coordinates cancel the affected finger. A globally
+  invalid viewport layout cancels **both** held controls on the first
+  observed touch event after a resize or orientation change.
 - Menu ownership, the standalone pause state and app foreground/background
   interruptions neutralize captured drive input; late touch moves after
   cancellation cannot reacquire anything without a new press.
