@@ -1,6 +1,7 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/DriverInputSafety.h"
+#include "UI/TouchControlLayout.h"
 #include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
@@ -277,15 +278,17 @@ void ALatebrakeCarPawn::TogglePause()
 
 void ALatebrakeCarPawn::TouchPressed(ETouchIndex::Type FingerIndex, FVector Location)
 {
-    ApplyTouch(FingerIndex, Location);
+    ApplyTouch(FingerIndex, Location, true);
 }
 
 void ALatebrakeCarPawn::TouchMoved(ETouchIndex::Type FingerIndex, FVector Location)
 {
-    ApplyTouch(FingerIndex, Location);
+    // A move never captures a finger that started outside the visible pads.
+    ApplyTouch(FingerIndex, Location, false);
 }
 
-void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location)
+void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
+                                  const FVector& Location, bool bAllowAcquire)
 {
     const APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
@@ -295,30 +298,77 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex, const FVector&
     int32 Width = 0;
     int32 Height = 0;
     PC->GetViewportSize(Width, Height);
-    if (Width <= 0 || Height <= 0)
+
+    const int32 FingerId = static_cast<int32>(FingerIndex);
+    const latebrake::TouchControlLayout Layout =
+        latebrake::CalculateTouchControlLayout(Width, Height);
+    if (!Layout.Valid || !FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
     {
+        // A corrupt coordinate must not keep a previously held accelerator.
+        if (SteeringFinger == FingerId)
+        {
+            TouchSteering = 0.f;
+        }
+        if (PedalFinger == FingerId)
+        {
+            bTouchThrottle = false;
+            bTouchBrake = false;
+        }
         return;
     }
 
-    if (!FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
+    if (SteeringFinger == FingerId)
+    {
+        TouchSteering = static_cast<float>(
+            latebrake::TouchSteeringValue(Layout, Location.X));
+        return;
+    }
+
+    const latebrake::TouchControl Region =
+        latebrake::HitTestTouchControl(Layout, Location.X, Location.Y);
+    if (PedalFinger == FingerId)
+    {
+        // Moving into the neutral gap releases both pedals immediately.
+        bTouchThrottle = Region == latebrake::TouchControl::Throttle;
+        bTouchBrake = Region == latebrake::TouchControl::Brake;
+        return;
+    }
+
+    if (bAllowAcquire)
+    {
+        // Discrete race actions only respond to the initial press. Dragging
+        // over these buttons cannot pause/restart/recover by accident.
+        switch (Region)
+        {
+        case latebrake::TouchControl::Pause:
+            TogglePause();
+            return;
+        case latebrake::TouchControl::Restart:
+            RestartPressed();
+            return;
+        case latebrake::TouchControl::Recover:
+            RecoverPressed();
+            return;
+        default:
+            break;
+        }
+    }
+    if (!bAllowAcquire)
     {
         return;
     }
-    const int32 FingerId = static_cast<int32>(FingerIndex);
-    if (SteeringFinger == FingerId ||
-        (SteeringFinger == INDEX_NONE && PedalFinger != FingerId &&
-         Location.X < static_cast<float>(Width) * 0.5f))
+    if (Region == latebrake::TouchControl::Steering && SteeringFinger == INDEX_NONE)
     {
         SteeringFinger = FingerId;
-        TouchSteering = static_cast<float>(latebrake::SanitizeTouchSteering(Location.X, Width));
+        TouchSteering = static_cast<float>(
+            latebrake::TouchSteeringValue(Layout, Location.X));
     }
-    else if (PedalFinger == FingerId ||
-        (PedalFinger == INDEX_NONE && SteeringFinger != FingerId &&
-         Location.X >= static_cast<float>(Width) * 0.5f))
+    else if ((Region == latebrake::TouchControl::Throttle ||
+              Region == latebrake::TouchControl::Brake) && PedalFinger == INDEX_NONE)
     {
         PedalFinger = FingerId;
-        bTouchBrake = Location.Y > static_cast<float>(Height) * 0.68f;
-        bTouchThrottle = !bTouchBrake;
+        bTouchThrottle = Region == latebrake::TouchControl::Throttle;
+        bTouchBrake = Region == latebrake::TouchControl::Brake;
     }
 }
 
@@ -409,7 +459,9 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
-    PlayerInputComponent->BindTouch(IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
+    FInputTouchBinding& PressedTouch = PlayerInputComponent->BindTouch(
+        IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
+    PressedTouch.bExecuteWhenPaused = true; // Mobile PAUSE pad can also resume play.
     PlayerInputComponent->BindTouch(IE_Repeat, this, &ALatebrakeCarPawn::TouchMoved);
     PlayerInputComponent->BindTouch(IE_Released, this, &ALatebrakeCarPawn::TouchReleased);
     FInputActionBinding& PauseAction = PlayerInputComponent->BindAction(TEXT("Pause"), IE_Pressed, this, &ALatebrakeCarPawn::TogglePause);

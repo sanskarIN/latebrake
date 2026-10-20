@@ -1,6 +1,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "UI/TouchControlLayout.h"
 #include "Track/CircuitMap.h"
 #include "Engine/Engine.h"
 #include "Engine/Canvas.h"
@@ -54,7 +55,8 @@ void ALatebrakeRaceHUD::DrawHUD()
     const int32 Minutes = FMath::FloorToInt(Elapsed / 60.0);
     const double Seconds = Elapsed - static_cast<double>(Minutes) * 60.0;
 
-    Line(TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"), Accent, true);
+    Line(bCompact ? TEXT("LATEBRAKE") : TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"),
+        Accent, true);
     Line(bTimeAttack ? TEXT("TIME ATTACK") : TEXT("CIRCUIT RACE"), Accent);
     Line(FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
     Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
@@ -117,25 +119,36 @@ void ALatebrakeRaceHUD::DrawHUD()
                  8.f * Scale, 8.f * Scale);
     }
 
-    if (Mode->GetEventBestSeconds() > 0.f)
+    if (bCompact)
     {
-        Line(FString::Printf(TEXT("BEST EVENT  %.2fs"), Mode->GetEventBestSeconds()), Primary);
+        // Reserve the lower third for large phone touch targets instead of
+        // letting garage details crowd into the steering and pedal pads.
+        Line(FString::Printf(TEXT("%s  |  %s"),
+            Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
+                ? TEXT("ARCADE") : TEXT("SIM-INSPIRED"),
+            *Mode->GetSelectedVehicleName()), Primary);
+        Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
     }
-    Line(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
-        ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"), Primary);
-    Line(FString::Printf(TEXT("GARAGE  %s"), *Mode->GetSelectedVehicleName()), Accent);
-    Line(FString::Printf(TEXT("ENGINE %d/3 (NEXT %d) | GRIP %d/3 (NEXT %d)"),
-        Mode->GetEngineUpgradeLevel(), Mode->GetNextEngineUpgradeCost(),
-        Mode->GetGripUpgradeLevel(), Mode->GetNextGripUpgradeCost()), Primary);
-    if (!bCompact)
+    else
     {
+        if (Mode->GetEventBestSeconds() > 0.f)
+        {
+            Line(FString::Printf(TEXT("BEST EVENT  %.2fs"),
+                Mode->GetEventBestSeconds()), Primary);
+        }
+        Line(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
+            ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"), Primary);
+        Line(FString::Printf(TEXT("GARAGE  %s"), *Mode->GetSelectedVehicleName()), Accent);
+        Line(FString::Printf(TEXT("ENGINE %d/3 (NEXT %d) | GRIP %d/3 (NEXT %d)"),
+            Mode->GetEngineUpgradeLevel(), Mode->GetNextEngineUpgradeCost(),
+            Mode->GetGripUpgradeLevel(), Mode->GetNextGripUpgradeCost()), Primary);
         const int32 Cost = Mode->GetNextLockedVehicleCost();
         Line(Cost > 0
             ? FString::Printf(TEXT("NEXT CAR UNLOCK  %d CREDITS"), Cost)
             : FString(TEXT("ALL PROTOTYPE PROFILES UNLOCKED")), Primary);
+        Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
+        Line(Mode->GetGarageFeedback(), Primary);
     }
-    Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
-    Line(Mode->GetGarageFeedback(), Primary);
     if (Mode->HasProgressSaveError())
     {
         Line(TEXT("WARNING: LOCAL PROGRESS COULD NOT BE SAVED"), Accent);
@@ -158,8 +171,34 @@ void ALatebrakeRaceHUD::DrawHUD()
     // Keep controls visible without overlapping the main telemetry panel.
     const float FooterY = FMath::Max(Y + 3.f, Canvas->SizeY - 28.f * Scale);
 #if PLATFORM_ANDROID
-    DrawText(TEXT("TOUCH: LEFT STEER  |  RIGHT TOP GAS  |  RIGHT BOTTOM BRAKE"),
-        Accent, Left, FooterY, GEngine->GetSmallFont(), Scale);
+    (void)FooterY;
+    // Draw exactly the same pixel rectangles that the touch dispatcher
+    // hit-tests. Highlighted pads acknowledge actual held touch state.
+    const latebrake::TouchControlLayout Pads =
+        latebrake::CalculateTouchControlLayout(Canvas->SizeX, Canvas->SizeY);
+    if (Pads.Valid)
+    {
+        const float LabelScale = FMath::Max(0.9f, Scale);
+        const auto DrawPad = [&](const latebrake::TouchRect& Rect,
+                                 const TCHAR* Label, bool bPressed)
+        {
+            DrawRect(bPressed
+                ? FLinearColor(0.97f, 0.68f, 0.16f, 0.65f)
+                : FLinearColor(0.11f, 0.18f, 0.25f, 0.52f),
+                static_cast<float>(Rect.X), static_cast<float>(Rect.Y),
+                static_cast<float>(Rect.Width), static_cast<float>(Rect.Height));
+            DrawText(FString(Label), Primary,
+                static_cast<float>(Rect.X + Rect.Width * 0.18),
+                static_cast<float>(Rect.Y + Rect.Height * 0.35),
+                GEngine->GetSmallFont(), LabelScale);
+        };
+        DrawPad(Pads.Steering, TEXT("STEER"), Car->IsTouchSteeringActive());
+        DrawPad(Pads.Throttle, TEXT("GAS"), Car->IsTouchThrottleActive());
+        DrawPad(Pads.Brake, TEXT("BRAKE"), Car->IsTouchBrakeActive());
+        DrawPad(Pads.Pause, TEXT("PAUSE"), UGameplayStatics::IsGamePaused(this));
+        DrawPad(Pads.Restart, TEXT("RESTART"), false);
+        DrawPad(Pads.Recover, TEXT("RECOVER"), false);
+    }
 #else
     DrawText(bCompact
         ? TEXT("W/S GAS  A/D STEER  SPACE BRAKE  T RESTART")

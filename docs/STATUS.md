@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-19
-**Current code milestone:** v0.4.0 track and environment source development.
+**Updated:** 2026-10-20
+**Current code milestone:** v0.4.1 experimental Android touch UX source candidate; v0.4.0 source preview published.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -15,8 +15,18 @@
 
 - [v0.3.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.1) — garage and HUD source hardening.
 - [v0.3.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.2) — driving input and cache safety.
+- [v0.4.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.4.0) — circuit decorations and north-up minimap.
 
 These tags are source previews. They are **not downloadable playable game installers**.
+
+## v0.4.1 work (development source, NOT engine verified)
+
+- New portable touch-pad rectangles shared by the Android HUD and input hit-testing, for steering, gas, brake, pause, restart and recovery.
+- Touch capture starts only with presses on visible pads; nonfinite input is neutralized, pedal drags through the gap release both pedals and moves cannot capture an unrelated finger.
+- Touch pause action is bound to work when the game is paused; restarting while paused unpauses before race reset.
+- Compact HUD prioritizes timing and vehicle status over upgrade pricing, leaving space for large touch pads.
+- Added engine-independent C++20 tests for responsive layout, pad separation, steering values and invalid coordinates; standalone smoke testing performed with GCC 14, not Unreal.
+- **Outstanding:** compile and playtest the Unreal touch dispatcher, pause behavior and HUD on Android hardware; validate lifecycles and accessibility; do not imply a playable APK.
 
 ## v0.4.0 changes
 
@@ -84,7 +94,7 @@ This does not constitute an Unreal 5.8 engine build, an instrumented driving tes
 ## Not implemented or not qualified
 
 - Unreal 5.8 compilation, Unreal Header Tool generation, in-editor driving/playtesting, performance profiling or packaged hardware testing.
-- A cooked project-owned map, original finished vehicle model, Chaos Vehicles wheel/suspension rig, optimized Android touch controls and tested phone lifecycle behavior.
+- A cooked project-owned map, original finished vehicle model, Chaos Vehicles wheel/suspension rig, production-ready mobile controls and tested phone lifecycle behavior.
 - Race-aware overtaking, full AI opponent ranking/finished times, traffic, vehicle upgrades, garage, championships and multiplayer.
 - Tested save migrations, touch inputs, actual vehicle/rival cornering, AI avoidance, pause/resume and HUD at varied viewports.
 - Windows EXE, Android APK/AAB or Linux native binary **not available**.

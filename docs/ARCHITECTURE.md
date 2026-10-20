@@ -71,3 +71,11 @@ No network payments, real-money entitlements or finalized garage UI are implemen
 - Race rules, checkpoints and lap counts remain unchanged and isolated in portable domain code.
 
 These source-only improvements do not constitute engine compilation or a cooked map.
+
+## v0.4.1 Android input presentation boundary
+
+- `UI/TouchControlLayout.h` is pure C++20 and determines rectangles/hit tests in physical viewport pixels; `ALatebrakeRaceHUD` and `ALatebrakeCarPawn` both call it, avoiding drift between visible controls and actual triggers.
+- Touch acquisition happens only on an initial press inside a pad. Subsequent movement can steer within the captured steering zone or change an existing pedal between GAS/BRAKE/neutral; no touch move can capture a new finger.
+- In-game touch pause/restart/recover actions share existing player/race methods. Pause touches are configured to execute while paused; restart always returns the world to running state.
+- Compact HUD omits verbose garage upgrade details to protect room for six on-screen pads.
+- Portable CMake tests validate numeric and geometric behavior. The Unreal-specific touch input binding, rendering, UI legibility, pause handling, phone interruptions and hardware performance are explicitly **not** verified.

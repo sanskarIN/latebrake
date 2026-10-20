@@ -38,6 +38,9 @@ public:
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
+    bool IsTouchSteeringActive() const { return SteeringFinger != INDEX_NONE; }
+    bool IsTouchThrottleActive() const { return bTouchThrottle; }
+    bool IsTouchBrakeActive() const { return bTouchBrake; }
 
     UFUNCTION(BlueprintCallable, Category = "Latebrake|Vehicle")
     void RecoverTo(const FVector& Position, const FRotator& Rotation);
@@ -79,7 +82,8 @@ private:
     void TouchPressed(ETouchIndex::Type FingerIndex, FVector Location);
     void TouchMoved(ETouchIndex::Type FingerIndex, FVector Location);
     void TouchReleased(ETouchIndex::Type FingerIndex, FVector Location);
-    void ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location);
+    void ApplyTouch(ETouchIndex::Type FingerIndex, const FVector& Location,
+                    bool bAllowAcquire);
     void SelectCircuit();
     void SelectTimeAttack();
     void NextGarageVehicle();
