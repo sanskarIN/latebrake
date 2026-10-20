@@ -25,6 +25,14 @@ int main()
     Check(layout.Throttle.Y + layout.Throttle.Height < layout.Brake.Y,
           "separate gas/brake pads have neutral gap");
     Check(layout.Brake.Y + layout.Brake.Height < 720.0, "brake stays inside viewport");
+    Check(layout.Pause.Y + layout.Pause.Height < layout.Restart.Y,
+          "pause and restart have separate touch targets");
+    Check(layout.Restart.Y + layout.Restart.Height < layout.Recover.Y,
+          "restart and recovery have separate touch targets");
+    Check(layout.Recover.Y + layout.Recover.Height < layout.Throttle.Y,
+          "action buttons cannot accidentally accelerate");
+    Check(layout.Recover.X + layout.Recover.Width < 1280.0,
+          "action buttons stay in the right viewport");
 
     const double steerMiddle = layout.Steering.X + layout.Steering.Width * 0.5;
     Check(HitTestTouchControl(layout, steerMiddle, layout.Steering.Y + 10.0) ==
@@ -36,6 +44,12 @@ int main()
     Check(HitTestTouchControl(layout, layout.Throttle.X + 20.0,
           (layout.Throttle.Y + layout.Throttle.Height + layout.Brake.Y) * 0.5) ==
           TouchControl::None, "gap is neutral");
+    Check(HitTestTouchControl(layout, layout.Pause.X + 10.0,
+          layout.Pause.Y + 10.0) == TouchControl::Pause, "pause button");
+    Check(HitTestTouchControl(layout, layout.Restart.X + 10.0,
+          layout.Restart.Y + 10.0) == TouchControl::Restart, "restart button");
+    Check(HitTestTouchControl(layout, layout.Recover.X + 10.0,
+          layout.Recover.Y + 10.0) == TouchControl::Recover, "recovery button");
     Check(HitTestTouchControl(layout, 15.0, 15.0) == TouchControl::None,
           "race telemetry region cannot accelerate");
 
