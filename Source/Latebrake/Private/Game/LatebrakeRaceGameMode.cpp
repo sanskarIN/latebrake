@@ -686,6 +686,7 @@ void ALatebrakeRaceGameMode::LoadRecords()
         PersonalBestLapSeconds = latebrake::SanitizeBestTime(Save->BestLapSeconds);
         BestTimeAttackSeconds = latebrake::SanitizeBestTime(Save->BestTimeAttackSeconds);
         CompletedRaceCount = latebrake::SanitizeCompletedRaces(Save->CompletedRaces);
+        bMilesPerHour = Save->bSpeedInMilesPerHour;
         // Old save slots have zero for fields added after v0.2.x.
         // Garage.Load repairs the owned mask and preserves the starter car.
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
@@ -746,6 +747,7 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->GripUpgradeLevel = Profile.GripLevel;
     const latebrake::CareerSnapshot CareerData = Career.Snapshot();
     Save->SaveSchemaVersion = latebrake::CareerSaveSchema;
+    Save->bSpeedInMilesPerHour = bMilesPerHour;
     Save->ActiveCareerEventId = CareerData.SelectedEvent;
     Save->CareerMedals.SetNum(latebrake::CareerEventCount);
     for (int32 Id = 0; Id < latebrake::CareerEventCount; ++Id)
