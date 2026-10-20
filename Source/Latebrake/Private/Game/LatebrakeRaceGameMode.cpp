@@ -434,8 +434,15 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Settings)
     {
+        const bool PreviousMilesPerHour = bMilesPerHour;
         bMilesPerHour = !bMilesPerHour;
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            bMilesPerHour = PreviousMilesPerHour;
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: speed display unit change was not saved; restoring prior setting"));
+        }
     }
     // Profile is deliberately informational; no money or unlock is created.
 }
