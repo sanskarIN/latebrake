@@ -336,6 +336,11 @@ void ALatebrakeRaceGameMode::StartNextAvailableCareerEvent()
 
 bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
 {
+    if (bFutureSaveSchema)
+    {
+        CareerFeedback = TEXT("Newer save version detected; career writes disabled.");
+        return false;
+    }
     const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
     if (!Event || Career.Status(Id) == latebrake::CareerStatus::Locked)
     {
@@ -368,7 +373,10 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
     LastCareerAward = {};
     RestartRace();
     RefreshRival();
-    CareerFeedback = FString::Printf(TEXT("Career: %s | %d laps | N browse, M next available"),
+    // Persist the active event so exits/restarts can recover the selection.
+    // Only the final validated checkpoint commits a medal and credits.
+    SaveRecords();
+    CareerFeedback = FString::Printf(TEXT("Career: %s | %d laps | N browse, M start"),
         UTF8_TO_TCHAR(Event->Name), Event->Laps);
     return true;
 }
