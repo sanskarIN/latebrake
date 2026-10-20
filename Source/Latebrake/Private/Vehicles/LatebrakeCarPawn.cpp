@@ -334,6 +334,25 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         return;
     }
 
+    if (bAllowAcquire)
+    {
+        // Discrete race actions only respond to the initial press. Dragging
+        // over these buttons cannot pause/restart/recover by accident.
+        switch (Region)
+        {
+        case latebrake::TouchControl::Pause:
+            TogglePause();
+            return;
+        case latebrake::TouchControl::Restart:
+            RestartPressed();
+            return;
+        case latebrake::TouchControl::Recover:
+            RecoverPressed();
+            return;
+        default:
+            break;
+        }
+    }
     if (!bAllowAcquire)
     {
         return;
@@ -440,7 +459,9 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
-    PlayerInputComponent->BindTouch(IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
+    FInputTouchBinding& PressedTouch = PlayerInputComponent->BindTouch(
+        IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
+    PressedTouch.bExecuteWhenPaused = true; // Mobile PAUSE pad can also resume play.
     PlayerInputComponent->BindTouch(IE_Repeat, this, &ALatebrakeCarPawn::TouchMoved);
     PlayerInputComponent->BindTouch(IE_Released, this, &ALatebrakeCarPawn::TouchReleased);
     FInputActionBinding& PauseAction = PlayerInputComponent->BindAction(TEXT("Pause"), IE_Pressed, this, &ALatebrakeCarPawn::TogglePause);
