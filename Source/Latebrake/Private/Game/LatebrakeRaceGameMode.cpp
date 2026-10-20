@@ -605,11 +605,24 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
         GarageFeedback = TEXT("Unlock another vehicle with Q first.");
         return;
     }
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
     if (Garage.Select(Next))
     {
         ApplyGarageToPlayer();
         GarageFeedback = FString::Printf(TEXT("Selected %s."), *GetSelectedVehicleName());
         SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            SavedProfile.Rollback();
+            ApplyGarageToPlayer();
+            GarageFeedback = TEXT("Vehicle selection not saved. Previous vehicle restored.");
+        }
+        else
+        {
+            SavedProfile.Commit();
+        }
     }
 }
 
