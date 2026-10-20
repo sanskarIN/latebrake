@@ -26,7 +26,10 @@ enum class TouchControl
     None,
     Steering,
     Throttle,
-    Brake
+    Brake,
+    Pause,
+    Restart,
+    Recover
 };
 
 struct TouchControlLayout final
@@ -34,6 +37,9 @@ struct TouchControlLayout final
     TouchRect Steering;
     TouchRect Throttle;
     TouchRect Brake;
+    TouchRect Pause;
+    TouchRect Restart;
+    TouchRect Recover;
     bool Valid = false;
 };
 
@@ -55,6 +61,12 @@ inline TouchControlLayout CalculateTouchControlLayout(
          viewportWidth * 0.37, viewportHeight * 0.19},
         {viewportWidth * 0.59, viewportHeight * 0.75,
          viewportWidth * 0.37, viewportHeight * 0.19},
+        {viewportWidth * 0.69, viewportHeight * 0.04,
+         viewportWidth * 0.27, viewportHeight * 0.10},
+        {viewportWidth * 0.69, viewportHeight * 0.16,
+         viewportWidth * 0.27, viewportHeight * 0.10},
+        {viewportWidth * 0.69, viewportHeight * 0.28,
+         viewportWidth * 0.27, viewportHeight * 0.10},
         true
     };
 }
@@ -77,6 +89,18 @@ inline TouchControl HitTestTouchControl(const TouchControlLayout& layout,
     if (layout.Brake.Contains(x, y))
     {
         return TouchControl::Brake;
+    }
+    if (layout.Pause.Contains(x, y))
+    {
+        return TouchControl::Pause;
+    }
+    if (layout.Restart.Contains(x, y))
+    {
+        return TouchControl::Restart;
+    }
+    if (layout.Recover.Contains(x, y))
+    {
+        return TouchControl::Recover;
     }
     return TouchControl::None;
 }
