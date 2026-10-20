@@ -51,6 +51,16 @@ if ($config -notmatch '(?m)^GameDefaultMap=/Game/Maps/LatebrakeCircuit\s*$' -or
 }
 
 $project = (Resolve-Path -LiteralPath $project).Path
+# Never mistake an EXE or APK from an earlier packaging attempt for the
+# result of this run. Refuse an existing nonempty destination, don't delete it.
+if (Test-Path -LiteralPath $OutputDirectory) {
+    if (-not (Test-Path -LiteralPath $OutputDirectory -PathType Container)) {
+        throw 'OutputDirectory must be a directory, not a file.'
+    }
+    if (Get-ChildItem -LiteralPath $OutputDirectory -Force | Select-Object -First 1) {
+        throw 'OutputDirectory is not empty. Choose a fresh directory for each candidate to prevent stale binaries passing package checks.'
+    }
+}
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $out = (Resolve-Path -LiteralPath $OutputDirectory).Path
 
