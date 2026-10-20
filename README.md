@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Development status: v0.4.0 source-only course/environment preview in progress; v0.1.0 through v0.3.2 are published as source-only pre-releases.** The repository contains a coded starter driving/racing experience, but a full UE 5.8 editor compile, in-engine playtest, Windows package, and Android package have **not** been verified. Do not describe it as a finished or downloadable game yet.
+> **Development status: v0.4.0 is the latest published source-only pre-release; v0.4.1 experimental mobile touch UX is under development.** The repository contains a coded starter driving/racing experience, but a full UE 5.8 editor compile, in-engine playtest, Windows package, and Android package have **not** been verified. Do not describe it as a finished or downloadable game yet.
 
 ## What's in source today?
 
@@ -16,6 +16,7 @@
 - v0.3.0: three fictional garage tuning profiles, offline unlocks and upgrades with SaveGame persistence, shortcuts, and prototype cabin silhouettes.
 - v0.3.1: safer corrupt-save handling, centralized purchase lookup, upgrade-price previews, visible transaction feedback, compact HUD layout and bounded racing record counters.
 - v0.3.2: invalid input and physics-value guards, smoother throttle, pause/recovery input clearing, cached garage tuning updates, and a HUD warning for failed saves.
+- v0.4.1 candidate: shared input/HUD touch geometry with visible Android steering, gas, brake, pause, restart and recovery pads; safety-first pedal movement and compact telemetry.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
 
 The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, career menus, or Android touch interfaces yet.
@@ -47,7 +48,7 @@ The game mode is selected via `Config/DefaultEngine.ini`, which points at a buil
 | U / I | Upgrade engine / grip using in-game earned credits |
 | Gamepad | Triggers, left stick, face buttons and shoulder button (see input config) |
 
-Experimental touch bindings: drag in the left half to steer, hold upper-right to accelerate, hold lower-right to brake. **No Android build or touch behavior has been verified**, and accessible visual touch controls still need work.
+Experimental Android controls (v0.4.1 source candidate): drag on the lower-left **STEER** pad; hold the lower-right **GAS**/**BRAKE** pads; tap upper-right **PAUSE**, **RESTART**, or **RECOVER**. See the [touch-control guide and required Android QA](docs/TOUCH_CONTROLS.md). **No Android game build, physical device behavior or accessibility compliance has been verified.**
 
 ## Test the portable race, rival, rewards, garage and course logic
 
@@ -67,12 +68,12 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 - `Source/Latebrake/.../UI`: racing HUD.
 - `Source/Latebrake/.../Progression`: save data.
 - `Config`: maps, rendering, and input.
-- `Tests/Standalone`: portable C++20 checks.
+- `Tests/Standalone`: portable C++20 checks, including responsive touch hit-testing (not Unreal touch routing).
 - `docs`: design, architecture, build instructions, status, and roadmap.
 
 ## Development and releases
 
-**v0.1.0**, **v0.1.1**, **v0.2.0**, **v0.2.1**, and **v0.3.0** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
+**v0.1.0** through **v0.4.0** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
 
 ## License and contributions
 
