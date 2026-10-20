@@ -99,3 +99,17 @@ requests menu closure rather than directly resuming the game behind the
 menu. On Android, the menu's CLOSE pad continues to use the menu route.
 This is a source-level fix and **requires Unreal and real phone tests**
 for actual pause delivery while the game is paused.
+
+## Controller-level Android setup (unreleased v0.5.1)
+
+The race GameMode now explicitly instantiates
+`ALatebrakePlayerController`. Its Android-only BeginPlay activates
+game-only input and removes Unreal's overlapping default virtual joystick,
+while enabling touch events for the pawn's own drawn, multi-finger pads.
+Windows keyboard and gamepad handling are unchanged.
+
+**Required real-device checks:** thumb steering plus simultaneous pedal,
+finger release after leaving a pad, opening the prototype menu with fingers
+held, pause/resume, background/foreground lifecycle neutralization, small
+screen layout and touch re-acquisition after focus returns. Android code
+still has **not** been compiled or played on hardware in this branch.
