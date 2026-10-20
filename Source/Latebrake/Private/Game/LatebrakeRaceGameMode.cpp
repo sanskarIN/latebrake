@@ -585,11 +585,41 @@ void ALatebrakeRaceGameMode::LoadRecords()
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
                      Save->SelectedVehicleId, Save->EngineUpgradeLevel,
                      Save->GripUpgradeLevel});
+
+        if (Save->SaveSchemaVersion > latebrake::CareerSaveSchema)
+        {
+            // Never overwrite an unknown future SaveGame format.
+            bFutureSaveSchema = true;
+            bProgressSaveFailed = true;
+            UE_LOG(LogTemp, Warning, TEXT("Latebrake: future save schema - writes disabled"));
+        }
+        else if (Save->SaveSchemaVersion == latebrake::CareerSaveSchema &&
+                 Save->CareerMedals.Num() == latebrake::CareerEventCount)
+        {
+            latebrake::CareerSnapshot Snapshot;
+            Snapshot.SelectedEvent = Save->ActiveCareerEventId;
+            for (int32 Id = 0; Id < latebrake::CareerEventCount; ++Id)
+            {
+                Snapshot.Medals[static_cast<std::size_t>(Id)] = Save->CareerMedals[Id];
+            }
+            Career.Load(Snapshot);
+        }
+        // A legacy/partially populated career save starts fresh without
+        // resetting any of the existing times, garage or credit balance.
+        CareerMenuSelection = Career.SelectedEvent() >= 0
+            ? Career.SelectedEvent() : Career.NextAvailable();
+        if (CareerMenuSelection < 0) CareerMenuSelection = 0;
     }
 }
 
 void ALatebrakeRaceGameMode::SaveRecords()
 {
+    if (bFutureSaveSchema)
+    {
+        bProgressSaveFailed = true;
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: refusing to overwrite future save schema"));
+        return;
+    }
     ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
         UGameplayStatics::CreateSaveGameObject(ULatebrakePlayerSave::StaticClass()));
     if (!Save)
@@ -608,6 +638,14 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->SelectedVehicleId = Profile.SelectedVehicle;
     Save->EngineUpgradeLevel = Profile.EngineLevel;
     Save->GripUpgradeLevel = Profile.GripLevel;
+    const latebrake::CareerSnapshot CareerData = Career.Snapshot();
+    Save->SaveSchemaVersion = latebrake::CareerSaveSchema;
+    Save->ActiveCareerEventId = CareerData.SelectedEvent;
+    Save->CareerMedals.SetNum(latebrake::CareerEventCount);
+    for (int32 Id = 0; Id < latebrake::CareerEventCount; ++Id)
+    {
+        Save->CareerMedals[Id] = CareerData.Medals[static_cast<std::size_t>(Id)];
+    }
     bProgressSaveFailed = !UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser);
     if (bProgressSaveFailed)
     {
