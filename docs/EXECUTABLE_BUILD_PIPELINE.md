@@ -142,3 +142,44 @@ Official Epic documentation:
 To retry a candidate build, choose a **different empty directory** instead
 of overwriting any earlier output. The manifest provides traceability, not
 evidence that packaged gameplay functions correctly.
+
+## First real executable smoke evidence
+
+A licensed UE 5.8 build is **still required**. The authoring helper now deletes
+the previous `Saved/LatebrakeAutomation/starter-map-result.json` before
+opening the Editor. The embedded Python script writes a new receipt only after
+the actual level loads or is created and its save succeeds. The PowerShell
+wrapper rejects Editor runs without a fresh matching receipt, even if
+`UnrealEditor.exe` exits with code zero. This is important because a
+Python exception may be logged without reliably propagating an OS exit code.
+
+The C++ GameMode emits one of two markers once it has attempted to spawn all
+four checkpoint actors:
+
+- `LATEBRAKE_STARTUP_READY map=LatebrakeCircuit checkpoints=4/4`
+- `LATEBRAKE_STARTUP_BLOCKED map=... checkpoints=.../4`
+
+After installing and *actually starting* a cooked Win64 game, capture that
+launch's real Unreal log (typically under the packaged game's `Saved/Logs`;
+locations vary with packaging configuration) and run:
+
+```powershell
+pwsh ./scripts/Verify-RuntimeStartupLog.ps1 `
+  -LogPath 'D:\ActualGameRun\Saved\Logs\Latebrake.log'
+```
+
+The verifier requires exactly one ready marker for `LatebrakeCircuit` and
+rejects any blocked marker. Its passing result is a **limited runtime
+startup check**, not a substitute for installed driving, frame-rate,
+career/save, audio, input or Android QA. Synthetic fixtures are used only for
+negative tests and are never attached to a release.
+
+### Android touch ownership
+
+`ALatebrakeRaceGameMode` now uses
+`ALatebrakePlayerController`. On Android only, it enables touch-event
+routing and activates game-only input with Unreal's stock virtual joystick
+disabled; the car pawn's two-finger steering/pedal layout remains the source
+of input and Canvas visualization. Verify both fingers, menus, pause,
+focus loss and hardware orientation on a **physical Android device**. The
+source-only CI cannot certify any of these behaviors.
