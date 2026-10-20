@@ -57,7 +57,22 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     Line(bCompact ? TEXT("LATEBRAKE") : TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"),
         Accent, true);
-    Line(bTimeAttack ? TEXT("TIME ATTACK") : TEXT("CIRCUIT RACE"), Accent);
+    Line(Mode->IsCareerRace()
+        ? (bCompact ? FString(TEXT("CAREER RACE"))
+                    : FString::Printf(TEXT("CAREER  %s"), *Mode->GetCareerEventName()))
+        : (bTimeAttack ? FString(TEXT("TIME ATTACK"))
+                       : FString(TEXT("CIRCUIT RACE"))), Accent);
+    if (Mode->IsCareerRace() && !bCompact)
+    {
+        const int32 Id = Mode->GetActiveCareerEventId();
+        const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+        if (Event && Event->Series >= 0)
+        {
+            Line(FString::Printf(TEXT("SERIES %d  |  POINTS %d  |  ROUND %d/3"),
+                Event->Series + 1, Mode->GetCareer().ChampionshipPoints(Event->Series),
+                Event->Round + 1), Primary);
+        }
+    }
     Line(FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
     Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
         DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
@@ -158,6 +173,16 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
             Mode->GetLastRaceCredits()), Accent);
+        if (Mode->IsCareerRace())
+        {
+            const auto Award = Mode->GetLastCareerAward();
+            Line(FString::Printf(TEXT("CAREER MEDAL %d/3  |  SERIES BONUS +%d"),
+                static_cast<int32>(Award.Medal), Award.ChampionshipBonus), Accent);
+        }
+    }
+    else if (!bCompact)
+    {
+        Line(Mode->GetCareerSelectionFeedback(), Primary);
     }
     if (UGameplayStatics::IsGamePaused(this))
     {
@@ -198,11 +223,13 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.Pause, TEXT("PAUSE"), UGameplayStatics::IsGamePaused(this));
         DrawPad(Pads.Restart, TEXT("RESTART"), false);
         DrawPad(Pads.Recover, TEXT("RECOVER"), false);
+        DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
+        DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
     }
 #else
     DrawText(bCompact
         ? TEXT("W/S GAS  A/D STEER  SPACE BRAKE  T RESTART")
-        : TEXT("W/S DRIVE  A/D STEER  SPACE BRAKE  R RECOVER  T RESTART  C CAMERA  1/2 HANDLING  3/4 EVENT  Q/E GARAGE  U/I TUNING"),
+        : TEXT("W/S DRIVE  A/D STEER  SPACE BRAKE  R RECOVER  T RESTART  C CAMERA  1/2 HANDLING  3/4 QUICK  N/M CAREER  Q/E GARAGE  U/I TUNING"),
         Primary, Left, FooterY, GEngine->GetSmallFont(), Scale * (bCompact ? 0.90f : 0.78f));
 #endif
 }
