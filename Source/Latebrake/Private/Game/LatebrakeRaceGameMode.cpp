@@ -226,40 +226,268 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 
 void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
-    if (Race.PassCheckpoint(CheckpointIndex) && Race.IsFinished())
+    // RaceProgress only flips to Finished on a valid ordered player gate.
+    // Once finished all subsequent overlap callbacks return false.
+    if (!Race.PassCheckpoint(CheckpointIndex) || !Race.IsFinished())
     {
-        CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
-        const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
+        return;
+    }
+
+    CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
+    const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
+    if (!bCareerRace)
+    {
         float& EventRecord = (SelectedEvent == latebrake::EventKind::TimeAttack)
             ? BestTimeAttackSeconds : PersonalBestSeconds;
         if (EventRecord <= 0.f || FinishedSeconds < EventRecord)
         {
             EventRecord = FinishedSeconds;
         }
-        const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
-        if (FinishedBestLap > 0.f &&
-            (PersonalBestLapSeconds <= 0.f || FinishedBestLap < PersonalBestLapSeconds))
+    }
+    const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
+    if (FinishedBestLap > 0.f &&
+        (PersonalBestLapSeconds <= 0.f || FinishedBestLap < PersonalBestLapSeconds))
+    {
+        PersonalBestLapSeconds = FinishedBestLap;
+    }
+
+    LastCareerAward = {};
+    if (bCareerRace)
+    {
+        // No authoritative AI finishing position exists. Only validated
+        // player checkpoint/lap state is used for career scoring.
+        const latebrake::CareerFinish Finish{
+            Race.GetElapsedSeconds(),
+            Race.GetBestLapSeconds(),
+            Race.GetSlowestLapSeconds(),
+            Race.GetCompletedLaps(),
+            RecoveriesThisRace,
+            (Garage.SelectedVehicle() == CareerStartedVehicleId)
+                ? CareerStartedVehicleId : -1,
+            true
+        };
+        LastCareerAward = Career.CommitFinish(Career.SelectedEvent(), Finish);
+        LastRaceCredits = LastCareerAward.Credits;
+        if (LastCareerAward.FirstCompletion)
         {
-            PersonalBestLapSeconds = FinishedBestLap;
+            CareerFeedback = FString::Printf(
+                TEXT("Career medal %d, +%d credits; championship bonus %d."),
+                static_cast<int32>(LastCareerAward.Medal),
+                LastRaceCredits, LastCareerAward.ChampionshipBonus);
         }
+        else if (!LastCareerAward.ValidFinish)
+        {
+            CareerFeedback = TEXT("Career result rejected: invalid race or vehicle data.");
+        }
+        else if (LastCareerAward.Medal == latebrake::CareerMedal::None)
+        {
+            CareerFeedback = TEXT("Career objective missed: retry for a bronze medal.");
+        }
+        else
+        {
+            CareerFeedback = TEXT("Career replay: best medal kept; no duplicate completion credits.");
+        }
+    }
+    else
+    {
         LastRaceCredits = latebrake::CalculateRaceCredits(
             SelectedEvent, Race.GetElapsedSeconds(), RecoveriesThisRace);
-        Garage.EarnCredits(LastRaceCredits);
+    }
+    Garage.EarnCredits(LastRaceCredits);
+    SaveRecords();
+}
+
+void ALatebrakeRaceGameMode::ToggleMenu()
+{
+    Menu.Toggle();
+    // Always neutralize held inputs before changing input focus.
+    if (ALatebrakeCarPawn* Car =
+        Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
+    {
+        Car->ClearDriverInputs();
+    }
+    UGameplayStatics::SetGamePaused(this, Menu.IsOpen());
+}
+
+void ALatebrakeRaceGameMode::MenuNext()
+{
+    Menu.Next();
+}
+
+void ALatebrakeRaceGameMode::MenuPrevious()
+{
+    Menu.Previous();
+}
+
+void ALatebrakeRaceGameMode::MenuActivate()
+{
+    if (!Menu.IsOpen()) return;
+    const latebrake::MenuPage Page = Menu.Current();
+    if (Page == latebrake::MenuPage::Main)
+    {
+        Menu.Open(latebrake::MenuPage::QuickRace);
+    }
+    else if (Page == latebrake::MenuPage::QuickRace)
+    {
+        Menu.Close();
+        UGameplayStatics::SetGamePaused(this, false);
+        SelectRaceEvent(latebrake::EventKind::Circuit);
+        RestartRace();
+    }
+    else if (Page == latebrake::MenuPage::Career)
+    {
+        if (StartCareerEvent(CareerMenuSelection)) Menu.Close();
+    }
+    else if (Page == latebrake::MenuPage::Championships)
+    {
+        int32 Target = CareerMenuSelection >= 0 && CareerMenuSelection < 6 &&
+            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
+            ? CareerMenuSelection : -1;
+        for (int32 Id = 0; Id < 6 && Target < 0; ++Id)
+        {
+            if (Career.Status(Id) == latebrake::CareerStatus::Available)
+            {
+                Target = Id;
+                break;
+            }
+        }
+        if (Target < 0) Target = 0; // Replay an already accessible round.
+        if (StartCareerEvent(Target)) Menu.Close();
+    }
+    else if (Page == latebrake::MenuPage::Challenges)
+    {
+        int32 Target = CareerMenuSelection >= 6 &&
+            CareerMenuSelection < latebrake::CareerEventCount &&
+            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
+            ? CareerMenuSelection : -1;
+        for (int32 Id = 6; Id < latebrake::CareerEventCount && Target < 0; ++Id)
+        {
+            if (Career.Status(Id) == latebrake::CareerStatus::Available)
+            {
+                Target = Id;
+                break;
+            }
+        }
+        if (Target < 0) Target = 6;
+        if (StartCareerEvent(Target)) Menu.Close();
+    }
+    else if (Page == latebrake::MenuPage::Garage)
+    {
+        GarageNextVehicle();
+    }
+    else if (Page == latebrake::MenuPage::Results)
+    {
+        Menu.Close();
+        UGameplayStatics::SetGamePaused(this, false);
+        RestartRace();
+    }
+    else if (Page == latebrake::MenuPage::Pause)
+    {
+        ToggleMenu();
+    }
+    else if (Page == latebrake::MenuPage::Settings)
+    {
+        bMilesPerHour = !bMilesPerHour;
         SaveRecords();
     }
+    // Profile is deliberately informational; no money or unlock is created.
 }
 
 void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
 {
-    if (!latebrake::IsValidEvent(Kind) || Kind == SelectedEvent)
+    if (!latebrake::IsValidEvent(Kind) || (Kind == SelectedEvent && !bCareerRace))
     {
         return;
     }
+    bCareerRace = false;
+    LastCareerAward = {};
     SelectedEvent = Kind;
     const latebrake::RaceEvent Definition = latebrake::GetRaceEvent(SelectedEvent);
     Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
     RestartRace();
     RefreshRival();
+}
+
+FString ALatebrakeRaceGameMode::GetCareerEventName() const
+{
+    const int32 Id = (Menu.IsOpen() || !bCareerRace)
+        ? CareerMenuSelection : Career.SelectedEvent();
+    const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+    return Event ? FString(UTF8_TO_TCHAR(Event->Name)) : TEXT("No Career Event");
+}
+
+void ALatebrakeRaceGameMode::CycleCareerEvent()
+{
+    const int32 Original = CareerMenuSelection;
+    for (int32 Delta = 1; Delta <= latebrake::CareerEventCount; ++Delta)
+    {
+        const int32 Id = (Original + Delta) % latebrake::CareerEventCount;
+        if (Menu.IsOpen() &&
+            Menu.Current() == latebrake::MenuPage::Championships && Id >= 6) continue;
+        if (Menu.IsOpen() &&
+            Menu.Current() == latebrake::MenuPage::Challenges && Id < 6) continue;
+        if (Career.Status(Id) != latebrake::CareerStatus::Locked)
+        {
+            CareerMenuSelection = Id;
+            const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+            CareerFeedback = FString::Printf(TEXT("Career selected: %s (%d/%d). M start."),
+                UTF8_TO_TCHAR(Event->Name), Id + 1, latebrake::CareerEventCount);
+            return;
+        }
+    }
+}
+
+void ALatebrakeRaceGameMode::StartNextAvailableCareerEvent()
+{
+    const int32 Next = Career.NextAvailable();
+    StartCareerEvent(Next >= 0 ? Next : CareerMenuSelection);
+}
+
+bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
+{
+    if (bFutureSaveSchema)
+    {
+        CareerFeedback = TEXT("Newer save version detected; career writes disabled.");
+        return false;
+    }
+    const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+    if (!Event || Career.Status(Id) == latebrake::CareerStatus::Locked)
+    {
+        CareerFeedback = TEXT("Career event is locked or unknown.");
+        return false;
+    }
+    if (Event->RequiredVehicle >= 0 && !Garage.Owns(Event->RequiredVehicle))
+    {
+        CareerFeedback = TEXT("Unlock the required vehicle in the garage first.");
+        return false;
+    }
+    // A career race uses the real player checkpoint clock. Rival telemetry is
+    // never interpreted as a competitive finish or championship placement.
+    if (!Career.Select(Id))
+    {
+        CareerFeedback = TEXT("Career selection was rejected.");
+        return false;
+    }
+    CareerMenuSelection = Id;
+    if (Event->RequiredVehicle >= 0)
+    {
+        Garage.Select(Event->RequiredVehicle);
+        ApplyGarageToPlayer();
+    }
+    CareerStartedVehicleId = Garage.SelectedVehicle();
+    bCareerRace = true;
+    SelectedEvent = Event->SpawnRival
+        ? latebrake::EventKind::Circuit : latebrake::EventKind::TimeAttack;
+    Race = latebrake::RaceProgress(4, Event->Laps);
+    LastCareerAward = {};
+    RestartRace();
+    RefreshRival();
+    // Persist the active event so exits/restarts can recover the selection.
+    // Only the final validated checkpoint commits a medal and credits.
+    SaveRecords();
+    CareerFeedback = FString::Printf(TEXT("Career: %s | %d laps | N browse, M start"),
+        UTF8_TO_TCHAR(Event->Name), Event->Laps);
+    return true;
 }
 
 float ALatebrakeRaceGameMode::GetEventBestSeconds() const
@@ -476,16 +704,47 @@ void ALatebrakeRaceGameMode::LoadRecords()
         PersonalBestLapSeconds = latebrake::SanitizeBestTime(Save->BestLapSeconds);
         BestTimeAttackSeconds = latebrake::SanitizeBestTime(Save->BestTimeAttackSeconds);
         CompletedRaceCount = latebrake::SanitizeCompletedRaces(Save->CompletedRaces);
+        bMilesPerHour = Save->bSpeedInMilesPerHour;
         // Old save slots have zero for fields added after v0.2.x.
         // Garage.Load repairs the owned mask and preserves the starter car.
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
                      Save->SelectedVehicleId, Save->EngineUpgradeLevel,
                      Save->GripUpgradeLevel});
+
+        if (Save->SaveSchemaVersion > latebrake::CareerSaveSchema)
+        {
+            // Never overwrite an unknown future SaveGame format.
+            bFutureSaveSchema = true;
+            bProgressSaveFailed = true;
+            UE_LOG(LogTemp, Warning, TEXT("Latebrake: future save schema - writes disabled"));
+        }
+        else if (Save->SaveSchemaVersion == latebrake::CareerSaveSchema &&
+                 Save->CareerMedals.Num() == latebrake::CareerEventCount)
+        {
+            latebrake::CareerSnapshot Snapshot;
+            Snapshot.SelectedEvent = Save->ActiveCareerEventId;
+            for (int32 Id = 0; Id < latebrake::CareerEventCount; ++Id)
+            {
+                Snapshot.Medals[static_cast<std::size_t>(Id)] = Save->CareerMedals[Id];
+            }
+            Career.Load(Snapshot);
+        }
+        // A legacy/partially populated career save starts fresh without
+        // resetting any of the existing times, garage or credit balance.
+        CareerMenuSelection = Career.SelectedEvent() >= 0
+            ? Career.SelectedEvent() : Career.NextAvailable();
+        if (CareerMenuSelection < 0) CareerMenuSelection = 0;
     }
 }
 
 void ALatebrakeRaceGameMode::SaveRecords()
 {
+    if (bFutureSaveSchema)
+    {
+        bProgressSaveFailed = true;
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: refusing to overwrite future save schema"));
+        return;
+    }
     ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
         UGameplayStatics::CreateSaveGameObject(ULatebrakePlayerSave::StaticClass()));
     if (!Save)
@@ -504,6 +763,15 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->SelectedVehicleId = Profile.SelectedVehicle;
     Save->EngineUpgradeLevel = Profile.EngineLevel;
     Save->GripUpgradeLevel = Profile.GripLevel;
+    const latebrake::CareerSnapshot CareerData = Career.Snapshot();
+    Save->SaveSchemaVersion = latebrake::CareerSaveSchema;
+    Save->bSpeedInMilesPerHour = bMilesPerHour;
+    Save->ActiveCareerEventId = CareerData.SelectedEvent;
+    Save->CareerMedals.SetNum(latebrake::CareerEventCount);
+    for (int32 Id = 0; Id < latebrake::CareerEventCount; ++Id)
+    {
+        Save->CareerMedals[Id] = CareerData.Medals[static_cast<std::size_t>(Id)];
+    }
     bProgressSaveFailed = !UGameplayStatics::SaveGameToSlot(Save, SaveSlot, SaveUser);
     if (bProgressSaveFailed)
     {

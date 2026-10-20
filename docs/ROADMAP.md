@@ -13,7 +13,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.4.0 (pre) | First explorable fictional region and traffic | Streaming and UI |
 | v0.4.1 (pre) | Experimental visible mobile steering/pedals plus pause/restart/recover touch pads | Engine compile, phone input and layout testing outstanding |
 | v0.4.2 (pre, proposed) | Touch cancellation, input remapping and mobile performance pass | Low/mid-range real-device metrics |
-| v0.5.0 (pre) | Career, championships and challenges | Economy balance |
+| v0.5.0 (pre, source candidate) | Two 3-round championships, six challenges, medals, career save v2 and prototype menu source | Portable CI, Unreal integration/device QA pending |
 | v0.5.1 (pre) | Accessibility and progression polish | Usability checks |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
@@ -26,3 +26,12 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v1.0.0 (stable) | Complete tested released game per frozen scope | Win64 and Android real builds |
 
 Each release must have real artifacts, actual testing, change notes, known issues, and no unsupported promises.
+
+### Engine-first roadmap requirement
+
+Future milestones must first secure a real Unreal 5.8 editor/UHT build,
+a project-owned cooked map, verified playable Win64 and Android packages,
+and hardware evidence. No additional source-only pre-release implies
+a playable game. Completing [issue #2](https://github.com/sanskarIN/latebrake/issues/2)
+and [issue #13](https://github.com/sanskarIN/latebrake/issues/13)
+is a prerequisite for closing the main quality gate.

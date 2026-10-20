@@ -79,3 +79,31 @@ These source-only improvements do not constitute engine compilation or a cooked 
 - In-game touch pause/restart/recover actions share existing player/race methods. Pause touches are configured to execute while paused; restart always returns the world to running state.
 - Compact HUD omits verbose garage upgrade details to protect room for six on-screen pads.
 - Portable CMake tests validate numeric and geometric behavior. The Unreal-specific touch input binding, rendering, UI legibility, pause handling, phone interruptions and hardware performance are explicitly **not** verified.
+
+## v0.5.0 career and navigation layering
+
+- `Career/CareerCatalog.h` contains a fixed immutable 12-ID event catalog:
+  two three-round cups and six standalone objectives, using the existing
+  four-gate track exclusively.
+- `Career/CareerChallenges.h` validates authoritative player race facts and
+  medal thresholds. It does not use `RivalRouteProgress` as standings.
+- `Career/CareerProgress.h` stores versioned medal/active-event state,
+  derives prerequisite eligibility and championship points, and grants
+  first-medal/series-completion credits once on actual state transition.
+- `ALatebrakeRaceGameMode` configures the existing `RaceProgress` lap
+  count for the chosen career event, receives the final accepted checkpoint,
+  records best lap and slowest lap/recoveries, then atomically packages both
+  medals and garage credits for one SaveGame slot write.
+- Legacy race/garage data is kept on migration; unknown future career schema
+  disables writing rather than silently destroying newer save state.
+- `UI/MenuNavigation.h` is a deterministic ten-page portable menu state
+  machine. Engine game mode maps actions for quick race, career, challenges,
+  championships, garage, settings, results and profile summary; Canvas HUD
+  renders an **experimental**, unverified developer overlay, not a complete
+  production UMG menu.
+- Mobile lifecycle delegates release held steering/throttle/pedal captures
+  on background/deactivation/foreground. The real Android callback and
+  touch focus behavior still require device checks.
+
+All source changes must pass portable CMake/CTest on three runner OSes.
+This is **not** an Unreal Editor build or a playable packaged game.

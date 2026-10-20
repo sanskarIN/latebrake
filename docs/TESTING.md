@@ -109,3 +109,21 @@ Unreal Editor and physical performance gates:
 - [ ] Test minimap next checkpoint, player marker and HUD collision at 1080p, ultrawide and compact sizes
 - [ ] Measure draw calls, FPS and memory on Windows and Android; batch decorative actors into instanced meshes if needed
 - [ ] Produce and test real packaged games before claiming gameplay or stable release readiness
+
+## v0.5.0 career and menu regression matrix
+
+Portable C++20 checks now cover:
+- Immutable stable event identifiers, rounds and prerequisite ordering.
+- Time, clean, checkpoint-precision, consistency, required-vehicle, and
+  endurance medal thresholds with invalid-value rejection.
+- Career unlock/replay, medal upgrades, championship points and once-only
+  completion/series bonuses after save/reload.
+- Legacy/unknown schema treatment, invalid medal and orphan unlock handling.
+- Slowest-lap tracking and reset for consistency objectives.
+- Paused-menu navigation state, invalid page rejection, touch hitboxes.
+
+Mandatory **unverified** Unreal/device checks include UHT reflection,
+`FCoreDelegates` lifecycle registration, `BindTouch` while paused,
+real level cooking, career action routing, HUD viewport/safe-area overlap,
+multi-finger interruption recovery, SaveGame v2 round-trips, and installed
+Android/Win64 gameplay/performance. No CTest run can close these gates.

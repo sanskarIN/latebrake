@@ -29,12 +29,17 @@ class LATEBRAKE_API ALatebrakeCarPawn : public APawn
 public:
     ALatebrakeCarPawn();
 
+    virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    virtual void UnPossessed() override;
     virtual void Tick(float DeltaSeconds) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
     float GetSpeedKmH() const;
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     void ClearDriverInputs();
+    void HandleAppInputInterruption();
+
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
@@ -86,12 +91,22 @@ private:
                     bool bAllowAcquire);
     void SelectCircuit();
     void SelectTimeAttack();
+    void CareerNext();
+    void CareerStart();
+    void MenuToggle();
+    void MenuNext();
+    void MenuPrevious();
+    void MenuActivate();
     void NextGarageVehicle();
     void UnlockGarageVehicle();
     void UpgradeGarageEngine();
     void UpgradeGarageGrip();
     void SelectArcade();
     void SelectSimulation();
+
+    FDelegateHandle BackgroundInputHandle;
+    FDelegateHandle DeactivatedInputHandle;
+    FDelegateHandle ForegroundInputHandle;
 
     float Throttle = 0.f;
     float Steering = 0.f;

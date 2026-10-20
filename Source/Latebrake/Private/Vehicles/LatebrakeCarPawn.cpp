@@ -12,6 +12,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
+#include "Misc/CoreDelegates.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -98,6 +99,38 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+}
+
+void ALatebrakeCarPawn::BeginPlay()
+{
+    Super::BeginPlay();
+    // OS interruptions must never leave an accelerator finger latched.
+    BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
+        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+    DeactivatedInputHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
+        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+    ForegroundInputHandle = FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(
+        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+}
+
+void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundInputHandle);
+    FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(DeactivatedInputHandle);
+    FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
+    ClearDriverInputs();
+    Super::EndPlay(EndPlayReason);
+}
+
+void ALatebrakeCarPawn::UnPossessed()
+{
+    ClearDriverInputs();
+    Super::UnPossessed();
+}
+
+void ALatebrakeCarPawn::HandleAppInputInterruption()
+{
+    ClearDriverInputs();
 }
 
 void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake)
@@ -326,6 +359,21 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
 
     const latebrake::TouchControl Region =
         latebrake::HitTestTouchControl(Layout, Location.X, Location.Y);
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (Mode && Mode->IsMenuOpen())
+    {
+        // While the menu owns focus, touches NEVER reach throttle/steering
+        // or restart/recovery shortcuts. Only explicit navigation taps work.
+        if (bAllowAcquire)
+        {
+            if (Region == latebrake::TouchControl::CareerNext) MenuNext();
+            else if (Region == latebrake::TouchControl::CareerStart) MenuActivate();
+            else if (Region == latebrake::TouchControl::MenuBrowse) CareerNext();
+            else if (Region == latebrake::TouchControl::Pause) MenuToggle();
+        }
+        return;
+    }
     if (PedalFinger == FingerId)
     {
         // Moving into the neutral gap releases both pedals immediately.
@@ -348,6 +396,12 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
             return;
         case latebrake::TouchControl::Recover:
             RecoverPressed();
+            return;
+        case latebrake::TouchControl::CareerNext:
+            CareerNext();
+            return;
+        case latebrake::TouchControl::CareerStart:
+            CareerStart();
             return;
         default:
             break;
@@ -402,6 +456,61 @@ void ALatebrakeCarPawn::SelectTimeAttack()
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->SelectRaceEvent(latebrake::EventKind::TimeAttack);
+    }
+}
+
+void ALatebrakeCarPawn::MenuToggle()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->ToggleMenu();
+    }
+}
+
+void ALatebrakeCarPawn::MenuNext()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->MenuNext();
+    }
+}
+
+void ALatebrakeCarPawn::MenuPrevious()
+{
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->MenuPrevious();
+    }
+}
+
+void ALatebrakeCarPawn::MenuActivate()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->MenuActivate();
+    }
+}
+
+void ALatebrakeCarPawn::CareerNext()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        Mode->CycleCareerEvent();
+    }
+}
+
+void ALatebrakeCarPawn::CareerStart()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        if (Mode->IsMenuOpen()) Mode->MenuActivate();
+        else Mode->StartCareerEvent(Mode->GetMenuCareerEventId());
     }
 }
 
@@ -468,6 +577,24 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PauseAction.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("CircuitEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectCircuit);
     PlayerInputComponent->BindAction(TEXT("TimeAttackEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectTimeAttack);
+    FInputActionBinding& BrowseCareer = PlayerInputComponent->BindAction(
+        TEXT("CareerNext"), IE_Pressed, this, &ALatebrakeCarPawn::CareerNext);
+    BrowseCareer.bExecuteWhenPaused = true;
+    FInputActionBinding& LaunchCareer = PlayerInputComponent->BindAction(
+        TEXT("CareerStart"), IE_Pressed, this, &ALatebrakeCarPawn::CareerStart);
+    LaunchCareer.bExecuteWhenPaused = true;
+    FInputActionBinding& OpenMenu = PlayerInputComponent->BindAction(
+        TEXT("MenuToggle"), IE_Pressed, this, &ALatebrakeCarPawn::MenuToggle);
+    OpenMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& NextMenu = PlayerInputComponent->BindAction(
+        TEXT("MenuNext"), IE_Pressed, this, &ALatebrakeCarPawn::MenuNext);
+    NextMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& PreviousMenu = PlayerInputComponent->BindAction(
+        TEXT("MenuPrevious"), IE_Pressed, this, &ALatebrakeCarPawn::MenuPrevious);
+    PreviousMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& ConfirmMenu = PlayerInputComponent->BindAction(
+        TEXT("MenuActivate"), IE_Pressed, this, &ALatebrakeCarPawn::MenuActivate);
+    ConfirmMenu.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);

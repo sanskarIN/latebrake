@@ -29,7 +29,10 @@ enum class TouchControl
     Brake,
     Pause,
     Restart,
-    Recover
+    Recover,
+    CareerNext,
+    CareerStart,
+    MenuBrowse
 };
 
 struct TouchControlLayout final
@@ -40,6 +43,9 @@ struct TouchControlLayout final
     TouchRect Pause;
     TouchRect Restart;
     TouchRect Recover;
+    TouchRect CareerNext;
+    TouchRect CareerStart;
+    TouchRect MenuBrowse;
     bool Valid = false;
 };
 
@@ -67,6 +73,12 @@ inline TouchControlLayout CalculateTouchControlLayout(
          viewportWidth * 0.27, viewportHeight * 0.10},
         {viewportWidth * 0.69, viewportHeight * 0.28,
          viewportWidth * 0.27, viewportHeight * 0.10},
+        {viewportWidth * 0.43, viewportHeight * 0.04,
+         viewportWidth * 0.23, viewportHeight * 0.10},
+        {viewportWidth * 0.43, viewportHeight * 0.16,
+         viewportWidth * 0.23, viewportHeight * 0.10},
+        {viewportWidth * 0.43, viewportHeight * 0.28,
+         viewportWidth * 0.23, viewportHeight * 0.10},
         true
     };
 }
@@ -101,6 +113,18 @@ inline TouchControl HitTestTouchControl(const TouchControlLayout& layout,
     if (layout.Recover.Contains(x, y))
     {
         return TouchControl::Recover;
+    }
+    if (layout.CareerNext.Contains(x, y))
+    {
+        return TouchControl::CareerNext;
+    }
+    if (layout.CareerStart.Contains(x, y))
+    {
+        return TouchControl::CareerStart;
+    }
+    if (layout.MenuBrowse.Contains(x, y))
+    {
+        return TouchControl::MenuBrowse;
     }
     return TouchControl::None;
 }

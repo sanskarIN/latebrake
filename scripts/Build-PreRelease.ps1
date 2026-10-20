@@ -26,6 +26,16 @@ if (-not (Test-Path -LiteralPath $uat -PathType Leaf)) {
     throw "Unreal automation tool not found: $uat. Install licensed UE 5.8."
 }
 $project = (Resolve-Path -LiteralPath $project).Path
+# Engine/Maps/Entry is an engine placeholder; a shipped game needs a
+# genuinely authored and saved project map, not a fabricated text .umap.
+$contentRoot = Join-Path $repo 'Content'
+if (-not (Test-Path -LiteralPath $contentRoot -PathType Container)) {
+    throw 'No project Content directory/cooked .umap exists. Open the project in a licensed Unreal editor and save a real level first.'
+}
+$maps = @(Get-ChildItem -LiteralPath $contentRoot -Filter '*.umap' -File -Recurse -ErrorAction Stop)
+if ($maps.Count -eq 0) {
+    throw 'No actual Unreal .umap found. Do not package a game using only /Engine/Maps/Entry.'
+}
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $out = (Resolve-Path -LiteralPath $OutputDirectory).Path
 
@@ -46,7 +56,7 @@ $uatArguments = @(
 if ($Platform -eq 'Android') {
     $uatArguments += '-package'
 } else {
-    $args += '-prereqs'
+    $uatArguments += '-prereqs'
 }
 Write-Host "Running Unreal automation for $Platform. A successful process exit does not replace real playtesting."
 & $uat @uatArguments

@@ -75,6 +75,7 @@ int main()
     Check(timed.PassCheckpoint(1), "lap one finish");
     Check(std::abs(timed.GetLastLapSeconds() - 10.0) < 1e-9, "first lap time");
     Check(std::abs(timed.GetBestLapSeconds() - 10.0) < 1e-9, "initial fastest lap");
+    Check(std::abs(timed.GetSlowestLapSeconds() - 10.0) < 1e-9, "initial slowest lap");
     Check(std::abs(timed.GetCurrentLapSeconds()) < 1e-9, "lap clock restarts");
     timed.Advance(3.0);
     Check(!timed.PassCheckpoint(1), "wrong gate cannot generate fake split");
@@ -84,6 +85,7 @@ int main()
     Check(timed.PassCheckpoint(1), "lap two finish");
     Check(std::abs(timed.GetLastLapSeconds() - 8.0) < 1e-9, "second lap time");
     Check(std::abs(timed.GetBestLapSeconds() - 8.0) < 1e-9, "new fastest lap");
+    Check(std::abs(timed.GetSlowestLapSeconds() - 10.0) < 1e-9, "slowest lap preserved");
     timed.Advance(10.0);
     Check(timed.PassCheckpoint(0), "lap three first gate");
     timed.Advance(2.0);
@@ -91,8 +93,10 @@ int main()
     Check(timed.IsFinished(), "timed race finished");
     Check(std::abs(timed.GetLastLapSeconds() - 12.0) < 1e-9, "last completed lap");
     Check(std::abs(timed.GetBestLapSeconds() - 8.0) < 1e-9, "slower lap preserves fastest");
+    Check(std::abs(timed.GetSlowestLapSeconds() - 12.0) < 1e-9, "third lap becomes slowest");
     timed.Reset();
     Check(timed.GetBestLapSeconds() == 0.0, "reset best lap");
+    Check(timed.GetSlowestLapSeconds() == 0.0, "reset slowest lap");
     Check(timed.GetLastSectorSeconds() == 0.0, "reset splits");
 
     RaceProgress overflow(1, 1);

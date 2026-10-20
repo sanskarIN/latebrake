@@ -30,6 +30,7 @@ public:
     double GetCurrentLapSeconds() const noexcept { return ElapsedSeconds - LapStartSeconds; }
     double GetLastLapSeconds() const noexcept { return LastLapSeconds; }
     double GetBestLapSeconds() const noexcept { return BestLapSeconds; }
+    double GetSlowestLapSeconds() const noexcept { return SlowestLapSeconds; }
     double GetLastSectorSeconds() const noexcept { return LastSectorSeconds; }
     RaceState GetState() const noexcept { return State; }
     bool IsFinished() const noexcept { return State == RaceState::Finished; }
@@ -44,6 +45,7 @@ private:
     double LastCheckpointSeconds = 0.0;
     double LastLapSeconds = 0.0;
     double BestLapSeconds = 0.0;
+    double SlowestLapSeconds = 0.0;
     double LastSectorSeconds = 0.0;
     RaceState State = RaceState::Running;
 };

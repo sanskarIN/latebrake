@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-20
-**Current code milestone:** v0.4.1 experimental Android touch UX source-only pre-release published.
+**Current code milestone:** v0.5.0 career/championship source development; published latest is v0.4.1 source-only pre-release.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -110,3 +110,27 @@ This does not constitute an Unreal 5.8 engine build, an instrumented driving tes
 6. Publish **stable v1.0.0 only** after complete declared release scope and tested Win64/Android artifacts.
 
 Track the first playable-release gates in [issue #2](https://github.com/sanskarIN/latebrake/issues/2).
+
+## v0.5.0 source development audit (2026-10-20)
+
+| Subsystem | Source state | Remaining gate |
+| --- | --- | --- |
+| Race & checkpoint clock | Four ordered gates, lap timing, slowest-lap tracking | UE/physics playtest |
+| Career catalog | Stable IDs, 12 events, prerequisite graph | Real UI and balance QA |
+| Championships | Two three-round cups, medal points and once-only bonuses | UE integration playtest |
+| Challenges | Six portable validation rules incl. clean/precision/consistency/Kestrel/endurance | Device timing and vehicle QA |
+| Garage | Existing Arrow/Kestrel/Phantom saved state preserved, bounded credits | Actual save migration |
+| SaveGame v2 | Career medals/selection + unit preference appended; future schema write guard | Unreal serialization, interruption/rollback tests |
+| Menu/UI | 10-page asset-free paused Canvas menu, career selection, speed unit toggle, device touch actions | Editor compile, viewport/accessibility and UMG work |
+| Mobile lifecycle | Deactivation/background/foreground/unpossess cleanup source | Physical Android cancel/focus-loss tests |
+| CI | Portable CMake/CTest across Windows, macOS, Ubuntu | Does not compile Unreal |
+| Packaging | No verified game binaries or project-owned cookable map | UE installed/cook/package/hardware evidence |
+
+Issues [#2](https://github.com/sanskarIN/latebrake/issues/2) and
+[#13](https://github.com/sanskarIN/latebrake/issues/13) are **still open**;
+source CI cannot close them. The current in-container environment has a
+C++ toolchain but **no Unreal Engine 5.8 installation**, and the GitHub
+connection cannot manufacture validated game packages.
+
+The proposed v0.5.0 tag must be clearly labeled **source-only pre-release**
+unless actual engine/game packages become available and are tested.

@@ -33,6 +33,104 @@ void ALatebrakeRaceHUD::DrawHUD()
     bCompact = true;
 #endif
 
+    if (Mode->IsMenuOpen())
+    {
+        // This is a functional asset-free development UI, NOT a polished
+        // production UMG menu. Navigation stays paused and cannot steer.
+        const float UIScale = static_cast<float>(Layout.Scale);
+        const float X = static_cast<float>(Layout.Left);
+        float Y = static_cast<float>(Layout.Top);
+        const FLinearColor White(0.96f, 0.97f, 1.f);
+        const FLinearColor Gold(1.f, 0.73f, 0.17f);
+        const auto MenuLine = [&](const FString& Value, bool bAccent = false)
+        {
+            DrawText(Value, bAccent ? Gold : White, X, Y,
+                GEngine->GetSmallFont(), UIScale);
+            Y += 28.f * UIScale;
+        };
+        MenuLine(FString::Printf(TEXT("LATEBRAKE / %s"), *Mode->GetMenuPageTitle()), true);
+        MenuLine(TEXT("TAB CLOSE | PAGE DOWN/UP NAVIGATE | ENTER SELECT"));
+        switch (Mode->GetMenuPage())
+        {
+        case latebrake::MenuPage::Main:
+            MenuLine(TEXT("Offline racing. Select to open Quick Race."));
+            break;
+        case latebrake::MenuPage::QuickRace:
+            MenuLine(TEXT("Select to start the original 3-lap circuit."));
+            break;
+        case latebrake::MenuPage::Career:
+            MenuLine(FString::Printf(TEXT("Event: %s"), *Mode->GetCareerEventName()));
+            MenuLine(FString::Printf(TEXT("Completed: %d / %d | N browse events"),
+                Mode->GetCareer().CompletedCount(), latebrake::CareerEventCount));
+            MenuLine(TEXT("Select to start; medals unlock following rounds."));
+            break;
+        case latebrake::MenuPage::Championships:
+            MenuLine(FString::Printf(TEXT("Rookie Cup: %d/30 pts | Prologue Cup: %d/30 pts"),
+                Mode->GetCareer().ChampionshipPoints(0),
+                Mode->GetCareer().ChampionshipPoints(1)));
+            MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
+            MenuLine(TEXT("BROWSE/N selects an eligible round; select starts."));
+            break;
+        case latebrake::MenuPage::Challenges:
+            MenuLine(TEXT("Clock, clean, precision, consistency, Kestrel, endurance."));
+            MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
+            MenuLine(TEXT("BROWSE/N selects an eligible challenge; select starts."));
+            break;
+        case latebrake::MenuPage::Garage:
+            MenuLine(FString::Printf(TEXT("%s | Credits: %d"),
+                *Mode->GetSelectedVehicleName(), Mode->GetTotalCredits()));
+            MenuLine(TEXT("Select next owned vehicle; Q/U/I unlock and tune."));
+            MenuLine(Mode->GetGarageFeedback());
+            break;
+        case latebrake::MenuPage::Results:
+            MenuLine(FString::Printf(TEXT("Last event reward: +%d credits"),
+                Mode->GetLastRaceCredits()));
+            MenuLine(TEXT("Select to retry the current event."));
+            break;
+        case latebrake::MenuPage::Pause:
+            MenuLine(TEXT("Select to resume the paused race."));
+            break;
+        case latebrake::MenuPage::Settings:
+            MenuLine(Mode->UsesMilesPerHour()
+                ? TEXT("Speed display: MPH") : TEXT("Speed display: KM/H"));
+            MenuLine(TEXT("Select to switch speed units and save."));
+            break;
+        case latebrake::MenuPage::Profile:
+            MenuLine(FString::Printf(TEXT("Completed races: %d | Career medals: %d"),
+                Mode->GetCompletedRaceCount(), Mode->GetCareer().CompletedCount()));
+            MenuLine(FString::Printf(TEXT("Banked credits: %d"),
+                Mode->GetTotalCredits()));
+            break;
+        default: break;
+        }
+        if (Mode->HasProgressSaveError())
+        {
+            MenuLine(TEXT("WARNING: PROGRESS NOT SAVED"), true);
+        }
+#if PLATFORM_ANDROID
+        const auto Pads = latebrake::CalculateTouchControlLayout(
+            Canvas->SizeX, Canvas->SizeY);
+        if (Pads.Valid)
+        {
+            const auto DrawMenuPad = [&](const latebrake::TouchRect& Rect,
+                                         const TCHAR* Label)
+            {
+                DrawRect(FLinearColor(0.15f, 0.23f, 0.32f, 0.65f),
+                    static_cast<float>(Rect.X), static_cast<float>(Rect.Y),
+                    static_cast<float>(Rect.Width), static_cast<float>(Rect.Height));
+                DrawText(FString(Label), Gold, static_cast<float>(Rect.X + 5.0),
+                    static_cast<float>(Rect.Y + 4.0),
+                    GEngine->GetSmallFont(), UIScale);
+            };
+            DrawMenuPad(Pads.CareerNext, TEXT("NEXT"));
+            DrawMenuPad(Pads.CareerStart, TEXT("SELECT"));
+            DrawMenuPad(Pads.MenuBrowse, TEXT("BROWSE"));
+            DrawMenuPad(Pads.Pause, TEXT("CLOSE"));
+        }
+#endif
+        return;
+    }
+
     const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
     const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);
     const float Scale = static_cast<float>(Layout.Scale);
@@ -57,8 +155,25 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     Line(bCompact ? TEXT("LATEBRAKE") : TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"),
         Accent, true);
-    Line(bTimeAttack ? TEXT("TIME ATTACK") : TEXT("CIRCUIT RACE"), Accent);
-    Line(FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
+    Line(Mode->IsCareerRace()
+        ? (bCompact ? FString(TEXT("CAREER RACE"))
+                    : FString::Printf(TEXT("CAREER  %s"), *Mode->GetCareerEventName()))
+        : (bTimeAttack ? FString(TEXT("TIME ATTACK"))
+                       : FString(TEXT("CIRCUIT RACE"))), Accent);
+    if (Mode->IsCareerRace() && !bCompact)
+    {
+        const int32 Id = Mode->GetActiveCareerEventId();
+        const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
+        if (Event && Event->Series >= 0)
+        {
+            Line(FString::Printf(TEXT("SERIES %d  |  POINTS %d  |  ROUND %d/3"),
+                Event->Series + 1, Mode->GetCareer().ChampionshipPoints(Event->Series),
+                Event->Round + 1), Primary);
+        }
+    }
+    Line(Mode->UsesMilesPerHour()
+        ? FString::Printf(TEXT("SPEED  %.0f mph"), Car->GetSpeedKmH() * 0.621371f)
+        : FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
     Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
         DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
@@ -158,6 +273,16 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
             Mode->GetLastRaceCredits()), Accent);
+        if (Mode->IsCareerRace())
+        {
+            const auto Award = Mode->GetLastCareerAward();
+            Line(FString::Printf(TEXT("CAREER MEDAL %d/3  |  SERIES BONUS +%d"),
+                static_cast<int32>(Award.Medal), Award.ChampionshipBonus), Accent);
+        }
+    }
+    else if (!bCompact)
+    {
+        Line(Mode->GetCareerSelectionFeedback(), Primary);
     }
     if (UGameplayStatics::IsGamePaused(this))
     {
@@ -198,11 +323,13 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.Pause, TEXT("PAUSE"), UGameplayStatics::IsGamePaused(this));
         DrawPad(Pads.Restart, TEXT("RESTART"), false);
         DrawPad(Pads.Recover, TEXT("RECOVER"), false);
+        DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
+        DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
     }
 #else
     DrawText(bCompact
         ? TEXT("W/S GAS  A/D STEER  SPACE BRAKE  T RESTART")
-        : TEXT("W/S DRIVE  A/D STEER  SPACE BRAKE  R RECOVER  T RESTART  C CAMERA  1/2 HANDLING  3/4 EVENT  Q/E GARAGE  U/I TUNING"),
+        : TEXT("W/S DRIVE  A/D STEER  SPACE BRAKE  R RECOVER  T RESTART  C CAMERA  1/2 HANDLING  3/4 QUICK  N/M CAREER  Q/E GARAGE  U/I TUNING"),
         Primary, Left, FooterY, GEngine->GetSmallFont(), Scale * (bCompact ? 0.90f : 0.78f));
 #endif
 }

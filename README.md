@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Development status: v0.4.1 is the latest published source-only pre-release (20 October 2026).** It adds experimental Android touch controls, but Unreal Editor and actual phone/desktop game builds are **not** verified. The repository contains a coded starter driving/racing experience, but a full UE 5.8 editor compile, in-engine playtest, Windows package, and Android package have **not** been verified. Do not describe it as a finished or downloadable game yet.
+> **Development status: v0.5.0 career/championship source code under development; v0.4.1 remains the latest published pre-release.** A verified Unreal 5.8 Editor compile, a project-owned cooked map, Win64/Android game executables and installed playtests are outstanding. v0.5.0 may be published only as a clearly labeled source pre-release until those checks exist.
 
 ## What's in source today?
 
@@ -96,3 +96,23 @@ Latebrake is free to develop and contribute to. Support is **optional** and conf
 - PayPal.me: https://paypal.me/SanskarCodes
 
 Platform distribution policies must be reviewed before showing external payment links inside any released app.
+
+## v0.5.0 career and menu development
+
+The source now defines **two three-round championship series**, **six standalone
+challenges**, permanent best medals (bronze/silver/gold), prerequisite unlocks,
+once-only completion credits, and a versioned career SaveGame extension. All
+objectives reuse the **existing single prototype circuit**. These additions
+are covered by engine-independent C++20 regression tests, **not** verified
+Unreal gameplay tests.
+
+- **N / M**: browse and start unlocked career events.
+- **Tab / PageDown / PageUp / Enter**: toggle, navigate and activate
+  the ten-page asset-free development menu.
+- **Gamepad**: D-pad and face/menu buttons are mapped in
+  `Config/DefaultInput.ini`.
+- **Android experimental source**: visible touch-driven menu controls plus
+  app background/foreground input-clearing hooks; no device qualification yet.
+- See [career](docs/CAREER.md), [championships](docs/CHAMPIONSHIPS.md),
+  [challenges](docs/CHALLENGES.md), [save migration](docs/SAVE_MIGRATION.md)
+  and the [v0.5.0 release candidate notes](docs/releases/v0.5.0.md).

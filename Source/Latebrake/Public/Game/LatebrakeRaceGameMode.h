@@ -6,6 +6,8 @@
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageTuningKey.h"
+#include "Career/CareerProgress.h"
+#include "UI/MenuNavigation.h"
 #include "LatebrakeRaceGameMode.generated.h"
 
 class AController;
@@ -29,6 +31,24 @@ public:
     void RegisterCheckpoint(int32 CheckpointIndex);
     void RestartRace();
     void SelectRaceEvent(latebrake::EventKind Kind);
+    bool StartCareerEvent(int32 Id);
+    void StartNextAvailableCareerEvent();
+    void CycleCareerEvent();
+    void ToggleMenu();
+    void MenuNext();
+    void MenuPrevious();
+    void MenuActivate();
+    bool IsMenuOpen() const { return Menu.IsOpen(); }
+    latebrake::MenuPage GetMenuPage() const { return Menu.Current(); }
+    FString GetMenuPageTitle() const { return FString(UTF8_TO_TCHAR(Menu.Title())); }
+    bool UsesMilesPerHour() const { return bMilesPerHour; }
+    bool IsCareerRace() const { return bCareerRace; }
+    int32 GetActiveCareerEventId() const { return bCareerRace ? Career.SelectedEvent() : -1; }
+    int32 GetMenuCareerEventId() const { return CareerMenuSelection; }
+    const latebrake::CareerProgress& GetCareer() const { return Career; }
+    const latebrake::CareerAward& GetLastCareerAward() const { return LastCareerAward; }
+    FString GetCareerEventName() const;
+    FString GetCareerSelectionFeedback() const { return CareerFeedback; }
     latebrake::EventKind GetSelectedEvent() const { return SelectedEvent; }
     float GetEventBestSeconds() const;
     bool HasRival() const;
@@ -71,6 +91,15 @@ private:
     void ApplyGarageToPlayer();
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
+    latebrake::CareerProgress Career;
+    latebrake::MenuNavigation Menu;
+    bool bMilesPerHour = false;
+    latebrake::CareerAward LastCareerAward;
+    bool bCareerRace = false;
+    bool bFutureSaveSchema = false;
+    int32 CareerMenuSelection = 0;
+    int32 CareerStartedVehicleId = 0;
+    FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
     float PersonalBestSeconds = 0.f;
     float BestTimeAttackSeconds = 0.f;

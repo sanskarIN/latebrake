@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.5.0 — Career & Championship Foundations (source-only candidate)
+
+### Implemented in Unreal-independent C++20
+- Immutable twelve-ID event catalog: two three-round championship series and six standalone challenges, all using the existing single course.
+- Prerequisite unlocks, available/completed/mastered event states, bronze/silver/gold performance medals, points and series-completion bonuses.
+- Deterministic time, clean recovery, ordered checkpoint precision, lap consistency, Kestrel-specific and six-lap endurance objectives.
+- Once-only per-event first-medal credit rewards and once-only championship bonuses, with replay medal improvement and save/load resistance to duplicate awards.
+- Defensive career snapshot migration and numeric validity; completed-lap slowest-time tracking.
+- Portable ten-page menu state machine, expanded touch layout, career and UI regression tests.
+
+### Unreal-facing **source code** integration (not Editor-verified)
+- Configurable 1–6 lap career races, active-event selection, authoritative player-only result evaluation, garage economy integration and v2 SaveGame serialization.
+- Asset-free paused menu with career/championship/challenge/garage/result/settings/profile pages, gamepad/keyboard/touch navigation and persisted KM/H or MPH choice.
+- OS lifecycle input-clearing delegates on background/deactivate/foreground to reduce stuck mobile control risk.
+- Documentation, test plans and source-only release workflow.
+
+### Not verified / not playable
+- Unreal Engine 5.8 UHT/game/editor compilation, real cooked project-owned map, installed Win64/Android binary, phone input/menu behavior, save/physics gameplay or performance.
+- Full art, real competitive AI standings, production UMG UI, audio, multiple maps and signing/packaging are not claimed.
+
+
 ## v0.4.1 — Android touch UX and input reliability (published source-only pre-release)
 
 ### Added and changed
