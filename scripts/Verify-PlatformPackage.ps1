@@ -68,6 +68,14 @@ if ($evidence.platform -ne $Platform -or
     [string]::IsNullOrWhiteSpace([string]$evidence.test_notes)) {
     throw 'Incomplete platform-specific test evidence; actual installed UE 5.8 playtest is required.'
 }
+# Human QA must refer to the identical source revision as the archive:
+# a hardware test of some OTHER executable is not qualifying evidence.
+$buildManifest = Get-Content -LiteralPath $ManifestJson -Raw |
+    ConvertFrom-Json -ErrorAction Stop
+if (([string]$evidence.build_commit).Trim() -cne
+    ([string]$buildManifest.source_commit).Trim()) {
+    throw 'QA evidence build_commit does not match the verified candidate manifest source_commit.'
+}
 # All test evidence fields are self-declarations from a responsible tester.
 # This script does not automatically prove their truth.
 if ($Platform -eq 'Win64') {
