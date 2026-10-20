@@ -91,3 +91,11 @@ Physical-device testing of orientation changes, Android back/home,
 notifications, fingers released while suspended, repeated foreground
 activation, and touch overlap/legibility remains **required**. Do not close
 issue #13 on the strength of portable geometry tests.
+
+## Development menu pause reconciliation
+
+When the development menu is open, keyboard Escape/gamepad Pause now
+requests menu closure rather than directly resuming the game behind the
+menu. On Android, the menu's CLOSE pad continues to use the menu route.
+This is a source-level fix and **requires Unreal and real phone tests**
+for actual pause delivery while the game is paused.
