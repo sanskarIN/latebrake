@@ -635,13 +635,30 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
         return;
     }
     const int32 Cost = latebrake::GarageState::Definition(Next).UnlockCost;
-    if (!Garage.Unlock(Next))
+    if (!Garage.CanUnlock(Next))
     {
         GarageFeedback = FString::Printf(TEXT("Need %d credits; currently %d."), Cost, Garage.Credits());
         return;
     }
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
+    if (!Garage.Unlock(Next))
+    {
+        GarageFeedback = TEXT("Vehicle unlock rejected.");
+        return;
+    }
     GarageFeedback = FString::Printf(TEXT("Unlocked %s!"), UTF8_TO_TCHAR(latebrake::GarageState::Definition(Next).Name));
     SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        SavedProfile.Rollback();
+        GarageFeedback = TEXT("Vehicle purchase not saved. Credits and locked vehicle restored.");
+    }
+    else
+    {
+        SavedProfile.Commit();
+    }
 }
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
