@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.4.1 — Android touch UX and input reliability (source-only candidate)
+
+### Added and changed
+- Shared responsive geometry for six Android pads: steering, throttle, brake, pause, restart and recovery.
+- Explicit touch-down capture rather than implicit capture while moving; ignored touches outside the pads cannot trigger driving.
+- Two-finger steering and pedals; neutral gas/brake gap and invalid-coordinate fail-safe.
+- Android HUD pad outlines/highlights; compact telemetry with enough room for driving pads.
+- Touch PAUSE binding permitted during pause; restarting from pause unpauses.
+- Portable C++20 regression checks for pad hit-testing, screen sizes, control separation, steering clamping and corrupt coordinates.
+
+### Still to verify
+- Unreal Engine 5.8 compilation and in-game input routing, pause behavior, touch focus-loss handling, HUD/device rendering, real Android builds and packaging. This is **not a playable game release**.
+
+
 ## v0.4.0 — starter course and environment expansion (source-only candidate)
 
 ### Added and changed
