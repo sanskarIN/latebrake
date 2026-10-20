@@ -26,3 +26,6 @@ out/
 Tests/Standalone/build/
 CMakeFiles/
 CMakeCache.txt
+# Unreal Editor-only Python syntax checks
+__pycache__/
+*.pyc
