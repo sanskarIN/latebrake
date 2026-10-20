@@ -1,0 +1,20 @@
+{
+  "platform": "Win64",
+  "installed_and_playtested": false,
+  "unreal_version": "",
+  "build_commit": "",
+  "test_hardware": "",
+  "tester": "",
+  "test_date": "",
+  "test_notes": "Do not set installed_and_playtested=true until actually running the cooked Unreal game on the named device. Commit/source tests are insufficient.",
+  "checks": {
+    "launch": false,
+    "driving": false,
+    "camera": false,
+    "lap_finish": false,
+    "career": false,
+    "save_load": false,
+    "menu_input": false,
+    "performance": false
+  }
+}
