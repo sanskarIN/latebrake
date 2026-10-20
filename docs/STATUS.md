@@ -134,3 +134,25 @@ C++ toolchain but **no Unreal Engine 5.8 installation**, and the GitHub
 connection cannot manufacture validated game packages.
 
 The published v0.5.0 tag is an immutable **source-only pre-release** at merge commit `ad17b47886b8d3f9633299f74d85b4949aa1b5a8`. Release and core CI each passed Windows, Ubuntu and macOS portable tests; PowerShell syntax validation also passed. GitHub contains no attached executable assets. These checks do not validate the Unreal runtime or physical device behavior.
+
+## v0.5.1 build-readiness development — not yet a release
+
+- Default game map and cooker now target `/Game/Maps/LatebrakeCircuit`.
+  The actual Unreal-generated `.umap` **does not exist in the repo yet**.
+- Removed unused ChaosVehicles plugin and game-module dependency; this
+  project currently uses a physically simulated rigid-body prototype.
+- Added Unreal Engine 5.8 UBT Editor compilation helper, Editor-only
+  Python map-authoring script, PowerShell wrapper and UAT BuildCookRun
+  pipeline for real Win64/Android candidate packages.
+- Added platform-specific package shape/hashes + self-declared installed
+  QA verification and negative test fixtures; Windows CI checks syntax.
+- Added a manual self-hosted UE 5.8 Actions workflow for candidate artifacts,
+  with no automatic release attachment and no claim that a runner is
+  connected.
+- **Still unverified:** real UHT/UBT compilation, map creation, cooking,
+  installation, Windows/Android physics/menu/save QA, device performance
+  and game binaries. Issues #2 and #13 remain open.
+- **Published release remains v0.5.0 source-only**. Work after this tag
+  does not add executable assets to the immutable v0.5.0 release.
+
+See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
