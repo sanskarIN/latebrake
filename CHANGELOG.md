@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.1 — Android touch UX and input reliability (source-only candidate)
+## v0.4.1 — Android touch UX and input reliability (published source-only pre-release)
 
 ### Added and changed
 - Shared responsive geometry for six Android pads: steering, throttle, brake, pause, restart and recovery.
