@@ -186,3 +186,18 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 - These changes have **not** been compiled against UE 5.8 or device tested;
   v0.5.0 is still the source-only published pre-release, with issues #2 and
   #13 open pending actual game binaries and QA.
+
+### v0.5.1 — source-level SaveGame failure recovery improvements
+
+- `ProfileWriteCheckpoint` captures the previous garage, career medals,
+  completed-race count and best race/lap/time-attack times before committing
+  a result. An unsuccessful `SaveGameToSlot` now restores the session's
+  previous values rather than leaving unsaved credits and unlocks usable.
+- Garage purchases, active vehicle selection, engine/grip upgrades and
+  MPH/KMH preference likewise restore prior values on a failed write.
+- Portable tests cover retryable first-completion rewards and
+  championship bonus after a deliberately failed save.
+- **This is not a crash-safe atomic filesystem transaction.** No genuine
+  UE SaveGame serialization, disk-failure simulation, hardware QA or
+  executable has run here. v0.5.0 is still source-only and issues #2/#13
+  remain open.
