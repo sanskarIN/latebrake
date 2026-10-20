@@ -5,14 +5,15 @@
     This deliberately refuses a source archive or dummy renamed EXE/APK.
     Hashes and structure checks cannot replace manual installed playtests.
 .EXAMPLE
-    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Win64 -PackagePath 'D:/LatebrakeBuilds/Win64' -EvidenceJson 'D:/Latebrake/windows-evidence.json'
-    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Android -PackagePath 'D:/LatebrakeBuilds/Android/Latebrake.apk' -EvidenceJson 'D:/Latebrake/android-evidence.json'
+    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Win64 -PackagePath 'D:/LatebrakeBuilds/Win64' -EvidenceJson 'D:/Latebrake/windows-evidence.json' -ManifestJson 'D:/LatebrakeBuilds/Win64/Latebrake-candidate-manifest.json'
+    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Android -PackagePath 'D:/LatebrakeBuilds/Android/Latebrake.apk' -EvidenceJson 'D:/Latebrake/android-evidence.json' -ManifestJson 'D:/LatebrakeBuilds/Android/Latebrake-candidate-manifest.json'
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][ValidateSet('Win64','Android')][string]$Platform,
     [Parameter(Mandatory)][string]$PackagePath,
-    [Parameter(Mandatory)][string]$EvidenceJson
+    [Parameter(Mandatory)][string]$EvidenceJson,
+    [string]$ManifestJson
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -34,6 +35,23 @@ function Assert-ExecutableSignature {
         $stream.Dispose()
     }
     return $item.FullName
+}
+
+# Provenance is required at the actual release QA gate. Never accept an
+# EXE/APK whose exact bytes are not recorded in a post-UAT manifest.
+if ([string]::IsNullOrWhiteSpace($ManifestJson)) {
+    throw 'Explicit -ManifestJson is required to match the candidate to its recorded hashes.'
+}
+& (Join-Path $PSScriptRoot 'Test-CandidateManifest.ps1') -ManifestJson $ManifestJson -Platform $Platform
+if (-not $?) { throw 'Candidate archive failed SHA256/file-list validation.' }
+
+$manifestRoot = (Get-Item -LiteralPath $ManifestJson -ErrorAction Stop).Directory.FullName
+$resolvedPackage = (Resolve-Path -LiteralPath $PackagePath -ErrorAction Stop).Path
+$prefix = $manifestRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+    [System.IO.Path]::DirectorySeparatorChar
+if (-not ($resolvedPackage.Equals($manifestRoot, [StringComparison]::OrdinalIgnoreCase) -or
+          $resolvedPackage.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase))) {
+    throw 'PackagePath must refer to files inside the verified manifest archive.'
 }
 
 if (-not (Test-Path -LiteralPath $EvidenceJson -PathType Leaf)) {
