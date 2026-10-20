@@ -368,6 +368,18 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         }
         return;
     }
+    if (UGameplayStatics::IsGamePaused(this))
+    {
+        // A standalone Escape/gamepad pause has no menu focus. Reject new
+        // gas, brake and steering presses until explicit unpause; otherwise
+        // a finger pressed while paused could unexpectedly accelerate later.
+        TouchDrive.Clear();
+        if (bAllowAcquire && Region == latebrake::TouchControl::Pause)
+        {
+            TogglePause();
+        }
+        return;
+    }
 
     if (!bAllowAcquire)
     {
