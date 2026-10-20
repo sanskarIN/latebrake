@@ -1,0 +1,19 @@
+{
+  "platform": "Android",
+  "installed_and_playtested": false,
+  "unreal_version": "",
+  "build_commit": "",
+  "test_hardware": "",
+  "tester": "",
+  "test_date": "",
+  "test_notes": "Do not set installed_and_playtested=true until actually running the cooked Unreal game on the named device. Commit/source tests are insufficient.",
+  "checks": {
+    "install_launch": false,
+    "two_finger_controls": false,
+    "focus_loss": false,
+    "pause_resume": false,
+    "portrait_landscape": false,
+    "career_save_reload": false,
+    "performance": false
+  }
+}
