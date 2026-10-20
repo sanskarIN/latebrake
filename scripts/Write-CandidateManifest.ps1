@@ -1,0 +1,78 @@
+<#
+.SYNOPSIS
+    Write an UNQUALIFIED build manifest for an actual Unreal packaging output.
+.DESCRIPTION
+    This fingerprints packaged files and the serialized map; it does not
+    certify that the game launches, drives or works on a phone. The build
+    pipeline invokes this only after RunUAT exits successfully.
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][ValidateSet('Win64','Android')][string]$Platform,
+    [Parameter(Mandatory)][string]$PackageDirectory,
+    [Parameter(Mandatory)][string]$EngineRoot
+)
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$repo = Split-Path -Parent $PSScriptRoot
+$versionPath = Join-Path $EngineRoot 'Engine/Build/Build.version'
+$projectMap = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
+if (-not (Test-Path -LiteralPath $PackageDirectory -PathType Container)) {
+    throw 'No actual package directory exists for the candidate manifest.'
+}
+if (-not (Test-Path -LiteralPath $projectMap -PathType Leaf)) {
+    throw 'Cannot fingerprint a missing real Unreal project map.'
+}
+if (-not (Test-Path -LiteralPath $versionPath -PathType Leaf)) {
+    throw 'Cannot identify the Unreal Engine version used to build this candidate.'
+}
+
+$engine = Get-Content -LiteralPath $versionPath -Raw | ConvertFrom-Json -ErrorAction Stop
+if ($engine.MajorVersion -ne 5 -or $engine.MinorVersion -ne 8) {
+    throw 'Only licensed Unreal Engine 5.8 candidates are supported.'
+}
+
+$sourceSha = (& git -C $repo rev-parse HEAD 2>$null)
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceSha)) {
+    throw 'Git source revision unavailable; do not publish untraceable builds.'
+}
+$modifiedTrackedFiles = @(& git -C $repo status --porcelain --untracked-files=no 2>$null)
+if ($LASTEXITCODE -ne 0) {
+    throw 'Could not determine source tree modification status.'
+}
+
+$root = (Resolve-Path -LiteralPath $PackageDirectory).Path
+$manifestPath = Join-Path $root 'Latebrake-candidate-manifest.json'
+if (Test-Path -LiteralPath $manifestPath) {
+    throw 'Candidate manifest already exists; expected a fresh package directory.'
+}
+
+$packageFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse | Sort-Object FullName)
+if ($packageFiles.Count -eq 0) {
+    throw 'No packaged files found to fingerprint.'
+}
+$fingerprints = @(
+    foreach ($file in $packageFiles) {
+        [ordered]@{
+            path = [System.IO.Path]::GetRelativePath($root, $file.FullName).Replace('\', '/')
+            bytes = [int64]$file.Length
+            sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
+    }
+)
+$manifest = [ordered]@{
+    schema_version = 1
+    project = 'LateBrake'
+    platform = $Platform
+    status = 'UNVERIFIED_CANDIDATE_NOT_PLAYTESTED'
+    source_commit = "$sourceSha".Trim()
+    source_tree_tracked_changes = ($modifiedTrackedFiles.Count -gt 0)
+    unreal_engine_version = "$($engine.MajorVersion).$($engine.MinorVersion)"
+    starter_map_sha256 = (Get-FileHash -LiteralPath $projectMap -Algorithm SHA256).Hash.ToLowerInvariant()
+    created_utc = [DateTime]::UtcNow.ToString('o')
+    files = $fingerprints
+}
+$manifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $manifestPath -Encoding utf8NoBOM
+Write-Host "Unverified candidate hashes written to $manifestPath"
+Write-Host 'Do not equate this manifest with real engine/driver/device gameplay qualification.'
