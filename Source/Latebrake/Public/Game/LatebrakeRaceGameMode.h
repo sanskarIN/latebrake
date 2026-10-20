@@ -6,6 +6,7 @@
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageTuningKey.h"
+#include "Career/CareerProgress.h"
 #include "LatebrakeRaceGameMode.generated.h"
 
 class AController;
@@ -29,6 +30,15 @@ public:
     void RegisterCheckpoint(int32 CheckpointIndex);
     void RestartRace();
     void SelectRaceEvent(latebrake::EventKind Kind);
+    bool StartCareerEvent(int32 Id);
+    void StartNextAvailableCareerEvent();
+    void CycleCareerEvent();
+    bool IsCareerRace() const { return bCareerRace; }
+    int32 GetActiveCareerEventId() const { return bCareerRace ? Career.SelectedEvent() : -1; }
+    const latebrake::CareerProgress& GetCareer() const { return Career; }
+    const latebrake::CareerAward& GetLastCareerAward() const { return LastCareerAward; }
+    FString GetCareerEventName() const;
+    FString GetCareerSelectionFeedback() const { return CareerFeedback; }
     latebrake::EventKind GetSelectedEvent() const { return SelectedEvent; }
     float GetEventBestSeconds() const;
     bool HasRival() const;
@@ -71,6 +81,11 @@ private:
     void ApplyGarageToPlayer();
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
+    latebrake::CareerProgress Career;
+    latebrake::CareerAward LastCareerAward;
+    bool bCareerRace = false;
+    bool bFutureSaveSchema = false;
+    FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
     float PersonalBestSeconds = 0.f;
     float BestTimeAttackSeconds = 0.f;
