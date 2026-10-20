@@ -1,66 +1,43 @@
 <#
 .SYNOPSIS
-    Validate evidence for real platform artifacts before a Latebrake pre-release.
+    Qualify a Win64 + Android Unreal game build pair for MANUAL release review.
 .DESCRIPTION
-    This checks expected files and signatures, sizes and hashes. It is NOT a
-    substitute for Unreal Engine compilation, actual gameplay or device tests.
+    Requires both exact post-UAT SHA256 archives and two platform-specific,
+    human-authored installed-game QA reports. Do NOT use source-only tests,
+    renamed binaries, or a generic yes/no evidence flag to approve a release.
+    This does not upload artifacts or independently prove the QA is truthful.
 .EXAMPLE
-    pwsh scripts/Verify-ReleaseArtifacts.ps1 -Win64Directory 'D:/Latebrake/Win64' -AndroidApk 'D:/Latebrake/Latebrake.apk' -EvidenceJson 'D:/Latebrake/test-evidence.json'
+    pwsh scripts/Verify-ReleaseArtifacts.ps1 -Win64Directory 'D:/LatebrakeCandidates/Win64' -AndroidApk 'D:/LatebrakeCandidates/Android/Android/Latebrake.apk' -Win64ManifestJson 'D:/LatebrakeCandidates/Win64/Latebrake-candidate-manifest.json' -AndroidManifestJson 'D:/LatebrakeCandidates/Android/Latebrake-candidate-manifest.json' -Win64EvidenceJson 'D:/QA/win64-qa.json' -AndroidEvidenceJson 'D:/QA/android-qa.json'
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Win64Directory,
     [Parameter(Mandatory)][string]$AndroidApk,
-    [Parameter(Mandatory)][string]$EvidenceJson
+    [Parameter(Mandatory)][string]$Win64ManifestJson,
+    [Parameter(Mandatory)][string]$AndroidManifestJson,
+    [Parameter(Mandatory)][string]$Win64EvidenceJson,
+    [Parameter(Mandatory)][string]$AndroidEvidenceJson
 )
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-function Assert-ValidFile {
-    param([string]$Path, [int64]$MinimumSize, [byte[]]$Magic)
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw "Missing artifact: $Path"
-    }
-    $item = Get-Item -LiteralPath $Path
-    if ($item.Length -lt $MinimumSize) {
-        throw "Artifact appears too small ($($item.Length) bytes): $Path"
-    }
-    $stream = [System.IO.File]::OpenRead($item.FullName)
-    try {
-        for ($i = 0; $i -lt $Magic.Length; $i++) {
-            if ($stream.ReadByte() -ne $Magic[$i]) {
-                throw "Invalid executable/package signature: $Path"
-            }
-        }
-    } finally {
-        $stream.Dispose()
-    }
-    $hash = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    Write-Output "$($item.Name) | $($item.Length) bytes | SHA256 $hash"
+
+$verifier = Join-Path $PSScriptRoot 'Verify-PlatformPackage.ps1'
+# Each verifier rejects an altered, extra or missing archive file, fake EXE
+# or APK structure, absent installed-device QA, and mismatched source SHA.
+& $verifier -Platform Win64 -PackagePath $Win64Directory -EvidenceJson $Win64EvidenceJson -ManifestJson $Win64ManifestJson
+if (-not $?) { throw 'Win64 archive/platform verification failed.' }
+& $verifier -Platform Android -PackagePath $AndroidApk -EvidenceJson $AndroidEvidenceJson -ManifestJson $AndroidManifestJson
+if (-not $?) { throw 'Android archive/platform verification failed.' }
+
+$windows = Get-Content -LiteralPath $Win64ManifestJson -Raw |
+    ConvertFrom-Json -ErrorAction Stop
+$android = Get-Content -LiteralPath $AndroidManifestJson -Raw |
+    ConvertFrom-Json -ErrorAction Stop
+if ($windows.source_commit -cne $android.source_commit) {
+    throw 'Windows and Android packages come from different source commits; release one common revision.'
 }
-if (-not (Test-Path -LiteralPath $Win64Directory -PathType Container)) {
-    throw "Win64 package directory does not exist: $Win64Directory"
+if ($windows.unreal_engine_version -cne $android.unreal_engine_version) {
+    throw 'Windows and Android packages used different Unreal Engine versions.'
 }
-$exe = Get-ChildItem -LiteralPath $Win64Directory -Filter '*Latebrake*.exe' -File -Recurse |
-    Select-Object -First 1
-if ($null -eq $exe) {
-    throw 'No Latebrake Windows executable found'
-}
-$paks = @(Get-ChildItem -LiteralPath $Win64Directory -File -Recurse |
-    Where-Object { $_.Extension -in '.pak', '.ucas' })
-if ($paks.Count -eq 0) {
-    throw 'No cooked Unreal game content (.pak/.ucas) found in Windows package'
-}
-if (-not (Test-Path -LiteralPath $EvidenceJson -PathType Leaf)) {
-    throw 'Release evidence JSON is missing'
-}
-$evidence = Get-Content -LiteralPath $EvidenceJson -Raw | ConvertFrom-Json -ErrorAction Stop
-if ($evidence.windows_playtested -ne $true -or $evidence.android_playtested -ne $true -or
-    [string]::IsNullOrWhiteSpace([string]$evidence.unreal_version) -or
-    [string]::IsNullOrWhiteSpace([string]$evidence.windows_hardware) -or
-    [string]::IsNullOrWhiteSpace([string]$evidence.android_device)) {
-    throw 'Evidence must record verified playtests, engine version, Windows hardware and Android device'
-}
-Write-Output 'Windows application:'
-Assert-ValidFile -Path $exe.FullName -MinimumSize 102400 -Magic ([byte[]](0x4d,0x5a))
-Write-Output 'Android APK:'
-Assert-ValidFile -Path $AndroidApk -MinimumSize 1048576 -Magic ([byte[]](0x50,0x4b))
-Write-Output 'Package structure and human test evidence present. Actual game behavior is not automatically certified by this script.'
+Write-Host "Both candidate archives match the same source revision: $($windows.source_commit)"
+Write-Host 'Manual dual-platform release review may proceed. This is NOT automatic proof of gameplay or a published release.'
