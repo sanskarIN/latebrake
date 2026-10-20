@@ -169,11 +169,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedThrottle = 0.f;
     SmoothedSteering = 0.f;
     bBraking = false;
-    SteeringFinger = INDEX_NONE;
-    PedalFinger = INDEX_NONE;
-    TouchSteering = 0.f;
-    bTouchThrottle = false;
-    bTouchBrake = false;
+    TouchDrive.Clear();
 }
 
 void ALatebrakeCarPawn::ThrottleInput(float Value)
@@ -207,14 +203,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
     SmoothedThrottle = static_cast<float>(latebrake::SmoothThrottle(
-        SmoothedThrottle, bTouchThrottle ? 1.0 : static_cast<double>(Throttle),
+        SmoothedThrottle, TouchDrive.ThrottleActive() ? 1.0 : static_cast<double>(Throttle),
         static_cast<double>(DeltaSeconds)));
     const float EffectiveThrottle = SmoothedThrottle;
-    const float EffectiveSteering = SteeringFinger != INDEX_NONE ? TouchSteering : Steering;
+    const float EffectiveSteering = TouchDrive.SteeringActive()
+        ? static_cast<float>(TouchDrive.Steering()) : Steering;
     SmoothedSteering = static_cast<float>(latebrake::SmoothSteering(
         SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
         bArcade ? 3.8 : 2.4));
-    const bool bEffectiveBraking = bBraking || bTouchBrake;
+    const bool bEffectiveBraking = bBraking || TouchDrive.BrakeActive();
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
     const float GripRate = (bArcade ? 8.5f : 4.25f) * GarageGrip;
