@@ -89,3 +89,24 @@ runner with Unreal Engine 5.8 and required SDKs to:
    evidence. Keep issue #2/#13 open until those acceptance criteria pass.
 
 Source-only pre-releases must never imply or attach fake playable binaries.
+
+## Real project-owned level and executable generation
+
+The previous built-in `/Engine/Maps/Entry` game default has been replaced
+with `/Game/Maps/LatebrakeCircuit` and an explicit `MapsToCook` reference.
+The real map is not yet present in Git, because it **must** be created and
+serialized by a licensed Unreal 5.8 Editor. Use the scripts
+`Build-Editor.ps1`, `New-StarterMap.ps1` and
+`Build-PreRelease.ps1`, or call `Build-PlayableCandidate.ps1` to run
+the three stages in order on a Windows Unreal workstation.
+
+The map is a blank real Unreal level into which the C++ game mode builds
+the prototype circuit at runtime; it is not a fabricated `.umap` or an
+alternative game engine. No generated map is claimed in this repository
+at this time. The scripts reject missing engines, version mismatches, Git
+LFS pointer maps and incomplete packaged output.
+
+See [executable pipeline and honest QA](EXECUTABLE_BUILD_PIPELINE.md).
+An opt-in GitHub workflow can use a maintainer-operated Windows self-hosted
+Unreal runner labeled `unreal-5-8`; it never publishes game candidates as
+verified GitHub Release assets automatically.
