@@ -66,6 +66,20 @@
   drag transitions and lifecycle resets. Real Android compilation,
   installation and touch QA are still outstanding.
 
+### Unreleased v0.5.1 candidate/archive provenance gates
+
+- Added full candidate manifest validation for every packaged file's
+  SHA256, size and safe relative path; rejects mismatches, duplicate,
+  missing and unlisted files, bad platform metadata and dirty source.
+- Executed integrity verification after genuine Unreal UAT packaging and
+  before temporary candidate workflow-artifact uploads.
+- Required per-platform package qualification to include the manifest,
+  installed QA evidence, and matching `build_commit`.
+- Replaced weak Win64+Android combined checker with two full
+  per-platform checks and same-source/same-Unreal-version requirements.
+- Extended PowerShell negative regression tests with disposable text-only
+  archive fixtures. No Win64 game/Android APK or v0.5.1 release exists yet.
+
 ## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
 ### Implemented in Unreal-independent C++20
