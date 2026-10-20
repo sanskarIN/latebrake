@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-20
-**Current code milestone:** v0.4.1 experimental Android touch UX source candidate; v0.4.0 source preview published.
+**Current code milestone:** v0.4.1 experimental Android touch UX source-only pre-release published.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -16,10 +16,11 @@
 - [v0.3.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.1) — garage and HUD source hardening.
 - [v0.3.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.3.2) — driving input and cache safety.
 - [v0.4.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.4.0) — circuit decorations and north-up minimap.
+- [v0.4.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.4.1) — experimental Android control HUD and touch reliability.
 
 These tags are source previews. They are **not downloadable playable game installers**.
 
-## v0.4.1 work (development source, NOT engine verified)
+## v0.4.1 published source work (NOT engine verified)
 
 - New portable touch-pad rectangles shared by the Android HUD and input hit-testing, for steering, gas, brake, pause, restart and recovery.
 - Touch capture starts only with presses on visible pads; nonfinite input is neutralized, pedal drags through the gap release both pedals and moves cannot capture an unrelated finger.
