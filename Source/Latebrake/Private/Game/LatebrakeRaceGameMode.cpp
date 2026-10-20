@@ -332,8 +332,10 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Championships)
     {
-        int32 Target = -1;
-        for (int32 Id = 0; Id < 6; ++Id)
+        int32 Target = CareerMenuSelection >= 0 && CareerMenuSelection < 6 &&
+            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
+            ? CareerMenuSelection : -1;
+        for (int32 Id = 0; Id < 6 && Target < 0; ++Id)
         {
             if (Career.Status(Id) == latebrake::CareerStatus::Available)
             {
@@ -346,8 +348,11 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Challenges)
     {
-        int32 Target = -1;
-        for (int32 Id = 6; Id < latebrake::CareerEventCount; ++Id)
+        int32 Target = CareerMenuSelection >= 6 &&
+            CareerMenuSelection < latebrake::CareerEventCount &&
+            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
+            ? CareerMenuSelection : -1;
+        for (int32 Id = 6; Id < latebrake::CareerEventCount && Target < 0; ++Id)
         {
             if (Career.Status(Id) == latebrake::CareerStatus::Available)
             {
@@ -408,6 +413,10 @@ void ALatebrakeRaceGameMode::CycleCareerEvent()
     for (int32 Delta = 1; Delta <= latebrake::CareerEventCount; ++Delta)
     {
         const int32 Id = (Original + Delta) % latebrake::CareerEventCount;
+        if (Menu.IsOpen() &&
+            Menu.Current() == latebrake::MenuPage::Championships && Id >= 6) continue;
+        if (Menu.IsOpen() &&
+            Menu.Current() == latebrake::MenuPage::Challenges && Id < 6) continue;
         if (Career.Status(Id) != latebrake::CareerStatus::Locked)
         {
             CareerMenuSelection = Id;
