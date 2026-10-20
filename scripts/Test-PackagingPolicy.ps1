@@ -36,6 +36,9 @@ try {
     Expect-Rejection 'No engine: game packaging' {
         & (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $missingEngine -Platform Win64 -OutputDirectory $output
     }
+    Expect-Rejection 'No cooked candidate: manifest' {
+        & (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -EngineRoot $missingEngine -Platform Win64 -PackageDirectory $output
+    }
 
     # The fixtures are deliberately too small and are not legitimate packages.
     $windows = Join-Path $temp 'windows'
