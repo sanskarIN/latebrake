@@ -221,3 +221,25 @@ its actual Android touch events are **not** compiled by these checks.
 An actual UE 5.8 APK must be installed on a phone to validate simultaneous
 touches, pad coordinates, pause/resume, app focus, and orientation. Save
 screenshots/videos and performance data only from real playtests.
+
+## v0.5.1 candidate archive tampering regressions (offline)
+
+`scripts/Test-CandidateManifestPolicy.ps1` creates an isolated,
+short-lived **text fixture** with a valid checksum manifest. The portable
+Windows PowerShell CI then verifies its own checksum logic and deliberate
+failures: same-size payload changes, additional or missing files, invalid
+size, traversal via `../`, duplicate paths, dirty tracked worktrees,
+unsupported claims of already-qualified builds, and platform mismatch.
+All fixtures are deleted immediately after tests.
+
+`Build-PlayableCandidate.ps1` now calls
+`Test-CandidateManifest.ps1` immediately after generating the manifest.
+`Verify-PlatformPackage.ps1` separately requires an actual
+`-ManifestJson`, a package path inside that archive, and a human QA
+`build_commit` exactly matching the manifest. `Verify-ReleaseArtifacts`
+requires passing both platform gates for a shared source revision.
+
+A passing offline checksum regression means **only** that file-integrity
+logic works against test data. It never proves that Epic's UE 5.8 C++,
+cook/package, gameplay or target-device tests have run. Human testers
+still have to record genuine installed hardware QA.
