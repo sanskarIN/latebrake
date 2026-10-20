@@ -216,3 +216,18 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 - The tests can pass on all three OSs without the Unreal SDK, **but this
   is not proof of Android input delivery or a working Unreal executable**.
   The same real map/engine/platform build blockers remain open.
+
+### v0.5.1 release integrity work — no executable published
+
+- A candidate's post-UAT SHA256 file manifest is now verified **immediately**
+  after packaging, not just written and uploaded without a check.
+- The manifest verifier requires exact file count, paths, sizes and hashes.
+  It rejects stale/missing, extra or modified archive files, unsafe relative
+  paths, dirty tracked source trees and wrong project/platform metadata.
+- Both platform-specific QA gates require a manifest and human installed
+  test evidence with `build_commit` equal to the archive source commit.
+- The dual-platform release script delegates to both full platform gates
+  and rejects different source commits or Unreal versions.
+- CI uses only short-lived synthetic text files for integrity tests. **No**
+  actual Unreal Engine build, cooked level, executable, APK or installed
+  game was validated or published by these checks.

@@ -22,7 +22,7 @@ Unreal Engine is **not** redistributed by this repository.
 6. Inspect Output Log for missing built-in engine mesh/map references.
 7. Use Play in Editor; verify possession, movement, checkpoint overlap, race completion, restart, save/reload and pause.
 
-The configured map is `/Engine/Maps/Entry`. Confirm it is present and suitable in your local engine installation. Create and cook an **original project-owned .umap** before treating packaging as release ready; this repository does not yet contain one.
+The intended cooked game default is `/Game/Maps/LatebrakeCircuit`, **not** `/Engine/Maps/Entry`. This repository does not yet contain the serialized project-owned `.umap`: a genuine licensed UE 5.8 Editor must author and save it before any UAT cooking or packaged gameplay qualification.
 
 ## Linux development
 
@@ -61,10 +61,10 @@ pwsh ./scripts/Build-PreRelease.ps1 -EngineRoot 'C:/Program Files/Epic Games/UE_
 
 Android requires Unreal's supported Android toolchain plus real touch/lifecycle testing. Confirm the built-in entry map is cookable or add a project-owned map if needed. These commands have **not** yet succeeded in this environment. The script does not assert a build succeeded unless Unreal returns a success exit and candidate platform files exist.
 
-After real hardware gameplay tests, record honest evidence using `docs/releases/test-evidence.example.json` and validate package structure plus SHA-256 hashes using `scripts/Verify-ReleaseArtifacts.ps1`. An actual release still requires passing the acceptance checklist in `docs/releases/v0.1.0.md`.
+After real hardware gameplay tests, create **separate** truthful platform reports using `docs/releases/win64-qa.example.json` and `docs/releases/android-qa.example.json`. The built candidate's `Latebrake-candidate-manifest.json` is required for each platform: run `scripts/Verify-PlatformPackage.ps1` with `-PackagePath`, `-ManifestJson` and `-EvidenceJson`. For both platforms together, run `Verify-ReleaseArtifacts.ps1` with both manifests and both QA records. See [executable pipeline and honest QA](EXECUTABLE_BUILD_PIPELINE.md). An actual release still requires passing the acceptance checklist in `docs/releases/v0.1.0.md`.
 ## Packaging gate for prereleases
 
-Create real Win64 and Android packages using your authorized UE 5.8 build environment, record actual device and gameplay verification in a JSON file based on `docs/releases/test-evidence.example.json`, and check package structure and hashes with `scripts/Verify-ReleaseArtifacts.ps1`. The verification script performs only **basic structural checks**, not a UE compile, malware audit, or gameplay qualification. Never publish a v0.1.0 pre-release from CI's standalone test executable.
+Create real Win64 and Android packages using your authorized UE 5.8 build environment and record installed gameplay verification in the **platform-specific** QA JSON templates. The combined `Verify-ReleaseArtifacts.ps1` now requires both platform-specific manifests and both QA files and calls the stronger `Verify-PlatformPackage.ps1` checks for each platform. All archived bytes must match the post-UAT SHA256 manifest, and the QA build commit must match it. The checks do not independently prove good gameplay or replace actual engine builds. Never publish a v0.1.0 pre-release from CI's standalone test executable.
 
 ## v0.5.0 executable qualification gate
 

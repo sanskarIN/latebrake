@@ -77,10 +77,12 @@ available; the packaged GameDefaultMap is the project-owned map.
 ```powershell
 pwsh ./scripts/Verify-PlatformPackage.ps1 -Platform Win64 `
   -PackagePath 'D:\LatebrakeCandidates\Win64' `
+  -ManifestJson 'D:\LatebrakeCandidates\Win64\Latebrake-candidate-manifest.json' `
   -EvidenceJson 'D:\LatebrakeCandidates\win64-qa.json'
 
 pwsh ./scripts/Verify-PlatformPackage.ps1 -Platform Android `
   -PackagePath 'D:\LatebrakeCandidates\Android\YourActualBuild.apk' `
+  -ManifestJson 'D:\LatebrakeCandidates\Android\Latebrake-candidate-manifest.json' `
   -EvidenceJson 'D:\LatebrakeCandidates\android-qa.json'
 ```
 
@@ -183,3 +185,44 @@ disabled; the car pawn's two-finger steering/pedal layout remains the source
 of input and Canvas visualization. Verify both fingers, menus, pause,
 focus loss and hardware orientation on a **physical Android device**. The
 source-only CI cannot certify any of these behaviors.
+
+## Release archive and human-QA integrity gate (unreleased)
+
+`Build-PlayableCandidate.ps1` now runs
+`Test-CandidateManifest.ps1` **after** generating the source/engine/map
+provenance manifest. The independent validator checks **every** archived
+file's relative path, byte count and SHA256; rejects archive omissions,
+additional unlisted files, duplicate names, escaping paths, dirty tracked
+source trees, unknown platforms, and mismatched engine/source metadata.
+Ordinary hosted CI uses disposable **text-only fixtures**, never real game
+binaries, to test this behavior.
+
+After the **actual UAT package** has been installed/playtested, the
+`Verify-PlatformPackage.ps1` QA gate requires all three inputs:
+`-PackagePath`, `-ManifestJson`, and `-EvidenceJson`.
+The exact EXE/APK must be inside the manifest archive. The QA evidence's
+`build_commit` must match the manifest's `source_commit`. Complete
+the separate win64/android QA templates with **true** installed gameplay
+observations and a full 40-character source commit. Every entry
+under the template's `checks` object must also be explicitly `true`
+after a real successful test. A missing, false, or not-yet-tested
+driving, save/load, mobile focus, performance or other required check
+blocks release; `installed_and_playtested` alone is insufficient.
+
+For a combined, manually reviewed Win64 + Android release, run:
+
+```powershell
+pwsh ./scripts/Verify-ReleaseArtifacts.ps1 `
+  -Win64Directory 'D:\LatebrakeCandidates\Win64' `
+  -AndroidApk 'D:\LatebrakeCandidates\Android\YourActualBuild.apk' `
+  -Win64ManifestJson 'D:\LatebrakeCandidates\Win64\Latebrake-candidate-manifest.json' `
+  -AndroidManifestJson 'D:\LatebrakeCandidates\Android\Latebrake-candidate-manifest.json' `
+  -Win64EvidenceJson 'D:\LatebrakeCandidates\win64-qa.json' `
+  -AndroidEvidenceJson 'D:\LatebrakeCandidates\android-qa.json'
+```
+
+It checks each platform's real game package **and** QA record, and also
+requires both archives to originate at the exact same Git commit and Unreal
+Engine version. It does not automatically publish a release, prove that QA
+claims are truthful or replace installed gameplay observations. The older
+single `test-evidence.example.json` is not a release-qualification input.

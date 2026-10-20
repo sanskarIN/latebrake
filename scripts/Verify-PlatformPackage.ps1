@@ -5,14 +5,15 @@
     This deliberately refuses a source archive or dummy renamed EXE/APK.
     Hashes and structure checks cannot replace manual installed playtests.
 .EXAMPLE
-    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Win64 -PackagePath 'D:/LatebrakeBuilds/Win64' -EvidenceJson 'D:/Latebrake/windows-evidence.json'
-    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Android -PackagePath 'D:/LatebrakeBuilds/Android/Latebrake.apk' -EvidenceJson 'D:/Latebrake/android-evidence.json'
+    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Win64 -PackagePath 'D:/LatebrakeBuilds/Win64' -EvidenceJson 'D:/Latebrake/windows-evidence.json' -ManifestJson 'D:/LatebrakeBuilds/Win64/Latebrake-candidate-manifest.json'
+    pwsh scripts/Verify-PlatformPackage.ps1 -Platform Android -PackagePath 'D:/LatebrakeBuilds/Android/Latebrake.apk' -EvidenceJson 'D:/Latebrake/android-evidence.json' -ManifestJson 'D:/LatebrakeBuilds/Android/Latebrake-candidate-manifest.json'
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][ValidateSet('Win64','Android')][string]$Platform,
     [Parameter(Mandatory)][string]$PackagePath,
-    [Parameter(Mandatory)][string]$EvidenceJson
+    [Parameter(Mandatory)][string]$EvidenceJson,
+    [string]$ManifestJson
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -36,6 +37,23 @@ function Assert-ExecutableSignature {
     return $item.FullName
 }
 
+# Provenance is required at the actual release QA gate. Never accept an
+# EXE/APK whose exact bytes are not recorded in a post-UAT manifest.
+if ([string]::IsNullOrWhiteSpace($ManifestJson)) {
+    throw 'Explicit -ManifestJson is required to match the candidate to its recorded hashes.'
+}
+& (Join-Path $PSScriptRoot 'Test-CandidateManifest.ps1') -ManifestJson $ManifestJson -Platform $Platform
+if (-not $?) { throw 'Candidate archive failed SHA256/file-list validation.' }
+
+$manifestRoot = (Get-Item -LiteralPath $ManifestJson -ErrorAction Stop).Directory.FullName
+$resolvedPackage = (Resolve-Path -LiteralPath $PackagePath -ErrorAction Stop).Path
+$prefix = $manifestRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+    [System.IO.Path]::DirectorySeparatorChar
+if (-not ($resolvedPackage.Equals($manifestRoot, [StringComparison]::OrdinalIgnoreCase) -or
+          $resolvedPackage.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase))) {
+    throw 'PackagePath must refer to files inside the verified manifest archive.'
+}
+
 if (-not (Test-Path -LiteralPath $EvidenceJson -PathType Leaf)) {
     throw "Missing human-authored installed-playtest evidence: $EvidenceJson"
 }
@@ -49,6 +67,35 @@ if ($evidence.platform -ne $Platform -or
     [string]::IsNullOrWhiteSpace([string]$evidence.test_date) -or
     [string]::IsNullOrWhiteSpace([string]$evidence.test_notes)) {
     throw 'Incomplete platform-specific test evidence; actual installed UE 5.8 playtest is required.'
+}
+# A generic installed_and_playtested=true is not enough for a stable
+# game release. Every required check in the platform's reviewed QA template
+# must be explicitly true, or the release gate fails closed.
+$requiredChecks = if ($Platform -eq 'Win64') {
+    @('launch', 'driving', 'camera', 'lap_finish', 'career',
+      'save_load', 'menu_input', 'performance')
+} else {
+    @('install_launch', 'two_finger_controls', 'focus_loss',
+      'pause_resume', 'portrait_landscape', 'career_save_reload',
+      'performance')
+}
+if ($null -eq $evidence.checks) {
+    throw 'QA evidence lacks the platform-specific required checks object.'
+}
+foreach ($check in $requiredChecks) {
+    $property = $evidence.checks.PSObject.Properties[$check]
+    if ($null -eq $property -or $property.Value -ne $true) {
+        throw "Required $Platform installed-game QA check not passed: $check"
+    }
+}
+
+# Human QA must refer to the identical source revision as the archive:
+# a hardware test of some OTHER executable is not qualifying evidence.
+$buildManifest = Get-Content -LiteralPath $ManifestJson -Raw |
+    ConvertFrom-Json -ErrorAction Stop
+if (([string]$evidence.build_commit).Trim() -cne
+    ([string]$buildManifest.source_commit).Trim()) {
+    throw 'QA evidence build_commit does not match the verified candidate manifest source_commit.'
 }
 # All test evidence fields are self-declarations from a responsible tester.
 # This script does not automatically prove their truth.
