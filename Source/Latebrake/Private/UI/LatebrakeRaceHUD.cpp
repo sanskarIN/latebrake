@@ -55,7 +55,8 @@ void ALatebrakeRaceHUD::DrawHUD()
     const int32 Minutes = FMath::FloorToInt(Elapsed / 60.0);
     const double Seconds = Elapsed - static_cast<double>(Minutes) * 60.0;
 
-    Line(TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"), Accent, true);
+    Line(bCompact ? TEXT("LATEBRAKE") : TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"),
+        Accent, true);
     Line(bTimeAttack ? TEXT("TIME ATTACK") : TEXT("CIRCUIT RACE"), Accent);
     Line(FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
     Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
@@ -194,6 +195,9 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.Steering, TEXT("STEER"), Car->IsTouchSteeringActive());
         DrawPad(Pads.Throttle, TEXT("GAS"), Car->IsTouchThrottleActive());
         DrawPad(Pads.Brake, TEXT("BRAKE"), Car->IsTouchBrakeActive());
+        DrawPad(Pads.Pause, TEXT("PAUSE"), UGameplayStatics::IsGamePaused(this));
+        DrawPad(Pads.Restart, TEXT("RESTART"), false);
+        DrawPad(Pads.Recover, TEXT("RECOVER"), false);
     }
 #else
     DrawText(bCompact
