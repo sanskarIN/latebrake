@@ -40,4 +40,16 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
     int32 GripUpgradeLevel = 0;
+
+    // Version 0/absent = legacy v0.4.x. Schema 2 stores fixed event-ID medals.
+    // Unknown newer schema values are read-only until supported by migration.
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Career")
+    int32 SaveSchemaVersion = 0;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Career")
+    int32 ActiveCareerEventId = -1;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Career")
+    TArray<uint8> CareerMedals;
+
 };
