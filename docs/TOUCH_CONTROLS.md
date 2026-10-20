@@ -75,3 +75,19 @@ Add configurable left/right-handed pad placement, larger minimum target
 sizes, explicit mobile garage/event selection, touch joystick affordances,
 screen reader labels, remappable controls, and production UMG widgets.
 No such settings or features are claimed in this milestone.
+
+## v0.5.0 source additions (unverified on Android)
+
+- Two career pads (NEXT/CAREER) appear in the racing HUD.
+- In the paused development menu, NEXT advances panels, SELECT activates,
+  BROWSE cycles eligible career/challenge IDs, and CLOSE returns to driving.
+- The menu suppresses driving touch dispatch entirely; touches on GAS or
+  BRAKE must not affect the vehicle while menu focus is active.
+- Lifecycle delegate hooks clear captured touch/analog controls on app
+  deactivate, background and foreground transitions; unpossession/endplay
+  also clear controls and remove listener registrations.
+
+Physical-device testing of orientation changes, Android back/home,
+notifications, fingers released while suspended, repeated foreground
+activation, and touch overlap/legibility remains **required**. Do not close
+issue #13 on the strength of portable geometry tests.
