@@ -5,6 +5,7 @@ temp directory. No fixture is playable, reusable or committed to the repo.
 Only a licensed Unreal Editor can create an authentic .umap.
 """
 
+import json
 import runpy
 import sys
 import tempfile
@@ -54,14 +55,19 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory(prefix="latebrake-map-test-")
         self.addCleanup(self.directory.cleanup)
-        self.content = Path(self.directory.name)
+        self.content = Path(self.directory.name) / "Content"
+        self.saved = Path(self.directory.name) / "Saved"
+        self.receipt = self.saved / "LatebrakeAutomation" / "starter-map-result.json"
         self.map = self.content / "Maps" / "LatebrakeCircuit.umap"
         self.engine = FakeLevelEditor(self.map)
         self.events = []
 
     def run_script(self, subsystem=True):
         fake = types.ModuleType("unreal")
-        fake.Paths = types.SimpleNamespace(project_content_dir=lambda: str(self.content))
+        fake.Paths = types.SimpleNamespace(
+            project_content_dir=lambda: str(self.content),
+            project_saved_dir=lambda: str(self.saved),
+        )
         fake.LevelEditorSubsystem = type("LevelEditorSubsystem", (), {})
         fake.get_editor_subsystem = lambda cls: self.engine if subsystem else None
         fake.log = self.events.append
@@ -73,6 +79,10 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
         self.assertEqual(self.engine.new_count, 1)
         self.assertEqual(self.engine.load_count, 0)
         self.assertEqual(self.engine.save_count, 1)
+        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertEqual(receipt["status"], "saved_by_unreal_editor")
+        self.assertEqual(receipt["operation"], "created")
+        self.assertEqual(receipt["bytes"], self.map.stat().st_size)
         self.assertTrue(any("created" in text for text in self.events))
 
     def test_existing_map_is_loaded_without_recreating(self):
@@ -84,6 +94,7 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
         self.assertEqual(self.engine.load_count, 1)
         self.assertEqual(self.engine.save_count, 1)
         self.assertEqual(self.map.read_bytes(), payload)
+        self.assertEqual(json.loads(self.receipt.read_text())["operation"], "loaded")
         self.assertTrue(any("loaded" in text for text in self.events))
 
     def test_failure_to_load_existing_map_is_fatal(self):
@@ -113,6 +124,27 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
     def test_editor_subsystem_is_required(self):
         with self.assertRaisesRegex(RuntimeError, "unavailable"):
             self.run_script(subsystem=False)
+
+    def test_no_success_receipt_after_editor_save_failure(self):
+        self.engine.fail_save = True
+        with self.assertRaisesRegex(RuntimeError, "save the current"):
+            self.run_script()
+        self.assertFalse(self.receipt.exists())
+
+    def test_no_success_receipt_for_undersized_level(self):
+        self.engine.write_tiny = True
+        with self.assertRaisesRegex(RuntimeError, "unexpectedly small"):
+            self.run_script()
+        self.assertFalse(self.receipt.exists())
+
+    def test_receipt_only_written_after_fresh_successful_run(self):
+        self.engine.fail_save = True
+        with self.assertRaises(RuntimeError):
+            self.run_script()
+        self.assertFalse(self.receipt.exists())
+        self.engine.fail_save = False
+        self.run_script()
+        self.assertEqual(json.loads(self.receipt.read_text())["operation"], "loaded")
 
 
 if __name__ == "__main__":
