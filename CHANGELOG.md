@@ -17,6 +17,18 @@
   or new v0.5.1 GitHub release is claimed.
 
 
+### Additional unreleased build and input hardening
+
+- Corrected the Unreal 5.8 editor level-existence check, ensuring an
+  existing binary level is loaded rather than recreated. Seven offline
+  API-control-flow tests cover failures and idempotency.
+- Added Unreal `.umap` package-tag preflight and nonempty output-directory
+  rejection so stale/fake files cannot stand in for a new cooked game.
+- Added UNVERIFIED package checksum/provenance manifest for any genuine
+  Win64/Android build generated later from a licensed UE workstation.
+- Fixed menu Pause/Escape routing to avoid resuming a race behind its menu.
+- No actual Unreal Editor/game compilation or shipped executable is claimed.
+
 ## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
 ### Implemented in Unreal-independent C++20
