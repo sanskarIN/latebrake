@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.0 — Career & Championship Foundations (source-only candidate)
+## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
 ### Implemented in Unreal-independent C++20
 - Immutable twelve-ID event catalog: two three-round championship series and six standalone challenges, all using the existing single course.
