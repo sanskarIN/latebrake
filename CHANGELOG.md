@@ -40,6 +40,20 @@
 - Portable source tests do not substitute for Unreal compilation or
   installed-device verification. No executable files are published.
 
+### Unreleased save and progression integrity work
+
+- Added engine-independent `ProfileWriteCheckpoint` with RAII rollback,
+  protecting career medals, first-completion credits, championship bonus,
+  quick-race records and completed race counts if saving fails.
+- Integrated failed-write rollback into racing results and garage selection,
+  purchases and engine/grip upgrades. Unsaved speed-unit setting changes
+  now revert as well.
+- Added strict multi-platform portable regression tests for failed writes,
+  saved writes, duplicate rewards, garage rollback and championship replay.
+- Does not guarantee power-loss durability; actual UE 5.8 SaveGame writes
+  and device failure/restore tests remain necessary. No new binaries or
+  GitHub release published.
+
 ## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
 ### Implemented in Unreal-independent C++20
