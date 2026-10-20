@@ -88,6 +88,10 @@ private:
     void SelectTimeAttack();
     void CareerNext();
     void CareerStart();
+    void MenuToggle();
+    void MenuNext();
+    void MenuPrevious();
+    void MenuActivate();
     void NextGarageVehicle();
     void UnlockGarageVehicle();
     void UpgradeGarageEngine();
