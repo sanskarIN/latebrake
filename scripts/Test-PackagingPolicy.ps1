@@ -40,6 +40,18 @@ try {
         & (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -EngineRoot $missingEngine -Platform Win64 -PackageDirectory $output
     }
 
+    # Temporary invalid bytes only: do not create or publish a synthetic
+    # .umap as a real level. Unreal Editor itself must author such assets.
+    $fakeMap = Join-Path $temp 'NOT_A_REAL_LEVEL.umap'
+    [System.IO.File]::WriteAllBytes($fakeMap, [byte[]]::new(2048))
+    Expect-Rejection 'Renamed arbitrary bytes are not Unreal level data' {
+        & (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $fakeMap
+    }
+    [System.IO.File]::WriteAllText($fakeMap, 'version https://git-lfs.github.com/spec/v1')
+    Expect-Rejection 'Git LFS pointer is not an Unreal level' {
+        & (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $fakeMap
+    }
+
     # The fixtures are deliberately too small and are not legitimate packages.
     $windows = Join-Path $temp 'windows'
     New-Item -ItemType Directory -Path $windows -Force | Out-Null
