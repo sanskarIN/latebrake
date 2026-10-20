@@ -26,8 +26,9 @@ public:
     }
     void Open(MenuPage page = MenuPage::Main) noexcept
     {
-        Page = page == MenuPage::Closed || static_cast<int>(page) >=
-            static_cast<int>(MenuPageNames.size()) ? MenuPage::Main : page;
+        const int id = static_cast<int>(page);
+        Page = id <= 0 || id >= static_cast<int>(MenuPageNames.size())
+            ? MenuPage::Main : page;
     }
     void Close() noexcept { Page = MenuPage::Closed; }
     void Toggle() noexcept
