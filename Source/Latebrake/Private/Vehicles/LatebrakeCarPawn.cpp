@@ -342,10 +342,15 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     PC->GetViewportSize(Width, Height);
     const latebrake::TouchControlLayout Layout =
         latebrake::CalculateTouchControlLayout(Width, Height);
-    if (!Layout.Valid || !FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
+    if (!Layout.Valid)
     {
-        // Invalid viewport or coordinates immediately release this finger;
-        // an OS-delayed move must not restart a canceled accelerator.
+        // Orientation or resize invalidates the geometry of every held
+        // finger, not just the one that happened to move first.
+        TouchDrive.Clear();
+        return;
+    }
+    if (!FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
+    {
         TouchDrive.Cancel(FingerId);
         return;
     }
