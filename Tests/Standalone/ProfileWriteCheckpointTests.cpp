@@ -59,7 +59,7 @@ int main()
     // An abandoned/early-return scope automatically restores changes.
     {
         ProfileWriteCheckpoint checkpoint(garage, career, races, best, lap, attack);
-        garage.EarnCredits(600);
+        garage.EarnCredits(800);
         Check(garage.Unlock(1), "fixture can unlock purchased car");
         Check(garage.Select(1), "fixture can select purchased car");
         Check(garage.Upgrade(UpgradeKind::Engine), "fixture can buy engine upgrade");
