@@ -88,9 +88,11 @@ int main()
           "infinite steering input cancels captured finger");
 
     drive.Press(layout, 10, gasX, gasY);
+    drive.Press(layout, 11, layout.Steering.X + 3, sy);
     drive.Move({}, 10, gasX, gasY);
-    Check(!drive.ThrottleActive() && drive.PedalOwner() < 0,
-          "invalid viewport layout releases pedal");
+    Check(!drive.ThrottleActive() && drive.PedalOwner() < 0 &&
+          !drive.SteeringActive() && drive.SteeringOwner() < 0,
+          "invalid viewport layout cancels BOTH steering and pedal");
     drive.Press({}, 11, gasX, gasY);
     Check(drive.PedalOwner() < 0, "invalid viewport cannot acquire gas");
     drive.Press(layout, -1, gasX, gasY);
