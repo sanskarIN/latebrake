@@ -38,6 +38,12 @@ Write-Host 'Recording traceable source/engine/map and package SHA256 data.'
 & (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -Platform $Platform -PackageDirectory $OutputDirectory -EngineRoot $EngineRoot
 if (-not $?) { throw 'Candidate fingerprint manifest stage failed.' }
 
+# Verify the complete closed-world archive immediately after writing the
+# manifest. Even missing and extra files block the candidate handoff.
+$manifest = Join-Path $OutputDirectory 'Latebrake-candidate-manifest.json'
+& (Join-Path $PSScriptRoot 'Test-CandidateManifest.ps1') -ManifestJson $manifest -Platform $Platform
+if (-not $?) { throw 'Candidate archive checksum verification failed.' }
+
 Write-Host "Candidate outputs: $OutputDirectory"
 Write-Host 'NOT QUALIFIED: install and test this package on target hardware before release.'
 Write-Host 'Use Verify-PlatformPackage.ps1 with accurate tester evidence for subsequent gating.'
