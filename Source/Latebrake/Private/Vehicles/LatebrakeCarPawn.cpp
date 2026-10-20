@@ -476,7 +476,8 @@ void ALatebrakeCarPawn::CareerStart()
     if (ALatebrakeRaceGameMode* Mode =
         GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
-        Mode->StartCareerEvent(Mode->GetMenuCareerEventId());
+        if (Mode->IsMenuOpen()) Mode->MenuActivate();
+        else Mode->StartCareerEvent(Mode->GetMenuCareerEventId());
     }
 }
 
@@ -543,8 +544,12 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PauseAction.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("CircuitEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectCircuit);
     PlayerInputComponent->BindAction(TEXT("TimeAttackEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectTimeAttack);
-    PlayerInputComponent->BindAction(TEXT("CareerNext"), IE_Pressed, this, &ALatebrakeCarPawn::CareerNext);
-    PlayerInputComponent->BindAction(TEXT("CareerStart"), IE_Pressed, this, &ALatebrakeCarPawn::CareerStart);
+    FInputActionBinding& BrowseCareer = PlayerInputComponent->BindAction(
+        TEXT("CareerNext"), IE_Pressed, this, &ALatebrakeCarPawn::CareerNext);
+    BrowseCareer.bExecuteWhenPaused = true;
+    FInputActionBinding& LaunchCareer = PlayerInputComponent->BindAction(
+        TEXT("CareerStart"), IE_Pressed, this, &ALatebrakeCarPawn::CareerStart);
+    LaunchCareer.bExecuteWhenPaused = true;
     FInputActionBinding& OpenMenu = PlayerInputComponent->BindAction(
         TEXT("MenuToggle"), IE_Pressed, this, &ALatebrakeCarPawn::MenuToggle);
     OpenMenu.bExecuteWhenPaused = true;
