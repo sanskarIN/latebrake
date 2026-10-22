@@ -8,6 +8,31 @@ The suite checks checkpoint ordering, duplicates, invalid indices, lap count, fi
 
 GitHub Actions matrix: Ubuntu, Windows and macOS. This validates portable C++ source, **not Unreal packaging**.
 
+## Unreleased v0.5.2: forward plane crossing
+
+`CircuitGateCrossing` standalone C++20 checks four directions,
+approach-rim contact, reversed trajectory, low/wrong-way velocity,
+ordered course positions, finite coordinates, center/edge/diagonal
+crossings, excessive lateral/vertical movement, and teleport-length
+frame displacements. It validates only deterministic geometry.
+
+Required real Unreal 5.8 + installed game tests:
+- [ ] Drive from the west toward the east/south checkpoint: approaching
+  its sphere edge does **not** credit a sector; crossing the gate plane
+  does, once and only in the proper race order.
+- [ ] Test all four normals east/north/west/south, wrong-way return,
+  slow rolls, stationary car, side-of-road bypass, jumping and airborne
+  crossing; only legal plane passes should count.
+- [ ] Race at high speed across a gate at 30 FPS, 60 FPS and under forced
+  frame-time hitches; inspect whether strict 600 cm endpoint checks miss
+  legitimate crossings and record all failures.
+- [ ] Test RECOVER and RESTART near each gate; no teleport or position
+  reset can secretly finish a sector.
+- [ ] Verify checkpoint marker visuals, HUD timing and lap counting,
+  and that losing/replacing the player pawn resets sampled trajectory.
+- [ ] Ensure the four always-ticking lightweight actors do not
+  measurably worsen mobile game-thread frame time.
+
 ## Unreleased v0.5.2 career-time integrity
 
 `CareerGaragePolicy` CTest covers all four garage actions and verifies
