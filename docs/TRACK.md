@@ -39,6 +39,31 @@ limit only after instrumented real driving tests, not by accepting arbitrary
 long jumps. Validate fast cornering, airborne vehicles, recover-to-track,
 restart and very low frame-rate phones before considering this qualified.
 
+## Unreleased v0.5.2 recovery/restart teleport fencing
+
+Checking consecutive frame positions and a maximum movement size is
+not sufficient to distinguish a recovery from driving: an authorized
+`RecoverTo` can move the vehicle 200 cm across a checkpoint plane,
+well **within** the maximum 1,200 cm limit.
+
+The player pawn now increments a 64-bit teleport revision on **every**
+`RecoverTo()`, including paid recovery and race restart. Each
+checkpoint actor retains its own `CheckpointMotionTrace`:
+- The first observation of a new pawn or teleport revision sets a fresh
+  location baseline but **cannot award a checkpoint**.
+- Only movement between two frames of the same pawn and teleport
+  revision can be passed to the ordered directional plane test.
+- Missing players and invalid/nonfinite positions discard the prior
+  baseline. Racing on subsequent valid frames continues normally.
+- No new on-disk checkpoint state or extra physics/collision traces
+  are required; this is event-local runtime bookkeeping.
+
+The portable `CheckpointMotionTrace` tests simulate a short jump across
+each of the four gates and prove that no `RaceProgress` sector/lap is
+earned; actual physical crossings still complete the race. Installed
+UE 5.8 QA must check real teleports and tick order with physics, HUD
+sector timing, paid recovery, event replay and gamepad/Android input.
+
 ## Visual course furnishings
 
 `TrackDecorations.h` plans 28 white center dashes and 56 non-colliding decorative kerbs/curbs, alternating red and white, all on the existing asphalt. The runtime adds two primitive grandstands outside the drivable road and a visible overhead start/finish banner using only Unreal built-in cubes. Surface finish, materials, lighting, staging and camera angles remain engine-unverified.
