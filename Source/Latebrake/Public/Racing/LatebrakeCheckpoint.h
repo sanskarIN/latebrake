@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Racing/CheckpointMotionTrace.h"
-#include "Racing/GateDiagnosticCounters.h"
+#include "Racing/GateDiagnosticWindow.h"
 #include "LatebrakeCheckpoint.generated.h"
 
 class USphereComponent;
@@ -40,6 +40,5 @@ private:
     latebrake::CircuitGateDecision LastLoggedDecision =
         latebrake::CircuitGateDecision::NoForwardPlaneCrossing;
     bool bHadLoggedDecision = false;
-    latebrake::GateDiagnosticCounters DiagnosticWindow;
-    double DiagnosticWindowSeconds = 0.0;
+    latebrake::GateDiagnosticWindow DiagnosticWindow;
 };

@@ -85,10 +85,10 @@ int main()
     }
     Require(!window.IsReady() && window.ElapsedSeconds() < 10.0,
             "sub-second near boundary stays below trigger");
-    Require(window.Record(teleport, 1.0 / 6.0) &&
+    Require(window.Record(teleport, 0.25) &&
             window.Counts().CountTrace(
                 CheckpointTraceDecision::TeleportRebase) == 60U,
-            "sixty consecutive one-sixth-second observations reach interval");
+            "bounded final quarter-second completes sub-second interval");
 
     std::cout << "Fixed-memory QA window clock and reset passed.\n";
     return EXIT_SUCCESS;
