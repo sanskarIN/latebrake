@@ -252,3 +252,20 @@ else()
 endif()
 add_test(NAME RecentTimedLaps COMMAND latebrake_recent_timed_laps_tests)
 
+
+
+# v0.5.9: engine-facing Tick uses this actual RaceProgress policy, not
+# a clock mock. Invalid startup, pause, malformed steps, finish and
+# restart are exercised with the real portable racing implementation.
+add_executable(latebrake_race_clock_readiness_tests
+    RaceClockReadinessTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_race_clock_readiness_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_clock_readiness_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_clock_readiness_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_clock_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceClockReadiness COMMAND latebrake_race_clock_readiness_tests)
