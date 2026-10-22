@@ -90,6 +90,29 @@ int main()
         Check(!careerRival.Observe(200, 200, 0.1).Advanced,
               "a completed career rival route stays finished");
     }
+    // A restarted 4-lap event must clear waypoint, lap and stuck-recovery
+    // history while preserving its newly selected 4-lap target.
+    careerRival.Configure(4, 4);
+    Check(careerRival.Observe(200, 200, 0.1).Advanced, "replay route moves");
+    Check(!careerRival.Observe(3000, 0, 8.0).Advanced &&
+          careerRival.GetRecoveryCount() == 1, "stuck replay records recovery");
+    careerRival.Configure(4, 4);
+    Check(careerRival.GetNextWaypoint() == 0 &&
+          careerRival.GetCompletedLaps() == 0 &&
+          careerRival.GetRecoveryCount() == 0 &&
+          careerRival.GetRequiredLaps() == 4 &&
+          !careerRival.IsFinished(), "restarting same event clears route state");
+
+    careerRival.Configure(0, 0);
+    Check(careerRival.GetWaypointCount() == 1 && careerRival.GetRequiredLaps() == 1,
+          "bad reconfiguration clamps both dimensions to one");
+    Check(careerRival.Observe(0, 100, .1).Completed,
+          "minimum reconfigured route can finish");
+    careerRival.Configure(999, 999);
+    Check(careerRival.GetWaypointCount() == 256 &&
+          careerRival.GetRequiredLaps() == 100 &&
+          !careerRival.IsFinished(), "hostile route dimensions are bounded");
+
     std::cout << "Autonomous route tests passed.\n";
     return EXIT_SUCCESS;
 }
