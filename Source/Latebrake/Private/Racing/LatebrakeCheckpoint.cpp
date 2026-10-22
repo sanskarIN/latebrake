@@ -47,30 +47,26 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
     if (!IsValid(Car))
     {
         LastObservedPlayer.Reset();
-        bHasPreviousSample = false;
+        MotionTrace.Reset();
         return;
+    }
+
+    if (LastObservedPlayer.Get() != Car)
+    {
+        // A new pawn is not a continuation of the previous car's trajectory.
+        LastObservedPlayer = Car;
+        MotionTrace.Reset();
     }
 
     const FVector Current = Car->GetActorLocation();
-    if (LastObservedPlayer.Get() != Car || !bHasPreviousSample)
-    {
-        LastObservedPlayer = Car;
-        PreviousPlayerLocation = Current;
-        bHasPreviousSample = true;
-        return;
-    }
-
     const FVector Velocity = Car->GetVelocity();
-    const bool bCrossed = latebrake::CrossesCircuitGatePlane(
-        CheckpointIndex,
-        {{PreviousPlayerLocation.X, PreviousPlayerLocation.Y},
-         PreviousPlayerLocation.Z},
-        {{Current.X, Current.Y}, Current.Z},
-        Velocity.X, Velocity.Y);
-    PreviousPlayerLocation = Current;
+    const bool bCrossed = MotionTrace.Sample(
+        CheckpointIndex, Car->GetTeleportRevision(),
+        {{Current.X, Current.Y}, Current.Z}, Velocity.X, Velocity.Y);
 
-    // The shared 3D plane geometry rejects premature trigger entries,
-    // wrong-way passes, out-of-lane/airborne shortcuts and large jumps.
+    // The shared 3D plane geometry rejects wrong-way, airborne and large
+    // jumps. A changed teleport generation always rebases the trace first,
+    // so even a short, paid RECOVER or RESTART cannot credit a checkpoint.
     // RaceProgress still requires the correct ORDERED gate and lap count.
     if (bCrossed)
     {
