@@ -28,6 +28,7 @@
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
 #include "Track/CircuitStartupAudit.h"
+#include "Track/CircuitCollisionPlan.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -154,22 +155,31 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         Sky->GetLightComponent()->SetIntensity(1.f);
     }
 
-    // World-space units are centimetres. All geometry references stock engine
-    // primitives; this repository does not ship or redistribute Epic assets.
-    RecordBlock(TEXT("Ground"), FVector(0.f, 0.f, -100.f),
-        FVector(110.f, 85.f, 1.25f), FLinearColor(0.15f, 0.30f, 0.12f));
-
-    const FLinearColor Asphalt(0.09f, 0.10f, 0.13f);
-    RecordBlock(TEXT("SouthStraight"), FVector(0.0, latebrake::SouthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
-    RecordBlock(TEXT("NorthStraight"), FVector(0.0, latebrake::NorthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
-    RecordBlock(TEXT("EastStraight"), FVector(latebrake::EastX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
-    RecordBlock(TEXT("WestStraight"), FVector(latebrake::WestX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
-
+    // This portable single-source-of-truth plan reproduces the prior nine
+    // world-space collision actors exactly; it never adds Epic asset copies.
+    // A failed spawn is tracked and prevents startup readiness and rewards.
+    constexpr const TCHAR* Labels[latebrake::CircuitCollisionBlockCount] =
+    {
+        TEXT("Ground"), TEXT("SouthStraight"), TEXT("NorthStraight"),
+        TEXT("EastStraight"), TEXT("WestStraight"),
+        TEXT("NorthBarrier"), TEXT("SouthBarrier"),
+        TEXT("EastBarrier"), TEXT("WestBarrier")
+    };
+    const FLinearColor GroundColor(0.15f, 0.30f, 0.12f);
+    const FLinearColor AsphaltColor(0.09f, 0.10f, 0.13f);
     const FLinearColor BarrierColor(0.80f, 0.15f, 0.05f);
-    RecordBlock(TEXT("NorthBarrier"), FVector(0.f, 2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
-    RecordBlock(TEXT("SouthBarrier"), FVector(0.f, -2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
-    RecordBlock(TEXT("EastBarrier"), FVector(3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
-    RecordBlock(TEXT("WestBarrier"), FVector(-3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
+    for (int32 Index = 0; Index < latebrake::CircuitCollisionBlockCount; ++Index)
+    {
+        const latebrake::CircuitCollisionBlock Block =
+            latebrake::PlannedCollisionBlock(Index);
+        const FLinearColor Color =
+            Block.Style == latebrake::CollisionBlockStyle::Ground ? GroundColor :
+            Block.Style == latebrake::CollisionBlockStyle::Asphalt ? AsphaltColor :
+            BarrierColor;
+        RecordBlock(Labels[Index],
+            FVector(Block.Center.X, Block.Center.Y, Block.Height),
+            FVector(Block.ScaleX, Block.ScaleY, Block.ScaleZ), Color);
+    }
 
     // All ninety-three collision-free decorative cubes now share one scene
     // actor, with seven instanced-mesh components (one per color/material

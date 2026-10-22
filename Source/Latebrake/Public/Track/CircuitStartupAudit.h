@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Track/CircuitLayout.h"
+#include "Track/CircuitCollisionPlan.h"
 #include "Track/DecorationBatchPlan.h"
 
 #include <cstdint>
@@ -15,7 +16,7 @@ namespace latebrake
 class CircuitStartupAudit final
 {
 public:
-    static constexpr int RequiredCollisionBlocks = 9;
+    static constexpr int RequiredCollisionBlocks = CircuitCollisionBlockCount;
     static constexpr int RequiredSceneryGroups = DecorationBatchCount;
     static constexpr int RequiredSceneryInstances = DecorationPieceCount;
 
