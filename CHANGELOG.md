@@ -2,6 +2,12 @@
 
 ## Unreleased v0.5.4 — Bounded checkpoint QA counters (source development)
 
+- Extracted the diagnostic summary timer into engine-neutral
+  `GateDiagnosticWindow`, with deterministic invalid-duration,
+  frame-hitch-capping and reset regression coverage.
+- Added an offline diagnostic log summarizer and negative Python parser
+  tests, deliberately marking all parsed log text as unauthenticated and
+  gameplay-unverified.
 - Added `GateDiagnosticCounters` with fixed-size, allocation-free per-reason
   counts, saturating arithmetic, merge and reset for bounded QA windows.
 - Captures crossing, initial baseline, teleport rebase, invalid samples

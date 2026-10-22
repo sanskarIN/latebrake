@@ -102,7 +102,10 @@ without collecting positions, names or remote telemetry. A non-shipping
 Unreal console setting (`latebrake.CheckpointDiagnostics 2`) is proposed
 to emit one bounded per-gate summary roughly every 10 seconds; mode 1
 retains v0.5.3's event-only logs, and mode 0 remains silent by default.
-Strict portable C++20 tests check classification, resets and saturation.
+Strict portable C++20 tests check classification, bounded time
+windows, resets and saturation. An [offline checkpoint QA log summarizer](scripts/AnalyzeCheckpointQA.py)
+can review a tester-supplied log without contacting any service; its output
+never certifies game builds or playability.
 **This is not Unreal-installed QA or a playable v0.5.4 release.** See
 [QA counter design](docs/GATE_QA_SUMMARIES.md).
 

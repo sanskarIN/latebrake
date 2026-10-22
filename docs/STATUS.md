@@ -8,6 +8,12 @@
 ## v0.5.4 in development — bounded checkpoint QA summaries
 
 - New engine-independent fixed-size `GateDiagnosticCounters` tracks total samples, true crossings, baseline/recovery events and first classified gate rejection reasons.
+- Shared `GateDiagnosticWindow` holds bounded ten-second frame time and
+  counters; invalid/nonfinite durations cannot poison summaries and one
+  long hitch cannot create an entire QA interval.
+- New `scripts/AnalyzeCheckpointQA.py` validates and aggregates user-supplied
+  runtime-log text offline, with explicit unverified-provenance warnings.
+  Synthetic parser unit tests run alongside the Unreal editor-script stubs.
 - Counts saturate rather than wrap and can be merged/reset without heap allocations, GPS coordinates, player names or network services.
 - Non-shipping Unreal console mode `latebrake.CheckpointDiagnostics 2` adds a ten-second aggregated per-gate summary instead of continuous frame logging. Modes 0 (silent) and 1 (event transitions) remain.
 - The standalone regression test proves real motion-trace decisions, merge arithmetic, saturation, reset, invalid categories and recovery isolation. **The Unreal logging code is not engine-compiled or hardware-qualified.**

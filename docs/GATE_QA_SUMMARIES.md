@@ -43,6 +43,30 @@ The code exists only as **non-shipping diagnostic logging**. No claim
 is made that this console variable has been executed on UE 5.8,
 packaged Win64, or physical Android devices.
 
+
+## Summarize a captured local Unreal test log
+
+```sh
+python3 scripts/AnalyzeCheckpointQA.py /path/to/your/Latebrake.log --require-all-gates
+```
+
+The script reads only an existing file and prints a JSON summary to
+standard output. It requires all four gate indices with
+`--require-all-gates`. It rejects incomplete/oversized counter rows,
+impossible category totals, invalid checkpoint indices, missing reports,
+and file inputs larger than 32 MiB. Its output always records
+`source_authenticity_verified: false` and
+`unreal_build_or_gameplay_verified: false`: **a text parser cannot
+authenticate the real engine, installed hardware, source build SHA or
+playability**. Synthetic CI fixtures exist solely for parser regression
+testing. Do not attach them as QA evidence.
+
+The reporter intentionally aggregates counts only. Capture independent
+real device/build identifiers, the exact source revision, genuine
+runtime startup marker verification, and human race progression testing
+to satisfy open release blockers. Local logs can themselves contain
+user-sensitive paths; review before sharing them.
+
 ## Required acceptance
 
 - CI: strict C++20 `GateDiagnosticCounters` target on Windows,
