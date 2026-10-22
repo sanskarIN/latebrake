@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased v0.5.2 — Career race integrity (source development)
+
+- Disallow all four garage mutations (change owned vehicle, unlock vehicle,
+  engine upgrade, grip upgrade) while an active career race is running.
+  Rejected inputs show explicit feedback without changing credits, car
+  choice, ownership, tuning or saved progression.
+- The lock releases after career finish or on exit to a quick race, and
+  engages again when a completed career race is restarted.
+- Fixed a floating-point precision edge where a positive five-second
+  recovery charge could round down at enormous elapsed race times.
+  Undercharged penalties no longer authorize player recovery teleport.
+- Added standalone C++20 coverage for locked/finished/quick race garage
+  transactions and representable/undercharged recovery fees.
+- These improvements remain **source-only** until genuine UE 5.8, Win64
+  and Android gameplay testing. No v0.5.2 pre-release or executables.
+
 ## v0.5.1 — Reliability & Circuit Optimization (SOURCE-ONLY pre-release, 2026-10-22)
 
 ### Held-control cancellation on viewport resize (Android source only)
