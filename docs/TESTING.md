@@ -31,6 +31,28 @@ Track the engine version, machine, GPU, driver, device temperatures, resolution,
 
 As of 2026-10-19, commit `f8723f7937faf9503734719f9a1aeaacf640727b` passed the Ubuntu, Windows and macOS portable C++20 jobs: https://github.com/sanskarIN/latebrake/actions/runs/39221329905 . Later commits require their own verification.
 
+## Unreleased v0.5.1: instanced course scenery
+
+Standalone `DecorationBatchPlan` CTest asserts the original 93 placements
+remain in the intended seven groups, all transforms and scales are finite
+and positive, road markers stay on pavement, grandstands stay off it,
+and invalid batch/placement IDs cannot be used. The runtime source
+creates one actor and seven instanced-static-mesh components instead of
+93 cosmetic actors.
+
+Real UE 5.8 Editor / device acceptance (all still open):
+- [ ] Compile the GameMode against genuine UE/UHT and confirm no new API errors.
+- [ ] Confirm exactly 7 ISM components with all 93 instances, and the
+  `LATEBRAKE_SCENERY_READY` log marker in a fresh installed game.
+- [ ] Compare geometry, palette, materials, lighting, start banner and
+  spectator stand silhouettes visually against intended original layout.
+- [ ] Confirm no decorative collision/overlap responses or driving barriers.
+- [ ] Compare measured scene actor count, draw calls, game-thread time,
+  GPU frame time, memory and thermals on real Win64 and low/mid Android
+  hardware before claiming any performance improvement.
+- [ ] Verify original engine Cube mesh and applied tint render correctly
+  in a cooked/installed project, not just editor-only content.
+
 ## Unreleased v0.5.1: career launch and recovery safety
 
 Portable C++20 `CareerLaunchSelection` verifies locked/invalid events,
