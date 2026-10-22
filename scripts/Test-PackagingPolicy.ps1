@@ -69,6 +69,9 @@ try {
     $fixtureHead = ('NOT AN UNREAL LOG: PARSER REJECTION FIXTURE ONLY. ' * 4)
     $gateReady = 'LogLatebrakeStartup: Display: LATEBRAKE_STARTUP_READY map=LatebrakeCircuit checkpoints=4/4'
     $sceneReady = 'LogLatebrakeStartup: Display: LATEBRAKE_SCENERY_READY groups=7 instances=93 collision=off'
+    $geometryReady = 'LogLatebrakeStartup: Display: LATEBRAKE_GEOMETRY_READY collision=9/9'
+    $geometryIncomplete = 'LogLatebrakeStartup: Error: LATEBRAKE_GEOMETRY_INCOMPLETE collision=8/9 attempts=9'
+    $geometryWrong = 'LogLatebrakeStartup: Display: LATEBRAKE_GEOMETRY_READY collision=8/9'
     $sceneIncomplete = 'LogLatebrakeStartup: Error: LATEBRAKE_SCENERY_INCOMPLETE groups=6/7 instances=70/93'
     $sceneWrong = 'LogLatebrakeStartup: Display: LATEBRAKE_SCENERY_READY groups=7 instances=92 collision=off'
 
@@ -92,6 +95,42 @@ try {
     Expect-Rejection 'Scenery must be prepared before the final startup marker' {
         & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
     }
+
+    # This separate category is mandatory: genuine tracks need all nine
+    # collision-bearing ground/road/barrier Actor creations as well as gates.
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneReady`n$gateReady`n")
+    Expect-Rejection 'Four gates plus scenery without collision ground/roads are insufficient' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneReady`n$geometryIncomplete`n$gateReady`n")
+    Expect-Rejection 'Explicit failed collision block must fail' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneReady`n$geometryWrong`n$gateReady`n")
+    Expect-Rejection 'Wrong collision block count must fail' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneReady`n$geometryReady`n$geometryReady`n$gateReady`n")
+    Expect-Rejection 'Duplicate geometry READY markers must fail single-run audit' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneReady`n$gateReady`n$geometryReady`n")
+    Expect-Rejection 'Geometry marker after ready cannot certify startup' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$geometryReady`n$sceneReady`n$gateReady`n")
+    Expect-Rejection 'Scenery log must precede geometry audit as emitted by GameMode' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+
+    # Positive parser contract fixture ONLY: passing this is not real
+    # engine installation evidence, does not contain a real UE log and is
+    # never attached as a qualified game artifact.
+    [System.IO.File]::WriteAllText($fakeRuntimeLog,
+        "$fixtureHead`n$sceneReady`n$geometryReady`n$gateReady`n")
+    & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    if (-not $?) { throw 'Positive synthetic startup marker parser fixture failed.' }
+    Write-Host 'Synthetic parser grammar passed only; NO actual Unreal game was launched.'
 
     # The fixtures are deliberately too small and are not legitimate packages.
     $windows = Join-Path $temp 'windows'
