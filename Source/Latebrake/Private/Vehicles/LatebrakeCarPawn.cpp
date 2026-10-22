@@ -118,12 +118,14 @@ void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
     FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundInputHandle);
     FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(DeactivatedInputHandle);
     FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
+    TouchViewport.Reset();
     ClearDriverInputs();
     Super::EndPlay(EndPlayReason);
 }
 
 void ALatebrakeCarPawn::UnPossessed()
 {
+    TouchViewport.Reset();
     TouchPresses.Reset();
     ClearDriverInputs();
     Super::UnPossessed();
@@ -132,6 +134,7 @@ void ALatebrakeCarPawn::UnPossessed()
 void ALatebrakeCarPawn::HandleAppInputInterruption()
 {
     // Focus changes may discard release events; start a fresh touch session.
+    TouchViewport.Reset();
     TouchPresses.Reset();
     ClearDriverInputs();
 }
@@ -198,6 +201,28 @@ void ALatebrakeCarPawn::BrakeReleased()
 void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+
+#if PLATFORM_ANDROID
+    // Orientation and viewport resizing can arrive without *any* subsequent
+    // touch-move event. Cancel already-held driving axes in the physics tick
+    // rather than waiting for the former finger to cross a resized pad.
+    if (const APlayerController* PC = Cast<APlayerController>(GetController()))
+    {
+        int32 Width = 0;
+        int32 Height = 0;
+        PC->GetViewportSize(Width, Height);
+        if (latebrake::TouchViewportNeedsCancellation(
+                TouchViewport.Observe(Width, Height)))
+        {
+            TouchDrive.Clear();
+        }
+    }
+    else
+    {
+        TouchViewport.Reset();
+        TouchDrive.Clear();
+    }
+#endif
 
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
@@ -342,12 +367,20 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     const APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC)
     {
+        TouchViewport.Reset();
         TouchDrive.Clear();
         return;
     }
     int32 Width = 0;
     int32 Height = 0;
     PC->GetViewportSize(Width, Height);
+    // The press tracker is deliberately NOT reset: a finger held before an
+    // orientation change must not generate a second RECOVER/PAUSE/RESTART.
+    if (latebrake::TouchViewportNeedsCancellation(
+            TouchViewport.Observe(Width, Height)))
+    {
+        TouchDrive.Clear();
+    }
     const latebrake::TouchControlLayout Layout =
         latebrake::CalculateTouchControlLayout(Width, Height);
     if (!Layout.Valid)
