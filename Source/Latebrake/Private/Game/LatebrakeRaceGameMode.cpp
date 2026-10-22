@@ -30,6 +30,7 @@
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/CollisionBlockSetup.h"
+#include "Track/CollisionResponsePolicy.h"
 #include "Track/CircuitSpawnSafety.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
@@ -156,6 +157,27 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label,
         UE_LOG(LogLatebrakeStartup, Error,
             TEXT("LATEBRAKE_COLLISION_SETUP_FAILED label=%s reason=%s"),
             Label, UTF8_TO_TCHAR(latebrake::CollisionBlockSetupDecisionName(State)));
+        Block->Destroy();
+        return nullptr;
+    }
+
+    // QueryAndPhysics can still ignore the actual vehicle or physics
+    // response channels. Require the intended BlockAll contract *after*
+    // applying the Unreal component profile, before the startup audit
+    // treats this Actor as a complete collision-bearing road/wall.
+    const latebrake::TrackCollisionResponses Responses{
+        Mesh->GetCollisionResponseToChannel(ECC_Pawn) == ECR_Block,
+        Mesh->GetCollisionResponseToChannel(ECC_PhysicsBody) == ECR_Block,
+        Mesh->GetCollisionResponseToChannel(ECC_WorldDynamic) == ECR_Block
+    };
+    const latebrake::TrackCollisionResponseDecision ResponseState =
+        latebrake::CheckTrackCollisionResponses(Responses);
+    if (ResponseState != latebrake::TrackCollisionResponseDecision::Ready)
+    {
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_COLLISION_SETUP_FAILED label=%s reason=%s"),
+            Label, UTF8_TO_TCHAR(
+                latebrake::TrackCollisionResponseDecisionName(ResponseState)));
         Block->Destroy();
         return nullptr;
     }
