@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-22
-**Latest published milestone:** [v0.5.3 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.3).
-**Next development milestone:** v0.5.4 bounded checkpoint QA counters (NOT released).
+**Latest published milestone:** [v0.5.4 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.4).
+**Next development milestone:** v0.5.5 (development planning; not released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.4 in development — bounded checkpoint QA summaries
+## v0.5.4 published source-only — bounded checkpoint QA summaries
 
 - New engine-independent fixed-size `GateDiagnosticCounters` tracks total samples, true crossings, baseline/recovery events and first classified gate rejection reasons.
 - Shared `GateDiagnosticWindow` holds bounded ten-second frame time and
@@ -17,7 +17,7 @@
 - Counts saturate rather than wrap and can be merged/reset without heap allocations, GPS coordinates, player names or network services.
 - Non-shipping Unreal console mode `latebrake.CheckpointDiagnostics 2` adds a ten-second aggregated per-gate summary instead of continuous frame logging. Modes 0 (silent) and 1 (event transitions) remain.
 - The standalone regression test proves real motion-trace decisions, merge arithmetic, saturation, reset, invalid categories and recovery isolation. **The Unreal logging code is not engine-compiled or hardware-qualified.**
-- No v0.5.4 tag, release, EXE or Android APK. [QA summary design](GATE_QA_SUMMARIES.md).
+- **v0.5.4 is a GitHub source-only pre-release; no EXE, Android APK or installed game qualification is available.** [QA summary design](GATE_QA_SUMMARIES.md).
 
 ## v0.5.3 published — deterministic gate diagnostic outcomes
 
@@ -52,7 +52,9 @@
 - [v0.5.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.0) — career, two championship series, challenges, offline progression and source-level development menu.
 - [v0.5.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.1) — split timing, save/launch safety, mobile touch guards, batched circuit scenery and stricter build checks. **Source archive only; no installed game.**
 
-- [v0.5.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2) — checkpoint and race integrity fixes; source-only, no playable build.\n\n- [v0.5.3](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.3) — directional rejection reasons and opt-in local Unreal diagnostic log source; **source-only**, no executable.\n\nThese tags are source previews. They are **not downloadable playable game installers**.
+- [v0.5.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2) — checkpoint and race integrity fixes; source-only, no playable build.\n\n- [v0.5.3](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.3) — directional rejection reasons and opt-in local Unreal diagnostic log source; **source-only**, no executable.\n\n- [v0.5.4](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.4) — bounded QA counters and local log inspection. **Source-only; no playable build.**
+
+These tags are source previews. They are **not downloadable playable game installers**.
 
 ## v0.4.1 published source work (NOT engine verified)
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased v0.5.4 — Bounded checkpoint QA counters (source development)
+## v0.5.4 — Bounded checkpoint QA counters (SOURCE-ONLY pre-release, 2026-10-22)
 
 - Extracted the diagnostic summary timer into engine-neutral
   `GateDiagnosticWindow`, with deterministic invalid-duration,
@@ -18,7 +18,7 @@
 - A strict portable C++20 regression uses actual motion decisions and
   proves safe saturation and isolation after reset. Unreal Editor/UHT
   compilation and installed 30/60 FPS device measurements are outstanding.
-- **Not released as v0.5.4; no playable game package or device QA exists.**
+- **Published as a GitHub source-only pre-release; no playable game package or device QA exists.**
 
 
 ## v0.5.3 — Explainable checkpoint diagnostics (SOURCE-ONLY pre-release, 2026-10-22)
