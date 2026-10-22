@@ -4,6 +4,20 @@
 **Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
+## Unreleased v0.5.2 Android driving-input cleanup
+
+- Viewport resize/loss now zeros both cached steering/throttle smoothing
+  and touch ownership. Previously an old smooth value could continue
+  applying drive torque/force after a finger was cancelled.
+- Losing the local player controller also clears raw input axes instead
+  of leaving stale gamepad/keyboard throttle values available.
+- Portable `TouchViewportSafety` C++20 regression validates the next
+  simulated command remains neutral, retained finger ownership and
+  legitimate fresh touch re-acquisition. Actual Unreal mobile controls
+  and physics remain hardware-unverified.
+- v0.5.1 remains the latest published source-only pre-release;
+  these changes are part of **unreleased v0.5.2 development**.
+
 ## Unreleased v0.5.2 career replay correctness
 
 - Replaying a completed career now refreshes its starting-vehicle ID

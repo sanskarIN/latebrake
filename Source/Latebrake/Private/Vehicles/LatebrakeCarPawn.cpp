@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "UI/TouchControlLayout.h"
+#include "UI/TouchViewportSafety.h"
 #include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
@@ -211,16 +212,17 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         int32 Width = 0;
         int32 Height = 0;
         PC->GetViewportSize(Width, Height);
-        if (latebrake::TouchViewportNeedsCancellation(
-                TouchViewport.Observe(Width, Height)))
-        {
-            TouchDrive.Clear();
-        }
+        latebrake::NeutralizeTouchOnViewportChange(
+            TouchViewport, TouchDrive, SmoothedThrottle, SmoothedSteering,
+            Width, Height);
     }
     else
     {
         TouchViewport.Reset();
-        TouchDrive.Clear();
+        // Losing the controller invalidates both touch and analog input.
+        // Reset the raw axes, not only their smooth filters: otherwise the
+        // next Tick may rebuild throttle from a stale gamepad axis value.
+        ClearDriverInputs();
     }
 #endif
 
@@ -369,6 +371,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     {
         TouchViewport.Reset();
         TouchDrive.Clear();
+        SmoothedThrottle = 0.f;
+        SmoothedSteering = 0.f;
         return;
     }
     int32 Width = 0;
@@ -376,11 +380,9 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     PC->GetViewportSize(Width, Height);
     // The press tracker is deliberately NOT reset: a finger held before an
     // orientation change must not generate a second RECOVER/PAUSE/RESTART.
-    if (latebrake::TouchViewportNeedsCancellation(
-            TouchViewport.Observe(Width, Height)))
-    {
-        TouchDrive.Clear();
-    }
+    latebrake::NeutralizeTouchOnViewportChange(
+        TouchViewport, TouchDrive, SmoothedThrottle, SmoothedSteering,
+        Width, Height);
     const latebrake::TouchControlLayout Layout =
         latebrake::CalculateTouchControlLayout(Width, Height);
     if (!Layout.Valid)
@@ -388,6 +390,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         // Orientation or resize invalidates the geometry of every held
         // finger, not just the one that happened to move first.
         TouchDrive.Clear();
+        SmoothedThrottle = 0.f;
+        SmoothedSteering = 0.f;
         return;
     }
     if (!FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))

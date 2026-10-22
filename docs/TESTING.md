@@ -8,6 +8,26 @@ The suite checks checkpoint ordering, duplicates, invalid indices, lap count, fi
 
 GitHub Actions matrix: Ubuntu, Windows and macOS. This validates portable C++ source, **not Unreal packaging**.
 
+## Unreleased v0.5.2: Android smooth-input cancellation
+
+Portable `TouchViewportSafety` regression verifies stable-screen
+commands remain active, while rotation/inset resize/unavailable
+viewports clear held fingers **and** smoothed throttle/steering. The
+first physics simulation step after cancellation stays neutral.
+The physical press tracker still requires a genuine release/new press.
+
+Real UE 5.8 and Android acceptance (pending):
+- [ ] Hold throttle and steer at full input, rotate device: measure
+  zero new motor force/turning torque on the next frame, not merely
+  absent highlighted on-screen pad ownership.
+- [ ] Repeat while resizing via Android window insets or briefly
+  losing the render surface; no lingering filtered commands.
+- [ ] Check an external gamepad and controller loss/unpossession.
+  Raw axes must not reconstruct stale motor input without a controller.
+- [ ] Lift and press after resize to confirm smooth acceleration returns;
+  actual vehicle momentum need not stop instantaneously.
+- [ ] Check app-background interruption and pause/menu behavior.
+
 ## Unreleased v0.5.2: finished career replay integrity
 
 Portable `CareerReplayPreparation` regression tests stage the saved
