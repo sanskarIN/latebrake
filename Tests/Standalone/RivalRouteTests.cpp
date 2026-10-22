@@ -103,6 +103,18 @@ int main()
           careerRival.GetRequiredLaps() == 4 &&
           !careerRival.IsFinished(), "restarting same event clears route state");
 
+    // RestartRace uses ResetPilot() on an already configured rival;
+    // verify that reset clears only progress and not the current lap goal.
+    careerRival.Configure(4, 4);
+    Check(careerRival.Observe(200, 200, 0.1).Advanced,
+          "configured 4-lap route can advance");
+    careerRival.Reset();
+    Check(careerRival.GetRequiredLaps() == 4 &&
+          careerRival.GetWaypointCount() == 4 &&
+          careerRival.GetNextWaypoint() == 0 &&
+          careerRival.GetCompletedLaps() == 0 && !careerRival.IsFinished(),
+          "race restart retains current event configuration");
+
     careerRival.Configure(0, 0);
     Check(careerRival.GetWaypointCount() == 1 && careerRival.GetRequiredLaps() == 1,
           "bad reconfiguration clamps both dimensions to one");
