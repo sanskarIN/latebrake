@@ -1,4 +1,6 @@
 #include "AI/RivalRouteProgress.h"
+#include "Career/CareerCatalog.h"
+#include "Racing/RaceEvents.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -58,6 +60,36 @@ int main()
 
     latebrake::RivalRouteProgress clamped(0, 0);
     Check(clamped.Observe(0, 0, 1).Completed, "invalid config clamps to one each");
+
+    // Every career round that actually spawns a rival must use the selected
+    // event's lap count, not the three-lap quick-race default.
+    latebrake::RivalRouteProgress careerRival;
+    for (const auto& event : latebrake::CareerEvents)
+    {
+        if (!event.SpawnRival) continue;
+        careerRival.Configure(latebrake::GetRaceEvent(latebrake::EventKind::Circuit).CheckpointCount,
+                              event.Laps);
+        Check(careerRival.GetRequiredLaps() == event.Laps &&
+              careerRival.GetWaypointCount() == 4,
+              "rival route must match the current career lap target");
+        Check(!careerRival.IsFinished() && careerRival.GetCompletedLaps() == 0,
+              "switching career rounds must reset progress");
+        for (int lap = 0; lap < event.Laps; ++lap)
+        {
+            for (int waypoint = 0; waypoint < 4; ++waypoint)
+            {
+                const auto result = careerRival.Observe(200, 200, 0.1);
+                Check(result.Advanced, "waypoint advancement in event-specific route");
+                Check(result.Completed == (lap == event.Laps - 1 && waypoint == 3),
+                      "rival completes only at selected event's final waypoint");
+            }
+        }
+        Check(careerRival.IsFinished() &&
+              careerRival.GetCompletedLaps() == event.Laps,
+              "career route never overcounts selected event laps");
+        Check(!careerRival.Observe(200, 200, 0.1).Advanced,
+              "a completed career rival route stays finished");
+    }
     std::cout << "Autonomous route tests passed.\n";
     return EXIT_SUCCESS;
 }
