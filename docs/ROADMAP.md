@@ -14,7 +14,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.4.1 (pre) | Experimental visible mobile steering/pedals plus pause/restart/recover touch pads | Engine compile, phone input and layout testing outstanding |
 | v0.4.2 (pre, proposed) | Touch cancellation, input remapping and mobile performance pass | Low/mid-range real-device metrics |
 | v0.5.0 (published source pre-release) | Two 3-round championships, six challenges, medals, career save v2 and prototype menu source | Three-OS portable CI passed; Unreal and device qualification pending |
-| v0.5.1 (pre) | Accessibility and progression polish | Usability checks |
+| v0.5.1 (source-only pre-release) | Sector timing, career/save integrity, mobile touch input safety, instanced circuit geometry, build smoke guards | Portable Windows/macOS/Ubuntu CI; Unreal editor/map/cook/device qualification still missing |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
@@ -25,7 +25,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.9.1 (pre) | Release candidate | Security/quality gates |
 | v1.0.0 (stable) | Complete tested released game per frozen scope | Win64 and Android real builds |
 
-Each release must have real artifacts, actual testing, change notes, known issues, and no unsupported promises.
+Playable game releases must include genuine installed packages, actual hardware/gameplay testing, change notes, known issues, and no unsupported promises. Source-only preview archives are **not** playable game artifacts.
 
 ### Engine-first roadmap requirement
 
@@ -36,7 +36,7 @@ a playable game. Completing [issue #2](https://github.com/sanskarIN/latebrake/is
 and [issue #13](https://github.com/sanskarIN/latebrake/issues/13)
 is a prerequisite for closing the main quality gate.
 
-### Immediate v0.5.1 developer work
+### Next critical work after the v0.5.1 source preview
 
 Create and verify an engine-authored starter `.umap`, compile Unreal
 Editor and game targets, cook/assemble a genuine Win64 game candidate,
