@@ -218,8 +218,9 @@ void ALatebrakeRaceHUD::DrawHUD()
         if (!bTimeAttack)
         {
             Line(Mode->HasRival()
-                ? FString::Printf(TEXT("RIVAL ROUTE  %d LAPS | RECOVERIES  %d%s"),
-                    Mode->GetRivalApproximateLaps(), Mode->GetRivalRecoveryCount(),
+                ? FString::Printf(TEXT("RIVAL ROUTE  %d/%d LAPS | RECOVERIES  %d%s"),
+                    Mode->GetRivalApproximateLaps(), Mode->GetRivalPlannedLaps(),
+                    Mode->GetRivalRecoveryCount(),
                     Mode->HasRivalFinishedRoute() ? TEXT(" | DONE") : TEXT(""))
                 : FString(TEXT("RIVAL UNAVAILABLE")), Primary);
         }
