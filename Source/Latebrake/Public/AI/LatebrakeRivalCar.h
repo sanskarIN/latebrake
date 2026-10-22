@@ -19,6 +19,10 @@ public:
     ALatebrakeRivalCar();
     virtual void Tick(float DeltaSeconds) override;
     void ResetPilot();
+    // Event configuration controls route-length telemetry; it never grants
+    // authoritative race placement or player checkpoint progression.
+    void ConfigurePilot(int32 CheckpointCount, int32 RequiredLaps);
+    int32 GetExpectedLaps() const { return Route.GetRequiredLaps(); }
     int32 GetApproximateLaps() const { return Route.GetCompletedLaps(); }
     int32 GetPilotRecoveries() const { return Route.GetRecoveryCount(); }
     bool HasCompletedRoute() const { return Route.IsFinished(); }
