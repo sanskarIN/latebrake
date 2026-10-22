@@ -5,6 +5,7 @@
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
 #include "UI/TouchPressTracker.h"
+#include "UI/TouchViewportGuard.h"
 #include "LatebrakeCarPawn.generated.h"
 
 class UCameraComponent;
@@ -122,6 +123,7 @@ private:
     bool bNearCamera = false;
     latebrake::TouchDriveState TouchDrive;
     latebrake::TouchPressTracker TouchPresses;
+    latebrake::TouchViewportGuard TouchViewport;
 
     UPROPERTY(EditAnywhere, Category = "Vehicle")
     ELatebrakeHandlingMode HandlingMode = ELatebrakeHandlingMode::Arcade;
