@@ -2,8 +2,24 @@
 
 **Updated:** 2026-10-22
 **Latest published milestone:** [v0.5.7 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.7).
-**Next development milestone:** v0.5.8 (planned, NOT released).
+**Next development milestone:** v0.5.8 collision-channel response validation (source development; NOT released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.8 in development — verify collision channel blocking
+
+- Original engine-neutral `CollisionResponsePolicy` now requires
+  Pawn, PhysicsBody and WorldDynamic responses to be **Block**.
+- After setting `BlockAll`, the engine-facing `SpawnBlock` checks
+  each actual Unreal mesh component channel and destroys Actors that
+  would still Ignore or Overlap important vehicle/dynamic channels.
+- This integrates with the previous nine-piece startup audit: a
+  misconfigured road/barrier cannot contribute to successful course
+  construction or enable race checkpoint rewards.
+- Portable C++20 `CollisionResponsePolicyTests.cpp` covers each
+  rejected channel and positive paths. C++/CTest cannot verify
+  actual real-game rigid body contacts.
+- v0.5.8 remains development-only, not a public pre-release.
+  [Collision response QA](COLLISION_RESPONSE_QA.md).
 
 ## v0.5.7 published source-only — actual mesh-configuration and spawn preflight
 
