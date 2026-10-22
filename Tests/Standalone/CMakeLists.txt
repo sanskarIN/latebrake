@@ -152,7 +152,7 @@ endif()
 add_test(NAME TouchControlLayout COMMAND latebrake_touch_layout_tests)
 
 # Independent career rules: no Unreal SDK or licensed assets required.
-foreach(name IN ITEMS CareerCatalog CareerProgress CareerChallenges MenuNavigation ProfileWriteCheckpoint TouchDriveState TouchPressTracker)
+foreach(name IN ITEMS CareerCatalog CareerProgress CareerChallenges MenuNavigation ProfileWriteCheckpoint TouchDriveState TouchPressTracker CareerLaunchSelection)
     add_executable(latebrake_${name}_tests ${name}Tests.cpp)
     target_include_directories(latebrake_${name}_tests PRIVATE ../../Source/Latebrake/Public)
     target_compile_features(latebrake_${name}_tests PRIVATE cxx_std_20)
@@ -179,3 +179,18 @@ else()
     target_compile_options(latebrake_sector_timing_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SectorTiming COMMAND latebrake_sector_timing_tests)
+
+# RecoveryPenalty uses portable RaceProgress::AddTimePenalty, not Unreal actor
+# teleportation. The engine-facing movement must be tested on real devices.
+add_executable(latebrake_recovery_charge_tests
+    RecoveryChargeTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_recovery_charge_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_recovery_charge_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_recovery_charge_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_recovery_charge_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RecoveryCharge COMMAND latebrake_recovery_charge_tests)
