@@ -30,7 +30,7 @@ The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** imple
 4. Right-click `Latebrake.uproject` and generate project files (or open from the Unreal project browser).
 5. Build the `LatebrakeEditor` target with your local toolchain; open `Latebrake.uproject`, then use Play in Editor.
 
-The game mode is selected via `Config/DefaultEngine.ini`, which points at a built-in engine entry map and generates its starter track at runtime. Check **[Build instructions](docs/BUILDING.md)** for limitations and packaging prerequisites.
+The game mode is selected via `Config/DefaultEngine.ini`, which now targets `/Game/Maps/LatebrakeCircuit`; the project-owned binary `.umap` still must be generated and saved with an authorized Unreal Editor 5.8 installation. The starter circuit actors are spawned at runtime. Check **[Build instructions](docs/BUILDING.md)** for the actual map, tooling and packaging prerequisites.
 
 ### Current controls
 
@@ -74,7 +74,7 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Development and releases
 
-**v0.1.0** through **v0.4.1** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
+**v0.1.0** through **v0.5.0** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
 
 ## License and contributions
 
@@ -132,4 +132,4 @@ dependencies are editor-target-only, not part of the racing runtime.
 **No executable files have been produced or uploaded from this development
 branch.** A licensed Unreal installation and target hardware are still
 mandatory. See the [step-by-step executable build pipeline](docs/EXECUTABLE_BUILD_PIPELINE.md).
-The v0.5.0 source-only pre-release is unchanged.
+The v0.5.0 source-only pre-release is unchanged. Unreleased v0.5.1 touch-source hardening prevents duplicate button actions for the same held finger, with portable tests; Android hardware verification is still pending.
