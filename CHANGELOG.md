@@ -2,6 +2,16 @@
 
 ## Unreleased — v0.5.1 executable readiness
 
+### Batched scenery startup smoke policy
+
+- Strengthened the **real installed-game log verifier** so a four-gate
+  startup alone is not sufficient: it must also see one complete,
+  correctly ordered scenery marker with seven ISM groups and 93 instances.
+- Reject incomplete, wrong-count, missing, duplicated and out-of-order
+  scenery assembly markers in CI's disposable negative parser fixtures.
+- Passing a future genuine log check is not proof that Unreal renders,
+  drives, saves or packages correctly. No new playable binary is present.
+
 ### Runtime scenery actor reduction (engine source only)
 
 - Replaced the 93 cosmetic cube actors on the single starter circuit
