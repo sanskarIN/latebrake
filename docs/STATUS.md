@@ -10,7 +10,7 @@
 - Added explicit classification for valid gate crossings, invalid samples or velocity, wrong-way/slow motion, oversized frame travel, absent plane crossings, lane misses and height misses.
 - Motion trace details distinguish a first baseline, an authorized teleport generation rebase, malformed positions and a legitimate crossing without changing the existing bool scoring method.
 - Added strict portable C++20 tests for the four gate directions and diagnostic/boolean parity.
-- The additional telemetry is an opt-in *engine-independent helper*; no claim of Unreal runtime logging, gameplay or installed-device validation. See [gate diagnostic design](GATE_DIAGNOSTICS.md).
+- The diagnostic evaluator is engine-independent. An additional default-off, non-shipping `latebrake.CheckpointDiagnostics` Unreal console variable logs local event/reason transitions, with no network output. **Unreal compilation, console behavior, logging and installed-device validation are unverified.** See [gate diagnostic design](GATE_DIAGNOSTICS.md).
 
 ## v0.5.2 published — source-only race integrity
 

@@ -88,7 +88,9 @@ An allocation-free checkpoint diagnostic evaluator reports a named reason
 when a gate sample is rejected, and a trace diagnostic distinguishes the
 first position from a recovery/restart teleport rebase. Gameplay still
 uses the existing bool API and the v0.5.2 crossing/teleport rules.
-Portable C++20 tests exercise all four gates. This is **not** evidence of
+A default-off, non-shipping Unreal console setting can log bounded local
+checkpoint events (`latebrake.CheckpointDiagnostics 1`). Portable C++20
+tests exercise all four gates. This is **not** evidence of
 Unreal gameplay, checkpoint instrumentation on device or a playable build.
 See [gate diagnostic design](docs/GATE_DIAGNOSTICS.md).
 

@@ -33,4 +33,11 @@ private:
     // an old sample before attempting to credit a physical plane crossing.
     TWeakObjectPtr<AActor> LastObservedPlayer;
     latebrake::CheckpointMotionTrace MotionTrace;
+
+#if !UE_BUILD_SHIPPING
+    // Only used for opt-in local development log de-duplication.
+    latebrake::CircuitGateDecision LastLoggedDecision =
+        latebrake::CircuitGateDecision::NoForwardPlaneCrossing;
+    bool bHadLoggedDecision = false;
+#endif
 };
