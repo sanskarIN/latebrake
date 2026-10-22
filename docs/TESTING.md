@@ -1,3 +1,14 @@
+## v0.5.5: bounded recent timed-lap history (source-only)
+
+`RecentTimedLaps` CTest verifies no data are invented for missing,
+zero-duration or nonfinite laps, preserves physical completed-lap
+numbering, wraps safely after eight actual timed laps, fails closed on
+invalid indices and clears all prior-session data on reset. Additional
+`FinishedRaceInsights` test assertions cover true three-lap ordering,
+single-lap time attack with no prior comparison, and a zero-time first
+lap followed by a legitimately timed final lap. Source-only CTest does
+not compile the Unreal results screen or prove on-device legibility.
+
 ## v0.5.5: post-race pace consistency and finish validation (source-only)
 
 The standalone `FinishedRaceInsights` CTest links the real portable

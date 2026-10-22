@@ -113,7 +113,9 @@ never certifies game builds or playability.
 
 A new `FinishedRaceInsights` policy computes a reliable finished-race
 scorecard from the **actual** `RaceProgress` clock and sector splits:
-best and last recorded lap, a within-run theoretical best-sectors lap,
+best and last recorded lap, a bounded allocation-free history of the most
+recent eight positive timed laps, a final-vs-previous-lap signed delta,
+a within-run theoretical best-sectors lap,
 the gap between achieved fastest lap and that theoretical lap, and
 fastest-to-slowest spread when **at least two positively timed laps**
 exist. Instant zero-duration laps are not counted as timed evidence;

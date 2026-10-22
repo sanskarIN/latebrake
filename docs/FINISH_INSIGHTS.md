@@ -24,6 +24,15 @@ clock samples cannot fabricate one.
 
 ## Pure C++20 implementation
 
+- `RecentTimedLaps.h` implements an eight-record, fixed-size no-heap
+  ring. Each record carries physical lap number and strictly positive,
+  finite duration; malformed times and zero-duration laps are excluded.
+  History never persists across a race restart or player session.
+- A valid finished run can show the latest timed lap versus the previous
+  genuinely timed lap: negative signed delta = faster, positive =
+  slower. With only one timed lap (including a one-lap time attack),
+  the comparison is hidden. Once more than eight timed laps exist,
+  the ring retains only eight most recent records without allocation.
 - `RaceProgress::GetTimedLapCount()` counts strictly positive,
   finite lap durations, separate from ordered completed laps.
 - `BuildFinishedRaceInsights(const RaceProgress&)` requires actual
