@@ -31,11 +31,14 @@ int main()
     Require(CalculateRaceCredits(EventKind::Circuit, 100.0, -1) == 0, "negative recovery count invalid");
     Require(CalculateRaceCredits(EventKind::Circuit,
         std::numeric_limits<double>::infinity(), 0) == 0, "infinite time invalid");
+    // A volatile runtime value prevents MSVC C4756 from constant-folding
+    // an out-of-range float conversion in the sanitizer's dead branch.
+    volatile double enormousElapsed = 1e100;
     Require(CalculateRaceCredits(EventKind::Circuit, 604800.0, 0) == 500,
             "seven-day boundary retains capped participation plus clean bonus");
     Require(CalculateRaceCredits(EventKind::Circuit, 604800.01, 0) == 0,
             "finite overlong circuit cannot grant participation credits");
-    Require(CalculateRaceCredits(EventKind::TimeAttack, 1e100, 0) == 0,
+    Require(CalculateRaceCredits(EventKind::TimeAttack, enormousElapsed, 0) == 0,
             "unrepresentable time-attack clock cannot earn currency");
     Require(CalculateRaceCredits(EventKind::Circuit, 1e-100, 0) == 0,
             "positive subnormal clock cannot be used for artificial gold");
