@@ -97,6 +97,48 @@ int main()
     Require(trace.Sample(0, 0, depart, 350.0, 0.0),
             "legitimate unchanged-generation driving still counts");
 
+    // Frame hitches may carry a legitimately driven car entirely across
+    // the old 600cm trigger footprint. The new swept gate rule must work
+    // through CheckpointMotionTrace and ordered RaceProgress, not only
+    // through its low-level geometry helper.
+    RaceProgress lowFpsRace(4, 1);
+    for (int gate = 0; gate < CircuitGateCount; ++gate)
+    {
+        CheckpointMotionTrace lowFps;
+        const CircuitPoint center = CircuitGate(gate);
+        const double dx = gate == 0 ? 1.0 : gate == 2 ? -1.0 : 0.0;
+        const double dy = gate == 1 ? 1.0 : gate == 3 ? -1.0 : 0.0;
+        const CircuitGateSample sweptStart{
+            {center.X - dx * 950.0, center.Y - dy * 950.0}, height};
+        const CircuitGateSample sweptEnd{
+            {center.X + dx * 200.0, center.Y + dy * 200.0}, height};
+        Require(!lowFps.Sample(gate, 15, sweptStart,
+                               dx * 1000.0, dy * 1000.0),
+                "swept gate first frame establishes movement baseline");
+        Require(lowFps.Sample(gate, 15, sweptEnd,
+                              dx * 1000.0, dy * 1000.0) &&
+                lowFpsRace.PassCheckpoint(gate),
+                "high-speed bounded sweep counts with same teleport generation");
+
+        // The EXACT same two positions are not a real crossing when a
+        // recover/restart operation advances its discontinuity epoch.
+        CheckpointMotionTrace recovery;
+        Require(!recovery.Sample(gate, 15, sweptStart,
+                                 dx * 1000.0, dy * 1000.0),
+                "recovery trace establishes old baseline");
+        Require(!recovery.Sample(gate, 16, sweptEnd,
+                                 dx * 1000.0, dy * 1000.0),
+                "bounded high-speed-looking teleport is never awarded");
+        Require(!recovery.Sample(gate, 16, sweptStart,
+                                 -dx * 1000.0, -dy * 1000.0),
+                "returning after teleport does not claim wrong-way crossing");
+        Require(recovery.Sample(gate, 16, sweptEnd,
+                                dx * 1000.0, dy * 1000.0),
+                "normal driving can earn a gate after teleport");
+    }
+    Require(lowFpsRace.IsFinished() && lowFpsRace.GetCompletedLaps() == 1,
+            "swept low-FPS laps complete all four ordered sectors");
+
     std::cout << "Four-gate teleport-proof motion traces passed.\n";
     return EXIT_SUCCESS;
 }
