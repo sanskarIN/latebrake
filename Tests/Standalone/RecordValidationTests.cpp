@@ -27,13 +27,16 @@ int main()
             "negative infinity rejected");
     Require(SanitizeBestTime(604800.0) == 604800.f, "seven-day boundary valid");
     Require(SanitizeBestTime(604800.01) == 0.f, "unreasonably long record rejected");
+    // Keep the huge input runtime-observable: MSVC warns C4756 when
+    // constant-folding a dead float cast of a 1e100 literal under /WX.
+    volatile double enormousElapsed = 1e100;
     Require(IsValidFinishedRaceTime(90.5),
             "ordinary positive race finish is recordable");
     Require(IsValidFinishedRaceTime(604800.0),
             "exact seven-day race boundary is recordable");
     Require(!IsValidFinishedRaceTime(604800.01),
             "above seven-day race cannot become a persisted finish");
-    Require(!IsValidFinishedRaceTime(1e100),
+    Require(!IsValidFinishedRaceTime(enormousElapsed),
             "finite but float-unrepresentable elapsed time rejected");
     Require(!IsValidFinishedRaceTime(std::numeric_limits<double>::infinity()),
             "infinite elapsed finish rejected");
@@ -51,7 +54,7 @@ int main()
             "slower finish keeps previous best");
     Require(ImprovedBestTime(88.f, 604800.01) == 88.f,
             "overlong finish cannot destroy previous record");
-    Require(ImprovedBestTime(88.f, 1e100) == 88.f &&
+    Require(ImprovedBestTime(88.f, enormousElapsed) == 88.f &&
             ImprovedBestTime(88.f, std::numeric_limits<double>::infinity()) == 88.f,
             "huge or infinite candidate cannot overwrite float best");
     Require(ImprovedBestTime(0.f, 75.0) == 75.f,
