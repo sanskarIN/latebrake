@@ -4,6 +4,21 @@
 **Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
+## Unreleased v0.5.2 low-frame-rate swept checkpoint guard
+
+- Each of the four directional plane tests now accepts a legitimate
+  forward *swept segment* with total frame movement at or below
+  **1,200 cm**, even when one endpoint is beyond the former 600 cm
+  visual trigger radius. Interpolated crossing lane/height, speed,
+  direction, finite values and ordered progression remain enforced.
+- Teleport generations continue to rebase checkpoint motion traces:
+  an authorized recovery/restart is not eligible even if its displacement
+  happens to look like an accepted fast driving sweep.
+- Portable C++20 geometry and full RaceProgress tests cover the new
+  boundary, all four directions and recovery interlocks. Unreal 5.8,
+  installed game FPS/hitch behavior, physics tick timing and platform
+  packages remain unverified; no v0.5.2 release is claimed.
+
 ## Unreleased v0.5.2 finite finish-record integrity
 
 - Completion processing now uses the same bounded, float-representable
