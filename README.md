@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Source preview: [v0.5.5](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.5) — SOURCE-ONLY PRE-RELEASE (22 October 2026), NOT A PLAYABLE GAME.** GitHub source ZIP/tar.gz files are for developers; there is **no Windows EXE, Android APK/AAB or Linux game**. Portable C++20 CI does not compile Unreal 5.8. The editor/UHT build, real cookable project map, Win64/Android packages and installed playtests remain unverified.
+> **Source preview: [v0.5.6](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.6) — SOURCE-ONLY PRE-RELEASE (22 October 2026), NOT A PLAYABLE GAME.** GitHub source ZIP/tar.gz files are for developers; there is **no Windows EXE, Android APK/AAB or Linux game**. Portable C++20 CI does not compile Unreal 5.8. The editor/UHT build, real cookable project map, Win64/Android packages and installed playtests remain unverified.
 
 ## What's in source today?
 
@@ -128,7 +128,7 @@ are in `Tests/Standalone/FinishedRaceInsightsTests.cpp`.
 HUD readability on screen and packaged Win64/Android behavior remain
 unverified. [Finish insights design](docs/FINISH_INSIGHTS.md).
 
-## v0.5.6 in development — circuit startup integrity (NOT released)
+## v0.5.6 published source preview — circuit startup integrity
 
 The original nine collision-bearing blocks (ground, four roads and four
 barriers) are now defined in a shared **C++20 collision plan** instead of
@@ -148,7 +148,7 @@ been verified.** [Detailed audit and acceptance guide](docs/CIRCUIT_STARTUP_AUDI
 
 ## Development and releases
 
-**v0.1.0** through **v0.5.5** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
+**v0.1.0** through **v0.5.6** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
 
 ## License and contributions
 
