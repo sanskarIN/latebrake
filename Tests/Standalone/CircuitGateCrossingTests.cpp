@@ -111,7 +111,8 @@ int main()
             {{EastX - 10.0, SouthY - 3000.0}, Z},
             {{EastX + 10.0, SouthY + 3000.0}, Z}, 200, 0),
             "large lateral teleport crossing rejected");
-    Require(!CrossesCircuitGatePlane(0, southBefore,
+    Require(!CrossesCircuitGatePlane(0,
+            {{EastX - 150.0, SouthY}, GateCenterHeightCm + 450.0},
             {{EastX + 100.0, SouthY}, GateCenterHeightCm + 450.0}, 200, 0),
             "airborne checkpoint skip above height window rejected");
     Require(CrossesCircuitGatePlane(0,
