@@ -2,8 +2,25 @@
 
 **Updated:** 2026-10-22
 **Latest published milestone:** [v0.5.8 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.8).
-**Next development milestone:** v0.5.9 (planned, NOT released).
+**Next development milestone:** v0.5.9 fail-closed race clock and player-visible startup warnings (development; NOT released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.9 in development — clock cannot run on an incomplete circuit
+
+- New portable `AdvanceRaceClockIfReady` uses real `RaceProgress`
+  and refuses time accumulation when the circuit readiness audit
+  failed, the world is paused, the race finished or the frame time
+  is malformed.
+- GameMode `Tick` now uses this policy rather than unconditionally
+  advancing the elapsed race clock. The public
+  `IsCircuitReadyForGameplay` source accessor allows the HUD and
+  menu to display an explicit track-not-ready warning.
+- A strict C++20 test links the actual original `RaceProgress.cpp`
+  and checks positive advancement, rejected gates, pause/resume,
+  invalid durations, finished race freeze and restart isolation.
+- No real UE 5.8 editor/game compilation, actual circuit cooking
+  or installed Win64/Android QA exists for v0.5.9.
+  [Clock-startup QA design](RACE_CLOCK_READINESS_QA.md).
 
 ## v0.5.8 published source-only — verify collision channel blocking
 

@@ -183,6 +183,24 @@ real physical collision, licensed Unreal 5.8 Editor/UHT compilation,
 the cookable map, and installed Windows/Android gameplay remain
 unverified. See [collision response QA](docs/COLLISION_RESPONSE_QA.md).
 
+## v0.5.9 source development — race clock and startup readiness (NOT released)
+
+A new `RaceClockReadiness.h` runs the **real** portable
+`RaceProgress` race clock only when the whole circuit has been
+certified as source-created and the world is unpaused. Invalid frame
+durations and races already finished cannot advance the timer. Unlike
+the previous unconditional tick, a failed ground, barrier, collision
+response, checkpoint Actor or safe spawn check can no longer produce
+a misleading race clock. The prototype Results/normal HUD and
+menu explicitly show `TRACK NOT READY` if circuit startup failed.
+
+`Tests/Standalone/RaceClockReadinessTests.cpp` links the original
+`RaceProgress.cpp` and checks unready/paused/invalid/finished
+timing, pause-resume, a real gate finish and restart. This remains
+**source-only development**: Unreal Engine 5.8 UHT/game compilation,
+actual map cooking and installed Win64/Android gameplay are unverified.
+[QA acceptance guide](docs/RACE_CLOCK_READINESS_QA.md).
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.8** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.

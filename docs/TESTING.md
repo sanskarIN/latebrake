@@ -1,3 +1,22 @@
+## v0.5.9 — race clock readiness and fail-closed startup
+
+`RaceClockReadinessTests.cpp` links `RaceProgress.cpp`, not a mock.
+It verifies no time can accrue if the source circuit startup audit
+is incomplete, if the Unreal world is paused, or if the frame duration
+is negative, zero, NaN or infinite. It validates positive active
+race seconds, the actual ordered gate finish, frozen finished race,
+pause/resume and restart isolation.
+
+Unreal GameMode now calls `AdvanceRaceClockIfReady` from its Tick
+using the real `bCircuitReady` and
+`UGameplayStatics::IsGamePaused(this)`. The prototype UI shows
+`TRACK NOT READY` in the menu and racing HUD while disabled.
+
+The CTest **does not** compile Unreal 5.8, demonstrate game-world
+Tick behavior, verify that a real Unreal map has been authored/cooked,
+nor validate real Win64/Android HUD legibility or installed gameplay.
+Those require separate authorized engine builds and human playtests.
+
 ## v0.5.8: collision response policy regression (source only)
 
 `CollisionResponsePolicyTests.cpp` checks a standalone portable
