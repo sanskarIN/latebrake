@@ -21,7 +21,7 @@ def record(gate=0, samples=100, crossed=2, teleport=1, invalid=0,
 
 class CheckpointQALogTests(unittest.TestCase):
     def test_one_gate_sums_multiple_intervals(self):
-        report = summarize_log(record() + "\n" + record(samples=40, crossed=0))
+        report = summarize_log(record() + "\n" + record(samples=40, crossed=0, no_plane=20))
         self.assertEqual(report["windows"], 2)
         self.assertEqual(report["gate_summaries"][0]["samples"], 140)
         self.assertEqual(report["gate_summaries"][0]["crossed"], 2)
