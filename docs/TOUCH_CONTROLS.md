@@ -145,6 +145,28 @@ menu-action drag avoidance and cancellation on all three CI operating systems.
 **It does not mean that actual Android devices or Unreal touch bindings
 have been compiled, installed or tested.**
 
+## v0.5.1 development: single-fire discrete touch actions (not device-qualified)
+
+The separate portable `TouchPressTracker` records **all** initial touch indices,
+including touches beginning outside visible pads. An existing held finger cannot
+fire a second PAUSE, RESTART, RECOVER or career/menu action if Unreal dispatches
+another `IE_Pressed` event before the corresponding release. Moving an action
+finger to another button likewise cannot act without a physical release/new
+press. Two different fingers remain independent. Driving input clears caused by
+menus, restarts or recovery do **not** clear this tracker; real touch releases
+do. App lifecycle interruption/unpossession resets the press tracker in case
+the OS discarded release events.
+
+Portable `TouchPressTrackerTests.cpp` tests duplicate action suppression,
+independent finger ownership, invalid indices and interruption reset. This
+does **not** verify Unreal's exact mobile press/release routing.
+
+On real Android hardware: hold a finger on RECOVER long enough to receive
+repeat callbacks and verify that **only one** 5-second penalty is assessed;
+drag it over RESTART/PAUSE; verify no action until physical release.
+Repeat with a second finger, a PAUSE/menu transition, and an Android
+background/foreground event.
+
 First real Android package acceptance checks should include: two physical
 fingers held together, a second/third finger trying to steal a pedal,
 moving one pedal finger across the neutral gap, dragging from gas over

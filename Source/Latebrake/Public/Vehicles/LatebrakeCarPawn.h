@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
+#include "UI/TouchPressTracker.h"
 #include "LatebrakeCarPawn.generated.h"
 
 class UCameraComponent;
@@ -120,6 +121,7 @@ private:
     bool bBraking = false;
     bool bNearCamera = false;
     latebrake::TouchDriveState TouchDrive;
+    latebrake::TouchPressTracker TouchPresses;
 
     UPROPERTY(EditAnywhere, Category = "Vehicle")
     ELatebrakeHandlingMode HandlingMode = ELatebrakeHandlingMode::Arcade;
