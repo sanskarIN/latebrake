@@ -15,8 +15,10 @@
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
 #include "Progression/RecordValidation.h"
+#include "Career/CareerLaunchSelection.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
+#include "Racing/RecoveryCharge.h"
 #include "Track/CircuitLayout.h"
 #include "Track/TrackDecorations.h"
 #include <limits>
@@ -505,40 +507,47 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
         return false;
     }
     const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
-    if (!Event || Career.Status(Id) == latebrake::CareerStatus::Locked)
+
+    // Stage the career and required garage vehicle together. An event is not
+    // considered launched until SaveGameToSlot confirms its selection; do not
+    // reset the running race or switch vehicles when persistence fails.
+    latebrake::ProfileWriteCheckpoint SelectionWrite(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
+    const latebrake::CareerLaunchStatus Launch =
+        latebrake::StageCareerLaunch(Career, Garage, Id);
+    if (Launch != latebrake::CareerLaunchStatus::Ready)
     {
-        CareerFeedback = TEXT("Career event is locked or unknown.");
+        CareerFeedback = Launch == latebrake::CareerLaunchStatus::RequiredVehicleNotOwned
+            ? TEXT("Unlock the required vehicle in the garage first.")
+            : TEXT("Career event is locked or unknown.");
         return false;
     }
-    if (Event->RequiredVehicle >= 0 && !Garage.Owns(Event->RequiredVehicle))
+
+    // Only selection is staged, not a race finish/reward. A successful
+    // profile write must precede any live race or pawn state transition.
+    SaveRecords();
+    if (bProgressSaveFailed)
     {
-        CareerFeedback = TEXT("Unlock the required vehicle in the garage first.");
+        SelectionWrite.Rollback();
+        CareerFeedback = TEXT("Career did NOT start: event/vehicle selection could not be saved.");
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: rejected career launch because profile selection was not saved"));
         return false;
     }
+    SelectionWrite.Commit();
+
     // A career race uses the real player checkpoint clock. Rival telemetry is
     // never interpreted as a competitive finish or championship placement.
-    if (!Career.Select(Id))
-    {
-        CareerFeedback = TEXT("Career selection was rejected.");
-        return false;
-    }
     CareerMenuSelection = Id;
-    if (Event->RequiredVehicle >= 0)
-    {
-        Garage.Select(Event->RequiredVehicle);
-        ApplyGarageToPlayer();
-    }
     CareerStartedVehicleId = Garage.SelectedVehicle();
     bCareerRace = true;
     SelectedEvent = Event->SpawnRival
         ? latebrake::EventKind::Circuit : latebrake::EventKind::TimeAttack;
     Race = latebrake::RaceProgress(4, Event->Laps);
     LastCareerAward = {};
-    RestartRace();
+    RestartRace(); // Applies persisted garage tuning and repositions pawn.
     RefreshRival();
-    // Persist the active event so exits/restarts can recover the selection.
-    // Only the final validated checkpoint commits a medal and credits.
-    SaveRecords();
     CareerFeedback = FString::Printf(TEXT("Career: %s | %d laps | N browse, M start"),
         UTF8_TO_TCHAR(Event->Name), Event->Laps);
     return true;
@@ -794,11 +803,13 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     // Player recovery and AI recovery consume the same course definition.
     const latebrake::CircuitPose Pose =
         latebrake::PlayerRecovery(Race.GetNextCheckpoint());
-    // A five-second penalty discourages skipping sectors by teleporting.
-    if (Race.AddTimePenalty(5.0) &&
-        RecoveriesThisRace < std::numeric_limits<int32>::max())
+    // Fail closed: never teleport if the recovery counter or race timer
+    // cannot accept the full penalty. This also prevents uncharged free
+    // repositioning after a numerical overflow or saturated recovery count.
+    if (!latebrake::TryChargePlayerRecovery(Race, RecoveriesThisRace))
     {
-        ++RecoveriesThisRace;
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: recovery rejected; penalty could not be charged"));
+        return;
     }
     Car->RecoverTo(
         FVector(Pose.Position.X, Pose.Position.Y, 180.0),

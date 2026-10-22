@@ -30,6 +30,16 @@ race count and best times are restored immediately, and the HUD reports
 an unsaved reward rather than a spendable win. A later genuine replay can
 still earn its one-time first-completion award.
 
+In unreleased v0.5.1 development, **starting** a career event has the same
+write-before-action rule. The chosen career event and any vehicle required
+for it are staged inside a profile checkpoint and persisted **before** the
+live race clock, rival, player pawn or active event changes. If the SaveGame
+write reports failure, the selection is reverted and launch is refused, with
+the existing race left intact. This prevents an unsaved required vehicle
+switch or event selection from masquerading as durable career progress.
+This workflow has portable policy tests but still requires real Unreal
+serialization and installed-game verification.
+
 Vehicle selections, purchases, engine and grip upgrades similarly revert
 their balance/ownership/tuning changes on a failed SaveGame write. The
 speed-display unit toggle also restores the previous setting if its write

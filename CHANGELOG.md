@@ -2,6 +2,24 @@
 
 ## Unreleased — v0.5.1 executable readiness
 
+### Career launch and recovery accounting integrity
+
+- Career event and required-owned-vehicle selections are now staged inside
+  `ProfileWriteCheckpoint` and must be written to SaveGame **before** the
+  running event, race clock, pawn tuning or rival is changed.
+- If `SaveGameToSlot` reports failure, launch is rejected with actionable
+  feedback, career and garage selection are rolled back, and the previous
+  running race remains active instead of adopting an unsaved selection.
+- Added portable `CareerLaunchSelection` model policy to prevent locked and
+  vehicle-ineligible events from mutating either profile.
+- Player recovery is now authorized only after successfully charging the
+  complete five-second time fee **and** advancing its bounded count; if
+  either fails, the car stays put rather than getting a free teleport.
+- Added engine-independent C++20 `CareerLaunchSelection` and
+  `RecoveryCharge` regression targets. Real Unreal 5.8 SaveGame and
+  physics/Android playtesting are still required; no new playable build.
+
+
 ### Run-local sector timing (not Unreal qualified)
 
 - Record the best valid split for each ordered checkpoint in the current

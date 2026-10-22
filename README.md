@@ -119,6 +119,18 @@ Unreal gameplay tests.
   [challenges](docs/CHALLENGES.md), [save migration](docs/SAVE_MIGRATION.md)
   and the [v0.5.0 release candidate notes](docs/releases/v0.5.0.md).
 
+## v0.5.1 development: racing/progression integrity (not a release)
+
+- Career event selection and its required owned vehicle are now saved
+  **before** the new race starts. If the profile write fails, the previous
+  active race is preserved and the staged selection rolls back.
+- Recovering the car requires successfully charging the full five-second
+  race-clock penalty and updating the recovery count; failed charges
+  cannot authorize a free teleport.
+- New C++20 model regression coverage tests both behaviors, but actual
+  Unreal Engine 5.8 integration, save-slot failure handling and on-device
+  driving remain unverified.
+
 ## v0.5.1 development — real executable build path (not a release)
 
 A reproducible **Windows-hosted Unreal Engine 5.8 candidate pipeline** is
