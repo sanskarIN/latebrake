@@ -15,6 +15,8 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.4.2 (pre, proposed) | Touch cancellation, input remapping and mobile performance pass | Low/mid-range real-device metrics |
 | v0.5.0 (published source pre-release) | Two 3-round championships, six challenges, medals, career save v2 and prototype menu source | Three-OS portable CI passed; Unreal and device qualification pending |
 | v0.5.1 (source-only pre-release) | Sector timing, career/save integrity, mobile touch input safety, instanced circuit geometry, build smoke guards | Portable Windows/macOS/Ubuntu CI; Unreal editor/map/cook/device qualification still missing |
+| v0.5.2 (published source-only pre-release) | Directional swept checkpoints, recovery safety, finish/record integrity, career fairness, rival lap targets and mobile cancellation | Strict three-OS CI passed; Unreal build, original map and hardware playtests still missing |
+| v0.5.3 (development, not released) | Classifiable checkpoint/gate rejection reasons and safe opt-in QA diagnostics | Portable C++20 tests, followed by real Unreal 5.8/installed device acceptance |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
@@ -36,7 +38,7 @@ a playable game. Completing [issue #2](https://github.com/sanskarIN/latebrake/is
 and [issue #13](https://github.com/sanskarIN/latebrake/issues/13)
 is a prerequisite for closing the main quality gate.
 
-### Next critical work after the v0.5.1 source preview
+### Critical work after the v0.5.2 source preview
 
 Create and verify an engine-authored starter `.umap`, compile Unreal
 Editor and game targets, cook/assemble a genuine Win64 game candidate,

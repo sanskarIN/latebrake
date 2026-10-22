@@ -1,109 +1,26 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-22
-**Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
-**Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
+**Latest published milestone:** [v0.5.2 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2).
+**Next development milestone:** v0.5.3 checkpoint diagnostics (NOT released).
+**Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Unreleased v0.5.2 low-frame-rate swept checkpoint guard
+## v0.5.3 development — deterministic gate diagnostic outcomes
 
-- Each of the four directional plane tests now accepts a legitimate
-  forward *swept segment* with total frame movement at or below
-  **1,200 cm**, even when one endpoint is beyond the former 600 cm
-  visual trigger radius. Interpolated crossing lane/height, speed,
-  direction, finite values and ordered progression remain enforced.
-- Teleport generations continue to rebase checkpoint motion traces:
-  an authorized recovery/restart is not eligible even if its displacement
-  happens to look like an accepted fast driving sweep.
-- Portable C++20 geometry and full RaceProgress tests cover the new
-  boundary, all four directions and recovery interlocks. Unreal 5.8,
-  installed game FPS/hitch behavior, physics tick timing and platform
-  packages remain unverified; no v0.5.2 release is claimed.
+- Added explicit classification for valid gate crossings, invalid samples or velocity, wrong-way/slow motion, oversized frame travel, absent plane crossings, lane misses and height misses.
+- Motion trace details distinguish a first baseline, an authorized teleport generation rebase, malformed positions and a legitimate crossing without changing the existing bool scoring method.
+- Added strict portable C++20 tests for the four gate directions and diagnostic/boolean parity.
+- The additional telemetry is an opt-in *engine-independent helper*; no claim of Unreal runtime logging, gameplay or installed-device validation. See [gate diagnostic design](GATE_DIAGNOSTICS.md).
 
-## Unreleased v0.5.2 finite finish-record integrity
+## v0.5.2 published — source-only race integrity
 
-- Completion processing now uses the same bounded, float-representable
-  duration policy as existing SaveGame best-time loading. A completed
-  race with invalid elapsed/best-lap times cannot grant completed-race
-  counts, credits, career medals or corrupt saved best records.
-- The record selector never replaces a valid fastest time with an
-  unrecordable or slower candidate. SaveGame fields are sanitized again
-  immediately before serialization.
-- Portable C++20 tests exercise finite/infinite/small/over-seven-day
-  boundaries, quick-race payouts, clean/consistency career medals and
-  preservation of previous bests. Actual Unreal 5.8/Win64/Android
-  gameplay, serialization, cooking and physical QA are **not verified**.
-- v0.5.1 remains the latest published source-only pre-release, with
-  v0.5.2 development still unreleased.
-
-## Unreleased v0.5.2 checkpoint teleport safety
-
-- Paid recovery and restart now advance a car-local teleport revision,
-  allowing checkpoint actors to rebase their motion samples even after
-  a very small teleport across an otherwise legitimate gate plane.
-- Engine-independent gate traces reject first samples after teleport,
-  pawn switches and invalid locations; unchanged-generation driving
-  still satisfies ordered four-gate progress.
-- C++20 regression tests exercise real RaceProgress over a full lap,
-  recovery/reset and numeric edge cases. Unreal 5.8/Win64/Android
-  driving, tick ordering and actual installed packages are **unverified**.
-- The latest published GitHub pre-release remains v0.5.1 **source-only**;
-  v0.5.2 has not been tagged or released.
-
-## Unreleased v0.5.2 Android driving-input cleanup
-
-- Viewport resize/loss now zeros both cached steering/throttle smoothing
-  and touch ownership. Previously an old smooth value could continue
-  applying drive torque/force after a finger was cancelled.
-- Losing the local player controller also clears raw input axes instead
-  of leaving stale gamepad/keyboard throttle values available.
-- Portable `TouchViewportSafety` C++20 regression validates the next
-  simulated command remains neutral, retained finger ownership and
-  legitimate fresh touch re-acquisition. Actual Unreal mobile controls
-  and physics remain hardware-unverified.
-- v0.5.1 remains the latest published source-only pre-release;
-  these changes are part of **unreleased v0.5.2 development**.
-
-## Unreleased v0.5.2 career replay correctness
-
-- Replaying a completed career now refreshes its starting-vehicle ID
-  after validating eligibility and required-car ownership. If re-equipping
-  a required vehicle changes garage selection, persistence must succeed
-  **before** race timer/reposition resets.
-- A write failure rolls back the staged car and keeps the prior
-  completed race and results menu intact, rather than starting an
-  unwinnable vehicle-specific attempt.
-- Portable C++20 tests exercise rejection, rollback, retry and
-  required/unrestricted vehicle selection; no actual Unreal Editor
-  compilation, installed gameplay, or playable binary is claimed.
-
-## Unreleased v0.5.2 directional gate plane checks
-
-- The four checkpoint actors now sample actual local-player movement
-  across a specific forward-facing 3D checkpoint plane, rather than
-  awarding sector progress when a pawn merely enters a trigger sphere.
-- Engine-independent C++20 gate geometry enforces per-frame displacement,
-  forward speed, near-plane endpoints, interpolated lateral placement,
-  reasonable height and valid numeric inputs. Existing race order remains.
-- Portable tests exercise legal and illegal movement in all directions;
-  UE 5.8 physics, poor-frame-rate tolerance, marker placement, lap
-  timing and Windows/Android driver experience remain **unverified**.
-- v0.5.1 remains the last published immutable source-only pre-release;
-  no v0.5.2 EXE/APK or usable game release is claimed.
-
-## Unreleased v0.5.2 career fairness development
-
-- In-progress career events now block all four garage mutation handlers
-  until completion or exit to quick race. Restarting a finished career
-  event re-engages the lock.
-- Source checks ensure denied interactions never change the garage or
-  trigger saved transactions, while post-finish/quick race control remains.
-- Recovery charges fail closed if a five-second fee cannot be fully
-  represented in the elapsed clock at extreme values.
-- Portable C++20 tests cover the policy and precision guard. The GameMode
-  changes have not been compiled in a licensed UE 5.8 environment or
-  validated on installed platforms.
-- Latest **published** source-only pre-release remains v0.5.1; there is
-  no claim of a v0.5.2 tag, installed game or qualified executables.
+- Genuine bounded forward checkpoint plane crossings with low-FPS swept sampling and four ordered sectors. A 1,200 cm frame-distance cap remains; measured real-world frame-hitch acceptance is pending.
+- Car-local teleport generations reject even short recovery/restart shortcuts, and pawn changes rebase samples.
+- Invalid finished elapsed/lap times cannot award unrecordable records, credits, medals or completed counters.
+- Career replay stages required-car selection and persists before restarting, with save-failure rollback; active career races lock garage mutations.
+- Rival lap targets follow the event and Android viewport interruption clears residual smoothed drive input.
+- The release workflow passed Windows/Ubuntu/macOS C++20, PowerShell negative packaging policy and Python editor stub tests. **No verified game executable or Android APK/AAB was built or attached.**
+- [Release notes](releases/v0.5.2.md) and [release page](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2).
 
 ## GitHub releases (source-only)
 
@@ -121,7 +38,7 @@
 - [v0.5.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.0) — career, two championship series, challenges, offline progression and source-level development menu.
 - [v0.5.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.1) — split timing, save/launch safety, mobile touch guards, batched circuit scenery and stricter build checks. **Source archive only; no installed game.**
 
-These tags are source previews. They are **not downloadable playable game installers**.
+- [v0.5.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2) — checkpoint and race integrity fixes; source-only, no playable build.\n\nThese tags are source previews. They are **not downloadable playable game installers**.
 
 ## v0.4.1 published source work (NOT engine verified)
 
@@ -407,5 +324,5 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 - The cross-platform portable route tests exercise all current
   opponent-enabled career events, replays and corrupt route dimensions.
 - Still **source-only**. No genuine Unreal engine compile, gameplay,
-  Windows executable or Android APK verified. Published v0.5.1
+  Windows executable or Android APK verified. Published v0.5.2
   source-only pre-release is unchanged.

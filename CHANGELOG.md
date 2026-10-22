@@ -1,151 +1,34 @@
 # Changelog
 
-## Unreleased v0.5.2 — Swept checkpoint crossings under frame hitches
+## Unreleased v0.5.3 — Explainable checkpoint diagnostics
 
-- Removed the earlier **600 cm per-endpoint approach/departure
-  restriction** from the directional checkpoint test. A real car at
-  low frame rate can cross the gate plane with one sample outside the
-  old visual trigger sphere, while the total physical displacement
-  stays within the already enforced 1,200 cm cap.
-- The code now validates the entire forward movement segment's
-  interpolated gate-plane intersection, with the same lateral,
-  vertical, velocity-direction, and ordered-gate safeguards.
-- Kept the strict 1,200 cm frame-displacement rejection, and retained
-  per-car teleport generations so intentional RECOVER/RESTART jumps
-  cannot earn checkpoints merely by looking like a swept pass.
-- Expanded strict portable C++20 tests of all four directions, exact
-  travel limit, low-FPS true crossings, reverse/wrong-way and
-  same-endpoint teleports, using the real ordered RaceProgress.
-- Genuine Unreal 5.8 compile and installed 30/60 FPS + hitch tests
-  are outstanding, particularly if one frame moves beyond 1,200 cm.
-  No playable builds or v0.5.2 release are claimed.
+- Added allocation-free, Unreal-independent gate rejection classifications:
+  invalid index, malformed samples/velocity, below-threshold/wrong-way
+  movement, over-limit sweeps, no directional crossing, lateral misses
+  and excessive crossing height.
+- Exposed initial baseline/teleport rebase/invalid position and regular
+  gate scoring outcomes in the checkpoint trace. Existing boolean game
+  behavior and v0.5.2 scoring limits are intentionally unchanged.
+- Added strict portable C++20 regression tests for four directional gates,
+  diagnostic reasons and short-teleport behavior. Unreal editor/device
+  compilation and real driving instrumentation remain unverified.
+- This is development only. **No v0.5.3 tag or game release.**
 
-## Unreleased v0.5.2 — Finished-race record/award integrity
+## v0.5.2 — Race Integrity & Checkpoint Safety (SOURCE-ONLY pre-release, 2026-10-22)
 
-- Corrected finish handling which cast arbitrary race/lap `double`
-  clocks directly into persisted `float` records without applying the
-  established seven-day `SanitizeBestTime` boundary used by load.
-- Added shared portable `IsValidFinishedRaceTime` and
-  `ImprovedBestTime`. Nonfinite, nonpositive, longer-than-seven-day,
-  and unrepresentably tiny times no longer become records, rewards,
-  completed-race counts or career medals.
-- Quick race credits and career clean/consistency medal checks now
-  reject elapsed clocks that cannot be faithfully represented in the
-  existing SaveGame record format; valid clock/award behavior unchanged.
-- The GameMode refuses an invalid finished race before modifying medals,
-  credits, completion counts or SaveGame, and sanitizes all best-time
-  fields once more on serialization as a defensive invariant.
-- Expanded strict portable C++20 tests for record improvement, prior
-  best preservation, floating-point extremes, the exactly-seven-day
-  boundary and career/quick-race reward rejection.
-- Unreal 5.8 Editor/UHT compilation and actual race-result, save/load
-  and platform tests **remain outstanding**. No v0.5.2 game release
-  or playable executable is claimed.
-
-## Unreleased v0.5.2 — Teleport-proof checkpoint sampling
-
-- Added per-car monotonic **teleport generation** tracking. Every
-  `RecoverTo()` call, including paid recovery and event restart,
-  invalidates the prior movement trajectory before teleporting.
-- The four checkpoint actors now use an engine-independent
-  `CheckpointMotionTrace` which resets its prior sample on a new
-  generation, pawn swap, missing pawn or nonfinite physics position.
-- Prevents a **short** teleport crossing a checkpoint plane from
-  awarding a sector or career progress even when the displacement is
-  below the existing geometric 1,200 cm jump limit.
-- Subsequent actual forward driving can still complete the gate.
-  Portable C++20 tests cover all four race gates with real ordered
-  `RaceProgress`, short jumps, restarts, missing/invalid positions,
-  generations wrapping and legitimate re-crossing.
-- A genuine Unreal Engine 5.8 compile, packaged-game checkpoint and
-  restart/teleport input validation are still required. No v0.5.2
-  pre-release or actual EXE/APK is claimed.
-
-## Unreleased v0.5.2 — dynamic rival route length
-
-- Fixed the experimental AI rival always using a three-lap waypoint plan
-  during career events with different lap requirements.
-- Rival initialization now takes the actual selected race's checkpoint
-  count and lap goal, and restart preserves that event configuration while
-  clearing earlier lap and recovery counts.
-- The noncompact HUD displays approximate rival laps as completed/required,
-  without asserting race placements or head-to-head standings.
-- Portable C++20 tests cover all rival-enabled career events, event
-  replay/route reset, final waypoint finish and invalid route lengths.
-- Unreal Engine 5.8 runtime behavior and game packages are **unverified**.
-
-## Unreleased v0.5.2 — Android residual touch physics safety
-
-- A viewport resize or temporary unavailable surface now clears **both**
-  touch finger ownership and the smoothed throttle/steering values used
-  by the next physics frame. Previously the smoothing tail could keep
-  applying motor force or steering briefly after the finger was invalid.
-- Centralized layout invalidation in portable `TouchViewportSafety.h`;
-  both the pawn physics tick and input dispatcher use the same guard.
-- When Android loses its player controller, **all** raw gamepad/keyboard
-  drive axes and filters are neutralized, preventing acceleration from
-  being reconstructed from a stale cached axis on the following frame.
-- Standalone C++20 regression checks prove stable layouts keep existing
-  commands, rotation/small resize/invalid layouts zero both filters,
-  no residual command returns on the next tick and the original physical
-  finger cannot be replayed before release/re-press.
-- No actual Unreal Engine 5.8 compilation, Android device QA, gameplay
-  frame capture or playable package is claimed.
-
-## Unreleased v0.5.2 — Transactional career replay (source development)
-
-- Fixed post-finish garage changes corrupting the next career attempt's
-  starting-vehicle identity. Replaying a finished event now prepares a
-  **fresh** vehicle snapshot, re-equipping the owned required car where
-  the challenge mandates one.
-- If a required vehicle change needs a SaveGame write, the new attempt
-  starts only after that write succeeds. A failure restores the previous
-  garage profile, keeps the completed race finished and leaves the
-  results menu open instead of unpausing into an invalid replay.
-- For unrestricted events, the post-finish selected owned car becomes
-  the new attempt's authoritative starting vehicle. Restarts during an
-  already running career race preserve that attempt's existing identity.
-- A successful restart resets the old result award display as well as
-  elapsed race and sector state.
-- Added portable C++20 tests for required-car absence, finished-garage
-  edits, failed-save rollback, retry/commit, unchanged replay selection
-  and unrestricted-car snapshots. Actual Unreal SaveGame and input/menu
-  integration require licensed UE 5.8 and device testing.
-
-## Unreleased v0.5.2 — Checkpoint crossing integrity (source development)
-
-- Replaced event credit on mere 600 cm trigger-sphere entry with an
-  **actual forward crossing of each checkpoint's 3D plane**, sampled
-  between consecutive local-player positions.
-- Validated the four canonical gate directions, minimum forward speed,
-  a bounded longitudinal approach/departure window, interpolated
-  lateral/height position and maximum per-frame movement.
-- Eliminated gameplay overlap events on decorative checkpoint triggers;
-  independent per-gate ticks check the local player only, then use the
-  existing ordered RaceProgress to enforce race sequence and lap count.
-- Added strict portable C++20 tests for all four gates, touching the
-  leading rim, opposite-direction passes, edge positions, shortcut/teleport
-  jumps, out-of-lane or airborne crossings, invalid numeric inputs and
-  legitimate diagonal approaches.
-- Genuine Unreal Engine 5.8 compilation and installed driving tests
-  remain required, especially high-speed/frame-hitch crossings and
-  recovery/restart transitions. No new v0.5.2 pre-release or binaries.
-
-## Unreleased v0.5.2 — Career race integrity (source development)
-
-- Disallow all four garage mutations (change owned vehicle, unlock vehicle,
-  engine upgrade, grip upgrade) while an active career race is running.
-  Rejected inputs show explicit feedback without changing credits, car
-  choice, ownership, tuning or saved progression.
-- The lock releases after career finish or on exit to a quick race, and
-  engages again when a completed career race is restarted.
-- Fixed a floating-point precision edge where a positive five-second
-  recovery charge could round down at enormous elapsed race times.
-  Undercharged penalties no longer authorize player recovery teleport.
-- Added standalone C++20 coverage for locked/finished/quick race garage
-  transactions and representable/undercharged recovery fees.
-- These improvements remain **source-only** until genuine UE 5.8, Win64
-  and Android gameplay testing. No v0.5.2 pre-release or executables.
+- Published [source-only release v0.5.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2) after separately gated three-OS portable C++20,
+  negative packaging-policy and Unreal automation stub tests.
+- Qualified *portable source* for bounded swept forward plane crossings
+  on four ordered gates, motion-generation teleport rebasing and safe
+  low-frame-rate sampling within a 1,200 cm distance cap.
+- Hardened race/lap finish records, career medals and rewards, required-
+  vehicle replay rollback, active-race garage mutation blocking,
+  recovery penalty precision, rival event lap targets and touch input
+  cancellation after viewport/controller changes.
+- Unreal 5.8 compilation, original map cook, installed Win64/Android
+  packages, in-game QA and real FPS/performance are outstanding.
+  **No playable EXE/APK/AAB is included.** See
+  [complete release notes](docs/releases/v0.5.2.md).
 
 ## v0.5.1 — Reliability & Circuit Optimization (SOURCE-ONLY pre-release, 2026-10-22)
 
