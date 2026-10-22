@@ -97,7 +97,7 @@ This does not constitute an Unreal 5.8 engine build, an instrumented driving tes
 
 - Unreal 5.8 compilation, Unreal Header Tool generation, in-editor driving/playtesting, performance profiling or packaged hardware testing.
 - A cooked project-owned map, original finished vehicle model, Chaos Vehicles wheel/suspension rig, production-ready mobile controls and tested phone lifecycle behavior.
-- Race-aware overtaking, full AI opponent ranking/finished times, traffic, vehicle upgrades, garage, championships and multiplayer.
+- Race-aware overtaking, full AI opponent ranking/finished times, traffic, production garage/championship UX and multiplayer. Prototype upgrades, garage logic and championship source already exist; they still need actual engine playtesting.
 - Tested save migrations, touch inputs, actual vehicle/rival cornering, AI avoidance, pause/resume and HUD at varied viewports.
 - Windows EXE, Android APK/AAB or Linux native binary **not available**.
 
