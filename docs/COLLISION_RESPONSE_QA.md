@@ -1,6 +1,6 @@
 # v0.5.8 — Track collision response policy
 
-**Source development only. No verified playable EXE/APK or v0.5.8 tag.**
+**Published source-only GitHub pre-release. No verified playable Win64 EXE or Android APK.**
 
 ## The gap
 

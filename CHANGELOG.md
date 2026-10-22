@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased v0.5.8 — Collision-channel response integrity
+## v0.5.8 — Collision-channel response integrity (SOURCE-ONLY pre-release, 2026-10-22)
 
 - New `CollisionResponsePolicy.h` classifies three critical blocking
   collision responses for pawns, simulated physics bodies and dynamic
@@ -14,7 +14,7 @@
   failure, multi-failure and stable local diagnostic name cases.
 - Included explicit Unreal headers for the engine channel enums and
   mesh-component calls rather than relying on transitive includes.
-- Source work only. No v0.5.8 release, packaged game binaries,
+- Published source-only, not a playable game. No packaged game binaries,
   Unreal Engine 5.8 UHT/editor compile or installed-game collision
   evidence exists for this milestone.
 
