@@ -39,6 +39,17 @@ int main()
     Require(EvaluateCircuitSpawnPose({{0.0, -2550.0}, 0.0}) ==
             CircuitSpawnDecision::BarrierOverlap,
             "south perimeter barrier clearance is enforced within paved verge");
+    Require(EvaluateCircuitSpawnPose({{3550.0, 0.0}, 90.0}) ==
+            CircuitSpawnDecision::BarrierOverlap,
+            "east perimeter barrier is guarded on still-paved vertical verge");
+    Require(EvaluateCircuitSpawnPose({{-3550.0, 0.0}, -90.0}) ==
+            CircuitSpawnDecision::BarrierOverlap,
+            "west perimeter barrier is guarded on still-paved vertical verge");
+    Require(EvaluateCircuitSpawnPose({{EastX, 0.0}, 90.0}) ==
+            CircuitSpawnDecision::Safe &&
+            EvaluateCircuitSpawnPose({{WestX, 0.0}, -90.0}) ==
+            CircuitSpawnDecision::Safe,
+            "central paved vertical roads remain safe away from perimeter walls");
     Require(EvaluateCircuitSpawnPose({{0.0, 0.0}, 0.0}) ==
             CircuitSpawnDecision::OffPavement,
             "center dirt cannot become valid start");
