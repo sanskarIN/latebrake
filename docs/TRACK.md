@@ -8,6 +8,37 @@ World distances are Unreal centimetres. The drivable road centerlines are at `Y 
 
 `Source/Latebrake/Public/Track/CircuitLayout.h` is the source of truth for those four gates, player/rival start positions and their recovery orientations. Both the Unreal game mode and the rival actor consume these common values. Player laps and recovery penalties have not been rebalanced.
 
+## Unreleased v0.5.2 ordered checkpoint plane validation
+
+The previous sphere-overlap callback accepted the **leading rim** of
+a gate rather than crossing its center line, allowing premature sector
+credit. The runtime checkpoint actors now sample successive positions
+of the actual local player pawn and feed `CircuitGateCrossing.h`, which
+checks the canonical **east, north, west, south** directional normals.
+
+A valid checkpoint requires:
+- The previous frame on the approach side of the gate plane and the
+  current frame on the departure side, with >=150 cm/s forward velocity.
+- Both sample positions at most 600 cm axially from the plane, with a
+  1,200 cm maximum displacement between frames. Large teleports fail.
+- An interpolated crossing point within 500 cm of the road centerline
+  and within 380 cm vertically of the 38 cm gate-marker center.
+- The correct next checkpoint according to the existing `RaceProgress`
+  rule, and a local player pawn rather than AI/rival actors.
+
+The legacy 600 cm sphere is retained as an actor transform/marker root,
+but its gameplay overlap collision/handler is now disabled; it does **not**
+award an early sector. The per-frame test uses four cheap actor ticks
+instead of physics overlap notifications. Consecutive samples reset
+when the local player pawn changes or becomes unavailable.
+
+This is source code with portable tests; there is **no real UE 5.8 game
+playtest**. A large frame hitch could move a fast car across the entire
+600 cm proximity window and therefore **miss** a checkpoint; tune that
+limit only after instrumented real driving tests, not by accepting arbitrary
+long jumps. Validate fast cornering, airborne vehicles, recover-to-track,
+restart and very low frame-rate phones before considering this qualified.
+
 ## Visual course furnishings
 
 `TrackDecorations.h` plans 28 white center dashes and 56 non-colliding decorative kerbs/curbs, alternating red and white, all on the existing asphalt. The runtime adds two primitive grandstands outside the drivable road and a visible overhead start/finish banner using only Unreal built-in cubes. Surface finish, materials, lighting, staging and camera angles remain engine-unverified.
