@@ -19,8 +19,10 @@ checks the canonical **east, north, west, south** directional normals.
 A valid checkpoint requires:
 - The previous frame on the approach side of the gate plane and the
   current frame on the departure side, with >=150 cm/s forward velocity.
-- Both sample positions at most 600 cm axially from the plane, with a
-  1,200 cm maximum displacement between frames. Large teleports fail.
+- A maximum **1,200 cm total 3D movement** between observations,
+  without requiring either endpoint to be within the former 600 cm
+  trigger sphere. This recognizes a legitimate fast/low-FPS sweep
+  from outside that visual volume through the checkpoint plane.
 - An interpolated crossing point within 500 cm of the road centerline
   and within 380 cm vertically of the 38 cm gate-marker center.
 - The correct next checkpoint according to the existing `RaceProgress`
