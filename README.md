@@ -75,6 +75,14 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Post-v0.5.1 development (not released)
 
+Unreleased v0.5.2 also protects persistent personal-best times and
+career/quick-race rewards against invalid or unrepresentable race
+clocks. The source now checks finished elapsed and lap times against
+the existing seven-day SaveGame bound before granting currency,
+medals or race counts, and never overwrites a valid best with a bad
+candidate. Portable tests cover numerical edge cases; genuine Unreal
+gameplay/save behavior still needs verification.
+
 Unreleased v0.5.2 also prevents accidental sector/lap credit when
 a **short** recovery or restart teleport crosses the checkpoint plane.
 Each player teleport advances a generation, and checkpoint actors
