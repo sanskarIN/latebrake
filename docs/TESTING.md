@@ -8,6 +8,33 @@ The suite checks checkpoint ordering, duplicates, invalid indices, lap count, fi
 
 GitHub Actions matrix: Ubuntu, Windows and macOS. This validates portable C++ source, **not Unreal packaging**.
 
+## Unreleased v0.5.2: teleport-proof checkpoints
+
+Strict C++20 `CheckpointMotionTrace` CTest uses real four-gate
+`RaceProgress` and deterministic positions/epochs. It explicitly proves
+a 220 cm authorized short teleport over a gate **does not** produce a
+sector award, even though the raw geometric plane test would accept it.
+It also checks legitimate re-crossing, race completion, player swap,
+missing/invalid location reset and generation changes/wrap.
+
+Required real Unreal 5.8 + installed platform checks:
+- [ ] Approach checkpoint 0, press RECOVER when the next gate recovery
+  position crosses its plane by a small distance. Ensure only the
+  5-second penalty is applied, with no sector/lap credit.
+- [ ] Press RESTART near every gate, including while paused and
+  after a finished career race; no new checkpoint is awarded solely
+  by teleporting, and the normal next lap starts at gate 0.
+- [ ] Drive back and legitimately cross after recovery/restart;
+  the checkpoint should still register exactly once.
+- [ ] Replace or unpossess the player's pawn and confirm stale movement
+  cannot be attributed to a newly spawned player.
+- [ ] Verify 30/60 FPS and large hitches on both Win64 and Android,
+  cross-checking physics velocity, real checkpoint tick timing and
+  HUD sector counters in actual installed builds.
+
+These tests do not compile or run Unreal, prove the map cooks, or
+qualify any downloadable playable files.
+
 ## Unreleased v0.5.2: Android smooth-input cancellation
 
 Portable `TouchViewportSafety` regression verifies stable-screen
