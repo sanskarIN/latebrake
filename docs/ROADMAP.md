@@ -20,7 +20,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.4 (published source-only pre-release) | Fixed-memory QA counters, bounded ten-second local diagnostics and offline log parser | Three-OS portable tests and policy checks; **not** Unreal/device-qualified |
 | v0.5.5 (published source-only pre-release) | Reliable finish scorecard: theoretical sector gap, lap consistency, recent eight-lap history and final-lap trend | Strict three-OS source CI, but genuine Unreal 5.8/UHT and installed UI/device QA remain outstanding |
 | v0.5.6 (published source-only pre-release) | Portable collision-bearing circuit plan and fail-closed nine-block / four-gate / 93-scenery startup checks | Strict C++/PowerShell source CI; real UE 5.8 UHT/editor, runtime collision and installed QA pending |
-| v0.5.7 (development, not released) | Verify actual collision actor mesh configuration and validate player/rival recovery routes against original track/barriers | Strict portable C++20 source CI and synthetic log-parser negatives; authorized UE 5.8 compile and installed Win64/Android collision QA pending |
+| v0.5.7 (published source-only pre-release) | Verify configured Unreal collision actors and validate player/rival recovery routes against original track/barriers | Strict three-OS portable C++/PowerShell source CI; Unreal 5.8 UHT/editor compile and installed physics/device QA pending |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
