@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-    Check a REAL launched UE game's runtime startup marker in its log.
+    Check a REAL launched UE game's runtime startup markers in its log.
 .DESCRIPTION
     This reads a log captured after running a genuinely packaged LateBrake
-    executable. It never launches or mocks an Unreal game, and a matching
-    line confirms GameMode startup, all four gates and the new batched
-    scenery instance assembly. It still cannot prove visible/rendered geometry.
+    executable. It never launches or mocks an Unreal game. A passing result
+    means the runtime logged all four checkpoints and 93 cosmetic mesh
+    instances in seven ISM groups, but cannot prove those meshes rendered.
     Gameplay/device approval still requires human testing.
 .EXAMPLE
     pwsh scripts/Verify-RuntimeStartupLog.ps1 -LogPath 'D:/Latebrake/WindowsNoEditor/Latebrake/Saved/Logs/Latebrake.log'
@@ -39,12 +39,11 @@ $map = $ready[0].Groups[1].Value.Trim()
 if ($map -notmatch '(^|[/\\]|_)LatebrakeCircuit$') {
     throw "Unexpected runtime world: $map; expected the project-owned LatebrakeCircuit level."
 }
+
 # A gate-only startup marker can succeed even if the instanced scenery
 # creation failed. Require a full, single-instance assembly marker as well.
 # The marker logs C++ allocation counts, not successful GPU drawing.
-$scenery = [regex]::Matches($log, '(?m)^.*LATEBRAKE_SCENERY_READY groups=7 instances=93 collision=off\s*
-Write-Host 'NOT FULL QA: this does not prove vehicle controls, rendering, lap progression, saves, Android or performance.'
-)
+$scenery = [regex]::Matches($log, '(?m)^.*LATEBRAKE_SCENERY_READY groups=7 instances=93 collision=off\s*$')
 if ($scenery.Count -ne 1) {
     throw 'Expected exactly one complete LATEBRAKE_SCENERY_READY groups=7 instances=93 collision=off marker from the same real game run.'
 }
