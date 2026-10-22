@@ -31,6 +31,24 @@ Track the engine version, machine, GPU, driver, device temperatures, resolution,
 
 As of 2026-10-19, commit `f8723f7937faf9503734719f9a1aeaacf640727b` passed the Ubuntu, Windows and macOS portable C++20 jobs: https://github.com/sanskarIN/latebrake/actions/runs/39221329905 . Later commits require their own verification.
 
+## Unreleased v0.5.1: viewport/orientation touch safety
+
+Portable `TouchViewportGuard` CTest covers a fresh invalid-to-valid
+viewport, stable dimensions, landscape/portrait rotation, small size
+changes, temporary zero-size viewport, loss of old driving fingers and
+fresh release/repress. It verifies finger-down state is **not** reset by
+ordinary resizing, preventing duplicate actions. This is not a device
+simulation or native Unreal touch-event test.
+
+On actual Unreal 5.8 / Android hardware:
+- [ ] Hold both STEER and GAS during rotation or an OS inset/window size
+  change; the old controls neutralize without any touch-move notifications.
+- [ ] Press and release after resize; only that fresh touch reacquires input.
+- [ ] Keep an action finger held through resize and duplicate notifications;
+  PAUSE/RECOVER/RESTART must still be one action per physical touch.
+- [ ] Check background/foreground, paused game, menu and portrait layouts,
+  including transient invalid zero-size viewports.
+
 ## Unreleased v0.5.1: instanced course scenery
 
 Standalone `DecorationBatchPlan` CTest asserts the original 93 placements
