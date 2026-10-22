@@ -2,6 +2,19 @@
 
 ## Unreleased — v0.5.1 executable readiness
 
+### Single-fire touch action protection (post-v0.5.0)
+
+- Added portable touch press ownership for all fingers, including touches
+  starting outside driving pads and on action/menu buttons.
+- Discrete touch actions now trigger at most once per physical press;
+  duplicated Unreal touch-pressed events cannot repeat RECOVER penalties or
+  RESTART while the same finger is held.
+- Releases are tracked independently across fingers. Driving-input clears
+  do not erase press ownership; true OS lifecycle resets do.
+- Added C++20 regression coverage for duplicate-press protection and focus
+  interruption. Android/Unreal runtime behavior is still unverified.
+
+
 - Configured future cooked game/default map path for a real project-owned
   Unreal Editor generated starter level, without pretending that asset
   is already committed.
