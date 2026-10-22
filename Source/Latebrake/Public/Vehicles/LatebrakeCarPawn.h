@@ -45,6 +45,9 @@ public:
 
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
+    // Every RecoverTo (including race restart) changes this revision so
+    // checkpoint actors never interpolate across an authorized teleport.
+    uint64 GetTeleportRevision() const { return TeleportRevision; }
     ELatebrakeHandlingMode GetHandlingMode() const { return HandlingMode; }
     bool IsTouchSteeringActive() const { return TouchDrive.SteeringActive(); }
     bool IsTouchThrottleActive() const { return TouchDrive.ThrottleActive(); }
@@ -119,6 +122,7 @@ private:
     float GarageGrip = 1.f;
     float GarageTopSpeed = 1.f;
     int32 GarageVehicleId = 0;
+    uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bNearCamera = false;
     latebrake::TouchDriveState TouchDrive;
