@@ -8,6 +8,29 @@ The suite checks checkpoint ordering, duplicates, invalid indices, lap count, fi
 
 GitHub Actions matrix: Ubuntu, Windows and macOS. This validates portable C++ source, **not Unreal packaging**.
 
+## Unreleased v0.5.2: finished career replay integrity
+
+Portable `CareerReplayPreparation` regression tests stage the saved
+event against a post-finish modified garage, verify a required owned car
+is re-equipped, reject missing/unavailable events, restore the previous
+garage and medals after a simulated failed write, and permit retries and
+unrestricted replays with a fresh starting-vehicle identity.
+
+Genuine UE 5.8 installed-game checks remain pending:
+- [ ] Complete vehicle-required challenge 10, select another owned car
+  after finishing, and press T. Verify the required Kestrel is selected
+  and persisted **before** the new event time begins.
+- [ ] Force SaveGame write rejection after swapping post-finish cars.
+  Replay must be refused, previous car/credits restored and finished
+  result/menu still visible and paused.
+- [ ] Restore storage and retry; verify the game restarts with the
+  required car and normal finish medal validation.
+- [ ] Replay unrestricted challenge 6 after selecting another owned
+  car; the fresh attempt's start-car record should match that car.
+- [ ] Restart an unfinished career event, a finished quick race, or a
+  paused RESULTS screen. Ensure no unsolicited car selection or
+  duplicate award is introduced.
+
 ## Unreleased v0.5.2: forward plane crossing
 
 `CircuitGateCrossing` standalone C++20 checks four directions,

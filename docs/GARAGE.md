@@ -44,6 +44,17 @@ the garage. Quick-race garage behavior remains unchanged for compatibility.
 GameMode handlers enforce it **before** touching the garage or writing
 SaveGame. Installed UE 5.8 and Android/Win64 QA still needed.
 
+## Unreleased v0.5.2: garage edits after a finished career event
+
+After finishing a career race, the player can select another owned car
+or upgrade it. Starting a **new attempt** then snapshots the newly
+selected car for unrestricted events; for vehicle-specific challenges,
+the game re-equips the required owned car and saves that selection before
+resetting the finished race. A disk write failure rejects the replay
+and restores the previously selected car and credits without erasing
+the finish. These semantics are covered by C++20 portable staging
+tests and remain unqualified on actual Unreal runtime/device hardware.
+
 ## Persistence and validation
 
 The original Unreal SaveGame `TotalCredits` field remains the balance store for existing profiles. New optional fields preserve the owned vehicle bitmask, selected profile, engine level and grip level. The portable garage state repairs missing or invalid ownership, clamps upgrade levels, rejects invalid IDs and never allows negative balances or arithmetic overflow. Tests run in the GitHub C++20 matrix. **SaveGame serialization/migration must be checked in a real Unreal environment**.

@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased v0.5.2 — Transactional career replay (source development)
+
+- Fixed post-finish garage changes corrupting the next career attempt's
+  starting-vehicle identity. Replaying a finished event now prepares a
+  **fresh** vehicle snapshot, re-equipping the owned required car where
+  the challenge mandates one.
+- If a required vehicle change needs a SaveGame write, the new attempt
+  starts only after that write succeeds. A failure restores the previous
+  garage profile, keeps the completed race finished and leaves the
+  results menu open instead of unpausing into an invalid replay.
+- For unrestricted events, the post-finish selected owned car becomes
+  the new attempt's authoritative starting vehicle. Restarts during an
+  already running career race preserve that attempt's existing identity.
+- A successful restart resets the old result award display as well as
+  elapsed race and sector state.
+- Added portable C++20 tests for required-car absence, finished-garage
+  edits, failed-save rollback, retry/commit, unchanged replay selection
+  and unrestricted-car snapshots. Actual Unreal SaveGame and input/menu
+  integration require licensed UE 5.8 and device testing.
+
 ## Unreleased v0.5.2 — Checkpoint crossing integrity (source development)
 
 - Replaced event credit on mere 600 cm trigger-sphere entry with an

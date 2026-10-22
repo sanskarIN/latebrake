@@ -62,6 +62,21 @@ avoids invalidated vehicle-required results. The garage may be edited
 again **after** a career finish or after switching to a quick race with
 3/4. Restarting a completed career event re-engages the lock.
 
+**Unreleased v0.5.2 replay repair:** After a completed career event,
+garage modifications are allowed as described above. Pressing **T** to
+replay now establishes a *fresh* starting vehicle identity; an unrestricted
+event accepts the newly selected owned vehicle. A required-vehicle event
+re-equips its owned mandatory vehicle, staging and persisting that
+selection **before** restarting the timer or moving the pawn. If saving
+fails, the finished race remains intact, the garage is rolled back,
+and the RESULTS menu remains open with a replay error. Replaying a
+still-running event retains its original starting-car identity. A
+successful replay also clears the previous medal award notification.
+
+Portable policy tests cover required/unrestricted replays and simulated
+save rollback. Real UE 5.8 SaveGame behavior and finished RESULTS
+menu/touch controls are not yet verified.
+
 The restriction is checked with the same engine-independent RaceProgress
 finish state used for awards. Portable tests exercise all four actions,
 multiple laps, finish, restart, and quick-race behavior. Actual Unreal

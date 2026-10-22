@@ -75,6 +75,13 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Post-v0.5.1 development (not released)
 
+Unreleased v0.5.2 also safeguards **career replay after finished-race
+garage changes**. A new attempt records its current starting vehicle,
+re-equips and saves any mandatory challenge vehicle before resetting the
+race, and refuses the replay if the save fails, preserving the finished
+result. Portable tests verify staging and rollback; UE 5.8/gameplay
+qualification remains outstanding.
+
 Unreleased v0.5.2 source moves gate credit from a front-rim sphere
 overlap to a real forward crossing of each track checkpoint plane.
 The four-gate geometric guard also rejects wrong-way or very large

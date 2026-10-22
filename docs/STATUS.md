@@ -4,6 +4,19 @@
 **Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
+## Unreleased v0.5.2 career replay correctness
+
+- Replaying a completed career now refreshes its starting-vehicle ID
+  after validating eligibility and required-car ownership. If re-equipping
+  a required vehicle changes garage selection, persistence must succeed
+  **before** race timer/reposition resets.
+- A write failure rolls back the staged car and keeps the prior
+  completed race and results menu intact, rather than starting an
+  unwinnable vehicle-specific attempt.
+- Portable C++20 tests exercise rejection, rollback, retry and
+  required/unrestricted vehicle selection; no actual Unreal Editor
+  compilation, installed gameplay, or playable binary is claimed.
+
 ## Unreleased v0.5.2 directional gate plane checks
 
 - The four checkpoint actors now sample actual local-player movement
