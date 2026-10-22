@@ -75,6 +75,12 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Post-v0.5.1 development (not released)
 
+Unreleased v0.5.2 neutralizes residual smoothed throttle/steering
+after Android viewport rotation/resizing, not only held touch fingers.
+This prevents the old input from continuing to supply new rigid-body
+force/torque while preserving vehicle momentum and valid fresh touches.
+Portable tests cover the control policy; Android/Unreal QA is pending.
+
 Unreleased v0.5.2 also safeguards **career replay after finished-race
 garage changes**. A new attempt records its current starting vehicle,
 re-equips and saves any mandatory challenge vehicle before resetting the
