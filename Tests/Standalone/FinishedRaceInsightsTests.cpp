@@ -55,11 +55,29 @@ int main()
             "within-run ideal is not passed off as achieved record");
     Require(report.HasLapSpread && Near(report.LapSpreadSeconds, 4.0),
             "lap consistency displays max minus min measured lap");
+    Require(race.GetRecentTimedLapCount() == 3 &&
+            race.GetRecentTimedLap(0).CompletedLap == 3 &&
+            race.GetRecentTimedLap(0).Seconds == 12.0 &&
+            race.GetRecentTimedLap(1).CompletedLap == 2 &&
+            race.GetRecentTimedLap(1).Seconds == 8.0 &&
+            race.GetRecentTimedLap(2).CompletedLap == 1 &&
+            race.GetRecentTimedLap(2).Seconds == 10.0,
+            "recent lap history contains actual timed lap ordering");
+    Require(report.HasLatestVsPrevious &&
+            report.LatestTimedLapNumber == 3 &&
+            report.PreviousTimedLapNumber == 2 &&
+            Near(report.LatestTimedLapSeconds, 12.0) &&
+            Near(report.PreviousTimedLapSeconds, 8.0) &&
+            Near(report.LatestVsPreviousDeltaSeconds, 4.0),
+            "last two timed laps compare physical laps, not sector bests");
     Require(!race.PassCheckpoint(0) &&
             race.GetTimedLapCount() == 3,
             "finished race cannot fabricate additional timed laps");
 
     race.Reset();
+    Require(race.GetRecentTimedLapCount() == 0 &&
+            !race.GetRecentTimedLap(0).Valid(),
+            "restart clears all previous history");
     Require(!BuildFinishedRaceInsights(race).Valid &&
             race.GetTimedLapCount() == 0,
             "restart clears insights and counted laps");
@@ -70,6 +88,10 @@ int main()
     oneLap.Advance(5.0);
     Require(oneLap.PassCheckpoint(1), "single-lap finish");
     const FinishedRaceInsights single = BuildFinishedRaceInsights(oneLap);
+    Require(!single.HasLatestVsPrevious &&
+            single.LatestTimedLapNumber == 1 &&
+            single.PreviousTimedLapNumber == 0,
+            "one-lap time attack does not invent previous lap pace");
     Require(single.Valid && single.TimedLaps == 1 &&
             !single.HasLapSpread &&
             single.HasTheoreticalGap &&
@@ -89,6 +111,11 @@ int main()
     mixed.Advance(7.0);
     Require(mixed.PassCheckpoint(0), "second physically timed lap");
     const FinishedRaceInsights mixedReport = BuildFinishedRaceInsights(mixed);
+    Require(!mixedReport.HasLatestVsPrevious &&
+            mixedReport.LatestTimedLapNumber == 2 &&
+            mixedReport.PreviousTimedLapNumber == 0 &&
+            mixed.GetRecentTimedLapCount() == 1,
+            "zero-duration first lap cannot become comparison baseline");
     Require(mixedReport.Valid && mixedReport.CompletedLaps == 2 &&
             mixedReport.TimedLaps == 1 && !mixedReport.HasLapSpread,
             "a zero-duration lap does not invent a comparison population");
