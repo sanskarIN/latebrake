@@ -75,6 +75,15 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Post-v0.5.1 development (not released)
 
+Unreleased v0.5.2 accepts legitimate checkpoint **plane crossings
+swept between low-FPS samples** even when one endpoint is outside the
+old 600 cm marker sphere. Total 3D frame travel is still capped at
+1,200 cm, and required direction, lane, height and checkpoint order
+remain checked. Recovery/restart teleport generations prevent even
+short deliberate jumps from gaining sectors. Portable C++20 tests
+validate the logic; real UE 5.8 hardware frame-hitch QA remains open.
+
+
 Unreleased v0.5.2 also protects persistent personal-best times and
 career/quick-race rewards against invalid or unrepresentable race
 clocks. The source now checks finished elapsed and lap times against
