@@ -17,6 +17,7 @@ void RaceProgress::Reset() noexcept
 {
     NextCheckpoint = 0;
     CompletedLaps = 0;
+    TimedLapCount = 0;
     ElapsedSeconds = 0.0;
     LapStartSeconds = 0.0;
     LastCheckpointSeconds = 0.0;
@@ -97,14 +98,20 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
         NextCheckpoint = 0;
         ++CompletedLaps;
         LastLapSeconds = ElapsedSeconds - LapStartSeconds;
-        if (LastLapSeconds > 0.0 &&
-            (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds))
+        if (std::isfinite(LastLapSeconds) && LastLapSeconds > 0.0)
         {
-            BestLapSeconds = LastLapSeconds;
-        }
-        if (LastLapSeconds > SlowestLapSeconds)
-        {
-            SlowestLapSeconds = LastLapSeconds;
+            // Existing best/slowest semantics stay unchanged for legitimate
+            // lap times, while the explicit count ignores zero-duration
+            // laps which would otherwise make pace spread misleading.
+            ++TimedLapCount;
+            if (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds)
+            {
+                BestLapSeconds = LastLapSeconds;
+            }
+            if (LastLapSeconds > SlowestLapSeconds)
+            {
+                SlowestLapSeconds = LastLapSeconds;
+            }
         }
         LapStartSeconds = ElapsedSeconds;
         if (CompletedLaps >= RequiredLaps)
