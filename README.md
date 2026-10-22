@@ -75,6 +75,13 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Post-v0.5.1 development (not released)
 
+Unreleased v0.5.2 also prevents accidental sector/lap credit when
+a **short** recovery or restart teleport crosses the checkpoint plane.
+Each player teleport advances a generation, and checkpoint actors
+rebase their previous position instead of interpreting that movement
+as driving. Portable C++20 tests verify all four gates; the source
+still requires real Unreal Engine 5.8 and device gameplay qualification.
+
 Unreleased v0.5.2 neutralizes residual smoothed throttle/steering
 after Android viewport rotation/resizing, not only held touch fingers.
 This prevents the old input from continuing to supply new rigid-body

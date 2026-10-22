@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased v0.5.2 — Teleport-proof checkpoint sampling
+
+- Added per-car monotonic **teleport generation** tracking. Every
+  `RecoverTo()` call, including paid recovery and event restart,
+  invalidates the prior movement trajectory before teleporting.
+- The four checkpoint actors now use an engine-independent
+  `CheckpointMotionTrace` which resets its prior sample on a new
+  generation, pawn swap, missing pawn or nonfinite physics position.
+- Prevents a **short** teleport crossing a checkpoint plane from
+  awarding a sector or career progress even when the displacement is
+  below the existing geometric 1,200 cm jump limit.
+- Subsequent actual forward driving can still complete the gate.
+  Portable C++20 tests cover all four race gates with real ordered
+  `RaceProgress`, short jumps, restarts, missing/invalid positions,
+  generations wrapping and legitimate re-crossing.
+- A genuine Unreal Engine 5.8 compile, packaged-game checkpoint and
+  restart/teleport input validation are still required. No v0.5.2
+  pre-release or actual EXE/APK is claimed.
+
 ## Unreleased v0.5.2 — dynamic rival route length
 
 - Fixed the experimental AI rival always using a three-lap waypoint plan

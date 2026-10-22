@@ -4,6 +4,20 @@
 **Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
+## Unreleased v0.5.2 checkpoint teleport safety
+
+- Paid recovery and restart now advance a car-local teleport revision,
+  allowing checkpoint actors to rebase their motion samples even after
+  a very small teleport across an otherwise legitimate gate plane.
+- Engine-independent gate traces reject first samples after teleport,
+  pawn switches and invalid locations; unchanged-generation driving
+  still satisfies ordered four-gate progress.
+- C++20 regression tests exercise real RaceProgress over a full lap,
+  recovery/reset and numeric edge cases. Unreal 5.8/Win64/Android
+  driving, tick ordering and actual installed packages are **unverified**.
+- The latest published GitHub pre-release remains v0.5.1 **source-only**;
+  v0.5.2 has not been tagged or released.
+
 ## Unreleased v0.5.2 Android driving-input cleanup
 
 - Viewport resize/loss now zeros both cached steering/throttle smoothing

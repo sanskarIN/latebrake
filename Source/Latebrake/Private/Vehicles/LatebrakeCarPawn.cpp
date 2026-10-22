@@ -301,6 +301,10 @@ float ALatebrakeCarPawn::GetSpeedKmH() const
 
 void ALatebrakeCarPawn::RecoverTo(const FVector& Position, const FRotator& Rotation)
 {
+    // Notify all four checkpoint samplers of the discontinuity even when
+    // its displacement is short enough to look like a valid plane crossing.
+    // This applies to recovery, restart and first spawn repositioning.
+    ++TeleportRevision;
     Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
     Chassis->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
     SetActorLocationAndRotation(Position, Rotation, false, nullptr, ETeleportType::TeleportPhysics);

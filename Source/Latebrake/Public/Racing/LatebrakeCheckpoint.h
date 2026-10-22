@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Racing/CheckpointMotionTrace.h"
 #include "LatebrakeCheckpoint.generated.h"
 
 class USphereComponent;
@@ -28,10 +29,8 @@ private:
 
     int32 CheckpointIndex = INDEX_NONE;
 
-    // Sample only the local authoritative player's position, never rivals.
-    // Changing/losing pawn identity discards the previous trajectory rather
-    // than accidentally crediting a teleport/restart/possession transition.
+    // Player identity change and per-pawn RecoverTo generations invalidate
+    // an old sample before attempting to credit a physical plane crossing.
     TWeakObjectPtr<AActor> LastObservedPlayer;
-    FVector PreviousPlayerLocation = FVector::ZeroVector;
-    bool bHasPreviousSample = false;
+    latebrake::CheckpointMotionTrace MotionTrace;
 };
