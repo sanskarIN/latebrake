@@ -146,6 +146,24 @@ packaging-policy fixtures run on CI. **The Unreal 5.8 C++ compilation,
 actual actor collisions and installed Win64/Android gameplay have not
 been verified.** [Detailed audit and acceptance guide](docs/CIRCUIT_STARTUP_AUDIT.md).
 
+## v0.5.7 source development (NOT released)
+
+The next C++ iteration strengthens the v0.5.6 course acceptance contract:
+a spawned track Actor only counts if its actual Unreal StaticMesh
+component is present, points to the expected built-in Cube, retains
+`QueryAndPhysics` collision and has its requested scale applied.
+A new engine-independent `CollisionBlockSetup.h` classifies failures;
+`SpawnBlock` destroys rejected actors instead of falsely counting them
+as collision geometry. A second C++20 preflight,
+`CircuitSpawnSafety.h`, checks the original player/rival start and
+recovery positions for finite coordinates, paved-surface placement and
+clearance from perimeter barriers before allowing course readiness.
+
+These changes have **not** been compiled or driven inside a licensed
+Unreal Engine installation. Portable CI verifies numeric policies and
+PowerShell synthetic log rejection only. The [development QA guide](docs/COLLISION_SETUP_QA.md)
+lists actual on-device requirements.
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.6** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.

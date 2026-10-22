@@ -1,3 +1,26 @@
+## v0.5.7: collision Actor setup and planned spawn safety (source-only)
+
+`CollisionBlockSetupTests.cpp` checks the real portable decision
+function for nine planned track elements. The decision fails closed
+if a plan/actor/component is missing, the expected Cube mesh is not
+bound, `QueryAndPhysics` collision is disabled or the transform was
+not applied. In Unreal source, `SpawnBlock` now samples the actual
+component and returns null after destroying a misconfigured Actor.
+A portable test **cannot** evaluate an installed Unreal Actor.
+
+`CircuitSpawnSafetyTests.cpp` checks all player/rival starts and
+recovery positions for paved placement, finite heading, invalid
+clearance and nearby north/south barrier interference using the
+shared source layout. This is an XY geometry preflight, **not**
+actual physics or 3D chassis clearance certification.
+
+`Verify-RuntimeStartupLog.ps1` also rejects
+`LATEBRAKE_COLLISION_SETUP_FAILED` and
+`LATEBRAKE_SPAWN_LAYOUT_BLOCKED`. Negative synthetic log fixtures
+cannot serve as actual Unreal startup evidence. The licensed
+editor/game targets, cookable map, real ground/barrier contact
+and installed Win64/Android driving tests still have not been run.
+
 ## v0.5.6: collision geometry plan and startup smoke acceptance
 
 `CircuitCollisionPlanTests.cpp` verifies the same nine source-authored

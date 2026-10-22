@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased v0.5.7 — Collision actor configuration and start-position preflight
+
+- New `CollisionBlockSetup.h` classifies missing Actor, absent mesh
+  component, wrong mesh, nonblocking collision, invalid source plan
+  or unapplied transform, without depending on Unreal headers.
+- `LatebrakeRaceGameMode.cpp` now checks actual created block mesh
+  configuration after applying the built-in Cube and
+  `QueryAndPhysics`; rejected Actors are destroyed and counted as
+  startup failures rather than silently contributing to a ready course.
+- New `CircuitSpawnSafety.h` validates player/rival starts and
+  recovery positions against the shared original circuit, paved
+  surface and conservative XY clearance from planned perimeter barriers.
+  An unsafe planned spawn blocks race-ready state.
+- New portable C++20 `CollisionBlockSetupTests.cpp` and
+  `CircuitSpawnSafetyTests.cpp` test all expected failures, each
+  planned collision block, recovery route, invalid coordinates and
+  unsafe barrier verges.
+- The runtime PowerShell log verifier rejects
+  `LATEBRAKE_COLLISION_SETUP_FAILED` or
+  `LATEBRAKE_SPAWN_LAYOUT_BLOCKED` even when other counters claim
+  success. Synthetic negative regression fixtures cover both failures.
+- **Source development only**; licensed UE 5.8 UHT/editor/game C++
+  compilation and installed Win64/Android physics/controls remain
+  unverified, and no v0.5.7 tag or game executable exists.
+
+
 ## v0.5.6 — Circuit startup geometry integrity (SOURCE-ONLY pre-release, 2026-10-22)
 
 - Created **`CircuitCollisionPlan.h`**, an original engine-independent

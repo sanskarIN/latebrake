@@ -2,8 +2,27 @@
 
 **Updated:** 2026-10-22
 **Latest published milestone:** [v0.5.6 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.6).
-**Next development milestone:** v0.5.7 (planned C++ source development; not released).
+**Next development milestone:** v0.5.7 collision-configuration checks and route preflight (development, NOT released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.7 in development — actual mesh-configuration and spawn preflight
+
+- New `CollisionBlockSetup` policy disallows startup credit when an
+  Unreal actor exists but its mesh component is absent, the expected
+  Cube is not bound, blocking collision is disabled or scaling failed.
+- The engine-facing `SpawnBlock` code destroys rejected actors and
+  reports `LATEBRAKE_COLLISION_SETUP_FAILED`; the existing source
+  startup audit still requires all nine full block configurations.
+- New engine-independent `CircuitSpawnSafety` ensures the player and
+  rival starts plus all recovery targets are finite, on planned paved
+  road and outside conservative perimeter barrier clearances.
+  `LATEBRAKE_SPAWN_LAYOUT_BLOCKED` prevents the course from entering
+  ready state if future geometry edits invalidate a spawn.
+- New strict portable tests and synthetic smoke-parser negatives
+  guard these policies, but neither compiles Unreal Editor/UHT nor
+  confirms that a real vehicle collides with the road on hardware.
+- **No v0.5.7 pre-release or verified playable build exists.**
+  [Source and real-game QA design](COLLISION_SETUP_QA.md).
 
 ## v0.5.6 source-only preview — fail-closed circuit geometry startup
 
