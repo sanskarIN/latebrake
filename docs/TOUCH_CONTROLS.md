@@ -173,3 +173,44 @@ moving one pedal finger across the neutral gap, dragging from gas over
 PAUSE without activating the button, dragging steering vertically away
 from the pad, rotating/resizing the viewport, background/foreground
 transitions and opening/closing the menu during held input.
+
+## v0.5.1 viewport/orientation ownership safeguard (unreleased)
+
+A phone can rotate, enter split-screen/multi-window, or resize its render
+surface **without moving any of the fingers already held on screen**. The
+original pixel coordinates then refer to obsolete GAS/BRAKE/STEER pads.
+
+The portable `TouchViewportGuard` compares successive viewport dimensions.
+On Android the car pawn calls it **before physics** in `Tick` and also from
+the touch dispatcher (which can still receive input while the game is
+paused). Any real change in valid viewport width or height immediately
+clears both held steering and pedal ownership. Missing/too-small
+viewports also neutralize the driving controls. Same-size frames preserve
+the current controls.
+
+Crucially, a viewport change does **not** reset
+`TouchPressTracker`: old physical fingers remain marked down until an
+actual release. This prevents duplicate RECOVER, PAUSE, RESTART or menu
+actions from the same held finger, and prevents late touch movement from
+automatically reacquiring acceleration. The driver must lift and press
+again to control the car in the new screen layout. Genuine app lifecycle
+focus changes separately reset the press tracker because the OS may have
+discarded touch-up events.
+
+### Installed Android QA — still required
+
+- [ ] Hold steering and GAS, rotate from landscape to portrait; both
+  commands must neutralize **without needing a moved event**.
+- [ ] Return to landscape, change screen bounds using windowing/insets,
+  or trigger a transient zero-sized viewport: no old gas input persists.
+- [ ] While a finger remains down across the resize, duplicated Pressed
+  or delayed Moved events must not reacquire or activate race actions.
+- [ ] Lift and press in the new layout: steering, gas and brake work
+  independently and menu controls still accept fresh taps.
+- [ ] Test rotation while paused or inside a career/garage menu; no held
+  driving axis should carry into an unpaused race.
+- [ ] Measure FPS and frame time on target phones; the extra viewport
+  query is source only until real UE 5.8 / Android validation.
+
+These invariants have portable C++20 regression coverage but **no
+installed Unreal build or device evidence**. Keep issue #13 open.
