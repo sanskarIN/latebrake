@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-22
-**Latest published milestone:** [v0.5.4 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.4).
-**Next development milestone:** v0.5.5 finish insights (development, not released).
+**Latest published milestone:** [v0.5.5 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.5).
+**Next development milestone:** v0.5.6 (planned; not released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.5 in development — player-facing finish scorecard
+## v0.5.5 published source-only — player-facing finish scorecard
 
 - `RecentTimedLaps` retains a fixed eight-entry true timed-lap history,
   resets on restart and excludes invalid/zero laps. Results menu and
@@ -23,7 +23,7 @@
 - Strict C++20 tests cover actual ordered lap progression and clock
   edge cases. **Real Unreal 5.8 compilation, HUD readability and
   installed Windows/Android playtest are not verified.**
-- v0.5.5 has not been tagged or released. [Design](FINISH_INSIGHTS.md).
+- v0.5.5 is a source-only pre-release, not an installed game. [Design](FINISH_INSIGHTS.md) and [release notes](releases/v0.5.5.md).
 
 ## v0.5.4 published source-only — bounded checkpoint QA summaries
 
@@ -73,6 +73,8 @@
 - [v0.5.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.1) — split timing, save/launch safety, mobile touch guards, batched circuit scenery and stricter build checks. **Source archive only; no installed game.**
 
 - [v0.5.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2) — checkpoint and race integrity fixes; source-only, no playable build.\n\n- [v0.5.3](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.3) — directional rejection reasons and opt-in local Unreal diagnostic log source; **source-only**, no executable.\n\n- [v0.5.4](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.4) — bounded QA counters and local log inspection. **Source-only; no playable build.**
+
+- [v0.5.5](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.5) — genuine timed-lap and within-run theoretical finish insights, source-only. **No executable.**
 
 These tags are source previews. They are **not downloadable playable game installers**.
 
