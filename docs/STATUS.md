@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-22
-**Latest published milestone:** [v0.5.5 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.5).
-**Next development milestone:** v0.5.6 original collision layout and startup safety (development; NOT released).
+**Latest published milestone:** [v0.5.6 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.6).
+**Next development milestone:** v0.5.7 (planned C++ source development; not released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.6 in development — fail-closed circuit geometry startup
+## v0.5.6 source-only preview — fail-closed circuit geometry startup
 
 - The engine-independent `CircuitCollisionPlan` defines nine original
   ground/road/barrier transforms from shared world coordinates, preserving
@@ -25,7 +25,7 @@
   creation, invalid plan indices, road alignment and missing scenery.
   This feature has not been compiled with UE 5.8 or tested on real
   Windows/Android machines.
-- No v0.5.6 pre-release tag or game executable exists. See the
+- A source-only v0.5.6 GitHub pre-release exists; no playable EXE/APK exists. See the
   [startup audit design](CIRCUIT_STARTUP_AUDIT.md).
 
 ## v0.5.5 published source-only — player-facing finish scorecard
@@ -98,6 +98,8 @@
 - [v0.5.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.2) — checkpoint and race integrity fixes; source-only, no playable build.\n\n- [v0.5.3](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.3) — directional rejection reasons and opt-in local Unreal diagnostic log source; **source-only**, no executable.\n\n- [v0.5.4](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.4) — bounded QA counters and local log inspection. **Source-only; no playable build.**
 
 - [v0.5.5](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.5) — genuine timed-lap and within-run theoretical finish insights, source-only. **No executable.**
+
+- [v0.5.6](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.6) — original collision plan and audited startup marker grammar, **source-only**.
 
 These tags are source previews. They are **not downloadable playable game installers**.
 

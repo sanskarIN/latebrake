@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased v0.5.6 — Circuit startup geometry integrity (source development)
+## v0.5.6 — Circuit startup geometry integrity (SOURCE-ONLY pre-release, 2026-10-22)
 
 - Created **`CircuitCollisionPlan.h`**, an original engine-independent
   source of all nine collision-bearing ground, road and barrier transforms
@@ -22,7 +22,7 @@
   Added offline positive grammar and negative synthetic log fixtures
   to PowerShell packaging-policy regression; fixture acceptance never
   constitutes real Unreal playability evidence.
-- **Not released.** No Unreal Editor/UHT/game compile, author-cooked map,
+- **Published source-only; no playable game.** No Unreal Editor/UHT/game compile, author-cooked map,
   hardware driving QA or downloadable game package is claimed.
 
 

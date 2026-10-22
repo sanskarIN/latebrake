@@ -1,6 +1,6 @@
 # LateBrake v0.5.6 — Circuit startup geometry audit
 
-**Source development only. This is NOT a verified playable game or a released v0.5.6 pre-release.**
+**GitHub source-only pre-release. This is NOT a verified playable game or an executable distribution.**
 
 ## Problem fixed in the source
 
@@ -59,5 +59,5 @@ Synthetic parser fixtures must never be offered as genuine evidence.
   startup markers, and attach qualified human QA evidence to the
   relevant open GitHub issues.
 
-v0.5.6 should stay development-only until both its cross-platform
-source tests and meaningful Unreal-device build acceptance are reviewed.
+The published v0.5.6 source archive is **not** a game build. Genuine
+Unreal-device acceptance remains open and is required before a playable release.
