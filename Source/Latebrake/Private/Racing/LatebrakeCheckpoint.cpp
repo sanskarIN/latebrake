@@ -19,8 +19,8 @@ namespace
 {
 TAutoConsoleVariable<int32> CVarLatebrakeCheckpointDiagnostics(
     TEXT("latebrake.CheckpointDiagnostics"), 0,
-    TEXT("0 (default): no diagnostic log. 1: local gate event/rejection logs. "
-         "Requires an authorized, non-shipping Unreal build."),
+    TEXT("0 (default): silent; 1: local event/rejection transitions; "
+         "2: aggregated 10-second QA counters. Non-shipping builds only."),
     ECVF_Default);
 } // namespace
 #endif
@@ -65,6 +65,8 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
         MotionTrace.Reset();
 #if !UE_BUILD_SHIPPING
         bHadLoggedDecision = false;
+        DiagnosticWindow.Reset();
+        DiagnosticWindowSeconds = 0.0;
 #endif
         return;
     }
@@ -76,6 +78,8 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
         MotionTrace.Reset();
 #if !UE_BUILD_SHIPPING
         bHadLoggedDecision = false;
+        DiagnosticWindow.Reset();
+        DiagnosticWindowSeconds = 0.0;
 #endif
     }
 
@@ -86,7 +90,9 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
         {{Current.X, Current.Y}, Current.Z}, Velocity.X, Velocity.Y);
 
 #if !UE_BUILD_SHIPPING
-    if (CVarLatebrakeCheckpointDiagnostics.GetValueOnGameThread() != 0)
+    const int32 DiagnosticLevel =
+        CVarLatebrakeCheckpointDiagnostics.GetValueOnGameThread();
+    if (DiagnosticLevel == 1)
     {
         const bool bEvent = Result.Crossed() ||
             Result.Trace == latebrake::CheckpointTraceDecision::TeleportRebase ||
@@ -108,6 +114,55 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
         }
         bHadLoggedDecision = true;
         LastLoggedDecision = Result.Gate;
+        // A change from aggregate mode starts a clean new summary window.
+        DiagnosticWindow.Reset();
+        DiagnosticWindowSeconds = 0.0;
+    }
+    else if (DiagnosticLevel == 2)
+    {
+        // Level 2 records bounded aggregated categories only. There are no
+        // frame-by-frame logs, coordinate traces or remote telemetry.
+        DiagnosticWindow.Observe(Result);
+        if (FMath::IsFinite(DeltaSeconds) && DeltaSeconds > 0.0f)
+        {
+            DiagnosticWindowSeconds += FMath::Min(
+                static_cast<double>(DeltaSeconds), 1.0);
+        }
+        if (DiagnosticWindowSeconds >= 10.0)
+        {
+            UE_LOG(LogTemp, Display,
+                TEXT("Latebrake checkpoint=%d qa-samples=%u crossed=%u "
+                     "teleport-rebase=%u invalid-position=%u wrong-way=%u "
+                     "frame-travel=%u lane-miss=%u height-miss=%u no-plane=%u"),
+                CheckpointIndex, DiagnosticWindow.TotalSamples(),
+                DiagnosticWindow.CountTrace(
+                    latebrake::CheckpointTraceDecision::Crossed),
+                DiagnosticWindow.CountTrace(
+                    latebrake::CheckpointTraceDecision::TeleportRebase),
+                DiagnosticWindow.CountTrace(
+                    latebrake::CheckpointTraceDecision::InvalidPosition),
+                DiagnosticWindow.CountGateRejection(
+                    latebrake::CircuitGateDecision::NotMovingForward),
+                DiagnosticWindow.CountGateRejection(
+                    latebrake::CircuitGateDecision::ExcessiveFrameTravel),
+                DiagnosticWindow.CountGateRejection(
+                    latebrake::CircuitGateDecision::OutsideLateralCorridor),
+                DiagnosticWindow.CountGateRejection(
+                    latebrake::CircuitGateDecision::OutsideVerticalCorridor),
+                DiagnosticWindow.CountGateRejection(
+                    latebrake::CircuitGateDecision::NoForwardPlaneCrossing));
+            DiagnosticWindow.Reset();
+            DiagnosticWindowSeconds = 0.0;
+        }
+        bHadLoggedDecision = false;
+    }
+    else
+    {
+        // Leaving diagnostic mode never carries stale counters or reason
+        // state into a future QA session.
+        DiagnosticWindow.Reset();
+        DiagnosticWindowSeconds = 0.0;
+        bHadLoggedDecision = false;
     }
 #endif
 
