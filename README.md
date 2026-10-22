@@ -75,6 +75,12 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Post-v0.5.1 development (not released)
 
+Unreleased v0.5.2 source moves gate credit from a front-rim sphere
+overlap to a real forward crossing of each track checkpoint plane.
+The four-gate geometric guard also rejects wrong-way or very large
+position jumps. These requirements may need tuning after real-game
+high-speed/frame-hitch QA; portable tests do not validate gameplay.
+
 Unreleased v0.5.2 source prevents E/Q/U/I garage purchases, vehicle
 switches and upgrades during a running career race, while allowing edits
 after the finish or outside career. Recovery also rejects unrepresentable

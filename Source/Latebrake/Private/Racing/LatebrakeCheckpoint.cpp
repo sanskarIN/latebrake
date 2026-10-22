@@ -1,5 +1,5 @@
 #include "Racing/LatebrakeCheckpoint.h"
-#include "Racing/GateValidation.h"
+#include "Racing/CircuitGateCrossing.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -12,49 +12,72 @@
 
 ALatebrakeCheckpoint::ALatebrakeCheckpoint()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    // True plane crossing is decided from successive player positions,
+    // not the BEGIN OVERLAP event at the leading rim of a 600cm sphere.
+    // Four lightweight actor ticks (no allocations or traces) evaluate
+    // the shared engine-neutral circuit gate model.
+    PrimaryActorTick.bCanEverTick = true;
 
     Trigger = CreateDefaultSubobject<USphereComponent>(TEXT("CheckpointTrigger"));
     RootComponent = Trigger;
     Trigger->InitSphereRadius(600.f);
-    Trigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    Trigger->SetCollisionResponseToAllChannels(ECR_Ignore);
-    Trigger->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-    Trigger->SetGenerateOverlapEvents(true);
+    // Retain the legacy root component for actor transform/visual marker;
+    // a geometric crossing no longer needs an overlap collision event.
+    Trigger->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Trigger->SetGenerateOverlapEvents(false);
 
     Marker = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CheckpointMarker"));
     Marker->SetupAttachment(Trigger);
     Marker->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Marker->SetRelativeScale3D(FVector(11.f, 11.f, 0.08f));
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(
+        TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
     if (Cylinder.Succeeded())
     {
         Marker->SetStaticMesh(Cylinder.Object);
     }
-
-    Trigger->OnComponentBeginOverlap.AddDynamic(this, &ALatebrakeCheckpoint::OnTriggerOverlap);
 }
 
-void ALatebrakeCheckpoint::OnTriggerOverlap(UPrimitiveComponent* OverlappedComponent,
-    AActor* OtherActor, UPrimitiveComponent* OtherComponent,
-    int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
 {
-    const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(OtherActor);
-    // Rivals and traffic may overlap the same gates, but only the local
-    // player's pawn can advance their own RaceProgress.
-    if (!Car || OtherActor != UGameplayStatics::GetPlayerPawn(this, 0))
+    Super::Tick(DeltaSeconds);
+
+    ALatebrakeCarPawn* Car =
+        Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+    if (!IsValid(Car))
     {
+        LastObservedPlayer.Reset();
+        bHasPreviousSample = false;
+        return;
+    }
+
+    const FVector Current = Car->GetActorLocation();
+    if (LastObservedPlayer.Get() != Car || !bHasPreviousSample)
+    {
+        LastObservedPlayer = Car;
+        PreviousPlayerLocation = Current;
+        bHasPreviousSample = true;
         return;
     }
 
     const FVector Velocity = Car->GetVelocity();
-    if (!latebrake::CanPassCircuitGate(CheckpointIndex, Velocity.X, Velocity.Y))
-    {
-        return;
-    }
+    const bool bCrossed = latebrake::CrossesCircuitGatePlane(
+        CheckpointIndex,
+        {{PreviousPlayerLocation.X, PreviousPlayerLocation.Y},
+         PreviousPlayerLocation.Z},
+        {{Current.X, Current.Y}, Current.Z},
+        Velocity.X, Velocity.Y);
+    PreviousPlayerLocation = Current;
 
-    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    // The shared 3D plane geometry rejects premature trigger entries,
+    // wrong-way passes, out-of-lane/airborne shortcuts and large jumps.
+    // RaceProgress still requires the correct ORDERED gate and lap count.
+    if (bCrossed)
     {
-        Mode->RegisterCheckpoint(CheckpointIndex);
+        if (ALatebrakeRaceGameMode* Mode =
+                GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        {
+            Mode->RegisterCheckpoint(CheckpointIndex);
+        }
     }
 }
