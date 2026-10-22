@@ -1028,9 +1028,11 @@ void ALatebrakeRaceGameMode::SaveRecords()
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: unable to create SaveGame object"));
         return;
     }
-    Save->BestRaceSeconds = PersonalBestSeconds;
-    Save->BestLapSeconds = PersonalBestLapSeconds;
-    Save->BestTimeAttackSeconds = BestTimeAttackSeconds;
+    // Defense in depth: never serialize a nonfinite or unrecordable time,
+    // even if a future caller introduces invalid in-memory record state.
+    Save->BestRaceSeconds = latebrake::SanitizeBestTime(PersonalBestSeconds);
+    Save->BestLapSeconds = latebrake::SanitizeBestTime(PersonalBestLapSeconds);
+    Save->BestTimeAttackSeconds = latebrake::SanitizeBestTime(BestTimeAttackSeconds);
     Save->CompletedRaces = CompletedRaceCount;
     const latebrake::GarageSnapshot Profile = Garage.Snapshot();
     Save->TotalCredits = Profile.Credits;
