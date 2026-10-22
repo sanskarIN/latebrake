@@ -119,6 +119,15 @@ Unreal gameplay tests.
   [challenges](docs/CHALLENGES.md), [save migration](docs/SAVE_MIGRATION.md)
   and the [v0.5.0 release candidate notes](docs/releases/v0.5.0.md).
 
+## v0.5.1 development: Android viewport touch safety (not a release)
+
+Mobile held steering/pedal inputs are now cleared when the viewport
+resizes or temporarily becomes unavailable. Tracking the physical
+fingers independently prevents held touches from being replayed as
+new race actions; the player must lift and press again. Portable tests
+cover viewport changes, but actual Android device and UE 5.8 integration
+remain unverified. See [touch control qualification](docs/TOUCH_CONTROLS.md).
+
 ## v0.5.1 development: batched scenery (not a release)
 
 The source now groups 93 non-colliding decorative cubes into seven
