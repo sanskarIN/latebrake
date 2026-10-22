@@ -31,6 +31,25 @@ Track the engine version, machine, GPU, driver, device temperatures, resolution,
 
 As of 2026-10-19, commit `f8723f7937faf9503734719f9a1aeaacf640727b` passed the Ubuntu, Windows and macOS portable C++20 jobs: https://github.com/sanskarIN/latebrake/actions/runs/39221329905 . Later commits require their own verification.
 
+## Unreleased v0.5.1: sector timing and theoretical lap
+
+Portable `SectorTiming` CTest checks matched-gate first/best records,
+signed delta against prior best, theoretical-vs-achieved lap distinction,
+ordered checkpoint rejection, recovery penalty accounting, finite and
+zero-duration guarding, bounded 1–256 checkpoint storage, finish freeze
+and restart reset.
+
+Mandatory Unreal 5.8 manual QA after engine compilation:
+- [ ] Verify desktop split signs against two measured laps and no false
+  prior comparison on a first visit.
+- [ ] Verify recovery penalties count toward both a sector and the lap.
+- [ ] Confirm theoretical lap is the **sum of best sectors**, never persisted
+  or mislabeled as an actually completed lap.
+- [ ] Check restart, mode/career switch, 720p/1080p and mobile HUD overlap.
+
+See [sector timing details](SECTOR_TIMING.md). Portable CI is not a
+substitute for the actual engine/runtime, installed game or device tests.
+
 ## v0.1.1 regressions
 
 Tests now cover current/last/best lap, sector splits, a slower finish that does not overwrite the fastest lap, invalid checkpoint sequences, timer overflow, invalid directional crossings and minimum speed checks. Unreal-specific QA must test the actual car overlap velocity, save migration, HUD layout and lap recording.
