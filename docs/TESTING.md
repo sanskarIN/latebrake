@@ -1,3 +1,28 @@
+## v0.5.6: collision geometry plan and startup smoke acceptance
+
+`CircuitCollisionPlanTests.cpp` verifies the same nine source-authored
+ground/road/barrier placements as the C++ Unreal runtime, checks the
+shared north/south/east/west road positions and refuses invalid transforms.
+
+`CircuitStartupAuditTests.cpp` verifies only a complete source-created
+nine-block/unique-four-checkpoint/seven-group/93-instance combination can
+emit the GameMode startup-ready marker. Missing/duplicate checkpoint
+indices, a failed or extra collision-block spawn and incomplete/extra
+scenery all fail. Tests are portable C++20, **not** Unreal game builds.
+
+`Test-PackagingPolicy.ps1` uses synthetic disposable log strings to
+exercise `Verify-RuntimeStartupLog.ps1` rejection/positive grammar.
+Starting with v0.5.6, a genuine candidate's runtime log must contain
+**exactly one each**, in order:
+`LATEBRAKE_SCENERY_READY groups=7 instances=93 collision=off`,
+`LATEBRAKE_GEOMETRY_READY collision=9/9`,
+`LATEBRAKE_STARTUP_READY map=LatebrakeCircuit checkpoints=4/4`.
+Any failure marker, missing element or wrong order rejects the smoke
+log. The verifier **cannot** confirm actual rendered pixels, physics
+collisions or real player controls; independently launch and drive
+the installed candidate. Older v0.5.5 runtime logs cannot satisfy
+the new geometry marker requirement, by design.
+
 ## v0.5.5: bounded recent timed-lap history (source-only)
 
 `RecentTimedLaps` CTest verifies no data are invented for missing,

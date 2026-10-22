@@ -2,8 +2,31 @@
 
 **Updated:** 2026-10-22
 **Latest published milestone:** [v0.5.5 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.5).
-**Next development milestone:** v0.5.6 (planned; not released).
+**Next development milestone:** v0.5.6 original collision layout and startup safety (development; NOT released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.6 in development — fail-closed circuit geometry startup
+
+- The engine-independent `CircuitCollisionPlan` defines nine original
+  ground/road/barrier transforms from shared world coordinates, preserving
+  the earlier prototype's actual positions and scales.
+- A new `CircuitStartupAudit` requires all nine collision block
+  creations, four unique checkpoint indices and exact seven ISM groups /
+  93 instances before marking the course ready.
+- Unreal GameMode tracks attempted/created block Actors, logs
+  `LATEBRAKE_GEOMETRY_READY collision=9/9` or
+  `LATEBRAKE_GEOMETRY_INCOMPLETE`, and does not allow race checkpoint
+  progression on incomplete startup.
+- The runtime log parser requires complete, single-instance scenery,
+  geometry and four-gate ready markers in source emission order.
+  Disposable fixtures validate parser grammar only, **not real Unreal
+  physics or actual game launch**.
+- Portable C++20 tests check counts, duplicate gates, partial Actor
+  creation, invalid plan indices, road alignment and missing scenery.
+  This feature has not been compiled with UE 5.8 or tested on real
+  Windows/Android machines.
+- No v0.5.6 pre-release tag or game executable exists. See the
+  [startup audit design](CIRCUIT_STARTUP_AUDIT.md).
 
 ## v0.5.5 published source-only — player-facing finish scorecard
 
