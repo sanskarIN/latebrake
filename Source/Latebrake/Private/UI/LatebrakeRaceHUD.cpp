@@ -184,6 +184,32 @@ void ALatebrakeRaceHUD::DrawHUD()
             Race.GetCurrentLapSeconds(), Race.GetLastLapSeconds()), Primary);
         Line(FString::Printf(TEXT("FASTEST LAP  %.2fs  |  LAST SPLIT  %.2fs"),
             Race.GetBestLapSeconds(), Race.GetLastSectorSeconds()), Primary);
+        if (Race.GetLastSectorIndex() >= 0)
+        {
+            // Compare a split only with the previous best of its own sector.
+            // Negative values mean faster. No prior record = no delta claim.
+            if (Race.HasLastSectorComparison())
+            {
+                Line(FString::Printf(TEXT("SECTOR %d  %.2fs  |  DELTA %+.2fs"),
+                    Race.GetLastSectorIndex() + 1,
+                    Race.GetLastSectorSeconds(),
+                    Race.GetLastSectorDeltaSeconds()), Primary);
+            }
+            else
+            {
+                Line(FString::Printf(TEXT("SECTOR %d  %.2fs  |  FIRST SPLIT"),
+                    Race.GetLastSectorIndex() + 1,
+                    Race.GetLastSectorSeconds()), Primary);
+            }
+        }
+        const double IdealLap = Race.GetTheoreticalBestLapSeconds();
+        if (IdealLap > 0.0)
+        {
+            // This is a mathematical sum from the CURRENT run, not an
+            // achieved personal best or a persisted global leaderboard time.
+            Line(FString::Printf(TEXT("THEORETICAL LAP (THIS RUN)  %.2fs"),
+                IdealLap), Accent);
+        }
         if (Mode->GetPersonalBestLapSeconds() > 0.f)
         {
             Line(FString::Printf(TEXT("ALL-TIME FASTEST LAP  %.2fs"),

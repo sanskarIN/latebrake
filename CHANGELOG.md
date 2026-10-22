@@ -2,6 +2,21 @@
 
 ## Unreleased — v0.5.1 executable readiness
 
+### Run-local sector timing (not Unreal qualified)
+
+- Record the best valid split for each ordered checkpoint in the current
+  event, without changing SaveGame schema or previous best-lap records.
+- Display the signed delta to that same sector's **prior** best; first
+  recorded splits have no invented comparison.
+- Show clearly marked **THEORETICAL LAP (THIS RUN)** using the sum of sector
+  bests, distinct from the fastest actually completed lap.
+- Bound checkpoint storage to 256 without dynamic allocations; reject
+  zero/nonfinite/overflowed records and reset on restart.
+- Add standalone C++20 regression cases for splits, deltas, penalties,
+  finish/reset, invalid gates and extreme clock values. Real Unreal HUD,
+  frame timing and device tests remain outstanding.
+
+
 ### Single-fire touch action protection (post-v0.5.0)
 
 - Added portable touch press ownership for all fingers, including touches

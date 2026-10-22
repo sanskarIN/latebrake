@@ -19,6 +19,7 @@
 - v0.4.1: source-only Android touch HUD with visible steering, gas, brake, pause, restart and recovery pads.
 - v0.5.0: offline career/championship and challenge rules, versioned career progression saves, prototype menu/navigation, and extended portable tests.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
+- Unreleased v0.5.1 source: fastest split per sector, signed time delta against that sector's previous best and a clearly distinguished race-local theoretical lap (desktop HUD only). This data is **not** saved as an all-time record or tested inside Unreal; see [sector timing and QA](docs/SECTOR_TIMING.md).
 
 The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, production-quality career menus or verified Android touch interfaces yet.
 
