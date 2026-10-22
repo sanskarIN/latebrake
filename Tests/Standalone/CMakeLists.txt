@@ -163,3 +163,19 @@ foreach(name IN ITEMS CareerCatalog CareerProgress CareerChallenges MenuNavigati
     endif()
     add_test(NAME ${name} COMMAND latebrake_${name}_tests)
 endforeach()
+
+
+# Race sector timings need the same portable RaceProgress implementation as
+# the core gate/lap tests; no Unreal headers or platform SDK are required.
+add_executable(latebrake_sector_timing_tests
+    SectorTimingTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_sector_timing_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sector_timing_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sector_timing_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sector_timing_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SectorTiming COMMAND latebrake_sector_timing_tests)
