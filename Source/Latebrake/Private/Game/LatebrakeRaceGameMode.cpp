@@ -25,6 +25,7 @@
 #include "Garage/CareerGaragePolicy.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
+#include "Racing/RaceClockReadiness.h"
 #include "Racing/RecoveryCharge.h"
 #include "Track/CircuitLayout.h"
 #include "Track/TrackDecorations.h"
@@ -90,7 +91,12 @@ void ALatebrakeRaceGameMode::BeginPlay()
 void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
-    Race.Advance(static_cast<double>(DeltaSeconds));
+    // Do not accumulate a fictional race result if track geometry,
+    // required collision responses, gate actors or safe spawns failed.
+    // Explicit pause check also defends unusual manually ticked worlds.
+    latebrake::AdvanceRaceClockIfReady(
+        Race, bCircuitReady, UGameplayStatics::IsGamePaused(this),
+        static_cast<double>(DeltaSeconds));
     ApplyGarageToPlayer();
 }
 
