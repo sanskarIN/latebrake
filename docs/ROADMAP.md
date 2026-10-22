@@ -18,7 +18,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.2 (published source-only pre-release) | Directional swept checkpoints, recovery safety, finish/record integrity, career fairness, rival lap targets and mobile cancellation | Strict three-OS CI passed; Unreal build, original map and hardware playtests still missing |
 | v0.5.3 (published source-only pre-release) | Classifiable checkpoint/gate rejection reasons and default-off local QA logging | Strict portable CI passed; real Unreal 5.8 build and installed device acceptance pending |
 | v0.5.4 (published source-only pre-release) | Fixed-memory QA counters, bounded ten-second local diagnostics and offline log parser | Three-OS portable tests and policy checks; **not** Unreal/device-qualified |
-| v0.5.5 (development, not released) | Reliable post-race lap pace, theoretical best gap and timed-lap consistency results | Strict portable C++20, then licensed Unreal 5.8 UHT/editor and installed UI/device QA |
+| v0.5.5 (development, not released) | Reliable finish scorecard: theoretical sector gap, lap consistency, recent eight-lap history and final-lap trend | Strict portable C++20, then licensed Unreal 5.8 UHT/editor and installed UI/device QA |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |

@@ -7,6 +7,10 @@
 
 ## v0.5.5 in development — player-facing finish scorecard
 
+- `RecentTimedLaps` retains a fixed eight-entry true timed-lap history,
+  resets on restart and excludes invalid/zero laps. Results menu and
+  non-compact finished HUD can compare the latest two measured laps
+  with a signed +slower/-faster delta.
 - New engine-neutral `BuildFinishedRaceInsights` uses genuine
   `RaceProgress` and the already shared bounded finish-time policy.
 - Shows an achieved best lap against this run's theoretical split sum,

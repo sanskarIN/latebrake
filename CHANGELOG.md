@@ -2,6 +2,14 @@
 
 ## Unreleased v0.5.5 — Race finish insights (source development)
 
+- Retain the last eight genuine positive timed laps in an allocation-free
+  ring with physical completed-lap indices, bounded access and clear
+  restart semantics. The finish screen can show last-versus-prior lap
+  improvement (negative delta = faster) without inventing previous
+  laps in a time attack.
+- Added strict recent-history ring tests for invalid values, capacity,
+  wraparound, empty lookup and post-reset isolation, plus integration
+  assertions using real ordered RaceProgress events.
 - Count strictly positive finite timed laps independently of ordered
   gate/lap completion; an instant t=0 lap is never a pace observation.
 - Add portable `FinishedRaceInsights` computing an achieved best lap,
