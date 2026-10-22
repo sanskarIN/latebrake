@@ -19,6 +19,7 @@
 #include "Progression/ProfileWriteCheckpoint.h"
 #include "Progression/RecordValidation.h"
 #include "Career/CareerLaunchSelection.h"
+#include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
@@ -495,9 +496,13 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Results)
     {
-        Menu.Close();
-        UGameplayStatics::SetGamePaused(this, false);
+        // A replay may be refused if a required-car selection cannot be
+        // persisted. Keep RESULTS open (and paused) if that happens.
         RestartRace();
+        if (!Race.IsFinished())
+        {
+            Menu.Close();
+        }
     }
     else if (Page == latebrake::MenuPage::Pause)
     {
@@ -860,12 +865,53 @@ void ALatebrakeRaceGameMode::RefreshRival()
 
 void ALatebrakeRaceGameMode::RestartRace()
 {
+    if (bCareerRace && Race.IsFinished())
+    {
+        // After a career finish the garage is editable. A new attempt
+        // needs a NEW starting-car identity; vehicle-required challenges
+        // must equip their owned required car *before* resetting the clock.
+        // A failed SaveGame write must leave the finished event and current
+        // garage/credits intact, including while the results menu is open.
+        latebrake::ProfileWriteCheckpoint ReplayWrite(
+            Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+            PersonalBestLapSeconds, BestTimeAttackSeconds);
+        const latebrake::CareerReplayPreparation Replay =
+            latebrake::StageCareerReplay(Career, Garage);
+        if (Replay.Status != latebrake::CareerLaunchStatus::Ready)
+        {
+            CareerFeedback = Replay.Status ==
+                latebrake::CareerLaunchStatus::RequiredVehicleNotOwned
+                ? TEXT("Replay rejected: required vehicle not owned.")
+                : TEXT("Replay rejected: career event unavailable.");
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: refusing invalid completed career replay"));
+            return;
+        }
+        if (Replay.NeedsSave)
+        {
+            SaveRecords();
+            if (bProgressSaveFailed)
+            {
+                ReplayWrite.Rollback();
+                CareerFeedback = TEXT("Replay NOT started: required vehicle selection could not be saved.");
+                GarageFeedback = TEXT("WARNING: replay selection save failed; previous car restored.");
+                UE_LOG(LogTemp, Warning,
+                    TEXT("Latebrake: career replay denied because required vehicle selection write failed"));
+                return;
+            }
+        }
+        ReplayWrite.Commit();
+        CareerStartedVehicleId = Replay.StartingVehicle;
+    }
+
+    // Only unpause and reset AFTER career replay preparation succeeds.
     // Restarting from the mobile PAUSE screen must return to a live race.
     if (UGameplayStatics::IsGamePaused(this))
     {
         UGameplayStatics::SetGamePaused(this, false);
     }
     Race.Reset();
+    LastCareerAward = {};
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
     RecoveriesThisRace = 0;
