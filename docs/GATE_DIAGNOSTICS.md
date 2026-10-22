@@ -1,6 +1,6 @@
-# v0.5.3 Checkpoint Decision Diagnostics (development)
+# Checkpoint decision diagnostics (v0.5.3 source preview, v0.5.4 development)
 
-**Source-only development milestone; not a playable game.**
+**v0.5.3 is a source-only pre-release; v0.5.4 is development only. Neither is a playable game.**
 
 ## Purpose
 
@@ -38,7 +38,7 @@ recovery/restart. A boolean by itself does not explain the gate math.
    logging configuration is silent. Development builds can opt in to local
    rate-limited event/rejection logs (not per-frame spam). Shipping
    configurations cannot enable this diagnostic console variable.
-5. Do not call portable CTest or diagnostic parity "Unreal QA".
+5. Do not call portable CTest, console logging source or diagnostic parity "Unreal QA".
 
 ## Tests and required real-engine follow-up
 
@@ -54,7 +54,11 @@ In an **authorized non-shipping UE build**, set
 `latebrake.CheckpointDiagnostics 1` in the Unreal console to emit local
 log messages for accepted crossings, teleport rebases, invalid position
 events and changes in meaningful rejection reasons. Set it to `0`
-to disable logs. Default is off; no remote telemetry or user identifier
+to disable logs. v0.5.4 development also adds
+`latebrake.CheckpointDiagnostics 2`: summary counts per gate approximately
+once every ten seconds without frame-by-frame logs. Switching modes or
+losing/replacing the pawn clears previous summary windows. This new code is
+not engine-qualified. Default is off; no remote telemetry or user identifier
 is collected. This code has not yet been compiled with UE 5.8, so
 actual console behavior, log formatting and on-device cost require
 genuine Editor/UHT and platform QA before relying on it.
