@@ -53,6 +53,20 @@ Append new IDs and perform an explicit migration for schema revisions.
 The active event's start vehicle is recorded. Vehicle-required challenges
 equip an already owned profile at race start, and results are refused if the
 car changes before finishing. Wrong-order gates do not complete laps.
+
+**Unreleased v0.5.2 source guard:** While a career event is running,
+garage shortcuts **E** (select another owned car), **Q** (unlock car),
+**U** (upgrade engine), and **I** (upgrade grip) refuse to alter the
+vehicle or spend credits. This prevents mid-event tuning changes and
+avoids invalidated vehicle-required results. The garage may be edited
+again **after** a career finish or after switching to a quick race with
+3/4. Restarting a completed career event re-engages the lock.
+
+The restriction is checked with the same engine-independent RaceProgress
+finish state used for awards. Portable tests exercise all four actions,
+multiple laps, finish, restart, and quick-race behavior. Actual Unreal
+input routing, HUD feedback, menu and SaveGame behavior still need
+in-engine verification.
 Recovery costs 5 seconds and is counted against clean objectives.
 Career earnings are one-time first-medal credits plus a once-only
 championship completion bonus. Quick race keeps its original bounded

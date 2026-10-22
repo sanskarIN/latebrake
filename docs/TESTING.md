@@ -8,6 +8,28 @@ The suite checks checkpoint ordering, duplicates, invalid indices, lap count, fi
 
 GitHub Actions matrix: Ubuntu, Windows and macOS. This validates portable C++ source, **not Unreal packaging**.
 
+## Unreleased v0.5.2 career-time integrity
+
+`CareerGaragePolicy` CTest covers all four garage actions and verifies
+rejected in-race requests preserve credits, ownership, selected car, and
+upgrade levels; the same operations work after a finished career race
+and normal quick races retain compatibility. `RecoveryCharge` CTest
+also rejects five-second fees which undercharge due to IEEE-754
+double-precision rounding at extreme elapsed times.
+
+Required UE 5.8 + installed-game manual qualification:
+- [ ] Start a career event and press E/Q/U/I during the timed race (also
+  through paused garage menu); no tuning, vehicle, unlock or spend occurs.
+- [ ] Finish and verify normal purchases/selections become available.
+- [ ] Restart that same career event and confirm the guard is active again.
+- [ ] Switch to quick race and confirm existing garage shortcuts still work.
+- [ ] Confirm recovery fees apply exactly once per genuine press, including
+  the recovery count/clock shown in the HUD and eventual career medals.
+- [ ] Confirm save failure rollback and event-specific required-car rule.
+
+Portable CI verifies only C++ policies and authored code, not physical
+input/physics, Unreal SaveGame serialization or packed Windows/Android UI.
+
 ## Unreal integration test checklist (manual until installed)
 
 - [ ] Unreal Header Tool generates classes, editor target builds without warnings/errors

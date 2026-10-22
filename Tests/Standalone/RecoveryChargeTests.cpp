@@ -50,6 +50,33 @@ int main()
           std::isfinite(overflow.GetElapsedSeconds()),
           "clock overflow rejects free teleport and preserves count");
 
+    // At 2^54, IEEE-754 double spacing is four seconds. A +5s
+    // penalty rounds to +4s and used to return success, granting an
+    // undercharged recovery teleport. Refuse the transaction instead.
+    RaceProgress imprecise(1, 1);
+    const double enormousClock = std::ldexp(1.0, 54);
+    imprecise.Advance(enormousClock);
+    int countAtLimit = 7;
+    Check(!TryChargePlayerRecovery(imprecise, countAtLimit) &&
+          countAtLimit == 7 &&
+          imprecise.GetElapsedSeconds() == enormousClock,
+          "unrepresentable full 5-second fee cannot authorize recovery");
+
+    // At 2^53, the +5s change also rounds down under some tie cases.
+    RaceProgress rounding(1, 1);
+    const double precisionBoundary = std::ldexp(1.0, 53);
+    rounding.Advance(precisionBoundary);
+    Check(!rounding.AddTimePenalty(5.0) &&
+          rounding.GetElapsedSeconds() == precisionBoundary,
+          "partial fee from coarse clock precision is rejected");
+
+    // Tiny *representable* positive advances are still legal in this
+    // generic timer API; only nonrepresentable/undercharged fees fail.
+    RaceProgress subsecond(1, 1);
+    Check(subsecond.AddTimePenalty(0.125) &&
+          subsecond.GetElapsedSeconds() == 0.125,
+          "ordinary representable subsecond penalty is preserved");
+
     RaceProgress saturated(1, 1);
     int maxCount = std::numeric_limits<int>::max();
     Check(!TryChargePlayerRecovery(saturated, maxCount) &&

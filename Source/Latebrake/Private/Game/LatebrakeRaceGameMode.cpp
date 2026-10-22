@@ -19,6 +19,7 @@
 #include "Progression/ProfileWriteCheckpoint.h"
 #include "Progression/RecordValidation.h"
 #include "Career/CareerLaunchSelection.h"
+#include "Garage/CareerGaragePolicy.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
 #include "Racing/RecoveryCharge.h"
@@ -682,6 +683,11 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit this career race before changing vehicles.");
+        return;
+    }
     const int32 Previous = Garage.SelectedVehicle();
     const int32 Next = Garage.NextOwnedVehicle();
     if (Next == Previous)
@@ -712,6 +718,11 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit this career race before buying vehicles.");
+        return;
+    }
     const int32 Next = Garage.NextLockedVehicle();
     if (Next < 0)
     {
@@ -747,6 +758,11 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit this career race before upgrading engine.");
+        return;
+    }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
     latebrake::ProfileWriteCheckpoint SavedProfile(
         Garage, Career, CompletedRaceCount, PersonalBestSeconds,
@@ -776,6 +792,11 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit this career race before upgrading grip.");
+        return;
+    }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);
     latebrake::ProfileWriteCheckpoint SavedProfile(
         Garage, Career, CompletedRaceCount, PersonalBestSeconds,

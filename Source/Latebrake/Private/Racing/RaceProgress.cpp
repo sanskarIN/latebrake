@@ -50,7 +50,17 @@ bool RaceProgress::AddTimePenalty(double penaltySeconds) noexcept
         return false;
     }
 
-    ElapsedSeconds += penaltySeconds;
+    // IEEE-754 doubles lose sub-second and eventually whole-second
+    // precision as the clock grows. A mathematically positive fee can
+    // round to zero (or undercharge) at extreme elapsed values. Never
+    // authorize RECOVER unless the clock actually advances by at least
+    // the requested number of seconds.
+    const double updated = ElapsedSeconds + penaltySeconds;
+    if (!std::isfinite(updated) || updated - ElapsedSeconds < penaltySeconds)
+    {
+        return false;
+    }
+    ElapsedSeconds = updated;
     return true;
 }
 

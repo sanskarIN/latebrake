@@ -194,3 +194,18 @@ else()
     target_compile_options(latebrake_recovery_charge_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RecoveryCharge COMMAND latebrake_recovery_charge_tests)
+
+# The career garage policy test exercises *real* race completion and restart,
+# so it must link the portable RaceProgress implementation, not just headers.
+add_executable(latebrake_career_garage_policy_tests
+    CareerGaragePolicyTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_career_garage_policy_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_career_garage_policy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_career_garage_policy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_career_garage_policy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CareerGaragePolicy COMMAND latebrake_career_garage_policy_tests)

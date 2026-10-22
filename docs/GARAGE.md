@@ -30,6 +30,20 @@ Both Engine and Grip upgrades have three levels shared across the garage. Engine
 
 The HUD shows selected vehicle profile, upgrade levels, credit balance and next unlock price. There is **no finished garage menu**. Gameplay control and mobile touch UI have not been playtested.
 
+## Unreleased v0.5.2 career-event transaction lock
+
+A timed active career event **locks garage editing** until the finish.
+The E, Q, U, and I shortcuts do not switch car, unlock a car, or purchase
+engine/grip tuning during the event. They show a short explanatory
+garage message instead. This keeps career objectives tied to the same
+start-of-event car/tuning and does not consume credits accidentally.
+
+A completed career event permits editing again; restarting it re-locks
+the garage. Quick-race garage behavior remains unchanged for compatibility.
+`CareerGaragePolicy.h` contains the portable rule and the four Unreal
+GameMode handlers enforce it **before** touching the garage or writing
+SaveGame. Installed UE 5.8 and Android/Win64 QA still needed.
+
 ## Persistence and validation
 
 The original Unreal SaveGame `TotalCredits` field remains the balance store for existing profiles. New optional fields preserve the owned vehicle bitmask, selected profile, engine level and grip level. The portable garage state repairs missing or invalid ownership, clamps upgrade levels, rejects invalid IDs and never allows negative balances or arithmetic overflow. Tests run in the GitHub C++20 matrix. **SaveGame serialization/migration must be checked in a real Unreal environment**.

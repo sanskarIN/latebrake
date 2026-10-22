@@ -73,6 +73,14 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 - `Tests/Standalone`: portable C++20 checks, including responsive touch hit-testing (not Unreal touch routing).
 - `docs`: design, architecture, build instructions, status, and roadmap.
 
+## Post-v0.5.1 development (not released)
+
+Unreleased v0.5.2 source prevents E/Q/U/I garage purchases, vehicle
+switches and upgrades during a running career race, while allowing edits
+after the finish or outside career. Recovery also rejects unrepresentable
+five-second penalty undercharges. Portable tests verify the policy, not
+the Unreal integration. No v0.5.2 release or executable is published.
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.1** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.

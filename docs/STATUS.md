@@ -4,6 +4,21 @@
 **Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
+## Unreleased v0.5.2 career fairness development
+
+- In-progress career events now block all four garage mutation handlers
+  until completion or exit to quick race. Restarting a finished career
+  event re-engages the lock.
+- Source checks ensure denied interactions never change the garage or
+  trigger saved transactions, while post-finish/quick race control remains.
+- Recovery charges fail closed if a five-second fee cannot be fully
+  represented in the elapsed clock at extreme values.
+- Portable C++20 tests cover the policy and precision guard. The GameMode
+  changes have not been compiled in a licensed UE 5.8 environment or
+  validated on installed platforms.
+- Latest **published** source-only pre-release remains v0.5.1; there is
+  no claim of a v0.5.2 tag, installed game or qualified executables.
+
 ## GitHub releases (source-only)
 
 - [v0.1.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.1.0) — published pre-release of the original C++ project and racing foundation.
