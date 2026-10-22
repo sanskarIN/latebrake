@@ -85,6 +85,8 @@ public:
     }
 
     int GetNextWaypoint() const noexcept { return NextWaypoint; }
+    int GetWaypointCount() const noexcept { return WaypointCount; }
+    int GetRequiredLaps() const noexcept { return RequiredLaps; }
     int GetCompletedLaps() const noexcept { return CompletedLaps; }
     int GetRecoveryCount() const noexcept { return Recoveries; }
     bool IsFinished() const noexcept { return CompletedLaps >= RequiredLaps; }
