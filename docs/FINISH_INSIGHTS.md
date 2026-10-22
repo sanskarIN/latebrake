@@ -1,6 +1,6 @@
-# v0.5.5 — Finished Race Insights (development)
+# v0.5.5 — Finished Race Insights (source-only preview)
 
-**Source-only feature under development; no released v0.5.5 game or executable.**
+**Published source-only preview. No playable v0.5.5 game or compiled executable is available.**
 
 ## What a player will see
 

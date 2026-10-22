@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased v0.5.5 — Race finish insights (source development)
+## v0.5.5 — Race finish insights (SOURCE-ONLY pre-release, 2026-10-22)
 
 - Retain the last eight genuine positive timed laps in an allocation-free
   ring with physical completed-lap indices, bounded access and clear
@@ -22,7 +22,7 @@
 - Add result-menu and non-compact finished-HUD source display, plus
   strict actual-RaceProgress C++20 tests for three laps, one lap,
   zero-duration laps, restarts and seven-day record limits.
-- This is **unreleased source work**. No Unreal Editor/UHT compile,
+- This is a **source-only GitHub pre-release**, not a playable game. No Unreal Editor/UHT compile,
   real gameplay QA or Windows/Android executable is claimed.
 
 
