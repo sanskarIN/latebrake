@@ -8,6 +8,33 @@ The suite checks checkpoint ordering, duplicates, invalid indices, lap count, fi
 
 GitHub Actions matrix: Ubuntu, Windows and macOS. This validates portable C++ source, **not Unreal packaging**.
 
+## Unreleased v0.5.2: finish clock and SaveGame integrity
+
+Strict portable `RecordValidation`, `RaceRewards`, and
+`CareerChallenges` tests now share one clock policy (positive,
+float-representable, within 604,800 seconds). They cover valid
+boundaries, large finite clocks, NaN/infinity, tiny values that
+round to zero in `float`, faster/slower records and retention of
+the last valid best when a candidate is invalid.
+
+Genuine UE 5.8 Editor and installed game acceptance:
+- [ ] Finish ordinary quick/career races and confirm recorded best race,
+  best lap, earned credits, medal and completed count survive restart
+  and a SaveGame reload.
+- [ ] Force invalid elapsed/best-lap data via an instrumented **test
+  build**, never normal gameplay or a shipped debug menu. Confirm
+  no credit/medal/completed-count increase or corrupted SaveGame write.
+- [ ] In a controlled test build, check clean and consistency
+  challenges do not grant medals for clocks outside the same
+  recordable range.
+- [ ] Confirm previously earned, valid records are not overwritten by
+  slower or unrepresentable candidate finish times.
+- [ ] Verify no new regression in save-failure rollback, career replay,
+  lap splits, or milestone rewards after an installed game restart.
+
+Portable results prove only the engine-independent functions, not
+real Unreal serialization or device playability.
+
 ## Unreleased v0.5.2: teleport-proof checkpoints
 
 Strict C++20 `CheckpointMotionTrace` CTest uses real four-gate

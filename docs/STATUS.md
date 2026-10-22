@@ -4,6 +4,22 @@
 **Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
+## Unreleased v0.5.2 finite finish-record integrity
+
+- Completion processing now uses the same bounded, float-representable
+  duration policy as existing SaveGame best-time loading. A completed
+  race with invalid elapsed/best-lap times cannot grant completed-race
+  counts, credits, career medals or corrupt saved best records.
+- The record selector never replaces a valid fastest time with an
+  unrecordable or slower candidate. SaveGame fields are sanitized again
+  immediately before serialization.
+- Portable C++20 tests exercise finite/infinite/small/over-seven-day
+  boundaries, quick-race payouts, clean/consistency career medals and
+  preservation of previous bests. Actual Unreal 5.8/Win64/Android
+  gameplay, serialization, cooking and physical QA are **not verified**.
+- v0.5.1 remains the latest published source-only pre-release, with
+  v0.5.2 development still unreleased.
+
 ## Unreleased v0.5.2 checkpoint teleport safety
 
 - Paid recovery and restart now advance a car-local teleport revision,

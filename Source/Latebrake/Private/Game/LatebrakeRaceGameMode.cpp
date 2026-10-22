@@ -329,6 +329,21 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         return;
     }
 
+    // The SaveGame schema records best times as floats with an existing
+    // seven-day bound. Do not grant career medals, completion counts or
+    // quick-race credits for a finish which this schema cannot represent
+    // reliably, e.g. elapsed doubles outside that bound or a zero lap.
+    if (!latebrake::IsValidFinishedRaceTime(Race.GetElapsedSeconds()) ||
+        !latebrake::IsValidFinishedRaceTime(Race.GetBestLapSeconds()))
+    {
+        LastCareerAward = {};
+        LastRaceCredits = 0;
+        CareerFeedback = TEXT("Finish rejected: race/lap clock is outside supported record range. Restart to retry.");
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: refusing non-recordable finish times; no rewards, records or SaveGame write"));
+        return;
+    }
+
     // Only the SaveGame write decides if a finish becomes a durable reward.
     // In-memory first-completion medals, credits and best times must not
     // survive a failed disk write as misleading spendable progress.
@@ -336,22 +351,15 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         Garage, Career, CompletedRaceCount, PersonalBestSeconds,
         PersonalBestLapSeconds, BestTimeAttackSeconds);
     CompletedRaceCount = latebrake::IncrementCompletedRaces(CompletedRaceCount);
-    const float FinishedSeconds = static_cast<float>(Race.GetElapsedSeconds());
     if (!bCareerRace)
     {
         float& EventRecord = (SelectedEvent == latebrake::EventKind::TimeAttack)
             ? BestTimeAttackSeconds : PersonalBestSeconds;
-        if (EventRecord <= 0.f || FinishedSeconds < EventRecord)
-        {
-            EventRecord = FinishedSeconds;
-        }
+        EventRecord = latebrake::ImprovedBestTime(
+            EventRecord, Race.GetElapsedSeconds());
     }
-    const float FinishedBestLap = static_cast<float>(Race.GetBestLapSeconds());
-    if (FinishedBestLap > 0.f &&
-        (PersonalBestLapSeconds <= 0.f || FinishedBestLap < PersonalBestLapSeconds))
-    {
-        PersonalBestLapSeconds = FinishedBestLap;
-    }
+    PersonalBestLapSeconds = latebrake::ImprovedBestTime(
+        PersonalBestLapSeconds, Race.GetBestLapSeconds());
 
     LastCareerAward = {};
     if (bCareerRace)
@@ -1020,9 +1028,11 @@ void ALatebrakeRaceGameMode::SaveRecords()
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: unable to create SaveGame object"));
         return;
     }
-    Save->BestRaceSeconds = PersonalBestSeconds;
-    Save->BestLapSeconds = PersonalBestLapSeconds;
-    Save->BestTimeAttackSeconds = BestTimeAttackSeconds;
+    // Defense in depth: never serialize a nonfinite or unrecordable time,
+    // even if a future caller introduces invalid in-memory record state.
+    Save->BestRaceSeconds = latebrake::SanitizeBestTime(PersonalBestSeconds);
+    Save->BestLapSeconds = latebrake::SanitizeBestTime(PersonalBestLapSeconds);
+    Save->BestTimeAttackSeconds = latebrake::SanitizeBestTime(BestTimeAttackSeconds);
     Save->CompletedRaces = CompletedRaceCount;
     const latebrake::GarageSnapshot Profile = Garage.Snapshot();
     Save->TotalCredits = Profile.Credits;

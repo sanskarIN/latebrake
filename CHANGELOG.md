@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased v0.5.2 — Finished-race record/award integrity
+
+- Corrected finish handling which cast arbitrary race/lap `double`
+  clocks directly into persisted `float` records without applying the
+  established seven-day `SanitizeBestTime` boundary used by load.
+- Added shared portable `IsValidFinishedRaceTime` and
+  `ImprovedBestTime`. Nonfinite, nonpositive, longer-than-seven-day,
+  and unrepresentably tiny times no longer become records, rewards,
+  completed-race counts or career medals.
+- Quick race credits and career clean/consistency medal checks now
+  reject elapsed clocks that cannot be faithfully represented in the
+  existing SaveGame record format; valid clock/award behavior unchanged.
+- The GameMode refuses an invalid finished race before modifying medals,
+  credits, completion counts or SaveGame, and sanitizes all best-time
+  fields once more on serialization as a defensive invariant.
+- Expanded strict portable C++20 tests for record improvement, prior
+  best preservation, floating-point extremes, the exactly-seven-day
+  boundary and career/quick-race reward rejection.
+- Unreal 5.8 Editor/UHT compilation and actual race-result, save/load
+  and platform tests **remain outstanding**. No v0.5.2 game release
+  or playable executable is claimed.
+
 ## Unreleased v0.5.2 — Teleport-proof checkpoint sampling
 
 - Added per-car monotonic **teleport generation** tracking. Every
