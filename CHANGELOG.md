@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased v0.5.6 — Circuit startup geometry integrity (source development)
+
+- Created **`CircuitCollisionPlan.h`**, an original engine-independent
+  source of all nine collision-bearing ground, road and barrier transforms
+  and material styles. Unreal GameMode uses this plan rather than an
+  unrelated set of nine hard-coded actor placements.
+- Created **`CircuitStartupAudit.h`**, a bounded, allocation-free
+  startup policy requiring exactly 9/9 collision-bearing block spawns,
+  four distinct checkpoint indices, and all 7/93 scenery
+  groups/instances. Missing or duplicate actors fail closed.
+- Refactored `LatebrakeRaceGameMode.cpp/.h` to emit an explicit
+  `LATEBRAKE_GEOMETRY_READY collision=9/9` marker only on source-level
+  construction success and refuse progress/awards on incomplete circuit.
+  Rendering/collision physics are still unverified.
+- Updated `Verify-RuntimeStartupLog.ps1` to demand a single, ordered
+  scenery -> collision-geometry -> startup marker sequence and reject
+  missing, repeated, out-of-order or incomplete construction.
+- Added `CircuitStartupAuditTests.cpp` and
+  `CircuitCollisionPlanTests.cpp` as strict portable C++20 tests.
+  Added offline positive grammar and negative synthetic log fixtures
+  to PowerShell packaging-policy regression; fixture acceptance never
+  constitutes real Unreal playability evidence.
+- **Not released.** No Unreal Editor/UHT/game compile, author-cooked map,
+  hardware driving QA or downloadable game package is claimed.
+
+
 ## v0.5.5 — Race finish insights (SOURCE-ONLY pre-release, 2026-10-22)
 
 - Retain the last eight genuine positive timed laps in an allocation-free

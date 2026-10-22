@@ -110,3 +110,23 @@ See [executable pipeline and honest QA](EXECUTABLE_BUILD_PIPELINE.md).
 An opt-in GitHub workflow can use a maintainer-operated Windows self-hosted
 Unreal runner labeled `unreal-5-8`; it never publishes game candidates as
 verified GitHub Release assets automatically.
+
+
+## v0.5.6 stricter real-runtime startup evidence (unverified in Unreal)
+
+The project runtime now has a C++20 plan for the nine original
+collision-bearing track meshes. After compiling the real UE 5.8 game,
+authoring its authentic level and installing a candidate, capture a
+**fresh log from that run** and invoke:
+
+```powershell
+pwsh ./scripts/Verify-RuntimeStartupLog.ps1 -LogPath 'D:/Latebrake/Saved/Logs/Latebrake.log'
+```
+
+The audit requires one complete set of scenery, geometry and gate
+markers, logged in that order, with no incomplete markers. It does not
+prove that the actors actually collided or rendered. Test the ground
+under the car, all four roads and boundary barriers with a real
+controller, with high-speed approaches and restart/recovery, then
+record build/engine/device QA and artifact hashes separately. See
+[the v0.5.6 startup audit guide](CIRCUIT_STARTUP_AUDIT.md).
