@@ -15,6 +15,8 @@ class LATEBRAKE_API ALatebrakeCheckpoint : public AActor
 public:
     ALatebrakeCheckpoint();
 
+    virtual void Tick(float DeltaSeconds) override;
+
     void SetCheckpointIndex(int32 InIndex) { CheckpointIndex = InIndex; }
 
 private:
@@ -26,8 +28,10 @@ private:
 
     int32 CheckpointIndex = INDEX_NONE;
 
-    UFUNCTION()
-    void OnTriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-        UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex,
-        bool bFromSweep, const FHitResult& SweepResult);
+    // Sample only the local authoritative player's position, never rivals.
+    // Changing/losing pawn identity discards the previous trajectory rather
+    // than accidentally crediting a teleport/restart/possession transition.
+    TWeakObjectPtr<AActor> LastObservedPlayer;
+    FVector PreviousPlayerLocation = FVector::ZeroVector;
+    bool bHasPreviousSample = false;
 };
