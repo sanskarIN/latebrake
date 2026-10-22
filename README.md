@@ -119,6 +119,15 @@ Unreal gameplay tests.
   [challenges](docs/CHALLENGES.md), [save migration](docs/SAVE_MIGRATION.md)
   and the [v0.5.0 release candidate notes](docs/releases/v0.5.0.md).
 
+## v0.5.1 development: batched scenery (not a release)
+
+The source now groups 93 non-colliding decorative cubes into seven
+instanced-mesh batches under one scenery actor, preserving the original
+one-circuit layout while reducing its cosmetic actor count. Portable tests
+verify group membership and transforms; no actual Unreal 5.8 compile,
+graphics output, draw-call measurement or mobile FPS claim has been verified.
+See [track and scenery QA](docs/TRACK.md).
+
 ## v0.5.1 development: racing/progression integrity (not a release)
 
 - Career event selection and its required owned vehicle are now saved
