@@ -224,3 +224,18 @@ else()
     target_compile_options(latebrake_checkpoint_motion_trace_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME CheckpointMotionTrace COMMAND latebrake_checkpoint_motion_trace_tests)
+
+# v0.5.5 player-facing finish analytics read actual RaceProgress state and
+# record validation without any Unreal Engine linking or test mock.
+add_executable(latebrake_finished_race_insights_tests
+    FinishedRaceInsightsTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_finished_race_insights_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_finished_race_insights_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_finished_race_insights_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_finished_race_insights_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FinishedRaceInsights COMMAND latebrake_finished_race_insights_tests)

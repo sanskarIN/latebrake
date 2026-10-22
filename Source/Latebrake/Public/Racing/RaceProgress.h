@@ -31,6 +31,9 @@ public:
     int GetRequiredLaps() const noexcept { return RequiredLaps; }
     int GetNextCheckpoint() const noexcept { return NextCheckpoint; }
     int GetCompletedLaps() const noexcept { return CompletedLaps; }
+    // Count laps with a strictly positive finite measured duration. An
+    // immediate t=0 checkpoint pass is not evidence of a timed lap.
+    int GetTimedLapCount() const noexcept { return TimedLapCount; }
     double GetElapsedSeconds() const noexcept { return ElapsedSeconds; }
     double GetCurrentLapSeconds() const noexcept { return ElapsedSeconds - LapStartSeconds; }
     double GetLastLapSeconds() const noexcept { return LastLapSeconds; }
@@ -55,6 +58,7 @@ private:
     int RequiredLaps = 3;
     int NextCheckpoint = 0;
     int CompletedLaps = 0;
+    int TimedLapCount = 0;
     double ElapsedSeconds = 0.0;
     double LapStartSeconds = 0.0;
     double LastCheckpointSeconds = 0.0;
