@@ -105,6 +105,14 @@ void ALatebrakeRaceHUD::DrawHUD()
                         TEXT("Timed lap spread: %.2fs (%d laps)"),
                         Insights.LapSpreadSeconds, Insights.TimedLaps));
                 }
+                if (Insights.HasLatestVsPrevious && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Lap %d vs lap %d: %+.2fs (positive = slower)"),
+                        Insights.LatestTimedLapNumber,
+                        Insights.PreviousTimedLapNumber,
+                        Insights.LatestVsPreviousDeltaSeconds));
+                }
             }
             MenuLine(TEXT("Select to retry the current event."));
             break;
@@ -339,6 +347,12 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Line(FString::Printf(
                     TEXT("TIMED LAP SPREAD  %.2fs  (%d LAPS)"),
                     Insights.LapSpreadSeconds, Insights.TimedLaps), Primary);
+            }
+            if (Insights.HasLatestVsPrevious)
+            {
+                Line(FString::Printf(
+                    TEXT("FINAL LAP vs PREVIOUS  %+.2fs (+ SLOWER)"),
+                    Insights.LatestVsPreviousDeltaSeconds), Primary);
             }
         }
         Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
