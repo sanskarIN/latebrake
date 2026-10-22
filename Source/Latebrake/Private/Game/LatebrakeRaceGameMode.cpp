@@ -10,6 +10,9 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "Engine/StaticMeshActor.h"
+#include "GameFramework/Actor.h"
+#include "Components/SceneComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
@@ -21,6 +24,7 @@
 #include "Racing/RecoveryCharge.h"
 #include "Track/CircuitLayout.h"
 #include "Track/TrackDecorations.h"
+#include "Track/DecorationBatchPlan.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -151,70 +155,134 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     SpawnBlock(TEXT("EastBarrier"), FVector(3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
     SpawnBlock(TEXT("WestBarrier"), FVector(-3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
 
-    // Track furnishings are lightweight Unreal built-in cubes with collision
-    // disabled, so painted curbs/stripes never become invisible tire barriers.
-    // The current source prototype still uses separate actors; a production
-    // pass will batch these as instanced meshes to reduce mobile draw calls.
-    const auto Decoration = [this](const TCHAR* Name, const FVector& Pos,
-                                   const FVector& Dimensions, const FLinearColor& Color)
+    // All ninety-three collision-free decorative cubes now share one scene
+    // actor, with seven instanced-mesh components (one per color/material
+    // style). The nine collision-bearing road/ground/barrier actors remain
+    // separate so physics behavior is not changed by visual optimization.
+    // Exact original transforms come from portable DecorationBatchPlan.h.
+    UStaticMesh* DecorationMesh = LoadObject<UStaticMesh>(
+        nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+    int32 CreatedDecorationGroups = 0;
+    int32 CreatedDecorationInstances = 0;
+
+    if (!DecorationMesh)
     {
-        if (AStaticMeshActor* Actor = SpawnBlock(Name, Pos, Dimensions, Color))
-        {
-            Actor->GetStaticMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-        }
-    };
-    const FLinearColor Stripe(0.94f, 0.94f, 0.89f);
-    const FLinearColor CurbRed(0.83f, 0.11f, 0.09f);
-    const FLinearColor CurbWhite(0.96f, 0.95f, 0.89f);
-    for (int32 Straight = 0; Straight < latebrake::StraightCount; ++Straight)
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("Latebrake: decoration cube unavailable; cannot batch scenery"));
+    }
+    else
     {
-        for (int32 Segment = 0; Segment < latebrake::MarkersPerStraight; ++Segment)
+        FActorSpawnParameters DecorParameters;
+        DecorParameters.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        AActor* DecorationHolder = GetWorld()->SpawnActor<AActor>(
+            AActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator,
+            DecorParameters);
+        if (DecorationHolder)
         {
-            const latebrake::TrackMarker Dash = latebrake::LaneStripe(Straight, Segment);
-            if (Dash.Valid)
+#if WITH_EDITOR
+            DecorationHolder->SetActorLabel(TEXT("LatebrakeInstancedScenery"));
+#endif
+            USceneComponent* DecorationRoot = NewObject<USceneComponent>(
+                DecorationHolder, TEXT("SceneryRoot"));
+            if (DecorationRoot)
             {
-                Decoration(TEXT("LaneStripe"),
-                    FVector(Dash.Center.X, Dash.Center.Y, 4.0),
-                    FVector(Dash.ScaleX, Dash.ScaleY, 0.025), Stripe);
-            }
-            for (int32 Edge = 0; Edge < 2; ++Edge)
-            {
-                const latebrake::TrackMarker Curb =
-                    latebrake::TrackCurb(Straight, Segment, Edge != 0);
-                if (Curb.Valid)
+                DecorationRoot->SetMobility(EComponentMobility::Static);
+                DecorationHolder->SetRootComponent(DecorationRoot);
+                DecorationHolder->AddInstanceComponent(DecorationRoot);
+                DecorationRoot->RegisterComponent();
+
+                const FLinearColor DecorationColors[] =
                 {
-                    Decoration(TEXT("Curbstone"),
-                        FVector(Curb.Center.X, Curb.Center.Y, 6.0),
-                        FVector(Curb.ScaleX, Curb.ScaleY, 0.08),
-                        ((Segment + Edge) % 2 == 0) ? CurbRed : CurbWhite);
+                    FLinearColor(0.94f, 0.94f, 0.89f), // lane dashes
+                    FLinearColor(0.83f, 0.11f, 0.09f), // red curb
+                    FLinearColor(0.96f, 0.95f, 0.89f), // white curb
+                    FLinearColor(0.18f, 0.21f, 0.26f), // grandstand base
+                    FLinearColor(0.35f, 0.43f, 0.60f), // grandstand tier light
+                    FLinearColor(0.26f, 0.31f, 0.42f), // grandstand tier dark
+                    FLinearColor(0.90f, 0.60f, 0.08f)  // start banner
+                };
+                static_assert(UE_ARRAY_COUNT(DecorationColors) ==
+                              latebrake::DecorationBatchCount);
+
+                UInstancedStaticMeshComponent*
+                    Groups[latebrake::DecorationBatchCount]{};
+                for (int32 Group = 0; Group < latebrake::DecorationBatchCount; ++Group)
+                {
+                    const FName GroupName(*FString::Printf(
+                        TEXT("SceneryGroup%d"), Group));
+                    UInstancedStaticMeshComponent* Instances =
+                        NewObject<UInstancedStaticMeshComponent>(
+                            DecorationHolder, GroupName);
+                    if (!Instances) continue;
+
+                    Instances->SetupAttachment(DecorationRoot);
+                    Instances->SetMobility(EComponentMobility::Static);
+                    Instances->SetStaticMesh(DecorationMesh);
+                    Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+                    Instances->SetGenerateOverlapEvents(false);
+                    Instances->SetCanEverAffectNavigation(false);
+                    // Small ornamental pieces need no dynamic shadow passes.
+                    // Lighting and appearance still require in-engine QA.
+                    Instances->SetCastShadow(false);
+                    Instances->PreAllocateInstancesMemory(
+                        latebrake::PlannedBatchSize(
+                            static_cast<latebrake::DecorationBatch>(Group)));
+                    DecorationHolder->AddInstanceComponent(Instances);
+                    Instances->RegisterComponent();
+                    if (UMaterialInstanceDynamic* Material =
+                            Instances->CreateAndSetMaterialInstanceDynamic(0))
+                    {
+                        Material->SetVectorParameterValue(
+                            TEXT("Color"), DecorationColors[Group]);
+                    }
+                    Groups[Group] = Instances;
+                    ++CreatedDecorationGroups;
+                }
+
+                for (int32 Index = 0; Index < latebrake::DecorationPieceCount;
+                     ++Index)
+                {
+                    const latebrake::DecorationPlacement Placement =
+                        latebrake::PlannedDecoration(Index);
+                    const int32 Group = latebrake::DecorationBatchIndex(
+                        Placement.Batch);
+                    if (!Placement.Valid || Group < 0 || !Groups[Group])
+                    {
+                        continue;
+                    }
+                    // The holder has identity transform at world origin, so
+                    // these are the same centimetre world placements as the
+                    // old one-actor-per-piece version.
+                    const FTransform Transform(
+                        FRotator::ZeroRotator,
+                        FVector(Placement.Center.X, Placement.Center.Y,
+                                Placement.Height),
+                        FVector(Placement.ScaleX, Placement.ScaleY,
+                                Placement.ScaleZ));
+                    if (Groups[Group]->AddInstance(Transform, false) >= 0)
+                    {
+                        ++CreatedDecorationInstances;
+                    }
                 }
             }
         }
     }
 
-    // Primitive-only grandstand terraces outside the drivable asphalt.
-    // Their presentation and clipping are still pending Unreal playtesting.
-    for (int32 Stand = 0; Stand < latebrake::GrandstandCount; ++Stand)
+    if (CreatedDecorationGroups != latebrake::DecorationBatchCount ||
+        CreatedDecorationInstances != latebrake::DecorationPieceCount)
     {
-        const latebrake::CircuitPoint Center = latebrake::GrandstandCenter(Stand);
-        Decoration(TEXT("GrandstandBase"),
-            FVector(Center.X, Center.Y, 5.0),
-            FVector(15.0, 5.5, 0.9), FLinearColor(0.18f, 0.21f, 0.26f));
-        for (int32 Tier = 0; Tier < 3; ++Tier)
-        {
-            const double Direction = Stand == 0 ? 1.0 : -1.0;
-            Decoration(TEXT("GrandstandTier"),
-                FVector(Center.X, Center.Y + Direction * (Tier - 1) * 155.0,
-                        62.0 + Tier * 32.0),
-                FVector(13.0, 1.25, 0.48), 
-                (Tier % 2 == 0) ? FLinearColor(0.35f, 0.43f, 0.60f)
-                                : FLinearColor(0.26f, 0.31f, 0.42f));
-        }
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_SCENERY_INCOMPLETE groups=%d/%d instances=%d/%d"),
+            CreatedDecorationGroups, latebrake::DecorationBatchCount,
+            CreatedDecorationInstances, latebrake::DecorationPieceCount);
     }
-
-    Decoration(TEXT("StartFinishBanner"),
-        FVector(-2150.0, latebrake::SouthY, 390.0),
-        FVector(8.0, 0.32, 1.5), FLinearColor(0.90f, 0.60f, 0.08f));
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_SCENERY_READY groups=%d instances=%d collision=off"),
+            CreatedDecorationGroups, CreatedDecorationInstances);
+    }
 
     int32 SpawnedCheckpoints = 0;
     for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)

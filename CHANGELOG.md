@@ -2,6 +2,21 @@
 
 ## Unreleased — v0.5.1 executable readiness
 
+### Runtime scenery actor reduction (engine source only)
+
+- Replaced the 93 cosmetic cube actors on the single starter circuit
+  with one holder actor and seven `UInstancedStaticMeshComponent` groups.
+- Reused the exact original centerline stripes, alternating curb palette,
+  two grandstands and start/finish banner via a fixed portable batch plan.
+- Kept nine physical road/ground/barrier actors separate and left all
+  cosmetic meshes non-colliding, overlap-free, shadow-free and outside
+  navigation influence.
+- Added strict C++20 geometry/group-count tests and distinct startup
+  diagnostics for complete vs incomplete scenery assembly.
+- No engine compile, cook, real draw-call/FPS measurement, device test,
+  playable binary or v0.5.1 release is claimed.
+
+
 ### Career launch and recovery accounting integrity
 
 - Career event and required-owned-vehicle selections are now staged inside

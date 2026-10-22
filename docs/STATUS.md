@@ -217,6 +217,19 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   is not proof of Android input delivery or a working Unreal executable**.
   The same real map/engine/platform build blockers remain open.
 
+### v0.5.1 instanced course visuals (unreleased)
+
+- Single prototype circuit decoration plan now groups 93 static cosmetic
+  cube placements into seven color/style batches under one Unreal actor
+  using `UInstancedStaticMeshComponent`, rather than 93 separate actors.
+- Existing asphalt/ground/barrier collision is preserved separately;
+  decorative collision, overlaps, navigation and shadow casting are disabled.
+- Portable C++20 regression tests compare every proposed batched
+  placement against the existing stripe/curb layout and verify group counts.
+- Startup logs distinguish complete vs incomplete instance creation.
+  **UE 5.8 UHT/Editor compilation and renderer/phone profiling are not
+  verified**; no FPS or verified packaged build is claimed.
+
 ### v0.5.1 progression and recovery safety (unreleased)
 
 - A career event now stages its event ID and any required owned vehicle
