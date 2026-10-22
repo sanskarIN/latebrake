@@ -73,6 +73,7 @@ try {
     $geometryIncomplete = 'LogLatebrakeStartup: Error: LATEBRAKE_GEOMETRY_INCOMPLETE collision=8/9 attempts=9'
     $geometryWrong = 'LogLatebrakeStartup: Display: LATEBRAKE_GEOMETRY_READY collision=8/9'
     $meshFailed = 'LogLatebrakeStartup: Error: LATEBRAKE_COLLISION_SETUP_FAILED label=NorthBarrier reason=component-missing'
+    $unsafeSpawn = 'LogLatebrakeStartup: Error: LATEBRAKE_SPAWN_LAYOUT_BLOCKED unsafe player/rival start or recovery'
     $sceneIncomplete = 'LogLatebrakeStartup: Error: LATEBRAKE_SCENERY_INCOMPLETE groups=6/7 instances=70/93'
     $sceneWrong = 'LogLatebrakeStartup: Display: LATEBRAKE_SCENERY_READY groups=7 instances=92 collision=off'
 
@@ -127,6 +128,12 @@ try {
     [System.IO.File]::WriteAllText($fakeRuntimeLog,
         "$fixtureHead`n$sceneReady`n$meshFailed`n$geometryReady`n$gateReady`n")
     Expect-Rejection 'Apparently successful actors must not mask missing collision mesh component' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+
+    [System.IO.File]::WriteAllText($fakeRuntimeLog,
+        "$fixtureHead`n$sceneReady`n$geometryReady`n$unsafeSpawn`n$gateReady`n")
+    Expect-Rejection 'Unsafe player/rival start cannot be masked by complete collision actor counts' {
         & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
     }
 
