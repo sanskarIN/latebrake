@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Career/CareerCatalog.h"
+#include "Progression/RecordValidation.h"
 #include <cmath>
 
 namespace latebrake
@@ -21,8 +22,8 @@ struct CareerFinish final
 inline bool IsValidCareerFinish(const CareerEvent& event,
                                 const CareerFinish& result) noexcept
 {
-    if (!std::isfinite(result.ElapsedSeconds) || result.ElapsedSeconds <= 0.0 ||
-        !std::isfinite(result.BestLapSeconds) || result.BestLapSeconds <= 0.0 ||
+    if (!IsValidFinishedRaceTime(result.ElapsedSeconds) ||
+        !IsValidFinishedRaceTime(result.BestLapSeconds) ||
         !std::isfinite(result.SlowestLapSeconds) ||
         result.SlowestLapSeconds < result.BestLapSeconds ||
         result.SlowestLapSeconds > result.ElapsedSeconds ||
