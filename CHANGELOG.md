@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased v0.5.2 — Swept checkpoint crossings under frame hitches
+
+- Removed the earlier **600 cm per-endpoint approach/departure
+  restriction** from the directional checkpoint test. A real car at
+  low frame rate can cross the gate plane with one sample outside the
+  old visual trigger sphere, while the total physical displacement
+  stays within the already enforced 1,200 cm cap.
+- The code now validates the entire forward movement segment's
+  interpolated gate-plane intersection, with the same lateral,
+  vertical, velocity-direction, and ordered-gate safeguards.
+- Kept the strict 1,200 cm frame-displacement rejection, and retained
+  per-car teleport generations so intentional RECOVER/RESTART jumps
+  cannot earn checkpoints merely by looking like a swept pass.
+- Expanded strict portable C++20 tests of all four directions, exact
+  travel limit, low-FPS true crossings, reverse/wrong-way and
+  same-endpoint teleports, using the real ordered RaceProgress.
+- Genuine Unreal 5.8 compile and installed 30/60 FPS + hitch tests
+  are outstanding, particularly if one frame moves beyond 1,200 cm.
+  No playable builds or v0.5.2 release are claimed.
+
 ## Unreleased v0.5.2 — Finished-race record/award integrity
 
 - Corrected finish handling which cast arbitrary race/lap `double`

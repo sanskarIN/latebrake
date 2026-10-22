@@ -19,8 +19,10 @@ checks the canonical **east, north, west, south** directional normals.
 A valid checkpoint requires:
 - The previous frame on the approach side of the gate plane and the
   current frame on the departure side, with >=150 cm/s forward velocity.
-- Both sample positions at most 600 cm axially from the plane, with a
-  1,200 cm maximum displacement between frames. Large teleports fail.
+- A maximum **1,200 cm total 3D movement** between observations,
+  without requiring either endpoint to be within the former 600 cm
+  trigger sphere. This recognizes a legitimate fast/low-FPS sweep
+  from outside that visual volume through the checkpoint plane.
 - An interpolated crossing point within 500 cm of the road centerline
   and within 380 cm vertically of the 38 cm gate-marker center.
 - The correct next checkpoint according to the existing `RaceProgress`
@@ -33,11 +35,20 @@ instead of physics overlap notifications. Consecutive samples reset
 when the local player pawn changes or becomes unavailable.
 
 This is source code with portable tests; there is **no real UE 5.8 game
-playtest**. A large frame hitch could move a fast car across the entire
-600 cm proximity window and therefore **miss** a checkpoint; tune that
-limit only after instrumented real driving tests, not by accepting arbitrary
-long jumps. Validate fast cornering, airborne vehicles, recover-to-track,
-restart and very low frame-rate phones before considering this qualified.
+playtest**. The older rule also required both sample endpoints to lie
+within 600 cm of the plane; at low FPS, it could **miss legitimate
+forward passes** even if movement remained below the already allowed
+1,200 cm displacement cap. The current code uses the entire bounded
+frame segment as a geometric sweep, interpolating its gate-plane
+intersection. The old sphere continues to display the gate but no
+longer controls timing eligibility.
+
+The 1,200 cm displacement cap remains an intentional safeguard; a
+hitch that moves the car even farther may still **miss** the gate.
+Short and long explicit `RecoverTo`/restart movements are also rejected
+by `CheckpointMotionTrace` teleport generations, regardless of geometric
+appearance. Validate fast cornering, airborne vehicles, recover-to-track,
+restart and low-frame-rate phones before considering this qualified.
 
 ## Unreleased v0.5.2 recovery/restart teleport fencing
 

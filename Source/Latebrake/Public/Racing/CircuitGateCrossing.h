@@ -16,7 +16,10 @@ struct CircuitGateSample final
     double Z = 0.0;
 };
 
-inline constexpr double GatePlaneHalfLengthCm = 600.0;
+// The old 600cm sphere is a visual/legacy trigger bound, NOT an
+// acceptable sample-distance restriction during a slow frame. A genuine
+// sweep can straddle its edge while crossing the gate plane.
+inline constexpr double GateVisualTriggerRadiusCm = 600.0;
 inline constexpr double GateLateralHalfWidthCm = 500.0;
 inline constexpr double GateCenterHeightCm = 38.0;
 inline constexpr double GateVerticalHalfHeightCm = 380.0;
@@ -26,9 +29,14 @@ inline constexpr double GateMaxFrameTravelCm = 1200.0;
 // the line, in the expected race direction, with the interpolated crossing
 // point inside the physical checkpoint corridor and height window.
 //
-// Require both frame endpoints near the gate and a plausible displacement.
-// This rejects long jumps/teleports in a single tick; it does not replace
-// real physics or installed-game collision QA.
+// Limit TOTAL sample-to-sample travel, not the individual endpoints'
+// signed distance from the plane. At low FPS, a real forward segment can
+// begin outside the 600cm visual sphere, cross the gate and end nearby.
+// Trimming such a segment by endpoint distance misses legitimate laps.
+// The motion generation in CheckpointMotionTrace separately rejects even
+// short deliberate RecoverTo/restart teleports; this geometric function
+// must still reject movements longer than 1200cm or wrong direction.
+// Neither rule substitutes for actual Unreal collision and hardware QA.
 inline bool CrossesCircuitGatePlane(int gateIndex,
                                    CircuitGateSample previous,
                                    CircuitGateSample current,
@@ -65,9 +73,10 @@ inline bool CrossesCircuitGatePlane(int gateIndex,
     const double currentAlong =
         direction * ((horizontal ? current.XY.X : current.XY.Y) -
                      (horizontal ? gate.X : gate.Y));
-    if (!(previousAlong < 0.0 && currentAlong >= 0.0) ||
-        previousAlong < -GatePlaneHalfLengthCm ||
-        currentAlong > GatePlaneHalfLengthCm)
+    // Require a TRUE signed plane crossing. Displacement has already been
+    // bounded in 3D above, so neither endpoint needs a second arbitrary
+    // 600cm proximity restriction.
+    if (!(previousAlong < 0.0 && currentAlong >= 0.0))
     {
         return false;
     }

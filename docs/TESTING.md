@@ -121,8 +121,13 @@ Required real Unreal 5.8 + installed game tests:
   slow rolls, stationary car, side-of-road bypass, jumping and airborne
   crossing; only legal plane passes should count.
 - [ ] Race at high speed across a gate at 30 FPS, 60 FPS and under forced
-  frame-time hitches; inspect whether strict 600 cm endpoint checks miss
-  legitimate crossings and record all failures.
+  frame-time hitches; verify forward sweeps up to 1,200 cm register even
+  if a frame begins beyond the old 600 cm trigger sphere. Record
+  movement distances/timing for any missed gate above that limit.
+- [ ] From the same positions, test a `RecoverTo` generation change:
+  no gate may be credited merely because the teleport crosses its plane.
+- [ ] Reject over-1,200 cm frame jumps, reversed trajectories,
+  off-lane/airborne swept intersections and out-of-order gates.
 - [ ] Test RECOVER and RESTART near each gate; no teleport or position
   reset can secretly finish a sector.
 - [ ] Verify checkpoint marker visuals, HUD timing and lap counting,
