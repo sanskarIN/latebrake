@@ -217,6 +217,20 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   is not proof of Android input delivery or a working Unreal executable**.
   The same real map/engine/platform build blockers remain open.
 
+### v0.5.1 race split timing (unreleased)
+
+- Portable `RaceProgress` now tracks the fastest strictly positive split
+  for each ordered sector and compares a fresh split only with the **previous**
+  best of that identical sector. Negative delta means faster.
+- A run-local theoretical lap becomes available once every sector has a
+  valid best. It is labelled as theoretical, not a completed personal best,
+  and is cleared on restart/event switch instead of being written to save.
+- The non-compact HUD renders these diagnostics. A separate strict C++20
+  SectorTiming regression target covers ordering, time penalties, signed
+  deltas, reset and numeric bounds.
+- No Unreal Editor/UI testing or actual installed gameplay was performed.
+  See [sector timing acceptance tests](SECTOR_TIMING.md).
+
 ### v0.5.1 release integrity work — no executable published
 
 - A candidate's post-UAT SHA256 file manifest is now verified **immediately**
