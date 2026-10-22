@@ -26,7 +26,8 @@ $log = Get-Content -LiteralPath $file.FullName -Raw -ErrorAction Stop
 foreach ($failure in @('LATEBRAKE_STARTUP_BLOCKED',
                        'LATEBRAKE_SCENERY_INCOMPLETE',
                        'LATEBRAKE_GEOMETRY_INCOMPLETE',
-                       'LATEBRAKE_COLLISION_SETUP_FAILED')) {
+                       'LATEBRAKE_COLLISION_SETUP_FAILED',
+                       'LATEBRAKE_SPAWN_LAYOUT_BLOCKED')) {
     if ($log.Contains($failure)) {
         throw "GameMode logged failure marker $failure; startup gate rejected."
     }
