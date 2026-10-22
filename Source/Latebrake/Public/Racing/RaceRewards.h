@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Racing/RaceEvents.h"
+#include "Progression/RecordValidation.h"
 
 #include <cmath>
 
@@ -11,8 +12,8 @@ namespace latebrake
 inline int CalculateRaceCredits(EventKind event, double finishedSeconds,
                                 int recoveryCount) noexcept
 {
-    if (!IsValidEvent(event) || !std::isfinite(finishedSeconds) ||
-        finishedSeconds <= 0.0 || recoveryCount < 0)
+    if (!IsValidEvent(event) || !IsValidFinishedRaceTime(finishedSeconds) ||
+        recoveryCount < 0)
     {
         return 0;
     }
