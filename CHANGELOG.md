@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased v0.5.2 — Android residual touch physics safety
+
+- A viewport resize or temporary unavailable surface now clears **both**
+  touch finger ownership and the smoothed throttle/steering values used
+  by the next physics frame. Previously the smoothing tail could keep
+  applying motor force or steering briefly after the finger was invalid.
+- Centralized layout invalidation in portable `TouchViewportSafety.h`;
+  both the pawn physics tick and input dispatcher use the same guard.
+- When Android loses its player controller, **all** raw gamepad/keyboard
+  drive axes and filters are neutralized, preventing acceleration from
+  being reconstructed from a stale cached axis on the following frame.
+- Standalone C++20 regression checks prove stable layouts keep existing
+  commands, rotation/small resize/invalid layouts zero both filters,
+  no residual command returns on the next tick and the original physical
+  finger cannot be replayed before release/re-press.
+- No actual Unreal Engine 5.8 compilation, Android device QA, gameplay
+  frame capture or playable package is claimed.
+
 ## Unreleased v0.5.2 — Transactional career replay (source development)
 
 - Fixed post-finish garage changes corrupting the next career attempt's
