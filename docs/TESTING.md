@@ -1,3 +1,19 @@
+## v0.5.5: post-race pace consistency and finish validation (source-only)
+
+The standalone `FinishedRaceInsights` CTest links the real portable
+`RaceProgress.cpp`, not fake lap records. It checks that summary values
+exist only at a finished race with a positive, recordable elapsed clock;
+sector bests form an explicitly **theoretical** (not achieved) lap;
+the fastest-to-slowest lap spread needs two actual timed laps; invalid
+and zero-duration observations cannot produce fake pace statistics; and
+the existing seven-day SaveGame/award clock boundary is respected.
+
+Cross-platform strict C++20 tests are required, but actual Unreal 5.8
+`LatebrakeEditor` compilation, Results page layout at small screens,
+controller/touch access, packaged player HUD and device performance
+are **not validated** by these tests. No new persistence schema or
+gameplay reward changes are intended.
+
 ## v0.5.4: local diagnostic parser regression (source-only)
 
 Run `python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v`.
