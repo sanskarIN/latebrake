@@ -124,12 +124,15 @@ void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void ALatebrakeCarPawn::UnPossessed()
 {
+    TouchPresses.Reset();
     ClearDriverInputs();
     Super::UnPossessed();
 }
 
 void ALatebrakeCarPawn::HandleAppInputInterruption()
 {
+    // Focus changes may discard release events; start a fresh touch session.
+    TouchPresses.Reset();
     ClearDriverInputs();
 }
 
@@ -318,6 +321,11 @@ void ALatebrakeCarPawn::TogglePause()
 
 void ALatebrakeCarPawn::TouchPressed(ETouchIndex::Type FingerIndex, FVector Location)
 {
+    // A duplicated Pressed event from any held finger (including an action
+    // pad or blank UI region) must never trigger RECOVER or RESTART again.
+    // Do not reset this tracker from ClearDriverInputs(): those actions
+    // themselves clear driving state while the finger is still held.
+    if (!TouchPresses.Press(static_cast<int>(FingerIndex))) return;
     ApplyTouch(FingerIndex, Location, true);
 }
 
@@ -431,6 +439,7 @@ void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Loc
 {
     (void)Location;
     TouchDrive.Release(static_cast<int32>(FingerIndex));
+    TouchPresses.Release(static_cast<int>(FingerIndex));
 }
 
 void ALatebrakeCarPawn::SelectCircuit()
