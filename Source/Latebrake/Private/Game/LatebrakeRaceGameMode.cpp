@@ -642,6 +642,11 @@ int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps() const
     return IsValid(RivalCar) ? RivalCar->GetApproximateLaps() : 0;
 }
 
+int32 ALatebrakeRaceGameMode::GetRivalPlannedLaps() const
+{
+    return IsValid(RivalCar) ? RivalCar->GetExpectedLaps() : 0;
+}
+
 int32 ALatebrakeRaceGameMode::GetRivalRecoveryCount() const
 {
     return IsValid(RivalCar) ? RivalCar->GetPilotRecoveries() : 0;
