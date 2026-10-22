@@ -1,3 +1,14 @@
+## v0.5.4: local diagnostic parser regression (source-only)
+
+Run `python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v`.
+`CheckpointQALogTests.py` runs **synthetic fixture strings only** to
+verify classification counters, gate ordering, truncated/malformed rows,
+counter overflow, complete four-gate coverage and explicitly unverified
+report metadata. It does not create a map or run Unreal. The same parser
+can be used offline on a genuine captured device log by passing the log
+path to `scripts/AnalyzeCheckpointQA.py --require-all-gates`, but
+successful parsing alone never counts as installed gameplay QA.
+
 ## v0.5.4: bounded QA counter regression (source-only)
 
 The standalone `GateDiagnosticCounters` test uses real
