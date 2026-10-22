@@ -217,6 +217,18 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   is not proof of Android input delivery or a working Unreal executable**.
   The same real map/engine/platform build blockers remain open.
 
+### v0.5.1 mobile viewport input safety (unreleased)
+
+- Touch viewport dimensions are now observed before each Android car
+  physics tick, and within every touch event. A size/orientation change
+  cancels existing steering and pedal ownership immediately.
+- Physical finger tracking is maintained across geometry changes to avoid
+  duplicate action firing and stale-control reacquisition until release.
+- Disposable portable C++20 tests cover rotate, resize, invalid viewport,
+  delayed movement, duplicate press and genuine re-press behavior.
+- This does not prove Android touch-event dispatch, frame performance or
+  packaged-game playability; keep engine/device qualification issues open.
+
 ### v0.5.1 runtime startup smoke gate (unreleased)
 
 - The future real installed-game log verifier now requires **both** the
