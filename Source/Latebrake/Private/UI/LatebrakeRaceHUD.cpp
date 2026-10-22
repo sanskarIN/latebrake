@@ -50,6 +50,10 @@ void ALatebrakeRaceHUD::DrawHUD()
             Y += 28.f * UIScale;
         };
         MenuLine(FString::Printf(TEXT("LATEBRAKE / %s"), *Mode->GetMenuPageTitle()), true);
+        if (!Mode->IsCircuitReadyForGameplay())
+        {
+            MenuLine(TEXT("TRACK INCOMPLETE - RACE CLOCK AND SCORING DISABLED"), true);
+        }
         MenuLine(TEXT("TAB CLOSE | PAGE DOWN/UP NAVIGATE | ENTER SELECT"));
         switch (Mode->GetMenuPage())
         {
@@ -185,6 +189,10 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     Line(bCompact ? TEXT("LATEBRAKE") : TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"),
         Accent, true);
+    if (!Mode->IsCircuitReadyForGameplay())
+    {
+        Line(TEXT("TRACK NOT READY - RACE CLOCK AND GATES DISABLED"), Accent);
+    }
     Line(Mode->IsCareerRace()
         ? (bCompact ? FString(TEXT("CAREER RACE"))
                     : FString::Printf(TEXT("CAREER  %s"), *Mode->GetCareerEventName()))
