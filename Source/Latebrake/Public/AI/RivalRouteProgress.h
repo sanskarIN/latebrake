@@ -23,6 +23,16 @@ public:
     {
     }
 
+    // Reconfigure when switching quick races/career rounds. All route,
+    // recovery and stuck-timer state belongs to the previous attempt and
+    // must not leak into the new event's lap count.
+    void Configure(int waypointCount, int requiredLaps) noexcept
+    {
+        WaypointCount = std::clamp(waypointCount, 1, 256);
+        RequiredLaps = std::clamp(requiredLaps, 1, 100);
+        Reset();
+    }
+
     void Reset() noexcept
     {
         NextWaypoint = 0;
