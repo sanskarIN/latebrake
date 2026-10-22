@@ -29,6 +29,7 @@
 #include "Track/DecorationBatchPlan.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
+#include "Track/CollisionBlockSetup.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -89,43 +90,85 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     ApplyGarageToPlayer();
 }
 
-AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label, const FVector& Position,
-    const FVector& Scale, const FLinearColor& Color)
+AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label,
+    const FVector& Position, const FVector& Scale, const FLinearColor& Color)
 {
-    UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+    // The portable source plan already validates its nine transforms; this
+    // secondary runtime boundary also fails closed if future callers supply
+    // malformed locations or dimensions.
+    const latebrake::CircuitCollisionBlock Requested{
+        {Position.X, Position.Y}, Position.Z, Scale.X, Scale.Y, Scale.Z,
+        latebrake::CollisionBlockStyle::Ground};
+    if (!latebrake::IsValidCollisionBlock(Requested))
+    {
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_COLLISION_SETUP_FAILED label=%s reason=invalid-plan"),
+            Label);
+        return nullptr;
+    }
+
+    UStaticMesh* Cube = LoadObject<UStaticMesh>(
+        nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
     if (!Cube)
     {
-        UE_LOG(LogTemp, Error, TEXT("Latebrake: built-in Cube mesh not found, cannot build track"));
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_COLLISION_SETUP_FAILED label=%s reason=missing-cube-asset"),
+            Label);
         return nullptr;
     }
 
     FActorSpawnParameters Parameters;
-    Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    Parameters.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
     AStaticMeshActor* Block = GetWorld()->SpawnActor<AStaticMeshActor>(
-        AStaticMeshActor::StaticClass(), Position, FRotator::ZeroRotator, Parameters);
+        AStaticMeshActor::StaticClass(), Position, FRotator::ZeroRotator,
+        Parameters);
     if (!Block)
     {
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_COLLISION_SETUP_FAILED label=%s reason=actor-missing"),
+            Label);
         return nullptr;
     }
 
 #if WITH_EDITOR
     Block->SetActorLabel(Label);
-#else
-    (void)Label;
 #endif
     UStaticMeshComponent* Mesh = Block->GetStaticMeshComponent();
-    Mesh->SetMobility(EComponentMobility::Movable);
-    Mesh->SetStaticMesh(Cube);
-    Mesh->SetCollisionProfileName(TEXT("BlockAll"));
-    Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    Block->SetActorScale3D(Scale);
+    if (Mesh)
+    {
+        Mesh->SetMobility(EComponentMobility::Movable);
+        Mesh->SetStaticMesh(Cube);
+        Mesh->SetCollisionProfileName(TEXT("BlockAll"));
+        Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        Block->SetActorScale3D(Scale);
+    }
 
-    // BasicShapeMaterial is part of the editor's engine content; do not copy it.
-    if (UMaterialInstanceDynamic* Material = Mesh->CreateAndSetMaterialInstanceDynamic(0))
+    const latebrake::CollisionBlockSetupDecision State =
+        latebrake::EvaluateCollisionBlockSetup(
+            Requested, true, Mesh != nullptr,
+            Mesh && Mesh->GetStaticMesh() == Cube,
+            Mesh && Mesh->GetCollisionEnabled() == ECollisionEnabled::QueryAndPhysics,
+            Block->GetActorScale3D().Equals(Scale, 0.01f));
+    if (State != latebrake::CollisionBlockSetupDecision::Ready)
+    {
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_COLLISION_SETUP_FAILED label=%s reason=%s"),
+            Label, UTF8_TO_TCHAR(latebrake::CollisionBlockSetupDecisionName(State)));
+        Block->Destroy();
+        return nullptr;
+    }
+
+    // An appearance material is optional for this prototype. Its failure
+    // does not change an already checked physical actor configuration.
+    if (UMaterialInstanceDynamic* Material =
+            Mesh->CreateAndSetMaterialInstanceDynamic(0))
     {
         Material->SetVectorParameterValue(TEXT("Color"), Color);
     }
 
+    // Still only validates component configuration in the Unreal source;
+    // real ground contact and barrier physics require installed playtests.
     return Block;
 }
 
