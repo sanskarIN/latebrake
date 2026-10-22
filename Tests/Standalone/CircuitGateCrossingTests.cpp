@@ -63,11 +63,41 @@ int main()
         Require(CrossesCircuitGatePlane(gate, edge, after,
                                        dx * 250.0, dy * 250.0),
                 "near-approach crossing allowed");
-        const CircuitGateSample tooFar{{center.X - dx * 601.0,
-                                        center.Y - dy * 601.0}, Z};
-        Require(!CrossesCircuitGatePlane(gate, tooFar, after,
-                                        dx * 250.0, dy * 250.0),
-                "far approach rejected even when endpoint is after gate");
+        // A low-FPS sample can begin just outside the old 600cm trigger
+        // sphere yet sweep through the valid gate plane. That is genuine
+        // forward driving, not a skipped checkpoint or a teleport.
+        const CircuitGateSample oldSphereMiss{{center.X - dx * 601.0,
+                                               center.Y - dy * 601.0}, Z};
+        Require(CrossesCircuitGatePlane(gate, oldSphereMiss, after,
+                                       dx * 250.0, dy * 250.0),
+                "forward sweep across old trigger boundary now counts");
+
+        const CircuitGateSample lagBefore{{center.X - dx * 900.0,
+                                           center.Y - dy * 900.0}, Z};
+        const CircuitGateSample lagAfter{{center.X + dx * 200.0,
+                                          center.Y + dy * 200.0}, Z};
+        Require(CrossesCircuitGatePlane(gate, lagBefore, lagAfter,
+                                       dx * 900.0, dy * 900.0),
+                "1100cm same-direction frame hitch counts on all four gates");
+        Require(!CrossesCircuitGatePlane(gate, lagAfter, lagBefore,
+                                        dx * 900.0, dy * 900.0),
+                "large reverse sweep cannot use positive velocity to claim gate");
+        Require(!CrossesCircuitGatePlane(gate, lagBefore, lagAfter,
+                                        dx * -900.0, dy * -900.0),
+                "large sweep still rejects a wrong-way velocity");
+        const CircuitGateSample exactlyCapBefore{{center.X - dx * 1100.0,
+                                                  center.Y - dy * 1100.0}, Z};
+        const CircuitGateSample exactlyCapAfter{{center.X + dx * 100.0,
+                                                 center.Y + dy * 100.0}, Z};
+        Require(CrossesCircuitGatePlane(gate, exactlyCapBefore,
+                                       exactlyCapAfter, dx * 250.0, dy * 250.0),
+                "exact 1200cm displacement bound is permitted");
+        const CircuitGateSample beyondCap{{center.X - dx * 1101.0,
+                                           center.Y - dy * 1101.0}, Z};
+        Require(!CrossesCircuitGatePlane(gate, beyondCap,
+                                         exactlyCapAfter,
+                                         dx * 250.0, dy * 250.0),
+                "over-1200cm sweep still rejects movement discontinuities");
 
         // Lateral axis is orthogonal to the direction of travel.
         const double lx = dy;
