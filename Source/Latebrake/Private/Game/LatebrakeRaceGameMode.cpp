@@ -30,6 +30,7 @@
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/CollisionBlockSetup.h"
+#include "Track/CircuitSpawnSafety.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -392,7 +393,17 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     // Every requested collision-bearing actor and every unique gate must
     // exist before the game can authorize race results. Scenery must have
     // its expected source-created instance plan as well.
-    bCircuitReady = Audit.Ready();
+    // Prevent a future route/track edit from placing player starts or
+    // recovery destinations inside perimeter barriers or off the road.
+    // This checks pure planned geometry only; installed vehicle contact
+    // must still be tested in the actual Unreal game.
+    const bool bSpawnLayoutSafe = latebrake::AreCircuitSpawnLocationsSafe();
+    if (!bSpawnLayoutSafe)
+    {
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_SPAWN_LAYOUT_BLOCKED unsafe player/rival start or recovery"));
+    }
+    bCircuitReady = Audit.Ready() && bSpawnLayoutSafe;
     if (bCircuitReady)
     {
         UE_LOG(LogLatebrakeStartup, Display,
