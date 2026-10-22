@@ -2,8 +2,24 @@
 
 **Updated:** 2026-10-22
 **Latest published milestone:** [v0.5.4 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.4).
-**Next development milestone:** v0.5.5 (development planning; not released).
+**Next development milestone:** v0.5.5 finish insights (development, not released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.5 in development — player-facing finish scorecard
+
+- New engine-neutral `BuildFinishedRaceInsights` uses genuine
+  `RaceProgress` and the already shared bounded finish-time policy.
+- Shows an achieved best lap against this run's theoretical split sum,
+  plus a fastest-to-slowest measured lap spread only with two or more
+  positive timed laps. Instant zero-duration gates do not produce fake
+  lap consistency data.
+- Results-menu and non-compact finished-HUD source now render those
+  values if a valid finished race exists; no reward, save, career or
+  checkpoint behavior changes.
+- Strict C++20 tests cover actual ordered lap progression and clock
+  edge cases. **Real Unreal 5.8 compilation, HUD readability and
+  installed Windows/Android playtest are not verified.**
+- v0.5.5 has not been tagged or released. [Design](FINISH_INSIGHTS.md).
 
 ## v0.5.4 published source-only — bounded checkpoint QA summaries
 

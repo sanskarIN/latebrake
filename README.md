@@ -109,6 +109,23 @@ never certifies game builds or playability.
 **Published v0.5.4 is source-only, not Unreal-installed QA or a playable game.** See
 [QA counter design](docs/GATE_QA_SUMMARIES.md).
 
+## v0.5.5 development (NOT released)
+
+A new `FinishedRaceInsights` policy computes a reliable finished-race
+scorecard from the **actual** `RaceProgress` clock and sector splits:
+best and last recorded lap, a within-run theoretical best-sectors lap,
+the gap between achieved fastest lap and that theoretical lap, and
+fastest-to-slowest spread when **at least two positively timed laps**
+exist. Instant zero-duration laps are not counted as timed evidence;
+unrecordable clocks cannot generate a scorecard. The results menu and
+non-compact finished HUD show these summaries, without changing career
+credits, medals or checkpoint scoring. Strict C++20 regression tests
+are in `Tests/Standalone/FinishedRaceInsightsTests.cpp`.
+
+**Unreleased source development only.** Real Unreal 5.8 gameplay,
+HUD readability on screen and packaged Win64/Android behavior remain
+unverified. [Finish insights design](docs/FINISH_INSIGHTS.md).
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.4** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.

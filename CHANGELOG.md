@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased v0.5.5 — Race finish insights (source development)
+
+- Count strictly positive finite timed laps independently of ordered
+  gate/lap completion; an instant t=0 lap is never a pace observation.
+- Add portable `FinishedRaceInsights` computing an achieved best lap,
+  last timed lap, within-run theoretical split sum, positive gap to the
+  theoretical lap, and fastest-to-slowest lap spread only with at least
+  two genuinely timed laps.
+- Reject invalid and unrecordable clocks using the same existing
+  finished-race record policy. No SaveGame schema, career medals, race
+  rewards or gate acceptance rules are changed.
+- Add result-menu and non-compact finished-HUD source display, plus
+  strict actual-RaceProgress C++20 tests for three laps, one lap,
+  zero-duration laps, restarts and seven-day record limits.
+- This is **unreleased source work**. No Unreal Editor/UHT compile,
+  real gameplay QA or Windows/Android executable is claimed.
+
+
 ## v0.5.4 — Bounded checkpoint QA counters (SOURCE-ONLY pre-release, 2026-10-22)
 
 - Extracted the diagnostic summary timer into engine-neutral
