@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Source preview: [v0.5.3](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.3) — SOURCE-ONLY PRE-RELEASE (22 October 2026), NOT A PLAYABLE GAME.** GitHub source ZIP/tar.gz files are for developers; there is **no Windows EXE, Android APK/AAB or Linux game**. Portable C++20 CI does not compile Unreal 5.8. The editor/UHT build, real cookable project map, Win64/Android packages and installed playtests remain unverified.
+> **Source preview: [v0.5.4](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.4) — SOURCE-ONLY PRE-RELEASE (22 October 2026), NOT A PLAYABLE GAME.** GitHub source ZIP/tar.gz files are for developers; there is **no Windows EXE, Android APK/AAB or Linux game**. Portable C++20 CI does not compile Unreal 5.8. The editor/UHT build, real cookable project map, Win64/Android packages and installed playtests remain unverified.
 
 ## What's in source today?
 
@@ -94,7 +94,7 @@ tests exercise all four gates. This is **not** evidence of
 Unreal gameplay, checkpoint instrumentation on device or a playable build.
 See [gate diagnostic design](docs/GATE_DIAGNOSTICS.md).
 
-## v0.5.4 in development (NOT released)
+## v0.5.4 source-only pre-release
 
 A fixed-memory `GateDiagnosticCounters` helper aggregates accepted
 crossings, teleport rebases, malformed samples and rejected gate reasons
@@ -106,12 +106,12 @@ Strict portable C++20 tests check classification, bounded time
 windows, resets and saturation. An [offline checkpoint QA log summarizer](scripts/AnalyzeCheckpointQA.py)
 can review a tester-supplied log without contacting any service; its output
 never certifies game builds or playability.
-**This is not Unreal-installed QA or a playable v0.5.4 release.** See
+**Published v0.5.4 is source-only, not Unreal-installed QA or a playable game.** See
 [QA counter design](docs/GATE_QA_SUMMARIES.md).
 
 ## Development and releases
 
-**v0.1.0** through **v0.5.3** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
+**v0.1.0** through **v0.5.4** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
 
 ## License and contributions
 
