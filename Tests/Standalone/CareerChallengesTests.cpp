@@ -70,6 +70,23 @@ int main()
     invalid.BestLapSeconds = 200;
     Check(EvaluateCareerMedal(*GetCareerEvent(6), invalid) == CareerMedal::None,
           "illogical lap duration rejected");
+    invalid = Result(2, 604800.01, 0);
+    Check(!IsValidCareerFinish(*GetCareerEvent(7), invalid) &&
+          EvaluateCareerMedal(*GetCareerEvent(7), invalid) == CareerMedal::None,
+          "clean challenge cannot award gold for a seven-day-plus clock");
+    invalid = Result(3, 604800.01, 0, 0, 80, 86);
+    Check(!IsValidCareerFinish(*GetCareerEvent(9), invalid) &&
+          EvaluateCareerMedal(*GetCareerEvent(9), invalid) == CareerMedal::None,
+          "consistency medals cannot bypass invalid elapsed time");
+    invalid = Result(2, 604800.0, 0, 0, 50, 55);
+    Check(IsValidCareerFinish(*GetCareerEvent(7), invalid),
+          "valid recordable seven-day boundary remains acceptable");
+    invalid = Result(2, 180, 0, 0, 1e-100, 55);
+    Check(!IsValidCareerFinish(*GetCareerEvent(7), invalid),
+          "best lap which underflows persisted precision is rejected");
+    invalid = Result(2, 180, 0, 0, 604800.01, 604800.01);
+    Check(!IsValidCareerFinish(*GetCareerEvent(7), invalid),
+          "overlong lap is invalid even before ordering validation");
     std::cout << "Career challenges passed.\n";
     return 0;
 }
