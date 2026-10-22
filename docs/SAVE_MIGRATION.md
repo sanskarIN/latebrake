@@ -46,6 +46,18 @@ speed-display unit toggle also restores the previous setting if its write
 fails. Transient race results and the active running event are **not**
 automatically resumed after disk repair; players can retry the event.
 
+**Unreleased v0.5.2 time-record consistency:** Race finish evaluation
+now applies the same positive, finite and seven-day upper bound used by
+`SanitizeBestTime` when loading historical records. An unrepresentable
+or invalid elapsed/best-lap clock cannot award quick-race credits, first
+career medals, additional race completions or a stored personal best.
+The best-time improvement function also preserves an existing valid
+record when a new candidate is slower or malformed, and the SaveGame
+writer sanitizes all three best fields before serializing. This avoids
+a successful write containing an unrecordable `float` that would
+otherwise be silently discarded on the next load. It does **not**
+provide atomic filesystem writes or validate actual Unreal serialization.
+
 **Limit of the guarantee:** this is only an in-memory rollback when Unreal
 reports a failure. It does not make filesystem writes transactional, detect
 a partially corrupted save, or guarantee durability after OS power loss.
