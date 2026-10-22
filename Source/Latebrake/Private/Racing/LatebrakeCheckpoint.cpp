@@ -66,7 +66,6 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
 #if !UE_BUILD_SHIPPING
         bHadLoggedDecision = false;
         DiagnosticWindow.Reset();
-        DiagnosticWindowSeconds = 0.0;
 #endif
         return;
     }
@@ -79,7 +78,6 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
 #if !UE_BUILD_SHIPPING
         bHadLoggedDecision = false;
         DiagnosticWindow.Reset();
-        DiagnosticWindowSeconds = 0.0;
 #endif
     }
 
@@ -116,43 +114,37 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
         LastLoggedDecision = Result.Gate;
         // A change from aggregate mode starts a clean new summary window.
         DiagnosticWindow.Reset();
-        DiagnosticWindowSeconds = 0.0;
     }
     else if (DiagnosticLevel == 2)
     {
         // Level 2 records bounded aggregated categories only. There are no
         // frame-by-frame logs, coordinate traces or remote telemetry.
-        DiagnosticWindow.Observe(Result);
-        if (FMath::IsFinite(DeltaSeconds) && DeltaSeconds > 0.0f)
-        {
-            DiagnosticWindowSeconds += FMath::Min(
-                static_cast<double>(DeltaSeconds), 1.0);
-        }
-        if (DiagnosticWindowSeconds >= 10.0)
+        // Portable bounded-window logic is covered by CTest. An invalid
+        // frame delta or a single huge hitch cannot advance a full window.
+        if (DiagnosticWindow.Record(Result, static_cast<double>(DeltaSeconds)))
         {
             UE_LOG(LogTemp, Display,
                 TEXT("Latebrake checkpoint=%d qa-samples=%u crossed=%u "
                      "teleport-rebase=%u invalid-position=%u wrong-way=%u "
                      "frame-travel=%u lane-miss=%u height-miss=%u no-plane=%u"),
-                CheckpointIndex, DiagnosticWindow.TotalSamples(),
-                DiagnosticWindow.CountTrace(
+                CheckpointIndex, DiagnosticWindow.Counts().TotalSamples(),
+                DiagnosticWindow.Counts().CountTrace(
                     latebrake::CheckpointTraceDecision::Crossed),
-                DiagnosticWindow.CountTrace(
+                DiagnosticWindow.Counts().CountTrace(
                     latebrake::CheckpointTraceDecision::TeleportRebase),
-                DiagnosticWindow.CountTrace(
+                DiagnosticWindow.Counts().CountTrace(
                     latebrake::CheckpointTraceDecision::InvalidPosition),
-                DiagnosticWindow.CountGateRejection(
+                DiagnosticWindow.Counts().CountGateRejection(
                     latebrake::CircuitGateDecision::NotMovingForward),
-                DiagnosticWindow.CountGateRejection(
+                DiagnosticWindow.Counts().CountGateRejection(
                     latebrake::CircuitGateDecision::ExcessiveFrameTravel),
-                DiagnosticWindow.CountGateRejection(
+                DiagnosticWindow.Counts().CountGateRejection(
                     latebrake::CircuitGateDecision::OutsideLateralCorridor),
-                DiagnosticWindow.CountGateRejection(
+                DiagnosticWindow.Counts().CountGateRejection(
                     latebrake::CircuitGateDecision::OutsideVerticalCorridor),
-                DiagnosticWindow.CountGateRejection(
+                DiagnosticWindow.Counts().CountGateRejection(
                     latebrake::CircuitGateDecision::NoForwardPlaneCrossing));
             DiagnosticWindow.Reset();
-            DiagnosticWindowSeconds = 0.0;
         }
         bHadLoggedDecision = false;
     }
@@ -161,7 +153,6 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
         // Leaving diagnostic mode never carries stale counters or reason
         // state into a future QA session.
         DiagnosticWindow.Reset();
-        DiagnosticWindowSeconds = 0.0;
         bHadLoggedDecision = false;
     }
 #endif
