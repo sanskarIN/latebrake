@@ -219,11 +219,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     else
     {
         TouchViewport.Reset();
-        TouchDrive.Clear();
-        // Losing the controller invalidates the driving input, including
-        // previously smoothed throttle/steering, not just finger ownership.
-        SmoothedThrottle = 0.f;
-        SmoothedSteering = 0.f;
+        // Losing the controller invalidates both touch and analog input.
+        // Reset the raw axes, not only their smooth filters: otherwise the
+        // next Tick may rebuild throttle from a stale gamepad axis value.
+        ClearDriverInputs();
     }
 #endif
 
