@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 // Portable, engine-independent race progression logic.
 // This header is deliberately free of Unreal dependencies so the same rules
 // can be tested with a standard C++20 compiler in GitHub Actions.
@@ -14,6 +16,9 @@ enum class RaceState
 class RaceProgress final
 {
 public:
+    // Fixed-capacity split storage avoids allocations inside portable/Unreal race ticks.
+    static constexpr int MaxCheckpoints = 256;
+
     explicit RaceProgress(int checkpointCount = 4, int requiredLaps = 3) noexcept;
 
     void Reset() noexcept;
@@ -32,6 +37,16 @@ public:
     double GetBestLapSeconds() const noexcept { return BestLapSeconds; }
     double GetSlowestLapSeconds() const noexcept { return SlowestLapSeconds; }
     double GetLastSectorSeconds() const noexcept { return LastSectorSeconds; }
+    double GetCurrentSectorSeconds() const noexcept { return ElapsedSeconds - LastCheckpointSeconds; }
+    int GetLastSectorIndex() const noexcept { return LastSectorIndex; }
+    // Negative delta means the last split beat the previous best for that
+    // exact sector, NOT another gate or a prior session.
+    bool HasLastSectorComparison() const noexcept { return LastSectorCompared; }
+    double GetLastSectorDeltaSeconds() const noexcept { return LastSectorDeltaSeconds; }
+    double GetBestSectorSeconds(int sector) const noexcept;
+    // Sum of best observed valid splits in THIS run only. Returns 0 until
+    // every sector was timed; this is not a persistent all-time record.
+    double GetTheoreticalBestLapSeconds() const noexcept;
     RaceState GetState() const noexcept { return State; }
     bool IsFinished() const noexcept { return State == RaceState::Finished; }
 
@@ -47,6 +62,10 @@ private:
     double BestLapSeconds = 0.0;
     double SlowestLapSeconds = 0.0;
     double LastSectorSeconds = 0.0;
+    double LastSectorDeltaSeconds = 0.0;
+    int LastSectorIndex = -1;
+    bool LastSectorCompared = false;
+    std::array<double, MaxCheckpoints> BestSectorSeconds{};
     RaceState State = RaceState::Running;
 };
 } // namespace latebrake
