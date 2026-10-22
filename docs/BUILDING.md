@@ -159,3 +159,16 @@ Physically drive the player car against each boundary and confirm
 road contact through real installed Win64/Android games. No local
 portable test can certify actual game physics; use the separate
 [collision response QA guide](COLLISION_RESPONSE_QA.md).
+
+
+## v0.5.9 runtime clock and startup messaging acceptance
+
+After licensed UE 5.8 Editor/UHT/game targets compile and a genuine
+`/Game/Maps/LatebrakeCircuit` is authored/cooked, test a forced
+startup failure (for example missing built-in Cube mesh on a disposable
+test project) and ensure the HUD/menu says `TRACK NOT READY`,
+no elapsed race time accumulates and no checkpoint awards occur.
+Restore the valid course, then drive, pause/resume, finish and
+restart with real controls on installed Win64/Android candidates.
+Record actual process/device evidence and package/source SHA. This
+is **not** satisfied by portable C++20 policy tests alone.

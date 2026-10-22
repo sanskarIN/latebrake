@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased v0.5.9 — Fail-closed race clock on incomplete startup
+
+- New portable `RaceClockReadiness.h` advances the actual
+  `RaceProgress` clock only when the entire original circuit has
+  passed its source startup audit, the game is unpaused, the race is
+  still running, and frame duration is finite and positive.
+- Updated `LatebrakeRaceGameMode.cpp` to call the shared policy
+  rather than advancing race time unconditionally on every tick.
+  Incomplete collision geometry, unchecked collision channels,
+  unsafe planned spawns and missing checkpoints can no longer
+  accumulate a deceptive result clock.
+- Added `IsCircuitReadyForGameplay()` source accessor and HUD/menu
+  warnings for a blocked/incomplete course.
+- New strict C++20 `RaceClockReadinessTests.cpp` links the actual
+  game race-progress source and checks blocked startup, world pause,
+  malformed time, running/resumed race, real finish, completed race
+  freeze and restart safety. Registered in standalone CMake.
+- **Not released**; no real Unreal Editor/UHT/game C++ compile,
+  cooked map, installed Win64/Android build or gameplay observation.
+
+
 ## v0.5.8 — Collision-channel response integrity (SOURCE-ONLY pre-release, 2026-10-22)
 
 - New `CollisionResponsePolicy.h` classifies three critical blocking
