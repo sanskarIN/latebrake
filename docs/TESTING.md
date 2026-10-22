@@ -1,3 +1,20 @@
+## v0.5.4: bounded QA counter regression (source-only)
+
+The standalone `GateDiagnosticCounters` test uses real
+`CheckpointMotionTrace::SampleDetailed` outcomes and checks initial
+baselines, deliberate recovery generation rebasing, wrong-way samples,
+legitimate crossing, per-reason rejection tallies, saturating merge,
+invalid category handling and full reset. Registration is in
+`Tests/Standalone/CMakeLists.txt`; compile with strict C++20 on CI.
+
+In an **authorized non-shipping Unreal test build**, console mode
+`latebrake.CheckpointDiagnostics 2` is intended to print aggregated
+per-gate QA counters about every ten seconds, with no coordinates and no
+remote upload. This Unreal integration and its overhead have **not**
+been compiled or tested on genuine devices. Validate at 30/60 FPS and
+artificial frame hitches, pawns switching and recover/restart, plus mode
+0/1/2 toggles, before making any performance or gameplay claims.
+
 # Test plan
 
 ## Executable automated checks

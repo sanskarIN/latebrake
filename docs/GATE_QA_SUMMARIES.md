@@ -1,0 +1,58 @@
+# v0.5.4 — Bounded Checkpoint QA Summaries (development)
+
+**Unreleased source development only. No Win64 EXE, Android APK or Unreal game verification.**
+
+## Motivation
+
+In v0.5.3, individual checkpoint decisions can be explained, but
+logging rejection events on every driven frame can produce excessive
+noise. v0.5.4 adds fixed-memory event counts and a separate periodic
+summary mode to help QA teams understand common failure categories.
+
+## Portable C++20 API
+
+`Racing/GateDiagnosticCounters.h` defines `GateDiagnosticCounters`:
+
+- `Observe(CheckpointTraceResult)`: increments one trace-category count
+  and, for `GateRejected` only, one classified gate-rejection count.
+  Initial baselines and teleport rebase events do not become geometry
+  rejection counts.
+- `TotalSamples()`, `CountTrace(...)`, `CountGateRejection(...)`:
+  inspect the current window; unknown enum values fail closed.
+- `Merge(other)`: combine fixed-size snapshots with saturating
+  32-bit counts, including a self-merge.
+- `Reset()`: clear all previous statistics before the next window.
+
+No heap allocation, identifiers, exact player positions or network
+subsystems are involved. Counts never wrap around after overflow.
+
+## Development console levels (UNVERIFIED in Unreal)
+
+- `latebrake.CheckpointDiagnostics 0`: default, silent. No QA counters
+  collected or transmitted.
+- `latebrake.CheckpointDiagnostics 1`: v0.5.3 opt-in local
+  transition/event logs. No periodic summary.
+- `latebrake.CheckpointDiagnostics 2`: v0.5.4 opt-in local summary
+  approximately every ten seconds, per checkpoint. It counts accepted
+  gates, intentional teleport resets, invalid positions, wrong-way
+  velocity, excessive frame travel, lateral/vertical misses and
+  noncrossing samples. It does not print per-frame coordinates, and
+  mode 2 does not enable mode 1 per-event logging.
+
+The code exists only as **non-shipping diagnostic logging**. No claim
+is made that this console variable has been executed on UE 5.8,
+packaged Win64, or physical Android devices.
+
+## Required acceptance
+
+- CI: strict C++20 `GateDiagnosticCounters` target on Windows,
+  Ubuntu and macOS; preserve existing `GateDiagnostic` parity tests.
+- Genuine UE 5.8/UHT game/editor compile and a cookable source-owned
+  circuit. Verify console mode 0, mode 1 and mode 2 on installed game.
+- Test 30/60 FPS and artificial hitches, all four gates, long
+  displacements, deliberate short recovery, restart, pawn re-possession.
+- Verify per-gate window reset on controller/pawn loss and mode
+  transitions. Check QA overhead and avoid logging personal data.
+- Record actual device models, build SHA, generated log and manual
+  results in issues #2, #13 and #31. Do not close QA blockers based only
+  on portable tests.

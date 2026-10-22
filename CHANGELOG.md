@@ -1,6 +1,21 @@
 # Changelog
 
-## Unreleased v0.5.3 — Explainable checkpoint diagnostics
+## Unreleased v0.5.4 — Bounded checkpoint QA counters (source development)
+
+- Added `GateDiagnosticCounters` with fixed-size, allocation-free per-reason
+  counts, saturating arithmetic, merge and reset for bounded QA windows.
+- Captures crossing, initial baseline, teleport rebase, invalid samples
+  and geometry rejection reasons without actor coordinates or player identity.
+- Added non-shipping `latebrake.CheckpointDiagnostics 2` source integration:
+  one per-gate summary about every ten seconds; default remains silent,
+  mode 1 continues logging interesting events.
+- A strict portable C++20 regression uses actual motion decisions and
+  proves safe saturation and isolation after reset. Unreal Editor/UHT
+  compilation and installed 30/60 FPS device measurements are outstanding.
+- **Not released as v0.5.4; no playable game package or device QA exists.**
+
+
+## v0.5.3 — Explainable checkpoint diagnostics (SOURCE-ONLY pre-release, 2026-10-22)
 
 - Added allocation-free, Unreal-independent gate rejection classifications:
   invalid index, malformed samples/velocity, below-threshold/wrong-way
@@ -12,7 +27,7 @@
 - Added strict portable C++20 regression tests for four directional gates,
   diagnostic reasons and short-teleport behavior. Unreal editor/device
   compilation and real driving instrumentation remain unverified.
-- This is development only. **No v0.5.3 tag or game release.**
+- Released [v0.5.3](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.3) as an immutable source-only pre-release after guarded three-OS CTest and packaging-policy checks; no playable EXE/APK was built. The opt-in non-shipping Unreal logger remains engine-unverified.
 
 ## v0.5.2 — Race Integrity & Checkpoint Safety (SOURCE-ONLY pre-release, 2026-10-22)
 
