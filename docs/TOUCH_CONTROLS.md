@@ -197,6 +197,37 @@ again to control the car in the new screen layout. Genuine app lifecycle
 focus changes separately reset the press tracker because the OS may have
 discarded touch-up events.
 
+## v0.5.2 post-release input filter correction (source only)
+
+The original viewport guard removed GAS/STEER finger ownership on
+rotation/resizing, but did not reset `SmoothedThrottle` and
+`SmoothedSteering` in the car's rigid-body control. Those slew-limited
+signals could still apply acceleration or turning torque for several
+physics ticks after the old finger was invalidated.
+
+Now a single engine-independent `NeutralizeTouchOnViewportChange`
+function is called by both the Android pre-physics Tick check and the
+touch dispatcher. On a changed/invalid viewport it clears the
+`TouchDriveState` owner **and** zeroes the two smooth filters, so the
+next physics update cannot reuse pre-rotation drive commands. A stable
+viewport does not interrupt currently held controls; legitimate fresh
+presses can acquire the new layout after release. The separate
+`TouchPressTracker` still prevents duplicate discrete actions from
+the previous held finger.
+
+When the local Android player controller disappears, the pawn resets
+all raw drive axes and filters as well; otherwise an old analog gamepad
+value could rebuild throttle on the next frame.
+
+**Additional real-device checks:** hold full GAS and steering at speed,
+rotate without releasing fingers, inspect applied force/torque on the
+next physics tick; there should be no new throttle/steering commands
+from the old touches (vehicle momentum will still carry the car).
+Repeat with transient invalid window, an external gamepad, lost
+controller/possession, pausing and returning to the application.
+Portable C++20 tests confirm only the command policy; physical motion,
+Unreal integration and Android devices are not yet verified.
+
 ### Installed Android QA — still required
 
 - [ ] Hold steering and GAS, rotate from landscape to portrait; both
