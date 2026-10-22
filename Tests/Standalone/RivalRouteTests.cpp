@@ -1,4 +1,6 @@
 #include "AI/RivalRouteProgress.h"
+#include "Career/CareerCatalog.h"
+#include "Racing/RaceEvents.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -58,6 +60,71 @@ int main()
 
     latebrake::RivalRouteProgress clamped(0, 0);
     Check(clamped.Observe(0, 0, 1).Completed, "invalid config clamps to one each");
+
+    // Every career round that actually spawns a rival must use the selected
+    // event's lap count, not the three-lap quick-race default.
+    latebrake::RivalRouteProgress careerRival;
+    for (const auto& event : latebrake::CareerEvents)
+    {
+        if (!event.SpawnRival) continue;
+        careerRival.Configure(latebrake::GetRaceEvent(latebrake::EventKind::Circuit).CheckpointCount,
+                              event.Laps);
+        Check(careerRival.GetRequiredLaps() == event.Laps &&
+              careerRival.GetWaypointCount() == 4,
+              "rival route must match the current career lap target");
+        Check(!careerRival.IsFinished() && careerRival.GetCompletedLaps() == 0,
+              "switching career rounds must reset progress");
+        for (int lap = 0; lap < event.Laps; ++lap)
+        {
+            for (int waypoint = 0; waypoint < 4; ++waypoint)
+            {
+                const auto result = careerRival.Observe(200, 200, 0.1);
+                Check(result.Advanced, "waypoint advancement in event-specific route");
+                Check(result.Completed == (lap == event.Laps - 1 && waypoint == 3),
+                      "rival completes only at selected event's final waypoint");
+            }
+        }
+        Check(careerRival.IsFinished() &&
+              careerRival.GetCompletedLaps() == event.Laps,
+              "career route never overcounts selected event laps");
+        Check(!careerRival.Observe(200, 200, 0.1).Advanced,
+              "a completed career rival route stays finished");
+    }
+    // A restarted 4-lap event must clear waypoint, lap and stuck-recovery
+    // history while preserving its newly selected 4-lap target.
+    careerRival.Configure(4, 4);
+    Check(careerRival.Observe(200, 200, 0.1).Advanced, "replay route moves");
+    Check(!careerRival.Observe(3000, 0, 8.0).Advanced &&
+          careerRival.GetRecoveryCount() == 1, "stuck replay records recovery");
+    careerRival.Configure(4, 4);
+    Check(careerRival.GetNextWaypoint() == 0 &&
+          careerRival.GetCompletedLaps() == 0 &&
+          careerRival.GetRecoveryCount() == 0 &&
+          careerRival.GetRequiredLaps() == 4 &&
+          !careerRival.IsFinished(), "restarting same event clears route state");
+
+    // RestartRace uses ResetPilot() on an already configured rival;
+    // verify that reset clears only progress and not the current lap goal.
+    careerRival.Configure(4, 4);
+    Check(careerRival.Observe(200, 200, 0.1).Advanced,
+          "configured 4-lap route can advance");
+    careerRival.Reset();
+    Check(careerRival.GetRequiredLaps() == 4 &&
+          careerRival.GetWaypointCount() == 4 &&
+          careerRival.GetNextWaypoint() == 0 &&
+          careerRival.GetCompletedLaps() == 0 && !careerRival.IsFinished(),
+          "race restart retains current event configuration");
+
+    careerRival.Configure(0, 0);
+    Check(careerRival.GetWaypointCount() == 1 && careerRival.GetRequiredLaps() == 1,
+          "bad reconfiguration clamps both dimensions to one");
+    Check(careerRival.Observe(0, 100, .1).Completed,
+          "minimum reconfigured route can finish");
+    careerRival.Configure(999, 999);
+    Check(careerRival.GetWaypointCount() == 256 &&
+          careerRival.GetRequiredLaps() == 100 &&
+          !careerRival.IsFinished(), "hostile route dimensions are bounded");
+
     std::cout << "Autonomous route tests passed.\n";
     return EXIT_SUCCESS;
 }

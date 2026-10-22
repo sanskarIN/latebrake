@@ -416,3 +416,18 @@ A passing offline checksum regression means **only** that file-integrity
 logic works against test data. It never proves that Epic's UE 5.8 C++,
 cook/package, gameplay or target-device tests have run. Human testers
 still have to record genuine installed hardware QA.
+
+## Unreleased v0.5.2 AI route-lap configuration regression
+
+Portable `RivalRouteTests` now iterates over the entire current
+`CareerEvents` catalog, skipping intentionally solo challenges, and
+configures the route with each opponent-enabled event's required laps.
+It checks exactly one completed route on the final waypoint, no progress
+past finish, clean reset on event changes or replays, recovery-history
+reset, and clamping of unsupported waypoint/lap counts.
+
+Actual UE 5.8 playtest still needs to confirm the rival actor is spawned
+and given the correct target in the 1-, 2-, 3- and 4-lap events; that its
+HUD shows the expected target after each event change and restart; and
+that the player result/medal remains independent of the approximate rival
+loop. Offline C++20 tests cannot validate rival physics or steering.

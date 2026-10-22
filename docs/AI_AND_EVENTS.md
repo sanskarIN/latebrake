@@ -28,3 +28,26 @@ The roadmap anticipates more sophisticated path following, original vehicle rigs
 A portable `RivalRouteProgress` object tracks ordered waypoint approaches, approximate completed loops and low-speed stalls. Eight seconds of low-speed telemetry requests a recovery, with a bounded recovery counter. The Unreal rival uses that request to teleport to a lane-aligned point near the next target and preserve its approximate route history. The pilot has anticipation braking for close waypoints; the car base class uses a shared deterministic steering filter.
 
 **Important:** waypoint loops remain approximations of AI route completion. Rival rank, valid gate crossings, finish time and head-to-head competition are not implemented. The latest portable CTest and the Unreal in-editor gameplay must be evaluated independently.
+
+## Unreleased v0.5.2 — event-aligned rival route duration
+
+The previous experimental rival route always stopped after three approximate
+waypoint laps, even when a selected championship round required one, two or
+four laps. `ALatebrakeRaceGameMode::RefreshRival()` now configures the
+rival with the **actual selected `RaceProgress` checkpoint count and lap
+target** after it spawns or reuses the rival actor. `RestartRace()` clears
+route position, approximate lap count, stuck timer and recovery history
+without reverting to the old three-lap default.
+
+The expanded desktop HUD displays `RIVAL ROUTE completed/required LAPS`
+so the value is not mistaken for the number of laps in a quick race.
+The `Route` value is **approximate waypoint telemetry**, not a
+head-to-head finishing order, valid gate crossing or automatic race reward.
+The player's authoritative `RaceProgress`, medals and save records are
+unchanged.
+
+Portable C++20 `RivalRouteTests` now checks the route length and final
+waypoint for **every career event which actually spawns a rival**, plus
+one-event replay resets, stuck-recovery reset and out-of-range configuration.
+Real UE physics, steering/cornering, opponent competitiveness and
+installed-game display behavior remain unverified.

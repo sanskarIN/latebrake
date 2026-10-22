@@ -642,6 +642,11 @@ int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps() const
     return IsValid(RivalCar) ? RivalCar->GetApproximateLaps() : 0;
 }
 
+int32 ALatebrakeRaceGameMode::GetRivalPlannedLaps() const
+{
+    return IsValid(RivalCar) ? RivalCar->GetExpectedLaps() : 0;
+}
+
 int32 ALatebrakeRaceGameMode::GetRivalRecoveryCount() const
 {
     return IsValid(RivalCar) ? RivalCar->GetPilotRecoveries() : 0;
@@ -859,7 +864,13 @@ void ALatebrakeRaceGameMode::RefreshRival()
     {
         RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
                     latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
-        RivalCar->ResetPilot();
+    }
+    if (IsValid(RivalCar))
+    {
+        // Career events can require one, two, three, four or more laps.
+        // Reusing the quick-race default of three laps makes the rival
+        // route-completion HUD incorrect for those races.
+        RivalCar->ConfigurePilot(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     }
 }
 

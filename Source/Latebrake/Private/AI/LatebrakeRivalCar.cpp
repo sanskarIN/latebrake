@@ -17,6 +17,14 @@ void ALatebrakeRivalCar::ResetPilot()
     SetAutonomousControls(0.f, 0.f, false);
 }
 
+void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLaps)
+{
+    // Do not preserve approximation/recovery history from a different
+    // event or replay. The RaceProgress clock remains player-authoritative.
+    Route.Configure(CheckpointCount, RequiredLaps);
+    SetAutonomousControls(0.f, 0.f, false);
+}
+
 void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 {
     const ALatebrakeRaceGameMode* Mode =

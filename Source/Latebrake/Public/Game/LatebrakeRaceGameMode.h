@@ -53,6 +53,7 @@ public:
     float GetEventBestSeconds() const;
     bool HasRival() const;
     int32 GetRivalApproximateLaps() const;
+    int32 GetRivalPlannedLaps() const;
     int32 GetRivalRecoveryCount() const;
     bool HasRivalFinishedRoute() const;
 
