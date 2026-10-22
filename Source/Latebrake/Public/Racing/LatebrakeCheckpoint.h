@@ -33,4 +33,10 @@ private:
     // an old sample before attempting to credit a physical plane crossing.
     TWeakObjectPtr<AActor> LastObservedPlayer;
     latebrake::CheckpointMotionTrace MotionTrace;
+
+    // Plain POD fields (no UHT preprocessor branches inside UCLASS).
+    // Only accessed by opt-in diagnostics code in non-shipping builds.
+    latebrake::CircuitGateDecision LastLoggedDecision =
+        latebrake::CircuitGateDecision::NoForwardPlaneCrossing;
+    bool bHadLoggedDecision = false;
 };

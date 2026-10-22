@@ -8,49 +8,81 @@
 namespace latebrake
 {
 // Frame-to-frame samples used by the four fixed starter-circuit gates.
-// This is a geometric *crossing* check, not a sphere overlap: touching
-// the leading rim of a checkpoint may no longer award a sector.
+// Geometry uses centimetres; Unreal-independent to permit deterministic CI.
 struct CircuitGateSample final
 {
     CircuitPoint XY{};
     double Z = 0.0;
 };
 
-// The old 600cm sphere is a visual/legacy trigger bound, NOT an
-// acceptable sample-distance restriction during a slow frame. A genuine
-// sweep can straddle its edge while crossing the gate plane.
+// The old sphere is a visual marker, not a frame-sample acceptance radius.
 inline constexpr double GateVisualTriggerRadiusCm = 600.0;
 inline constexpr double GateLateralHalfWidthCm = 500.0;
 inline constexpr double GateCenterHeightCm = 38.0;
 inline constexpr double GateVerticalHalfHeightCm = 380.0;
 inline constexpr double GateMaxFrameTravelCm = 1200.0;
 
-// The car must travel from the APPROACH side to the DEPARTURE side of
-// the line, in the expected race direction, with the interpolated crossing
-// point inside the physical checkpoint corridor and height window.
-//
-// Limit TOTAL sample-to-sample travel, not the individual endpoints'
-// signed distance from the plane. At low FPS, a real forward segment can
-// begin outside the 600cm visual sphere, cross the gate and end nearby.
-// Trimming such a segment by endpoint distance misses legitimate laps.
-// The motion generation in CheckpointMotionTrace separately rejects even
-// short deliberate RecoverTo/restart teleports; this geometric function
-// must still reject movements longer than 1200cm or wrong direction.
-// Neither rule substitutes for actual Unreal collision and hardware QA.
-inline bool CrossesCircuitGatePlane(int gateIndex,
-                                   CircuitGateSample previous,
-                                   CircuitGateSample current,
-                                   double velocityX,
-                                   double velocityY) noexcept
+// Diagnostic reason for a failed or accepted directional crossing. Stable
+// names can be included in actual engine/device QA logs without replacing
+// a boolean gameplay decision or allocating on the four gate actor ticks.
+enum class CircuitGateDecision
 {
-    if (!IsCircuitGate(gateIndex) ||
-        !std::isfinite(previous.XY.X) || !std::isfinite(previous.XY.Y) ||
+    Crossed,
+    InvalidGate,
+    InvalidSample,
+    InvalidVelocity,
+    NotMovingForward,
+    ExcessiveFrameTravel,
+    NoForwardPlaneCrossing,
+    OutsideLateralCorridor,
+    OutsideVerticalCorridor
+};
+
+inline constexpr const char* CircuitGateDecisionName(
+    CircuitGateDecision decision) noexcept
+{
+    switch (decision)
+    {
+    case CircuitGateDecision::Crossed: return "crossed";
+    case CircuitGateDecision::InvalidGate: return "invalid-gate";
+    case CircuitGateDecision::InvalidSample: return "invalid-sample";
+    case CircuitGateDecision::InvalidVelocity: return "invalid-velocity";
+    case CircuitGateDecision::NotMovingForward: return "not-moving-forward";
+    case CircuitGateDecision::ExcessiveFrameTravel: return "excessive-frame-travel";
+    case CircuitGateDecision::NoForwardPlaneCrossing: return "no-forward-crossing";
+    case CircuitGateDecision::OutsideLateralCorridor: return "outside-lane";
+    case CircuitGateDecision::OutsideVerticalCorridor: return "outside-height";
+    }
+    return "unknown";
+}
+
+// Report the *first* reason why a sampled crossing was not accepted.
+// A real 3D swept segment must cross forward through the checkpoint
+// plane at a valid interpolated lateral position and vehicle height.
+// Total 3D displacement stays bounded at 1200cm; authorized teleport
+// generation resets are checked separately in CheckpointMotionTrace.
+inline CircuitGateDecision EvaluateCircuitGatePlane(
+    int gateIndex, CircuitGateSample previous, CircuitGateSample current,
+    double velocityX, double velocityY) noexcept
+{
+    if (!IsCircuitGate(gateIndex))
+    {
+        return CircuitGateDecision::InvalidGate;
+    }
+    if (!std::isfinite(previous.XY.X) || !std::isfinite(previous.XY.Y) ||
         !std::isfinite(previous.Z) ||
         !std::isfinite(current.XY.X) || !std::isfinite(current.XY.Y) ||
-        !std::isfinite(current.Z) ||
-        !CanPassCircuitGate(gateIndex, velocityX, velocityY))
+        !std::isfinite(current.Z))
     {
-        return false;
+        return CircuitGateDecision::InvalidSample;
+    }
+    if (!std::isfinite(velocityX) || !std::isfinite(velocityY))
+    {
+        return CircuitGateDecision::InvalidVelocity;
+    }
+    if (!CanPassCircuitGate(gateIndex, velocityX, velocityY))
+    {
+        return CircuitGateDecision::NotMovingForward;
     }
 
     const double deltaX = current.XY.X - previous.XY.X;
@@ -60,11 +92,10 @@ inline bool CrossesCircuitGatePlane(int gateIndex,
         !std::isfinite(deltaZ) ||
         std::hypot(std::hypot(deltaX, deltaY), deltaZ) > GateMaxFrameTravelCm)
     {
-        return false;
+        return CircuitGateDecision::ExcessiveFrameTravel;
     }
 
     const CircuitPoint gate = CircuitGate(gateIndex);
-    // The four fixed normals are +X, +Y, -X, -Y in race order.
     const double direction = gateIndex < 2 ? 1.0 : -1.0;
     const bool horizontal = gateIndex == 0 || gateIndex == 2;
     const double previousAlong =
@@ -73,28 +104,47 @@ inline bool CrossesCircuitGatePlane(int gateIndex,
     const double currentAlong =
         direction * ((horizontal ? current.XY.X : current.XY.Y) -
                      (horizontal ? gate.X : gate.Y));
-    // Require a TRUE signed plane crossing. Displacement has already been
-    // bounded in 3D above, so neither endpoint needs a second arbitrary
-    // 600cm proximity restriction.
     if (!(previousAlong < 0.0 && currentAlong >= 0.0))
     {
-        return false;
+        return CircuitGateDecision::NoForwardPlaneCrossing;
     }
 
-    // Interpolate the lateral and vertical coordinates precisely at the
-    // gate plane, avoiding a false hit at its front edge or outside the lane.
     const double t = -previousAlong / (currentAlong - previousAlong);
+    if (!std::isfinite(t) || t < 0.0 || t > 1.0)
+    {
+        return CircuitGateDecision::NoForwardPlaneCrossing;
+    }
     const double previousLateral = horizontal ? previous.XY.Y - gate.Y
                                              : previous.XY.X - gate.X;
     const double currentLateral = horizontal ? current.XY.Y - gate.Y
                                             : current.XY.X - gate.X;
     const double crossingLateral =
         previousLateral + t * (currentLateral - previousLateral);
+    if (!std::isfinite(crossingLateral) ||
+        std::abs(crossingLateral) > GateLateralHalfWidthCm)
+    {
+        return CircuitGateDecision::OutsideLateralCorridor;
+    }
+
     const double crossingZ = previous.Z + t * (current.Z - previous.Z);
-    return std::isfinite(t) && t >= 0.0 && t <= 1.0 &&
-        std::isfinite(crossingLateral) &&
-        std::abs(crossingLateral) <= GateLateralHalfWidthCm &&
-        std::isfinite(crossingZ) &&
-        std::abs(crossingZ - GateCenterHeightCm) <= GateVerticalHalfHeightCm;
+    if (!std::isfinite(crossingZ) ||
+        std::abs(crossingZ - GateCenterHeightCm) > GateVerticalHalfHeightCm)
+    {
+        return CircuitGateDecision::OutsideVerticalCorridor;
+    }
+    return CircuitGateDecision::Crossed;
+}
+
+// Preserve the existing public gameplay contract. Diagnostic classification
+// must NEVER loosen checkpoint acceptance, ordering or teleport protection.
+inline bool CrossesCircuitGatePlane(int gateIndex,
+                                   CircuitGateSample previous,
+                                   CircuitGateSample current,
+                                   double velocityX,
+                                   double velocityY) noexcept
+{
+    return EvaluateCircuitGatePlane(gateIndex, previous, current,
+                                   velocityX, velocityY) ==
+           CircuitGateDecision::Crossed;
 }
 } // namespace latebrake
