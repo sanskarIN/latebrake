@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased v0.5.2 — dynamic rival route length
+
+- Fixed the experimental AI rival always using a three-lap waypoint plan
+  during career events with different lap requirements.
+- Rival initialization now takes the actual selected race's checkpoint
+  count and lap goal, and restart preserves that event configuration while
+  clearing earlier lap and recovery counts.
+- The noncompact HUD displays approximate rival laps as completed/required,
+  without asserting race placements or head-to-head standings.
+- Portable C++20 tests cover all rival-enabled career events, event
+  replay/route reset, final waypoint finish and invalid route lengths.
+- Unreal Engine 5.8 runtime behavior and game packages are **unverified**.
+
 ## Unreleased v0.5.2 — Android residual touch physics safety
 
 - A viewport resize or temporary unavailable surface now clears **both**
