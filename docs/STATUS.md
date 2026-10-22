@@ -349,3 +349,18 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 - CI uses only short-lived synthetic text files for integrity tests. **No**
   actual Unreal Engine build, cooked level, executable, APK or installed
   game was validated or published by these checks.
+
+## Unreleased v0.5.2 event-specific rival lap targets
+
+- The source-level rival pilot now configures waypoint count and required
+  route laps from the selected player race rather than remaining fixed at
+  the three-lap quick-race default through championship event changes.
+- Existing and newly spawned rivals are reinitialized per event; career
+  replays clear the rival's previous route/stuck/recovery state.
+- The desktop HUD labels the rival's **approximate** completed/expected
+  waypoint loops to avoid misrepresenting a short career event.
+- The cross-platform portable route tests exercise all current
+  opponent-enabled career events, replays and corrupt route dimensions.
+- Still **source-only**. No genuine Unreal engine compile, gameplay,
+  Windows executable or Android APK verified. Published v0.5.1
+  source-only pre-release is unchanged.
