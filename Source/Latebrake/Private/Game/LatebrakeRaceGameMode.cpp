@@ -27,6 +27,7 @@
 #include "Track/CircuitLayout.h"
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
+#include "Track/CircuitStartupAudit.h"
 #include <limits>
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
@@ -129,6 +130,19 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label, const F
 
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
+    latebrake::CircuitStartupAudit Audit;
+    bCircuitReady = false;
+    // Spawning an Actor does not prove rendering or collision on installed
+    // devices, but failed block creation must never be hidden by the
+    // four-checkpoint startup success marker.
+    const auto RecordBlock = [this, &Audit](
+        const TCHAR* Label, const FVector& Position,
+        const FVector& Scale, const FLinearColor& Color)
+    {
+        AStaticMeshActor* Block = SpawnBlock(Label, Position, Scale, Color);
+        Audit.RecordCollisionBlock(Block != nullptr);
+        return Block;
+    };
     // Runtime sunlight so the starter track remains visible without map assets.
     if (ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>())
     {
@@ -142,20 +156,20 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 
     // World-space units are centimetres. All geometry references stock engine
     // primitives; this repository does not ship or redistribute Epic assets.
-    SpawnBlock(TEXT("Ground"), FVector(0.f, 0.f, -100.f),
+    RecordBlock(TEXT("Ground"), FVector(0.f, 0.f, -100.f),
         FVector(110.f, 85.f, 1.25f), FLinearColor(0.15f, 0.30f, 0.12f));
 
     const FLinearColor Asphalt(0.09f, 0.10f, 0.13f);
-    SpawnBlock(TEXT("SouthStraight"), FVector(0.0, latebrake::SouthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
-    SpawnBlock(TEXT("NorthStraight"), FVector(0.0, latebrake::NorthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
-    SpawnBlock(TEXT("EastStraight"), FVector(latebrake::EastX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
-    SpawnBlock(TEXT("WestStraight"), FVector(latebrake::WestX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
+    RecordBlock(TEXT("SouthStraight"), FVector(0.0, latebrake::SouthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
+    RecordBlock(TEXT("NorthStraight"), FVector(0.0, latebrake::NorthY, -22.0), FVector(80.f, 16.f, 0.42f), Asphalt);
+    RecordBlock(TEXT("EastStraight"), FVector(latebrake::EastX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
+    RecordBlock(TEXT("WestStraight"), FVector(latebrake::WestX, 0.0, -22.0), FVector(16.f, 52.f, 0.42f), Asphalt);
 
     const FLinearColor BarrierColor(0.80f, 0.15f, 0.05f);
-    SpawnBlock(TEXT("NorthBarrier"), FVector(0.f, 2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
-    SpawnBlock(TEXT("SouthBarrier"), FVector(0.f, -2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
-    SpawnBlock(TEXT("EastBarrier"), FVector(3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
-    SpawnBlock(TEXT("WestBarrier"), FVector(-3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
+    RecordBlock(TEXT("NorthBarrier"), FVector(0.f, 2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
+    RecordBlock(TEXT("SouthBarrier"), FVector(0.f, -2750.f, 65.f), FVector(85.f, 1.0f, 2.0f), BarrierColor);
+    RecordBlock(TEXT("EastBarrier"), FVector(3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
+    RecordBlock(TEXT("WestBarrier"), FVector(-3750.f, 0.f, 65.f), FVector(1.0f, 60.f, 2.0f), BarrierColor);
 
     // All ninety-three collision-free decorative cubes now share one scene
     // actor, with seven instanced-mesh components (one per color/material
@@ -271,6 +285,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         }
     }
 
+    Audit.SetScenery(CreatedDecorationGroups, CreatedDecorationInstances);
     if (CreatedDecorationGroups != latebrake::DecorationBatchCount ||
         CreatedDecorationInstances != latebrake::DecorationPieceCount)
     {
@@ -291,11 +306,13 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     {
         FActorSpawnParameters Parameters;
         Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-        if (ALatebrakeCheckpoint* Checkpoint = GetWorld()->SpawnActor<ALatebrakeCheckpoint>(
-                ALatebrakeCheckpoint::StaticClass(),
-                FVector(latebrake::CircuitGate(Index).X,
-                        latebrake::CircuitGate(Index).Y, 38.0),
-                FRotator::ZeroRotator, Parameters))
+        ALatebrakeCheckpoint* Checkpoint = GetWorld()->SpawnActor<ALatebrakeCheckpoint>(
+            ALatebrakeCheckpoint::StaticClass(),
+            FVector(latebrake::CircuitGate(Index).X,
+                    latebrake::CircuitGate(Index).Y, 38.0),
+            FRotator::ZeroRotator, Parameters);
+        Audit.RecordCheckpoint(Index, Checkpoint != nullptr);
+        if (Checkpoint)
         {
             Checkpoint->SetCheckpointIndex(Index);
             ++SpawnedCheckpoints;
@@ -304,7 +321,26 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     // A real installed-package QA session can grep for this log marker.
     // It proves only that the GameMode reached BeginPlay and spawned all
     // checkpoint actors; it does NOT certify rendering, input or gameplay.
-    if (SpawnedCheckpoints == latebrake::CircuitGateCount)
+    if (Audit.CollisionReady())
+    {
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_GEOMETRY_READY collision=%d/%d"),
+            Audit.CollisionBlockCount(),
+            latebrake::CircuitStartupAudit::RequiredCollisionBlocks);
+    }
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Error,
+            TEXT("LATEBRAKE_GEOMETRY_INCOMPLETE collision=%d/%d attempts=%d"),
+            Audit.CollisionBlockCount(),
+            latebrake::CircuitStartupAudit::RequiredCollisionBlocks,
+            Audit.CollisionBlockAttempts());
+    }
+    // Every requested collision-bearing actor and every unique gate must
+    // exist before the game can authorize race results. Scenery must have
+    // its expected source-created instance plan as well.
+    bCircuitReady = Audit.Ready();
+    if (bCircuitReady)
     {
         UE_LOG(LogLatebrakeStartup, Display,
             TEXT("LATEBRAKE_STARTUP_READY map=%s checkpoints=%d/%d"),
@@ -322,6 +358,12 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 
 void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
+    // A failed ground/road/barrier spawn cannot produce legitimate racing
+    // progress or a career medal, even when four gate actors exist.
+    if (!bCircuitReady)
+    {
+        return;
+    }
     // RaceProgress only flips to Finished on a valid ordered player gate.
     // Once finished all subsequent overlap callbacks return false.
     if (!Race.PassCheckpoint(CheckpointIndex) || !Race.IsFinished())
