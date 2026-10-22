@@ -63,6 +63,36 @@ try {
         & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
     }
 
+    # These are parser *rejection* fixtures, never synthetic evidence of a
+    # real UE run. The new scenery marker is compulsory even when the old
+    # checkpoint marker looks valid.
+    $fixtureHead = ('NOT AN UNREAL LOG: PARSER REJECTION FIXTURE ONLY. ' * 4)
+    $gateReady = 'LogLatebrakeStartup: Display: LATEBRAKE_STARTUP_READY map=LatebrakeCircuit checkpoints=4/4'
+    $sceneReady = 'LogLatebrakeStartup: Display: LATEBRAKE_SCENERY_READY groups=7 instances=93 collision=off'
+    $sceneIncomplete = 'LogLatebrakeStartup: Error: LATEBRAKE_SCENERY_INCOMPLETE groups=6/7 instances=70/93'
+    $sceneWrong = 'LogLatebrakeStartup: Display: LATEBRAKE_SCENERY_READY groups=7 instances=92 collision=off'
+
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$gateReady`n")
+    Expect-Rejection 'Four gates without scenery are not enough for startup smoke' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneIncomplete`n$gateReady`n")
+    Expect-Rejection 'Incomplete scenery cannot pass even with four checkpoints' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneWrong`n$gateReady`n")
+    Expect-Rejection 'Wrong cosmetic instance count cannot pass' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$sceneReady`n$sceneReady`n$gateReady`n")
+    Expect-Rejection 'Repeated scenery markers cannot pass a single-run smoke test' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+    [System.IO.File]::WriteAllText($fakeRuntimeLog, "$fixtureHead`n$gateReady`n$sceneReady`n")
+    Expect-Rejection 'Scenery must be prepared before the final startup marker' {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $fakeRuntimeLog
+    }
+
     # The fixtures are deliberately too small and are not legitimate packages.
     $windows = Join-Path $temp 'windows'
     New-Item -ItemType Directory -Path $windows -Force | Out-Null

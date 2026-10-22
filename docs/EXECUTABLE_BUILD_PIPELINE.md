@@ -170,11 +170,19 @@ pwsh ./scripts/Verify-RuntimeStartupLog.ps1 `
   -LogPath 'D:\ActualGameRun\Saved\Logs\Latebrake.log'
 ```
 
-The verifier requires exactly one ready marker for `LatebrakeCircuit` and
-rejects any blocked marker. Its passing result is a **limited runtime
-startup check**, not a substitute for installed driving, frame-rate,
-career/save, audio, input or Android QA. Synthetic fixtures are used only for
-negative tests and are never attached to a release.
+The verifier now requires exactly one ready marker for
+`LatebrakeCircuit` **and** one prior
+`LATEBRAKE_SCENERY_READY groups=7 instances=93 collision=off` marker from
+the *same genuine runtime log*. Any `LATEBRAKE_STARTUP_BLOCKED` or
+`LATEBRAKE_SCENERY_INCOMPLETE` line rejects the smoke gate. The batching
+marker proves only that the Unreal GameMode constructed its seven instances
+groups and 93 instance transforms: it is **not** visual output or GPU
+performance evidence.
+
+The successful parser result is a **limited runtime startup check**, not a
+substitute for installed driving, frame-rate, career/save, visual review,
+input or Android QA. CI uses synthetic log text only in **negative** parser
+tests, and never attaches it to a release.
 
 ### Android touch ownership
 

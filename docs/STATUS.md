@@ -217,6 +217,15 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   is not proof of Android input delivery or a working Unreal executable**.
   The same real map/engine/platform build blockers remain open.
 
+### v0.5.1 runtime startup smoke gate (unreleased)
+
+- The future real installed-game log verifier now requires **both** the
+  authentic four-gate startup marker and one complete, earlier batched
+  scenery marker (`7` groups and `93` instances). A missing, duplicate,
+  malformed or explicitly incomplete scene cannot pass the gate.
+- Disposable CI parser fixtures exercise only **rejections**. They are not
+  runnable Unreal evidence, renderer benchmarks or validated gameplay.
+
 ### v0.5.1 instanced course visuals (unreleased)
 
 - Single prototype circuit decoration plan now groups 93 static cosmetic
