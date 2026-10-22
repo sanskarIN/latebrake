@@ -1,6 +1,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "Racing/FinishedRaceInsights.h"
 #include "UI/TouchControlLayout.h"
 #include "Track/CircuitMap.h"
 #include "Engine/Engine.h"
@@ -83,10 +84,31 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(Mode->GetGarageFeedback());
             break;
         case latebrake::MenuPage::Results:
+        {
             MenuLine(FString::Printf(TEXT("Last event reward: +%d credits"),
                 Mode->GetLastRaceCredits()));
+            const latebrake::FinishedRaceInsights Insights =
+                latebrake::BuildFinishedRaceInsights(Mode->GetRace());
+            if (Insights.Valid)
+            {
+                MenuLine(FString::Printf(TEXT("Best timed lap: %.2fs"),
+                    Insights.BestLapSeconds));
+                if (Insights.HasTheoreticalGap)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Gap to best-sectors lap (this run): %.2fs"),
+                        Insights.BestToTheoreticalGapSeconds));
+                }
+                if (Insights.HasLapSpread && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Timed lap spread: %.2fs (%d laps)"),
+                        Insights.LapSpreadSeconds, Insights.TimedLaps));
+                }
+            }
             MenuLine(TEXT("Select to retry the current event."));
             break;
+        }
         case latebrake::MenuPage::Pause:
             MenuLine(TEXT("Select to resume the paused race."));
             break;
@@ -298,6 +320,27 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     if (Race.IsFinished())
     {
+        // A finished result is only displayed when its clock was valid and
+        // recordable. "Gap to ideal" is within-run sector potential, not
+        // an achieved all-time lap or a fabricated best.
+        const latebrake::FinishedRaceInsights Insights =
+            latebrake::BuildFinishedRaceInsights(Race);
+        if (Insights.Valid && !bCompact)
+        {
+            if (Insights.HasTheoreticalGap)
+            {
+                Line(FString::Printf(
+                    TEXT("BEST LAP %.2fs  |  GAP TO IDEAL %.2fs"),
+                    Insights.BestLapSeconds,
+                    Insights.BestToTheoreticalGapSeconds), Accent);
+            }
+            if (Insights.HasLapSpread)
+            {
+                Line(FString::Printf(
+                    TEXT("TIMED LAP SPREAD  %.2fs  (%d LAPS)"),
+                    Insights.LapSpreadSeconds, Insights.TimedLaps), Primary);
+            }
+        }
         Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
             Mode->GetLastRaceCredits()), Accent);
         if (Mode->IsCareerRace())
