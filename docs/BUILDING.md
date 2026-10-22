@@ -130,3 +130,20 @@ under the car, all four roads and boundary barriers with a real
 controller, with high-speed approaches and restart/recovery, then
 record build/engine/device QA and artifact hashes separately. See
 [the v0.5.6 startup audit guide](CIRCUIT_STARTUP_AUDIT.md).
+
+
+## v0.5.7 collision setup and recovery preflight — engine QA pending
+
+Once an authorized UE 5.8 Windows workstation can compile the real
+`LatebrakeEditor` and game C++ targets, inspect the original ground,
+four road slabs and four barriers in Play-in-Editor. Each must have a
+valid engine Cube static mesh, expected transform and blocking
+`QueryAndPhysics` configuration. A failed Actor configuration now
+logs `LATEBRAKE_COLLISION_SETUP_FAILED` and blocks the ready marker.
+Player and rival starts plus every recovery pose must pass the new
+shared paved-road/barrier-clearance checks.
+
+Build/install real Win64 and Android candidates and drive them with
+actual controls to verify the chassis rests on the road and hits
+barriers. Verify recovery/restart at every checkpoint, not merely
+the startup marker strings. See [source and actual-device QA guide](COLLISION_SETUP_QA.md).
