@@ -34,10 +34,9 @@ private:
     TWeakObjectPtr<AActor> LastObservedPlayer;
     latebrake::CheckpointMotionTrace MotionTrace;
 
-#if !UE_BUILD_SHIPPING
-    // Only used for opt-in local development log de-duplication.
+    // Plain POD fields (no UHT preprocessor branches inside UCLASS).
+    // Only accessed by opt-in diagnostics code in non-shipping builds.
     latebrake::CircuitGateDecision LastLoggedDecision =
         latebrake::CircuitGateDecision::NoForwardPlaneCrossing;
     bool bHadLoggedDecision = false;
-#endif
 };
