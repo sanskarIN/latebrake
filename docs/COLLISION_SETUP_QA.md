@@ -1,6 +1,6 @@
 # LateBrake v0.5.7 — Collision Actor Configuration and Spawn Safety
 
-**DEVELOPMENT ONLY: no v0.5.7 pre-release or verified playable executable.**
+**Published source-only GitHub pre-release; NO playable v0.5.7 executable or installed-game verification.**
 
 ## C++ source files
 

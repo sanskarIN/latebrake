@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-22
-**Latest published milestone:** [v0.5.6 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.6).
-**Next development milestone:** v0.5.7 collision-configuration checks and route preflight (development, NOT released).
+**Latest published milestone:** [v0.5.7 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.7).
+**Next development milestone:** v0.5.8 (planned, NOT released).
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.7 in development — actual mesh-configuration and spawn preflight
+## v0.5.7 published source-only — actual mesh-configuration and spawn preflight
 
 - New `CollisionBlockSetup` policy disallows startup credit when an
   Unreal actor exists but its mesh component is absent, the expected
@@ -21,7 +21,7 @@
 - New strict portable tests and synthetic smoke-parser negatives
   guard these policies, but neither compiles Unreal Editor/UHT nor
   confirms that a real vehicle collides with the road on hardware.
-- **No v0.5.7 pre-release or verified playable build exists.**
+- **v0.5.7 is published as source only; no verified playable build exists.**
   [Source and real-game QA design](COLLISION_SETUP_QA.md).
 
 ## v0.5.6 source-only preview — fail-closed circuit geometry startup
@@ -119,6 +119,8 @@
 - [v0.5.5](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.5) — genuine timed-lap and within-run theoretical finish insights, source-only. **No executable.**
 
 - [v0.5.6](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.6) — original collision plan and audited startup marker grammar, **source-only**.
+
+- [v0.5.7](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.7) — collision component setup and planned safe spawn/recovery checks, **source-only**.
 
 These tags are source previews. They are **not downloadable playable game installers**.
 

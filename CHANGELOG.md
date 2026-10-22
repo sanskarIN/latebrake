@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased v0.5.7 — Collision actor configuration and start-position preflight
+## v0.5.7 — Collision actor configuration and start-position preflight (SOURCE-ONLY pre-release, 2026-10-22)
 
 - New `CollisionBlockSetup.h` classifies missing Actor, absent mesh
   component, wrong mesh, nonblocking collision, invalid source plan
@@ -21,9 +21,9 @@
   `LATEBRAKE_COLLISION_SETUP_FAILED` or
   `LATEBRAKE_SPAWN_LAYOUT_BLOCKED` even when other counters claim
   success. Synthetic negative regression fixtures cover both failures.
-- **Source development only**; licensed UE 5.8 UHT/editor/game C++
+- **Published as source-only GitHub pre-release**; licensed UE 5.8 UHT/editor/game C++
   compilation and installed Win64/Android physics/controls remain
-  unverified, and no v0.5.7 tag or game executable exists.
+  unverified, and no playable v0.5.7 game executable exists.
 
 
 ## v0.5.6 — Circuit startup geometry integrity (SOURCE-ONLY pre-release, 2026-10-22)
