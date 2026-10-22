@@ -25,3 +25,12 @@ The `RivalRoute` target verifies waypoint/lap tracking and eight-second stuck re
 ## v0.4.0 track suites
 
 `CircuitLayout` tests road-gate-recovery consistency against the same pure geometry read by Unreal player/rival code. `TrackDecorations` validates that 28 planned lane stripes and 56 curb markers remain on asphalt while spectator stands are outside the drivable road. `CircuitMap` validates minimap normalization, clamping and NaN/infinite-position safeguards. None test Unreal asset cooking, drawing, physics/collision or real gameplay.
+
+
+## v0.5.8 collision response contracts
+
+`CollisionResponsePolicyTests.cpp` compiles with strict C++20.
+It checks a lightweight, allocation-free decision on three blocking
+channel flags. The Unreal GameMode supplies the flags from actual
+engine components in a future authorized build, but this test does
+not invoke Unreal or simulate 3D vehicle physics.

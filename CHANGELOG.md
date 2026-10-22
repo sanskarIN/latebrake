@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased v0.5.8 — Collision-channel response integrity
+
+- New `CollisionResponsePolicy.h` classifies three critical blocking
+  collision responses for pawns, simulated physics bodies and dynamic
+  world objects. Merely setting `QueryAndPhysics` is not sufficient
+  if the profile allows Ignore or Overlap on those channels.
+- Unreal GameMode now checks the actual `UStaticMeshComponent`
+  channel responses and destroys/rejects improperly configured
+  collision-bearing track Actors, preserving v0.5.6/v0.5.7 strict
+  startup gating.
+- Added `CollisionResponsePolicyTests.cpp` with positive, each
+  failure, multi-failure and stable local diagnostic name cases.
+- Included explicit Unreal headers for the engine channel enums and
+  mesh-component calls rather than relying on transitive includes.
+- Source work only. No v0.5.8 release, packaged game binaries,
+  Unreal Engine 5.8 UHT/editor compile or installed-game collision
+  evidence exists for this milestone.
+
+
 ## v0.5.7 — Collision actor configuration and start-position preflight (SOURCE-ONLY pre-release, 2026-10-22)
 
 - New `CollisionBlockSetup.h` classifies missing Actor, absent mesh

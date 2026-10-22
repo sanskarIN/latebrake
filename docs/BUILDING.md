@@ -147,3 +147,15 @@ Build/install real Win64 and Android candidates and drive them with
 actual controls to verify the chassis rests on the road and hits
 barriers. Verify recovery/restart at every checkpoint, not merely
 the startup marker strings. See [source and actual-device QA guide](COLLISION_SETUP_QA.md).
+
+
+## v0.5.8 collision-channel acceptance (Unreal hardware pending)
+
+On an authorized UE 5.8 system, inspect actual ground/road/barrier
+`UStaticMeshComponent` properties in editor and cooked gameplay.
+Confirm `QueryAndPhysics` is enabled and that `ECC_Pawn`,
+`ECC_PhysicsBody` and `ECC_WorldDynamic` all report `ECR_Block`.
+Physically drive the player car against each boundary and confirm
+road contact through real installed Win64/Android games. No local
+portable test can certify actual game physics; use the separate
+[collision response QA guide](COLLISION_RESPONSE_QA.md).

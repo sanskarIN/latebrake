@@ -164,6 +164,25 @@ Unreal Engine installation. Portable CI verifies numeric policies and
 PowerShell synthetic log rejection only. The [development QA guide](docs/COLLISION_SETUP_QA.md)
 lists actual on-device requirements.
 
+## v0.5.8 source development — collision response integrity (NOT released)
+
+A new `CollisionResponsePolicy.h` defines which Unreal collision
+channels the prototype circuit must actually **block**: player pawns,
+physics bodies and other dynamic world objects. The GameMode now reads
+the real `UStaticMeshComponent` responses to `ECC_Pawn`,
+`ECC_PhysicsBody` and `ECC_WorldDynamic` after applying `BlockAll`.
+If any response is Ignore/Overlap rather than Block, it reports
+`LATEBRAKE_COLLISION_SETUP_FAILED`, destroys the incomplete Actor,
+and refuses to count the track as ready. This prevents a misleading
+startup success if the mode is `QueryAndPhysics` but one of its
+critical channels does not block.
+
+The standalone `CollisionResponsePolicyTests.cpp` checks every
+failure class with strict C++20. These are **source-only tests**:
+real physical collision, licensed Unreal 5.8 Editor/UHT compilation,
+the cookable map, and installed Windows/Android gameplay remain
+unverified. See [collision response QA](docs/COLLISION_RESPONSE_QA.md).
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.7** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.

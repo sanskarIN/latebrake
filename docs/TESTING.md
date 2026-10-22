@@ -1,3 +1,20 @@
+## v0.5.8: collision response policy regression (source only)
+
+`CollisionResponsePolicyTests.cpp` checks a standalone portable
+decision function: a track Actor may be declared configured only
+when Pawn, PhysicsBody and WorldDynamic channels all report Block.
+Ignore/Overlap on even one channel fails with a stable local
+diagnostic. Unreal `SpawnBlock` now reads those three responses
+from the actual `UStaticMeshComponent` after `BlockAll` setup,
+destroys unqualified Actors and prevents startup success. The
+existing `LATEBRAKE_COLLISION_SETUP_FAILED` smoke-log rejection
+continues to catch this failure class.
+
+**Unverified:** whether Unreal Engine 5.8 itself compiles and
+implements this wiring, real rigid-body contact in a cooked map,
+steering/gamepad/touch interaction, and Win64/Android game packages.
+Portable tests are not evidence of those behaviors.
+
 ## v0.5.7: collision Actor setup and planned spawn safety (source-only)
 
 `CollisionBlockSetupTests.cpp` checks the real portable decision
