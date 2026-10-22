@@ -217,6 +217,20 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   is not proof of Android input delivery or a working Unreal executable**.
   The same real map/engine/platform build blockers remain open.
 
+### v0.5.1 progression and recovery safety (unreleased)
+
+- A career event now stages its event ID and any required owned vehicle
+  inside an in-memory profile checkpoint, persists that selection, and
+  **only then** resets/reconfigures the active race. Failed SaveGame writes
+  reject the launch and restore the previous profile without switching races.
+- Player RECOVER charges an entire 5-second penalty and increments its
+  recovery counter before repositioning; a finished race, unchargeable
+  clock or saturated counter cannot grant an uncharged teleport.
+- Portable C++20 tests check invalid/locked event selection, missing required
+  vehicle, fail/retry/commit semantics and recovery count/time overflow.
+- There is still no UE 5.8 engine build or real Win64/Android installation.
+  These assertions are engine-facing **source integration**, not hardware QA.
+
 ### v0.5.1 race split timing (unreleased)
 
 - Portable `RaceProgress` now tracks the fastest strictly positive split
