@@ -239,3 +239,16 @@ else()
     target_compile_options(latebrake_finished_race_insights_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME FinishedRaceInsights COMMAND latebrake_finished_race_insights_tests)
+
+# Bounded recent-lap ring is standalone C++20 and runs unchanged in
+# the actual Unreal gameplay module. No test mocks or engine headers.
+add_executable(latebrake_recent_timed_laps_tests RecentTimedLapsTests.cpp)
+target_include_directories(latebrake_recent_timed_laps_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_recent_timed_laps_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_recent_timed_laps_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_recent_timed_laps_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RecentTimedLaps COMMAND latebrake_recent_timed_laps_tests)
+

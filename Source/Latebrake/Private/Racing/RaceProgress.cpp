@@ -18,6 +18,7 @@ void RaceProgress::Reset() noexcept
     NextCheckpoint = 0;
     CompletedLaps = 0;
     TimedLapCount = 0;
+    RecentLaps.Reset();
     ElapsedSeconds = 0.0;
     LapStartSeconds = 0.0;
     LastCheckpointSeconds = 0.0;
@@ -104,6 +105,7 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
             // lap times, while the explicit count ignores zero-duration
             // laps which would otherwise make pace spread misleading.
             ++TimedLapCount;
+            RecentLaps.Record(CompletedLaps, LastLapSeconds);
             if (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds)
             {
                 BestLapSeconds = LastLapSeconds;

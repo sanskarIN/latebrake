@@ -19,6 +19,13 @@ struct FinishedRaceInsights final
     double LapSpreadSeconds = 0.0;
     bool HasTheoreticalGap = false;
     bool HasLapSpread = false;
+    int LatestTimedLapNumber = 0;
+    double LatestTimedLapSeconds = 0.0;
+    int PreviousTimedLapNumber = 0;
+    double PreviousTimedLapSeconds = 0.0;
+    // Positive = last timed lap slower, negative = faster.
+    double LatestVsPreviousDeltaSeconds = 0.0;
+    bool HasLatestVsPrevious = false;
 };
 
 inline FinishedRaceInsights BuildFinishedRaceInsights(
@@ -55,6 +62,24 @@ inline FinishedRaceInsights BuildFinishedRaceInsights(
         result.BestToTheoreticalGapSeconds =
             result.BestLapSeconds - theoretical;
         result.HasTheoreticalGap = true;
+    }
+
+    const TimedLapRecord latest = race.GetRecentTimedLap(0);
+    const TimedLapRecord previous = race.GetRecentTimedLap(1);
+    if (latest.Valid() && IsValidFinishedRaceTime(latest.Seconds))
+    {
+        result.LatestTimedLapNumber = latest.CompletedLap;
+        result.LatestTimedLapSeconds = latest.Seconds;
+        if (previous.Valid() &&
+            IsValidFinishedRaceTime(previous.Seconds) &&
+            previous.CompletedLap < latest.CompletedLap)
+        {
+            result.PreviousTimedLapNumber = previous.CompletedLap;
+            result.PreviousTimedLapSeconds = previous.Seconds;
+            result.LatestVsPreviousDeltaSeconds =
+                latest.Seconds - previous.Seconds;
+            result.HasLatestVsPrevious = true;
+        }
     }
 
     const double slowest = race.GetSlowestLapSeconds();

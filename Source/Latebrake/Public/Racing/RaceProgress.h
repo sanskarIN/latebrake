@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include "Racing/RecentTimedLaps.h"
 
 // Portable, engine-independent race progression logic.
 // This header is deliberately free of Unreal dependencies so the same rules
@@ -34,6 +35,13 @@ public:
     // Count laps with a strictly positive finite measured duration. An
     // immediate t=0 checkpoint pass is not evidence of a timed lap.
     int GetTimedLapCount() const noexcept { return TimedLapCount; }
+    // Allocation-free last eight positive lap durations. The returned lap
+    // number is the physical completed-lap index (not a best-lap rank).
+    TimedLapRecord GetRecentTimedLap(int offset) const noexcept
+    {
+        return RecentLaps.GetRecent(offset);
+    }
+    int GetRecentTimedLapCount() const noexcept { return RecentLaps.Size(); }
     double GetElapsedSeconds() const noexcept { return ElapsedSeconds; }
     double GetCurrentLapSeconds() const noexcept { return ElapsedSeconds - LapStartSeconds; }
     double GetLastLapSeconds() const noexcept { return LastLapSeconds; }
@@ -59,6 +67,7 @@ private:
     int NextCheckpoint = 0;
     int CompletedLaps = 0;
     int TimedLapCount = 0;
+    RecentTimedLaps RecentLaps;
     double ElapsedSeconds = 0.0;
     double LapStartSeconds = 0.0;
     double LastCheckpointSeconds = 0.0;
