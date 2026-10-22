@@ -31,6 +31,30 @@ Track the engine version, machine, GPU, driver, device temperatures, resolution,
 
 As of 2026-10-19, commit `f8723f7937faf9503734719f9a1aeaacf640727b` passed the Ubuntu, Windows and macOS portable C++20 jobs: https://github.com/sanskarIN/latebrake/actions/runs/39221329905 . Later commits require their own verification.
 
+## Unreleased v0.5.1: career launch and recovery safety
+
+Portable C++20 `CareerLaunchSelection` verifies locked/invalid events,
+missing required owned vehicle, zero mutation on rejection, write failure
+rollback of event and vehicle selection, and successful retry/commit.
+`RecoveryCharge` verifies full five-second penalties, recovery counter
+updates, sector time inclusion, rejection after finish and overflow/saturation
+guards. Portable tests do **not** simulate Unreal save slots or actual pawn
+teleportation.
+
+Required installed UE 5.8/manual QA:
+- [ ] Start career event with a writable profile; verify event and required
+  car are saved and the new race starts from its correct checkpoint.
+- [ ] Force `SaveGameToSlot` failure; verify launch is refused, previous
+  active race does **not** restart, and required car/credits remain unchanged.
+- [ ] Restore writes and retry; verify selection survives app restart.
+- [ ] Recover during a timed sector; verify exactly one five-second fee per
+  valid press and no uncharged teleport on rejected requests.
+- [ ] Verify career menu stays paused and shows failure feedback when
+  a launch was refused; regression-test Android touches and keyboard controls.
+- [ ] Check pause/resume and completion behavior on real Win64/Android builds.
+
+Keep issues #2 and #13 open pending logged hardware results.
+
 ## Unreleased v0.5.1: sector timing and theoretical lap
 
 Portable `SectorTiming` CTest checks matched-gate first/best records,
