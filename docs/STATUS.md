@@ -4,6 +4,20 @@
 **Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
+## Unreleased v0.5.2 directional gate plane checks
+
+- The four checkpoint actors now sample actual local-player movement
+  across a specific forward-facing 3D checkpoint plane, rather than
+  awarding sector progress when a pawn merely enters a trigger sphere.
+- Engine-independent C++20 gate geometry enforces per-frame displacement,
+  forward speed, near-plane endpoints, interpolated lateral placement,
+  reasonable height and valid numeric inputs. Existing race order remains.
+- Portable tests exercise legal and illegal movement in all directions;
+  UE 5.8 physics, poor-frame-rate tolerance, marker placement, lap
+  timing and Windows/Android driver experience remain **unverified**.
+- v0.5.1 remains the last published immutable source-only pre-release;
+  no v0.5.2 EXE/APK or usable game release is claimed.
+
 ## Unreleased v0.5.2 career fairness development
 
 - In-progress career events now block all four garage mutation handlers
