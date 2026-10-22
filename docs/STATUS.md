@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-20
-**Current code milestone:** v0.5.0 career/championship source-only pre-release published; no verified playable builds.
+**Updated:** 2026-10-22
+**Current code milestone:** v0.5.1 reliability/circuit source-only pre-release, without verified playable builds.
 **Playable status:** Not verified; no Unreal Engine 5.8 editor build or Windows/Android runtime package has been tested.
 
 ## GitHub releases (source-only)
@@ -18,6 +18,7 @@
 - [v0.4.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.4.0) — circuit decorations and north-up minimap.
 - [v0.4.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.4.1) — experimental Android control HUD and touch reliability.
 - [v0.5.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.0) — career, two championship series, challenges, offline progression and source-level development menu.
+- [v0.5.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.1) — split timing, save/launch safety, mobile touch guards, batched circuit scenery and stricter build checks. **Source archive only; no installed game.**
 
 These tags are source previews. They are **not downloadable playable game installers**.
 
@@ -135,7 +136,7 @@ connection cannot manufacture validated game packages.
 
 The published v0.5.0 tag is an immutable **source-only pre-release** at merge commit `ad17b47886b8d3f9633299f74d85b4949aa1b5a8`. Release and core CI each passed Windows, Ubuntu and macOS portable tests; PowerShell syntax validation also passed. GitHub contains no attached executable assets. These checks do not validate the Unreal runtime or physical device behavior.
 
-## v0.5.1 build-readiness development — not yet a release
+## v0.5.1 source-release build readiness — no executable yet
 
 - Default game map and cooker now target `/Game/Maps/LatebrakeCircuit`.
   The actual Unreal-generated `.umap` **does not exist in the repo yet**.
@@ -152,12 +153,11 @@ The published v0.5.0 tag is an immutable **source-only pre-release** at merge co
 - **Still unverified:** real UHT/UBT compilation, map creation, cooking,
   installation, Windows/Android physics/menu/save QA, device performance
   and game binaries. Issues #2 and #13 remain open.
-- **Published release remains v0.5.0 source-only**. Work after this tag
-  does not add executable assets to the immutable v0.5.0 release.
+- **v0.5.0 remains an immutable source-only snapshot**, and v0.5.1 is also a source-only prerelease. Neither version adds playable EXE/APK assets.
 
 See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 
-### Current post-v0.5.0 development changes (not a release)
+### v0.5.1 source changes since v0.5.0
 
 - Fixed editor-map existence checking that erroneously queried the
   `EditorAssetLibrary` API for a **level**; Unreal documents that API as
@@ -184,7 +184,7 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   PowerShell script can check a real installed-game log after Unreal/packaging
   actually runs. CI deliberately tests only failure cases with synthetic text.
 - These changes have **not** been compiled against UE 5.8 or device tested;
-  v0.5.0 is still the source-only published pre-release, with issues #2 and
+  v0.5.1 is still a source-only pre-release, with issues #2 and
   #13 open pending actual game binaries and QA.
 
 ### v0.5.1 — source-level SaveGame failure recovery improvements
@@ -199,10 +199,10 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   championship bonus after a deliberately failed save.
 - **This is not a crash-safe atomic filesystem transaction.** No genuine
   UE SaveGame serialization, disk-failure simulation, hardware QA or
-  executable has run here. v0.5.0 is still source-only and issues #2/#13
+  executable has run here. v0.5.1 is also source-only and issues #2/#13
   remain open.
 
-### v0.5.1 held-touch input stabilization (unreleased)
+### v0.5.1 held-touch input stabilization (source only)
 
 - Engine-independent `TouchDriveState` now owns two-finger driving input;
   the Unreal pawn routes press/move/release and lifecycle/menu clears
@@ -217,7 +217,7 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   is not proof of Android input delivery or a working Unreal executable**.
   The same real map/engine/platform build blockers remain open.
 
-### v0.5.1 mobile viewport input safety (unreleased)
+### v0.5.1 mobile viewport input safety (source only)
 
 - Touch viewport dimensions are now observed before each Android car
   physics tick, and within every touch event. A size/orientation change
@@ -229,7 +229,7 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 - This does not prove Android touch-event dispatch, frame performance or
   packaged-game playability; keep engine/device qualification issues open.
 
-### v0.5.1 runtime startup smoke gate (unreleased)
+### v0.5.1 runtime startup smoke gate (source only)
 
 - The future real installed-game log verifier now requires **both** the
   authentic four-gate startup marker and one complete, earlier batched
@@ -238,7 +238,7 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 - Disposable CI parser fixtures exercise only **rejections**. They are not
   runnable Unreal evidence, renderer benchmarks or validated gameplay.
 
-### v0.5.1 instanced course visuals (unreleased)
+### v0.5.1 instanced course visuals (source only)
 
 - Single prototype circuit decoration plan now groups 93 static cosmetic
   cube placements into seven color/style batches under one Unreal actor
@@ -251,7 +251,7 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
   **UE 5.8 UHT/Editor compilation and renderer/phone profiling are not
   verified**; no FPS or verified packaged build is claimed.
 
-### v0.5.1 progression and recovery safety (unreleased)
+### v0.5.1 progression and recovery safety (source only)
 
 - A career event now stages its event ID and any required owned vehicle
   inside an in-memory profile checkpoint, persists that selection, and
@@ -265,7 +265,7 @@ See [actual packaging procedure](EXECUTABLE_BUILD_PIPELINE.md).
 - There is still no UE 5.8 engine build or real Win64/Android installation.
   These assertions are engine-facing **source integration**, not hardware QA.
 
-### v0.5.1 race split timing (unreleased)
+### v0.5.1 race split timing (source only)
 
 - Portable `RaceProgress` now tracks the fastest strictly positive split
   for each ordered sector and compares a fresh split only with the **previous**

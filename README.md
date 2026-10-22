@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Development status: [v0.5.0](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.0) is published as a SOURCE-ONLY pre-release (20 October 2026).** Career and championship logic is implemented in source and the portable CI passed on Windows, Ubuntu and macOS. The Unreal 5.8 Editor build, project-owned cooked map, Win64/Android game packages and installed playtests remain unverified.
+> **Source preview: [v0.5.1](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.1) — SOURCE-ONLY PRE-RELEASE (22 October 2026), NOT A PLAYABLE GAME.** GitHub source ZIP/tar.gz files are for developers; there is **no Windows EXE, Android APK/AAB or Linux game**. Portable C++20 CI does not compile Unreal 5.8. The editor/UHT build, real cookable project map, Win64/Android packages and installed playtests remain unverified.
 
 ## What's in source today?
 
@@ -19,7 +19,7 @@
 - v0.4.1: source-only Android touch HUD with visible steering, gas, brake, pause, restart and recovery pads.
 - v0.5.0: offline career/championship and challenge rules, versioned career progression saves, prototype menu/navigation, and extended portable tests.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
-- Unreleased v0.5.1 source: fastest split per sector, signed time delta against that sector's previous best and a clearly distinguished race-local theoretical lap (desktop HUD only). This data is **not** saved as an all-time record or tested inside Unreal; see [sector timing and QA](docs/SECTOR_TIMING.md).
+- v0.5.1 source preview: matched-sector split deltas and theoretical lap, transactional career-start selection, charged recovery safeguards, single-fire and viewport-safe Android touch, 93 decorations grouped into seven instanced-mesh batches, and stricter future startup-log checks. **All remain unqualified in Unreal**; see [v0.5.1 source release notes](docs/releases/v0.5.1.md).
 
 The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, production-quality career menus or verified Android touch interfaces yet.
 
@@ -75,7 +75,7 @@ These tests do not compile the Unreal gameplay classes or certify packaged game 
 
 ## Development and releases
 
-**v0.1.0** through **v0.5.0** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
+**v0.1.0** through **v0.5.1** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
 
 ## License and contributions
 
@@ -119,7 +119,7 @@ Unreal gameplay tests.
   [challenges](docs/CHALLENGES.md), [save migration](docs/SAVE_MIGRATION.md)
   and the [v0.5.0 release candidate notes](docs/releases/v0.5.0.md).
 
-## v0.5.1 development: Android viewport touch safety (not a release)
+## v0.5.1 source — Android viewport touch safety (not device-verified)
 
 Mobile held steering/pedal inputs are now cleared when the viewport
 resizes or temporarily becomes unavailable. Tracking the physical
@@ -128,7 +128,7 @@ new race actions; the player must lift and press again. Portable tests
 cover viewport changes, but actual Android device and UE 5.8 integration
 remain unverified. See [touch control qualification](docs/TOUCH_CONTROLS.md).
 
-## v0.5.1 development: batched scenery (not a release)
+## v0.5.1 source — batched scenery (not engine-verified)
 
 The source now groups 93 non-colliding decorative cubes into seven
 instanced-mesh batches under one scenery actor, preserving the original
@@ -137,7 +137,7 @@ verify group membership and transforms; no actual Unreal 5.8 compile,
 graphics output, draw-call measurement or mobile FPS claim has been verified.
 See [track and scenery QA](docs/TRACK.md).
 
-## v0.5.1 development: racing/progression integrity (not a release)
+## v0.5.1 source — racing/progression integrity (not engine-verified)
 
 - Career event selection and its required owned vehicle are now saved
   **before** the new race starts. If the profile write fails, the previous
@@ -149,7 +149,7 @@ See [track and scenery QA](docs/TRACK.md).
   Unreal Engine 5.8 integration, save-slot failure handling and on-device
   driving remain unverified.
 
-## v0.5.1 development — real executable build path (not a release)
+## Real executable build path — still pending engine qualification
 
 A reproducible **Windows-hosted Unreal Engine 5.8 candidate pipeline** is
 being prepared. It compiles the Unreal Editor target, creates an actual
@@ -160,7 +160,7 @@ uploading real packages. The default game/cook map is now
 Unreal Editor generates and saves the binary map**. Editor scripting
 dependencies are editor-target-only, not part of the racing runtime.
 
-**No executable files have been produced or uploaded from this development
-branch.** A licensed Unreal installation and target hardware are still
+**No verified executable files have been produced or uploaded from this source
+revision.** A licensed Unreal installation and target hardware are still
 mandatory. See the [step-by-step executable build pipeline](docs/EXECUTABLE_BUILD_PIPELINE.md).
-The v0.5.0 source-only pre-release is unchanged. Unreleased v0.5.1 touch-source hardening prevents duplicate button actions for the same held finger, with portable tests; Android hardware verification is still pending.
+The v0.5.0 source-only pre-release remains immutable. The v0.5.1 source-only pre-release adds touch hardening and the development features above without attaching a playable game; Android hardware verification is still pending.

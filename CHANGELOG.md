@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — v0.5.1 executable readiness
+## v0.5.1 — Reliability & Circuit Optimization (SOURCE-ONLY pre-release, 2026-10-22)
 
 ### Held-control cancellation on viewport resize (Android source only)
 
@@ -38,7 +38,7 @@
 - Added strict C++20 geometry/group-count tests and distinct startup
   diagnostics for complete vs incomplete scenery assembly.
 - No engine compile, cook, real draw-call/FPS measurement, device test,
-  playable binary or v0.5.1 release is claimed.
+  playable binary or qualified Unreal runtime is claimed.
 
 
 ### Career launch and recovery accounting integrity
@@ -99,10 +99,10 @@
   self-hosted Unreal candidate-build workflow.
 - Corrected packaging-script PowerShell errors found by CI.
 - No Unreal binaries, real Unreal map, Android testing, stable release,
-  or new v0.5.1 GitHub release is claimed.
+  or playable v0.5.1 game build is claimed.
 
 
-### Additional unreleased build and input hardening
+### Additional build and input hardening
 
 - Corrected the Unreal 5.8 editor level-existence check, ensuring an
   existing binary level is loaded rather than recreated. Seven offline
@@ -114,7 +114,7 @@
 - Fixed menu Pause/Escape routing to avoid resuming a race behind its menu.
 - No actual Unreal Editor/game compilation or shipped executable is claimed.
 
-### Further unreleased game runtime and build preflight
+### Further game runtime and build preflight
 
 - Registered an Android-aware player controller for custom multi-touch
   controls without conflicting default virtual joysticks.
@@ -125,7 +125,7 @@
 - Portable source tests do not substitute for Unreal compilation or
   installed-device verification. No executable files are published.
 
-### Unreleased save and progression integrity work
+### Save and progression integrity work
 
 - Added engine-independent `ProfileWriteCheckpoint` with RAII rollback,
   protecting career medals, first-completion credits, championship bonus,
@@ -137,9 +137,9 @@
   saved writes, duplicate rewards, garage rollback and championship replay.
 - Does not guarantee power-loss durability; actual UE 5.8 SaveGame writes
   and device failure/restore tests remain necessary. No new binaries or
-  GitHub release published.
+  playable build published.
 
-### Unreleased v0.5.1 touch input safety
+### v0.5.1 touch input safety
 
 - Introduced `TouchDriveState`, the portable two-finger driving capture
   state machine, and replaced the pawn's duplicated touch input fields.
@@ -151,7 +151,7 @@
   drag transitions and lifecycle resets. Real Android compilation,
   installation and touch QA are still outstanding.
 
-### Unreleased v0.5.1 candidate/archive provenance gates
+### Candidate/archive provenance gates
 
 - Added full candidate manifest validation for every packaged file's
   SHA256, size and safe relative path; rejects mismatches, duplicate,
@@ -163,7 +163,7 @@
 - Replaced weak Win64+Android combined checker with two full
   per-platform checks and same-source/same-Unreal-version requirements.
 - Extended PowerShell negative regression tests with disposable text-only
-  archive fixtures. No Win64 game/Android APK or v0.5.1 release exists yet.
+  archive fixtures. No Win64 game/Android APK has been built or attached to this source-only pre-release.
 
 ## v0.5.0 — Career & Championship Foundations (published source-only pre-release, 2026-10-20)
 
