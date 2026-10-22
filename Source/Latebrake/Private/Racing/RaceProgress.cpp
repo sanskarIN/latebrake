@@ -7,7 +7,7 @@
 namespace latebrake
 {
 RaceProgress::RaceProgress(int checkpointCount, int requiredLaps) noexcept
-    : CheckpointCount(std::max(1, checkpointCount))
+    : CheckpointCount(std::clamp(checkpointCount, 1, MaxCheckpoints))
     , RequiredLaps(std::max(1, requiredLaps))
 {
     Reset();
@@ -24,6 +24,10 @@ void RaceProgress::Reset() noexcept
     BestLapSeconds = 0.0;
     SlowestLapSeconds = 0.0;
     LastSectorSeconds = 0.0;
+    LastSectorDeltaSeconds = 0.0;
+    LastSectorIndex = -1;
+    LastSectorCompared = false;
+    BestSectorSeconds.fill(0.0);
     State = RaceState::Running;
 }
 
@@ -58,6 +62,24 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
     }
 
     LastSectorSeconds = ElapsedSeconds - LastCheckpointSeconds;
+    LastSectorIndex = checkpointIndex;
+    LastSectorCompared = false;
+    LastSectorDeltaSeconds = 0.0;
+    // Use only strictly positive measured splits. A gate may be touched at
+    // t=0, but that cannot become a zero-second unbeatable sector record.
+    if (std::isfinite(LastSectorSeconds) && LastSectorSeconds > 0.0)
+    {
+        double& best = BestSectorSeconds[static_cast<std::size_t>(checkpointIndex)];
+        if (best > 0.0)
+        {
+            LastSectorCompared = true;
+            LastSectorDeltaSeconds = LastSectorSeconds - best;
+        }
+        if (best <= 0.0 || LastSectorSeconds < best)
+        {
+            best = LastSectorSeconds;
+        }
+    }
     LastCheckpointSeconds = ElapsedSeconds;
     ++NextCheckpoint;
     if (NextCheckpoint == CheckpointCount)
@@ -82,5 +104,27 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
     }
 
     return true;
+}
+
+double RaceProgress::GetBestSectorSeconds(int sector) const noexcept
+{
+    if (sector < 0 || sector >= CheckpointCount) return 0.0;
+    return BestSectorSeconds[static_cast<std::size_t>(sector)];
+}
+
+double RaceProgress::GetTheoreticalBestLapSeconds() const noexcept
+{
+    double sum = 0.0;
+    for (int sector = 0; sector < CheckpointCount; ++sector)
+    {
+        const double best = BestSectorSeconds[static_cast<std::size_t>(sector)];
+        if (!std::isfinite(best) || best <= 0.0 ||
+            best > std::numeric_limits<double>::max() - sum)
+        {
+            return 0.0;
+        }
+        sum += best;
+    }
+    return sum;
 }
 } // namespace latebrake
