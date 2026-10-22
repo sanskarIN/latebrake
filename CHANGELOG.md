@@ -2,6 +2,20 @@
 
 ## Unreleased — v0.5.1 executable readiness
 
+### Held-control cancellation on viewport resize (Android source only)
+
+- Introduced a portable touch-viewport baseline guard to detect actual
+  screen dimension changes and temporary unusable viewport sizes.
+- Android pawn Tick and the touch dispatcher cancel both held steering
+  and pedal controls on resize, without waiting for a touch-move event.
+- Preserve physical-finger ownership across a resize so repeated Pressed
+  notifications cannot reactivate acceleration or fire a second action.
+- Added strict standalone C++20 regressions for rotation, smaller resize,
+  viewport disappearance/recovery, retained touch-down state and re-press.
+- Genuine Android devices, Unreal Engine 5.8 compilation and in-game
+  focus/resize/touch verification are still outstanding.
+
+
 ### Batched scenery startup smoke policy
 
 - Strengthened the **real installed-game log verifier** so a four-gate
