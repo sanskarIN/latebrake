@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased v0.5.2 — Checkpoint crossing integrity (source development)
+
+- Replaced event credit on mere 600 cm trigger-sphere entry with an
+  **actual forward crossing of each checkpoint's 3D plane**, sampled
+  between consecutive local-player positions.
+- Validated the four canonical gate directions, minimum forward speed,
+  a bounded longitudinal approach/departure window, interpolated
+  lateral/height position and maximum per-frame movement.
+- Eliminated gameplay overlap events on decorative checkpoint triggers;
+  independent per-gate ticks check the local player only, then use the
+  existing ordered RaceProgress to enforce race sequence and lap count.
+- Added strict portable C++20 tests for all four gates, touching the
+  leading rim, opposite-direction passes, edge positions, shortcut/teleport
+  jumps, out-of-lane or airborne crossings, invalid numeric inputs and
+  legitimate diagonal approaches.
+- Genuine Unreal Engine 5.8 compilation and installed driving tests
+  remain required, especially high-speed/frame-hitch crossings and
+  recovery/restart transitions. No new v0.5.2 pre-release or binaries.
+
 ## Unreleased v0.5.2 — Career race integrity (source development)
 
 - Disallow all four garage mutations (change owned vehicle, unlock vehicle,
