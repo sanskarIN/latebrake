@@ -52,6 +52,8 @@ int main()
     Require(race.PassCheckpoint(0) && race.IsFinished() &&
             race.GetBestLapSeconds() == 4.0,
             "legitimate ordered finish uses only playable race time");
+    Require(!CanScorePlayerCheckpoint(race, true, false, true),
+            "completed race cannot accept another player checkpoint");
     Require(!AdvancePlayerRaceClockIfReady(race, true, false, true, 15.0) &&
             race.GetElapsedSeconds() == 4.0,
             "finished result remains frozen even with a valid player");
