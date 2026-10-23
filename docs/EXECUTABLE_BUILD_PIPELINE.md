@@ -104,6 +104,25 @@ It intentionally does not run on untrusted PRs, does not use ordinary
 GitHub-hosted runners, and does **not** attach game files to GitHub Releases.
 No runner of this type is known to be connected at this time.
 
+## v0.5.12 archive path safety checks (source only)
+
+Before trusting an archive's file hashes,
+`Test-CandidateManifest.ps1` now inspects the manifest, package root
+and every directory component of each listed relative path for
+symbolic links, junctions and other filesystem reparse points.
+It also rejects otherwise-unlisted linked directories, including
+empty junctions that do not contribute files. This prevents a valid
+checksum of a file reached through a link from silently authenticating
+bytes outside the candidate archive. The companion
+`Write-CandidateManifest.ps1` rejects all linked package entries,
+zero-length payload files and dirty tracked source before writing.
+The disposable Windows junction QA fixtures use ordinary text,
+**not** manufactured executables or Unreal output.
+
+Archive integrity and provenance are still only prerequisites:
+even after a future authentic Editor/UHT + UAT success, physical
+installed-game QA remains necessary before a playable release.
+
 ## Validation boundaries
 
 The ordinary C++20 CI and PowerShell negative packaging tests **do not**
