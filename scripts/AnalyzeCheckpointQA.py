@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize local LateBrake v0.5.4 checkpoint QA logs.
+"""Summarize local LateBrake checkpoint QA logs (v0.5.4 and v0.5.31 formats).
 
 This tool parses text supplied by a tester. It CANNOT attest log provenance,
 prove Unreal gameplay or validate a shipping executable. Test fixtures are
