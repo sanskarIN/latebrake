@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased v0.5.20 — Strict recent timed-lap order
+
+- The fixed-size recent completed lap buffer refuses duplicate or
+  backdated lap identifiers while preserving valid increasing records.
+- Correct ring-buffer oldest/newest ordering survives rejected writes
+  even after wrapping. Race reset remains a fresh timing session.
+- Actual portable RecentTimedLaps regression covers malformed IDs,
+  successful wrap/eviction and clean reset. No Unreal runtime,
+  engine build or hardware QA has been performed.
+
+
 ## Unreleased v0.5.19 — Counted rival recovery budget
 
 - `RivalRouteProgress` refuses new teleport requests after its finite
