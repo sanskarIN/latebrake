@@ -1,5 +1,7 @@
 #pragma once
 
+#include "UI/TouchFingerRange.h"
+
 #include <array>
 #include <cstddef>
 
@@ -11,7 +13,7 @@ namespace latebrake
 class TouchPressTracker final
 {
 public:
-    static constexpr int MaxFingerCount = 16;
+    static constexpr int MaxFingerCount = MaxTrackedTouchFingers;
 
     bool Press(int finger) noexcept
     {
@@ -40,7 +42,7 @@ public:
 private:
     static constexpr bool ValidFinger(int finger) noexcept
     {
-        return finger >= 0 && finger < MaxFingerCount;
+        return IsTrackableTouchFinger(finger);
     }
 
     std::array<bool, MaxFingerCount> Down{};
