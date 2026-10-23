@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased v0.5.22 — Malformed touch press owner cancellation
+
+- A non-finite press event from a **currently held** throttle,
+  brake or steering finger now cancels that owner's input instead of
+  silently retaining its previously held value.
+- Other valid fingers and their controls stay active, and valid
+  duplicate presses still preserve original ownership.
+- Expanded source-level `TouchDriveStateTests.cpp` and
+  `TouchFingerRangeTests.cpp` cover malformed duplicate input,
+  independent pedal/steering, owner release, stale moves, and the
+  highest trackable finger ID.
+- Real Unreal Engine 5.8 / Android focus and device testing is
+  outstanding; no playable executable is claimed.
+
+
 ## Unreleased v0.5.21 — Neutralize held touch controls on invalid viewport
 
 - Treat invalid viewport geometry as a **global driving-input
