@@ -20,6 +20,11 @@ int main()
 {
     using namespace latebrake;
     RaceProgress race(1, 1);
+    Require(!CanScorePlayerCheckpoint(race, true, false, false) &&
+            !CanScorePlayerCheckpoint(race, false, false, true) &&
+            !CanScorePlayerCheckpoint(race, true, true, true) &&
+            CanScorePlayerCheckpoint(race, true, false, true),
+            "no player, incomplete track or menu pause cannot score gates");
 
     Require(!AdvancePlayerRaceClockIfReady(race, true, false, false, 5.0),
             "fully built track without local player cannot run the clock");
