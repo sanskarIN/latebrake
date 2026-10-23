@@ -1147,6 +1147,13 @@ void ALatebrakeRaceGameMode::RestartRace()
                     latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
         RivalCar->ResetPilot();
     }
+    // The direct keyboard/gamepad/mobile RESTART binding does not go through
+    // MenuActivate(). Never leave an invisible open menu blocking race timing
+    // after an accepted restart has already unpaused the world.
+    if (Menu.IsOpen())
+    {
+        CloseMenuForRace();
+    }
 }
 
 void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
