@@ -26,6 +26,11 @@ three completed timed laps. It excludes invalid/finished/zero-clock
 cases and limits slow-lap estimates to not predate elapsed time.
 These estimates are presentation only, not official race records.
 
+The v0.5.18 `RivalDriveReadinessTests.cpp` directly links real
+`RaceProgress.cpp` to reject AI driving without a ready circuit or
+local driver, during pause/menu, after finish or in the wrong event.
+These pure policy checks do not replace a real engine physics test.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
