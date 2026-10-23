@@ -299,3 +299,18 @@ else()
     target_compile_options(latebrake_checkpoint_session_trace_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME CheckpointSessionTrace COMMAND latebrake_checkpoint_session_trace_tests)
+
+# v0.5.15: actual gate/race tests verify that restarting or closing a
+# menu can never inherit the checkpoint's pre-transition position.
+add_executable(latebrake_race_session_epoch_tests
+    RaceSessionEpochTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_race_session_epoch_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_session_epoch_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_session_epoch_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_session_epoch_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceSessionEpoch COMMAND latebrake_race_session_epoch_tests)
