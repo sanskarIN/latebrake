@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.30 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.30).
-**Next development milestone:** v0.5.30 invalid-velocity checkpoint continuity (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.31 local invalid-velocity QA summaries (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
 ## v0.5.30 source development — checkpoint corrupt-velocity discontinuity
