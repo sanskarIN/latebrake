@@ -40,6 +40,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.24 (source development, not released) | Reject untracked C++/config and modified tracked source before/after editor map authoring, before UAT packaging and candidate manifest writing; pin the original source HEAD throughout the candidate build | Synthetic Git policy tests on Windows CI; genuine Unreal builds/QA still pending |
 | v0.5.25 (source development, not released) | Retain one circuit map SHA256 throughout Editor→UAT→manifest and require Win64/Android map identity equality | Disposable PowerShell negative tests and strict CI; actual UE build and installed hardware playtests still required |
 | v0.5.26 (source development, not released) | Reject paid player recovery while the circuit is incomplete, the player is missing, the race/menu is paused or the race is finished | Real RaceProgress-linked C++20 regression matrix; Unreal gameplay/device recovery QA still required |
+| v0.5.27 (source development, not released) | Require an actual simulated, collision-bearing, finite player chassis before racing time/gates/recovery; rebase checkpoint traces on physics loss | Real RaceProgress-linked three-OS C++20 tests; genuine Unreal Chaos and device QA still pending |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
