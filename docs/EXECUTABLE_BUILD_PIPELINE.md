@@ -1,6 +1,6 @@
 # Building genuine playable LateBrake candidates
 
-**Status, 20 October 2026:** This project is source-only. The files below
+**Status, 23 October 2026:** This project is source-only. The files below
 make packaging more reproducible **on an authorized Windows UE 5.8
 workstation**; no package, actual Unreal build or installed playtest has yet
 been performed by this repository's ordinary three-OS CI.
@@ -56,6 +56,37 @@ optional `-ExpectedCommit <40-hex-SHA>` to enforce the same policy.
 The second command creates and deletes only disposable Git test histories.
 These checks **do not** prove Unreal compilation, map cook, package origin,
 hardware installation or gameplay.
+
+## Circuit map continuity (v0.5.25 source development)
+
+An unchanged Git commit **does not imply identical circuit content**:
+the licensed Editor can create an untracked `LatebrakeCircuit.umap`,
+and it was previously hashed only when the packaging manifest was written.
+The candidate wrapper now pins the Editor-saved map's SHA256 before UAT.
+`Build-PreRelease.ps1` compares its pre-cook and post-cook bytes, and
+`Write-CandidateManifest.ps1` rechecks the original digest. A changed or
+missing map fails the candidate build rather than producing misleading
+metadata. Direct calls can pass `-ExpectedMapSha256` to bind them to a
+previously approved snapshot. Byte matching alone **cannot prove** that
+Unreal cooked or ran the expected map.
+
+A complete Win64 + Android manual release review now checks that both
+fully verified platform manifests refer to the **same source commit,
+Unreal Engine version, and circuit map SHA256**. Two builds from the same
+commit but different freshly generated level files cannot be treated as
+one common release candidate. The map should be committed as an actual
+Git LFS asset before a distributable release.
+
+The following tests require no Unreal SDK and generate only temporary
+synthetic data (not game assets):
+
+```powershell
+pwsh ./scripts/Test-CandidateMapSnapshotPolicy.ps1
+pwsh ./scripts/Test-CandidatePairIdentityPolicy.ps1
+```
+
+These tests enforce identity rules, not binary provenance, gameplay
+quality, physics, Android input, or real hardware qualification.
 
 ## One command per platform (run on the Windows host)
 
