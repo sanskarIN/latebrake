@@ -201,6 +201,18 @@ timing, pause-resume, a real gate finish and restart. This remains
 actual map cooking and installed Win64/Android gameplay are unverified.
 [QA acceptance guide](docs/RACE_CLOCK_READINESS_QA.md).
 
+## v0.5.10 source development — player spawn/clock guard (NOT released)
+
+A new portable `PlayerRaceClockReadiness.h` prevents ghost lap time
+from accumulating on an otherwise-ready circuit when there is no
+valid local player car. The Unreal GameMode and prototype HUD now share
+the same player-readiness check and show `PLAYER CAR NOT READY`
+when the course exists but the driver pawn is missing.
+Strict tests link the genuine portable `RaceProgress.cpp` source and
+cover pawn loss/return, blocked startup, pause, finish and restart.
+**No Unreal 5.8 UHT/editor compilation, gameplay or executable is
+claimed.**
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.8** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
