@@ -66,8 +66,9 @@ public:
             Clear();
             return;
         }
-        // Keep global viewport invalidation before rejecting positive stray
-        // ids, but never let an untrackable finger move an active control.
+        // A stray negative/positive index cannot move an owned control,
+        // but its invalid viewport is still a global interruption.
+        // Never let an untrackable finger move an active control.
         if (!IsTrackableTouchFinger(finger)) return;
         if (!std::isfinite(x) || !std::isfinite(y))
         {
