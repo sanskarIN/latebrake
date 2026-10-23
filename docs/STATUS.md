@@ -8,7 +8,8 @@
 ## v0.5.11 source development — never bridge checkpoint samples across pause
 
 - New allocation-free `CheckpointSessionTrace` resets the motion baseline
-  on pause/resume session-revision changes, independently of teleport
+  on menu and Escape/gamepad pause/resume session-revision changes,
+  independently of teleport
   revisions and pawn swaps. No gate can earn a score from two samples
   separated by a menu pause.
 - Unreal checkpoint actors reset their diagnostic windows on session
