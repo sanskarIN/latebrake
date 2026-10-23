@@ -33,6 +33,14 @@ public:
         {
             return false;
         }
+        // This buffer models completed laps in one uninterrupted race, not
+        // an editable leaderboard. Reject duplicate/backdated numbers so
+        // recent-lap comparisons and pace estimates cannot silently pair
+        // durations with fabricated or out-of-order lap identifiers.
+        if (Count > 0 && completedLap <= GetRecent(0).CompletedLap)
+        {
+            return false;
+        }
         Entries[static_cast<std::size_t>(Next)] = {completedLap, seconds};
         Next = (Next + 1) % Capacity;
         if (Count < Capacity) ++Count;
