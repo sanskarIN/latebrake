@@ -249,6 +249,16 @@ Both Win64/Android evidence templates are updated. A successful
 source-policy fixture is **not** proof of compiled Unreal gameplay.
 See [real-game build/QA instructions](docs/EXECUTABLE_BUILD_PIPELINE.md).
 
+## v0.5.14 source development — reject malformed UAT candidates
+
+After a genuine Unreal packaging command, the pipeline now runs
+`scripts/Test-UATPackageStructure.ps1` before writing a candidate
+manifest. It checks the Win64 executable header and cooked files,
+or the Android APK ZIP/manifest/compiled-code structure, rejecting
+obviously incomplete archives. Tests use invalid disposable files:
+**no Unreal build, Windows executable or Android game is certified**.
+See [executable build pipeline](docs/EXECUTABLE_BUILD_PIPELINE.md).
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.8** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
