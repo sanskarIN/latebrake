@@ -12,7 +12,8 @@ param(
     [Parameter(Mandatory)][string]$EngineRoot,
     [Parameter(Mandatory)][ValidateSet('Win64', 'Android')][string]$Platform,
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [string]$ExpectedCommit
+    [string]$ExpectedCommit,
+    [string]$ExpectedMapSha256
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -52,6 +53,13 @@ if (-not (Test-Path -LiteralPath $requiredMap -PathType Leaf)) {
 }
 & (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $requiredMap
 if (-not $?) { throw 'Refusing to cook a file that is not a plausible engine-authored Unreal map.' }
+# Snapshot the original serialized .umap BEFORE Unreal BuildCookRun. A
+# post-cook map digest alone can refer to bytes never actually cooked.
+$mapBeforeCook = (Get-FileHash -LiteralPath $requiredMap -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($PSBoundParameters.ContainsKey('ExpectedMapSha256')) {
+    & (Join-Path $PSScriptRoot 'Test-CandidateMapSnapshot.ps1') -MapPath $requiredMap -ExpectedSha256 $ExpectedMapSha256
+    if (-not $?) { throw 'Circuit map differs from the map saved before UAT.' }
+}
 $config = Get-Content -LiteralPath (Join-Path $repo 'Config/DefaultEngine.ini') -Raw
 if ($config -notmatch '(?m)^GameDefaultMap=/Game/Maps/LatebrakeCircuit\s*$' -or
     $config -notmatch '(?m)^\+MapsToCook=\(FilePath="/Game/Maps/LatebrakeCircuit"\)\s*$') {
@@ -101,6 +109,8 @@ if ($LASTEXITCODE -ne 0) {
 # revision recorded at the beginning of the authorized build.
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') @sourceCheck
 if (-not $?) { throw 'Source HEAD or working tree changed during UAT packaging.' }
+& (Join-Path $PSScriptRoot 'Test-CandidateMapSnapshot.ps1') -MapPath $requiredMap -ExpectedSha256 $mapBeforeCook
+if (-not $?) { throw 'Circuit map changed while Unreal cooked the candidate.' }
 
 # Unreal returning 0 is necessary but not enough. Reject implausible EXEs,
 # tiny cooked packages and malformed APKs BEFORE recording a manifest or
