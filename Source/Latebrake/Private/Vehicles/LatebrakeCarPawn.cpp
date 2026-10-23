@@ -3,6 +3,7 @@
 #include "Vehicles/DriverInputSafety.h"
 #include "UI/TouchControlLayout.h"
 #include "UI/TouchViewportSafety.h"
+#include "UI/TouchPressDispatch.h"
 #include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
@@ -350,11 +351,29 @@ void ALatebrakeCarPawn::TogglePause()
 
 void ALatebrakeCarPawn::TouchPressed(ETouchIndex::Type FingerIndex, FVector Location)
 {
-    // A duplicated Pressed event from any held finger (including an action
-    // pad or blank UI region) must never trigger RECOVER or RESTART again.
-    // Do not reset this tracker from ClearDriverInputs(): those actions
-    // themselves clear driving state while the finger is still held.
-    if (!TouchPresses.Press(static_cast<int>(FingerIndex))) return;
+    // A duplicated Pressed event cannot fire PAUSE/RECOVER/RESTART again.
+    // Unlike an unconditional early return, the shared admission policy
+    // also cancels a previously captured owner on malformed duplicate
+    // coordinates. Keep all other fingers and the physical-down latch.
+    const int32 FingerId = static_cast<int32>(FingerIndex);
+    const bool bWasPedalOwner = TouchDrive.PedalOwner() == FingerId;
+    const bool bWasSteeringOwner = TouchDrive.SteeringOwner() == FingerId;
+    const latebrake::TouchPressAdmission Admission =
+        latebrake::AdmitTouchPress(
+            TouchPresses, TouchDrive, FingerId, Location.X, Location.Y);
+    if (Admission != latebrake::TouchPressAdmission::NewPress)
+    {
+        if (Admission == latebrake::TouchPressAdmission::MalformedDuplicate)
+        {
+            // Removing ownership must also zero any still-smoothed output
+            // from the canceled finger before the next physics frame.
+            if (bWasPedalOwner) SmoothedThrottle = 0.f;
+            if (bWasSteeringOwner) SmoothedSteering = 0.f;
+        }
+        return;
+    }
+    // Forward FIRST presses (even malformed ones) so ApplyTouch still
+    // observes a changed/unavailable viewport and handles menu gating.
     ApplyTouch(FingerIndex, Location, true);
 }
 
