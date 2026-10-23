@@ -217,7 +217,7 @@ try {
     Expect-RejectionMatching 'QA missing exact candidate digest' 'candidate_manifest_sha256 must contain' {
         & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
     }
-    $qa.candidate_manifest_sha256 = ('f' * 64)
+    $qa['candidate_manifest_sha256'] = ('f' * 64)
     Write-QA
     Expect-RejectionMatching 'QA digest belongs to another candidate' 'candidate_manifest_sha256 does not match' {
         & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
