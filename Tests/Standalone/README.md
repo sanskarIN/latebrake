@@ -54,6 +54,17 @@ control**, while another valid finger and a valid duplicate press
 remain unaffected. A stray invalid or out-of-range finger can never
 steal input. Actual Android input/focus QA remains open.
 
+The v0.5.23 `TouchPressTrackerTests.cpp` also exercises the
+`AdmitTouchPress` API now invoked directly by the Unreal pawn's
+`TouchPressed` callback. An already-down finger's malformed repeated
+press must cancel only its own throttle or steering, retain the
+physical-down latch (no repeat action), and zero the relevant smoothed
+output in the engine caller. Genuine first presses—including malformed
+first presses—are still passed to `ApplyTouch` for viewport validation.
+The tests verify admission/drive ownership but cannot execute the Unreal
+callback, sample smoothing in the engine, or qualify physical Android
+touch delivery. See [Android issue #13](https://github.com/sanskarIN/latebrake/issues/13).
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
