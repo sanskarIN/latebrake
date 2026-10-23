@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased v0.5.10 — Local player readiness guard (source development)
+
+- New portable `PlayerRaceClockReadiness.h` refuses to advance the
+  real `RaceProgress` timer without a valid local player pawn, even
+  if the original circuit passed every source-side startup check.
+- Unreal GameMode now uses one player-pawn validity probe for both
+  its timing gate and HUD warnings; it shows `PLAYER CAR NOT READY`
+  when the track exists but a local player has not spawned/returned.
+- New strict C++20 `PlayerRaceClockReadinessTests.cpp` links actual
+  race progression and checks driver absence, return, pause, startup
+  rejection, malformed time, finish and restart.
+- **Not released or Unreal-verified**; editor/UHT compile and installed
+  Win64/Android player-spawn and HUD QA remain outstanding.
+
 ## Unreleased v0.5.9 — Fail-closed race clock on incomplete startup
 
 - New portable `RaceClockReadiness.h` advances the actual
