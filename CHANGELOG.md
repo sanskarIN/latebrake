@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased v0.5.14 — UAT candidate package preflight
+
+- `Build-PreRelease.ps1` now invokes a standalone
+  `Test-UATPackageStructure.ps1` immediately after a successful
+  authentic Unreal BuildCookRun operation. Expected extension or
+  zero exit code alone cannot greenlight an unverified archive.
+- Win64 candidate preflight checks MZ headers and minimum sizes of
+  Latebrake executable(s) and requires substantive cooked .pak/.ucas
+  payloads. Android preflight checks ZIP header/structure, one
+  nonempty AndroidManifest.xml and compiled dex/native content.
+- Rejects linked/reparse package nodes before inspecting payloads.
+- Disposable negative PowerShell fixtures test missing, tiny, padded
+  and structurally invalid outputs; no playable binaries are made.
+- This is **structural source safety only**. Even a passing preflight
+  cannot certify a genuine engine build or installed gameplay.
+
+
 ## Unreleased v0.5.13 — Bind installed-game QA to exact candidate bytes
 
 - Platform QA now requires `candidate_manifest_sha256` matching the
