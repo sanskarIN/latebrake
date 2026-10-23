@@ -2,8 +2,25 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.22 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.22).
-**Next development milestone:** v0.5.24 candidate source provenance hardening (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.25 candidate circuit map continuity and cross-platform identity (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.25 source development — original cooked map identity
+
+- Earlier pre-release packaging recorded the circuit map's SHA256 after
+  UAT, but could not prove the *same bytes* were present before cooking.
+  The one-command candidate builder now snapshots Editor-authored map
+  bytes and verifies them before/after UAT and at manifest creation.
+- `Test-CandidateMapSnapshot.ps1` fails on missing, implausibly small,
+  reparse-point, corrupt or changed map bytes. Disposable policy fixtures
+  test same-size mutation, invalid SHA256 and restoration.
+- The dual-platform manual release gate also compares the map's SHA256
+  between Win64 and Android candidate manifests. A matching Git SHA
+  and engine version alone are insufficient when the map was generated
+  separately. Synthetic paired-manifest tests exercise this policy.
+- These are source/build identity improvements only. No genuine UE
+  compilation, packaged game, hardware driving QA or official
+  v0.5.25 release has been verified.
 
 ## v0.5.24 source development — source-to-binary provenance gate
 
