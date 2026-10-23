@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Racing/RaceProgress.h"
+#include "Racing/PlayerRaceClockReadiness.h"
 
 #include <limits>
 
@@ -24,4 +25,20 @@ inline bool TryChargePlayerRecovery(RaceProgress& race,
     ++recoveries;
     return true;
 }
+ 
+// A recovery is a race action, not a pause/menu escape hatch. Share the
+// actual checkpoint and timer readiness policy so a failed circuit build,
+// missing local driver, pause/menu or completed result cannot spend credits
+// of race time or teleport a car while competitive timing is suspended.
+// The existing charge remains atomic with respect to the recovery counter
+// and clock: the caller MUST teleport only on true.
+inline bool TryChargePlayerRecoveryIfReady(
+    RaceProgress& race, int& recoveries, bool circuitReady,
+    bool pausedOrInMenu, bool localDriverReady) noexcept
+{
+    return CanScorePlayerCheckpoint(
+               race, circuitReady, pausedOrInMenu, localDriverReady) &&
+           TryChargePlayerRecovery(race, recoveries);
+}
+
 } // namespace latebrake
