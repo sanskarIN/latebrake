@@ -36,10 +36,23 @@ public:
             Clear();
             return;
         }
-        if (!IsTrackableTouchFinger(finger) ||
-            !std::isfinite(x) || !std::isfinite(y) ||
-            finger == SteeringFinger || finger == PedalFinger)
+        if (!IsTrackableTouchFinger(finger))
         {
+            return;
+        }
+        if (!std::isfinite(x) || !std::isfinite(y))
+        {
+            // A malformed new press cannot acquire a control. If it came
+            // from an ALREADY held owner (e.g. a platform duplicate after
+            // focus changes), neutralize that input immediately rather
+            // than leaving the previous throttle/steering value latched.
+            // Other fingers continue holding their independent controls.
+            Cancel(finger);
+            return;
+        }
+        if (finger == SteeringFinger || finger == PedalFinger)
+        {
+            // Legitimate duplicate press must not reconfigure ownership.
             return;
         }
         const TouchControl control = HitTestTouchControl(layout, x, y);
