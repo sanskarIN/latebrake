@@ -47,13 +47,16 @@ if (-not $?) { throw 'Real Unreal level generation failed.' }
 # Recheck before cooking so its provenance is not a surprise at upload.
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -ExpectedCommit $sourceCommit
 if (-not $?) { throw 'Source changed during Editor map authoring; candidate is not traceable.' }
+$mapPath = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
+$mapSnapshot = (Get-FileHash -LiteralPath $mapPath -Algorithm SHA256).Hash.ToLowerInvariant()
+Write-Host "Pinned circuit map SHA256 before cook: $mapSnapshot"
 
 Write-Host "Stage 3/3: cook and package real $Platform candidate."
-& (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $EngineRoot -Platform $Platform -OutputDirectory $OutputDirectory -ExpectedCommit $sourceCommit
+& (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $EngineRoot -Platform $Platform -OutputDirectory $OutputDirectory -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot
 if (-not $?) { throw 'BuildCookRun/package stage failed.' }
 
 Write-Host 'Recording traceable source/engine/map and package SHA256 data.'
-& (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -Platform $Platform -PackageDirectory $OutputDirectory -EngineRoot $EngineRoot -ExpectedCommit $sourceCommit
+& (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -Platform $Platform -PackageDirectory $OutputDirectory -EngineRoot $EngineRoot -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot
 if (-not $?) { throw 'Candidate fingerprint manifest stage failed.' }
 
 # Verify the complete closed-world archive immediately after writing the
