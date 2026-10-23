@@ -1,0 +1,142 @@
+name: Publish LateBrake v0.5.30 SOURCE-ONLY pre-release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v0.5.30-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: latebrake-v0.5.30-source-prerelease
+  cancel-in-progress: false
+
+jobs:
+  portable-tests:
+    name: Source tag C++20 / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout immutable source candidate
+        uses: actions/checkout@v4
+        with:
+          ref: f15afa4e8d1347edec1f9f19649412eb002c82c4
+      - name: Configure standalone source tests
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      - name: Build full portable source suite
+        run: cmake --build Tests/Standalone/build --config Release --parallel
+      - name: Validate all CTest checks
+        run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
+      - name: Explicitly require checkpoint source continuity test
+        run: ctest --test-dir Tests/Standalone/build -C Release -R '^CheckpointVelocityContinuity$' --output-on-failure
+
+  powershell-policy:
+    name: Source tag script and packaging policy (not game build)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f15afa4e8d1347edec1f9f19649412eb002c82c4
+      - name: PowerShell parse and policy negatives
+        shell: pwsh
+        run: |
+          foreach ($script in (Get-ChildItem -LiteralPath scripts -Filter '*.ps1' -File)) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error "$($script.Name): $_" }; exit 1 }
+          }
+          ./scripts/Test-PackagingPolicy.ps1
+          if (-not $?) { exit 1 }
+          ./scripts/Test-CandidateManifestPolicy.ps1
+          if (-not $?) { exit 1 }
+          ./scripts/Test-SourceProvenancePolicy.ps1
+          if (-not $?) { exit 1 }
+          ./scripts/Test-CandidateMapSnapshotPolicy.ps1
+          if (-not $?) { exit 1 }
+          ./scripts/Test-CandidatePairIdentityPolicy.ps1
+          if (-not $?) { exit 1 }
+
+  editor-policy:
+    name: Source tag Python stubs (not Unreal Engine)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f15afa4e8d1347edec1f9f19649412eb002c82c4
+      - run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py scripts/AnalyzeCheckpointQA.py
+      - run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
+
+  release:
+    name: Publish immutable asset-free v0.5.30
+    needs: [portable-tests, powershell-policy, editor-policy]
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout release documentation
+        uses: actions/checkout@v4
+      - name: Publish source-only pre-release at tested historical commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const {owner, repo} = context.repo;
+            const sha = 'f15afa4e8d1347edec1f9f19649412eb002c82c4';
+            const tag = 'v0.5.30';
+            const notes = fs.readFileSync('docs/releases/v0.5.30.md', 'utf8');
+            for (const marker of [
+              'SOURCE-ONLY', 'NOT a playable game build', 'No compiled Win64 EXE',
+              'Android APK/AAB', 'not installers', sha
+            ]) {
+              if (!notes.includes(marker)) throw new Error('Missing source-only release warning/evidence: ' + marker);
+            }
+            const history = await github.rest.repos.compareCommits({
+              owner, repo, base: sha, head: context.sha
+            });
+            if (!['ahead', 'identical'].includes(history.data.status)) {
+              throw new Error('Tested v0.5.30 commit is not an ancestor of this main release workflow');
+            }
+            const old = (await github.rest.repos.getReleaseByTag({
+              owner, repo, tag: 'v0.5.22'
+            })).data;
+            if (old.draft || !old.prerelease || old.assets.length !== 0) {
+              throw new Error('Prior v0.5.22 release must remain source-only and published');
+            }
+            let ref;
+            try {
+              ref = (await github.rest.git.getRef({owner, repo, ref: 'tags/' + tag})).data.object;
+            } catch (err) { if (err.status !== 404) throw err; }
+            if (ref) {
+              if (ref.type !== 'commit' || ref.sha !== sha) {
+                throw new Error('Refuse to rewrite an existing release tag');
+              }
+            } else {
+              await github.rest.git.createRef({
+                owner, repo, ref: 'refs/tags/' + tag, sha
+              });
+            }
+            let release;
+            try {
+              release = (await github.rest.repos.getReleaseByTag({owner, repo, tag})).data;
+            } catch (err) { if (err.status !== 404) throw err; }
+            if (!release) {
+              release = (await github.rest.repos.createRelease({
+                owner, repo, tag_name: tag, target_commitish: sha,
+                name: 'LateBrake v0.5.30 — Source Stability Preview (SOURCE-ONLY Pre-release)',
+                body: notes, draft: false, prerelease: true,
+                make_latest: 'false', generate_release_notes: false
+              })).data;
+            }
+            if (release.draft || !release.prerelease || release.assets.length ||
+                release.tag_name !== tag || release.body !== notes) {
+              throw new Error('Release was not an immutable, asset-free source-only pre-release');
+            }
+            core.notice('Verified SOURCE-ONLY pre-release ' + release.html_url + ' @ ' + sha);
