@@ -51,9 +51,24 @@ if (Test-Path -LiteralPath $manifestPath) {
     throw 'Candidate manifest already exists; expected a fresh package directory.'
 }
 
-$packageFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse | Sort-Object FullName)
+$rootItem = Get-Item -LiteralPath $root -Force -ErrorAction Stop
+if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw 'Candidate package root cannot be a symlink or reparse point.'
+}
+# Fingerprinting must not silently omit an empty linked directory or hash a
+# regular-looking file reached through a junction outside the UAT archive.
+$packageNodes = @(Get-ChildItem -LiteralPath $root -Recurse -Force)
+foreach ($node in $packageNodes) {
+    if (($node.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Candidate package contains a symlink/junction: $($node.FullName)"
+    }
+}
+$packageFiles = @($packageNodes | Where-Object { -not $_.PSIsContainer } | Sort-Object FullName)
 if ($packageFiles.Count -eq 0) {
     throw 'No packaged files found to fingerprint.'
+}
+if (@($packageFiles | Where-Object { $_.Length -le 0 }).Count -gt 0) {
+    throw 'Candidate package contains empty files; the manifest cannot accept them.'
 }
 $fingerprints = @(
     foreach ($file in $packageFiles) {
