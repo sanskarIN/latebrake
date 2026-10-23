@@ -95,6 +95,7 @@ nav:
       - Collision response QA: COLLISION_RESPONSE_QA.md
       - Collision setup QA: COLLISION_SETUP_QA.md
       - Checkpoint session QA: CHECKPOINT_SESSION_QA.md
+      - Checkpoint velocity QA: CHECKPOINT_VELOCITY_QA.md
       - Gate diagnostics: GATE_DIAGNOSTICS.md
       - Gate QA summaries: GATE_QA_SUMMARIES.md
       - Player race clock QA: PLAYER_RACE_CLOCK_QA.md
