@@ -20,7 +20,11 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 # Direct Build-PreRelease invocations must also reject source changes
 # not represented by the commit used for release QA provenance.
-& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo -ExpectedCommit $ExpectedCommit
+$sourceCheck = @{ RepoRoot = $repo }
+if ($PSBoundParameters.ContainsKey('ExpectedCommit')) {
+    $sourceCheck.ExpectedCommit = $ExpectedCommit
+}
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') @sourceCheck
 if (-not $?) { throw 'Untraceable source checkout blocks UAT packaging.' }
 $project = Join-Path $repo 'Latebrake.uproject'
 $uat = Join-Path $EngineRoot 'Engine/Build/BatchFiles/RunUAT.bat'
@@ -95,7 +99,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # UAT is long-running; a changed HEAD cannot be relabeled with the
 # revision recorded at the beginning of the authorized build.
-& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo -ExpectedCommit $ExpectedCommit
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') @sourceCheck
 if (-not $?) { throw 'Source HEAD or working tree changed during UAT packaging.' }
 
 # Unreal returning 0 is necessary but not enough. Reject implausible EXEs,
