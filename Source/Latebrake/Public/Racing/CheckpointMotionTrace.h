@@ -71,6 +71,18 @@ public:
                     CircuitGateDecision::InvalidSample};
         }
 
+        // A sample with corrupt velocity cannot establish a trustworthy
+        // motion baseline. Even when its position is finite, preserving it
+        // can bridge an unobserved/invalid physics interval on the NEXT
+        // frame and falsely credit a gate. Re-arm only after a later
+        // finite position + finite velocity sample.
+        if (!std::isfinite(velocityX) || !std::isfinite(velocityY))
+        {
+            Reset();
+            return {CheckpointTraceDecision::GateRejected,
+                    CircuitGateDecision::InvalidVelocity};
+        }
+
         if (!HasPrevious)
         {
             Previous = position;
