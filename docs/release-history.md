@@ -1,0 +1,42 @@
+# Release history
+
+!!! warning "Published tags are source archives, not playable packages"
+    The latest published GitHub tag is **v0.5.22**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Development after v0.5.22 remains on `main` without matching public release tags.
+
+## Published source previews
+
+Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). Individual documentation snapshots are also preserved here:
+
+| Version | Source notes |
+| --- | --- |
+| v0.5.22 | [Release notes](releases/v0.5.22.md) |
+| v0.5.21 | [Release notes](releases/v0.5.21.md) |
+| v0.5.20 | [Release notes](releases/v0.5.20.md) |
+| v0.5.19 | [Release notes](releases/v0.5.19.md) |
+| v0.5.18 | [Release notes](releases/v0.5.18.md) |
+| v0.5.17 | [Release notes](releases/v0.5.17.md) |
+| v0.5.16 | [Release notes](releases/v0.5.16.md) |
+| v0.5.15 | [Release notes](releases/v0.5.15.md) |
+| v0.5.14 | [Release notes](releases/v0.5.14.md) |
+| v0.5.8 | [Release notes](releases/v0.5.8.md) |
+| v0.5.7 | [Release notes](releases/v0.5.7.md) |
+| v0.5.6 | [Release notes](releases/v0.5.6.md) |
+| v0.5.5 | [Release notes](releases/v0.5.5.md) |
+| v0.5.4 | [Release notes](releases/v0.5.4.md) |
+| v0.5.3 | [Release notes](releases/v0.5.3.md) |
+| v0.5.2 | [Release notes](releases/v0.5.2.md) |
+| v0.5.1 | [Release notes](releases/v0.5.1.md) |
+| v0.5.0 | [Release notes](releases/v0.5.0.md) |
+| v0.4.1 | [Release notes](releases/v0.4.1.md) |
+| v0.4.0 | [Release notes](releases/v0.4.0.md) |
+| v0.3.2 | [Release notes](releases/v0.3.2.md) |
+| v0.3.1 | [Release notes](releases/v0.3.1.md) |
+| v0.3.0 | [Release notes](releases/v0.3.0.md) |
+| v0.2.1 | [Release notes](releases/v0.2.1.md) |
+| v0.2.0 | [Release notes](releases/v0.2.0.md) |
+
+For v0.5.9–v0.5.13 and v0.5.23–v0.5.29, see the [engineering status log](STATUS.md). The presence of source milestones does **not** imply that a corresponding tag or executable was published.
+
+## Stable release criterion
+
+A playable or stable build is justified only after genuine Unreal compilation, an authentic cookable map, package integrity checks and installed game QA with evidence that corresponds to the exact built candidate. See [build pipeline](EXECUTABLE_BUILD_PIPELINE.md).
