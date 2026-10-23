@@ -269,3 +269,18 @@ else()
     target_compile_options(latebrake_race_clock_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RaceClockReadiness COMMAND latebrake_race_clock_readiness_tests)
+
+# v0.5.10: a valid local player pawn is required before a ready track can
+# accumulate real race time; linked against original game RaceProgress.
+add_executable(latebrake_player_race_clock_readiness_tests
+    PlayerRaceClockReadinessTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_player_race_clock_readiness_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_player_race_clock_readiness_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_player_race_clock_readiness_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_player_race_clock_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PlayerRaceClockReadiness COMMAND latebrake_player_race_clock_readiness_tests)
