@@ -216,7 +216,7 @@ claimed.**
 ## v0.5.11 source development — checkpoint pause boundaries (NOT released)
 
 A new engine-neutral `CheckpointSessionTrace.h` discards motion
-samples collected before a menu pause. Both pausing and resuming
+samples collected before a menu pause. Both menu and Escape/gamepad pausing and resuming
 advance a GameMode session revision, so the next checkpoint observation
 establishes a baseline rather than crediting a crossing that spans
 the interruption. The existing teleport generation protection remains.
