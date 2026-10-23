@@ -41,6 +41,24 @@ try {
     & $gate -RepoRoot $temp
     if (-not $?) { throw 'Clean committed source must be accepted.' }
 
+    # Pin the exact commit that started a long Editor/UAT build. A
+    # subsequent clean checkout at a different HEAD is NOT the same build.
+    $fixtureHead = @(& git -C $temp rev-parse --verify HEAD)
+    if ($LASTEXITCODE -ne 0 -or $fixtureHead.Count -ne 1) {
+        throw 'Fixture starting source SHA unavailable.'
+    }
+    & $gate -RepoRoot $temp -ExpectedCommit ([string]$fixtureHead[0])
+    if (-not $?) { throw 'Matching expected HEAD must be accepted.' }
+    Expect-Rejection 'different otherwise clean commit SHA' {
+        & $gate -RepoRoot $temp -ExpectedCommit ('f' * 40)
+    }
+    Expect-Rejection 'malformed expected commit SHA' {
+        & $gate -RepoRoot $temp -ExpectedCommit 'short-commit'
+    }
+    Expect-Rejection 'explicit empty commit SHA' {
+        & $gate -RepoRoot $temp -ExpectedCommit ''
+    }
+
     $map = Join-Path $temp 'Content/Maps/LatebrakeCircuit.umap'
     [IO.Directory]::CreateDirectory((Split-Path $map -Parent)) | Out-Null
     [IO.File]::WriteAllText($map, 'TEST ONLY: NOT A SERIALIZED UNREAL LEVEL')
