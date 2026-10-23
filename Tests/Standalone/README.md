@@ -65,6 +65,15 @@ The tests verify admission/drive ownership but cannot execute the Unreal
 callback, sample smoothing in the engine, or qualify physical Android
 touch delivery. See [Android issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 
+The v0.5.26 `PlayerRecoveryReadinessTests.cpp` links the original
+`RaceProgress.cpp` and exercises the same circuit, pause/menu, local
+player and finished-race readiness rule used for real gate scoring.
+`TryChargePlayerRecoveryIfReady` must reject inactive races **without
+charging time or incrementing recovery count**, and must still charge
+a full five-second penalty for valid recovery. Overflow/precision
+rejection continues to fail closed. The actual Unreal recovery and
+mobile pause flows remain subject to genuine installed-game QA.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
