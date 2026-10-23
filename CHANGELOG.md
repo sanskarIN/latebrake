@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased v0.5.21 — Neutralize held touch controls on invalid viewport
+
+- Treat invalid viewport geometry as a **global driving-input
+  interruption** for both touch press and move events, including
+  negative or out-of-range finger identifiers.
+- Stop earlier fingers' held throttle, brake and steering immediately
+  when the first post-resize/orientation event is a press, not only
+  when a move event arrives. No subsequent move can reacquire an
+  input without a fresh valid press.
+- Expanded portable C++20 `TouchDriveStateTests.cpp` and
+  `TouchFingerRangeTests.cpp` verify captured controls are neutralized
+  across invalid layouts and hostile finger IDs.
+- SOURCE-ONLY development: real Unreal Engine 5.8 UHT, Android
+  orientation, installed gameplay and Win64 device QA remain pending.
+
+
 ## Unreleased v0.5.20 — Strict recent timed-lap order
 
 - The fixed-size recent completed lap buffer refuses duplicate or
