@@ -59,8 +59,12 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
 
     ALatebrakeCarPawn* Car =
         Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
-    if (!IsValid(Car))
+    if (!IsValid(Car) || !Car->IsRacePhysicsReady())
     {
+        // A chassis that stopped simulating or lost its blocking mesh
+        // cannot provide a meaningful gate crossing. Clear the sampled
+        // trajectory so a repaired/replaced car starts from a fresh
+        // position rather than interpolating across an invalid interval.
         LastObservedPlayer.Reset();
         MotionTrace.Reset();
 #if !UE_BUILD_SHIPPING
