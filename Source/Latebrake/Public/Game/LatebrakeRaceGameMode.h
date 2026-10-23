@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
+#include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageTuningKey.h"
