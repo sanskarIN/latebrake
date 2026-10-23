@@ -44,3 +44,13 @@ not invoke Unreal or simulate 3D vehicle physics.
 and restart timing policy in C++20, plus checkpoint eligibility
 under startup failure, pause, finish and reset. Unreal game Tick, real world
 pause, HUD and physical gameplay still require licensed engine QA.
+
+## v0.5.10 player-pawn race clock guard
+
+`latebrake_player_race_clock_readiness_tests` links the real
+`RaceProgress.cpp` with `PlayerRaceClockReadiness.h`. It checks
+that a ready course without a valid local driver pawn cannot accrue
+elapsed race time, that losing and returning a driver cannot create
+a ghost lap duration, and that pause, finish and restart remain safe.
+Unreal possession, spawns, HUD visibility and packaged devices are
+**not** tested by the portable suite.
