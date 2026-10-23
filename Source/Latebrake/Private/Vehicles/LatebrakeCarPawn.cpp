@@ -335,19 +335,17 @@ void ALatebrakeCarPawn::ChangeCamera()
 
 void ALatebrakeCarPawn::TogglePause()
 {
-    // Escape/gamepad Pause must not resume gameplay behind a still-open
-    // menu. The same handler closes the menu and restores race input.
+    // Route both standalone Escape/gamepad pause and open-menu resume
+    // through GameMode so every transition invalidates checkpoint motion.
     if (ALatebrakeRaceGameMode* Mode =
         GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr)
     {
-        if (Mode->IsMenuOpen())
-        {
-            Mode->ToggleMenu();
-            return;
-        }
+        Mode->ToggleRacePause();
+        return;
     }
+    // If no authoritative GameMode exists, do not alter game pause from
+    // a pawn callback that cannot update the checkpoint session revision.
     ClearDriverInputs();
-    UGameplayStatics::SetGamePaused(this, !UGameplayStatics::IsGamePaused(this));
 }
 
 void ALatebrakeCarPawn::TouchPressed(ETouchIndex::Type FingerIndex, FVector Location)
