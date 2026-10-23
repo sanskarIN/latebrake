@@ -11,7 +11,8 @@
 param(
     [Parameter(Mandatory)][string]$EngineRoot,
     [Parameter(Mandatory)][ValidateSet('Win64', 'Android')][string]$Platform,
-    [Parameter(Mandatory)][string]$OutputDirectory
+    [Parameter(Mandatory)][string]$OutputDirectory,
+    [string]$ExpectedCommit
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -19,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 # Direct Build-PreRelease invocations must also reject source changes
 # not represented by the commit used for release QA provenance.
-& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo -ExpectedCommit $ExpectedCommit
 if (-not $?) { throw 'Untraceable source checkout blocks UAT packaging.' }
 $project = Join-Path $repo 'Latebrake.uproject'
 $uat = Join-Path $EngineRoot 'Engine/Build/BatchFiles/RunUAT.bat'
@@ -91,6 +92,11 @@ Write-Host "Running authentic Unreal BuildCookRun for $Platform."
 if ($LASTEXITCODE -ne 0) {
     throw "Unreal BuildCookRun failed with exit code $LASTEXITCODE"
 }
+
+# UAT is long-running; a changed HEAD cannot be relabeled with the
+# revision recorded at the beginning of the authorized build.
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo -ExpectedCommit $ExpectedCommit
+if (-not $?) { throw 'Source HEAD or working tree changed during UAT packaging.' }
 
 # Unreal returning 0 is necessary but not enough. Reject implausible EXEs,
 # tiny cooked packages and malformed APKs BEFORE recording a manifest or
