@@ -11,6 +11,9 @@
   Incomplete collision geometry, unchecked collision channels,
   unsafe planned spawns and missing checkpoints can no longer
   accumulate a deceptive result clock.
+- Shared `CanScoreCheckpoint` now checks startup readiness, pause and
+  finished state before any overlap can advance checkpoints or awards;
+  the clock uses the identical eligibility rule.
 - Added `IsCircuitReadyForGameplay()` source accessor and HUD/menu
   warnings for a blocked/incomplete course.
 - New strict C++20 `RaceClockReadinessTests.cpp` links the actual
