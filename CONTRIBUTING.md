@@ -16,6 +16,19 @@ Read [README.md](README.md), [docs/STATUS.md](docs/STATUS.md), [docs/ARCHITECTUR
 6. Create a PR linking its issue, screenshots/videos only when genuinely produced, and a checklist of tests.
 7. Do not bypass checks or label unverified features as production ready.
 
+## CI and pull request verification
+
+The C++20 source matrix runs once per pull-request revision targeting
+`main`, for every new `main` push, or when manually dispatched. Feature
+branch pushes without an open PR do not automatically start a second copy
+of the same five-job matrix. Open a draft PR to obtain Linux, macOS,
+Windows, Windows PowerShell policy, and Python editor-stub checks before
+requesting review. Superseded PR runs cancel automatically.
+
+A successful hosted matrix is source validation, **not** a compiled or
+playtested Unreal Engine 5.8 executable. Source-only release workflows
+run their own independently gated tests before publishing immutable tags.
+
 ## Copyright / assets
 
 Only submit content you own or are authorized to distribute under license-compatible terms. Never add restricted Unreal source, Epic Marketplace assets, unauthorized manufacturer logos, copied commercial-game tracks, scraped/unauthorized soundtracks or personal information. Document art provenance and attribution in [ASSET_LICENSES.md](ASSET_LICENSES.md).
