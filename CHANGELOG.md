@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased v0.5.17 — Measured lap pace forecast in expanded HUD
+
+- `LiveRacePaceProjection.h` derives an estimated total finish clock
+  from up to three most recent valid completed timed laps.
+- The active race HUD displays a clearly estimated lap reference and
+  finish time, never an official measured result or career payout.
+- Rejects estimates before one valid lap, after finish, across restart,
+  and on invalid clocks or seven-day record boundary overflow.
+- Strict C++20 tests link actual `RaceProgress.cpp` and cover rolling
+  history, slow current laps, zero-time laps and restart.
+- Real Unreal 5.8 runtime and visual/hardware QA are outstanding.
+
+
 ## Unreleased v0.5.16 — Consistent physical touch ownership range
 
 - Portable `TouchFingerRange.h` gives physical touch tracking and the
