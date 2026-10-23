@@ -70,7 +70,10 @@ int main()
             "finished race clock never restarts on ticking");
 
     progress.Reset();
-    Require(!progress.IsFinished() && progress.GetElapsedSeconds() == 0.0,
+    Require(!progress.IsFinished() &&
+            CanScoreCheckpoint(progress, true, false) &&
+            !CanScoreCheckpoint(progress, false, false) &&
+            progress.GetElapsedSeconds() == 0.0,
             "restart fully resets race time");
     Require(!AdvanceRaceClockIfReady(progress, false, false, 4.0) &&
             progress.GetElapsedSeconds() == 0.0,
