@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Racing/CheckpointMotionTrace.h"
+#include "Racing/CheckpointSessionTrace.h"
 #include "Racing/GateDiagnosticWindow.h"
 #include "LatebrakeCheckpoint.generated.h"
 
