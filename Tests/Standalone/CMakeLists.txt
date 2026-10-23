@@ -266,6 +266,22 @@ else()
 endif()
 add_test(NAME CareerGaragePolicy COMMAND latebrake_career_garage_policy_tests)
 
+# Rejected nonfinite actor velocity is a trace discontinuity, NOT an
+# acceptable baseline for the next physics frame. Exercise all four real
+# ordered gates with the original RaceProgress implementation.
+add_executable(latebrake_checkpoint_velocity_continuity_tests
+    CheckpointVelocityContinuityTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_checkpoint_velocity_continuity_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_checkpoint_velocity_continuity_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_checkpoint_velocity_continuity_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_checkpoint_velocity_continuity_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CheckpointVelocityContinuity COMMAND latebrake_checkpoint_velocity_continuity_tests)
+
 # Motion-epoch gate tests use actual ordered RaceProgress, not mock Unreal
 # pawns. Build with the same strict flags on all three desktop CI platforms.
 add_executable(latebrake_checkpoint_motion_trace_tests
