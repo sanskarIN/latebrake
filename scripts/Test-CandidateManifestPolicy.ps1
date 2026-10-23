@@ -171,6 +171,7 @@ try {
         installed_and_playtested = $true
         unreal_version = '5.8.0'
         build_commit = ('a' * 40)
+        candidate_manifest_sha256 = ''
         test_hardware = 'TEST ONLY - NOT REAL HARDWARE'
         tester = 'offline regression'
         test_date = '2000-01-01'
