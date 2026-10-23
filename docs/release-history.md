@@ -9,6 +9,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.30 | [Release notes](releases/v0.5.30.md) |
 | v0.5.22 | [Release notes](releases/v0.5.22.md) |
 | v0.5.21 | [Release notes](releases/v0.5.21.md) |
 | v0.5.20 | [Release notes](releases/v0.5.20.md) |
