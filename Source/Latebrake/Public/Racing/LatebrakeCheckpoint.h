@@ -33,7 +33,7 @@ private:
     // Player identity change and per-pawn RecoverTo generations invalidate
     // an old sample before attempting to credit a physical plane crossing.
     TWeakObjectPtr<AActor> LastObservedPlayer;
-    latebrake::CheckpointMotionTrace MotionTrace;
+    latebrake::CheckpointSessionTrace MotionTrace;
 
     // Plain POD fields (no UHT preprocessor branches inside UCLASS).
     // Only accessed by opt-in diagnostics code in non-shipping builds.
