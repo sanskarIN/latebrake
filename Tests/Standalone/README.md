@@ -36,6 +36,11 @@ recovery budget: every accepted teleport is counted, no further
 teleport is allowed after exhaustion, and race reset refreshes state.
 Source-level route tests are not substitutes for Unreal physics QA.
 
+The v0.5.20 `RecentTimedLapsTests.cpp` now rejects duplicates
+and backdated lap IDs, both in a fresh session and after the fixed-size
+buffer wraps. Valid strictly increasing records and reset remain supported.
+These are engine-independent history guarantees, not installed-game QA.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
