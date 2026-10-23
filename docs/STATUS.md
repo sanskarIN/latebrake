@@ -2,8 +2,27 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.22 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.22).
-**Next development milestone:** v0.5.25 candidate circuit map continuity and cross-platform identity (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.26 player recovery session integrity (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.26 source development — paid recovery session guard
+
+- Review identified a gameplay mismatch: `RecoverPlayer` used to allow
+  a paid teleport during an incomplete circuit startup or while the
+  game/menu was paused, even though checkpoint scoring and the race
+  clock were explicitly suspended in those states.
+- `TryChargePlayerRecoveryIfReady` reuses the real player scoring
+  readiness contract before the existing atomic five-second recovery
+  fee. The engine-facing `RecoverPlayer` checks active driver identity,
+  track readiness, both pause conditions and race completion before
+  charging and teleporting.
+- New strict portable tests link original `RaceProgress.cpp` and
+  check every circuit/menu/driver readiness combination, denied-state
+  immutability, legitimate charges, restart, finish and counter/
+  floating-point boundary failure.
+- Unreal 5.8 compilation, actual installed game behavior, mobile
+  pause/recovery input and collision QA remain **unverified**.
+  No new release tag or executable is implied by this work.
 
 ## v0.5.25 source development — original cooked map identity
 
