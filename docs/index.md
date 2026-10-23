@@ -38,7 +38,7 @@ The repository contains **gameplay source code**, not distributed playable build
 - **Offline progression:** fictional vehicles, upgrades, credits, 12 career events, two championships, and locally persisted profiles.
 - **Engineering safeguards:** collision/startup audits, save rollback rules, race clock readiness, gated rewards and input safety tests.
 
-[:octicons-arrow-right-24: Full architecture](ARCHITECTURE.md){ .lb-text-link } · [:octicons-arrow-right-24: Roadmap](ROADMAP.md){ .lb-text-link } · [:octicons-arrow-right-24: Source releases](release-history.md){ .lb-text-link }
+[Full architecture →](ARCHITECTURE.md){ .lb-text-link } · [Roadmap →](ROADMAP.md){ .lb-text-link } · [Source releases →](release-history.md){ .lb-text-link }
 
 ---
 
