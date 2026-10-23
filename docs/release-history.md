@@ -37,7 +37,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 | v0.2.1 | [Release notes](releases/v0.2.1.md) |
 | v0.2.0 | [Release notes](releases/v0.2.0.md) |
 
-For v0.5.9–v0.5.13, v0.5.23–v0.5.29 and unreleased v0.5.31 source development, see the [engineering status log](STATUS.md). The presence of source milestones does **not** imply that a corresponding tag or executable was published.
+For v0.5.9–v0.5.13, v0.5.23–v0.5.29 see the [engineering status log](STATUS.md). The presence of source milestones does **not** imply that a corresponding tag or executable was published.
 
 ## Stable release criterion
 
