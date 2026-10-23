@@ -19,7 +19,11 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 # Checking only tracked files allowed an untracked source .cpp/.ini to
 # affect the cooked game without appearing in manifest source_commit.
-& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo -ExpectedCommit $ExpectedCommit
+$sourceCheck = @{ RepoRoot = $repo }
+if ($PSBoundParameters.ContainsKey('ExpectedCommit')) {
+    $sourceCheck.ExpectedCommit = $ExpectedCommit
+}
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') @sourceCheck
 if (-not $?) { throw 'Untraceable source checkout blocks candidate manifest creation.' }
 $versionPath = Join-Path $EngineRoot 'Engine/Build/Build.version'
 $projectMap = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
