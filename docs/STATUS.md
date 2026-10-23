@@ -2,8 +2,23 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.22 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.22).
-**Next development milestone:** v0.5.23 touch press callback integration fix (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.24 candidate source provenance hardening (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.24 source development — source-to-binary provenance gate
+
+- A preexisting package manifest gate checked only tracked changes.
+  Untracked new `.cpp`, `.h` or `.ini` source could affect a genuine
+  Unreal build while the manifest still claimed an unchanged Git `HEAD`.
+- Added `Test-SourceProvenance.ps1` to reject modified, staged and
+  unexpected untracked source. Only the anticipated real Editor-authored
+  `Content/Maps/LatebrakeCircuit.umap` path can be untracked, and its
+  SHA256 is recorded separately by the candidate manifest writer.
+- Invoked before the expensive Editor build, after level authoring, when
+  invoking UAT directly, and before writing the final candidate manifest.
+- Added temporary Git policy fixtures under Windows CI (not generated game
+  content). Actual UE 5.8 Editor/UHT, cooked map, installed packages
+  and hardware QA remain blocked on a licensed runner/device.
 
 ## v0.5.23 source development — close malformed duplicate press dispatch gap
 
