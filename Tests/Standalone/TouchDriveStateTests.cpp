@@ -111,6 +111,41 @@ int main()
           "invalid viewport layout cancels BOTH steering and pedal");
     drive.Press({}, 11, gasX, gasY);
     Check(drive.PedalOwner() < 0, "invalid viewport cannot acquire gas");
+
+    // Press may be the first input arriving after orientation/viewport
+    // invalidation; it must cancel the PREVIOUS finger's controls, not
+    // simply reject acquisition for the newly arriving finger.
+    drive.Press(layout, 1, gasX, gasY);
+    drive.Press(layout, 2, center, sy);
+    Check(drive.ThrottleActive() && drive.SteeringActive(),
+          "viewport press regression establishes two captured controls");
+    drive.Press({}, 3, gasX, gasY);
+    Check(!drive.ThrottleActive() && !drive.BrakeActive() &&
+          !drive.SteeringActive() && drive.PedalOwner() == -1 &&
+          drive.SteeringOwner() == -1 && drive.Steering() == 0.0,
+          "invalid-layout press immediately neutralizes all OLD owners");
+
+    drive.Press(layout, 4, gasX, gasY);
+    drive.Press(layout, 5, center, sy);
+    drive.Press({}, MaxTrackedTouchFingers, gasX, gasY);
+    Check(!drive.ThrottleActive() && !drive.SteeringActive(),
+          "even an untrackable positive press cancels invalid viewport");
+    drive.Press(layout, 6, gasX, gasY);
+    drive.Press(layout, 7, center, sy);
+    drive.Press({}, -1, gasX, gasY);
+    Check(!drive.ThrottleActive() && !drive.SteeringActive(),
+          "even an untrackable negative press cancels invalid viewport");
+
+    drive.Press(layout, 8, gasX, gasY);
+    drive.Press(layout, 9, center, sy);
+    drive.Move({}, -1, gasX, gasY);
+    Check(!drive.ThrottleActive() && !drive.SteeringActive(),
+          "negative move cannot hide an invalid viewport interruption");
+
+    drive.Move(layout, 1, gasX, gasY);
+    drive.Move(layout, 2, center, sy);
+    Check(!drive.ThrottleActive() && !drive.SteeringActive(),
+          "stale move after viewport cancellation cannot regain ownership");
     drive.Press(layout, -1, gasX, gasY);
     Check(drive.PedalOwner() < 0, "negative finger identifier rejected");
 
