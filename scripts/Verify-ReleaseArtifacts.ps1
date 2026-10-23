@@ -29,15 +29,9 @@ if (-not $?) { throw 'Win64 archive/platform verification failed.' }
 & $verifier -Platform Android -PackagePath $AndroidApk -EvidenceJson $AndroidEvidenceJson -ManifestJson $AndroidManifestJson
 if (-not $?) { throw 'Android archive/platform verification failed.' }
 
-$windows = Get-Content -LiteralPath $Win64ManifestJson -Raw |
-    ConvertFrom-Json -ErrorAction Stop
-$android = Get-Content -LiteralPath $AndroidManifestJson -Raw |
-    ConvertFrom-Json -ErrorAction Stop
-if ($windows.source_commit -cne $android.source_commit) {
-    throw 'Windows and Android packages come from different source commits; release one common revision.'
-}
-if ($windows.unreal_engine_version -cne $android.unreal_engine_version) {
-    throw 'Windows and Android packages used different Unreal Engine versions.'
-}
-Write-Host "Both candidate archives match the same source revision: $($windows.source_commit)"
+# Source revision and engine version were previously compared, but the
+# map SHA256 was not. Two clean-HEAD candidates can still cook different
+# untracked editor-authored .umap bytes. Reject an inconsistent pair.
+& (Join-Path $PSScriptRoot 'Test-CandidatePairIdentity.ps1') -Win64ManifestJson $Win64ManifestJson -AndroidManifestJson $AndroidManifestJson
+if (-not $?) { throw 'Win64/Android candidate identity is inconsistent.' }
 Write-Host 'Manual dual-platform release review may proceed. This is NOT automatic proof of gameplay or a published release.'
