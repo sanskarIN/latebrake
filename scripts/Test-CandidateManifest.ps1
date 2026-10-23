@@ -83,6 +83,7 @@ foreach ($entry in $entries) {
         throw "Unsafe, duplicate or invalid manifest path: $name"
     }
 
+    Assert-SafeArchiveParents -ArchiveRoot $root -RelativeFile $name
     $file = Join-Path $root ($name.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
         throw "Manifest lists a missing file: $name"
