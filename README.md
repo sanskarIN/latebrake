@@ -213,6 +213,20 @@ cover pawn loss/return, blocked startup, pause, finish and restart.
 **No Unreal 5.8 UHT/editor compilation, gameplay or executable is
 claimed.**
 
+## v0.5.11 source development — checkpoint pause boundaries (NOT released)
+
+A new engine-neutral `CheckpointSessionTrace.h` discards motion
+samples collected before a menu pause. Both pausing and resuming
+advance a GameMode session revision, so the next checkpoint observation
+establishes a baseline rather than crediting a crossing that spans
+the interruption. The existing teleport generation protection remains.
+GameMode also rejects gate awards if there is no local player or if
+a menu is still open. See [session QA](docs/CHECKPOINT_SESSION_QA.md)
+and `Tests/Standalone/CheckpointSessionTraceTests.cpp`.
+
+This is source-only development, **not** a playable game or a verified
+UE 5.8 build.
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.8** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
