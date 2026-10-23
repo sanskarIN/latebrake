@@ -2,8 +2,30 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.22 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.22).
-**Next development milestone:** v0.5.28 paused touch release input delivery (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.29 touch residual motor/steering cancellation (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.29 source development — remove residual motor and steering input
+
+- Identified a mismatch between touch ownership and physics output:
+  `TouchReleased` and a nonfinite `ApplyTouch` canceled driving fingers
+  but left already-smoothed throttle or steering values untouched.
+  Dragging an owned GAS finger into the neutral gap similarly allowed
+  an old motor command to decay over subsequent physics frames.
+- Added shared portable `TouchResidualSafety.h`:
+  `CancelTouchOwnerAndOutput` drops the released/invalid finger's
+  ownership and its respective filtered command, while
+  `MoveTouchWithResidualSafety` cuts residual gas on a move into
+  neutral/BRAKE, steering on exit from its active vertical band, and
+  both commands on an unusable viewport.
+- Wired the actual Unreal Pawn's `TouchReleased` and `ApplyTouch`
+  to these helpers. Independent held fingers and the physical
+  `TouchPressTracker` action latch remain intact until genuine release.
+- Added strict three-OS portable C++20 regressions and Python
+  source-binding checks; none compile Unreal or validate Android
+  touch/physics on real hardware.
+- **Unreleased source development**; genuine UE 5.8 UHT/editor, cooked
+  original map and device QA are still required under issues #13/#31.
 
 ## v0.5.28 source development — paused multi-touch release admission
 
