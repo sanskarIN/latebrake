@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.8 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.8).
-**Next development milestone:** v0.5.14 UAT package structural preflight before candidate archive (source development, NOT released). v0.5.9–v0.5.13 source PRs #45–#49 have merged into main without new release tags.
+**Next development milestone:** v0.5.15 gameplay checkpoint session isolation for race restart and menu returns (source development, NOT released). v0.5.9–v0.5.14 source PRs #45–#50 have merged into main without new release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
 ## v0.5.14 source development — reject malformed UAT package outputs
