@@ -1158,23 +1158,30 @@ void ALatebrakeRaceGameMode::RestartRace()
 
 void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
 {
-    if (!IsValid(Car) || Car != UGameplayStatics::GetPlayerPawn(this, 0) ||
-        Race.IsFinished())
+    // Only the possessed local player may request a paid race recovery.
+    // A stale pawn or a rival is not allowed to charge the race clock.
+    if (!IsValid(Car) || Car != UGameplayStatics::GetPlayerPawn(this, 0))
     {
         return;
     }
 
-    // Player recovery and AI recovery consume the same course definition.
-    const latebrake::CircuitPose Pose =
-        latebrake::PlayerRecovery(Race.GetNextCheckpoint());
-    // Fail closed: never teleport if the recovery counter or race timer
-    // cannot accept the full penalty. This also prevents uncharged free
-    // repositioning after a numerical overflow or saturated recovery count.
-    if (!latebrake::TryChargePlayerRecovery(Race, RecoveriesThisRace))
+    // The race clock and ordered gate scoring already stop on incomplete
+    // circuit startup and both kinds of pause. Apply the SAME readiness to
+    // recovery: otherwise keyboard/gamepad callbacks could teleport and
+    // add a penalty while the UI was paused or the circuit failed startup.
+    // Charge before teleport, preserving counter and clock on failure.
+    const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen();
+    if (!latebrake::TryChargePlayerRecoveryIfReady(
+            Race, RecoveriesThisRace, bCircuitReady, bInactive, true))
     {
-        UE_LOG(LogTemp, Warning, TEXT("Latebrake: recovery rejected; penalty could not be charged"));
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: recovery rejected; race inactive, track unready, "
+                 "finished or full penalty unavailable"));
         return;
     }
+
+    const latebrake::CircuitPose Pose =
+        latebrake::PlayerRecovery(Race.GetNextCheckpoint());
     Car->RecoverTo(
         FVector(Pose.Position.X, Pose.Position.Y, 180.0),
         FRotator(0.0, Pose.HeadingDegrees, 0.0));
