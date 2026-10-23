@@ -2,8 +2,28 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.22 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.22).
-**Next development milestone:** v0.5.26 player recovery session integrity (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.27 player vehicle physics readiness (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.27 source development — actual player chassis readiness
+
+- Investigation: `HasLocalPlayerDriver()` previously returned true for
+  any possessed `ALatebrakeCarPawn`, even if the underlying physics
+  chassis was missing its mesh, not simulating, not blocking WorldStatic
+  or had nonfinite location/velocity. The race clock could accumulate
+  ghost time despite an undrivable vehicle.
+- Added portable `RaceVehiclePhysicsSnapshot` and a predicate enforcing
+  all required chassis conditions. The actual pawn now exposes
+  `IsRacePhysicsReady()`, used by local player clock/gate readiness and
+  by charged recoveries.
+- Engine checkpoint actors clear their motion baselines and local QA
+  samples when a car loses physical readiness, so restored physics
+  does not interpolate an invalid old trajectory into a gate award.
+- New strict C++20 tests use original `RaceProgress.cpp` for
+  missing/invalid chassis, nonfinite 3D physics state, frozen clock
+  while broken, resumed active time and finished-race behavior.
+- Still **source-only**. UE 5.8 compilation, real rigid body collision,
+  editor map cook and installed Windows/Android QA have not occurred.
 
 ## v0.5.26 source development — paid recovery session guard
 
