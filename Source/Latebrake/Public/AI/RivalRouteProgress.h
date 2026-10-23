@@ -17,6 +17,10 @@ struct RouteObservation final
 class RivalRouteProgress final
 {
 public:
+    // Keep the number of autonomous teleports within an observable, bounded
+    // session budget. Never request a recovery without recording it.
+    static constexpr int MaxRecoveries = 100000;
+
     explicit RivalRouteProgress(int waypointCount = 4, int requiredLaps = 3) noexcept
         : WaypointCount(std::clamp(waypointCount, 1, 256)),
           RequiredLaps(std::clamp(requiredLaps, 1, 100))
@@ -75,10 +79,14 @@ public:
         if (StationarySeconds >= 8.0)
         {
             StationarySeconds = 0.0;
-            if (Recoveries < 100000)
+            // The telemetry counter and the actual teleport request must
+            // never diverge. Once the finite budget is exhausted the rival
+            // remains stopped instead of receiving free untracked recoveries.
+            if (Recoveries >= MaxRecoveries)
             {
-                ++Recoveries;
+                return {};
             }
+            ++Recoveries;
             return {false, true, false};
         }
         return {};
