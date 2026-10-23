@@ -328,3 +328,17 @@ else()
     target_compile_options(latebrake_live_race_pace_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME LiveRacePaceProjection COMMAND latebrake_live_race_pace_tests)
+
+# v0.5.18: rival AI must respect current player/circuit racing readiness.
+add_executable(latebrake_rival_drive_readiness_tests
+    RivalDriveReadinessTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_rival_drive_readiness_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_drive_readiness_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_drive_readiness_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_drive_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalDriveReadiness COMMAND latebrake_rival_drive_readiness_tests)
