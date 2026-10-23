@@ -48,6 +48,12 @@ and steering, not just refuse the incoming new touch. Stale moves
 cannot reacquire control until a fresh valid press. Physical Android
 rotation/resume behavior remains an Unreal/device QA requirement.
 
+The v0.5.22 touch tests verify that a malformed press from an
+existing steering or pedal owner cancels **only that owner's held
+control**, while another valid finger and a valid duplicate press
+remain unaffected. A stray invalid or out-of-range finger can never
+steal input. Actual Android input/focus QA remains open.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
