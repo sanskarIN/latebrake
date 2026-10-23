@@ -70,17 +70,17 @@ class CheckpointQALogTests(unittest.TestCase):
 
     def test_new_invalid_velocity_field_aggregates_with_legacy_rows(self):
         logs = (
-            record(gate=2, samples=30, crossed=1, invalid_velocity=7)
+            record(gate=2, samples=100, crossed=1, invalid_velocity=7)
             + "\n" +
-            record(gate=2, samples=40, crossed=0, invalid_velocity=9)
+            record(gate=2, samples=100, crossed=0, invalid_velocity=9)
             + "\n" +
-            record(gate=2, samples=20, crossed=1)
+            record(gate=2, samples=100, crossed=1)
         )
         report = summarize_log(logs)
         row = report["gate_summaries"][0]
         self.assertEqual(row["gate"], 2)
         self.assertEqual(row["windows"], 3)
-        self.assertEqual(row["samples"], 90)
+        self.assertEqual(row["samples"], 300)
         self.assertEqual(row["invalid_velocity"], 16)
         self.assertFalse(report["unreal_build_or_gameplay_verified"])
 
