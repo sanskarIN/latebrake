@@ -65,7 +65,7 @@ def verify(site_dir: Path) -> None:
 
     home = (site_dir / "index.html").read_text(encoding="utf-8")
     home_low = home.lower()
-    for phrase in ("source only", "v0.5.22", "unreal engine 5.8", "c++20"):
+    for phrase in ("source only", "v0.5.30", "unreal engine 5.8", "c++20"):
         if phrase not in home_low:
             raise ValueError(f"home page missing accurate core/status copy: {phrase}")
     status = (site_dir / "development-status/index.html").read_text(
