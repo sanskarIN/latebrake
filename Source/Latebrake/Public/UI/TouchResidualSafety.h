@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/TouchDriveState.h"
+#include <cmath>
 
 namespace latebrake
 {
