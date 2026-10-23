@@ -17,6 +17,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path -Parent $PSScriptRoot
+# Direct Build-PreRelease invocations must also reject source changes
+# not represented by the commit used for release QA provenance.
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo
+if (-not $?) { throw 'Untraceable source checkout blocks UAT packaging.' }
 $project = Join-Path $repo 'Latebrake.uproject'
 $uat = Join-Path $EngineRoot 'Engine/Build/BatchFiles/RunUAT.bat'
 $engineVersionPath = Join-Path $EngineRoot 'Engine/Build/Build.version'
