@@ -25,9 +25,14 @@ into the gap releases both. Invalid touch coordinates neutralize held values.
 The pad tint changes while steering/gas/brake is held. Touching race telemetry
 does not activate the vehicle.
 
-The input binding for initial touches is configured to execute while paused;
-the PAUSE button should therefore offer an Android resume path. Actual
-input routing during pause still requires device verification.
+The input bindings for **initial presses and finger releases** execute while
+paused. The PAUSE pad can request resume, while a GAS/STEER/menu finger
+lifted during pause clears its physical-down tracking slot rather than
+staying stuck until an unrelated OS focus reset. Release callbacks only
+free ownership; they never trigger an extra action. A finger still down
+when the menu is toggled stays latched until its genuine release, so
+duplicate presses cannot replay PAUSE/RESTART/RECOVER. Android input
+routing during pause still requires actual device verification.
 
 ## Engine/device acceptance checklist (NOT YET COMPLETED)
 
