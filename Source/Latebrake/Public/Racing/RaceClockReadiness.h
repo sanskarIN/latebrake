@@ -22,7 +22,7 @@ inline bool AdvanceRaceClockIfReady(
     RaceProgress& race, bool circuitReady,
     bool worldPaused, double deltaSeconds) noexcept
 {
-    if (!circuitReady || worldPaused || race.IsFinished() ||
+    if (!CanScoreCheckpoint(race, circuitReady, worldPaused) ||
         !std::isfinite(deltaSeconds) || deltaSeconds <= 0.0)
     {
         return false;
