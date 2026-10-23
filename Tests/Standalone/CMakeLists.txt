@@ -195,6 +195,22 @@ else()
 endif()
 add_test(NAME RecoveryCharge COMMAND latebrake_recovery_charge_tests)
 
+# Player recovery uses the same readiness as real player scoring/clock.
+# Link original RaceProgress.cpp to verify clock/counter transactions rather
+# than a mocked race, without claiming an Unreal game or Android QA.
+add_executable(latebrake_player_recovery_readiness_tests
+    PlayerRecoveryReadinessTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_player_recovery_readiness_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_player_recovery_readiness_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_player_recovery_readiness_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_player_recovery_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PlayerRecoveryReadiness COMMAND latebrake_player_recovery_readiness_tests)
+
 # The career garage policy test exercises *real* race completion and restart,
 # so it must link the portable RaceProgress implementation, not just headers.
 add_executable(latebrake_career_garage_policy_tests
