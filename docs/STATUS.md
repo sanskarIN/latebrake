@@ -5,7 +5,22 @@
 **Next development milestone:** v0.5.12 candidate-archive symlink/junction integrity (source development, NOT released). v0.5.9, v0.5.10 and v0.5.11 source PRs #45-#47 have merged into main without new release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.11 source development — never bridge checkpoint samples across pause
+## v0.5.12 source development — reject linked candidate directories
+
+- Verified an archive-integrity gap: checking only each final file for
+  reparse-point attributes was insufficient when the file's *parent
+  directory* is a symlink or Windows junction outside the archive.
+- Manifest verification now rejects the manifest/root links and every
+  linked parent component before hashing a listed payload; empty linked
+  directories in the archive are rejected too.
+- The manifest writer refuses source with dirty tracked files, links and
+  empty archive payloads before recording SHA256 digests.
+- Disposable local negative fixtures cover a junction outside the
+  candidate root, with no synthetic game binary or gameplay claim.
+- Pending: licensed UE 5.8 editor, map, UAT packages, real installed
+  Win64/Android QA. See [build pipeline](EXECUTABLE_BUILD_PIPELINE.md).
+
+## v0.5.11 merged source — never bridge checkpoint samples across pause
 
 - New allocation-free `CheckpointSessionTrace` resets the motion baseline
   on menu and Escape/gamepad pause/resume session-revision changes,
