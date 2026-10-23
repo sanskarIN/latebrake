@@ -5,6 +5,7 @@
 #include "UI/TouchControlLayout.h"
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
+#include "UI/TouchResidualSafety.h"
 #include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
@@ -441,7 +442,10 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     }
     if (!FMath::IsFinite(Location.X) || !FMath::IsFinite(Location.Y))
     {
-        TouchDrive.Cancel(FingerId);
+        // A corrupt held touch must not leave the already-filtered motor or
+        // steering command active for further physics frames.
+        latebrake::CancelTouchOwnerAndOutput(
+            TouchDrive, FingerId, SmoothedThrottle, SmoothedSteering);
         return;
     }
 
@@ -479,7 +483,9 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     if (!bAllowAcquire)
     {
         // A move can update only a finger captured on its original press.
-        TouchDrive.Move(Layout, FingerId, Location.X, Location.Y);
+        latebrake::MoveTouchWithResidualSafety(
+            TouchDrive, Layout, FingerId, Location.X, Location.Y,
+            SmoothedThrottle, SmoothedSteering);
         return;
     }
 
@@ -520,7 +526,12 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
 void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Location)
 {
     (void)Location;
-    TouchDrive.Release(static_cast<int32>(FingerIndex));
+    // An OS finger-up is stronger than an ordinary throttle/steering
+    // smoothing update: clear the released owner's residual command now.
+    // Other fingers (and their smoothed output) remain untouched.
+    latebrake::CancelTouchOwnerAndOutput(
+        TouchDrive, static_cast<int32>(FingerIndex),
+        SmoothedThrottle, SmoothedSteering);
     TouchPresses.Release(static_cast<int>(FingerIndex));
 }
 
