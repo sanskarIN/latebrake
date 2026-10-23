@@ -20,11 +20,36 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $ManifestJson -PathType Leaf)) {
     throw "Candidate manifest missing: $ManifestJson"
 }
-$manifestFile = Get-Item -LiteralPath $ManifestJson -ErrorAction Stop
+$manifestFile = Get-Item -LiteralPath $ManifestJson -Force -ErrorAction Stop
 if ($manifestFile.Name -cne 'Latebrake-candidate-manifest.json') {
     throw 'Unexpected candidate manifest name.'
 }
+if (($manifestFile.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw 'Candidate manifest must be a regular file, not a symlink or reparse point.'
+}
 $root = $manifestFile.Directory.FullName
+$rootItem = Get-Item -LiteralPath $root -Force -ErrorAction Stop
+if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw 'Candidate archive root must not be a symlink or reparse point.'
+}
+
+# A manifest can name a regular file THROUGH a junction/symlink directory.
+# Checking only the final file's attributes would silently follow that link
+# outside the verified archive. Inspect every ancestor before opening it.
+function Assert-SafeArchiveParents {
+    param([string]$ArchiveRoot, [string]$RelativeFile)
+    $parent = $ArchiveRoot
+    $parts = $RelativeFile.Split('/')
+    for ($i = 0; $i -lt ($parts.Length - 1); ++$i) {
+        $parent = Join-Path $parent $parts[$i]
+        $part = Get-Item -LiteralPath $parent -Force -ErrorAction Stop
+        if (-not $part.PSIsContainer -or
+            ($part.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Unsafe symlink, junction or non-directory in archive path: $RelativeFile"
+        }
+    }
+}
+
 $manifest = Get-Content -LiteralPath $manifestFile.FullName -Raw |
     ConvertFrom-Json -ErrorAction Stop
 if ($manifest.schema_version -ne 1 -or
