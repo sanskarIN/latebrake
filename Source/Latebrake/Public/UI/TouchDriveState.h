@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/TouchControlLayout.h"
+#include "UI/TouchFingerRange.h"
 #include <cmath>
 
 namespace latebrake
@@ -26,7 +27,8 @@ public:
     // finger can own inputs at a time.
     void Press(const TouchControlLayout& layout, int finger, double x, double y) noexcept
     {
-        if (finger < 0 || !layout.Valid || !std::isfinite(x) || !std::isfinite(y) ||
+        if (!IsTrackableTouchFinger(finger) || !layout.Valid ||
+            !std::isfinite(x) || !std::isfinite(y) ||
             finger == SteeringFinger || finger == PedalFinger)
         {
             return;
@@ -56,6 +58,9 @@ public:
             Clear();
             return;
         }
+        // Keep global viewport invalidation before rejecting positive stray
+        // ids, but never let an untrackable finger move an active control.
+        if (!IsTrackableTouchFinger(finger)) return;
         if (!std::isfinite(x) || !std::isfinite(y))
         {
             Cancel(finger);
