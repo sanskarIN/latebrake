@@ -623,7 +623,7 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
     UGameplayStatics::SetGamePaused(this, !bWasPaused);
     if (UGameplayStatics::IsGamePaused(this) != bWasPaused)
     {
-        ++CheckpointSessionRevision;
+        CheckpointSession.OnPauseTransition();
     }
 }
 
