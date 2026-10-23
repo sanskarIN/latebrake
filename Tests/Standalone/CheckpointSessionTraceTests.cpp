@@ -39,6 +39,16 @@ int main()
                                         dx * 300.0, dy * 300.0),
                 "same positions would otherwise make a plausible crossing");
 
+        // Unreal can skip all checkpoint ticks while the world is paused.
+        // Even if the actor never observes the intermediate pause revision,
+        // a first post-resume sample must not inherit its old position.
+        CheckpointSessionTrace skippedPauseTick;
+        Require(!skippedPauseTick.SampleDetailed(gate, 4, 0, before,
+                    dx * 300.0, dy * 300.0).Crossed() &&
+                !skippedPauseTick.SampleDetailed(gate, 4, 2, after,
+                    dx * 300.0, dy * 300.0).Crossed(),
+                "skipped pause ticks must not bridge a crossing on resume");
+
         CheckpointSessionTrace& trace = traces[static_cast<std::size_t>(gate)];
         Require(trace.IsNewSession(0), "first session has no baseline");
         Require(trace.SampleDetailed(gate, 4, 0, before,
