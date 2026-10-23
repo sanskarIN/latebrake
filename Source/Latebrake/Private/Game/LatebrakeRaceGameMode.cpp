@@ -709,7 +709,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
         RestartRace();
         if (!Race.IsFinished())
         {
-            Menu.Close();
+            CloseMenuForRace();
         }
     }
     else if (Page == latebrake::MenuPage::Pause)
