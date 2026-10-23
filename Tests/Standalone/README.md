@@ -54,3 +54,15 @@ elapsed race time, that losing and returning a driver cannot create
 a ghost lap duration, and that pause, finish and restart remain safe.
 Unreal possession, spawns, HUD visibility and packaged devices are
 **not** tested by the portable suite.
+
+## v0.5.11 pause-session checkpoint trace
+
+`latebrake_checkpoint_session_trace_tests` compiles the portable
+`CheckpointSessionTrace.h` and links actual `RaceProgress.cpp`. All
+four gate directions are tested against short plausible crossings
+straddling a pause/resume, followed by legitimate forward driving
+in a new session. Pawn resets, teleport changes, malformed coordinates
+and revision wrapping are also covered. The player-readiness suite
+additionally tests the scoring guard after a real finish.
+These do not execute Unreal actor Tick, real pause events or packaged
+physical gameplay.
