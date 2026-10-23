@@ -3,6 +3,7 @@
   "installed_and_playtested": false,
   "unreal_version": "",
   "build_commit": "",
+  "candidate_manifest_sha256": "",
   "test_hardware": "",
   "tester": "",
   "test_date": "",
