@@ -44,6 +44,15 @@ pwsh ./scripts/Test-SourceProvenance.ps1
 pwsh ./scripts/Test-SourceProvenancePolicy.ps1
 ```
 
+The one-command `Build-PlayableCandidate.ps1` wrapper additionally pins
+the **starting 40-character Git commit** and checks that same exact revision
+after map authoring, immediately before and after UAT cooking, and when
+writing the manifest. A different *clean* commit is not sufficient:
+the candidate must be discarded rather than misattributed to a revision
+that was not the one initially compiled. Direct standalone invocations
+of `Build-PreRelease.ps1` and `Write-CandidateManifest.ps1` accept an
+optional `-ExpectedCommit <40-hex-SHA>` to enforce the same policy.
+
 The second command creates and deletes only disposable Git test histories.
 These checks **do not** prove Unreal compilation, map cook, package origin,
 hardware installation or gameplay.
