@@ -14,6 +14,11 @@
   unexpected untracked source. Only the anticipated real Editor-authored
   `Content/Maps/LatebrakeCircuit.umap` path can be untracked, and its
   SHA256 is recorded separately by the candidate manifest writer.
+- A follow-up source revision pin fixes another handoff ambiguity: a
+  clean but *different* HEAD after a long Editor/UAT task cannot pass as
+  the exact same candidate. Build-PlayableCandidate passes its initial
+  40-character commit through all source checks; portable Git policy
+  regressions cover matching, incorrect, malformed and blank pins.
 - Invoked before the expensive Editor build, after level authoring, when
   invoking UAT directly, and before writing the final candidate manifest.
 - Added temporary Git policy fixtures under Windows CI (not generated game
