@@ -60,7 +60,8 @@ Unreal possession, spawns, HUD visibility and packaged devices are
 `latebrake_checkpoint_session_trace_tests` compiles the portable
 `CheckpointSessionTrace.h` and links actual `RaceProgress.cpp`. All
 four gate directions are tested against short plausible crossings
-straddling a pause/resume, followed by legitimate forward driving
+straddling simulated menu or standalone pause/resume revision changes,
+followed by legitimate forward driving
 in a new session. Pawn resets, teleport changes, malformed coordinates
 and revision wrapping are also covered. The player-readiness suite
 additionally tests the scoring guard after a real finish.
