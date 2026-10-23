@@ -47,9 +47,20 @@ class TouchPauseBindingContractsTests(unittest.TestCase):
         method = self.source.split(
             "void ALatebrakeCarPawn::TouchReleased(", 1
         )[1].split("\nvoid ALatebrakeCarPawn::", 1)[0]
-        self.assertIn("TouchDrive.Release(", method)
+        # The v0.5.29 shared helper replaces the direct TouchDrive.Release
+        # call so the same finger's smoothed motor/steering command is
+        # neutralized. Ensure delegation still cancels the actual owner.
+        self.assertIn("CancelTouchOwnerAndOutput(", method)
+        self.assertIn("TouchDrive, static_cast<int32>(FingerIndex)", method)
         self.assertIn("TouchPresses.Release(", method)
         self.assertNotIn("TouchPresses.Reset(", method)
+        helper = (
+            PAWN_SOURCE.parents[2] / "Public" / "UI"
+            / "TouchResidualSafety.h"
+        ).read_text(encoding="utf-8")
+        self.assertIn("drive.Cancel(finger);", helper)
+        self.assertIn("if (wasPedalOwner) smoothedThrottle = 0.f;", helper)
+        self.assertIn("if (wasSteeringOwner) smoothedSteering = 0.f;", helper)
 
     def test_cannot_accidentally_remove_paused_release_flag(self):
         self.assertIsNone(
