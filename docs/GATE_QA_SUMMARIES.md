@@ -44,6 +44,31 @@ is made that this console variable has been executed on UE 5.8,
 packaged Win64, or physical Android devices.
 
 
+## v0.5.31: separate invalid-velocity samples in mode 2
+
+The trace-continuity guard introduced in v0.5.30 drops stale
+checkpoint baselines on NaN/infinite horizontal velocity readings.
+The bounded diagnostic counter already classified such rejections,
+but the original v0.5.4 summary text did not expose its total.
+
+Opt-in, **non-shipping** `latebrake.CheckpointDiagnostics 2` source now
+appends `invalid-velocity=<uint32>` to each local window's one-line
+summary. The value counts `GateRejected / InvalidVelocity` results
+only; it is not a new game scoring category and does not contain
+coordinates, personal data, or a per-frame log.
+
+The local parser remains backward compatible: historical
+`v0.5.4`-format summary rows have no `invalid-velocity` column and
+their JSON output supplies zero for it, whereas new rows count it
+explicitly. Malformed, duplicated, overflowing or sample-budget-
+inconsistent new columns are rejected rather than silently discarded.
+
+Python parser and C++20 counter regressions are synthetic. To certify
+the real runtime, run the licensed UE 5.8 game, enable diagnostics,
+cause controlled invalid velocity in a **disposable QA level**,
+capture an actual device log, and confirm that exactly the expected
+new category appears. There is currently **no such real test evidence**.
+
 ## Summarize a captured local Unreal test log
 
 ```sh
