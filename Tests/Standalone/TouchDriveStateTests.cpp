@@ -21,6 +21,22 @@ int main()
 
     Check(layout.Valid && !drive.SteeringActive() && !drive.ThrottleActive(),
           "fresh state is neutral");
+    // The lower-level state must enforce the same physical touch range as
+    // TouchPressTracker, even when called without the Unreal Pawn wrapper.
+    drive.Press(layout, -1, center, sy);
+    drive.Press(layout, MaxTrackedTouchFingers, gasX, gasY);
+    drive.Press(layout, std::numeric_limits<int>::max(), center, sy);
+    Check(!drive.SteeringActive() && !drive.ThrottleActive(),
+          "out-of-range presses cannot acquire driving inputs");
+    drive.Press(layout, MaxTrackedTouchFingers - 1, center, sy);
+    Check(drive.SteeringOwner() == MaxTrackedTouchFingers - 1,
+          "highest representable finger can own steering");
+    drive.Move(layout, std::numeric_limits<int>::max(),
+               layout.Steering.X - 100.0, sy);
+    Check(drive.Steering() == 0.0,
+          "invalid move cannot move valid steering owner");
+    drive.Release(MaxTrackedTouchFingers - 1);
+    Check(!drive.SteeringActive(), "valid boundary finger can release");
     drive.Press(layout, 1, center, sy);
     drive.Press(layout, 2, gasX, gasY);
     Check(drive.SteeringActive() && drive.ThrottleActive() &&
