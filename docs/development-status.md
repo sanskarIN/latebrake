@@ -10,7 +10,7 @@
 | Item | State |
 | --- | --- |
 | Latest published GitHub pre-release | [v0.5.30](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.30), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.31**, source development for `main`, not published as a release |
+| Latest source-development milestone | **v0.5.31**, merged source development on `main`, not published as a release |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
