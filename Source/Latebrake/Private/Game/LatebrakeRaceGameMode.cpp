@@ -103,7 +103,8 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // Explicit pause check also defends unusual manually ticked worlds.
     const bool bLocalPlayerReady = HasLocalPlayerDriver();
     latebrake::AdvancePlayerRaceClockIfReady(
-        Race, bCircuitReady, UGameplayStatics::IsGamePaused(this),
+        Race, bCircuitReady,
+        UGameplayStatics::IsGamePaused(this) || Menu.IsOpen(),
         bLocalPlayerReady, static_cast<double>(DeltaSeconds));
     ApplyGarageToPlayer();
 }
