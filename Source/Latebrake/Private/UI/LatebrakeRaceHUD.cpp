@@ -54,6 +54,10 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             MenuLine(TEXT("TRACK INCOMPLETE - RACE CLOCK AND SCORING DISABLED"), true);
         }
+        else if (!Mode->HasLocalPlayerDriver())
+        {
+            MenuLine(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), true);
+        }
         MenuLine(TEXT("TAB CLOSE | PAGE DOWN/UP NAVIGATE | ENTER SELECT"));
         switch (Mode->GetMenuPage())
         {
