@@ -15,6 +15,11 @@ The Unreal GameMode routes successful Quick Race/career/replay exits
 through the shared epoch policy; a passing portable test is not a
 substitute for an actual Unreal package/playtest.
 
+The v0.5.16 `TouchFingerRangeTests.cpp` test covers the 16-finger
+ownership policy shared between the Unreal press tracker and portable
+drive state. Untrackable IDs cannot acquire steering, throttle or brake;
+invalid viewport geometry still cancels held drive inputs.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
