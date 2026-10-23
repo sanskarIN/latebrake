@@ -595,7 +595,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     Menu.Toggle();
     // Checkpoint actor ticks may stop during pause. Invalidate pre-menu
     // motion even when their next tick is only after the menu closes.
-    ++CheckpointSessionRevision;
+    CheckpointSession.OnPauseTransition();
     // Always neutralize held inputs before changing input focus.
     if (ALatebrakeCarPawn* Car =
         Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
