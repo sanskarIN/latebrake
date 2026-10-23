@@ -8,6 +8,13 @@ cmake --build Tests/Standalone/build --parallel
 ctest --test-dir Tests/Standalone/build --output-on-failure
 ```
 
+The v0.5.15 `RaceSessionEpochTests.cpp` links the actual `RaceProgress.cpp`
+and uses a real directional circuit gate to verify that exiting menus,
+pausing, and restarting cannot reuse a pre-transition checkpoint sample.
+The Unreal GameMode routes successful Quick Race/career/replay exits
+through the shared epoch policy; a passing portable test is not a
+substitute for an actual Unreal package/playtest.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
