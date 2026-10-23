@@ -95,6 +95,7 @@ private:
     void SaveRecords();
     void RefreshRival();
     void ApplyGarageToPlayer();
+    void CloseMenuForRace();
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
     latebrake::CareerProgress Career;
