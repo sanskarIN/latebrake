@@ -44,6 +44,8 @@ $manifest = Join-Path $OutputDirectory 'Latebrake-candidate-manifest.json'
 & (Join-Path $PSScriptRoot 'Test-CandidateManifest.ps1') -ManifestJson $manifest -Platform $Platform
 if (-not $?) { throw 'Candidate archive checksum verification failed.' }
 
+$candidateHash = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "Candidate outputs: $OutputDirectory"
+Write-Host "Exact candidate_manifest_sha256 for eventual human QA: $candidateHash"
 Write-Host 'NOT QUALIFIED: install and test this package on target hardware before release.'
 Write-Host 'Use Verify-PlatformPackage.ps1 with accurate tester evidence for subsequent gating.'
