@@ -12,7 +12,8 @@
 - `CloseMenuForRace` consolidates menu dismissal and input clearing for
   successful Quick Race, career, championships, challenges and results replay.
 - The Quick Race menu avoids restarting twice when event selection
-  already restarts the authoritative race.
+  already restarts the authoritative race. A direct restart action
+  also closes an open menu after success, not after failed career replay.
 - Strict C++20 portable regression exercises real directional
   checkpoint crossings and RaceProgress before/after every transition.
 - Pending actual UE 5.8/UHT/editor and hardware race qualification.
