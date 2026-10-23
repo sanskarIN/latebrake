@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.8 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.8).
-**Next development milestone:** v0.5.11 checkpoint pause/resume session isolation (source development, NOT released). v0.5.9 PR #45 and v0.5.10 PR #46 were merged into main but neither was published as a release.
+**Next development milestone:** v0.5.12 candidate-archive symlink/junction integrity (source development, NOT released). v0.5.9, v0.5.10 and v0.5.11 source PRs #45-#47 have merged into main without new release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
 ## v0.5.11 source development — never bridge checkpoint samples across pause
