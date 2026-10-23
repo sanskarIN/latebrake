@@ -40,7 +40,8 @@ author/cook the real serialized track map, run installed Win64 and
 Android builds, and observe the blocked startup warning on screen
 after deliberately introducing a safe temporary course fault.
 Confirm elapsed time stays at zero, progress/rewards remain
-unavailable, and normal racing, pause, recovery, restart and saves
+unavailable, paused overlaps never award a checkpoint, and normal
+racing, pause, recovery, restart and saves
 work after restoring the valid course.
 
 A passed standalone CTest cannot establish game-world timer,
