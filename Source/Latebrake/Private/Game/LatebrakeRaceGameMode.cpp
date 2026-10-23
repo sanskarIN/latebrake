@@ -647,10 +647,19 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::QuickRace)
     {
-        Menu.Close();
-        UGameplayStatics::SetGamePaused(this, false);
-        SelectRaceEvent(latebrake::EventKind::Circuit);
-        RestartRace();
+        // SelectRaceEvent already restarts when changing event or leaving
+        // career mode. Avoid a second immediate reset in that case.
+        const bool bNeedsEventChange =
+            bCareerRace || SelectedEvent != latebrake::EventKind::Circuit;
+        if (bNeedsEventChange)
+        {
+            SelectRaceEvent(latebrake::EventKind::Circuit);
+        }
+        else
+        {
+            RestartRace();
+        }
+        CloseMenuForRace();
     }
     else if (Page == latebrake::MenuPage::Career)
     {
