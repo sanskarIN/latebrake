@@ -59,7 +59,6 @@ public:
 
     void Move(const TouchControlLayout& layout, int finger, double x, double y) noexcept
     {
-        if (finger < 0) return;
         if (!layout.Valid)
         {
             // A global viewport interruption invalidates BOTH fingers,
