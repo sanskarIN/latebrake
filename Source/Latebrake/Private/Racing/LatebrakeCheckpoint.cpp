@@ -186,10 +186,6 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
     // RaceProgress still requires the correct ORDERED gate and lap count.
     if (Result.Crossed())
     {
-        if (ALatebrakeRaceGameMode* Mode =
-                GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        {
-            Mode->RegisterCheckpoint(CheckpointIndex);
-        }
+        Mode->RegisterCheckpoint(CheckpointIndex);
     }
 }
