@@ -36,6 +36,7 @@ REQUIRED_HTML = (
     "release-history/index.html",
     "BUILDING/index.html",
     "ARCHITECTURE/index.html",
+    "WEBSITE/index.html",
     "TOUCH_CONTROLS/index.html",
     "STATUS/index.html",
     "ROADMAP/index.html",
