@@ -95,6 +95,16 @@ static source contract separately asserts that Unreal's `IE_Released`
 binding has `bExecuteWhenPaused = true` and calls both tracker release
 methods. Neither suite invokes Unreal touch delivery or Android hardware.
 
+The v0.5.29 `TouchResidualSafetyTests.cpp` exercises the real portable
+input-cancellation policy used by the Unreal Pawn: finger-scoped zeroing
+of already-smoothed throttle and steering after a release, nonfinite
+movement, GAS-to-neutral/BRAKE drag or leaving the steering band. A
+second finger's independent command and the physical-down action latch
+must remain unchanged. The
+`Tests/Editor/TouchResidualBindingContractsTests.py` static source
+regressions verify actual Unreal `TouchReleased` and `ApplyTouch` use
+the helper. These fixtures do **not** constitute hardware physics QA.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
