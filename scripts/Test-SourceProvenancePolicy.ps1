@@ -92,6 +92,13 @@ try {
     & git -C $unborn init -q
     if ($LASTEXITCODE -ne 0) { throw 'Disposable unborn git init failed.' }
     Expect-Rejection 'repo without a committed HEAD' { & $gate -RepoRoot $unborn }
+
+    # Intentional negative external 'git rev-parse' exits nonzero inside
+    # the caught PowerShell exception. GitHub's pwsh shell can still surface
+    # that leftover LASTEXITCODE as step failure even after all assertions
+    # pass. Verify a real HEAD and explicitly clear the expected negative.
+    & git -C $temp rev-parse --verify HEAD *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'Fixture Git HEAD verification failed.' }
     Write-Host 'All source provenance policy regressions passed: NO Unreal game was built.'
 } finally {
     Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
