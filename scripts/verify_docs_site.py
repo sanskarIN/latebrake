@@ -75,7 +75,7 @@ def verify(site_dir: Path) -> None:
         "not yet verified",
         "windows playable binary",
         "android apk",
-        "v0.5.30",
+        "v0.5.31",
     ):
         if phrase not in status:
             raise ValueError(f"status page lost current qualification detail: {phrase}")
