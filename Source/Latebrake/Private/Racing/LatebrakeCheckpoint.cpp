@@ -81,10 +81,33 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
 #endif
     }
 
+    // Session revisions are bumped by GameMode on both pause and resume;
+    // an actor need not tick while paused to reject pre-pause movement.
+    const ALatebrakeRaceGameMode* Mode =
+        GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!IsValid(Mode) || !Mode->IsCircuitReadyForGameplay() ||
+        UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen())
+    {
+        MotionTrace.Reset();
+#if !UE_BUILD_SHIPPING
+        bHadLoggedDecision = false;
+        DiagnosticWindow.Reset();
+#endif
+        return;
+    }
+    const uint64 SessionRevision = Mode->GetCheckpointSessionRevision();
+#if !UE_BUILD_SHIPPING
+    if (MotionTrace.IsNewSession(SessionRevision))
+    {
+        // Diagnostic evidence must not span unrelated pause/resume windows.
+        bHadLoggedDecision = false;
+        DiagnosticWindow.Reset();
+    }
+#endif
     const FVector Current = Car->GetActorLocation();
     const FVector Velocity = Car->GetVelocity();
     const latebrake::CheckpointTraceResult Result = MotionTrace.SampleDetailed(
-        CheckpointIndex, Car->GetTeleportRevision(),
+        CheckpointIndex, Car->GetTeleportRevision(), SessionRevision,
         {{Current.X, Current.Y}, Current.Z}, Velocity.X, Velocity.Y);
 
 #if !UE_BUILD_SHIPPING
