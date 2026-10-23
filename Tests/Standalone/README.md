@@ -41,5 +41,6 @@ not invoke Unreal or simulate 3D vehicle physics.
 `latebrake_race_clock_readiness_tests` compiles actual
 `Source/Latebrake/Private/Racing/RaceProgress.cpp` together with
 `RaceClockReadiness.h`. It verifies source startup, pause, finish
-and restart timing policy in C++20. Unreal game Tick, real world
+and restart timing policy in C++20, plus checkpoint eligibility
+under startup failure, pause, finish and reset. Unreal game Tick, real world
 pause, HUD and physical gameplay still require licensed engine QA.
