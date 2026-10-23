@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased v0.5.16 — Consistent physical touch ownership range
+
+- Portable `TouchFingerRange.h` gives physical touch tracking and the
+  lower-level driving state the exact same 16-finger bounds.
+- Rejects untrackable positive and negative inputs while preserving the
+  global invalid-viewport cancellation of previously held controls.
+- Cross-platform boundary regressions check ownership, movement, release
+  and invalid viewport behavior. Android device QA remains outstanding.
+
+
 ## Unreleased v0.5.15 — Complete checkpoint session transition isolation
 
 - Adds portable C++20 `RaceSessionEpoch` for explicitly revisioned
