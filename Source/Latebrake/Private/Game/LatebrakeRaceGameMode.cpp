@@ -679,7 +679,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
             }
         }
         if (Target < 0) Target = 0; // Replay an already accessible round.
-        if (StartCareerEvent(Target)) Menu.Close();
+        if (StartCareerEvent(Target)) CloseMenuForRace();
     }
     else if (Page == latebrake::MenuPage::Challenges)
     {
@@ -696,7 +696,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
             }
         }
         if (Target < 0) Target = 6;
-        if (StartCareerEvent(Target)) Menu.Close();
+        if (StartCareerEvent(Target)) CloseMenuForRace();
     }
     else if (Page == latebrake::MenuPage::Garage)
     {
