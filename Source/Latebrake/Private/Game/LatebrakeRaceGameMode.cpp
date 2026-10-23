@@ -80,6 +80,12 @@ AActor* ALatebrakeRaceGameMode::ChoosePlayerStart_Implementation(AController* Pl
     return RuntimePlayerStart;
 }
 
+bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const
+{
+    return IsValid(Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0)));
+}
+
 void ALatebrakeRaceGameMode::BeginPlay()
 {
     Super::BeginPlay();
