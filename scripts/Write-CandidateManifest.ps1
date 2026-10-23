@@ -11,7 +11,8 @@ param(
     [Parameter(Mandatory)][ValidateSet('Win64','Android')][string]$Platform,
     [Parameter(Mandatory)][string]$PackageDirectory,
     [Parameter(Mandatory)][string]$EngineRoot,
-    [string]$ExpectedCommit
+    [string]$ExpectedCommit,
+    [string]$ExpectedMapSha256
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -32,6 +33,13 @@ if (-not (Test-Path -LiteralPath $PackageDirectory -PathType Container)) {
 }
 if (-not (Test-Path -LiteralPath $projectMap -PathType Leaf)) {
     throw 'Cannot fingerprint a missing real Unreal project map.'
+}
+# The one-command candidate pipeline supplies the map digest it captured
+# before UAT. Reject a different map rather than documenting an unrelated
+# post-cook version as if its bytes were packaged.
+if ($PSBoundParameters.ContainsKey('ExpectedMapSha256')) {
+    & (Join-Path $PSScriptRoot 'Test-CandidateMapSnapshot.ps1') -MapPath $projectMap -ExpectedSha256 $ExpectedMapSha256
+    if (-not $?) { throw 'Candidate manifest map differs from the cooked map snapshot.' }
 }
 if (-not (Test-Path -LiteralPath $versionPath -PathType Leaf)) {
     throw 'Cannot identify the Unreal Engine version used to build this candidate.'
