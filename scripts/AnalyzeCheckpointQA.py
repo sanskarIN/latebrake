@@ -56,7 +56,15 @@ def summarize_log(text: str, require_all_gates: bool = False) -> dict:
             continue  # Ignore other standard Unreal and mode-1 event lines.
         match = PATTERN.search(line)
         if match is None:
-            raise QALogError(f"line {line_number}: malformed v0.5.4 QA summary")
+            raise QALogError(f"line {line_number}: malformed checkpoint QA summary")
+        # A corrupt new-format field must not be mistaken for a harmless
+        # omitted legacy column. Reject duplicated counters as well.
+        if (("invalid-velocity=" in line and
+             match.group("invalid_velocity") is None) or
+                line.count("invalid-velocity=") > 1):
+            raise QALogError(
+                f"line {line_number}: malformed invalid-velocity QA column"
+            )
 
         gate = int(match.group("gate"))
         if gate not in range(4):
