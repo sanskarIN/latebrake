@@ -68,6 +68,22 @@ int main()
     tracker.Reset();
     drive.Clear();
 
+    // Invalid viewport is a global input interruption, independent of
+    // whether the event itself has a valid finger index.
+    for (const int invalid : {-1, MaxTrackedTouchFingers,
+                              std::numeric_limits<int>::max()})
+    {
+        drive.Press(layout, last, throttleX, throttleY);
+        Require(drive.ThrottleActive(), "establish gas before invalid press");
+        drive.Press({}, invalid, throttleX, throttleY);
+        Require(!drive.ThrottleActive() && drive.PedalOwner() < 0,
+                "invalid layout press cancels prior owner for any finger");
+    }
+    drive.Press(layout, last, throttleX, throttleY);
+    drive.Move({}, -1, throttleX, throttleY);
+    Require(!drive.ThrottleActive() && drive.PedalOwner() < 0,
+            "negative move also observes global viewport cancellation");
+
     std::cout << "Shared 16-finger touch range passed.\n";
     return EXIT_SUCCESS;
 }
