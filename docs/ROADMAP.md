@@ -31,6 +31,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.15 (source development, not released) | Unified race session epoch on successful restart and menu return, no Quick Race double reset | Standalone real-gate C++ regressions, then real Unreal 5.8/hardware follow-up |
 | v0.5.16 (source development, not released) | Shared 16-finger touch identity contract | Cross-platform touch policy tests; physical Android QA #13 remains open |
 | v0.5.17 (source development, not released) | Live race pace projection in expanded HUD from valid recent lap history | Portable real RaceProgress tests; Unreal HUD and timing device QA pending |
+| v0.5.18 (source development, not released) | Rival AI is gated by player race readiness, circuit, menu/pause and finished state | Real C++20 RaceProgress regression; Unreal physics QA pending |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
