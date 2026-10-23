@@ -60,6 +60,9 @@ int main()
             "pause suppresses scoring without poisoning the running race");
     Require(progress.PassCheckpoint(0) && progress.IsFinished(),
             "one valid ordered finish uses real elapsed time");
+    Require(!CanScoreCheckpoint(progress, true, false) &&
+            !CanScoreCheckpoint(progress, false, false),
+            "finished races never accept another checkpoint");
     Require(progress.GetBestLapSeconds() == 6.0,
             "a result is measured from active race time only");
     Require(!AdvanceRaceClockIfReady(progress, true, false, 100.0) &&
