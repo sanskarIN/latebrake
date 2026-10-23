@@ -41,6 +41,9 @@ $modifiedTrackedFiles = @(& git -C $repo status --porcelain --untracked-files=no
 if ($LASTEXITCODE -ne 0) {
     throw 'Could not determine source tree modification status.'
 }
+if ($modifiedTrackedFiles.Count -gt 0) {
+    throw 'Tracked source changes present. Commit source before fingerprinting candidate binaries.'
+}
 
 $root = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $manifestPath = Join-Path $root 'Latebrake-candidate-manifest.json'
