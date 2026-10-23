@@ -174,6 +174,87 @@ try {
     Expect-Rejection 'Missing QA evidence is rejected' {
         & (Join-Path $PSScriptRoot 'Verify-PlatformPackage.ps1') -Platform Win64 -PackagePath $windows -EvidenceJson (Join-Path $temp 'missing.json')
     }
+
+    # UAT handoff preflight: purposely malformed disposable structures ONLY.
+    # No generated file is an executable, Android app, or Unreal output.
+    $preflight = Join-Path $PSScriptRoot 'Test-UATPackageStructure.ps1'
+    $fakeWin = Join-Path $temp 'NOT_A_REAL_WIN64_CANDIDATE'
+    $fakeAndroid = Join-Path $temp 'NOT_A_REAL_ANDROID_CANDIDATE'
+    New-Item -ItemType Directory -Path $fakeWin -Force | Out-Null
+    New-Item -ItemType Directory -Path $fakeAndroid -Force | Out-Null
+    Expect-Rejection 'Windows preflight requires a game and cooked content' {
+        & $preflight -Platform Win64 -PackageDirectory $fakeWin
+    }
+    Expect-Rejection 'Android preflight requires at least one APK' {
+        & $preflight -Platform Android -PackageDirectory $fakeAndroid
+    }
+
+    $invalidExe = Join-Path $fakeWin 'Latebrake.exe'
+    $invalidCook = Join-Path $fakeWin 'NotCooked.pak'
+    [IO.File]::WriteAllBytes($invalidExe, [byte[]](0x4D, 0x5A, 0x00))
+    [IO.File]::WriteAllBytes($invalidCook, [byte[]]::new(2048))
+    Expect-Rejection 'Tiny MZ-prefixed text is not an acceptable Win64 game payload' {
+        & $preflight -Platform Win64 -PackageDirectory $fakeWin
+    }
+    $zeroBytes = [byte[]]::new(130000)
+    [IO.File]::WriteAllBytes($invalidExe, $zeroBytes)
+    Expect-Rejection 'Large padding without MZ is not a Windows executable' {
+        & $preflight -Platform Win64 -PackageDirectory $fakeWin
+    }
+    $zeroBytes[0] = 0x4D
+    $zeroBytes[1] = 0x5A
+    [IO.File]::WriteAllBytes($invalidExe, $zeroBytes)
+    [IO.File]::WriteAllBytes($invalidCook, [byte[]](0x00))
+    Expect-Rejection 'Insufficient cooked asset content is not a candidate' {
+        & $preflight -Platform Win64 -PackageDirectory $fakeWin
+    }
+
+    $invalidApk = Join-Path $fakeAndroid 'NOT_A_REAL_APP.apk'
+    [IO.File]::WriteAllBytes($invalidApk, [byte[]](0x50, 0x4B, 0x00))
+    Expect-Rejection 'Tiny PK-prefixed text is not an Android APK' {
+        & $preflight -Platform Android -PackageDirectory $fakeAndroid
+    }
+    $notZip = [byte[]]::new(1048600)
+    $notZip[0] = 0x50
+    $notZip[1] = 0x4B
+    [IO.File]::WriteAllBytes($invalidApk, $notZip)
+    Expect-Rejection 'Padded PK bytes without ZIP directory are not an APK' {
+        & $preflight -Platform Android -PackageDirectory $fakeAndroid
+    }
+
+    # A syntactically valid ZIP is not a packaged Android application.
+    $fakeZip = [IO.Compression.ZipFile]::Open(
+        $invalidApk, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $entry = $fakeZip.CreateEntry(
+            'TEST_ONLY_NOT_A_GAME.bin', [IO.Compression.CompressionLevel]::NoCompression)
+        $entryStream = $entry.Open()
+        try {
+            $block = [byte[]]::new(1048600)
+            $entryStream.Write($block, 0, $block.Length)
+        } finally {
+            $entryStream.Dispose()
+        }
+    } finally {
+        $fakeZip.Dispose()
+    }
+    Expect-Rejection 'Large ZIP without AndroidManifest.xml is not an APK' {
+        & $preflight -Platform Android -PackageDirectory $fakeAndroid
+    }
+    $addManifest = [IO.Compression.ZipFile]::Open(
+        $invalidApk, [IO.Compression.ZipArchiveMode]::Update)
+    try {
+        $manifestEntry = $addManifest.CreateEntry('AndroidManifest.xml')
+        $manifestStream = $manifestEntry.Open()
+        try { $manifestStream.WriteByte(42) }
+        finally { $manifestStream.Dispose() }
+    } finally {
+        $addManifest.Dispose()
+    }
+    Expect-Rejection 'ZIP with a manifest but no compiled Android code is not an APK' {
+        & $preflight -Platform Android -PackageDirectory $fakeAndroid
+    }
+
     Write-Host 'All negative packaging checks passed. No usable binaries were created.'
 } finally {
     Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
