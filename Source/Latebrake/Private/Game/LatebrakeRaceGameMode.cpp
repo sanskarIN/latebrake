@@ -663,7 +663,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Career)
     {
-        if (StartCareerEvent(CareerMenuSelection)) Menu.Close();
+        if (StartCareerEvent(CareerMenuSelection)) CloseMenuForRace();
     }
     else if (Page == latebrake::MenuPage::Championships)
     {
