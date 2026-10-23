@@ -35,6 +35,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.19 (source development, not released) | Finite rival recovery budget prevents uncounted AI teleports | Portable real route stress regression; installed Unreal QA pending |
 | v0.5.20 (source development, not released) | Prevent duplicate and backdated laps in bounded recent history | Strict ring-buffer source regression; UE gameplay QA outstanding |
 | v0.5.21 (source development, not released) | Neutralize captured Android touch input on invalid viewport press/move regardless of finger identity | Cross-platform touch regression; hardware Android rotation/focus QA outstanding |
+| v0.5.22 (source development, not released) | Neutralize nonfinite press from an existing driving finger without affecting others | Portable touch ownership and malformed-event regression; installed Android QA required |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
