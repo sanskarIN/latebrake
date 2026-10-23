@@ -106,6 +106,15 @@ foreach ($entry in $entries) {
     ++$checked
 }
 
+# Reject even EMPTY linked folders, which contain no manifest file to check.
+# PowerShell's default recursive listing does not follow directory symlinks;
+# checking directory attributes still sees the links themselves.
+$physicalDirectories = @(Get-ChildItem -LiteralPath $root -Directory -Recurse -Force)
+foreach ($directory in $physicalDirectories) {
+    if (($directory.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Candidate contains a symlink/junction directory: $($directory.FullName)"
+    }
+}
 $physicalFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force |
     Where-Object { $_.FullName -ne $manifestFile.FullName })
 foreach ($item in $physicalFiles) {
