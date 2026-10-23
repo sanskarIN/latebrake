@@ -42,6 +42,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.26 (source development, not released) | Reject paid player recovery while the circuit is incomplete, the player is missing, the race/menu is paused or the race is finished | Real RaceProgress-linked C++20 regression matrix; Unreal gameplay/device recovery QA still required |
 | v0.5.27 (source development, not released) | Require an actual simulated, collision-bearing, finite player chassis before racing time/gates/recovery; rebase checkpoint traces on physics loss | Real RaceProgress-linked three-OS C++20 tests; genuine Unreal Chaos and device QA still pending |
 | v0.5.28 (source development, not released) | Process Android touch release callbacks even during paused/menu worlds so held finger slots re-arm only after physical lift | Three-OS portable C++20 lifecycle plus Python engine-source binding policy; UE and real Android QA still pending |
+| v0.5.29 (source development, not released) | Clear filtered motor/steering commands on touch lift, invalid coordinates and move from GAS to neutral/BRAKE; preserve independent finger ownership | Three-OS portable C++20 tests plus engine-source callback contract; physical Android/Chaos QA remains open |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
