@@ -572,6 +572,24 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     }
 }
 
+void ALatebrakeRaceGameMode::CloseMenuForRace()
+{
+    if (!Menu.IsOpen())
+    {
+        return;
+    }
+    // A restart may have unpaused the world before the menu is closed.
+    // Neither change may allow a checkpoint to reuse an older position.
+    Menu.Close();
+    CheckpointSession.OnMenuReturnToRace();
+    if (ALatebrakeCarPawn* Car =
+            Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
+    {
+        Car->ClearDriverInputs();
+    }
+    UGameplayStatics::SetGamePaused(this, false);
+}
+
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
     Menu.Toggle();
