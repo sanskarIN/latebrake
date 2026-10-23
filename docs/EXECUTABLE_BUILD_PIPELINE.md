@@ -17,6 +17,37 @@ been performed by this repository's ordinary three-OS CI.
 - Enough storage and disk permissions for cooked/staged Unreal games. The
   source repository does not redistribute the engine or its licensed assets.
 
+## Source provenance check (v0.5.24 development, not released)
+
+Before running the expensive UE 5.8 build, `Test-SourceProvenance.ps1` now
+requires a committed Git `HEAD` with **no staged, modified, or unexpected
+untracked source files**. It is executed before `Build-Editor.ps1`, after
+Editor map authoring, before direct `Build-PreRelease.ps1`, and again when
+writing the candidate manifest. This closes a gap in the previous
+`git status --porcelain --untracked-files=no` check: that command ignored
+new untracked `.cpp`, `.h`, `.ini`, or plugin files even though they could
+change a cooked game without changing its recorded source commit.
+
+The **only** nonignored untracked exception is
+`Content/Maps/LatebrakeCircuit.umap` itself, because the licensed
+Unreal Editor may create it in the same build attempt. The pipeline
+separately validates its serialized package header and records its
+exact SHA256 in the candidate manifest. That exception does **not**
+authenticate the map or make an untracked/locally generated level
+reproducible across machines; commit real authored assets via Git LFS
+for distributable releases. Ignored Unreal intermediates remain ignored.
+
+You can inspect source provenance without Unreal:
+
+```powershell
+pwsh ./scripts/Test-SourceProvenance.ps1
+pwsh ./scripts/Test-SourceProvenancePolicy.ps1
+```
+
+The second command creates and deletes only disposable Git test histories.
+These checks **do not** prove Unreal compilation, map cook, package origin,
+hardware installation or gameplay.
+
 ## One command per platform (run on the Windows host)
 
 From the repository root in PowerShell 7:
