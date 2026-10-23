@@ -38,6 +38,10 @@ public:
     virtual void Tick(float DeltaSeconds) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
+    // Not every possessed pawn has a usable rigid body. The race clock,
+    // checkpoint gates and paid recovery must all use this same check.
+    // Actual installed collision and vehicle handling still require QA.
+    bool IsRacePhysicsReady() const;
     float GetSpeedKmH() const;
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     void ClearDriverInputs();
