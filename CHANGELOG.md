@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased v0.5.15 — Complete checkpoint session transition isolation
+
+- Adds portable C++20 `RaceSessionEpoch` for explicitly revisioned
+  pause/resume, accepted race restart, and menu-return-to-race transitions.
+- Replaces the GameMode's unstructured revision counter. All successful
+  menu-to-gameplay closures clear held car inputs, unpause and invalidate
+  pre-menu gate positions through one `CloseMenuForRace` method.
+- Quick Race avoids an unnecessary duplicate restart when changing away from
+  a career or other race type.
+- Every accepted restart invalidates checkpoint traces even if the
+  teleport/recovery was not observed by a checkpoint tick; replay failure
+  still leaves the menu/race untouched.
+- Regression tests use real ordered RaceProgress and a directional
+  checkpoint to reject phantom scoring across pauses, menu returns and
+  restarts while preserving normal forward crossings.
+- Unreal 5.8 UHT/editor compilation and installed driving/device QA remain
+  unverified; this is not a playable release.
+
+
 ## Unreleased v0.5.14 — UAT candidate package preflight
 
 - `Build-PreRelease.ps1` now invokes a standalone
