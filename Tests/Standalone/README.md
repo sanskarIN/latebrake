@@ -20,6 +20,12 @@ ownership policy shared between the Unreal press tracker and portable
 drive state. Untrackable IDs cannot acquire steering, throttle or brake;
 invalid viewport geometry still cancels held drive inputs.
 
+The v0.5.17 `LiveRacePaceProjectionTests.cpp` test links actual
+`RaceProgress.cpp` to validate estimated finish clocks from the last
+three completed timed laps. It excludes invalid/finished/zero-clock
+cases and limits slow-lap estimates to not predate elapsed time.
+These estimates are presentation only, not official race records.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
