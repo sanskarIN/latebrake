@@ -37,6 +37,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.21 (published source-only pre-release) | Neutralize captured Android touch input on invalid viewport press/move regardless of finger identity | Cross-platform touch regression; hardware Android rotation/focus QA outstanding |
 | v0.5.22 (published source-only pre-release) | Neutralize nonfinite press from an existing driving finger without affecting others | Portable touch ownership and malformed-event regression; installed Android QA required |
 | v0.5.23 (source development, not released) | Wire malformed duplicate touch safety through the actual Unreal input callback, preserve one-shot action presses and isolate held controls | Portable admission/regression tests and three-OS CI; real Android press-event QA #13 remains open |
+| v0.5.24 (source development, not released) | Reject untracked C++/config and modified tracked source before/after editor map authoring, before UAT packaging and candidate manifest writing | Synthetic Git policy tests on Windows CI; genuine Unreal builds/QA still pending |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
