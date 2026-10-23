@@ -24,12 +24,16 @@ FIELDS = (
     ("lane_miss", "lane-miss"),
     ("height_miss", "height-miss"),
     ("no_plane", "no-plane"),
+    ("invalid_velocity", "invalid-velocity"),
 )
+# New v0.5.31 Unreal QA logs add an invalid-velocity count. Legacy
+# v0.5.4 samples without this trailing field remain valid and report zero
+# in that bucket, so historical captured logs can still be inspected.
 PATTERN = re.compile(
     r"\bLatebrake checkpoint=(?P<gate>\d+) "
     + r" ".join(re.escape(label) + rf"=(?P<{field}>\d+)"
-                 for field, label in FIELDS)
-    + r"(?=\s|$)"
+                 for field, label in FIELDS[:-1])
+    + r"(?: invalid-velocity=(?P<invalid_velocity>\d+))?(?=\s|$)"
 )
 
 
@@ -57,7 +61,10 @@ def summarize_log(text: str, require_all_gates: bool = False) -> dict:
         gate = int(match.group("gate"))
         if gate not in range(4):
             raise QALogError(f"line {line_number}: checkpoint index must be 0..3")
-        counts = {name: int(match.group(name)) for name, _ in FIELDS}
+        counts = {
+            name: int(match.group(name)) if match.group(name) is not None else 0
+            for name, _ in FIELDS
+        }
         if any(value > LIMIT for value in counts.values()):
             raise QALogError(f"line {line_number}: uint32 counter exceeded")
         if counts["samples"] < 10:
