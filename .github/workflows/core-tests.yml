@@ -1,8 +1,12 @@
 name: C++ race logic
 
 on:
+  # PR revisions run the complete source matrix under pull_request.
+  # Do not run a second identical matrix for each feat/* or fix/* push:
+  # duplicate workflows were occupying hosted CI capacity while source-only
+  # pre-release publication jobs waited in GitHub's queue.
   push:
-    branches: [main, "feat/**", "fix/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
