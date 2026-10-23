@@ -103,6 +103,32 @@ int main()
     Check(!drive.SteeringActive() && drive.Steering() == 0.0,
           "infinite steering input cancels captured finger");
 
+    // Duplicate press after OS focus/resume must never preserve a stale
+    // held pedal/steer when the owner's coordinates are non-finite.
+    drive.Press(layout, 2, gasX, gasY);
+    drive.Press(layout, 3, center, sy);
+    Check(drive.ThrottleActive() && drive.SteeringOwner() == 3,
+          "malformed press test establishes independent owners");
+    drive.Press(layout, 2, gasX, std::numeric_limits<double>::infinity());
+    Check(!drive.ThrottleActive() && drive.PedalOwner() == -1 &&
+          drive.SteeringOwner() == 3,
+          "nonfinite held gas press cancels gas but preserves steering");
+    drive.Move(layout, 2, gasX, gasY);
+    Check(!drive.ThrottleActive(),
+          "stale move cannot reacquire canceled gas without new press");
+    drive.Press(layout, 4, gasX, gasY);
+    drive.Press(layout, 4, gasX, gasY);
+    Check(drive.PedalOwner() == 4 && drive.ThrottleActive(),
+          "valid duplicate press preserves its existing owned pedal");
+    drive.Press(layout, 15, std::numeric_limits<double>::quiet_NaN(), sy);
+    Check(drive.ThrottleActive() && drive.SteeringOwner() == 3,
+          "malformed unowned finger does not cancel other controls");
+    drive.Press(layout, 3, std::numeric_limits<double>::quiet_NaN(), sy);
+    Check(!drive.SteeringActive() && drive.SteeringOwner() == -1 &&
+          drive.Steering() == 0.0 && drive.ThrottleActive(),
+          "nonfinite held steering press only neutralizes steering");
+    drive.Clear();
+
     drive.Press(layout, 10, gasX, gasY);
     drive.Press(layout, 11, layout.Steering.X + 3, sy);
     drive.Move({}, 10, gasX, gasY);
