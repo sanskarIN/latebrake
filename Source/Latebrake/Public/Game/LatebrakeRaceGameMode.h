@@ -61,6 +61,7 @@ public:
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsCircuitReadyForGameplay() const { return bCircuitReady; }
+    bool HasLocalPlayerDriver() const;
     float GetPersonalBestSeconds() const { return PersonalBestSeconds; }
     float GetPersonalBestLapSeconds() const { return PersonalBestLapSeconds; }
     int32 GetCompletedRaceCount() const { return CompletedRaceCount; }
