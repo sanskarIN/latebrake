@@ -227,6 +227,17 @@ and `Tests/Standalone/CheckpointSessionTraceTests.cpp`.
 This is source-only development, **not** a playable game or a verified
 UE 5.8 build.
 
+## v0.5.12 source development — safer candidate archives (NOT released)
+
+The real-engine candidate pipeline now refuses symlinks and Windows
+junctions at archive-root and nested-directory levels before signing
+off on SHA256 file-list integrity. This closes a gap where a manifest
+path through a linked folder could point outside the intended package.
+The writer also rejects dirty tracked source and empty packaged files.
+Disposable negative fixtures run in CI; passing them is **not**
+evidence that Unreal has built a working game. See
+[build and archive QA](docs/EXECUTABLE_BUILD_PIPELINE.md).
+
 ## Development and releases
 
 **v0.1.0** through **v0.5.8** have been published as honest [source-only GitHub pre-releases](https://github.com/sanskarIN/latebrake/releases), without executable games. **v0.4.0** expands the starter circuit visuals and adds deterministic [course layout and mapping utilities](docs/TRACK.md); see [v0.4.0 release notes](docs/releases/v0.4.0.md) and [release history](CHANGELOG.md). A verified playable release still requires genuine Unreal builds and hardware tests. See [candidate release notes](docs/releases/v0.1.0.md), [local packaging helper](scripts/Build-PreRelease.ps1), and [release evidence example](docs/releases/test-evidence.example.json). See [the v0.4.1 source release notes](docs/releases/v0.4.1.md), [current status](docs/STATUS.md), [roadmap](docs/ROADMAP.md), and [changelog](CHANGELOG.md). No playable game artifacts have been fabricated.
