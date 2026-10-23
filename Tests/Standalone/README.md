@@ -85,6 +85,16 @@ trajectory interpolation. These source tests **cannot** establish that
 UE 5.8 actually cooks a mesh, drives the chassis or blocks track actors;
 the true Unreal build and installed driving tests remain required.
 
+v0.5.28 adds `PausedTouchReleaseTests.cpp` which exercises the real
+portable touch press/drive trackers across a menu pause: previously held
+drive fingers and the PAUSE action keep their single-shot state, while
+each physical release clears only that finger. New presses can reclaim
+GAS/STEER or toggle PAUSE after the release; moving a freed finger alone
+cannot reacquire an input. The `Tests/Editor/TouchPauseBindingContractsTests.py`
+static source contract separately asserts that Unreal's `IE_Released`
+binding has `bExecuteWhenPaused = true` and calls both tracker release
+methods. Neither suite invokes Unreal touch delivery or Android hardware.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
