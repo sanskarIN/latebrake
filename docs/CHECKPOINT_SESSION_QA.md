@@ -12,7 +12,8 @@ is *not* evidence of continuous active-race driving.
 
 ## Source contract
 
-- Each `ToggleMenu()` pause/resume changes GameMode's
+- Each `ToggleMenu()` pause/resume and the GameMode-controlled
+  `ToggleRacePause()` Escape/gamepad path changes
   `CheckpointSessionRevision`. Every checkpoint Actor reads it.
 - `CheckpointSessionTrace` clears its previous sample on revision
   change and treats the next sample as `InitialBaseline`, regardless
