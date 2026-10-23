@@ -153,7 +153,8 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
             UE_LOG(LogTemp, Display,
                 TEXT("Latebrake checkpoint=%d qa-samples=%u crossed=%u "
                      "teleport-rebase=%u invalid-position=%u wrong-way=%u "
-                     "frame-travel=%u lane-miss=%u height-miss=%u no-plane=%u"),
+                     "frame-travel=%u lane-miss=%u height-miss=%u no-plane=%u "
+                     "invalid-velocity=%u"),
                 CheckpointIndex, DiagnosticWindow.Counts().TotalSamples(),
                 DiagnosticWindow.Counts().CountTrace(
                     latebrake::CheckpointTraceDecision::Crossed),
@@ -170,7 +171,9 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
                 DiagnosticWindow.Counts().CountGateRejection(
                     latebrake::CircuitGateDecision::OutsideVerticalCorridor),
                 DiagnosticWindow.Counts().CountGateRejection(
-                    latebrake::CircuitGateDecision::NoForwardPlaneCrossing));
+                    latebrake::CircuitGateDecision::NoForwardPlaneCrossing),
+                DiagnosticWindow.Counts().CountGateRejection(
+                    latebrake::CircuitGateDecision::InvalidVelocity));
             DiagnosticWindow.Reset();
         }
         bHadLoggedDecision = false;
