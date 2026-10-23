@@ -125,6 +125,33 @@ int main()
           careerRival.GetRequiredLaps() == 100 &&
           !careerRival.IsFinished(), "hostile route dimensions are bounded");
 
+    // Extremely long-running sessions must never be granted free
+    // unrecorded teleports once the public recovery telemetry saturates.
+    latebrake::RivalRouteProgress budget(4, 3);
+    for (int recovery = 0;
+         recovery < latebrake::RivalRouteProgress::MaxRecoveries; ++recovery)
+    {
+        const auto result = budget.Observe(3000.0, 0.0, 8.0);
+        Check(result.NeedsRecovery && !result.Advanced && !result.Completed,
+              "every approved rival teleport must be counted");
+    }
+    Check(budget.GetRecoveryCount() ==
+          latebrake::RivalRouteProgress::MaxRecoveries,
+          "rival recovery budget is bounded and exact");
+    Check(!budget.Observe(3000.0, 0.0, 8.0).NeedsRecovery,
+          "exhausted rival budget cannot authorize a free teleport");
+    Check(budget.GetRecoveryCount() ==
+          latebrake::RivalRouteProgress::MaxRecoveries,
+          "budget exhaustion cannot wrap or overcount");
+    budget.Observe(3000.0, 200.0, 0.1);
+    Check(!budget.Observe(3000.0, 0.0, 8.0).NeedsRecovery,
+          "moving between stuck intervals cannot replenish exhausted budget");
+    budget.Reset();
+    Check(budget.GetRecoveryCount() == 0 &&
+          budget.Observe(3000.0, 0.0, 8.0).NeedsRecovery &&
+          budget.GetRecoveryCount() == 1,
+          "a new race attempt starts a fresh finite rival recovery budget");
+
     std::cout << "Autonomous route tests passed.\n";
     return EXIT_SUCCESS;
 }
