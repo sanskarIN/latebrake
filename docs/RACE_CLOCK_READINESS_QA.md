@@ -23,6 +23,9 @@ no valid way to finish.
   increment rounded to zero.
 - `Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp` uses the
   policy in `Tick` instead of unconditional `Race.Advance`.
+- A shared `CanScoreCheckpoint` predicate prevents callbacks from
+  advancing gates during world pause, after a finish or when the
+  source circuit audit failed. Both scoring and the clock use it.
 - `LatebrakeRaceGameMode.h` exposes the source readiness flag to
   `LatebrakeRaceHUD.cpp`, which shows `TRACK NOT READY` in
   prototype racing HUD/menu if startup failed.
