@@ -239,9 +239,13 @@ After the **actual UAT package** has been installed/playtested, the
 `Verify-PlatformPackage.ps1` QA gate requires all three inputs:
 `-PackagePath`, `-ManifestJson`, and `-EvidenceJson`.
 The exact EXE/APK must be inside the manifest archive. The QA evidence's
-`build_commit` must match the manifest's `source_commit`. Complete
+`build_commit` must match the manifest's `source_commit`, AND its
+`candidate_manifest_sha256` must match the SHA256 of the verified
+`Latebrake-candidate-manifest.json` file. Two candidate archives from
+the same source may cook into different binaries; a source commit alone
+does not identify the package humans installed. Complete
 the separate win64/android QA templates with **true** installed gameplay
-observations and a full 40-character source commit. Every entry
+observations, the full 40-character source commit, and exact candidate SHA256. Every entry
 under the template's `checks` object must also be explicitly `true`
 after a real successful test. A missing, false, or not-yet-tested
 driving, save/load, mobile focus, performance or other required check
