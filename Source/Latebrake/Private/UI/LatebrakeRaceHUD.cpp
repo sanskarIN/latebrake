@@ -197,6 +197,10 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(TEXT("TRACK NOT READY - RACE CLOCK AND GATES DISABLED"), Accent);
     }
+    else if (!Mode->HasLocalPlayerDriver())
+    {
+        Line(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), Accent);
+    }
     Line(Mode->IsCareerRace()
         ? (bCompact ? FString(TEXT("CAREER RACE"))
                     : FString::Printf(TEXT("CAREER  %s"), *Mode->GetCareerEventName()))
