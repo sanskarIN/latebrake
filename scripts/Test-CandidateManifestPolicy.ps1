@@ -128,6 +128,41 @@ try {
     }
     & $verifier -ManifestJson $manifestPath -Platform Win64
     if (-not $?) { throw 'Fixture failed to recover a valid manifest state.' }
+
+    # Windows junctions can be created without the elevated symlink
+    # privilege. A legitimate file behind one must NEVER count as
+    # a package payload or be hashed from outside the candidate root.
+    $outside = Join-Path $qaTemp 'EXTERNAL_TEST_ONLY'
+    $junction = Join-Path $temp 'REDIRECTED_TEST_ONLY'
+    New-Item -ItemType Directory -Path $outside -Force | Out-Null
+    [IO.File]::WriteAllBytes(
+        (Join-Path $outside 'TEST_ONLY_NOT_A_GAME.bin'), $originalBytes)
+    if ($IsWindows) {
+        New-Item -ItemType Junction -Path $junction -Target $outside -ErrorAction Stop | Out-Null
+    } else {
+        New-Item -ItemType SymbolicLink -Path $junction -Target $outside -ErrorAction Stop | Out-Null
+    }
+    try {
+        $state.files[0].path = 'REDIRECTED_TEST_ONLY/TEST_ONLY_NOT_A_GAME.bin'
+        Write-Fixture
+        Expect-RejectionMatching 'file through junction outside archive' 'Unsafe symlink, junction or non-directory' {
+            & $verifier -ManifestJson $manifestPath -Platform Win64
+        }
+        $state.files[0].path = 'TEST_ONLY_NOT_A_GAME.bin'
+        Write-Fixture
+        Expect-RejectionMatching 'unlisted linked directory with otherwise valid manifest' 'symlink/junction directory' {
+            & $verifier -ManifestJson $manifestPath -Platform Win64
+        }
+    } finally {
+        $state.files[0].path = 'TEST_ONLY_NOT_A_GAME.bin'
+        Write-Fixture
+        Remove-Item -LiteralPath $junction -Force -ErrorAction Stop
+    }
+    & $verifier -ManifestJson $manifestPath -Platform Win64
+    if (-not $?) {
+        throw 'Manifest must recover after removal of the synthetic junction.'
+    }
+
     # Prove a truthful platform QA checklist is REQUIRED *before* any
     # structural EXE validation can pass. The test archive remains text-only.
     $qaPath = Join-Path $qaTemp 'test-only-qa.json'
