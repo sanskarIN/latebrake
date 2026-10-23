@@ -82,8 +82,11 @@ AActor* ALatebrakeRaceGameMode::ChoosePlayerStart_Implementation(AController* Pl
 
 bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const
 {
-    return IsValid(Cast<ALatebrakeCarPawn>(
-        UGameplayStatics::GetPlayerPawn(this, 0)));
+    // Possession alone is insufficient: missing chassis mesh or disabled
+    // physics/collision must not accumulate ghost race time.
+    const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    return IsValid(Car) && Car->IsRacePhysicsReady();
 }
 
 void ALatebrakeRaceGameMode::BeginPlay()
@@ -1172,7 +1175,8 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     // Charge before teleport, preserving counter and clock on failure.
     const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen();
     if (!latebrake::TryChargePlayerRecoveryIfReady(
-            Race, RecoveriesThisRace, bCircuitReady, bInactive, true))
+            Race, RecoveriesThisRace, bCircuitReady, bInactive,
+            Car->IsRacePhysicsReady()))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: recovery rejected; race inactive, track unready, "
