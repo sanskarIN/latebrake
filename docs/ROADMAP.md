@@ -27,6 +27,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.11 (source development, not released) | Isolate each checkpoint motion trail across menu pause/resume, and block awards without an active player | Strict portable four-gate C++ tests; actual UE 5.8 runtime/Win64/Android game QA still required |
 | v0.5.12 (source development, not released) | Reject candidate manifest/root symlinks, junction-escaped files, linked archive directories and dirty tracked source | Disposable negative PowerShell fixtures; UE 5.8 UHT/map/cook and device QA still required |
 | v0.5.13 (source development, not released) | Bind installed QA to SHA256 of the exact UAT candidate manifest rather than only source commit | Disposable policy negatives + strict three-OS source CI; actual UE/editor/cook and real hardware tests outstanding |
+| v0.5.14 (source development, not released) | Preflight authentic UAT output structure for Win64 EXE/cooked payloads and Android APK contents before archiving | PowerShell disposable rejection fixtures; actual Unreal and target-hardware QA still required |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
