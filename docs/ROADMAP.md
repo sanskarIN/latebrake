@@ -27,15 +27,16 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.11 (source development, not released) | Isolate each checkpoint motion trail across menu pause/resume, and block awards without an active player | Strict portable four-gate C++ tests; actual UE 5.8 runtime/Win64/Android game QA still required |
 | v0.5.12 (source development, not released) | Reject candidate manifest/root symlinks, junction-escaped files, linked archive directories and dirty tracked source | Disposable negative PowerShell fixtures; UE 5.8 UHT/map/cook and device QA still required |
 | v0.5.13 (source development, not released) | Bind installed QA to SHA256 of the exact UAT candidate manifest rather than only source commit | Disposable policy negatives + strict three-OS source CI; actual UE/editor/cook and real hardware tests outstanding |
-| v0.5.14 (source development, not released) | Preflight authentic UAT output structure for Win64 EXE/cooked payloads and Android APK contents before archiving | PowerShell disposable rejection fixtures; actual Unreal and target-hardware QA still required |
-| v0.5.15 (source development, not released) | Unified race session epoch on successful restart and menu return, no Quick Race double reset | Standalone real-gate C++ regressions, then real Unreal 5.8/hardware follow-up |
-| v0.5.16 (source development, not released) | Shared 16-finger touch identity contract | Cross-platform touch policy tests; physical Android QA #13 remains open |
-| v0.5.17 (source development, not released) | Live race pace projection in expanded HUD from valid recent lap history | Portable real RaceProgress tests; Unreal HUD and timing device QA pending |
-| v0.5.18 (source development, not released) | Rival AI is gated by player race readiness, circuit, menu/pause and finished state | Real C++20 RaceProgress regression; Unreal physics QA pending |
-| v0.5.19 (source development, not released) | Finite rival recovery budget prevents uncounted AI teleports | Portable real route stress regression; installed Unreal QA pending |
-| v0.5.20 (source development, not released) | Prevent duplicate and backdated laps in bounded recent history | Strict ring-buffer source regression; UE gameplay QA outstanding |
-| v0.5.21 (source development, not released) | Neutralize captured Android touch input on invalid viewport press/move regardless of finger identity | Cross-platform touch regression; hardware Android rotation/focus QA outstanding |
-| v0.5.22 (source development, not released) | Neutralize nonfinite press from an existing driving finger without affecting others | Portable touch ownership and malformed-event regression; installed Android QA required |
+| v0.5.14 (published source-only pre-release) | Preflight authentic UAT output structure for Win64 EXE/cooked payloads and Android APK contents before archiving | PowerShell disposable rejection fixtures; actual Unreal and target-hardware QA still required |
+| v0.5.15 (published source-only pre-release) | Unified race session epoch on successful restart and menu return, no Quick Race double reset | Standalone real-gate C++ regressions, then real Unreal 5.8/hardware follow-up |
+| v0.5.16 (published source-only pre-release) | Shared 16-finger touch identity contract | Cross-platform touch policy tests; physical Android QA #13 remains open |
+| v0.5.17 (published source-only pre-release) | Live race pace projection in expanded HUD from valid recent lap history | Portable real RaceProgress tests; Unreal HUD and timing device QA pending |
+| v0.5.18 (published source-only pre-release) | Rival AI is gated by player race readiness, circuit, menu/pause and finished state | Real C++20 RaceProgress regression; Unreal physics QA pending |
+| v0.5.19 (published source-only pre-release) | Finite rival recovery budget prevents uncounted AI teleports | Portable real route stress regression; installed Unreal QA pending |
+| v0.5.20 (published source-only pre-release) | Prevent duplicate and backdated laps in bounded recent history | Strict ring-buffer source regression; UE gameplay QA outstanding |
+| v0.5.21 (published source-only pre-release) | Neutralize captured Android touch input on invalid viewport press/move regardless of finger identity | Cross-platform touch regression; hardware Android rotation/focus QA outstanding |
+| v0.5.22 (published source-only pre-release) | Neutralize nonfinite press from an existing driving finger without affecting others | Portable touch ownership and malformed-event regression; installed Android QA required |
+| v0.5.23 (source development, not released) | Wire malformed duplicate touch safety through the actual Unreal input callback, preserve one-shot action presses and isolate held controls | Portable admission/regression tests and three-OS CI; real Android press-event QA #13 remains open |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
