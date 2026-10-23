@@ -454,7 +454,8 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
     // A failed ground/road/barrier spawn cannot produce legitimate racing
     // progress or a career medal, even when four gate actors exist.
-    if (!bCircuitReady)
+    if (!latebrake::CanScoreCheckpoint(
+            Race, bCircuitReady, UGameplayStatics::IsGamePaused(this)))
     {
         return;
     }
