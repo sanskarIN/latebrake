@@ -24,6 +24,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.8 (published source-only pre-release) | Validate expected blocking responses for Pawn, PhysicsBody and WorldDynamic during track actor startup | Strict three-OS C++20 source CI; real Unreal 5.8 UHT/editor compilation and installed physics QA pending |
 | v0.5.9 (source development, not released) | Prevent race clock/scoring on incomplete circuit and display blocked-startup warnings | Strict portable RaceProgress-linked C++20 tests; genuine Unreal 5.8 UHT/editor, cooked map and installed HUD/gameplay QA pending |
 | v0.5.10 (source development, not released) | Freeze race clock if local player pawn is unavailable; show honest driver-readiness warning | Strict portable RaceProgress-linked tests; licensed engine/editor and installed Win64/Android QA remain pending |
+| v0.5.11 (source development, not released) | Isolate each checkpoint motion trail across menu pause/resume, and block awards without an active player | Strict portable four-gate C++ tests; actual UE 5.8 runtime/Win64/Android game QA still required |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
