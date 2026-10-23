@@ -83,6 +83,23 @@ int main()
                                   passed, 400.0, 0.0).Crossed(),
             "driver swap trace reset establishes a new baseline");
 
+    // Direct R/restart from an open pause/results menu both resets the
+    // authoritative race and dismisses that menu. The first observed car
+    // location after this compound transition must remain only a baseline.
+    RaceSessionEpoch directRestart;
+    CheckpointSessionTrace directTrace;
+    Require(!directTrace.SampleDetailed(0, 2, directRestart.Current(),
+                                        approach, 400.0, 0.0).Crossed(),
+            "direct restart has an approach baseline");
+    directRestart.OnPauseTransition();
+    directRestart.OnRaceRestart();
+    directRestart.OnMenuReturnToRace();
+    Require(directRestart.Current() == 3,
+            "pause plus accepted restart and menu dismissal are separate edges");
+    Require(!directTrace.SampleDetailed(0, 2, directRestart.Current(),
+                                        passed, 400.0, 0.0).Crossed(),
+            "direct menu restart cannot bridge an unobserved gate");
+
     RaceSessionEpoch nearWrap;
     // Drive through the epoch's public events with no mutation backdoor.
     // The counter's API promises monotonically advancing observed revisions
