@@ -88,18 +88,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "Unreal BuildCookRun failed with exit code $LASTEXITCODE"
 }
 
-if ($Platform -eq 'Win64') {
-    $exes = @(Get-ChildItem -LiteralPath $out -Recurse -File -Filter '*Latebrake*.exe' -ErrorAction SilentlyContinue)
-    $pakAssets = @(Get-ChildItem -LiteralPath $out -Recurse -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Extension -in '.pak', '.ucas' })
-    if ($exes.Count -eq 0 -or $pakAssets.Count -eq 0) {
-        throw 'Incomplete Windows candidate: expected Latebrake EXE plus cooked .pak/.ucas.'
-    }
-} else {
-    $apks = @(Get-ChildItem -LiteralPath $out -Recurse -File -Filter '*.apk' -ErrorAction SilentlyContinue)
-    if ($apks.Count -eq 0) {
-        throw 'Unreal exited but no Android APK was produced.'
-    }
+# Unreal returning 0 is necessary but not enough. Reject implausible EXEs,
+# tiny cooked packages and malformed APKs BEFORE recording a manifest or
+# making the output available as an UNVERIFIED CI artifact.
+& (Join-Path $PSScriptRoot 'Test-UATPackageStructure.ps1') -Platform $Platform -PackageDirectory $out
+if (-not $?) {
+    throw 'Actual UAT candidate structural preflight rejected the package.'
 }
 Write-Host "Candidate $Platform package created in $out."
 Write-Host 'This candidate is NOT qualified. Install/playtest before any public release.'
