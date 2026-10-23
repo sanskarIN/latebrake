@@ -2,8 +2,27 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.22 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.22).
-**Next development milestone:** v0.5.27 player vehicle physics readiness (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.28 paused touch release input delivery (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.28 source development — paused multi-touch release admission
+
+- Android regression identified: `IE_Pressed` was bound with
+  `bExecuteWhenPaused = true`, but `IE_Released` used the default.
+  A finger lifted during a paused menu/session could remain marked
+  as physically held by `TouchPressTracker`, suppressing subsequent
+  legitimate presses with the same finger ID.
+- Bind the existing `TouchReleased` callback to execute while paused.
+  The callback releases only touch drive ownership and its matching
+  physically-held tracker slot; it never fires discrete menu/race actions.
+  No additional reset on menu entry is allowed, which would incorrectly
+  re-arm a physically still-held finger.
+- New strict portable C++20 lifecycle test exercises simultaneous gas,
+  steering and PAUSE fingers across pause, release and new presses.
+  A Python source-level binding contract verifies the actual Unreal
+  callback wiring, and has negative source mutation fixtures.
+- Remains **source-only**: needs UE 5.8 UHT/input binding compilation
+  and Android device pause/menu/touch event delivery checks under #13.
 
 ## v0.5.27 source development — actual player chassis readiness
 
