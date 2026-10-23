@@ -587,6 +587,28 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     UGameplayStatics::SetGamePaused(this, Menu.IsOpen());
 }
 
+void ALatebrakeRaceGameMode::ToggleRacePause()
+{
+    // Keyboard/gamepad Escape can pause without opening the menu.
+    // It must still invalidate checkpoint motion across the interruption.
+    if (Menu.IsOpen())
+    {
+        ToggleMenu();
+        return;
+    }
+    if (ALatebrakeCarPawn* Car =
+            Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
+    {
+        Car->ClearDriverInputs();
+    }
+    const bool bWasPaused = UGameplayStatics::IsGamePaused(this);
+    UGameplayStatics::SetGamePaused(this, !bWasPaused);
+    if (UGameplayStatics::IsGamePaused(this) != bWasPaused)
+    {
+        ++CheckpointSessionRevision;
+    }
+}
+
 void ALatebrakeRaceGameMode::MenuNext()
 {
     Menu.Next();
