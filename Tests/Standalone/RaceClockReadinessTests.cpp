@@ -55,6 +55,9 @@ int main()
             progress.GetElapsedSeconds() == 6.0,
             "resumption adds only actual active race frame time");
 
+    Require(!CanScoreCheckpoint(progress, true, true) &&
+            CanScoreCheckpoint(progress, true, false),
+            "pause suppresses scoring without poisoning the running race");
     Require(progress.PassCheckpoint(0) && progress.IsFinished(),
             "one valid ordered finish uses real elapsed time");
     Require(progress.GetBestLapSeconds() == 6.0,
