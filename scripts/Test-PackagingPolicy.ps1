@@ -223,6 +223,7 @@ try {
     }
 
     # A syntactically valid ZIP is not a packaged Android application.
+    Remove-Item -LiteralPath $invalidApk -Force
     $fakeZip = [IO.Compression.ZipFile]::Open(
         $invalidApk, [IO.Compression.ZipArchiveMode]::Create)
     try {
