@@ -27,7 +27,16 @@ public:
     // finger can own inputs at a time.
     void Press(const TouchControlLayout& layout, int finger, double x, double y) noexcept
     {
-        if (!IsTrackableTouchFinger(finger) || !layout.Valid ||
+        if (!layout.Valid)
+        {
+            // Screen rotation/resizing invalidates ALL held controls even
+            // if the first event delivered during transition is a press.
+            // Never leave an old throttle active just because this new
+            // finger could not acquire a control.
+            Clear();
+            return;
+        }
+        if (!IsTrackableTouchFinger(finger) ||
             !std::isfinite(x) || !std::isfinite(y) ||
             finger == SteeringFinger || finger == PedalFinger)
         {
