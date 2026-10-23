@@ -5,7 +5,19 @@
 **Next development milestone:** v0.5.10 local player-pawn race clock guard (source development; NOT released). v0.5.9 source PR #45 was merged into main, but it has not been tagged or published.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.9 in development — clock cannot run on an incomplete circuit
+## v0.5.10 in development — avoid ghost time without a player car
+
+- GameMode only advances actual `RaceProgress` while a valid local
+  `ALatebrakeCarPawn` is available through the player controller.
+- An otherwise-complete course can now show a distinct HUD warning
+  when the player pawn is missing. Time resumes on player return
+  instead of inventing elapsed time while no driver could race.
+- Engine-neutral `PlayerRaceClockReadiness` tests cover loss, return,
+  pause, invalid time, finish and reset with original race source.
+- Unreal UHT/editor compile, real possessed-pawn behavior and
+  installed-game HUD/device verification remain pending.
+
+## v0.5.9 merged source — clock cannot run on an incomplete circuit
 
 - New portable `AdvanceRaceClockIfReady` uses real `RaceProgress`
   and refuses time accumulation when the circuit readiness audit
