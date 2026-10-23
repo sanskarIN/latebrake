@@ -5,6 +5,30 @@
 **Next development milestone:** v0.5.31 local invalid-velocity QA summaries (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.31 source development — local invalid-velocity QA visibility
+
+- The v0.5.30 checkpoint trace rejects nonfinite velocity, but
+  non-shipping mode-2 local QA summaries did not display the
+  `InvalidVelocity` rejection bucket. Real QA inspectors could not
+  distinguish a corrupt physics measurement from unclassified
+  diagnostic samples using aggregated logs alone.
+- The actual `ALatebrakeCheckpoint` 10-second summary appends
+  `invalid-velocity=<count>` when diagnostics mode 2 is enabled.
+  It reads the existing bounded `GateDiagnosticCounters` category;
+  no position coordinates, per-frame buffers, network traffic or
+  shipping logging are added.
+- `AnalyzeCheckpointQA.py` now accepts both the prior summary format
+  without this trailing field (assigning zero for missing history) and
+  the new format with a validated nonnegative UINT32 counter. It rejects
+  malformed or repeated fields and counts above the sample budget.
+- Added standalone C++20 bucket regressions, Python legacy/new parser
+  tests, and a source-level contract for Unreal's local log format.
+  **These are synthetic/source tests, not evidence of installed Unreal
+  runtime logging or real Android diagnostics.**
+- The full checklist is in
+  [bounded checkpoint QA summaries](GATE_QA_SUMMARIES.md).
+  No playable game packages or stable release are yet qualified.
+
 ## v0.5.30 source development — checkpoint corrupt-velocity discontinuity
 
 - Detected a race-integrity gap in `CheckpointMotionTrace::SampleDetailed`:
