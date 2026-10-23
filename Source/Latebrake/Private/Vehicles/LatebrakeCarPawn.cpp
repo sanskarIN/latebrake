@@ -1,6 +1,7 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/DriverInputSafety.h"
+#include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "UI/TouchControlLayout.h"
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
@@ -292,6 +293,29 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         const FVector Limited = FlatVelocity.GetClampedToMaxSize(MaxSpeed);
         Chassis->SetPhysicsLinearVelocity(FVector(Limited.X, Limited.Y, Velocity.Z));
     }
+}
+
+bool ALatebrakeCarPawn::IsRacePhysicsReady() const
+{
+    if (!IsValid(Chassis))
+    {
+        return false;
+    }
+    // An actor that is possessed and positioned at a start point is not
+    // necessarily drivable. A missing engine primitive, disabled Chaos
+    // simulation, wrong collision mode or nonfinite state must not keep
+    // accumulating race time or authorize directional gate credits.
+    const FVector Position = GetActorLocation();
+    const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
+    return latebrake::IsRaceVehiclePhysicsReady({
+        true,
+        Chassis->GetStaticMesh() != nullptr,
+        Chassis->IsSimulatingPhysics(),
+        Chassis->GetCollisionEnabled() == ECollisionEnabled::QueryAndPhysics,
+        Chassis->GetCollisionResponseToChannel(ECC_WorldStatic) == ECR_Block,
+        Position.X, Position.Y, Position.Z,
+        Velocity.X, Velocity.Y, Velocity.Z
+    });
 }
 
 float ALatebrakeCarPawn::GetSpeedKmH() const
