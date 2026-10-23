@@ -165,6 +165,18 @@ foreach(name IN ITEMS CareerCatalog CareerProgress CareerChallenges MenuNavigati
 endforeach()
 
 
+# A release arriving while Unreal is paused must release the physical
+# finger latch before a new pause/steering/gas press can be admitted.
+add_executable(latebrake_paused_touch_release_tests PausedTouchReleaseTests.cpp)
+target_include_directories(latebrake_paused_touch_release_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_paused_touch_release_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_paused_touch_release_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_paused_touch_release_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PausedTouchRelease COMMAND latebrake_paused_touch_release_tests)
+
 # Race sector timings need the same portable RaceProgress implementation as
 # the core gate/lap tests; no Unreal headers or platform SDK are required.
 add_executable(latebrake_sector_timing_tests
