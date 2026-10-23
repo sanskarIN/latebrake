@@ -653,7 +653,14 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
         IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
     PressedTouch.bExecuteWhenPaused = true; // Mobile PAUSE pad can also resume play.
     PlayerInputComponent->BindTouch(IE_Repeat, this, &ALatebrakeCarPawn::TouchMoved);
-    PlayerInputComponent->BindTouch(IE_Released, this, &ALatebrakeCarPawn::TouchReleased);
+    // A finger released while the menu or standalone PAUSE is active must
+    // clear its physical-down slot even when the game world stops ticking.
+    // Otherwise the next real press reusing that finger index is classified
+    // as a duplicate and PAUSE/STEER/GAS can appear permanently unresponsive.
+    // This is cleanup only: TouchReleased never triggers gameplay actions.
+    FInputTouchBinding& ReleasedTouch = PlayerInputComponent->BindTouch(
+        IE_Released, this, &ALatebrakeCarPawn::TouchReleased);
+    ReleasedTouch.bExecuteWhenPaused = true;
     FInputActionBinding& PauseAction = PlayerInputComponent->BindAction(TEXT("Pause"), IE_Pressed, this, &ALatebrakeCarPawn::TogglePause);
     PauseAction.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("CircuitEvent"), IE_Pressed, this, &ALatebrakeCarPawn::SelectCircuit);
