@@ -35,6 +35,7 @@ public:
     void StartNextAvailableCareerEvent();
     void CycleCareerEvent();
     void ToggleMenu();
+    void ToggleRacePause();
     void MenuNext();
     void MenuPrevious();
     void MenuActivate();
