@@ -31,6 +31,11 @@ The v0.5.18 `RivalDriveReadinessTests.cpp` directly links real
 local driver, during pause/menu, after finish or in the wrong event.
 These pure policy checks do not replace a real engine physics test.
 
+The v0.5.19 `RivalRouteTests.cpp` exercises the full finite AI
+recovery budget: every accepted teleport is counted, no further
+teleport is allowed after exhaustion, and race reset refreshes state.
+Source-level route tests are not substitutes for Unreal physics QA.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
