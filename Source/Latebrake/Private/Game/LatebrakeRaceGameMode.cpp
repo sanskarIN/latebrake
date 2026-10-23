@@ -26,6 +26,7 @@
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
 #include "Racing/RaceClockReadiness.h"
+#include "Racing/PlayerRaceClockReadiness.h"
 #include "Racing/RecoveryCharge.h"
 #include "Track/CircuitLayout.h"
 #include "Track/TrackDecorations.h"
