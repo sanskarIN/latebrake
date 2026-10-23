@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "Racing/FinishedRaceInsights.h"
+#include "Racing/LiveRacePaceProjection.h"
 #include "UI/TouchControlLayout.h"
 #include "Track/CircuitMap.h"
 #include "Engine/Engine.h"
@@ -230,6 +231,16 @@ void ALatebrakeRaceHUD::DrawHUD()
             Race.GetCurrentLapSeconds(), Race.GetLastLapSeconds()), Primary);
         Line(FString::Printf(TEXT("FASTEST LAP  %.2fs  |  LAST SPLIT  %.2fs"),
             Race.GetBestLapSeconds(), Race.GetLastSectorSeconds()), Primary);
+        // Estimate based only on actual completed timed laps. Never
+        // display a fabricated finish pace before the first valid lap.
+        const latebrake::LiveRacePaceProjection Pace =
+            latebrake::ProjectLiveRacePace(Race);
+        if (Pace.Valid)
+        {
+            Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
+                Pace.ReferenceLapSeconds, Pace.SampledLaps,
+                Pace.ProjectedFinishSeconds), Accent);
+        }
         if (Race.GetLastSectorIndex() >= 0)
         {
             // Compare a split only with the previous best of its own sector.
