@@ -5,7 +5,24 @@
 **Next development milestone:** v0.5.11 checkpoint pause/resume session isolation (source development, NOT released). v0.5.9 PR #45 and v0.5.10 PR #46 were merged into main but neither was published as a release.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.10 in development — avoid ghost time without a player car
+## v0.5.11 source development — never bridge checkpoint samples across pause
+
+- New allocation-free `CheckpointSessionTrace` resets the motion baseline
+  on pause/resume session-revision changes, independently of teleport
+  revisions and pawn swaps. No gate can earn a score from two samples
+  separated by a menu pause.
+- Unreal checkpoint actors reset their diagnostic windows on session
+  changes and refuse sampling during blocked/paused/menu-open states.
+- GameMode scoring now requires a valid local player driver as well as
+  a ready unpaused circuit; race clock similarly treats an open menu
+  as paused even if the world pause call fails.
+- Four-gate real `RaceProgress` portable C++20 tests exercise
+  interrupted and uninterrupted forward crossings, plus reset,
+  corrupt coordinates and large/wrapped revisions.
+- UE 5.8 UHT/editor compile and installed Win64/Android resume/gate QA
+  remain outstanding. [Required acceptance](CHECKPOINT_SESSION_QA.md).
+
+## v0.5.10 merged source — avoid ghost time without a player car
 
 - GameMode only advances actual `RaceProgress` while a valid local
   `ALatebrakeCarPawn` is available through the player controller.
