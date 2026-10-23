@@ -20,6 +20,11 @@ int main()
 {
     using namespace latebrake;
     RaceProgress progress(1, 1);
+    Require(!CanScoreCheckpoint(progress, false, false) &&
+            !CanScoreCheckpoint(progress, false, true) &&
+            !CanScoreCheckpoint(progress, true, true) &&
+            CanScoreCheckpoint(progress, true, false),
+            "only a ready, running, unpaused race can accept checkpoints");
     Require(!AdvanceRaceClockIfReady(progress, false, false, 20.0),
             "incomplete circuit is never a timed race");
     Require(progress.GetElapsedSeconds() == 0.0 &&
