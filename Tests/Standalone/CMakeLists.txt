@@ -314,3 +314,17 @@ else()
     target_compile_options(latebrake_race_session_epoch_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RaceSessionEpoch COMMAND latebrake_race_session_epoch_tests)
+
+# v0.5.17: present conservative finish estimate from real timed race laps.
+add_executable(latebrake_live_race_pace_tests
+    LiveRacePaceProjectionTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_live_race_pace_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_live_race_pace_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_live_race_pace_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_live_race_pace_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME LiveRacePaceProjection COMMAND latebrake_live_race_pace_tests)
