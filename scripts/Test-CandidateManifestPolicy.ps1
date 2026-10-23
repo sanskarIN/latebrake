@@ -208,6 +208,37 @@ try {
     Expect-RejectionMatching 'failed Windows performance QA' 'Required Win64 installed-game QA check not passed: performance' {
         & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
     }
+    $qa.checks.performance = $true
+
+    # A source revision does not uniquely name a UAT output. Reject absent
+    # or invented digests before the synthetic package reaches PE checks.
+    $qa.candidate_manifest_sha256 = ''
+    Write-QA
+    Expect-RejectionMatching 'QA missing exact candidate digest' 'candidate_manifest_sha256 must contain' {
+        & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
+    }
+    $qa.candidate_manifest_sha256 = ('f' * 64)
+    Write-QA
+    Expect-RejectionMatching 'QA digest belongs to another candidate' 'candidate_manifest_sha256 does not match' {
+        & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
+    }
+
+    $qa.candidate_manifest_sha256 =
+        (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Write-QA
+    Expect-RejectionMatching 'matching QA hash reaches genuine executable requirements' 'Windows package requires' {
+        & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
+    }
+
+    # Two manifests may share the SAME commit and SAME payload yet still
+    # record distinct UAT builds. Stale playtest evidence must not transfer.
+    $state.created_utc = '2000-01-02T00:00:00Z'
+    Write-Fixture
+    & $verifier -ManifestJson $manifestPath -Platform Win64
+    if (-not $?) { throw 'Second synthetic candidate manifest must remain structurally valid.' }
+    Expect-RejectionMatching 'new candidate with same source but stale QA digest' 'candidate_manifest_sha256 does not match' {
+        & $platformVerifier -Platform Win64 -PackagePath $temp -ManifestJson $manifestPath -EvidenceJson $qaPath
+    }
 
     Write-Host 'All candidate manifest and QA policy fixtures passed. No usable binaries created.'
 } finally {
