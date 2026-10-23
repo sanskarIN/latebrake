@@ -5,7 +5,19 @@
 **Next development milestone:** v0.5.15 gameplay checkpoint session isolation for race restart and menu returns (source development, NOT released). v0.5.9–v0.5.14 source PRs #45–#50 have merged into main without new release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.14 source development — reject malformed UAT package outputs
+## v0.5.15 source development — one checkpoint epoch for all gameplay transitions
+
+- `RaceSessionEpoch` now tracks pause, accepted race restart, and
+  menu-to-gameplay transitions independently of individual actor ticks.
+- `CloseMenuForRace` consolidates menu dismissal and input clearing for
+  successful Quick Race, career, championships, challenges and results replay.
+- The Quick Race menu avoids restarting twice when event selection
+  already restarts the authoritative race.
+- Strict C++20 portable regression exercises real directional
+  checkpoint crossings and RaceProgress before/after every transition.
+- Pending actual UE 5.8/UHT/editor and hardware race qualification.
+
+## v0.5.14 merged source — reject malformed UAT package outputs
 
 - New Win64/Android candidate structure script checks payload sizes,
   Windows MZ headers, cooked asset presence, APK ZIP contents and
