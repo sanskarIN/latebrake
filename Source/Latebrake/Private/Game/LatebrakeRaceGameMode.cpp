@@ -101,8 +101,7 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // Do not accumulate a fictional race result if track geometry,
     // required collision responses, gate actors or safe spawns failed.
     // Explicit pause check also defends unusual manually ticked worlds.
-    const bool bLocalPlayerReady = IsValid(Cast<ALatebrakeCarPawn>(
-        UGameplayStatics::GetPlayerPawn(this, 0)));
+    const bool bLocalPlayerReady = HasLocalPlayerDriver();
     latebrake::AdvancePlayerRaceClockIfReady(
         Race, bCircuitReady, UGameplayStatics::IsGamePaused(this),
         bLocalPlayerReady, static_cast<double>(DeltaSeconds));
