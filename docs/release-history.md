@@ -1,7 +1,7 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The latest published GitHub tag is **v0.5.22**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Development after v0.5.22 remains on `main` without matching public release tags.
+    The latest published GitHub tag is **v0.5.30**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Development after v0.5.22 remains on `main` without matching public release tags.
 
 ## Published source previews
 
