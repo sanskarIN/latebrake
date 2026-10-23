@@ -1124,6 +1124,9 @@ void ALatebrakeRaceGameMode::RestartRace()
     }
 
     // Only unpause and reset AFTER career replay preparation succeeds.
+    // Restart invalidates sampled positions even if no pawn exists yet or
+    // its physics recovery is not observed until the next actor tick.
+    CheckpointSession.OnRaceRestart();
     // Restarting from the mobile PAUSE screen must return to a live race.
     if (UGameplayStatics::IsGamePaused(this))
     {
