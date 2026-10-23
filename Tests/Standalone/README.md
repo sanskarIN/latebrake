@@ -105,6 +105,15 @@ must remain unchanged. The
 regressions verify actual Unreal `TouchReleased` and `ApplyTouch` use
 the helper. These fixtures do **not** constitute hardware physics QA.
 
+The v0.5.30 `CheckpointVelocityContinuityTests.cpp` links the original
+`RaceProgress.cpp` and demonstrates that a valid-position sample with
+nonfinite velocity is a **full checkpoint trace discontinuity**, not
+a future gate-scoring baseline. All four genuine ordered gates, corrupt
+initial readings, NaN/±infinity, unchanged session revision, diagnostic
+counts and clean subsequent crossings are covered. The corresponding
+[engine/device QA plan](../../docs/CHECKPOINT_VELOCITY_QA.md) remains
+required; these hosted C++20 tests do not validate real Unreal physics.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
