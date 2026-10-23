@@ -1,0 +1,125 @@
+name: Publish LateBrake v0.5.15 SOURCE-ONLY pre-release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v0.5.15-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: latebrake-v0.5.15-source-prerelease
+  cancel-in-progress: false
+
+jobs:
+  portable-tests:
+    name: Strict C++20 / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build Tests/Standalone/build --config Release --parallel
+      - name: Require v0.5.15 checkpoint session and portable race targets
+        run: cmake --build Tests/Standalone/build --config Release --target latebrake_race_session_epoch_tests latebrake_checkpoint_session_trace_tests latebrake_player_race_clock_readiness_tests
+      - name: Test portable gameplay and checkpoint session safety rules
+        run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
+
+  powershell-release-policy:
+    name: Package-policy negatives and PowerShell syntax (NOT game build)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          foreach ($script in (Get-ChildItem -LiteralPath scripts -Filter '*.ps1' -File)) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$($script.Name): $_" }
+              exit 1
+            }
+          }
+      - name: Reject synthetic/invalid candidates
+        shell: pwsh
+        run: |
+          ./scripts/Test-PackagingPolicy.ps1
+          if (-not $?) { exit 1 }
+          ./scripts/Test-CandidateManifestPolicy.ps1
+          if (-not $?) { exit 1 }
+
+  editor-script-policy:
+    name: Unreal editor script syntax and stub checks (NOT UE compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py scripts/AnalyzeCheckpointQA.py
+      - run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
+
+  release:
+    name: Publish immutable source-only v0.5.15
+    needs: [portable-tests, powershell-release-policy, editor-script-policy]
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish source-only pre-release after ALL gates pass
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const {owner, repo} = context.repo;
+            const sha = context.sha;
+            const tag = 'v0.5.15';
+            const notes = fs.readFileSync('docs/releases/v0.5.15.md', 'utf8');
+            const title = 'LateBrake v0.5.15 — Racing Session Integrity (SOURCE-ONLY Pre-release)';
+            for (const marker of [
+              'SOURCE-ONLY', 'NOT a playable game build', 'No compiled Win64 EXE',
+              'Android APK/AAB', 'not installers'
+            ]) {
+              if (!notes.includes(marker)) throw new Error('Missing source-only release warning: ' + marker);
+            }
+            const main = await github.rest.repos.getBranch({owner, repo, branch: 'main'});
+            if (main.data.commit.sha !== sha) {
+              throw new Error('main advanced since tests: refusing stale release tag');
+            }
+            await github.rest.repos.getReleaseByTag({owner, repo, tag: 'v0.5.8'});
+            let ref;
+            try {
+              ref = (await github.rest.git.getRef({owner, repo, ref: 'tags/' + tag})).data.object;
+            } catch (err) { if (err.status !== 404) throw err; }
+            if (ref) {
+              if (ref.type !== 'commit' || ref.sha !== sha) {
+                throw new Error('Existing v0.5.15 tag points elsewhere: never move tags');
+              }
+            } else {
+              await github.rest.git.createRef({owner, repo, ref: 'refs/tags/' + tag, sha});
+            }
+            let release;
+            try {
+              release = (await github.rest.repos.getReleaseByTag({owner, repo, tag})).data;
+            } catch (err) { if (err.status !== 404) throw err; }
+            if (!release) {
+              release = (await github.rest.repos.createRelease({
+                owner, repo, tag_name: tag, target_commitish: sha, name: title,
+                body: notes, draft: false, prerelease: true,
+                make_latest: 'false', generate_release_notes: false
+              })).data;
+            }
+            if (release.draft || !release.prerelease || release.tag_name !== tag ||
+                release.body !== notes || release.assets.length !== 0) {
+              throw new Error('Release not verified as a clean source-only pre-release');
+            }
+            core.notice('Published verified source-only pre-release: ' + release.html_url + ' @ ' + sha);
