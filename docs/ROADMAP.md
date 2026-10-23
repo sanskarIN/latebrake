@@ -29,6 +29,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.13 (source development, not released) | Bind installed QA to SHA256 of the exact UAT candidate manifest rather than only source commit | Disposable policy negatives + strict three-OS source CI; actual UE/editor/cook and real hardware tests outstanding |
 | v0.5.14 (source development, not released) | Preflight authentic UAT output structure for Win64 EXE/cooked payloads and Android APK contents before archiving | PowerShell disposable rejection fixtures; actual Unreal and target-hardware QA still required |
 | v0.5.15 (source development, not released) | Unified race session epoch on successful restart and menu return, no Quick Race double reset | Standalone real-gate C++ regressions, then real Unreal 5.8/hardware follow-up |
+| v0.5.16 (source development, not released) | Shared 16-finger touch identity contract | Cross-platform touch policy tests; physical Android QA #13 remains open |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
