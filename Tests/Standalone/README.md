@@ -41,6 +41,13 @@ and backdated lap IDs, both in a fresh session and after the fixed-size
 buffer wraps. Valid strictly increasing records and reset remain supported.
 These are engine-independent history guarantees, not installed-game QA.
 
+The v0.5.21 touch regression exercises screen geometry interruption
+for both `Press` and `Move`, including unknown/negative touch IDs.
+An invalid viewport must cancel **previously held** throttle, brake
+and steering, not just refuse the incoming new touch. Stale moves
+cannot reacquire control until a fresh valid press. Physical Android
+rotation/resume behavior remains an Unreal/device QA requirement.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
