@@ -10,8 +10,10 @@
 - Quick Race avoids an unnecessary duplicate restart when changing away from
   a career or other race type.
 - Every accepted restart invalidates checkpoint traces even if the
-  teleport/recovery was not observed by a checkpoint tick; replay failure
-  still leaves the menu/race untouched.
+  teleport/recovery was not observed by a checkpoint tick. Direct
+  restart actions now close an open menu too, preventing an unpaused
+  but permanently menu-blocked race clock; failed career replay
+  still leaves the results menu and race untouched.
 - Regression tests use real ordered RaceProgress and a directional
   checkpoint to reject phantom scoring across pauses, menu returns and
   restarts while preserving normal forward crossings.
