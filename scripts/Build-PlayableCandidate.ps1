@@ -22,6 +22,11 @@ if (-not $IsWindows) {
     throw 'This pipeline invokes Unreal Build.bat, RunUAT.bat and UnrealEditor.exe; run on Windows.'
 }
 
+# Fail before a long engine compilation if HEAD does not identify the
+# source being compiled. The one untracked map is fingerprinted separately.
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1')
+if (-not $?) { throw 'Untraceable source checkout blocks candidate compilation.' }
+
 Write-Host 'Stage 1/3: compile editor and catch UHT/C++ errors.'
 & (Join-Path $PSScriptRoot 'Build-Editor.ps1') -EngineRoot $EngineRoot
 if (-not $?) { throw 'Editor compilation stage failed.' }
@@ -29,6 +34,11 @@ if (-not $?) { throw 'Editor compilation stage failed.' }
 Write-Host 'Stage 2/3: create or confirm true Unreal starter level.'
 & (Join-Path $PSScriptRoot 'New-StarterMap.ps1') -EngineRoot $EngineRoot
 if (-not $?) { throw 'Real Unreal level generation failed.' }
+
+# The Editor may have saved an existing tracked map or left a new asset.
+# Recheck before cooking so its provenance is not a surprise at upload.
+& (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1')
+if (-not $?) { throw 'Source changed during Editor map authoring; candidate is not traceable.' }
 
 Write-Host "Stage 3/3: cook and package real $Platform candidate."
 & (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $EngineRoot -Platform $Platform -OutputDirectory $OutputDirectory
