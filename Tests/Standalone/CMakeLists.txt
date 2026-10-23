@@ -165,6 +165,18 @@ foreach(name IN ITEMS CareerCatalog CareerProgress CareerChallenges MenuNavigati
 endforeach()
 
 
+# A finger release, invalid movement or drag off GAS must drop the
+# already-smoothed motor/steering command, not only its touch ownership.
+add_executable(latebrake_touch_residual_safety_tests TouchResidualSafetyTests.cpp)
+target_include_directories(latebrake_touch_residual_safety_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_touch_residual_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_touch_residual_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_touch_residual_safety_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TouchResidualSafety COMMAND latebrake_touch_residual_safety_tests)
+
 # A release arriving while Unreal is paused must release the physical
 # finger latch before a new pause/steering/gas press can be admitted.
 add_executable(latebrake_paused_touch_release_tests PausedTouchReleaseTests.cpp)
