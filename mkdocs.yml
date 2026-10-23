@@ -13,7 +13,6 @@ strict: false
 theme:
   name: material
   language: en
-  custom_dir: docs/overrides
   logo: assets/images/latebrake-mark.svg
   favicon: assets/images/latebrake-mark.svg
   palette:
