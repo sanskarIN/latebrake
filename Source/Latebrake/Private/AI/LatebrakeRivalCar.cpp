@@ -1,9 +1,11 @@
 #include "AI/LatebrakeRivalCar.h"
 
 #include "AI/RivalPilot.h"
+#include "AI/RivalDriveReadiness.h"
 #include "Track/CircuitLayout.h"
 #include "Engine/World.h"
 #include "Game/LatebrakeRaceGameMode.h"
+#include "Kismet/GameplayStatics.h"
 
 ALatebrakeRivalCar::ALatebrakeRivalCar()
 {
@@ -29,9 +31,11 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 {
     const ALatebrakeRaceGameMode* Mode =
         GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
-    if (!Mode || Mode->GetRace().IsFinished() ||
-        Mode->GetSelectedEvent() != latebrake::EventKind::Circuit ||
-        Route.IsFinished())
+    if (!Mode || !latebrake::CanDriveRival(
+            Mode->GetRace(), Mode->GetSelectedEvent(),
+            Mode->IsCircuitReadyForGameplay(),
+            UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen(),
+            Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
