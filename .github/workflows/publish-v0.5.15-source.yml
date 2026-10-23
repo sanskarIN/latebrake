@@ -95,7 +95,7 @@ jobs:
             if (main.data.commit.sha !== sha) {
               throw new Error('main advanced since tests: refusing stale release tag');
             }
-            await github.rest.repos.getReleaseByTag({owner, repo, tag: 'v0.5.8'});
+            await github.rest.repos.getReleaseByTag({owner, repo, tag: 'v0.5.14'});
             let ref;
             try {
               ref = (await github.rest.git.getRef({owner, repo, ref: 'tags/' + tag})).data.object;
