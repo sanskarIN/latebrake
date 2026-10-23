@@ -5,8 +5,9 @@
 - Added portable `CheckpointSessionTrace.h` to discard pre-pause
   gate positions before the first post-resume positional sample.
   Per-pawn teleport revision checks remain independently enforced.
-- Menu pause/resume transitions increment an explicit session revision
-  shared with all four Unreal checkpoint actors. Diagnostics do not
+- Menu pause/resume and standalone Escape/gamepad pause transitions
+  increment an explicit session revision shared with all four Unreal
+  checkpoint actors. Diagnostics do not
   mix counts across these different motion sessions.
 - A missing player car, unready circuit, paused world or open menu
   cannot advance checkpoint scoring; timing follows the same block.
