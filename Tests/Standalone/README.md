@@ -74,6 +74,17 @@ a full five-second penalty for valid recovery. Overflow/precision
 rejection continues to fail closed. The actual Unreal recovery and
 mobile pause flows remain subject to genuine installed-game QA.
 
+The v0.5.27 `RaceVehiclePhysicsReadinessTests.cpp` validates the
+portable snapshot policy for the real `ALatebrakeCarPawn::IsRacePhysicsReady`
+entry point: chassis/mesh presence, simulation, blocking physical collision,
+finite 3D position and finite 3D velocity. It links original
+`RaceProgress.cpp` and proves an unusable but still-possessed pawn does not
+accumulate phantom lap time or qualify for checkpoints. Checkpoint samplers
+also discard their baseline while physics is invalid, avoiding cross-failure
+trajectory interpolation. These source tests **cannot** establish that
+UE 5.8 actually cooks a mesh, drives the chassis or blocks track actors;
+the true Unreal build and installed driving tests remain required.
+
 These checks **do not** validate physics feel, Unreal Header Tool generation, runtime map, input events, save APIs, cooked binaries or Android devices. See `docs/TESTING.md` for the Unreal-specific acceptance plan.
 
 ## New in v0.2.1
