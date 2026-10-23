@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased v0.5.13 — Bind installed-game QA to exact candidate bytes
+
+- Platform QA now requires `candidate_manifest_sha256` matching the
+  SHA256 of the **exact** candidate manifest supplied to the verifier.
+  The manifest already fingerprints all package payloads, Unreal map,
+  source commit and engine version.
+- Source commit alone was insufficient: different Unreal cook/package
+  runs from the same commit can produce different installable games.
+  Prior installed-device QA cannot be reused for an unrelated candidate.
+- Both Windows and Android QA templates include the required fingerprint.
+  The build pipeline prints the digest after manifest validation, but
+  does **not** automatically claim that installed gameplay was tested.
+- Disposable PowerShell policy tests reject missing, malformed, wrong
+  and stale fingerprints for a second manifest with the same commit.
+  A matching digest still requires a genuine executable and playtest.
+- **No real Unreal 5.8 UHT/editor build, cooked game or device
+  qualification has been performed. No playable game is released.**
+
+
 ## Unreleased v0.5.12 — Candidate archive link/traversal integrity
 
 - Hardened `Test-CandidateManifest.ps1` against symlinks/junctions
