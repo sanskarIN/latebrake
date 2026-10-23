@@ -83,7 +83,7 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
 
     // Session revisions are bumped by GameMode on both pause and resume;
     // an actor need not tick while paused to reject pre-pause movement.
-    const ALatebrakeRaceGameMode* Mode =
+    ALatebrakeRaceGameMode* Mode =
         GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!IsValid(Mode) || !Mode->IsCircuitReadyForGameplay() ||
         UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen())
