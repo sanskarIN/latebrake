@@ -2,8 +2,31 @@
 
 **Updated:** 2026-10-23
 **Latest published milestone:** [v0.5.22 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.22).
-**Next development milestone:** v0.5.29 touch residual motor/steering cancellation (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.30 invalid-velocity checkpoint continuity (source development, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.30 source development — checkpoint corrupt-velocity discontinuity
+
+- Detected a race-integrity gap in `CheckpointMotionTrace::SampleDetailed`:
+  a NaN/infinite velocity sample could be rejected while **its finite
+  position was still retained** as the baseline for the next gate
+  crossing. A later finite reading could falsely bridge that corrupt
+  physics interval.
+- Reject any nonfinite horizontal velocity **before** capturing a
+  baseline; reset the trace and report `GateRejected/InvalidVelocity`
+  without giving `RaceProgress` an ordered gate. The next entirely
+  valid sample establishes a new baseline only; a subsequent real
+  forward crossing can count. Position, session and teleport guards
+  remain unchanged.
+- New C++20 `CheckpointVelocityContinuityTests.cpp` links original
+  `RaceProgress.cpp` and checks all four gates, NaN/±infinity in
+  velocity, first-frame invalidity, unchanged session epochs, per-gate
+  diagnostic counts and no ghost lap completion.
+- Technical qualification steps are at
+  [checkpoint velocity QA](CHECKPOINT_VELOCITY_QA.md); genuinely
+  compiling/cooking UE 5.8 and testing installed Win64/Android
+  packages remains **outstanding**. This is source-only development,
+  not a new public release or binary.
 
 ## v0.5.29 source development — remove residual motor and steering input
 
