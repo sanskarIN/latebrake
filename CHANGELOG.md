@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased v0.5.11 — Pause-safe checkpoint session traces (source development)
+
+- Added portable `CheckpointSessionTrace.h` to discard pre-pause
+  gate positions before the first post-resume positional sample.
+  Per-pawn teleport revision checks remain independently enforced.
+- Menu pause/resume transitions increment an explicit session revision
+  shared with all four Unreal checkpoint actors. Diagnostics do not
+  mix counts across these different motion sessions.
+- A missing player car, unready circuit, paused world or open menu
+  cannot advance checkpoint scoring; timing follows the same block.
+- New strict C++20 four-gate regression uses real `RaceProgress.cpp`
+  and validates the otherwise-plausible crossing across a pause,
+  legitimate post-resume progression, corrupt samples, pawn reset,
+  teleport changes and revision wrap.
+- **Not released**: licensed UE 5.8 editor/UHT/packaging and physical
+  Win64/Android gate, menu and HUD qualification are still missing.
+
 ## Unreleased v0.5.10 — Local player readiness guard (source development)
 
 - New portable `PlayerRaceClockReadiness.h` refuses to advance the
