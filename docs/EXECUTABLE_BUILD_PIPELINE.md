@@ -72,6 +72,17 @@ available; the packaged GameDefaultMap is the project-owned map.
    `docs/releases/android-qa.example.json`. Set
    `installed_and_playtested` true only after actually testing. Keep evidence
    and full raw build/device logs private when they contain machine details.
+   Every report must match both the `source_commit` and the **exact
+   candidate manifest SHA256**. After a successful genuine UAT candidate
+   build and before any installed test, record the manifest hash:
+   ```powershell
+   (Get-FileHash -LiteralPath 'D:\LatebrakeCandidates\Win64\Latebrake-candidate-manifest.json' -Algorithm SHA256).Hash.ToLowerInvariant()
+   ```
+   Enter that 64-character value as `candidate_manifest_sha256` in the
+   Win64 report; calculate the Android candidate's manifest hash separately.
+   `Build-PlayableCandidate.ps1` also prints this value for the QA handoff.
+   This is an identifier, not proof that the build was installed or played.
+   Do **not** reuse a prior run's QA evidence even if the source commit matches.
 4. Run the structural verifier and record every SHA256 hash:
 
 ```powershell
