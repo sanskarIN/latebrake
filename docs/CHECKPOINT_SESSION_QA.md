@@ -41,6 +41,16 @@ still earns the correct ordered checkpoint. It also exercises teleport
 revision changes, pawn reset, invalid coordinates and session wrap.
 `PlayerRaceClockReadinessTests.cpp` independently guards awards.
 
+## v0.5.30 complement: invalid velocity breaks trace continuity
+
+Alongside pause/resume and teleport generation resets, the shared
+`CheckpointMotionTrace` now clears its stored baseline if either
+horizontal velocity is NaN or infinite, even while positions and
+session revisions remain otherwise valid. The next fully valid
+observation can only establish a fresh baseline, not collect a
+checkpoint. See [checkpoint velocity QA](CHECKPOINT_VELOCITY_QA.md)
+for portable regression cases and genuinely required Unreal tests.
+
 ## Genuine Unreal qualification — outstanding
 
 1. Compile installed licensed Unreal Engine 5.8 UHT/editor/game targets.
