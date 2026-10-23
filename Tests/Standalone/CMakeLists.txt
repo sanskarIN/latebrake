@@ -195,6 +195,22 @@ else()
 endif()
 add_test(NAME RecoveryCharge COMMAND latebrake_recovery_charge_tests)
 
+# A possessed car is not playable unless its Chaos chassis mesh,
+# physical collision and all motion axes are usable. Use original
+# RaceProgress.cpp to reject phantom clock accumulation across transitions.
+add_executable(latebrake_race_vehicle_physics_readiness_tests
+    RaceVehiclePhysicsReadinessTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_race_vehicle_physics_readiness_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_vehicle_physics_readiness_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_vehicle_physics_readiness_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_vehicle_physics_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceVehiclePhysicsReadiness COMMAND latebrake_race_vehicle_physics_readiness_tests)
+
 # Player recovery uses the same readiness as real player scoring/clock.
 # Link original RaceProgress.cpp to verify clock/counter transactions rather
 # than a mocked race, without claiming an Unreal game or Android QA.
