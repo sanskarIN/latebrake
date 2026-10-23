@@ -10,6 +10,13 @@ on:
 permissions:
   contents: read
 
+# Only the latest revision of a branch or PR needs a full portable CI matrix.
+# Keep push and PR verification independent; cancel obsolete runs within
+# each event/ref group to avoid queued superseded per-commit matrices.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   portable-tests:
     name: Portable C++20 tests / ${{ matrix.os }}
