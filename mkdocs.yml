@@ -1,0 +1,111 @@
+site_name: Latebrake
+site_description: "Race Beyond Limits — source-first open-source racing game documentation"
+site_url: https://sanskarin.github.io/latebrake/
+repo_url: https://github.com/sanskarIN/latebrake
+repo_name: sanskarIN/latebrake
+edit_uri: edit/main/docs/
+copyright: "Latebrake — community-developed, source-first racing game. Documentation is not a claim of playable builds."
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+strict: false
+
+theme:
+  name: material
+  language: en
+  custom_dir: docs/overrides
+  logo: assets/images/latebrake-mark.svg
+  favicon: assets/images/latebrake-mark.svg
+  palette:
+    - scheme: slate
+      primary: black
+      accent: red
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: black
+      accent: red
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+extra:
+  status:
+    source_only: true
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sanskarIN/latebrake
+      name: Latebrake source code on GitHub
+
+nav:
+  - Home: index.md
+  - Start:
+      - About Latebrake: about.md
+      - What is implemented?: features.md
+      - Getting started: getting-started.md
+      - Current development status: development-status.md
+      - Contributing: contributing.md
+  - Game & systems:
+      - Game design: GAME_DESIGN.md
+      - Race and rival AI: AI_AND_EVENTS.md
+      - Career: CAREER.md
+      - Championships: CHAMPIONSHIPS.md
+      - Challenges: CHALLENGES.md
+      - Garage: GARAGE.md
+      - Track: TRACK.md
+      - Touch controls: TOUCH_CONTROLS.md
+      - Sector timing: SECTOR_TIMING.md
+      - Finish insights: FINISH_INSIGHTS.md
+  - Developers:
+      - Architecture: ARCHITECTURE.md
+      - Build instructions: BUILDING.md
+      - Testing & QA: TESTING.md
+      - Executable build pipeline: EXECUTABLE_BUILD_PIPELINE.md
+      - Circuit startup audit: CIRCUIT_STARTUP_AUDIT.md
+      - Collision response QA: COLLISION_RESPONSE_QA.md
+      - Collision setup QA: COLLISION_SETUP_QA.md
+      - Checkpoint session QA: CHECKPOINT_SESSION_QA.md
+      - Gate diagnostics: GATE_DIAGNOSTICS.md
+      - Gate QA summaries: GATE_QA_SUMMARIES.md
+      - Player race clock QA: PLAYER_RACE_CLOCK_QA.md
+      - Race clock readiness QA: RACE_CLOCK_READINESS_QA.md
+      - Save migration: SAVE_MIGRATION.md
+  - Roadmap & history:
+      - Roadmap: ROADMAP.md
+      - Release history: release-history.md
+      - Engineering status log: STATUS.md
+
+# The historical release Markdown is rendered and remains accessible by
+# direct URLs from release-history.md but is not duplicated in the main nav.
+not_in_nav: |
+  /releases/*
