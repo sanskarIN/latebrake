@@ -14,7 +14,7 @@ This issue can occur even when the position is finite. A malformed velocity samp
 - A nonfinite velocity resets the stored position and teleport generation, fails the current sample as `GateRejected / InvalidVelocity`, and does **not** credit `RaceProgress`.
 - The next sample with finite position and finite velocity can only establish an `InitialBaseline`; it cannot award the old crossing. A **subsequent independent forward segment** can earn the gate using the unchanged directional, lane, height and maximum-frame-travel rules.
 - These guards also apply inside `CheckpointSessionTrace` when session and teleport revisions remain unchanged. Previously valid samples are never joined across the corrupt physics interval.
-- Existing non-shipping diagnostic mode 1 can classify the rejection as `invalid-velocity`. The fixed-memory category counter includes that rejection, but historical v0.5.4 mode-2 summary lines do **not** add a new column: their fixed parser remains compatible. Do not treat summary counts alone as complete invalid-velocity evidence.
+- Existing non-shipping diagnostic mode 1 can classify the rejection as `invalid-velocity`. The fixed-memory category counter includes that rejection. Starting with v0.5.31 source development, opt-in mode-2 summary lines explicitly append an `invalid-velocity` count, while the updated parser still accepts older v0.5.4 lines without the field. Do not treat aggregate counts alone as authenticated Unreal evidence.
 
 ## Automated regression coverage
 
