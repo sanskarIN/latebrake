@@ -106,6 +106,8 @@ private:
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
     bool bCircuitReady = false;
+    // Every menu pause/resume invalidates pre-transition gate positions.
+    uint64 CheckpointSessionRevision = 0;
     float PersonalBestSeconds = 0.f;
     float BestTimeAttackSeconds = 0.f;
     float PersonalBestLapSeconds = 0.f;
