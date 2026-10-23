@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased v0.5.18 — Autonomous rival readiness parity
+
+- `RivalDriveReadiness.h` disallows driving when circuit startup,
+  local driver, game focus, event selection or player finish is invalid.
+- Unreal rival pawn now applies braking instead of acceleration when
+  an unready circuit, open menu or paused/finished race is observed.
+- Standalone C++20 regression links real `RaceProgress.cpp` and tests
+  event, pause, circuit, local player, route finish and restart.
+- These are source tests, not real Unreal 5.8 or hardware qualification.
+
+
 ## Unreleased v0.5.17 — Measured lap pace forecast in expanded HUD
 
 - `LiveRacePaceProjection.h` derives an estimated total finish clock
