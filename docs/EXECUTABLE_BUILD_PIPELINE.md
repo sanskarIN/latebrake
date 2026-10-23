@@ -115,6 +115,19 @@ It intentionally does not run on untrusted PRs, does not use ordinary
 GitHub-hosted runners, and does **not** attach game files to GitHub Releases.
 No runner of this type is known to be connected at this time.
 
+## v0.5.14 UAT package preflight (source only)
+
+`Build-PreRelease.ps1` calls `Test-UATPackageStructure.ps1` after
+Unreal BuildCookRun exits zero and before `Write-CandidateManifest.ps1`.
+This detects candidate archives missing a recognizable Win64 MZ
+executable, sufficiently sized cooked .pak/.ucas payloads, or a valid
+Android APK ZIP containing its nonempty manifest and native library or
+DEX. It also rejects junctions and symlinks within the package.
+Hosted CI runs only disposable **negative** fixtures: small or padded
+non-executable files and malformed APKs. It does not actually run UAT
+or create an installable candidate. These checks complement but never
+replace map cook, a real launch or installed hardware QA.
+
 ## v0.5.12 archive path safety checks (source only)
 
 Before trusting an archive's file hashes,
