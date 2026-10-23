@@ -97,6 +97,22 @@ int main()
             counters.CountGateRejection(CircuitGateDecision::NotMovingForward) == 0U,
             "reset clears entire window");
 
+    // v0.5.31 local QA summary includes this previously hidden bucket.
+    // It must count only actually evaluated GateRejected velocity
+    // discontinuities, not an invalid baseline or an accepted crossing.
+    GateDiagnosticCounters velocity;
+    velocity.Observe({CheckpointTraceDecision::GateRejected,
+                      CircuitGateDecision::InvalidVelocity});
+    velocity.Observe({CheckpointTraceDecision::InitialBaseline,
+                      CircuitGateDecision::InvalidVelocity});
+    velocity.Observe({CheckpointTraceDecision::Crossed,
+                      CircuitGateDecision::Crossed});
+    Require(velocity.TotalSamples() == 3U &&
+            velocity.CountGateRejection(CircuitGateDecision::InvalidVelocity)
+                == 1U &&
+            velocity.CountTrace(CheckpointTraceDecision::GateRejected) == 1U,
+            "velocity bucket is precise and excludes unevaluated baselines");
+
     std::cout << "Bounded diagnostic summary tests passed.\n";
     return EXIT_SUCCESS;
 }
