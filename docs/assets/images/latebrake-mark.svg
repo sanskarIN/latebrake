@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Latebrake L mark">
+  <rect width="64" height="64" rx="14" fill="#141820"/>
+  <path d="M16 14v36h28l7-9H26V14H16Z" fill="#f4f7fd"/>
+  <path d="M33 21h18l-6 8H33v-8Z" fill="#fb654a"/>
+  <path d="M33 34h14l-6 7h-8v-7Z" fill="#fb654a"/>
+</svg>
