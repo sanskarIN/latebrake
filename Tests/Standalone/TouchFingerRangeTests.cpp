@@ -84,6 +84,23 @@ int main()
     Require(!drive.ThrottleActive() && drive.PedalOwner() < 0,
             "negative move also observes global viewport cancellation");
 
+    // Malformed duplicate from the maximum VALID finger neutralizes
+    // only its own pedal, not another finger's steering.
+    drive.Press(layout, last, throttleX, throttleY);
+    drive.Press(layout, 0, steerX, steerY);
+    Require(drive.ThrottleActive() && drive.SteeringOwner() == 0,
+            "two owners before malformed maximum-index press");
+    drive.Press(layout, last, std::numeric_limits<double>::quiet_NaN(),
+                throttleY);
+    Require(!drive.ThrottleActive() && drive.PedalOwner() < 0 &&
+            drive.SteeringOwner() == 0,
+            "malformed max-index duplicate releases pedal only");
+    drive.Press(layout, MaxTrackedTouchFingers,
+                std::numeric_limits<double>::infinity(), steerY);
+    Require(drive.SteeringOwner() == 0,
+            "untrackable malformed finger cannot clear another owner");
+    drive.Clear();
+
     std::cout << "Shared 16-finger touch range passed.\n";
     return EXIT_SUCCESS;
 }
