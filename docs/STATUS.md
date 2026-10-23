@@ -5,7 +5,19 @@
 **Next development milestone:** v0.5.14 UAT package structural preflight before candidate archive (source development, NOT released). v0.5.9–v0.5.13 source PRs #45–#49 have merged into main without new release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.13 source development — exact package/QA identity
+## v0.5.14 source development — reject malformed UAT package outputs
+
+- New Win64/Android candidate structure script checks payload sizes,
+  Windows MZ headers, cooked asset presence, APK ZIP contents and
+  AndroidManifest.xml/native or dex content.
+- The real UAT packaging stage calls this preflight BEFORE the archive
+  manifest writer and temporary unverified artifact upload.
+- Negative fixtures check malformed files, not game output.
+- Genuine UE 5.8 editor/UHT/cook and on-device racing qualification
+  still require an authorized Windows Unreal workstation.
+  [Build instructions](EXECUTABLE_BUILD_PIPELINE.md).
+
+## v0.5.13 merged source — exact package/QA identity
 
 - The platform release gate now requires a 64-character SHA256 of
   `Latebrake-candidate-manifest.json` in each installed-device QA
