@@ -46,7 +46,7 @@ if ($LASTEXITCODE -ne 0 -or $sha.Count -ne 1 -or
 # A real candidate may run UHT, Editor, map authoring, UAT and hashing
 # over many minutes. A clean worktree at both ends is insufficient if HEAD
 # switched in between: pin every checkpoint to the originally reviewed SHA.
-if (-not [string]::IsNullOrWhiteSpace($ExpectedCommit)) {
+if ($PSBoundParameters.ContainsKey('ExpectedCommit')) {
     if ($ExpectedCommit -cnotmatch '^[a-fA-F0-9]{40}, rather than only their
 # directory names. Use the original porcelain format; treat unknown/quoted
 # paths conservatively, never attempting to unescape a possible code file.
