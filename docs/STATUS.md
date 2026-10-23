@@ -5,7 +5,22 @@
 **Next development milestone:** v0.5.13 bind real installed-playtest QA to exact candidate manifest SHA256 (source development, NOT released). v0.5.9–v0.5.12 source PRs #45–#48 have merged into main without new release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.12 source development — reject linked candidate directories
+## v0.5.13 source development — exact package/QA identity
+
+- The platform release gate now requires a 64-character SHA256 of
+  `Latebrake-candidate-manifest.json` in each installed-device QA
+  report. Matching only the source commit no longer qualifies a
+  different package produced by a second Unreal cook.
+- `Build-PlayableCandidate.ps1` prints the exact digest after the
+  archive manifest passes its closed-world hash/file-list verifier.
+- Both Win64 and Android QA templates and negative policy tests
+  cover the new identity requirement. Synthetic tests do **not**
+  represent human playtesting or authentic Unreal binaries.
+- Real UE 5.8 compilation, cooked Win64/Android candidates and
+  installed hardware testing remain outstanding.
+  [Build/QA instructions](EXECUTABLE_BUILD_PIPELINE.md).
+
+## v0.5.12 merged source — reject linked candidate directories
 
 - Verified an archive-integrity gap: checking only each final file for
   reparse-point attributes was insufficient when the file's *parent
