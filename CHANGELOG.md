@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased v0.5.12 — Candidate archive link/traversal integrity
+
+- Hardened `Test-CandidateManifest.ps1` against symlinks/junctions
+  in the manifest itself, archive root and **every parent directory**
+  of a listed payload. Checking only the final file was insufficient:
+  a path through a directory junction could resolve outside the archive.
+- Rejects even empty unlisted linked directories during the complete
+  manifest-vs-archive file-list check.
+- `Write-CandidateManifest.ps1` refuses dirty tracked source,
+  linked/junction package entries and empty payload files *before*
+  fingerprinting rather than producing an unusable integrity record.
+- New disposable offline policy fixtures exercise file paths through
+  an external Windows junction and a linked folder absent from the
+  manifest; neither contains a real Unreal build.
+- Unreal Engine 5.8 UHT/editor compile, real cooked map, installed
+  Win64/Android builds and device evidence remain **unverified**.
+  No playable release or new version tag is being published.
+
+
 ## Unreleased v0.5.11 — Pause-safe checkpoint session traces (source development)
 
 - Added portable `CheckpointSessionTrace.h` to discard pre-pause
