@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <initializer_list>
 #include <limits>
 
 namespace
@@ -110,10 +111,10 @@ int main()
     Require(race.IsFinished() && race.GetCompletedLaps() == 1 &&
             race.GetNextCheckpoint() == 0,
             "four real gates, no phantom credits, complete exactly one lap");
-    Require(diagnostics.TotalSamples() == 4U * CircuitGateCount &&
+    Require(diagnostics.TotalSamples() == 5U * CircuitGateCount &&
             diagnostics.CountGateRejection(
                 CircuitGateDecision::InvalidVelocity) ==
-                4U * CircuitGateCount,
+                5U * CircuitGateCount,
             "diagnostics count every invalid-velocity discontinuity exactly once");
 
     // A bad frame also invalidates the cached baseline within a session.
