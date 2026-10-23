@@ -74,6 +74,30 @@ portrait layouts, safe button separation and malformed numeric input across
 portable C++20 builds. These tests do **not** compile Unreal's touch dispatcher,
 exercise the actual HUD render path, or replace physical device QA.
 
+## v0.5.29 source development — neutralize residual commands
+
+The original touch owner state already stopped reporting GAS or steering
+after a finger-up or malformed input. However, the real Pawn applies
+`SmoothedThrottle` and `SmoothedSteering` in its physics tick. Their old
+values could remain nonzero after touch ownership was canceled, briefly
+applying motor force or steering torque after the player stopped commanding
+it.
+
+`UI/TouchResidualSafety.h` now binds touch cancellation to those actual
+applied commands. The Unreal `TouchReleased` callback zeros the released
+finger's filtered output before freeing its physical press slot; malformed
+touch coordinates cancel only the affected owner. An owned pedal dragged
+from GAS to the neutral gap or BRAKE now cuts residual acceleration, while
+exiting the steering pad vertically zeros residual steering. Separate
+steering/GAS fingers do not cancel one another; a valid owned finger can
+move back to GAS or steering without invoking a discrete action.
+
+Portable C++20 regression fixtures check these transitions and the next
+physics-step input; a source-contract Python test checks the real Pawn's
+callback integration. Neither can confirm installed Unreal input delivery
+or actual rigid-body forces. Test these cases on Android under
+[issue #13](https://github.com/sanskarIN/latebrake/issues/13).
+
 ## Future accessibility work
 
 Add configurable left/right-handed pad placement, larger minimum target
