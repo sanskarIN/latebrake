@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased v0.5.19 — Counted rival recovery budget
+
+- `RivalRouteProgress` refuses new teleport requests after its finite
+  session allowance, rather than continuing untracked AI recoveries.
+- Every accepted AI recovery request has an observable count. New
+  racing attempts correctly reset the count and allowance.
+- Existing RivalRouteTests stress the full 100,000-request boundary,
+  the next rejected request, later stuck states and clean reset.
+- Real Unreal Engine driving/collision and device QA are pending.
+
+
 ## Unreleased v0.5.18 — Autonomous rival readiness parity
 
 - `RivalDriveReadiness.h` disallows driving when circuit startup,
