@@ -22,6 +22,7 @@
 - v0.5.0: offline career/championship and challenge rules, versioned career progression saves, prototype menu/navigation, and extended portable tests.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
 - v0.5.32 (published source-only pre-release): expanded HUD shows live current-lap **best-sector potential** against the achieved best lap, backed by strict C++20 tests; this estimate cannot award records.
+- v0.5.35 (unreleased source development): app focus-loss suspension blocks ghost race time, checkpoint credit, paid recovery and rival route advancement until explicit player resume even if engine pausing fails. Real Unreal/device QA remains required.
 - v0.5.33 (published source-only pre-release): expanded HUD adds the live time remaining until a measured best sector or the already elapsed over-best time, with strict portable and source-binding tests.
 - v0.5.1 source preview: matched-sector split deltas and theoretical lap, transactional career-start selection, charged recovery safeguards, single-fire and viewport-safe Android touch, 93 decorations grouped into seven instanced-mesh batches, and stricter future startup-log checks. **All remain unqualified in Unreal**; see [v0.5.1 source release notes](docs/releases/v0.5.1.md).
 
