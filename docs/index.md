@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.37">v0.5.37</a>, a source-only pre-release. The latest <strong>v0.5.37 source-only pre-release</strong> adds per-lap penalty attribution and retains audited race fee accounting. The next necessary work is authentic Unreal Engine compilation, map cooking and installed gameplay QA. Unreal Editor/UHT compilation, a genuine cooked circuit map, Windows executables, Android packages and installed gameplay tests are still outstanding.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.38">v0.5.38</a>, a source-only pre-release. The latest <strong>v0.5.38 source-only pre-release</strong> corrects focus-loss checkpoint continuity when the OS already paused the world. The next necessary work is authentic Unreal Engine compilation, map cooking and installed gameplay QA. Unreal Editor/UHT compilation, a genuine cooked circuit map, Windows executables, Android packages and installed gameplay tests are still outstanding.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
