@@ -46,6 +46,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 | v0.5.30 (published source-only pre-release) | Reset swept checkpoint baselines on invalid physics velocity; require a new finite sample before awarding a genuine forward gate | Four-gate real RaceProgress C++20 regression; UE 5.8 and installed driving QA still required |
 | v0.5.31 (published source-only pre-release) | Surface invalid-velocity checkpoint discontinuities in opt-in local summary logging; parse extended and archived QA logs without conflating types | C++20 category tests, Python parser/source contracts, and actual Unreal log/device evidence still required |
 | v0.5.32 (source development, not released) | Show non-compact HUD current-lap potential from positive sector bests and difference to actual best lap; no reward or record change | Portable real RaceProgress tests; UE HUD rendering and installed Win64/Android qualification still required |
+| v0.5.33 (source development, not released) | Show current-sector time remaining until measured same-sector best or time already over that best in the expanded HUD; strict portable and source-binding regression | Source C++20 and Unreal-HUD binding checks; UE 5.8 editor/cook and installed-device verification outstanding |
 | v0.6.0 (pre) | Evaluated online foundation OR expanded offline modes | Does not harm offline play |
 | v0.6.1 (pre) | Multiplayer stabilization OR offline stabilization | Reliable behavior |
 | v0.7.0 (pre) | Art, audio, weather, presentation, replay study | Asset/license validation |
