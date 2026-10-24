@@ -76,3 +76,27 @@ fixed-capacity bounds and clock overflow.
 
 Do not claim these tests have been performed until actual engine, hardware,
 logs and screenshots are recorded under issues #2 and #13.
+
+## Live current-lap sector potential (next source milestone)
+
+The non-compact racing HUD now shows **LAP POTENTIAL (BEST SPLITS)** and
+**VS BEST** after at least one genuine positive timed lap. This is a
+within-session calculation from the real `RaceProgress` history, not
+persistent ghost data, a guarantee of achievable pace or a new record.
+
+- Current lap time already spent remains counted in full.
+- For the currently driven sector, only the positive remainder of its
+  best previously observed split is estimated; the clock is never rewound.
+- Every later sector uses its best valid measured split **from this run**.
+- A sector with no valid positive split suppresses the estimate instead
+  of treating an unknown split as zero.
+- Negative **VS BEST** means the *potential* could beat the achieved best
+  lap, **not** that the player has earned a record or an award.
+- Reset, official finish, invalid clocks or a seven-day recording-limit
+  overrun hide the estimate. Compact/mobile HUDs do not show this extra line.
+
+Portable `CurrentLapPotentialTests.cpp` links the genuine game
+`RaceProgress.cpp` and covers first-lap suppression, a slow current
+sector, newly improved splits, zero-second sectors, one-gate events,
+restart/finish and record-limit rejection. These assertions do not
+replace Unreal 5.8 Editor, HUD rendering and real Win64/Android QA.
