@@ -655,14 +655,21 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
     // Losing focus can happen without Unreal itself pausing the game loop.
     // Keep a separate fail-closed gate even if SetGamePaused returns false.
     // A foreground notification alone must NEVER resume competition.
-    if (!AppFocusGuard.OnFocusLost(
-            Race, Menu.IsOpen(), UGameplayStatics::IsGamePaused(this)))
+    const latebrake::FocusLossTransition FocusTransition =
+        AppFocusGuard.OnFocusLost(
+            Race, Menu.IsOpen(), UGameplayStatics::IsGamePaused(this));
+    if (FocusTransition == latebrake::FocusLossTransition::Ignored)
     {
         return;
     }
+
+    // A fresh focus interruption invalidates pre-loss motion regardless of
+    // whether Unreal/OS already paused the world before our callback.
+    // Repeated deactivation events do not bump this epoch a second time.
     CheckpointSession.OnPauseTransition();
-    if (!UGameplayStatics::SetGamePaused(this, true) ||
-        !UGameplayStatics::IsGamePaused(this))
+    if (FocusTransition == latebrake::FocusLossTransition::SuspendedNeedsWorldPause &&
+        (!UGameplayStatics::SetGamePaused(this, true) ||
+         !UGameplayStatics::IsGamePaused(this)))
     {
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: focus-loss world pause failed; race gate remains suspended"));
