@@ -43,6 +43,10 @@ public:
     }
     int GetRecentTimedLapCount() const noexcept { return RecentLaps.Size(); }
     double GetElapsedSeconds() const noexcept { return ElapsedSeconds; }
+    // Count only successfully charged time penalties; independent of the
+    // caller's optional recovery telemetry. Penalties remain part of lap/split time.
+    int GetTimePenaltyCount() const noexcept { return TimePenaltyCount; }
+    double GetTotalPenaltySeconds() const noexcept { return TotalPenaltySeconds; }
     double GetCurrentLapSeconds() const noexcept { return ElapsedSeconds - LapStartSeconds; }
     double GetLastLapSeconds() const noexcept { return LastLapSeconds; }
     double GetBestLapSeconds() const noexcept { return BestLapSeconds; }
@@ -69,6 +73,8 @@ private:
     int TimedLapCount = 0;
     RecentTimedLaps RecentLaps;
     double ElapsedSeconds = 0.0;
+    int TimePenaltyCount = 0;
+    double TotalPenaltySeconds = 0.0;
     double LapStartSeconds = 0.0;
     double LastCheckpointSeconds = 0.0;
     double LastLapSeconds = 0.0;
