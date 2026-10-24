@@ -1,6 +1,17 @@
 # Changelog
 
-## v0.5.33 — Unreleased source development (2026-10-24)
+## v0.5.34 — Unreleased source development (2026-10-24)
+
+- Add standard-library Python source release workflow integrity contracts
+  for the modern immutable-tag release jobs.
+- Require unique release/test jobs, intact isolated CTest expression,
+  matching three-OS checkout and GitHub release SHAs, versioned notes
+  and truthful zero-executable source-only warnings.
+- Add negative mutation tests for malformed release YAML and drifted tags.
+  Does not replace real GitHub Actions parsing, Unreal compilation or QA.
+
+
+## v0.5.33 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - Display the measured same-sector best-time target on the expanded HUD:
   seconds left before matching the previous completed split or seconds
