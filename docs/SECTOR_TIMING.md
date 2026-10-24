@@ -126,3 +126,17 @@ restart, single-sector configuration and excessively long clocks.
 No record, medal, credit, SaveGame field, or track crossing changes here.
 Cross-platform source CI cannot verify actual Unreal HUD rendering,
 driver physics, Win64 installation or Android hardware QA.
+
+## Recovery/time penalty accounting (v0.5.36 source)
+
+The portable `RaceProgress` now tracks an allocation-free count and sum of
+**successfully charged** positive time penalties during the current event.
+Rejected recovery charges, malformed values, paused actions and post-finish
+attempts do not increment either counter. Reset clears both values.
+
+The full charged fee is already included in `TIME`, completed lap times and
+sector timing. The expanded HUD and results menu expose the count and
+`+Xs ALREADY IN TIME` indicator. **Do not add it again to final results.**
+The counter is not a separate recovery authorization and is not a saved
+profile attribute. Unreal in-game rendering and device recovery behavior
+still need evidence.
