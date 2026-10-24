@@ -50,9 +50,15 @@ class AppFocusRaceBindingTests(unittest.TestCase):
         start = self.mode.index("void ALatebrakeRaceGameMode::PauseForAppInterruption()")
         body = self.mode[start:].split("\nvoid ALatebrakeRaceGameMode::", 1)[0]
         self.assertIn("AppFocusGuard.OnFocusLost(", body)
+        self.assertIn("FocusLossTransition::Ignored", body)
+        self.assertIn("FocusLossTransition::SuspendedNeedsWorldPause", body)
         self.assertIn("CheckpointSession.OnPauseTransition();", body)
         self.assertIn("UGameplayStatics::SetGamePaused(this, true)", body)
-        self.assertLess(body.index("AppFocusGuard.OnFocusLost("),
+        self.assertLess(body.index("FocusLossTransition::Ignored"),
+                        body.index("CheckpointSession.OnPauseTransition();"))
+        self.assertLess(body.index("CheckpointSession.OnPauseTransition();"),
+                        body.index("FocusLossTransition::SuspendedNeedsWorldPause"))
+        self.assertLess(body.index("CheckpointSession.OnPauseTransition();"),
                         body.index("SetGamePaused("))
         self.assertIn("AppFocusGuard.OnExplicitResume();", self.mode)
 
@@ -96,6 +102,26 @@ class AppFocusRaceBindingTests(unittest.TestCase):
         )[1].split("\nvoid ALatebrakeCarPawn::", 1)[0]
         self.assertNotIn("PauseForAppInterruption", clear_body)
         self.assertNotIn("OnExplicitResume", clear_body)
+
+    def test_focus_guard_contract_does_not_hide_a_fresh_already_paused_edge(self):
+        policy = (SRC / "Public/Racing/AppFocusRaceGuard.h").read_text(
+            encoding="utf-8")
+        self.assertIn("enum class FocusLossTransition", policy)
+        self.assertIn("SuspendedAlreadyPaused", policy)
+        self.assertIn("SuspendedNeedsWorldPause", policy)
+        self.assertIn("return worldPaused ? FocusLossTransition::SuspendedAlreadyPaused", policy)
+        self.assertIn("FocusLossTransition::Ignored", policy)
+
+        body = self.mode.split(
+            "void ALatebrakeRaceGameMode::PauseForAppInterruption()", 1
+        )[1].split("\nvoid ALatebrakeRaceGameMode::", 1)[0]
+        # Reject a regression where an already-paused OS delivery returns
+        # before checkpoint epoch invalidation.
+        self.assertIn("if (FocusTransition == latebrake::FocusLossTransition::Ignored)", body)
+        self.assertLess(body.index("CheckpointSession.OnPauseTransition();"),
+                        body.index("if (FocusTransition == "
+                                   "latebrake::FocusLossTransition::SuspendedNeedsWorldPause"))
+        self.assertNotIn("if (!AppFocusGuard.OnFocusLost(", body)
 
     def test_mutations_drop_required_engine_call(self):
         broken = self.pawn.replace(
