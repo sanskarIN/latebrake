@@ -1,11 +1,27 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-24
-**Latest published milestone:** [v0.5.32 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.32).
-**Next development milestone:** v0.5.33 — source work in progress, NOT tagged/released. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Latest published milestone:** [v0.5.33 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.33).
+**Next development milestone:** v0.5.34 — release workflow integrity verification, NOT tagged/released. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.33 unreleased source development — live sector target
+## v0.5.34 unreleased source development — release workflow integrity
+
+- Source-only pre-release v0.5.32 initially hit a malformed YAML CTest
+  filter before any tag was created. The workflow was repaired and retested.
+- New standard-library `SourceReleaseWorkflowPolicyTests.py` checks
+  modern source-only release workflow structure: exactly one of each required
+  job, three-platform C++ matrix, valid isolated CTest filter, immutable
+  three-job checkout SHA and matching publisher SHA, proper notes/version
+  identity, predecessor gate and explicit asset-free pre-release policy.
+- Mutation fixtures ensure that malformed regex quoting, duplicated
+  release jobs, inconsistent source SHAs, wrong tag/notes path, and
+  missing source-only warnings fail closed before a new source release.
+- It is a **structural source check**, not a full YAML parser or proof of
+  Unreal Editor builds. Existing GitHub Actions remain the real workflow
+  semantic/execution check.
+
+## v0.5.33 published source-only pre-release — live sector target
 
 - A new portable `LiveSectorTarget.h` compares the current unfinished
   sector only with a previously measured positive split of the SAME gate.
