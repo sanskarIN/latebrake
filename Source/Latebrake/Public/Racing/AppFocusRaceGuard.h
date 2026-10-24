@@ -12,17 +12,18 @@ namespace latebrake
 class AppFocusRaceGuard final
 {
 public:
-    // True exactly once per racing interruption: caller should attempt an
-    // Unreal world pause and invalidate checkpoint motion baselines.
+    // Latch even when the engine already paused: some platforms may
+    // automatically resume on foreground. Return true only when a NEW
+    // world-pause request and checkpoint-epoch invalidation are needed.
     bool OnFocusLost(const RaceProgress& race, bool menuOpen,
                      bool worldPaused) noexcept
     {
-        if (Suspended || menuOpen || worldPaused || race.IsFinished())
+        if (Suspended || menuOpen || race.IsFinished())
         {
             return false;
         }
         Suspended = true;
-        return true;
+        return !worldPaused;
     }
 
     bool IsSuspended() const noexcept { return Suspended; }
