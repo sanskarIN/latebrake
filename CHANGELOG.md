@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.35 — Unreleased source development (2026-10-24)
+## v0.5.35 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - On OS background/deactivation, clear pawn inputs and request a true
   authoritative race pause. A separate focus-loss latch blocks player
