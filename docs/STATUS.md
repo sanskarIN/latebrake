@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-24
-**Latest published milestone:** [v0.5.34 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.34).
-**Next engineering priority:** v0.5.35 source focus-loss hardening followed by genuine Unreal 5.8 compilation, cookable project map and installed Win64/Android QA; not yet released. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Latest published milestone:** [v0.5.35 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.35).
+**Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.35 source development — app focus-loss race integrity
+## v0.5.35 published source-only pre-release — app focus-loss race integrity
 
 - OS deactivation/background previously cleared pawn input but did not
   itself guarantee the authoritative game race clock was paused.
