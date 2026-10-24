@@ -414,3 +414,18 @@ else()
     target_compile_options(latebrake_rival_drive_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalDriveReadiness COMMAND latebrake_rival_drive_readiness_tests)
+
+# Live current-lap potential is an informational best-sector floor, not a
+# result, award or guaranteed ghost. Test the actual RaceProgress.cpp.
+add_executable(latebrake_current_lap_potential_tests
+    CurrentLapPotentialTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_current_lap_potential_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_current_lap_potential_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_current_lap_potential_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_current_lap_potential_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CurrentLapPotential COMMAND latebrake_current_lap_potential_tests)
