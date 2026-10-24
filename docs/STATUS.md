@@ -1,9 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-24
-**Latest published milestone:** [v0.5.37 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.37).
+**Latest published milestone:** [v0.5.38 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.38).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.38 published source-only pre-release — already-paused app focus-loss checkpoint integrity
+
+- Found that `OnFocusLost` returned `false` on a new focus loss if Unreal was already world-paused by its OS. GameMode consequently returned before invalidating the checkpoint motion epoch, despite the race suspension latch activating.
+- The guard now returns one of three typed `FocusLossTransition` results. GameMode advances the checkpoint session epoch on **any new active suspension**, while requesting `SetGamePaused` only if needed and ignoring repeated notifications. Foreground still never automatically resumes competitive timing.
+- Portable regressions exercise real motion samples through an already-paused interruption, duplicate OS notifications and deliberate recovery; Python source contracts require the actual engine callsite ordering.
+- The code remains unqualified in genuine UE 5.8/UHT, the cooked map, Android/Windows OS delivery and installed-device driving. See issues #31 and #13.
 
 ## v0.5.37 published source-only pre-release — per-lap fee attribution
 
