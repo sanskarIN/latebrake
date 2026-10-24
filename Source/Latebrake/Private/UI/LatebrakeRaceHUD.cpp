@@ -129,6 +129,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 MenuLine(FString::Printf(TEXT("Time penalties included: %d (+%.2fs)"),
                     Race.GetTimePenaltyCount(), Race.GetTotalPenaltySeconds()));
+                if (Race.GetLastLapPenaltySeconds() > 0.0)
+                {
+                    MenuLine(FString::Printf(TEXT("Final lap penalties included: +%.2fs"),
+                        Race.GetLastLapPenaltySeconds()));
+                }
             }
             MenuLine(TEXT("Select to retry the current event."));
             break;
@@ -253,6 +258,11 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             Line(FString::Printf(TEXT("TIME PENALTIES  %d  |  +%.2fs ALREADY IN TIME"),
                 Race.GetTimePenaltyCount(), Race.GetTotalPenaltySeconds()), Primary);
+            if (!Race.IsFinished() && Race.GetCurrentLapPenaltySeconds() > 0.0)
+            {
+                Line(FString::Printf(TEXT("THIS LAP PENALTIES  +%.2fs (IN LAP TIME)"),
+                    Race.GetCurrentLapPenaltySeconds()), Primary);
+            }
         }
         // Estimate based only on actual completed timed laps. Never
         // display a fabricated finish pace before the first valid lap.
