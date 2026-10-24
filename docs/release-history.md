@@ -3,6 +3,8 @@
 !!! warning "Published tags are source archives, not playable packages"
     The latest published GitHub tag is **v0.5.31**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
+**Current main branch:** v0.5.32 source development is merged but is **not** a tagged or published pre-release. The current-lap sector-potential addition in [PR #85](https://github.com/sanskarIN/latebrake/pull/85) has no verified Unreal gameplay package.
+
 ## Published source previews
 
 Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). Individual documentation snapshots are also preserved here:
