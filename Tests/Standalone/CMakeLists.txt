@@ -444,3 +444,18 @@ else()
     target_compile_options(latebrake_live_sector_target_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME LiveSectorTarget COMMAND latebrake_live_sector_target_tests)
+
+# Real player clock, checkpoint trace and rival/recovery readiness respond
+# to a latched OS deactivation even if Unreal's world pause request fails.
+add_executable(latebrake_app_focus_guard_tests
+    AppFocusRaceGuardTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_app_focus_guard_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_app_focus_guard_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_app_focus_guard_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_app_focus_guard_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AppFocusRaceGuard COMMAND latebrake_app_focus_guard_tests)
