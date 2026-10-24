@@ -3,6 +3,7 @@
 #include "UI/HudLayout.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/LiveRacePaceProjection.h"
+#include "Racing/CurrentLapPotential.h"
 #include "UI/TouchControlLayout.h"
 #include "Track/CircuitMap.h"
 #include "Engine/Engine.h"
@@ -240,6 +241,17 @@ void ALatebrakeRaceHUD::DrawHUD()
             Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
                 Pace.ReferenceLapSeconds, Pace.SampledLaps,
                 Pace.ProjectedFinishSeconds), Accent);
+        }
+        // A within-run best-sector potential, not a promised finish time.
+        // Wait for an actual timed lap and complete positive split history.
+        const latebrake::CurrentLapPotential Potential =
+            latebrake::EstimateCurrentLapPotential(Race);
+        if (Potential.Valid)
+        {
+            Line(FString::Printf(
+                TEXT("LAP POTENTIAL (BEST SPLITS)  %.1fs  |  VS BEST  %+.1fs"),
+                Potential.PotentialLapSeconds,
+                Potential.DeltaToBestLapSeconds), Accent);
         }
         if (Race.GetLastSectorIndex() >= 0)
         {
