@@ -46,6 +46,7 @@ public:
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     void ClearDriverInputs();
     void HandleAppInputInterruption();
+    void HandleAppFocusLost();
 
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
