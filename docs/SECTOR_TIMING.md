@@ -140,3 +140,17 @@ sector timing. The expanded HUD and results menu expose the count and
 The counter is not a separate recovery authorization and is not a saved
 profile attribute. Unreal in-game rendering and device recovery behavior
 still need evidence.
+
+## Per-lap charged-fee attribution (v0.5.37 source)
+
+The same accepted time-penalty total can now be attributed to the **active
+lap** versus the **last completed lap** without altering race scores.
+Only an ordered completion of the final gate snapshots the current-lap fee;
+an intermediate sector gate does not reset it. The next lap begins with
+zero attributed penalty seconds even when earlier laps had recoveries.
+
+The expanded in-race HUD displays `THIS LAP PENALTIES` only while the
+current lap has a positive committed fee. The results menu can display
+`Final lap penalties included`. These are informational subsets of the
+already charged race time, **never a second fee** or a clean-driving
+award. Source-level C++ and Python checks are not installed UE/device QA.
