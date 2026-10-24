@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The latest published GitHub tag is **v0.5.32**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The latest published GitHub tag is **v0.5.33**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Source development:** v0.5.33 introduces new same-sector target feedback but is **not yet tagged or released**. The v0.5.32 source preview was published after its full source-only release gate. Neither provides an Unreal executable.
+**Source development:** v0.5.34 introduces pre-release workflow structure and integrity tests but is **not yet tagged or released**. Both v0.5.32 and v0.5.33 are verified published source-only pre-releases; neither provides an Unreal executable.
 
 ## Published source previews
 
@@ -11,6 +11,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.33 | [Release notes](releases/v0.5.33.md) |
 | v0.5.32 | [Release notes](releases/v0.5.32.md) |
 | v0.5.31 | [Release notes](releases/v0.5.31.md) |
 | v0.5.30 | [Release notes](releases/v0.5.30.md) |
