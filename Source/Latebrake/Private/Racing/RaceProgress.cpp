@@ -22,6 +22,8 @@ void RaceProgress::Reset() noexcept
     ElapsedSeconds = 0.0;
     TimePenaltyCount = 0;
     TotalPenaltySeconds = 0.0;
+    LapPenaltyStartSeconds = 0.0;
+    LastLapPenaltySeconds = 0.0;
     LapStartSeconds = 0.0;
     LastCheckpointSeconds = 0.0;
     LastLapSeconds = 0.0;
@@ -119,6 +121,10 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
         NextCheckpoint = 0;
         ++CompletedLaps;
         LastLapSeconds = ElapsedSeconds - LapStartSeconds;
+        // Snapshot penalty provenance at the same ordered finish gate as
+        // the measured lap: the next lap begins at zero charged fees.
+        LastLapPenaltySeconds = TotalPenaltySeconds - LapPenaltyStartSeconds;
+        LapPenaltyStartSeconds = TotalPenaltySeconds;
         if (std::isfinite(LastLapSeconds) && LastLapSeconds > 0.0)
         {
             // Existing best/slowest semantics stay unchanged for legitimate
