@@ -78,8 +78,14 @@ int main()
 
     AppFocusRaceGuard alreadyPaused;
     Require(!alreadyPaused.OnFocusLost(race, false, true) &&
-            !alreadyPaused.IsSuspended(),
-            "already paused world need not add a second focus latch");
+            alreadyPaused.IsSuspended(),
+            "already paused world still latches against OS foreground auto-resume");
+    Require(!AdvancePlayerRaceClockIfReady(
+        race, true, alreadyPaused.IsSuspended(), true, 1.0),
+            "OS auto-resuming a paused world cannot charge racing time");
+    alreadyPaused.OnExplicitResume();
+    Require(!alreadyPaused.IsSuspended(),
+            "player can deliberately resume an originally paused race");
     Require(!alreadyPaused.OnFocusLost(race, true, false) &&
             !alreadyPaused.IsSuspended(),
             "already open menu retains its normal pause and input policy");
