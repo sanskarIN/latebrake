@@ -14,6 +14,7 @@ MODE = SRC / "Private/Game/LatebrakeRaceGameMode.cpp"
 MODE_H = SRC / "Public/Game/LatebrakeRaceGameMode.h"
 CHECKPOINT = SRC / "Private/Racing/LatebrakeCheckpoint.cpp"
 RIVAL = SRC / "Private/AI/LatebrakeRivalCar.cpp"
+HUD = SRC / "Private/UI/LatebrakeRaceHUD.cpp"
 
 
 class AppFocusRaceBindingTests(unittest.TestCase):
@@ -24,6 +25,7 @@ class AppFocusRaceBindingTests(unittest.TestCase):
         cls.mode_h = MODE_H.read_text(encoding="utf-8")
         cls.checkpoint = CHECKPOINT.read_text(encoding="utf-8")
         cls.rival = RIVAL.read_text(encoding="utf-8")
+        cls.hud = HUD.read_text(encoding="utf-8")
 
     def test_deactivation_and_background_pause_race_but_foreground_only_clears(self):
         for delegate in ("ApplicationWillDeactivateDelegate",
@@ -66,6 +68,10 @@ class AppFocusRaceBindingTests(unittest.TestCase):
         self.assertGreaterEqual(self.mode.count("AppFocusGuard.IsSuspended()"), 3)
         self.assertIn("Mode->IsFocusLossGuardActive()", self.checkpoint)
         self.assertIn("Mode->IsFocusLossGuardActive()", self.rival)
+
+    def test_hud_discloses_latched_suspension_to_player(self):
+        self.assertIn("Mode->IsFocusLossGuardActive()", self.hud)
+        self.assertIn("FOCUS LOST - RACE SUSPENDED", self.hud)
 
     def test_foreground_cannot_unpause_automatically(self):
         foreground = re.search(
