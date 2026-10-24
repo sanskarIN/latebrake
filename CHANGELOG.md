@@ -1,6 +1,17 @@
 # Changelog
 
-## v0.5.32 — Unreleased source development (2026-10-24)
+## v0.5.33 — Unreleased source development (2026-10-24)
+
+- Display the measured same-sector best-time target on the expanded HUD:
+  seconds left before matching the previous completed split or seconds
+  already over it. An unfinished split is not labeled a new record.
+- Add engine-independent `LiveSectorTarget` with fail-closed validity
+  handling and a real `RaceProgress.cpp` regression suite.
+- Add source-level Unreal HUD binding coverage; engine compilation and
+  installed gameplay remain unverified.
+
+
+## v0.5.32 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - Add `CurrentLapPotential` for a live, within-race theoretical lap based on
   the already elapsed current lap and positive measured best sector splits.
@@ -10,9 +21,8 @@
 - Add cross-platform real-`RaceProgress` regression cases covering slow
   sectors, improving splits, unknown/zero sectors, finish/reset and
   unrealistic elapsed clocks. Portable three-OS CI passed before merge.
-- **Not tagged or published; no Unreal 5.8 compiled game, cooked map,
-  Windows EXE or Android APK has been verified.** Latest public
-  source-only pre-release remains v0.5.31.
+- **Tagged and published as v0.5.32 source only; no Unreal 5.8 compiled
+  game, cooked map, Windows EXE or Android APK has been verified.**
 
 
 ## Unreleased v0.5.22 — Malformed touch press owner cancellation
