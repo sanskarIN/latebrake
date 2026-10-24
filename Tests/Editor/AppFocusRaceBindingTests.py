@@ -73,6 +73,17 @@ class AppFocusRaceBindingTests(unittest.TestCase):
         self.assertIn("Mode->IsFocusLossGuardActive()", self.hud)
         self.assertIn("FOCUS LOST - RACE SUSPENDED", self.hud)
 
+    def test_manual_resume_handles_platform_auto_unpause(self):
+        pause_body = self.mode.split(
+            "void ALatebrakeRaceGameMode::ToggleRacePause()", 1
+        )[1].split("\nvoid ALatebrakeRaceGameMode::", 1)[0]
+        self.assertIn(
+            "AppFocusGuard.IsSuspended() && !UGameplayStatics::IsGamePaused(this)",
+            pause_body,
+        )
+        self.assertIn("AppFocusGuard.OnExplicitResume();", pause_body)
+        self.assertIn("CheckpointSession.OnPauseTransition();", pause_body)
+
     def test_foreground_cannot_unpause_automatically(self):
         foreground = re.search(
             r"ApplicationHasEnteredForegroundDelegate.AddUObject\(\s*"
