@@ -289,8 +289,24 @@ automatically resumes** the race. Only a deliberate PAUSE/resume, menu CLOSE
 or accepted race RESTART returns gameplay to an active state. Menu-open and finished races do not acquire a redundant focus-loss latch.
 For an already-paused race, the latch still prevents OS-level automatic
 foreground resumption from restarting the clock; no duplicate world-pause
-request is made. A fresh checkpoint epoch on an active race's deactivation
-prevents a crossing bridged between pre-loss and resumed positions.
+request is made. **Every NEW focus-loss latch advances the checkpoint
+session epoch, even if the OS paused Unreal before the focus delegate fired.**
+Repeated deactivation/background callbacks are ignored and do not advance
+it again. A fresh checkpoint epoch prevents a crossing bridged between
+pre-loss and resumed positions.
+
+The portable `FocusLossTransition` decision distinguishes a newly latched
+race whose Unreal world is already paused from a newly latched race still
+needing a world-pause request. This distinction fixes the older case where
+an already-paused world caused GameMode to return before invalidating the
+checkpoint epoch. It is a source-level fix until genuine UE runtime tests.
+
+**Additional v0.5.38 installed QA:** pause using the OS before the gameplay
+deactivation delegate runs; verify the first post-resume gate sample cannot
+score and a fresh approach/crossing can. Repeat deactivation callbacks and
+confirm they cannot create extra transitions. Test the same scenarios when
+the engine pause request fails. Record the exact packaged revision and
+installed-device traces under issues #31 and #13.
 
 **Real-device acceptance still needed:** with a genuine UE 5.8 Win64 and
 Android package, hold GAS + steering while switching applications, opening
