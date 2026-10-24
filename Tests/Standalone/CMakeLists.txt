@@ -474,3 +474,17 @@ else()
     target_compile_options(latebrake_time_penalty_accounting_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TimePenaltyAccounting COMMAND latebrake_time_penalty_accounting_tests)
+
+# v0.5.37: distinguish the current lap's charged fees from preceding laps.
+add_executable(latebrake_lap_penalty_attribution_tests
+    LapPenaltyAttributionTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_lap_penalty_attribution_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_lap_penalty_attribution_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_lap_penalty_attribution_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_lap_penalty_attribution_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME LapPenaltyAttribution COMMAND latebrake_lap_penalty_attribution_tests)
