@@ -107,7 +107,8 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     const bool bLocalPlayerReady = HasLocalPlayerDriver();
     latebrake::AdvancePlayerRaceClockIfReady(
         Race, bCircuitReady,
-        UGameplayStatics::IsGamePaused(this) || Menu.IsOpen(),
+        UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
+            AppFocusGuard.IsSuspended(),
         bLocalPlayerReady, static_cast<double>(DeltaSeconds));
     ApplyGarageToPlayer();
 }
@@ -468,7 +469,8 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     // progress or a career medal, even when four gate actors exist.
     if (!latebrake::CanScorePlayerCheckpoint(
             Race, bCircuitReady,
-            UGameplayStatics::IsGamePaused(this) || Menu.IsOpen(),
+            UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
+                AppFocusGuard.IsSuspended(),
             HasLocalPlayerDriver()))
     {
         return;
@@ -584,6 +586,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
+    AppFocusGuard.OnExplicitResume();
     CheckpointSession.OnMenuReturnToRace();
     if (ALatebrakeCarPawn* Car =
             Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
@@ -596,6 +599,10 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
     Menu.Toggle();
+    if (!Menu.IsOpen())
+    {
+        AppFocusGuard.OnExplicitResume(); // Deliberate CLOSE/return to driving.
+    }
     // Checkpoint actor ticks may stop during pause. Invalidate pre-menu
     // motion even when their next tick is only after the menu closes.
     CheckpointSession.OnPauseTransition();
@@ -627,6 +634,29 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
     if (UGameplayStatics::IsGamePaused(this) != bWasPaused)
     {
         CheckpointSession.OnPauseTransition();
+        if (bWasPaused && !UGameplayStatics::IsGamePaused(this))
+        {
+            AppFocusGuard.OnExplicitResume(); // Player explicitly unpaused.
+        }
+    }
+}
+
+void ALatebrakeRaceGameMode::PauseForAppInterruption()
+{
+    // Losing focus can happen without Unreal itself pausing the game loop.
+    // Keep a separate fail-closed gate even if SetGamePaused returns false.
+    // A foreground notification alone must NEVER resume competition.
+    if (!AppFocusGuard.OnFocusLost(
+            Race, Menu.IsOpen(), UGameplayStatics::IsGamePaused(this)))
+    {
+        return;
+    }
+    CheckpointSession.OnPauseTransition();
+    if (!UGameplayStatics::SetGamePaused(this, true) ||
+        !UGameplayStatics::IsGamePaused(this))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: focus-loss world pause failed; race gate remains suspended"));
     }
 }
 
@@ -1135,6 +1165,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     {
         UGameplayStatics::SetGamePaused(this, false);
     }
+    AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     Race.Reset();
     LastCareerAward = {};
     ApplyGarageToPlayer();
@@ -1173,7 +1204,8 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     // recovery: otherwise keyboard/gamepad callbacks could teleport and
     // add a penalty while the UI was paused or the circuit failed startup.
     // Charge before teleport, preserving counter and clock on failure.
-    const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen();
+    const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
+        AppFocusGuard.IsSuspended();
     if (!latebrake::TryChargePlayerRecoveryIfReady(
             Race, RecoveriesThisRace, bCircuitReady, bInactive,
             Car->IsRacePhysicsReady()))
