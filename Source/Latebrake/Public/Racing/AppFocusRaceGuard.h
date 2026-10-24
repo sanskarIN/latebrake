@@ -4,32 +4,39 @@
 
 namespace latebrake
 {
-// Explicit focus-loss suspension for racing. A platform may continue
-// ticking after the app deactivates, and SetGamePaused can fail. The latch
-// therefore blocks timing, gates, recoveries and the rival independently
-// until the player EXPLICITLY resumes or restarts. Foreground notification
-// alone never authorizes an automatic restart of competitive timing.
+// The race suspension and the need to ask Unreal to pause the world are
+// different decisions. Even if Unreal has already paused, a NEW focus-loss
+// transition must invalidate checkpoint motion from the prior session.
+enum class FocusLossTransition
+{
+    Ignored,
+    SuspendedAlreadyPaused,
+    SuspendedNeedsWorldPause
+};
+
+// Explicit focus-loss suspension for racing. OS pausing can happen before
+// the focus delegate fires, and SetGamePaused can fail entirely. This latch
+// independently blocks timing, gates, recoveries and autonomous rivals until
+// the player intentionally resumes/restarts; foreground alone never clears it.
 class AppFocusRaceGuard final
 {
 public:
-    // Latch even when the engine already paused: some platforms may
-    // automatically resume on foreground. Return true only when a NEW
-    // world-pause request and checkpoint-epoch invalidation are needed.
-    bool OnFocusLost(const RaceProgress& race, bool menuOpen,
-                     bool worldPaused) noexcept
+    FocusLossTransition OnFocusLost(const RaceProgress& race, bool menuOpen,
+                                   bool worldPaused) noexcept
     {
         if (Suspended || menuOpen || race.IsFinished())
         {
-            return false;
+            return FocusLossTransition::Ignored;
         }
         Suspended = true;
-        return !worldPaused;
+        return worldPaused ? FocusLossTransition::SuspendedAlreadyPaused
+                           : FocusLossTransition::SuspendedNeedsWorldPause;
     }
 
     bool IsSuspended() const noexcept { return Suspended; }
 
-    // Only an intentional player action that returns to gameplay may
-    // clear this latch. OS foreground/background delegates must not.
+    // Only a deliberate player return to gameplay may clear the latch.
+    // OS foreground and background delegates must not call this.
     void OnExplicitResume() noexcept { Suspended = false; }
 
 private:
