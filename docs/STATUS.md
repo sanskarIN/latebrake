@@ -1,11 +1,25 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-24
-**Latest published milestone:** [v0.5.31 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.31).
-**Next development milestone:** v0.5.32 — source implementation merged (NOT tagged/released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Latest published milestone:** [v0.5.32 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.32).
+**Next development milestone:** v0.5.33 — source work in progress, NOT tagged/released. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.32 unreleased source development — current-lap sector potential
+## v0.5.33 unreleased source development — live sector target
+
+- A new portable `LiveSectorTarget.h` compares the current unfinished
+  sector only with a previously measured positive split of the SAME gate.
+  The UI shows time **until** the previous best or positive overtime once
+  the current split takes longer. It never claims an achieved improvement
+  before the gate is crossed.
+- Expanded Unreal HUD source binds to this shared engine-neutral policy.
+  Cross-platform real-`RaceProgress.cpp` C++20 tests and editor-source
+  binding regressions cover start, improving sector, missing reference,
+  exact best, slow sector, restart, finish and invalid clocks.
+- Genuine UE 5.8 Editor/UHT compilation, rendered HUD checks and installed
+  Win64/Android driving QA are **not** established by source CI.
+
+## v0.5.32 published source-only pre-release — current-lap sector potential
 
 - [PR #85](https://github.com/sanskarIN/latebrake/pull/85) added portable
   `CurrentLapPotential.h`, using only the actual `RaceProgress` current-lap
@@ -22,7 +36,7 @@
   script policy, editor-script checks and documentation build passed on
   PR #85 before merge. See [sector timing](SECTOR_TIMING.md).
 - This is **not** a playable release, Unreal compile, engine-rendered
-  HUD verification or device test. v0.5.31 is still the latest **public**
+  HUD verification or device test. v0.5.32 is now the latest **public**
   source-only tag; genuine engine/Win64/Android qualification remains open.
 
 ## v0.5.31 source development — local invalid-velocity QA visibility
