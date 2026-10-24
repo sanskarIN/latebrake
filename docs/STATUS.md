@@ -1,9 +1,29 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-23
+**Updated:** 2026-10-24
 **Latest published milestone:** [v0.5.31 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.31).
-**Next development milestone:** v0.5.32 — gameplay and QA hardening (planned, NOT released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next development milestone:** v0.5.32 — source implementation merged (NOT tagged/released). Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.32 unreleased source development — current-lap sector potential
+
+- [PR #85](https://github.com/sanskarIN/latebrake/pull/85) added portable
+  `CurrentLapPotential.h`, using only the actual `RaceProgress` current-lap
+  duration and the best positive measured splits **from the same race**.
+  Completed sectors are already included in elapsed lap time; the current
+  sector can only add its unspent best remainder. No speculative
+  negative-duration time is subtracted.
+- The non-compact Unreal HUD shows **LAP POTENTIAL (BEST SPLITS)** and its
+  signed difference to the *achieved* within-run best. It hides the line
+  before a timed lap, after finishing/restarting, for missing or zero
+  reference splits, and for invalid or out-of-bound clocks.
+- Added a strict standalone `CurrentLapPotentialTests.cpp` target linked
+  to real game `RaceProgress.cpp`. Ubuntu, Windows and macOS CI, release
+  script policy, editor-script checks and documentation build passed on
+  PR #85 before merge. See [sector timing](SECTOR_TIMING.md).
+- This is **not** a playable release, Unreal compile, engine-rendered
+  HUD verification or device test. v0.5.31 is still the latest **public**
+  source-only tag; genuine engine/Win64/Android qualification remains open.
 
 ## v0.5.31 source development — local invalid-velocity QA visibility
 
