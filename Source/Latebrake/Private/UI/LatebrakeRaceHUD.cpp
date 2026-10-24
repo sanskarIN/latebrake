@@ -125,6 +125,11 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Insights.LatestVsPreviousDeltaSeconds));
                 }
             }
+            if (Race.GetTimePenaltyCount() > 0)
+            {
+                MenuLine(FString::Printf(TEXT("Time penalties included: %d (+%.2fs)"),
+                    Race.GetTimePenaltyCount(), Race.GetTotalPenaltySeconds()));
+            }
             MenuLine(TEXT("Select to retry the current event."));
             break;
         }
@@ -242,6 +247,13 @@ void ALatebrakeRaceHUD::DrawHUD()
             Race.GetCurrentLapSeconds(), Race.GetLastLapSeconds()), Primary);
         Line(FString::Printf(TEXT("FASTEST LAP  %.2fs  |  LAST SPLIT  %.2fs"),
             Race.GetBestLapSeconds(), Race.GetLastSectorSeconds()), Primary);
+        // Source-only run-local accounting, not an extra charge or refund.
+        // Charged time is already part of TIME, sector and final lap clocks.
+        if (Race.GetTimePenaltyCount() > 0)
+        {
+            Line(FString::Printf(TEXT("TIME PENALTIES  %d  |  +%.2fs ALREADY IN TIME"),
+                Race.GetTimePenaltyCount(), Race.GetTotalPenaltySeconds()), Primary);
+        }
         // Estimate based only on actual completed timed laps. Never
         // display a fabricated finish pace before the first valid lap.
         const latebrake::LiveRacePaceProjection Pace =
