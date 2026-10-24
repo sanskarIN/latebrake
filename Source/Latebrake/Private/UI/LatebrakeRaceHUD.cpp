@@ -4,6 +4,7 @@
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/CurrentLapPotential.h"
+#include "Racing/LiveSectorTarget.h"
 #include "UI/TouchControlLayout.h"
 #include "Track/CircuitMap.h"
 #include "Engine/Engine.h"
@@ -252,6 +253,27 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("LAP POTENTIAL (BEST SPLITS)  %.1fs  |  VS BEST  %+.1fs"),
                 Potential.PotentialLapSeconds,
                 Potential.DeltaToBestLapSeconds), Accent);
+        }
+        // Compare the unfinished split against an already measured best
+        // of the SAME sector, never against another checkpoint's pace.
+        const latebrake::LiveSectorTarget SectorTarget =
+            latebrake::MeasureLiveSectorTarget(Race);
+        if (SectorTarget.Valid)
+        {
+            if (SectorTarget.OverBest)
+            {
+                Line(FString::Printf(
+                    TEXT("SECTOR %d  OVER PREVIOUS BEST  +%.1fs"),
+                    SectorTarget.SectorIndex + 1,
+                    SectorTarget.SecondsOverBest), Accent);
+            }
+            else
+            {
+                Line(FString::Printf(
+                    TEXT("SECTOR %d  %.1fs UNTIL PREVIOUS BEST"),
+                    SectorTarget.SectorIndex + 1,
+                    SectorTarget.SecondsUntilBest), Primary);
+            }
         }
         if (Race.GetLastSectorIndex() >= 0)
         {
