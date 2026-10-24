@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.31](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.31) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** GitHub source ZIP/tar.gz files are for developers; there is **no verified Windows EXE, Android APK/AAB or Linux game**. The next source-development milestone is v0.5.32 (not published), while v0.5.31 remains the latest tagged pre-release; no gameplay build is verified. Portable C++20 CI does not compile Unreal 5.8; real Editor/UHT compilation, a cookable project map, Win64/Android packages and installed playtests remain outstanding.
+> **Latest published: [v0.5.32](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.32) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** GitHub source ZIP/tar.gz files are for developers; there is **no verified Windows EXE, Android APK/AAB or Linux game**. The next source-development milestone is v0.5.33 (not yet published); v0.5.32 is the latest tagged source-only pre-release; no gameplay build is verified. Portable C++20 CI does not compile Unreal 5.8; real Editor/UHT compilation, a cookable project map, Win64/Android packages and installed playtests remain outstanding.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
@@ -21,7 +21,8 @@
 - v0.4.1: source-only Android touch HUD with visible steering, gas, brake, pause, restart and recovery pads.
 - v0.5.0: offline career/championship and challenge rules, versioned career progression saves, prototype menu/navigation, and extended portable tests.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
-- v0.5.32 (unreleased source development): expanded HUD shows live current-lap **best-sector potential** against the achieved best lap, backed by strict C++20 tests; this estimate cannot award records.
+- v0.5.32 (published source-only pre-release): expanded HUD shows live current-lap **best-sector potential** against the achieved best lap, backed by strict C++20 tests; this estimate cannot award records.
+- v0.5.33 (unreleased source development): expanded HUD adds the live time remaining until a measured best sector or the already elapsed over-best time, with strict portable and source-binding tests.
 - v0.5.1 source preview: matched-sector split deltas and theoretical lap, transactional career-start selection, charged recovery safeguards, single-fire and viewport-safe Android touch, 93 decorations grouped into seven instanced-mesh batches, and stricter future startup-log checks. **All remain unqualified in Unreal**; see [v0.5.1 source release notes](docs/releases/v0.5.1.md).
 
 The starter vehicle uses **Chaos rigid-body physics**. It does **not yet** implement Chaos Vehicles' tire/suspension drivetrain; that upgrade requires an authored skeletal vehicle rig and physics assets. The procedural circuit is intentionally temporary. There are no shipping-quality vehicles, audio, traffic, multiplayer, production-quality career menus or verified Android touch interfaces yet.
