@@ -100,3 +100,29 @@ Portable `CurrentLapPotentialTests.cpp` links the genuine game
 sector, newly improved splits, zero-second sectors, one-gate events,
 restart/finish and record-limit rejection. These assertions do not
 replace Unreal 5.8 Editor, HUD rendering and real Win64/Android QA.
+
+## Live sector target (v0.5.33 source milestone)
+
+The expanded/non-compact HUD additionally compares **only the currently
+driven sector** with its **best positive completed split for that same gate**
+in this race. The display says either:
+
+- `SECTOR N  Xs UNTIL PREVIOUS BEST` while the unfinished sector has not
+  exceeded that best duration.
+- `SECTOR N  OVER PREVIOUS BEST  +Xs` after the current sector has
+  already taken longer than the previously measured best.
+
+A partially completed sector is **never** labeled "ahead by X seconds";
+elapsed time left before the prior best is not a predicted finish time.
+A real timed lap must exist. Reset, finish, an unavailable positive
+reference or an invalid / unrepresentable clock hides the feedback.
+
+The implementation in `Racing/LiveSectorTarget.h` only reads
+`RaceProgress`. Its C++20 regression links the real
+`RaceProgress.cpp` and checks best-sector separation, exact-best timing,
+overtime, newly improved references, missing/zero-length splits, finish,
+restart, single-sector configuration and excessively long clocks.
+
+No record, medal, credit, SaveGame field, or track crossing changes here.
+Cross-platform source CI cannot verify actual Unreal HUD rendering,
+driver physics, Win64 installation or Android hardware QA.
