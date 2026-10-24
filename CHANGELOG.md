@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.5.35 — Unreleased source development (2026-10-24)
+
+- On OS background/deactivation, clear pawn inputs and request a true
+  authoritative race pause. A separate focus-loss latch blocks player
+  timing, ordered checkpoint awards, paid recovery and rival navigation
+  even if Unreal world pause fails or foreground automatically unpauses.
+- Resume only after explicit player pause/menu/restart action; reject
+  duplicate deactivations, preserving checkpoint epoch safety.
+- Add cross-platform portable integration and Unreal source-binding
+  regression tests. Engine compile and real Win64/Android focus delivery
+  are **not yet verified**.
+
+
 ## v0.5.34 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - Add standard-library Python source release workflow integrity contracts
