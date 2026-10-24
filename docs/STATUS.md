@@ -1,9 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-24
-**Latest published milestone:** [v0.5.35 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.35).
+**Latest published milestone:** [v0.5.36 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.36).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.36 published source-only pre-release — committed time-penalty telemetry
+
+- Added allocation-free count and total for successfully charged race time penalties in the genuine engine-independent `RaceProgress`. The audited increment matches the representable amount actually added to the race clock; invalid/undercharged/saturated fees cannot mutate any accounting.
+- Expanded HUD and results menu show the penalty total **already included** in the race clock, split and lap times. No extra scoring charges or profile/save fields were introduced.
+- New strict C++20 `TimePenaltyAccounting` test and Python Unreal-HUD callsite checks cover recovery, finish, reset, malformed charges, numerical edge cases and on-screen source integration.
+- Source CI does not prove UE 5.8/UHT editor compilation, authentic cooked maps, installed Windows/Android driving or actual HUD appearance. Those remain the release gates.
 
 ## v0.5.35 published source-only pre-release — app focus-loss race integrity
 
