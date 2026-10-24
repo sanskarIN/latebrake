@@ -47,6 +47,14 @@ public:
     // caller's optional recovery telemetry. Penalties remain part of lap/split time.
     int GetTimePenaltyCount() const noexcept { return TimePenaltyCount; }
     double GetTotalPenaltySeconds() const noexcept { return TotalPenaltySeconds; }
+    // These are attribution-only; charged fees already affect lap/split time.
+    // Current lap starts with zero after every completed lap, never carrying
+    // the preceding lap's recovery fee into the next live display.
+    double GetCurrentLapPenaltySeconds() const noexcept
+    {
+        return TotalPenaltySeconds - LapPenaltyStartSeconds;
+    }
+    double GetLastLapPenaltySeconds() const noexcept { return LastLapPenaltySeconds; }
     double GetCurrentLapSeconds() const noexcept { return ElapsedSeconds - LapStartSeconds; }
     double GetLastLapSeconds() const noexcept { return LastLapSeconds; }
     double GetBestLapSeconds() const noexcept { return BestLapSeconds; }
@@ -75,6 +83,8 @@ private:
     double ElapsedSeconds = 0.0;
     int TimePenaltyCount = 0;
     double TotalPenaltySeconds = 0.0;
+    double LapPenaltyStartSeconds = 0.0;
+    double LastLapPenaltySeconds = 0.0;
     double LapStartSeconds = 0.0;
     double LastCheckpointSeconds = 0.0;
     double LastLapSeconds = 0.0;
