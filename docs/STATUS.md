@@ -2,8 +2,29 @@
 
 **Updated:** 2026-10-24
 **Latest published milestone:** [v0.5.34 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.34).
-**Next engineering priority:** genuine Unreal 5.8 compilation, cookable owned starter circuit, Win64/Android installed-game QA, and exact package evidence; no later release yet committed. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
+**Next engineering priority:** v0.5.35 source focus-loss hardening followed by genuine Unreal 5.8 compilation, cookable project map and installed Win64/Android QA; not yet released. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.35 source development — app focus-loss race integrity
+
+- OS deactivation/background previously cleared pawn input but did not
+  itself guarantee the authoritative game race clock was paused.
+  A platform could continue ticking while the player could not drive.
+- Introduced `AppFocusRaceGuard`: once gameplay loses focus, timing,
+  ordered checkpoint scoring, paid recovery, and autonomous rival driving
+  all reject updates even if Unreal's `SetGamePaused` fails or the OS
+  resumes an already-paused world. Foreground notifications never lift
+  the latch; only a deliberate player resume, menu return or accepted
+  restart does so.
+- Runtime Pawn lifecycle bindings delegate deactivation/background to
+  the GameMode. All real consumers (GameMode tick, gate actor, recovery,
+  rival) observe the latch. Session revision invalidates pre-loss gate
+  motion on an active deactivation.
+- Added strict portable C++20 real-`RaceProgress.cpp` tests and Python
+  source-binding contracts. No real Android/Windows OS delivery, UHT/UE
+  5.8 compilation, device pause/render or installed gameplay is claimed.
+- Follow-up hardware scenarios are documented in
+  [Touch controls](TOUCH_CONTROLS.md) and remain covered by issue #13.
 
 ## v0.5.34 published source-only pre-release — release workflow integrity
 
