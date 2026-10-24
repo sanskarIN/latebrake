@@ -274,3 +274,28 @@ Unreal integration and Android devices are not yet verified.
 
 These invariants have portable C++20 regression coverage but **no
 installed Unreal build or device evidence**. Keep issue #13 open.
+
+## Focus-loss race suspension (next source milestone, not device-qualified)
+
+On application **deactivation/background**, the actual player pawn now clears
+analog and touch drive commands and asks GameMode to **pause the active race**.
+An engine-independent `AppFocusRaceGuard` also latches suspension
+independently of Unreal's `SetGamePaused` result. This avoids accumulating
+race time, accepting checkpoint crossings, charging RECOVER penalties or
+advancing the rival route if a platform keeps ticking after losing focus.
+
+A foreground notification clears OS-stale held inputs, **but never
+automatically resumes** the race. Only a deliberate PAUSE/resume, menu CLOSE
+or accepted race RESTART returns gameplay to an active state. Menu-open,
+already-paused and finished races do not acquire a redundant focus-loss latch.
+A fresh checkpoint epoch after deactivation prevents a crossing bridged
+between pre-loss and resumed positions.
+
+**Real-device acceptance still needed:** with a genuine UE 5.8 Win64 and
+Android package, hold GAS + steering while switching applications, opening
+notification shade, rotating, pressing Home, and returning. Confirm the
+clock, rival and checkpoints stop while backgrounded; verify PAUSE resumes
+once without latched controls; verify no race action replays from an old
+finger. Also test duplicate deactivation/foreground callbacks, menu-open
+deactivation, and interrupted SaveGame operations. Portable source tests
+cannot confirm actual OS event delivery or in-engine pausing.
