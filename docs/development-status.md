@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.31](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.31), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.32 (unreleased source development)** on `main`; [PR #85](https://github.com/sanskarIN/latebrake/pull/85) introduced measured-sector lap potential; no runnable game |
+| Latest published GitHub pre-release | [v0.5.32](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.32), **source only**, no runnable assets |
+| Latest source-development milestone | **v0.5.33 (unreleased source development)**; portable same-sector timing feedback and regression tests; no runnable game |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
