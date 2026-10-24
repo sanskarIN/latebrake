@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.34 — Unreleased source development (2026-10-24)
+## v0.5.34 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - Add standard-library Python source release workflow integrity contracts
   for the modern immutable-tag release jobs.
@@ -36,7 +36,7 @@
   game, cooked map, Windows EXE or Android APK has been verified.**
 
 
-## Unreleased v0.5.22 — Malformed touch press owner cancellation
+## Published SOURCE-ONLY v0.5.22 — Malformed touch press owner cancellation
 
 - A non-finite press event from a **currently held** throttle,
   brake or steering finger now cancels that owner's input instead of
@@ -51,7 +51,7 @@
   outstanding; no playable executable is claimed.
 
 
-## Unreleased v0.5.21 — Neutralize held touch controls on invalid viewport
+## Published SOURCE-ONLY v0.5.21 — Neutralize held touch controls on invalid viewport
 
 - Treat invalid viewport geometry as a **global driving-input
   interruption** for both touch press and move events, including
@@ -67,7 +67,7 @@
   orientation, installed gameplay and Win64 device QA remain pending.
 
 
-## Unreleased v0.5.20 — Strict recent timed-lap order
+## Published SOURCE-ONLY v0.5.20 — Strict recent timed-lap order
 
 - The fixed-size recent completed lap buffer refuses duplicate or
   backdated lap identifiers while preserving valid increasing records.
@@ -78,7 +78,7 @@
   engine build or hardware QA has been performed.
 
 
-## Unreleased v0.5.19 — Counted rival recovery budget
+## Published SOURCE-ONLY v0.5.19 — Counted rival recovery budget
 
 - `RivalRouteProgress` refuses new teleport requests after its finite
   session allowance, rather than continuing untracked AI recoveries.
@@ -89,7 +89,7 @@
 - Real Unreal Engine driving/collision and device QA are pending.
 
 
-## Unreleased v0.5.18 — Autonomous rival readiness parity
+## Published SOURCE-ONLY v0.5.18 — Autonomous rival readiness parity
 
 - `RivalDriveReadiness.h` disallows driving when circuit startup,
   local driver, game focus, event selection or player finish is invalid.
@@ -100,7 +100,7 @@
 - These are source tests, not real Unreal 5.8 or hardware qualification.
 
 
-## Unreleased v0.5.17 — Measured lap pace forecast in expanded HUD
+## Published SOURCE-ONLY v0.5.17 — Measured lap pace forecast in expanded HUD
 
 - `LiveRacePaceProjection.h` derives an estimated total finish clock
   from up to three most recent valid completed timed laps.
