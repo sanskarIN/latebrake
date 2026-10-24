@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.34">v0.5.34</a>, a source-only pre-release. The latest <strong>v0.5.34 source-only pre-release</strong> adds release-integrity testing. The next necessary work is authentic Unreal Engine compilation, map cooking and installed gameplay QA. Unreal Editor/UHT compilation, a genuine cooked circuit map, Windows executables, Android packages and installed gameplay tests are still outstanding.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.35">v0.5.35</a>, a source-only pre-release. The latest <strong>v0.5.35 source-only pre-release</strong> adds focus-loss race safety and retains release-integrity testing. The next necessary work is authentic Unreal Engine compilation, map cooking and installed gameplay QA. Unreal Editor/UHT compilation, a genuine cooked circuit map, Windows executables, Android packages and installed gameplay tests are still outstanding.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
