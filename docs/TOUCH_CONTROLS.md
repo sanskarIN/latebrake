@@ -286,10 +286,11 @@ advancing the rival route if a platform keeps ticking after losing focus.
 
 A foreground notification clears OS-stale held inputs, **but never
 automatically resumes** the race. Only a deliberate PAUSE/resume, menu CLOSE
-or accepted race RESTART returns gameplay to an active state. Menu-open,
-already-paused and finished races do not acquire a redundant focus-loss latch.
-A fresh checkpoint epoch after deactivation prevents a crossing bridged
-between pre-loss and resumed positions.
+or accepted race RESTART returns gameplay to an active state. Menu-open and finished races do not acquire a redundant focus-loss latch.
+For an already-paused race, the latch still prevents OS-level automatic
+foreground resumption from restarting the clock; no duplicate world-pause
+request is made. A fresh checkpoint epoch on an active race's deactivation
+prevents a crossing bridged between pre-loss and resumed positions.
 
 **Real-device acceptance still needed:** with a genuine UE 5.8 Win64 and
 Android package, hold GAS + steering while switching applications, opening
