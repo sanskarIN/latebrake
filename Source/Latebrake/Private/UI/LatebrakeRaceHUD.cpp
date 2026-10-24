@@ -204,6 +204,15 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), Accent);
     }
+    // The focus-loss latch can outlive a failed/OS-controlled world pause.
+    // Keep the player informed that racing time remains blocked until an
+    // intentional PAUSE/resume, menu exit or restart.
+    if (Mode->IsFocusLossGuardActive())
+    {
+        Line(bCompact ? TEXT("FOCUS LOST - RACE SUSPENDED")
+                      : TEXT("APP FOCUS LOST - RACE SUSPENDED; RESUME EXPLICITLY"),
+             Accent);
+    }
     Line(Mode->IsCareerRace()
         ? (bCompact ? FString(TEXT("CAREER RACE"))
                     : FString::Printf(TEXT("CAREER  %s"), *Mode->GetCareerEventName()))
