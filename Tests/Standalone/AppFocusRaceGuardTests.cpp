@@ -36,7 +36,9 @@ int main()
 
     // Simulate an OS world pause request failing: the portable guard is
     // still a hard clock / checkpoint / recovery / rival gate on its own.
-    Require(guard.OnFocusLost(race, false, false), "first focus loss needs world pause");
+    Require(guard.OnFocusLost(race, false, false) ==
+                FocusLossTransition::SuspendedNeedsWorldPause,
+            "first focus loss requests a world pause");
     epoch.OnPauseTransition();
     Require(guard.IsSuspended(), "focus loss latches even if OS pause fails");
     const double stoppedAt = race.GetElapsedSeconds();
@@ -56,7 +58,8 @@ int main()
                           guard.IsSuspended(), driverReady, false),
             "rival must stop on focus loss even without a paused world");
 
-    Require(!guard.OnFocusLost(race, false, false),
+    Require(guard.OnFocusLost(race, false, false) ==
+                FocusLossTransition::Ignored,
             "duplicate deactivate/background event is idempotent");
     Require(guard.IsSuspended() && epoch.Current() == 1,
             "OS foreground observation does not auto-resume a race");
@@ -76,26 +79,56 @@ int main()
     Require(race.PassCheckpoint(0) && race.GetNextCheckpoint() == 1,
             "real ordered progress still succeeds after resume");
 
+    // OS can pause the world before deactivation is delivered. Previously
+    // the guard returned false here even on a NEW suspension, so the GameMode
+    // skipped the checkpoint epoch transition and could retain a stale
+    // pre-pause motion sample after an OS-controlled foreground resume.
+    RaceProgress pausedRace(4, 3);
     AppFocusRaceGuard alreadyPaused;
-    Require(!alreadyPaused.OnFocusLost(race, false, true) &&
+    RaceSessionEpoch alreadyPausedEpoch;
+    CheckpointSessionTrace alreadyPausedTrace;
+    Require(!alreadyPausedTrace.SampleDetailed(0, 1,
+                alreadyPausedEpoch.Current(), approach, 300., 0.).Crossed(),
+            "already-paused scenario captures pre-loss approach");
+    Require(alreadyPaused.OnFocusLost(pausedRace, false, true) ==
+                FocusLossTransition::SuspendedAlreadyPaused &&
             alreadyPaused.IsSuspended(),
-            "already paused world still latches against OS foreground auto-resume");
+            "new suspension is distinct from requesting another world pause");
+    alreadyPausedEpoch.OnPauseTransition();
+    Require(alreadyPausedEpoch.Current() == 1,
+            "already-paused deactivation still advances checkpoint session");
+    Require(alreadyPaused.OnFocusLost(pausedRace, false, true) ==
+                FocusLossTransition::Ignored &&
+            alreadyPausedEpoch.Current() == 1,
+            "duplicate deactivation cannot restart the same pause transition");
     Require(!AdvancePlayerRaceClockIfReady(
-        race, true, alreadyPaused.IsSuspended(), true, 1.0),
+        pausedRace, true, alreadyPaused.IsSuspended(), true, 1.0),
             "OS auto-resuming a paused world cannot charge racing time");
+    Require(!alreadyPausedTrace.SampleDetailed(0, 1,
+                alreadyPausedEpoch.Current(), crossed, 300., 0.).Crossed(),
+            "already-paused focus loss cannot bridge earlier gate position");
     alreadyPaused.OnExplicitResume();
+    alreadyPausedEpoch.OnPauseTransition();
     Require(!alreadyPaused.IsSuspended(),
             "player can deliberately resume an originally paused race");
-    Require(!alreadyPaused.OnFocusLost(race, true, false) &&
+    Require(!alreadyPausedTrace.SampleDetailed(0, 1,
+                alreadyPausedEpoch.Current(), approach, 300., 0.).Crossed(),
+            "explicit resume establishes new approach baseline");
+    Require(alreadyPausedTrace.SampleDetailed(0, 1,
+                alreadyPausedEpoch.Current(), crossed, 300., 0.).Crossed(),
+            "genuine same-session crossing remains possible");
+    Require(alreadyPaused.OnFocusLost(pausedRace, true, false) ==
+                FocusLossTransition::Ignored &&
             !alreadyPaused.IsSuspended(),
-            "already open menu retains its normal pause and input policy");
+            "already open menu retains its own pause and input policy");
 
     RaceProgress finished(1, 1);
     finished.Advance(5.0);
     Require(finished.PassCheckpoint(0) && finished.IsFinished(),
             "completed result fixture");
     AppFocusRaceGuard results;
-    Require(!results.OnFocusLost(finished, false, false) &&
+    Require(results.OnFocusLost(finished, false, false) ==
+                FocusLossTransition::Ignored &&
             !results.IsSuspended(), "completed result does not get extra pause");
     Require(!AdvancePlayerRaceClockIfReady(finished, true, false, true, 1.0),
             "finished result remains frozen");
