@@ -34,7 +34,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     if (!Mode || !latebrake::CanDriveRival(
             Mode->GetRace(), Mode->GetSelectedEvent(),
             Mode->IsCircuitReadyForGameplay(),
-            UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen(),
+            UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen() ||
+                Mode->IsFocusLossGuardActive(),
             Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
         SetAutonomousControls(0.f, 0.f, true);
