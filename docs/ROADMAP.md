@@ -77,3 +77,4 @@ run installed QA, then follow with Android candidate and mobile controls.
 A manual authorized self-hosted runner may execute the new pipeline; the
 ordinary CI cannot package Unreal games. No new version is being published
 solely because packaging helper scripts now exist.
+| v0.5.35 (source development, not released) | Suspend player time, checkpoint scoring, recoveries and rival driving on app focus loss independently of a successful engine world pause; explicitly resume after player action | C++20 and source bindings; genuine Unreal 5.8 and installed Win64/Android focus-loss QA still required |
