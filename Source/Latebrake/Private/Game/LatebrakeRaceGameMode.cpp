@@ -629,6 +629,15 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
     {
         Car->ClearDriverInputs();
     }
+    // Platforms may automatically resume the world on returning to the
+    // foreground, while the focus guard correctly stays latched. One
+    // deliberate PAUSE/RESUME request should restore racing immediately.
+    if (AppFocusGuard.IsSuspended() && !UGameplayStatics::IsGamePaused(this))
+    {
+        AppFocusGuard.OnExplicitResume();
+        CheckpointSession.OnPauseTransition();
+        return;
+    }
     const bool bWasPaused = UGameplayStatics::IsGamePaused(this);
     UGameplayStatics::SetGamePaused(this, !bWasPaused);
     if (UGameplayStatics::IsGamePaused(this) != bWasPaused)
