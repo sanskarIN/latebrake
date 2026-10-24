@@ -20,6 +20,8 @@ void RaceProgress::Reset() noexcept
     TimedLapCount = 0;
     RecentLaps.Reset();
     ElapsedSeconds = 0.0;
+    TimePenaltyCount = 0;
+    TotalPenaltySeconds = 0.0;
     LapStartSeconds = 0.0;
     LastCheckpointSeconds = 0.0;
     LastLapSeconds = 0.0;
@@ -47,6 +49,7 @@ bool RaceProgress::AddTimePenalty(double penaltySeconds) noexcept
 {
     if (State != RaceState::Running || !std::isfinite(penaltySeconds) ||
         penaltySeconds <= 0.0 ||
+        TimePenaltyCount == std::numeric_limits<int>::max() ||
         penaltySeconds > std::numeric_limits<double>::max() - ElapsedSeconds)
     {
         return false;
@@ -62,7 +65,24 @@ bool RaceProgress::AddTimePenalty(double penaltySeconds) noexcept
     {
         return false;
     }
+    // Account for the ACTUAL representable increment (which can round up),
+    // and reject a charge whose audit total cannot represent that increment.
+    // This is an all-or-nothing transaction: rejected charges never change
+    // the race clock, count or telemetry, and cannot authorize a teleport.
+    const double charged = updated - ElapsedSeconds;
+    if (charged > std::numeric_limits<double>::max() - TotalPenaltySeconds)
+    {
+        return false;
+    }
+    const double newTotal = TotalPenaltySeconds + charged;
+    if (!std::isfinite(newTotal) ||
+        newTotal - TotalPenaltySeconds < charged || newTotal > updated)
+    {
+        return false;
+    }
     ElapsedSeconds = updated;
+    TotalPenaltySeconds = newTotal;
+    ++TimePenaltyCount;
     return true;
 }
 
