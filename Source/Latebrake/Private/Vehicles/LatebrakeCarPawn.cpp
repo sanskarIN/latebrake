@@ -110,9 +110,9 @@ void ALatebrakeCarPawn::BeginPlay()
     Super::BeginPlay();
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
-        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+        this, &ALatebrakeCarPawn::HandleAppFocusLost);
     DeactivatedInputHandle = FCoreDelegates::ApplicationWillDeactivateDelegate.AddUObject(
-        this, &ALatebrakeCarPawn::HandleAppInputInterruption);
+        this, &ALatebrakeCarPawn::HandleAppFocusLost);
     ForegroundInputHandle = FCoreDelegates::ApplicationHasEnteredForegroundDelegate.AddUObject(
         this, &ALatebrakeCarPawn::HandleAppInputInterruption);
 }
@@ -141,6 +141,22 @@ void ALatebrakeCarPawn::HandleAppInputInterruption()
     TouchViewport.Reset();
     TouchPresses.Reset();
     ClearDriverInputs();
+}
+
+void ALatebrakeCarPawn::HandleAppFocusLost()
+{
+    // Neutralize both analog and touch commands before telling the race
+    // mode about deactivation. Foreground callbacks only clear stale
+    // input and never automatically unpause the race.
+    HandleAppInputInterruption();
+    if (UWorld* World = GetWorld())
+    {
+        if (ALatebrakeRaceGameMode* Mode =
+                World->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        {
+            Mode->PauseForAppInterruption();
+        }
+    }
 }
 
 void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake)
