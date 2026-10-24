@@ -429,3 +429,18 @@ else()
     target_compile_options(latebrake_current_lap_potential_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME CurrentLapPotential COMMAND latebrake_current_lap_potential_tests)
+
+# Live sector best feedback uses the real game race implementation and never
+# claims a completed result for an unfinished split.
+add_executable(latebrake_live_sector_target_tests
+    LiveSectorTargetTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_live_sector_target_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_live_sector_target_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_live_sector_target_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_live_sector_target_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME LiveSectorTarget COMMAND latebrake_live_sector_target_tests)
