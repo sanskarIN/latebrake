@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.37 — Published SOURCE-ONLY pre-release (2026-10-24)
+
+- Snapshot paid time penalties at ordered lap-completion boundaries; distinguish current vs last completed lap without changing event charges, records, or rewards.
+- Expand source HUD and results menu with explicitly already-included lap penalty details, while keeping compact touch UI unchanged.
+- Add portable C++20 real-`RaceProgress` lap attribution tests, Python HUD source binding checks, new pinned release gate and Pages smoke requirements.
+- No Unreal Editor/UHT, map cook, genuine installed Windows/Android game or executable artifacts are yet verified.
+
 ## v0.5.36 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - Record only committed time-penalty counts and actual charged seconds in portable `RaceProgress`; rejects preserve clock and audit state.
