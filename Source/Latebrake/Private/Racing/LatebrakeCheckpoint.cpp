@@ -90,7 +90,8 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
     ALatebrakeRaceGameMode* Mode =
         GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!IsValid(Mode) || !Mode->IsCircuitReadyForGameplay() ||
-        UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen())
+        UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen() ||
+        Mode->IsFocusLossGuardActive())
     {
         MotionTrace.Reset();
 #if !UE_BUILD_SHIPPING
