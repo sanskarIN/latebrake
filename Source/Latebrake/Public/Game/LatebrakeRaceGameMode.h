@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/RaceSessionEpoch.h"
+#include "Racing/AppFocusRaceGuard.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageTuningKey.h"
@@ -37,6 +38,8 @@ public:
     void CycleCareerEvent();
     void ToggleMenu();
     void ToggleRacePause();
+    void PauseForAppInterruption();
+    bool IsFocusLossGuardActive() const { return AppFocusGuard.IsSuspended(); }
     void MenuNext();
     void MenuPrevious();
     void MenuActivate();
@@ -111,6 +114,7 @@ private:
     bool bCircuitReady = false;
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
+    latebrake::AppFocusRaceGuard AppFocusGuard;
     float PersonalBestSeconds = 0.f;
     float BestTimeAttackSeconds = 0.f;
     float PersonalBestLapSeconds = 0.f;
