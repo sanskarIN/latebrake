@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.38 — Published SOURCE-ONLY pre-release (2026-10-24)
+
+- Fix a real source-level focus-loss state distinction: an OS-already-paused race latches a **new** interruption but must still invalidate checkpoint sweep motion.
+- Add typed `FocusLossTransition` decisions so only truly duplicate/menu/finished events skip epoch invalidation and only unpaused worlds request another Unreal pause.
+- Expand portable C++20 and Python source-binding regressions for already-paused OS events, duplicate callbacks, resumed checkpoint motion and retained racing clock safety.
+- Document installed Windows and Android interruption QA; genuine Unreal Editor/UHT, cook, device verification and game executables remain unverified.
+
 ## v0.5.37 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - Snapshot paid time penalties at ordered lap-completion boundaries; distinguish current vs last completed lap without changing event charges, records, or rewards.
