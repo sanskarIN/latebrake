@@ -1,9 +1,15 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-24
-**Latest published milestone:** [v0.5.36 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.36).
+**Latest published milestone:** [v0.5.37 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.37).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.37 published source-only pre-release — per-lap fee attribution
+
+- The portable race state records a run-local snapshot of charged fees at an **accepted lap-completing gate**. It exposes already-paid current-lap and last-completed-lap fees without modifying event totals, lap timing, awards or saves.
+- The expanded source HUD surfaces `THIS LAP PENALTIES` only when applicable; the results menu can show already-included final-lap penalties. A penalty-free lap following a charged lap is correctly displayed as having zero new fees.
+- Added strict C++20 multi-lap and one-gate attribution regression coverage plus Unreal HUD source binding tests. No UE Editor/UHT, map cooking, device render or installed executable was validated by source CI.
 
 ## v0.5.36 published source-only pre-release — committed time-penalty telemetry
 
