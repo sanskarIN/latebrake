@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.36 — Published SOURCE-ONLY pre-release (2026-10-24)
+
+- Record only committed time-penalty counts and actual charged seconds in portable `RaceProgress`; rejects preserve clock and audit state.
+- Show `TIME PENALTIES` and `ALREADY IN TIME` on the expanded Unreal HUD source and finished results menu; no duplicate charge or save-schema change.
+- Add three-platform strict C++20 penalty tests, Python HUD source contracts, pinned source-only release gate and accurate GitHub Pages documentation.
+- Unreal Editor/UHT, cooked circuit, real Win64/Android installed builds and physical QA remain unverified; no playable binary assets.
+
 ## v0.5.35 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - On OS background/deactivation, clear pawn inputs and request a true
