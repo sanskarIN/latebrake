@@ -629,3 +629,17 @@ and given the correct target in the 1-, 2-, 3- and 4-lap events; that its
 HUD shows the expected target after each event change and restart; and
 that the player result/medal remains independent of the approximate rival
 loop. Offline C++20 tests cannot validate rival physics or steering.
+
+## v0.5.34 source release workflow structural policy
+
+Modern source-only pre-release workflows are guarded by the same existing
+`python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v` CI step.
+`SourceReleaseWorkflowPolicyTests.py` verifies immutable SHA parity between
+three portable test checkouts and the release tag writer, unique required
+jobs, intact quoted isolated CTest expressions, version-matched release
+notes, three OS targets, predecessor release checks and source-only warnings.
+Negative tests mutate the workflow to confirm these mistakes are rejected.
+
+This standard-library source check does **not** parse all YAML or validate
+GitHub job execution, licensed Unreal Editor cooking or playable binaries;
+the actual GitHub workflow run remains authoritative for those gates.
