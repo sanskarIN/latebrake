@@ -421,3 +421,22 @@ Pixel-accurate UE Canvas drawing, font DPI, Android device safe areas
 and installed playable binaries still require actual licensed
 UE 5.8 builds and device QA. See
 [HUD text QA](../../docs/HUD_TEXT_WIDTH_QA.md).
+
+### v0.5.68 — Results/Career menu vertical clipping safety
+
+`HudMenuVerticalPlanTests.cpp` compiles the production layout policy
+with the real `HudLayout` and `TouchControlLayout`, checking that
+ordinary menu text, honest `MORE MENU DETAILS HIDDEN` disclosure and
+the separately pinned SAVE FAILED banner clear actual Android
+steering pixels and stay inside normal desktop viewports.
+
+The Unreal source-binding test checks real `MenuLine` usage, clipped
+row accounting and independent safe-banner rendering. This does not
+verify Unreal/UMG typography, menu scroll interactions or Android APKs.
+
+```sh
+ctest --test-dir Tests/Standalone/build -C Release -R '^(HudVerticalPlan|HudTextBounds|HudMenuVerticalPlan)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'HudMenuVerticalBindingTests.py' -v
+```
+
+See [menu UI QA](../../docs/HUD_MENU_VERTICAL_QA.md).
