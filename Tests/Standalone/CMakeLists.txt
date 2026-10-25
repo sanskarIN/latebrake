@@ -546,3 +546,19 @@ else()
     target_compile_options(latebrake_manual_race_pause_guard_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ManualRacePauseGuard COMMAND latebrake_manual_race_pause_guard_tests)
+
+# v0.5.45: actual compiled production policy .cpp plus real RaceProgress.
+# Fail closed if Chaos reports nonfinite angular velocity or bad body mass.
+add_executable(latebrake_vehicle_dynamics_readiness_tests
+    VehicleDynamicsReadinessTests.cpp
+    ../../Source/Latebrake/Private/Vehicles/VehicleDynamicsReadiness.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_vehicle_dynamics_readiness_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_vehicle_dynamics_readiness_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_vehicle_dynamics_readiness_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_vehicle_dynamics_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VehicleDynamicsReadiness COMMAND latebrake_vehicle_dynamics_readiness_tests)

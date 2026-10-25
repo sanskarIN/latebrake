@@ -31,7 +31,10 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 {
     const ALatebrakeRaceGameMode* Mode =
         GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
-    if (!Mode || !latebrake::CanDriveRival(
+    // A malformed rival Chaos body must neither accrue approximate route
+    // progress nor receive another physics control update. The base pawn
+    // independently neutralizes the chassis before it can apply forces.
+    if (!Mode || !IsRacePhysicsReady() || !latebrake::CanDriveRival(
             Mode->GetRace(), Mode->GetSelectedEvent(),
             Mode->IsCircuitReadyForGameplay(),
             UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen() ||
