@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.45 — In development, NOT released (2026-10-25)
+## v0.5.45 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Add the full production C++20 `VehicleDynamicsReadiness.h/.cpp` pair, rejecting **zero/negative/nonfinite chassis mass** and **NaN/infinite angular velocity on all three axes**. Previously the shared physics-readiness gate checked only body presence, collision, world position and *linear* velocity; broken angular/mass state could still appear driver-ready.
 - Bind the shared policy to the actual Unreal car's `IsRacePhysicsReady()`. This automatically blocks real GameMode race-clock advancement and checkpoint sampling/scoring when Chaos state is unhealthy. The car's physics tick now neutralizes held controls and linear/angular motion **before applying any new motor or steering forces** whenever readiness fails.

@@ -1,16 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.44 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.44), tagged at tested source commit `5cf98c325048afd74214867bf1964228e0053e93`.
+**Latest published milestone:** [v0.5.45 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.45), tagged at tested source commit `14ae339bcb869ce72a5c6a5dc104bc3a9e38eae2`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.45 development — real physics mass and angular velocity validity
+## v0.5.45 published source-only pre-release — real physics mass and angular velocity validity
 
 - New production `VehicleDynamicsReadiness.h/.cpp` rejects nonpositive/nonfinite chassis mass and any nonfinite X/Y/Z Chaos angular velocity. Prior race physics readiness covered linear velocity but not these equally material body values.
 - `ALatebrakeCarPawn::IsRacePhysicsReady()` now combines the two checks, blocking authoritative clock and checkpoints on unhealthy dynamics. Pawn force/torque and AI route updates stop *before* acting on broken bodies; HUD speed guards against nonfinite display.
 - Three-OS C++20 and Python integration contracts cover source behavior and real `RaceProgress.cpp` policy, not licensed UE compilation. New `docs/VEHICLE_DYNAMICS_QA.md` provides genuine engine/device acceptance.
-- **Unreleased source development, after published v0.5.44.** No playable release and no installed-game QA is claimed.
+- **Published asset-free SOURCE-ONLY pre-release on 2026-10-25.** Independent workflow #40176772622 passed all three-OS C++20 tests, Python Unreal-source binding tests, Windows PowerShell packaging and manifest policies, and immutable source/tag checks. UE 5.8 game/UHT compilation, cooked map, Chaos and installed Windows/Android driving QA remain open.
 
 ## v0.5.44 published source-only pre-release — exact installed Unreal engine build identity
 
