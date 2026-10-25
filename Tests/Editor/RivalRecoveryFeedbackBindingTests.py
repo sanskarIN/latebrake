@@ -102,6 +102,9 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
         self.assertIn("MaxRecoveries", self.test)
         self.assertIn("RivalRouteTests.cpp", self.cmake)
         self.assertIn("NAME RivalRoute", self.cmake)
+        self.assertIn("RivalRecoveryOutcomeTests.cpp", self.cmake)
+        self.assertIn("Private/Racing/RecoveryTeleportVerification.cpp", self.cmake)
+        self.assertIn("NAME RivalRecoveryOutcome", self.cmake)
 
     def test_mutation_rejects_void_teleport_and_false_success(self):
         tick = self.rival_tick()
