@@ -643,3 +643,44 @@ else()
     target_compile_options(latebrake_wrong_way_indicator_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME WrongWayIndicator COMMAND latebrake_wrong_way_indicator_tests)
+
+# v0.5.60: measured driving telemetry with production implementation,
+# route guidance (advisory only), and earlier opponent corner braking.
+add_executable(latebrake_driving_session_stats_tests
+    DrivingSessionStatsTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp
+)
+target_include_directories(latebrake_driving_session_stats_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_session_stats_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_driving_session_stats_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_session_stats_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingSessionStats COMMAND latebrake_driving_session_stats_tests)
+
+add_executable(latebrake_circuit_route_advisor_tests
+    CircuitRouteAdvisorTests.cpp
+    ../../Source/Latebrake/Private/Track/CircuitRouteAdvisor.cpp
+)
+target_include_directories(latebrake_circuit_route_advisor_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_circuit_route_advisor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_circuit_route_advisor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_circuit_route_advisor_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CircuitRouteAdvisor COMMAND latebrake_circuit_route_advisor_tests)
+
+add_executable(latebrake_rival_corner_anticipation_tests
+    RivalCornerAnticipationTests.cpp
+    ../../Source/Latebrake/Private/AI/RivalCornerAnticipation.cpp
+)
+target_include_directories(latebrake_rival_corner_anticipation_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_corner_anticipation_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_corner_anticipation_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_corner_anticipation_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalCornerAnticipation COMMAND latebrake_rival_corner_anticipation_tests)
