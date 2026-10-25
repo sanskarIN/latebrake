@@ -35,7 +35,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Mode->GetRace(), Mode->GetSelectedEvent(),
             Mode->IsCircuitReadyForGameplay(),
             UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen() ||
-                Mode->IsFocusLossGuardActive(),
+                Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive(),
             Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
         SetAutonomousControls(0.f, 0.f, true);

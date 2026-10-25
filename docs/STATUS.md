@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.43 source development — standalone PAUSE intent survives rejected world pause
+
+- Detected a distinct gap not covered by v0.5.42's player-driving readiness: a keyboard/gamepad/touch **standalone PAUSE** pressed while the engine was running had no independent fallback state if Unreal's `SetGamePaused(true)` did not actually pause. As a result, the race clock and ordered gates could continue while the player believed PAUSE was requested.
+- `ManualRacePauseGuard` now latches first-press intent before the world-pause request and clears only on explicit second press, menu return or accepted restart. All authoritative clock, checkpoint, recovery, rival and pawn-driving consumers respect this latch. PAUSE touch dispatch and HUD remain usable when world pausing fails.
+- Source regression tests cover failed PAUSE/UNPAUSE, real race-progress clock behavior, checkpoint session revision, recovery/rival denial and player input readiness. No UE Editor/UHT compiled artifact, Chaos runtime or real Win64/Android installed pause QA is claimed. See issues #31 and #13.
+- **Development only; latest published source preview remains v0.5.42.**
+
 ## v0.5.42 published source-only pre-release — ordinary menu pause and finished-race driving safety
 
 - Identified a gap after the v0.5.39 focus-loss safeguard: when an ordinary menu or manual world pause request fails (or the race is finished while the engine still ticks), player input still flowed through the pawn's force/torque integrator even as GameMode clock and checkpoint scoring were stopped.

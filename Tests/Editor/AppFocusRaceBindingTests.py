@@ -127,8 +127,11 @@ class AppFocusRaceBindingTests(unittest.TestCase):
         broken = self.pawn.replace(
             "Mode->PauseForAppInterruption();", "// suppressed in fixture")
         self.assertNotIn("Mode->PauseForAppInterruption();", broken)
-        broken_mode = self.mode.replace(
-            "AppFocusGuard.IsSuspended(),", "false,")
+        # Clock/scoring readiness now combines OS focus and manual pause.
+        # Removing the real composite gate must still trip this mutation test.
+        composite = "AppFocusGuard.IsSuspended() || ManualPause.IsSuspended(),"
+        self.assertIn(composite, self.mode)
+        broken_mode = self.mode.replace(composite, "false,")
         self.assertLess(broken_mode.count("AppFocusGuard.IsSuspended()"),
                         self.mode.count("AppFocusGuard.IsSuspended()"))
 

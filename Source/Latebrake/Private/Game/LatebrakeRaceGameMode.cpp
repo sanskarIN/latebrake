@@ -109,7 +109,7 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     latebrake::AdvancePlayerRaceClockIfReady(
         Race, bCircuitReady,
         UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
-            AppFocusGuard.IsSuspended(),
+            AppFocusGuard.IsSuspended() || ManualPause.IsSuspended(),
         bLocalPlayerReady, static_cast<double>(DeltaSeconds));
     ApplyGarageToPlayer();
 }
@@ -471,7 +471,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     if (!latebrake::CanScorePlayerCheckpoint(
             Race, bCircuitReady,
             UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
-                AppFocusGuard.IsSuspended(),
+                AppFocusGuard.IsSuspended() || ManualPause.IsSuspended(),
             HasLocalPlayerDriver()))
     {
         return;
@@ -590,6 +590,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
     AppFocusGuard.OnExplicitResume();
+    ManualPause.OnExplicitResume();
     CheckpointSession.OnMenuReturnToRace();
     if (ALatebrakeCarPawn* Car =
             Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
@@ -605,6 +606,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     if (!Menu.IsOpen())
     {
         AppFocusGuard.OnExplicitResume(); // Deliberate CLOSE/return to driving.
+        ManualPause.OnExplicitResume();
     }
     // Checkpoint actor ticks may stop during pause. Invalidate pre-menu
     // motion even when their next tick is only after the menu closes.
@@ -620,8 +622,9 @@ void ALatebrakeRaceGameMode::ToggleMenu()
 
 void ALatebrakeRaceGameMode::ToggleRacePause()
 {
-    // Keyboard/gamepad Escape can pause without opening the menu.
-    // It must still invalidate checkpoint motion across the interruption.
+    // Standalone keyboard/gamepad/touch PAUSE does not open the menu.
+    // An engine-world pause may fail, so the *player's requested pause*
+    // must independently freeze racing, checkpoints and driving.
     if (Menu.IsOpen())
     {
         ToggleMenu();
@@ -634,22 +637,39 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
     }
     // Platforms may automatically resume the world on returning to the
     // foreground, while the focus guard correctly stays latched. One
-    // deliberate PAUSE/RESUME request should restore racing immediately.
+    // deliberate PAUSE/RESUME press may unlock both fallback gates without
+    // toggling an already-running Unreal world back into a paused state.
     if (AppFocusGuard.IsSuspended() && !UGameplayStatics::IsGamePaused(this))
     {
         AppFocusGuard.OnExplicitResume();
+        ManualPause.OnExplicitResume();
         CheckpointSession.OnPauseTransition();
         return;
     }
-    const bool bWasPaused = UGameplayStatics::IsGamePaused(this);
-    UGameplayStatics::SetGamePaused(this, !bWasPaused);
-    if (UGameplayStatics::IsGamePaused(this) != bWasPaused)
+
+    const bool bWasWorldPaused = UGameplayStatics::IsGamePaused(this);
+    const bool bWasManualPause = ManualPause.IsSuspended();
+    // Update our fallback latch BEFORE requesting the fallible world state.
+    const bool bRequestWorldPause = ManualPause.OnToggleRequested(bWasWorldPaused);
+    UGameplayStatics::SetGamePaused(this, bRequestWorldPause);
+    const bool bWorldPausedNow = UGameplayStatics::IsGamePaused(this);
+
+    // When SetGamePaused(true) fails, Unreal may still tick physics, but
+    // the newly latched manual pause invalidates a pre-pause gate sample.
+    // Likewise an explicitly cleared fallback needs a fresh baseline.
+    if (bRequestWorldPause || bWasManualPause ||
+        bWorldPausedNow != bWasWorldPaused)
     {
         CheckpointSession.OnPauseTransition();
-        if (bWasPaused && !UGameplayStatics::IsGamePaused(this))
-        {
-            AppFocusGuard.OnExplicitResume(); // Player explicitly unpaused.
-        }
+    }
+    if (!bRequestWorldPause && !bWorldPausedNow)
+    {
+        AppFocusGuard.OnExplicitResume(); // Player explicitly resumed.
+    }
+    if (bRequestWorldPause && !bWorldPausedNow)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: manual world pause failed; manual race pause guard remains suspended"));
     }
 }
 
@@ -1185,6 +1205,7 @@ void ALatebrakeRaceGameMode::RestartRace()
         UGameplayStatics::SetGamePaused(this, false);
     }
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
+    ManualPause.OnExplicitResume();
     Race.Reset();
     LastCareerAward = {};
     ApplyGarageToPlayer();
@@ -1224,7 +1245,7 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     // add a penalty while the UI was paused or the circuit failed startup.
     // Charge before teleport, preserving counter and clock on failure.
     const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
-        AppFocusGuard.IsSuspended();
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
     if (!latebrake::TryChargePlayerRecoveryIfReady(
             Race, RecoveriesThisRace, bCircuitReady, bInactive,
             Car->IsRacePhysicsReady()))
