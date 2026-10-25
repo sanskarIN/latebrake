@@ -62,6 +62,8 @@ public:
     int32 GetRivalApproximateLaps() const;
     int32 GetRivalPlannedLaps() const;
     int32 GetRivalRecoveryCount() const;
+    int32 GetRivalSuccessfulRecoveryCount() const;
+    int32 GetRivalFailedRecoveryCount() const;
     bool HasRivalFinishedRoute() const;
 
     void RecoverPlayer(ALatebrakeCarPawn* Car);
