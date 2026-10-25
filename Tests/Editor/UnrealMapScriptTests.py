@@ -5,6 +5,7 @@ temp directory. No fixture is playable, reusable or committed to the repo.
 Only a licensed Unreal Editor can create an authentic .umap.
 """
 
+import hashlib
 import json
 import runpy
 import sys
@@ -61,6 +62,7 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
         self.map = self.content / "Maps" / "LatebrakeCircuit.umap"
         self.engine = FakeLevelEditor(self.map)
         self.events = []
+        self.engine_version = "5.8.0-TEST_EDITOR_BUILD"
 
     def run_script(self, subsystem=True):
         fake = types.ModuleType("unreal")
@@ -69,6 +71,9 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
             project_saved_dir=lambda: str(self.saved),
         )
         fake.LevelEditorSubsystem = type("LevelEditorSubsystem", (), {})
+        fake.SystemLibrary = types.SimpleNamespace(
+            get_engine_version=lambda: self.engine_version
+        )
         fake.get_editor_subsystem = lambda cls: self.engine if subsystem else None
         fake.log = self.events.append
         with patch.dict(sys.modules, {"unreal": fake}):
@@ -83,6 +88,11 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
         self.assertEqual(receipt["status"], "saved_by_unreal_editor")
         self.assertEqual(receipt["operation"], "created")
         self.assertEqual(receipt["bytes"], self.map.stat().st_size)
+        self.assertEqual(receipt["schema_version"], 1)
+        self.assertEqual(receipt["engine_version"], "5.8")
+        self.assertEqual(
+            receipt["sha256"], hashlib.sha256(self.map.read_bytes()).hexdigest()
+        )
         self.assertTrue(any("created" in text for text in self.events))
 
     def test_existing_map_is_loaded_without_recreating(self):
@@ -94,7 +104,11 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
         self.assertEqual(self.engine.load_count, 1)
         self.assertEqual(self.engine.save_count, 1)
         self.assertEqual(self.map.read_bytes(), payload)
-        self.assertEqual(json.loads(self.receipt.read_text())["operation"], "loaded")
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual(receipt["operation"], "loaded")
+        self.assertEqual(
+            receipt["sha256"], hashlib.sha256(payload).hexdigest()
+        )
         self.assertTrue(any("loaded" in text for text in self.events))
 
     def test_failure_to_load_existing_map_is_fatal(self):
@@ -120,6 +134,20 @@ class UnrealEditorMapScriptTests(unittest.TestCase):
         self.engine.write_tiny = True
         with self.assertRaisesRegex(RuntimeError, "unexpectedly small"):
             self.run_script()
+
+    def test_wrong_editor_version_is_rejected_before_map_creation(self):
+        self.engine_version = "5.7.5-TEST_ONLY"
+        with self.assertRaisesRegex(RuntimeError, "requires Unreal 5.8"):
+            self.run_script()
+        self.assertFalse(self.map.exists())
+        self.assertFalse(self.receipt.exists())
+        self.assertEqual(self.engine.new_count, 0)
+
+    def test_failed_unreal_version_inspection_fails_closed(self):
+        self.engine_version = ""
+        with self.assertRaisesRegex(RuntimeError, "requires Unreal 5.8"):
+            self.run_script()
+        self.assertFalse(self.receipt.exists())
 
     def test_editor_subsystem_is_required(self):
         with self.assertRaisesRegex(RuntimeError, "unavailable"):

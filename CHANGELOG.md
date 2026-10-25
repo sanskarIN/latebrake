@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.41 — Development candidate (2026-10-25; NOT released)
+
+- Bind the genuine Unreal Editor map-authoring receipt to **SHA256 of saved map bytes**, schema version 1 and reported engine version 5.8. The previous map-name/byte-size-only receipt could accept an altered same-size file.
+- Fail direct `New-StarterMap.ps1` execution on engine/project version mismatch before launching the editor; reject stale, malformed, unexpected-version or byte-mutated receipts before continuing to header checks or packaging.
+- Add independent Windows PowerShell synthetic fixture tests (including same-size map tampering), Unreal Python stub tests, release CI checks and dedicated map QA guidance. These tests do **not** author a real Unreal level or validate a packaged game.
+
 ## v0.5.40 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Add separate allocation-free active-lap clock evidence. Only actual successful `RaceProgress::Advance` updates count toward an actively timed lap; paid recovery penalties and rejected deltas cannot satisfy the requirement.

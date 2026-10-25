@@ -57,6 +57,21 @@ The second command creates and deletes only disposable Git test histories.
 These checks **do not** prove Unreal compilation, map cook, package origin,
 hardware installation or gameplay.
 
+## v0.5.41 development: fresh editor map receipt SHA256 binding
+
+Direct `New-StarterMap.ps1` now checks both installed UE and
+`Latebrake.uproject` engine version 5.8 *before* launching Editor.
+The Editor checks its running version, then issues a schema-versioned success
+receipt with exact SHA256 of the saved map bytes. The PowerShell wrapper
+deletes any old receipt, verifies the new map hash and the exact receipt
+metadata, and only then checks Unreal package-header plausibility.
+
+This is a stronger handoff into the existing pre-/post-UAT map snapshot
+gate: map name and byte length alone cannot authorize an unchanged-map
+claim. Rejected cases are tested using temporary fake bytes; real
+`UnrealEditor.exe` execution, cooker output and installed game qualification
+are still required. See [MAP_AUTHORING_QA.md](MAP_AUTHORING_QA.md).
+
 ## Circuit map continuity (v0.5.25 source development)
 
 An unchanged Git commit **does not imply identical circuit content**:
