@@ -59,7 +59,7 @@ clock samples cannot fabricate one.
 - Record source SHA, device model, engine logs and observed outcomes.
   Do not close hardware/engine QA issues based on portable CTest.
 
-## v0.5.40 source development: finished does not always mean awardable
+## v0.5.40 published source-only pre-release: finished does not always mean awardable
 
 An ordered last gate still changes the race state to `Finished`, even
 if a zero-duration lap is observed. For medals, saved records, credits and
