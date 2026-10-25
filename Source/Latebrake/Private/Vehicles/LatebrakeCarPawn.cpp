@@ -8,6 +8,7 @@
 #include "Racing/RecoveryTeleportVerification.h"
 #include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
+#include "UI/LatebrakeRaceHUD.h"
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
 #include "UI/TouchResidualSafety.h"
@@ -640,7 +641,9 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         TouchDrive.Clear();
         if (bAllowAcquire)
         {
-            if (Region == latebrake::TouchControl::CareerNext) MenuNext();
+            if (Region == latebrake::TouchControl::Restart) MenuDetailsPrevious();
+            else if (Region == latebrake::TouchControl::Recover) MenuDetailsNext();
+            else if (Region == latebrake::TouchControl::CareerNext) MenuNext();
             else if (Region == latebrake::TouchControl::CareerStart) MenuActivate();
             else if (Region == latebrake::TouchControl::MenuBrowse) CareerNext();
             else if (Region == latebrake::TouchControl::Pause) MenuToggle();
@@ -754,6 +757,42 @@ void ALatebrakeCarPawn::MenuPrevious()
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->MenuPrevious();
+    }
+}
+
+void ALatebrakeCarPawn::MenuDetailsNext()
+{
+    if (const ALatebrakeRaceGameMode* Mode =
+            GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        if (Mode->IsMenuOpen())
+        {
+            if (APlayerController* PC = Cast<APlayerController>(GetController()))
+            {
+                if (ALatebrakeRaceHUD* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+                {
+                    Hud->ScrollMenuDetails(1);
+                }
+            }
+        }
+    }
+}
+
+void ALatebrakeCarPawn::MenuDetailsPrevious()
+{
+    if (const ALatebrakeRaceGameMode* Mode =
+            GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        if (Mode->IsMenuOpen())
+        {
+            if (APlayerController* PC = Cast<APlayerController>(GetController()))
+            {
+                if (ALatebrakeRaceHUD* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+                {
+                    Hud->ScrollMenuDetails(-1);
+                }
+            }
+        }
     }
 }
 
@@ -872,6 +911,12 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& PreviousMenu = PlayerInputComponent->BindAction(
         TEXT("MenuPrevious"), IE_Pressed, this, &ALatebrakeCarPawn::MenuPrevious);
     PreviousMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& DetailsNext = PlayerInputComponent->BindAction(
+        TEXT("MenuDetailsNext"), IE_Pressed, this, &ALatebrakeCarPawn::MenuDetailsNext);
+    DetailsNext.bExecuteWhenPaused = true;
+    FInputActionBinding& DetailsPrevious = PlayerInputComponent->BindAction(
+        TEXT("MenuDetailsPrevious"), IE_Pressed, this, &ALatebrakeCarPawn::MenuDetailsPrevious);
+    DetailsPrevious.bExecuteWhenPaused = true;
     FInputActionBinding& ConfirmMenu = PlayerInputComponent->BindAction(
         TEXT("MenuActivate"), IE_Pressed, this, &ALatebrakeCarPawn::MenuActivate);
     ConfirmMenu.bExecuteWhenPaused = true;
