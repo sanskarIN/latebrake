@@ -15,7 +15,7 @@ planar separation** from consecutive verified radar frames:
 - **SEPARATING**: direct distance increased by at least 2m/s for 0.4s.
 - **Unavailable**: first reading, low-speed jitter, Time Attack,
   invalid/missing physics, or broken frame/racing eligibility.
-- Valid measurements require a 0.01–0.25s sampled frame interval, a
+- Valid measurements require a 0.001–0.25s sampled frame interval, a
   grounded player/rival marker, finite direct separation and nearby
   opponent within 100m.
 - An impossible inferred jump above 90m/s invalidates the prior
