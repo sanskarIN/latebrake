@@ -77,7 +77,7 @@ run installed QA, then follow with Android candidate and mobile controls.
 A manual authorized self-hosted runner may execute the new pipeline; the
 ordinary CI cannot package Unreal games. No new version is being published
 solely because packaging helper scripts now exist.
-### Recent published source-only milestones
+### Recent source-only milestones
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
