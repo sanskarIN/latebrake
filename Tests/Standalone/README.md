@@ -267,3 +267,31 @@ ctest --test-dir Tests/Standalone/build -R '^(CornerTractionAssist|WrongWayIndic
 A passing policy suite is **not** a UE 5.8 compile or real Win64/
 Android HUD/driving qualification. See
 [handling and wayfinding QA](../../docs/HANDLING_WAYFINDING_QA.md).
+
+
+### v0.5.60 — multi-subsystem racing expansion
+
+New portable C++20 production-linked targets:
+
+- `DrivingSessionStats` compiles real `Private/Racing/DrivingSessionStats.cpp`.
+  It checks elapsed/distance units, brake-edge counting, peak speed,
+  drift time, pause/teleport discontinuities, reset and bad frames.
+- `CircuitRouteAdvisor` compiles `Private/Track/CircuitRouteAdvisor.cpp`.
+  It checks the real circuit's next-gate coordinates, heading signs,
+  wraparound, 53.5m direct start range, absent/rejected input.
+- `RivalCornerAnticipation` compiles the real
+  `Private/AI/RivalCornerAnticipation.cpp`. It checks all four bends,
+  approach speed control, stop/steering preservation, bad AI inputs.
+
+```sh
+cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+cmake --build Tests/Standalone/build --config Release
+ctest --test-dir Tests/Standalone/build -C Release -R '^(DrivingSessionStats|CircuitRouteAdvisor|RivalCornerAnticipation)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p '*IntegrationTests.py' -v
+```
+
+New source contracts verify `GameMode::RestartRace` resets telemetry,
+actual Chaos Tick feeds its policy after finite guards, actual HUD
+uses the player's authoritative next gate and the AI applies the
+corner policy after computing `PlanRivalTurn`. No suite compiles
+licensed UE 5.8 C++/UHT or replaces installed gameplay QA.

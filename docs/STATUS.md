@@ -5,6 +5,15 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.60 source pre-release candidate — race navigation, measured driving and rival corners
+
+- **New real production code, not placeholder version bumps:** `DrivingSessionStats.h/.cpp` accumulates bounded, run-local approximate distance, peak speed, distinct braking actions and high-side-slip/braking time from actual Chaos physics tick samples. `ALatebrakeCarPawn` owns the tracker, resets it at race RESTART and suspends continuity at any physics/OS interruption or teleport. The expanded HUD displays the measured information without altering saves, rewards or scoring.
+- **Player wayfinding:** `CircuitRouteAdvisor.h/.cpp` computes direct-line meters and a steering bearing toward the actual next `RaceProgress` checkpoint from the engine position and yaw. Guidance fails closed for invalid gates, off-track/malformed samples and ineligible sessions; compact HUD only shows near-gate guidance. It has no authority to award a checkpoint.
+- **Opponent update:** `RivalCornerAnticipation.h/.cpp` wraps existing `PlanRivalTurn` output to request earlier bounded speed reduction before the original four 90-degree bends. It preserves the primary pilot's steering and stop decisions, finite rival recovery budget, and player-authoritative race results.
+- **Tests:** three standalone strict C++20 production-linked suites, two Python Unreal source-binding suites and documentation hardware acceptance plans, all under a dedicated source-only release publisher with exact-SHA GitHub tag policy and zero executable-asset contract.
+- **GitHub publication:** v0.5.60 is intended to be published as a GitHub source-only **pre-release only after Windows/macOS/Linux C++20, editor-source Python, synthetic PowerShell policy and MkDocs checks all succeed**. The existing published v0.5.46 snapshot remains the prior release. There is no valid installed EXE/APK evidence.
+- **Outstanding blocking gate:** licensed UE 5.8 Editor/UHT compile, authentic binary cookable circuit, real Win64/Android packaging, input/physics/HUD playtests, artifact hashing and reproducible device evidence (issue #13).
+
 ## v0.5.53 source development — corner traction and wrong-way guidance
 
 - **Unreleased gameplay source:** A new `CornerTractionAssist.h` tempers **positive motor demand** under sustained high-speed lateral sliding, with stronger intervention in Simulation Inspired than Arcade. It preserves full launch/straight authority, does not rewrite driver BRAKE or reverse input, and applies after Chaos velocity validation in the shared player/gamepad/touch/rival pawn physics tick.

@@ -1,6 +1,7 @@
 #include "AI/LatebrakeRivalCar.h"
 
 #include "AI/RivalPilot.h"
+#include "AI/RivalCornerAnticipation.h"
 #include "AI/RivalDriveReadiness.h"
 #include "Track/CircuitLayout.h"
 #include "Engine/World.h"
@@ -91,9 +92,11 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     const latebrake::CircuitPoint NextTarget =
         latebrake::CircuitGate(Route.GetNextWaypoint());
-    const latebrake::PilotCommand Command = latebrake::PlanRivalTurn(
-        Position.X, Position.Y, Heading, FlatSpeed,
-        NextTarget.X, NextTarget.Y);
+    const latebrake::PilotCommand Command = latebrake::AnticipateRivalCorner(
+        latebrake::PlanRivalTurn(
+            Position.X, Position.Y, Heading, FlatSpeed,
+            NextTarget.X, NextTarget.Y),
+        Route.GetNextWaypoint(), {Position.X, Position.Y}, FlatSpeed);
 
     // Plan the control for this physics tick, not one frame after applying
     // the previous command.

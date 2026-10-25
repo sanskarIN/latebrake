@@ -7,6 +7,7 @@
 #include "Racing/LiveSectorTarget.h"
 #include "UI/TouchControlLayout.h"
 #include "Track/CircuitMap.h"
+#include "Track/CircuitRouteAdvisor.h"
 #include "Engine/Engine.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
@@ -293,8 +294,47 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(bCompact ? TEXT("WRONG WAY - TURN AROUND")
                       : TEXT("WRONG WAY - RETURN TO CIRCUIT DIRECTION"), Accent);
     }
+    // Guidance is projected from the actual next authoritative gate;
+    // the direct-line range is NOT a track distance or a scoring shortcut.
+    const latebrake::CircuitRouteAdvice RouteAdvice =
+        latebrake::AdviseCircuitRoute(
+            Race.GetNextCheckpoint(),
+            {WayfindingPosition.X, WayfindingPosition.Y},
+            Car->GetActorRotation().Yaw, bWayfindingEligible);
+    if (RouteAdvice.Valid && (!bCompact || RouteAdvice.Approaching))
+    {
+        const TCHAR* Hint = TEXT("STRAIGHT");
+        switch (RouteAdvice.Hint)
+        {
+        case latebrake::RouteHint::Left: Hint = TEXT("LEFT"); break;
+        case latebrake::RouteHint::Right: Hint = TEXT("RIGHT"); break;
+        case latebrake::RouteHint::TurnAround: Hint = TEXT("TURN AROUND"); break;
+        default: break;
+        }
+        Line(FString::Printf(
+            bCompact ? TEXT("NEXT GATE %.0fm | %s")
+                     : TEXT("DIRECT TO NEXT GATE %.0fm | BEARING %s"),
+            RouteAdvice.DirectDistanceMeters, Hint), Primary);
+    }
     Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
         DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
+    if (!bCompact)
+    {
+        const latebrake::DrivingSessionStats& DriveStats =
+            Car->GetDrivingStats();
+        if (DriveStats.GetAcceptedSamples() > 0)
+        {
+            Line(FString::Printf(
+                TEXT("DRIVE DATA  %.2f km | PEAK %.0f km/h | BRAKES %d"),
+                DriveStats.GetDistanceKm(),
+                DriveStats.GetPeakSpeedKmH(),
+                DriveStats.GetBrakeApplications()), Primary);
+            Line(FString::Printf(
+                TEXT("MOTION  %.1fs BRAKING | %.1fs HIGH SIDE SLIP"),
+                DriveStats.GetBrakingSeconds(),
+                DriveStats.GetHighSlipSeconds()), Primary);
+        }
+    }
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
 
     if (!bCompact)

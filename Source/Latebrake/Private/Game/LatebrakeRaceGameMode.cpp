@@ -1243,6 +1243,10 @@ void ALatebrakeRaceGameMode::RestartRace()
     RecoveriesThisRace = 0;
     ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
+    if (IsValid(Car))
+    {
+        Car->ResetDrivingStats();
+    }
     const bool bPlacedOnGrid =
         IsValid(Car) && Car->TryRecoverTo(GetStartPosition(), GetStartRotation());
     RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);
