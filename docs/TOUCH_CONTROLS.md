@@ -316,3 +316,22 @@ once without latched controls; verify no race action replays from an old
 finger. Also test duplicate deactivation/foreground callbacks, menu-open
 deactivation, and interrupted SaveGame operations. Portable source tests
 cannot confirm actual OS event delivery or in-engine pausing.
+
+### v0.5.39 development candidate: physics and touch on failed OS pause
+
+If the app deactivates but Unreal fails to pause the world, the race-suspension
+latch also zeros the player's throttle, steering, filtered axes, and physical
+chassis linear/angular velocities on deactivation and surviving pawn ticks.
+New touches while suspended cannot drive, recover, restart or select career;
+only a fresh PAUSE press can invoke an intentional manual resume. Existing
+finger-down tracking rejects duplicate PAUSE notifications.
+
+**Installed QA still required:** while moving at nonzero speed, force the
+Unreal pause request to fail on an authorized engine build, switch out of the
+app, and verify both that the car does not travel a meaningful distance while
+the timer is frozen and that no throttle/steering or action taps are accepted.
+Return, tap PAUSE once, verify the first resumed movement has no stale gas or
+turning command, and verify genuine new steering/throttle presses work.
+Repeat for already-paused focus loss, duplicate OS events and OS auto-unpause.
+Check an installed Win64 candidate and physical Android hardware; the source
+contracts and portable policy tests cannot substitute for this evidence.
