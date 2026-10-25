@@ -20,8 +20,69 @@ REQUIRED_JOBS = ("portable-tests", "powershell-policy", "editor-policy", "releas
 _SHA = r"[0-9a-f]{40}"
 
 
+def verify_live_ci_source_release(version: str, source: str, notes: str) -> None:
+    """Validate the v0.5.60 post-merge source snapshot release model.
+
+    The historical v0.5.32-v0.5.46 workflows pin a known older SHA. This
+    workflow tests its *own* merged main SHA and releases that exact SHA,
+    so it must not claim a non-existent v0.5.59 predecessor release.
+    """
+    if version != "v0.5.60":
+        raise ValueError("dynamic source publisher is only authorized for v0.5.60")
+
+    def require(value: str, name: str) -> None:
+        if value not in source:
+            raise ValueError(f"{version}: missing {name}")
+
+    jobs = ("source-tests", "editor-tests", "packaging-policy",
+            "documentation", "source-prerelease")
+    for job in jobs:
+        if len(re.findall(r"^  " + re.escape(job) + r":\s*$",
+                          source, re.M)) != 1:
+            raise ValueError(f"{version}: missing or duplicate job {job}")
+
+    for value, name in (
+        ("  push:\n    branches: [main]", "main push trigger"),
+        ("- '.github/workflows/publish-v0.5.60-source.yml'",
+         "self-trigger only on main"),
+        ("  workflow_dispatch:", "manual retry capability"),
+        ("os: [ubuntu-latest, windows-latest, macos-latest]",
+         "all three real standalone build targets"),
+        ("cmake --build Tests/Standalone/build", "real production compile"),
+        ("ctest --test-dir Tests/Standalone/build", "complete test suite"),
+        ("python3 -m unittest discover", "Unreal binding verification"),
+        ("Test-PackagingPolicy.ps1", "synthetic archive policy"),
+        ("python scripts/verify_docs_site.py site", "documentation integrity"),
+        ("needs: [source-tests, editor-tests, packaging-policy, documentation]",
+         "all four mandatory publication gates"),
+        ("uses: actions/github-script@v7", "authenticated GitHub release"),
+        ("const tag = 'v0.5.60';", "correct immutable version"),
+        ("const sha = context.sha;", "CI-qualified run SHA"),
+        ("ref: ${{ github.sha }}", "exact source in all jobs"),
+        ("if (main !== sha)", "reject stale or superseded main checkout"),
+        ("existingRef.sha !== sha", "reject retagging"),
+        ("tag: 'v0.5.46'", "previous published source snapshot"),
+        ("prerelease: true", "pre-release flag"),
+        ("make_latest: 'false'", "no stable latest promotion"),
+        ("published.assets.length !== 0", "no executable attachments"),
+        ("docs/releases/v0.5.60.md", "matching release notes"),
+    ):
+        require(value, name)
+    if source.count("ref: ${{ github.sha }}") != 5:
+        raise ValueError(f"{version}: each qualification/release job must pin same SHA")
+
+    for warning in ("SOURCE-ONLY", "NOT a playable game build",
+                    "No compiled Win64 EXE", "Android APK/AAB",
+                    "not installers", "zero executable binaries"):
+        if warning not in notes:
+            raise ValueError(f"{version}: release notes missing {warning}")
+
+
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
+    if version == "v0.5.60":
+        verify_live_ci_source_release(version, source, notes)
+        return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
     if not found_version or int(found_version.group(1)) < 32:
         raise ValueError("only immutable source workflow versions >= v0.5.32 supported")
@@ -122,6 +183,32 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(fragment=invalid[:100]):
                 with self.assertRaises(ValueError):
                     verify_modern_source_release(version, invalid, notes)
+
+    def test_v0560_dynamic_source_release_rejects_missing_gates(self):
+        source = (WORKFLOWS / "publish-v0.5.60-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.60.md").read_text(
+            encoding="utf-8"
+        )
+        verify_modern_source_release("v0.5.60", source, notes)
+        mutations = (
+            source.replace("const sha = context.sha;",
+                           "const sha = '0' * 40;", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("published.assets.length !== 0",
+                           "false /* unsafe assets */", 1),
+            source.replace(
+                "needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                "needs: [source-tests]", 1),
+            source.replace("prerelease: true", "prerelease: false", 1),
+            source.replace("ref: ${{ github.sha }}",
+                           "ref: main", 1),
+        )
+        for invalid in mutations:
+            with self.subTest(fragment=invalid[-100:]):
+                with self.assertRaises(ValueError):
+                    verify_modern_source_release("v0.5.60", invalid, notes)
 
     def test_required_release_warnings_fail_closed(self):
         version = "v0.5.32"
