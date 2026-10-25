@@ -378,3 +378,25 @@ python3 -m unittest discover -s Tests/Editor -p 'RivalRelativeMotionBindingTests
 No Unreal runtime, cooked map or installed Android/Win64 game has
 been tested through this target; see
 [installed device QA](../../docs/RIVAL_RELATIVE_MOTION_QA.md).
+
+### v0.5.66 — bounded race HUD vertical layout
+
+`HudVerticalPlanTests.cpp` strictly compiles the production
+`UI/HudVerticalPlan.h` with the real `HudLayout` and touch-control
+geometry. It checks the last permitted telemetry row fits before a
+reserved save failure warning, PAUSE/FINISH has its own baseline, and
+both remain clear of the physical lower Android steering and throttle
+pads. It includes Windows/desktop, mobile landscape/portrait, minimum
+dimensions and NaN/Infinity rejection.
+
+`Tests/Editor/HudVerticalPlanBindingTests.py` checks actual Unreal
+HUD callsite ordering and fixed footer. No source test qualifies Unreal
+rendered font bounds, horizontal action-button overlap or actual
+installed device gameplay.
+
+```sh
+ctest --test-dir Tests/Standalone/build -C Release -R '^(HudLayout|TouchControlLayout|HudVerticalPlan)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'HudVerticalPlanBindingTests.py' -v
+```
+
+See [real device QA](../../docs/HUD_VERTICAL_QA.md).
