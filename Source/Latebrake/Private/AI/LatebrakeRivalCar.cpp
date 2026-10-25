@@ -62,10 +62,22 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
-        RecoverTo(FVector(Pose.Position.X, Pose.Position.Y, 180.0),
-                  FRotator(0.0, Pose.HeadingDegrees, 0.0));
-        // Reset controls but keep waypoint/lap count and recovery history.
-        SetAutonomousControls(0.f, 0.f, false);
+        // Record a recovery outcome only after the same verified engine
+        // placement policy used by the local player's paid RECOVER runs.
+        // A rejected/misplaced/unstable teleport is a failed ATTEMPT, not a
+        // successful recovery. The finite attempt budget is never refunded.
+        const bool bRecovered = TryRecoverTo(
+            FVector(Pose.Position.X, Pose.Position.Y, 180.0),
+            FRotator(0.0, Pose.HeadingDegrees, 0.0));
+        const bool bReported = Route.ReportRecoveryResult(bRecovered);
+        if (!bReported || !bRecovered)
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: rival recovery placement not verified; retry after new stall"));
+        }
+        // A failed placement must not reuse the old acceleration command.
+        // Keep the waypoint/lap history even when a recovery fails.
+        SetAutonomousControls(0.f, 0.f, !bRecovered);
         Super::Tick(DeltaSeconds);
         return;
     }
