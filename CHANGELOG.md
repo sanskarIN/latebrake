@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.44 — In development; NOT released (2026-10-25)
+
+- Candidate archives now use **manifest schema 2** with `unreal_engine_build_sha256`: SHA256 of the exact installed `Engine/Build/Build.version` bytes, not just the broad `5.8` version string. Previously two UE 5.8 builds with different underlying changelists/metadata could be treated as one Win64/Android candidate.
+- `Build-PlayableCandidate.ps1` pins that engine metadata before Editor compilation, verifies it after map authoring and passes it to both UAT cooking and candidate manifest writing. Direct `Build-PreRelease.ps1` also rechecks engine metadata before/after UAT; the manifest writer refuses a different expected build fingerprint.
+- Both archive verification and cross-platform pairing fail closed on missing/uppercase/malformed engine fingerprints, unsupported schema 1, and Windows/Android metadata mismatches despite identical source SHA, map SHA and `5.8` labels.
+- New disposable synthetic Build.version changelist/tamper fixtures, candidate manifest/pair negatives and Python wiring contracts are CI checks. **This does not authenticate installed Unreal executables, compile UE/UHT, cook a level or create a playable package**; source-only validation and real hardware checks remain separate requirements.
+
 ## v0.5.43 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Fix a remaining standalone **ESC/gamepad/mobile PAUSE failure**: when `SetGamePaused(true)` returns without pausing Unreal, the prior manual pause handler neither latched any fallback nor stopped the race clock. Only menu/OS interruptions already had independent latches.
