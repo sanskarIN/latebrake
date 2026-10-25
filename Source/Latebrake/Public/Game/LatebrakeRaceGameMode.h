@@ -5,6 +5,7 @@
 #include "Racing/RaceProgress.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/AppFocusRaceGuard.h"
+#include "Racing/ManualRacePauseGuard.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageTuningKey.h"
@@ -40,6 +41,7 @@ public:
     void ToggleRacePause();
     void PauseForAppInterruption();
     bool IsFocusLossGuardActive() const { return AppFocusGuard.IsSuspended(); }
+    bool IsManualRacePauseActive() const { return ManualPause.IsSuspended(); }
     void MenuNext();
     void MenuPrevious();
     void MenuActivate();
@@ -115,6 +117,7 @@ private:
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
     latebrake::AppFocusRaceGuard AppFocusGuard;
+    latebrake::ManualRacePauseGuard ManualPause;
     float PersonalBestSeconds = 0.f;
     float BestTimeAttackSeconds = 0.f;
     float PersonalBestLapSeconds = 0.f;
