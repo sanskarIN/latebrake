@@ -359,3 +359,22 @@ python3 -m unittest discover -s Tests/Editor -p 'RivalProximityBindingTests.py' 
 ```
 
 See [rival proximity device QA](../../docs/RIVAL_PROXIMITY_QA.md).
+
+### v0.5.65 — grounded direct rival separation trends
+
+`RivalRelativeMotionTests.cpp` links the actual production
+`Private/Track/RaceMiniMap.cpp` and checks 0.4s sustained signed
+CLOSING/SEPARATING, 2m/s jitter threshold, 90m/s jump reset, frame
+timing rejection, missing/invalid rival state, reversing direction,
+candidate boundedness and explicit teleport/session resets.
+`Tests/Editor/RivalRelativeMotionBindingTests.py` binds the one real
+HUD radar sample to the desktop and compact advisory renderers.
+
+```sh
+ctest --test-dir Tests/Standalone/build -C Release -R '^(RaceMiniMap|RivalProximityIndicator|RivalRelativeMotion)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'RivalRelativeMotionBindingTests.py' -v
+```
+
+No Unreal runtime, cooked map or installed Android/Win64 game has
+been tested through this target; see
+[installed device QA](../../docs/RIVAL_RELATIVE_MOTION_QA.md).

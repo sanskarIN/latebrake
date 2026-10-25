@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.46">v0.5.46</a>, a <strong>source-only pre-release</strong>. The Unreal pawn now checks actual vehicle RECOVER placement before committing a five-second race penalty or recovery count; failed or mismatched moves are not charged. Portable production C++20 and source integration tests passed, but <strong>there are no verified Windows or Android game binaries</strong>. Genuine Unreal Engine 5.8 Editor/UHT compilation, authored cooked circuit, installable packages and physical-device QA are still outstanding.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.60">v0.5.60</a>, a <strong>source-only pre-release</strong>. Active v0.5.65 source development adds grounded rival radar, close-opponent alerts and measured direct closing/separating advice. Portable C++20 policy and source-contract tests are not proof of a playable engine build. <strong>No verified Windows or Android game binaries are available.</strong> Licensed Unreal Engine 5.8 Editor/UHT compilation, an actual cooked circuit, installed packages and physical-device QA remain outstanding.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
