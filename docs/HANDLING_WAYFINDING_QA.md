@@ -18,7 +18,9 @@ throttle when substantial lateral drift develops on a moving car:
 - Full launch authority below 900 cm/s (32.4 km/h) longitudinal speed,
   or below 250 cm/s lateral drift.
 - Above the thresholds, a bounded lateral/longitudinal slip proxy
-  smoothly scales the **already-smoothed** positive throttle.
+  scales the **already-smoothed** positive throttle. To prevent abrupt
+  force steps at either onset, it fades in continuously over the next
+  **500 cm/s forward** and **300 cm/s sideways** movement.
 - Arcade retains at least **58%** of normalized positive motor demand;
   Simulation Inspired retains at least **45%**. Simulation Inspired
   reaches its stronger intervention earlier.
