@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.43 — Development candidate, NOT released (2026-10-25)
+
+- Fix a remaining standalone **ESC/gamepad/mobile PAUSE failure**: when `SetGamePaused(true)` returns without pausing Unreal, the prior manual pause handler neither latched any fallback nor stopped the race clock. Only menu/OS interruptions already had independent latches.
+- New allocation-free `ManualRacePauseGuard` records the player's explicit pause intention before calling Unreal. Even after a rejected world pause, GameMode time, ordered checkpoint scoring, paid recovery, player physics inputs, autonomous rival navigation and mobile driving pads remain blocked; a fresh deliberate PAUSE press, menu return or accepted restart clears the fallback.
+- Advance checkpoint session revision on manual pause/resume *even when Unreal's world-pause status is unchanged*, so a sampled pre-pause gate path cannot cross into a later resumed run. HUD labels the fallback state PAUSED and highlights the mobile PAUSE pad.
+- Add portable C++20 regression scenarios using the real `RaceProgress.cpp`, session/gate trace, recovery, rival and player driver policies, plus Python checks for all actual Unreal callsites. These are source tests **only**: genuine Unreal Engine 5.8 pause-failure, UHT, Chaos contact, cooked map and device touch remain unverified.
+
 ## v0.5.42 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Close an input/physics fairness gap when ordinary menu/engine pause fails but Unreal still ticks the player pawn: the race clock and checkpoints already stop, but raw gamepad axes could still rebuild thrust and steering. The player now blocks new driving force, clears raw/filtered inputs and held touch ownership, and neutralizes previous physical momentum whenever the race is not eligible to accept driving.
