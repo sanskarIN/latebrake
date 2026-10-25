@@ -3,6 +3,7 @@
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
+#include "Racing/RecoveryTeleportVerification.h"
 #include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
 #include "UI/TouchViewportSafety.h"
@@ -406,16 +407,57 @@ float ALatebrakeCarPawn::GetSpeedKmH() const
     return FMath::IsFinite(SpeedKmH) ? FMath::Max(0.f, SpeedKmH) : 0.f;
 }
 
-void ALatebrakeCarPawn::RecoverTo(const FVector& Position, const FRotator& Rotation)
+bool ALatebrakeCarPawn::TryRecoverTo(
+    const FVector& Position, const FRotator& Rotation)
 {
-    // Notify all four checkpoint samplers of the discontinuity even when
-    // its displacement is short enough to look like a valid plane crossing.
-    // This applies to recovery, restart and first spawn repositioning.
+    // Reject invalid actor/target state before modifying physics. Do not
+    // claim a paid recovery succeeded just because SetActor was called.
+    if (!IsValid(Chassis) ||
+        !FMath::IsFinite(Position.X) ||
+        !FMath::IsFinite(Position.Y) ||
+        !FMath::IsFinite(Position.Z) ||
+        !FMath::IsFinite(Rotation.Pitch) ||
+        !FMath::IsFinite(Rotation.Yaw) ||
+        !FMath::IsFinite(Rotation.Roll))
+    {
+        return false;
+    }
+
+    // Even a failed Unreal transform request can disturb the body state;
+    // invalidate all pre-recovery checkpoint samples BEFORE attempting it.
     ++TeleportRevision;
-    Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
-    Chassis->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-    SetActorLocationAndRotation(Position, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
     ClearDriverInputs();
+    if (Chassis->IsSimulatingPhysics())
+    {
+        Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
+        Chassis->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+    }
+    const bool bEngineMoved = SetActorLocationAndRotation(
+        Position, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+    const FVector Observed = GetActorLocation();
+    const FRotator ObservedRotation = GetActorRotation();
+    const latebrake::RecoveryTeleportDecision Result =
+        latebrake::EvaluateRecoveryTeleport({
+            bEngineMoved,
+            Position.X, Position.Y, Position.Z, Rotation.Yaw,
+            Observed.X, Observed.Y, Observed.Z, ObservedRotation.Yaw
+        });
+    if (Result != latebrake::RecoveryTeleportDecision::Verified)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: recovery transform not verified (%s); no player time charged"),
+            UTF8_TO_TCHAR(latebrake::RecoveryTeleportDecisionName(Result)));
+        return false;
+    }
+    return true;
+}
+
+void ALatebrakeCarPawn::RecoverTo(
+    const FVector& Position, const FRotator& Rotation)
+{
+    // Existing Blueprint, initial positioning, restart and AI paths use the
+    // same checked move but have no race-time recovery penalty.
+    TryRecoverTo(Position, Rotation);
 }
 
 void ALatebrakeCarPawn::RecoverPressed()
