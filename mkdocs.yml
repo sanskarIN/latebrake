@@ -100,6 +100,7 @@ nav:
       - Gate QA summaries: GATE_QA_SUMMARIES.md
       - Player race clock QA: PLAYER_RACE_CLOCK_QA.md
       - Race clock readiness QA: RACE_CLOCK_READINESS_QA.md
+      - Vehicle dynamics readiness QA: VEHICLE_DYNAMICS_QA.md
       - Save migration: SAVE_MIGRATION.md
   - Roadmap & history:
       - Roadmap: ROADMAP.md
