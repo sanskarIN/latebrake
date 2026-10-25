@@ -38,7 +38,11 @@ RaceMiniMapSnapshot BuildRaceMiniMapSnapshot(
     {
         result.NextGate = MakeMarker(CircuitGate(nextGate));
     }
-    if (!playerReady || !std::isfinite(playerHeadingDegrees))
+    // A mathematically finite but astronomically large yaw is not a
+    // meaningful Chaos/FRotator reading. Refuse it rather than letting
+    // angle reduction manufacture a seemingly valid race direction.
+    if (!playerReady || !std::isfinite(playerHeadingDegrees) ||
+        std::abs(playerHeadingDegrees) > 360000.0)
     {
         return result;
     }
