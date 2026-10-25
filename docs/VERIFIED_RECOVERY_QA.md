@@ -1,4 +1,4 @@
-# Verified player recovery teleport — v0.5.46 source development
+# Verified player recovery teleport — v0.5.46, extended in v0.5.47 source development
 
 > This document describes source validation. Genuine Unreal Engine 5.8
 > compilation and installed Win64/Android physics QA have **not** happened.
@@ -15,15 +15,22 @@ actor ended elsewhere), the player could lose time without being recovered.
 
 - `Racing/RecoveryTeleportVerification.h/.cpp`: pure production C++20
   classification of `EngineRejected`, `NonfinitePose`, `PositionMismatch`,
-  `HeadingMismatch`, `Verified`. An accepted move must land within 5 cm
-  of the intended **3D** position and within 2° of the target yaw (with
-  equivalent 360°-wrapped headings accepted).
+  `HeadingMismatch`, `OrientationMismatch`,
+  `PostMovePhysicsUnavailable`, `NonfinitePostMoveMotion`,
+  `ResidualMotion` and `Verified`. An accepted move must land within 5 cm
+  of the intended **3D** position and within 2° on **yaw, pitch and roll**
+  (equivalent 360°-wrapped Euler-axis readings are accepted). It must also
+  leave an operational Chaos chassis, residual linear speed at most
+  **1 cm/s**, and residual angular speed at most **1 degree/s**; both
+  speed limits apply to full 3D vector magnitudes, not individual axes.
 - `ALatebrakeCarPawn::TryRecoverTo`: validates finite target coordinates
   and heading, invalidates checkpoint interpolation by incrementing
   `TeleportRevision` **before** the move attempt, zeroes input and live
   chassis motion, calls Unreal with `ETeleportType::TeleportPhysics`, then
-  observes the resulting position and rotation and returns true only for a
-  verified placement. The existing Blueprint-facing `void RecoverTo`
+  observes the resulting position, complete rotation, post-move mass,
+  collision, simulation and 3D velocities and returns true only for a
+  verified placement. Even a new caller omitting the post-move readiness
+  field fails closed. The existing Blueprint-facing `void RecoverTo`
   delegates to it; restart and rival code retain their API.
 - `RecoveryCharge.h`: `TryChargePlayerRecoveryAfterVerifiedTeleport`
   computes exactly the five-second penalty on a local copy of the
@@ -41,9 +48,12 @@ positions into a new ordered gate award.
 
 **Limitations:** The transaction executes synchronously on Unreal's game
 thread. If a future callback modifies the race clock concurrently, the
-assumption would need revisiting. Placement verification reports observed
-coordinates; it is not proof of safe road collision, an unblocked spawn,
-correct future physics contact or a complete device qualification.
+assumption would need revisiting. Placement and instantaneous post-move
+physics verification **do not** prove safe road contact, an unblocked spawn,
+later-frame Chaos stability, correct recovery after a partially accepted
+failed move, or complete device qualification. Failed attempts still advance
+the checkpoint trace generation to prevent a pre-/post-teleport gate splice.
+Physical Windows/Android acceptance and real Unreal compilation are pending.
 
 ## Source verification
 
@@ -56,7 +66,8 @@ python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
 
 The focused CTest compiles the actual production verification `.cpp` and
 `RaceProgress.cpp`; tests engine-denied movement, mismatched Z and lateral
-position, misaligned and wrapped yaw, nonfinite fields, readiness denial
+position, mismatched pitch/roll and wrapped angles, post-move invalid chassis,
+nonfinite or excessive linear/angular velocity, readiness denial
 without invoking the callback, unrepresentable penalty, exhausted counter,
 race finish, unsuccessful no-charge retry, exact post-success penalty and
 post-teleport checkpoint re-baselining. Python tests inspect actual Unreal
@@ -69,9 +80,12 @@ source bindings and order, **not** a live UE compiler.
 2. Install a candidate with an authentic cooked circuit and verify RECOVER
    from a healthy car; observe new coordinates, heading, +5s and +1 count.
 3. Using a **development-only test harness**, simulate a failed
-   `SetActorLocationAndRotation` return or mismatched observed transform
-   without damaging real physics objects. Verify that no time, recovery
-   counter, penalty audit or medal benefit is changed.
+   `SetActorLocationAndRotation` return, mismatched observed X/Y/Z,
+   mismatched pitch/yaw/roll, post-move disabled collision or physics,
+   and unexpected linear or angular motion without damaging real physics
+   objects. Verify that no time, recovery counter, penalty audit or medal
+   benefit is changed. Repeat on a normal successful recovery and confirm
+   3D residual velocities are bounded immediately after the engine move.
 4. Confirm normal restart and rival recovery still work, the pawn's
    `TeleportRevision` prevents false gate scoring and the next genuine
    forward plane crossing still scores.
