@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.51 source development — close paid RECOVER restart-grid bypass
+
+- **Unreleased corrective work:** Source audit caught an inconsistency in v0.5.50. `HasLocalPlayerDriver()` already blocked clock, scoring and rival eligibility after failed restart-grid placement, but `RecoverPlayer()` passed only `Car->IsRacePhysicsReady()` to its staged fee/teleport policy. A physically valid car in the wrong location could therefore still authorize a paid RECOVER.
+- **Fixed actual Unreal caller:** The staged paid recovery transaction now receives `HasLocalPlayerDriver()` so its eligibility includes the verified restart placement guard and the existing live chassis state. A failed grid restart cannot trigger a new player teleport or five-second fee; an explicit verified retry re-enables legitimate paid recovery.
+- **Fail-closed driving default:** `PlayerDriveConditions::RestartPlacementReady` now defaults to `false`, so six-field/omitted callsites cannot accidentally enable full player/rival yaw torque. All legitimate C++ callers and test fixtures explicitly supply the verified seventh bit.
+- **Verification:** Extended production `RaceProgress.cpp`-linked portable tests cover healthy chassis + rejected grid, untouched counters and callback, successful restart + paid recovery, and all 128 drive-state combinations; Python source bindings require the authoritative recovery check. See [restart-grid QA](RESTART_PLACEMENT_QA.md). Real UE 5.8 compilation, cooked content and installed hardware gameplay remain separate blockers.
+
 ## v0.5.50 source development — fail-closed player restart-grid placement
 
 - **Unreleased:** A race RESTART previously reset the authoritative clock then used a `void RecoverTo` that ignored engine teleport failure. A perfectly finite old-position chassis could still earn racing time and ordered gates after a rejected grid placement.
