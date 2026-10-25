@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
+#include "Vehicles/VehicleDynamicsReadiness.h"
 #include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
 #include "UI/TouchViewportSafety.h"
@@ -264,6 +265,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         return;
     }
 
+    // The authoritative clock also requires valid Chaos angular velocity and
+    // positive mass. Fail closed *before* throttle smoothing/force application,
+    // not one frame after GameMode notices an invalid physics body.
+    if (!IsRacePhysicsReady())
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
+
 #if PLATFORM_ANDROID
     // Orientation and viewport resizing can arrive without *any* subsequent
     // touch-move event. Cancel already-held driving axes in the physics tick
@@ -366,6 +376,7 @@ bool ALatebrakeCarPawn::IsRacePhysicsReady() const
     // accumulating race time or authorize directional gate credits.
     const FVector Position = GetActorLocation();
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
+    const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInDegrees();
     return latebrake::IsRaceVehiclePhysicsReady({
         true,
         Chassis->GetStaticMesh() != nullptr,
@@ -374,13 +385,25 @@ bool ALatebrakeCarPawn::IsRacePhysicsReady() const
         Chassis->GetCollisionResponseToChannel(ECC_WorldStatic) == ECR_Block,
         Position.X, Position.Y, Position.Z,
         Velocity.X, Velocity.Y, Velocity.Z
+    }) && latebrake::AreVehicleDynamicsReady({
+        Chassis->GetMass(),
+        AngularVelocity.X, AngularVelocity.Y, AngularVelocity.Z
     });
 }
 
 float ALatebrakeCarPawn::GetSpeedKmH() const
 {
+    if (!IsValid(Chassis))
+    {
+        return 0.f;
+    }
     const FVector V = Chassis->GetPhysicsLinearVelocity();
-    return FVector(V.X, V.Y, 0.f).Size() * 0.036f;
+    if (!FMath::IsFinite(V.X) || !FMath::IsFinite(V.Y))
+    {
+        return 0.f;
+    }
+    const float SpeedKmH = FVector(V.X, V.Y, 0.f).Size() * 0.036f;
+    return FMath::IsFinite(SpeedKmH) ? FMath::Max(0.f, SpeedKmH) : 0.f;
 }
 
 void ALatebrakeCarPawn::RecoverTo(const FVector& Position, const FRotator& Rotation)
