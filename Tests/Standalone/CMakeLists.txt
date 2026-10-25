@@ -696,3 +696,18 @@ else()
     target_compile_options(latebrake_off_track_advisor_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME OffTrackAdvisor COMMAND latebrake_off_track_advisor_tests)
+
+# v0.5.62: production radar minimap projection, true rival marker,
+# heading tick and grounded direct separation (no position ranking).
+add_executable(latebrake_race_minimap_tests
+    RaceMiniMapTests.cpp
+    ../../Source/Latebrake/Private/Track/RaceMiniMap.cpp
+)
+target_include_directories(latebrake_race_minimap_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_minimap_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_minimap_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_minimap_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceMiniMap COMMAND latebrake_race_minimap_tests)

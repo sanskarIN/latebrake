@@ -931,6 +931,25 @@ bool ALatebrakeRaceGameMode::HasRival() const
     return IsValid(RivalCar);
 }
 
+bool ALatebrakeRaceGameMode::TryGetRivalRadarPosition(FVector& OutPosition) const
+{
+    // The radar is observational only. Never report a stale/destroyed
+    // rival actor or claim that an unhealthy body represents live racing.
+    if (!IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    const FVector Position = RivalCar->GetActorLocation();
+    if (!FMath::IsFinite(Position.X) ||
+        !FMath::IsFinite(Position.Y) ||
+        !FMath::IsFinite(Position.Z))
+    {
+        return false;
+    }
+    OutPosition = Position;
+    return true;
+}
+
 int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps() const
 {
     return IsValid(RivalCar) ? RivalCar->GetApproximateLaps() : 0;

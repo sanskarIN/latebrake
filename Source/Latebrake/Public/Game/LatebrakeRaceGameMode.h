@@ -60,6 +60,7 @@ public:
     latebrake::EventKind GetSelectedEvent() const { return SelectedEvent; }
     float GetEventBestSeconds() const;
     bool HasRival() const;
+    bool TryGetRivalRadarPosition(FVector& OutPosition) const;
     int32 GetRivalApproximateLaps() const;
     int32 GetRivalPlannedLaps() const;
     int32 GetRivalRecoveryCount() const;
