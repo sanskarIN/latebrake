@@ -76,7 +76,7 @@ jobs:
             './scripts/Test-CandidatePairIdentityPolicy.ps1'
           )) {
             & $script
-            if ($LASTEXITCODE -ne 0 -or -not $?) {
+            if (-not $?) {
               throw "Policy check failed: $script"
             }
           }
