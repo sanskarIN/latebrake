@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "UI/HudVerticalPlan.h"
+#include "UI/HudTextBounds.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/CurrentLapPotential.h"
@@ -51,6 +52,62 @@ void ALatebrakeRaceHUD::DrawHUD()
             static_cast<double>(Canvas->SizeX),
             static_cast<double>(Canvas->SizeY), Layout, bTouchHUD);
 
+    // On Android, reserve the entire right-hand touch-action column.
+    // Width is measured with the *actual* Unreal font and DrawText scale,
+    // not a guessed fixed character count. Binary-search only the first
+    // visible glyph units when a message exceeds the protected lane.
+    const latebrake::HudTextBounds HorizontalBounds =
+        latebrake::CalculateHudTextBounds(
+            static_cast<double>(Canvas->SizeX),
+            static_cast<double>(Canvas->SizeY), Layout, bTouchHUD);
+    const auto FitHudText = [&](const FString& Value, UFont* Font,
+                                float TextScale) -> FString
+    {
+        if (!HorizontalBounds.Valid || !Font || Value.IsEmpty() ||
+            !FMath::IsFinite(TextScale) || TextScale <= 0.f)
+        {
+            return {};
+        }
+        const auto Measure = [&](const FString& Text) -> double
+        {
+            float MeasuredWidth = 0.f;
+            float MeasuredHeight = 0.f;
+            GetTextSize(Text, MeasuredWidth, MeasuredHeight, Font, TextScale);
+            return static_cast<double>(MeasuredWidth);
+        };
+        const FString Suffix(TEXT("..."));
+        const int32 Prefix = latebrake::ChooseHudTextPrefix(
+            Value.Len(), HorizontalBounds.MaxWidthPixels,
+            Measure(Value), Measure(Suffix),
+            [&](int32 Units) -> double
+            {
+                return Measure(Value.Left(Units) + Suffix);
+            });
+        if (Prefix < 0)
+        {
+            return {};
+        }
+        if (Prefix == Value.Len())
+        {
+            return Value;
+        }
+        int32 SafePrefix = Prefix;
+        // Avoid cutting UTF-16 surrogate pairs on mobile builds. The
+        // existing HUD language is ASCII, but user-facing car names may
+        // eventually contain supplementary Unicode characters.
+        if (SafePrefix > 0 && SafePrefix < Value.Len())
+        {
+            const uint32 Previous = static_cast<uint32>(Value[SafePrefix - 1]);
+            const uint32 Following = static_cast<uint32>(Value[SafePrefix]);
+            if (Previous >= 0xD800u && Previous <= 0xDBFFu &&
+                Following >= 0xDC00u && Following <= 0xDFFFu)
+            {
+                --SafePrefix;
+            }
+        }
+        return Value.Left(SafePrefix) + Suffix;
+    };
+
     const latebrake::RaceProgress& Race = Mode->GetRace();
 
     if (Mode->IsMenuOpen())
@@ -64,8 +121,13 @@ void ALatebrakeRaceHUD::DrawHUD()
         const FLinearColor Gold(1.f, 0.73f, 0.17f);
         const auto MenuLine = [&](const FString& Value, bool bAccent = false)
         {
-            DrawText(Value, bAccent ? Gold : White, X, Y,
-                GEngine->GetSmallFont(), UIScale);
+            const FString Fitted = FitHudText(
+                Value, GEngine->GetSmallFont(), UIScale);
+            if (!Fitted.IsEmpty())
+            {
+                DrawText(Fitted, bAccent ? Gold : White, X, Y,
+                    GEngine->GetSmallFont(), UIScale);
+            }
             Y += 28.f * UIScale;
         };
         MenuLine(FString::Printf(TEXT("LATEBRAKE / %s"), *Mode->GetMenuPageTitle()), true);
@@ -233,9 +295,15 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             return;
         }
-        DrawText(Content, Color, Left, Y,
-            bHeading ? GEngine->GetMediumFont() : GEngine->GetSmallFont(),
-            Scale * (bHeading ? 1.08f : 1.0f));
+        UFont* Font = bHeading
+            ? GEngine->GetMediumFont() : GEngine->GetSmallFont();
+        const float TextScale = Scale * (bHeading ? 1.08f : 1.0f);
+        const FString Fitted = FitHudText(Content, Font, TextScale);
+        if (Fitted.IsEmpty())
+        {
+            return;
+        }
+        DrawText(Fitted, Color, Left, Y, Font, TextScale);
         ++DrawnTelemetryLines;
         Y += Step;
     };
@@ -293,8 +361,13 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     // Always prioritize authoritative lap/next gate and race clock above
     // optional proximity, wayfinding and driving telemetry on small phones.
-    Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
-        DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
+    Line(bTouchHUD
+        ? FString::Printf(TEXT("L%d/%d G%d/%d"),
+            DisplayLap, Race.GetRequiredLaps(),
+            Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount())
+        : FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
+            DisplayLap, Race.GetRequiredLaps(),
+            Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
 
     // The warning is pure HUD feedback. It must reset on pawn replacement,
@@ -660,9 +733,16 @@ void ALatebrakeRaceHUD::DrawHUD()
     // A save failure must remain visible after all racing stats are clipped.
     if (Mode->HasProgressSaveError() && VerticalPlan.Valid)
     {
-        DrawText(TEXT("WARNING: LOCAL PROGRESS COULD NOT BE SAVED"),
-            Accent, Left, static_cast<float>(VerticalPlan.SaveWarningY),
+        const FString SaveMessage = FitHudText(
+            bTouchHUD ? TEXT("SAVE FAILED - PROGRESS NOT STORED")
+                      : TEXT("WARNING: LOCAL PROGRESS COULD NOT BE SAVED"),
             GEngine->GetSmallFont(), Scale);
+        if (!SaveMessage.IsEmpty())
+        {
+            DrawText(SaveMessage, Accent, Left,
+                static_cast<float>(VerticalPlan.SaveWarningY),
+                GEngine->GetSmallFont(), Scale);
+        }
     }
 
     if (Race.IsFinished())
@@ -722,15 +802,30 @@ void ALatebrakeRaceHUD::DrawHUD()
         if (UGameplayStatics::IsGamePaused(this) ||
             Mode->IsManualRacePauseActive())
         {
-            DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, Left,
-                StatusY, GEngine->GetSmallFont(), Scale);
+            const FString PauseMessage = FitHudText(
+                bTouchHUD ? TEXT("PAUSED - TAP PAUSE")
+                          : TEXT("PAUSED  -  ESC TO RESUME"),
+                GEngine->GetSmallFont(), Scale);
+            if (!PauseMessage.IsEmpty())
+            {
+                DrawText(PauseMessage, Accent, Left,
+                    StatusY, GEngine->GetSmallFont(), Scale);
+            }
         }
         else if (Race.IsFinished())
         {
-            DrawText(latebrake::CanAwardFinishedRace(Race)
-                ? TEXT("FINISHED! PRESS T TO RACE AGAIN")
-                : TEXT("INVALID FINISH - PRESS T TO RETRY"),
-                Accent, Left, StatusY, GEngine->GetSmallFont(), Scale);
+            const FString FinishMessage = FitHudText(
+                latebrake::CanAwardFinishedRace(Race)
+                    ? (bTouchHUD ? TEXT("FINISHED - RESTART")
+                                 : TEXT("FINISHED! PRESS T TO RACE AGAIN"))
+                    : (bTouchHUD ? TEXT("INVALID FINISH")
+                                 : TEXT("INVALID FINISH - PRESS T TO RETRY")),
+                GEngine->GetSmallFont(), Scale);
+            if (!FinishMessage.IsEmpty())
+            {
+                DrawText(FinishMessage, Accent, Left, StatusY,
+                    GEngine->GetSmallFont(), Scale);
+            }
         }
     }
 
@@ -771,9 +866,16 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
     }
 #else
-    DrawText(bCompact
-        ? TEXT("W/S GAS  A/D STEER  SPACE BRAKE  T RESTART")
-        : TEXT("W/S DRIVE  A/D STEER  SPACE BRAKE  R RECOVER  T RESTART  C CAMERA  1/2 HANDLING  3/4 QUICK  N/M CAREER  Q/E GARAGE  U/I TUNING"),
-        Primary, Left, FooterY, GEngine->GetSmallFont(), Scale * (bCompact ? 0.90f : 0.78f));
+    const float FooterScale = Scale * (bCompact ? 0.90f : 0.78f);
+    const FString FooterMessage = FitHudText(
+        bCompact
+            ? TEXT("W/S GAS  A/D STEER  SPACE BRAKE  T RESTART")
+            : TEXT("W/S DRIVE  A/D STEER  SPACE BRAKE  R RECOVER  T RESTART  C CAMERA  1/2 HANDLING  3/4 QUICK  N/M CAREER  Q/E GARAGE  U/I TUNING"),
+        GEngine->GetSmallFont(), FooterScale);
+    if (!FooterMessage.IsEmpty())
+    {
+        DrawText(FooterMessage, Primary, Left, FooterY,
+            GEngine->GetSmallFont(), FooterScale);
+    }
 #endif
 }
