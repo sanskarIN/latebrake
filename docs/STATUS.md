@@ -5,6 +5,12 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.68 source development — bounded career/results menus
+
+- **Unreleased:** The menu-side `MenuLine` used a separate unbounded Y cursor despite v0.5.66/v0.5.67 improvements to the race HUD. New portable `HudMenuVerticalPlan` limits visible menu details above physical Android steering controls, reserves a `MORE MENU DETAILS HIDDEN` notice and keeps a SAVE FAILED banner visible independently of the regular menu list.
+- Strict portable C++20 tests cover portrait/mobile, full desktop and malformed viewport geometry; Python Unreal-source tests guard the actual Results/Career/Garage callbacks. See [menu vertical QA](HUD_MENU_VERTICAL_QA.md).
+- Omitted text still needs genuinely accessible scrolling/pagination and visual UE5.8/mobile validation. **This does not change gameplay scoring, navigation, saves or physics.** v0.5.65 remains the latest published source-only pre-release.
+
 ## v0.5.67 source development — measured, phone-safe HUD text widths
 
 - **Unreleased source improvement:** Race telemetry, menus, save/pause/finish banners and desktop footer now use actual Unreal `GetTextSize` font width measurements to elide long lines before they cross the physical Android action-pad column or desktop viewport edge.
