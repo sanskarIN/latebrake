@@ -143,6 +143,21 @@ int main()
     }
     Check(Near(tracker.GetCandidateSeconds(), 0.4),
           "longer warning accumulation remains bounded");
+    // High-refresh Unreal displays must still accumulate meaningful
+    // 144Hz time deltas rather than resetting every (<10ms) frame.
+    tracker.Reset();
+    constexpr double RefreshDelta = 1.0 / 144.0;
+    tracker.Update(snapshot(30.0), RefreshDelta, true);
+    RivalRelativeMotionAdvice highRefresh;
+    for (int frame = 1; frame <= 64; ++frame)
+    {
+        highRefresh = tracker.Update(
+            snapshot(30.0 - 3.0 * RefreshDelta * frame),
+            RefreshDelta, true);
+    }
+    Check(highRefresh.Trend == RivalRelativeTrend::Closing &&
+          Near(highRefresh.SeparationChangeMetersPerSecond, 3.0),
+          "144Hz samples report real 3m/s sustained closing");
     tracker.Reset();
     Check(tracker.GetConfirmedTrend() == RivalRelativeTrend::None &&
           tracker.GetCandidateSeconds() == 0.0,
