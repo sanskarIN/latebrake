@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.67 source development — measured, phone-safe HUD text widths
+
+- **Unreleased source improvement:** Race telemetry, menus, save/pause/finish banners and desktop footer now use actual Unreal `GetTextSize` font width measurements to elide long lines before they cross the physical Android action-pad column or desktop viewport edge.
+- Portable `HudTextBounds` derives a protected text lane from the original authoritative `TouchControlLayout`, rather than guessing glyph counts. Measured binary-search ellipsis and defensive width validation allow deterministic truncation; compact lap/gate and mobile warning/status strings use shorter wording.
+- Strict portable C++20 geometry tests and real HUD source binding tests cover multiple viewports, font width anomalies, button non-overlap and regression against hiding essential status. See [horizontal HUD QA](HUD_TEXT_WIDTH_QA.md).
+- Not a playable release: runtime Canvas glyph and high-DPI behavior, actual Android safe areas, Unreal Engine 5.8/UHT, cooked assets and installed Win64/Android QA remain outstanding; v0.5.65 is still the latest public GitHub pre-release.
+
 ## v0.5.66 source development — viewport-bounded HUD and critical race messages
 
 - **Unreleased:** Existing racing HUD telemetry could grow past its viewport and push keyboard hints below the bottom. Source-only `HudVerticalPlan` now bounds ordinary text rows using the real `HudLayout`, reserves separate visible save-warning and race-status rows, and fixes the footer baseline.
