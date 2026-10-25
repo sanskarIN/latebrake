@@ -80,8 +80,11 @@ int ChooseHudTextPrefix(
     {
         return -1;
     }
+    // The complete original was already measured as too wide; never
+    // return its full length even if a faulty measurement callback
+    // claims that same text plus the suffix would fit.
     int low = 0;
-    int high = length;
+    int high = std::max(0, length - 1);
     while (low < high)
     {
         const int middle = low + (high - low + 1) / 2;
