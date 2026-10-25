@@ -44,7 +44,7 @@ public:
         // A gap, teleport, missing physics, ambiguous radar point or
         // UI suspension must never be interpreted as rival motion.
         if (!raceEligible || !std::isfinite(deltaSeconds) ||
-            deltaSeconds < 0.01 || deltaSeconds > 0.25 ||
+            deltaSeconds < 0.001 || deltaSeconds > 0.25 ||
             !radar.Player.Position.Valid || !radar.Rival.Valid ||
             !radar.DirectRivalSeparationValid ||
             !std::isfinite(radar.DirectRivalSeparationMeters) ||
