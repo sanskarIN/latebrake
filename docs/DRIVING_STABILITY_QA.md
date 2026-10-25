@@ -78,7 +78,6 @@ integration/order. None of these exercises Unreal Engine or device physics.
    a user's device.
 
 Keep genuine source/engine/map/package hashes, logs, tester/device
-identifiers and observed behavior alongside [Android QA issue #13](
-https://github.com/sanskarIN/latebrake/issues/13).
+identifiers and observed behavior alongside [Android QA issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 A stable or playable release requires the separate complete acceptance
 gate; this source feature alone is insufficient.
