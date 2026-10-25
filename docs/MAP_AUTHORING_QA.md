@@ -1,8 +1,8 @@
-# v0.5.41 — Unreal starter-map receipt integrity (source candidate)
+# v0.5.41 — Unreal starter-map receipt integrity (published source-only)
 
-**Status: source under test; not evidence of a playable Unreal game.**
-The latest published source-only preview remains v0.5.40 until a separate
-tested source release is confirmed.
+**Status: v0.5.41 published SOURCE-ONLY prerelease; not a playable Unreal game.**
+The independent source release workflow passed synthetic receipt and C++20
+policy checks, but did not run a genuine licensed Unreal Editor or cook a map.
 
 ## Purpose
 
