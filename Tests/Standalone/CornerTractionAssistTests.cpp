@@ -40,9 +40,20 @@ int main()
             "both handling modes smoothly moderate a fast sideways slide");
     Require(cornerSimulation < cornerArcade,
             "simulation-inspired setup is less permissive under same slip");
-    Require(Near(CornerThrottleFactor(1000.0, 8000.0, true), 0.58) &&
-            Near(CornerThrottleFactor(1000.0, 8000.0, false), 0.45),
+    Require(Near(CornerThrottleFactor(1500.0, 8000.0, true), 0.58) &&
+            Near(CornerThrottleFactor(1500.0, 8000.0, false), 0.45),
             "minimum motor authority is bounded, never negative or above 1");
+    for (bool arcade : {true, false})
+    {
+        Require(Near(CornerThrottleFactor(899.0, 2000.0, arcade), 1.0) &&
+                Near(CornerThrottleFactor(900.0, 2000.0, arcade), 1.0) &&
+                CornerThrottleFactor(901.0, 2000.0, arcade) > 0.99,
+                "forward-speed threshold smoothly blends without throttle step");
+        Require(Near(CornerThrottleFactor(1800.0, 249.0, arcade), 1.0) &&
+                Near(CornerThrottleFactor(1800.0, 250.0, arcade), 1.0) &&
+                CornerThrottleFactor(1800.0, 251.0, arcade) > 0.99,
+                "sideways-speed threshold smoothly blends without throttle step");
+    }
 
     for (bool arcade : {true, false})
     {
