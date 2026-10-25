@@ -1239,28 +1239,27 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         return;
     }
 
-    // The race clock and ordered gate scoring already stop on incomplete
-    // circuit startup and both kinds of pause. Apply the SAME readiness to
-    // recovery: otherwise keyboard/gamepad callbacks could teleport and
-    // add a penalty while the UI was paused or the circuit failed startup.
-    // Charge before teleport, preserving counter and clock on failure.
+    // An engine teleport can fail even after the race is eligible to
+    // recover. Stage the full penalty and recovery count first, attempt a
+    // verified placement, then commit the cost only if Unreal actually
+    // accepted the move and the resulting chassis pose matches the target.
+    // The pawn invalidates checkpoint sampling before the move attempt.
     const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
-    if (!latebrake::TryChargePlayerRecoveryIfReady(
-            Race, RecoveriesThisRace, bCircuitReady, bInactive,
-            Car->IsRacePhysicsReady()))
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("Latebrake: recovery rejected; race inactive, track unready, "
-                 "finished or full penalty unavailable"));
-        return;
-    }
-
     const latebrake::CircuitPose Pose =
         latebrake::PlayerRecovery(Race.GetNextCheckpoint());
-    Car->RecoverTo(
-        FVector(Pose.Position.X, Pose.Position.Y, 180.0),
-        FRotator(0.0, Pose.HeadingDegrees, 0.0));
+    const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
+    const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
+    if (!latebrake::TryChargePlayerRecoveryAfterVerifiedTeleport(
+            Race, RecoveriesThisRace, bCircuitReady, bInactive,
+            Car->IsRacePhysicsReady(),
+            [Car, Target, Facing]() { return Car->TryRecoverTo(Target, Facing); }))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: recovery rejected; ineligible, penalty unavailable "
+                 "or Unreal did not verify the car's new position/heading; no fee charged"));
+        return;
+    }
 }
 
 void ALatebrakeRaceGameMode::LoadRecords()

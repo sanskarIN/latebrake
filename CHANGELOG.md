@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.46 — Development candidate; NOT released (2026-10-25)
+
+- Fix paid RECOVER fairness when Unreal rejects `SetActorLocationAndRotation` or reports a nonmatching placement. Previously the race clock and recovery counter were charged **before** a void teleport whose engine result was never inspected.
+- Add production C++20 `RecoveryTeleportVerification.h/.cpp` to classify Unreal move refusal, nonfinite target/observed 3D coordinates, displacement beyond 5 cm and heading mismatch beyond 2°; equivalent wrapped headings remain valid.
+- Add `ALatebrakeCarPawn::TryRecoverTo` reporting checked engine return and post-move pose, while preserving the existing Blueprint-facing `void RecoverTo` used by restart and rival. Increment checkpoint teleport revision **before the attempt** even if the engine rejects it.
+- Add the fixed-capacity `TryChargePlayerRecoveryAfterVerifiedTeleport` transaction: check normal recovery eligibility, stage the full five-second penalty on a copied `RaceProgress`, then commit clock, penalty audit and recovery count only after verified physical movement. Denied or unverified teleports leave all fee state untouched.
+- Add strict cross-platform C++20 `RecoveryTeleportTransaction` CTest linking the real `RaceProgress.cpp` and production teleport verification `.cpp`, Python source-binding checks, and `docs/VERIFIED_RECOVERY_QA.md`. **No actual Unreal/UHT compilation, game binaries, cooked map or installed-device QA is implied by passing source tests.**
+
 ## v0.5.45 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Add the full production C++20 `VehicleDynamicsReadiness.h/.cpp` pair, rejecting **zero/negative/nonfinite chassis mass** and **NaN/infinite angular velocity on all three axes**. Previously the shared physics-readiness gate checked only body presence, collision, world position and *linear* velocity; broken angular/mass state could still appear driver-ready.

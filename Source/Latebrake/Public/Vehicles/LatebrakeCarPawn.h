@@ -58,6 +58,11 @@ public:
     bool IsTouchThrottleActive() const { return TouchDrive.ThrottleActive(); }
     bool IsTouchBrakeActive() const { return TouchDrive.BrakeActive(); }
 
+    // Physical placement must succeed before GameMode can commit its five-
+    // second recovery charge. The Blueprint-compatible void API remains
+    // available to existing restart/rival callers.
+    bool TryRecoverTo(const FVector& Position, const FRotator& Rotation);
+
     UFUNCTION(BlueprintCallable, Category = "Latebrake|Vehicle")
     void RecoverTo(const FVector& Position, const FRotator& Rotation);
 

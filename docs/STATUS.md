@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.46 source development — paid RECOVER requires verified engine placement
+
+- The player RECOVER path previously charged its five-second time penalty and recovery count **before** calling a void Unreal `RecoverTo`; `SetActorLocationAndRotation` could fail without the caller knowing.
+- New C++ production verification policy checks Unreal acceptance, finite 3D destination, placement within 5 cm, and yaw within 2°. New pawn `TryRecoverTo` reports success/failure while retaining the old Blueprint API, invalidates pre-move checkpoint traces and neutralizes driver controls.
+- GameMode uses a staged `RaceProgress`/counter transaction and commits its full fee only after verified movement. Failure preserves elapsed clock, total penalty, penalty count and recovery count.
+- New portable C++20 and Unreal source-binding regressions; genuine UE 5.8 compile, cooked-map gameplay and Android/Windows installed recovery validation still required. **Development only, not a published v0.5.46 release.**
+
 ## v0.5.45 published source-only pre-release — real physics mass and angular velocity validity
 
 - New production `VehicleDynamicsReadiness.h/.cpp` rejects nonpositive/nonfinite chassis mass and any nonfinite X/Y/Z Chaos angular velocity. Prior race physics readiness covered linear velocity but not these equally material body values.

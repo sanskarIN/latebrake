@@ -562,3 +562,19 @@ else()
     target_compile_options(latebrake_vehicle_dynamics_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehicleDynamicsReadiness COMMAND latebrake_vehicle_dynamics_readiness_tests)
+
+# v0.5.46: paid RECOVER is a transaction: charge only after Unreal's
+# accepted position/rotation has been verified by production C++ policy.
+add_executable(latebrake_recovery_teleport_transaction_tests
+    RecoveryTeleportTransactionTests.cpp
+    ../../Source/Latebrake/Private/Racing/RecoveryTeleportVerification.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_recovery_teleport_transaction_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_recovery_teleport_transaction_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_recovery_teleport_transaction_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_recovery_teleport_transaction_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RecoveryTeleportTransaction COMMAND latebrake_recovery_teleport_transaction_tests)
