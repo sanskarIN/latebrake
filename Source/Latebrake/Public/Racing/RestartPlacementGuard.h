@@ -18,11 +18,16 @@ public:
     };
 
     // The initial player spawn uses the actual APlayerStart path, not an
-    // explicit restart. Its physical readiness is checked separately.
-    bool CanRace() const noexcept
+    // explicit restart. Its physics and possession are validated separately.
+    // After a RESTART, only the exact pawn that passed Unreal placement
+    // verification inherits race authorization. Repossession or destruction
+    // of that pawn must not transfer authorization to a different actor.
+    // The caller supplies the identity check from Unreal's weak UObject
+    // reference, which also detects destroyed/reused object slots.
+    bool CanRace(bool isSameVerifiedPawn) const noexcept
     {
         return Current == State::InitialSpawn ||
-               Current == State::VerifiedPlacement;
+               (Current == State::VerifiedPlacement && isSameVerifiedPawn);
     }
 
     void OnRestartRequested() noexcept
