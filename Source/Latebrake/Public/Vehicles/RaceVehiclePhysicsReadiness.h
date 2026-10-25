@@ -22,6 +22,13 @@ struct RaceVehiclePhysicsSnapshot final
     double VelocityX = 0.0;
     double VelocityY = 0.0;
     double VelocityZ = 0.0;
+
+    // A finite actor position with a corrupt Unreal rotation still produces
+    // malformed forward/right vectors and unsafe steering forces.
+    // Trailing default members keep existing portable snapshot fixtures valid.
+    double RotationPitchDegrees = 0.0;
+    double RotationYawDegrees = 0.0;
+    double RotationRollDegrees = 0.0;
 };
 
 inline bool IsRaceVehiclePhysicsReady(
@@ -37,6 +44,9 @@ inline bool IsRaceVehiclePhysicsReady(
            std::isfinite(vehicle.PositionZ) &&
            std::isfinite(vehicle.VelocityX) &&
            std::isfinite(vehicle.VelocityY) &&
-           std::isfinite(vehicle.VelocityZ);
+           std::isfinite(vehicle.VelocityZ) &&
+           std::isfinite(vehicle.RotationPitchDegrees) &&
+           std::isfinite(vehicle.RotationYawDegrees) &&
+           std::isfinite(vehicle.RotationRollDegrees);
 }
 } // namespace latebrake
