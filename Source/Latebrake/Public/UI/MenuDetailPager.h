@@ -93,7 +93,7 @@ public:
         };
     }
 
-    MenuPage Page() const noexcept { return CurrentPage; }
+    MenuPage GetPage() const noexcept { return CurrentPage; }
 
 private:
     int PageCount() const noexcept
