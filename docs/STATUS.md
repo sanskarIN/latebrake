@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.65 source candidate — signed measured rival approach
+
+- **Unreleased source feature:** A real production radar-linked `RivalRelativeMotionTracker` watches successive grounded player/rival direct separations and only displays CLOSING or SEPARATING after 0.4s sustained change of at least 2m/s. The tracked signal is signed direct separation rate, not opponent physical velocity, collision prediction or race order.
+- The HUD now displays verified sustained CLOSING on compact and desktop views and SEPARATING on expanded desktop views. Invalid actors/positions, disallowed race states, noisy radial changes, large (>90m/s) inferred discontinuities and invalid time deltas clear the trend; teleport, checkpoint epoch, menu, verified rival recovery and focus state all reset historical samples.
+- Strict portable C++20 tests link the real production `RaceMiniMap.cpp` and cover first-frame safety, sign reversal, 0.4s debounce, jump rejection, bad frames, missing rivals, Time Attack and bounded state. Unreal HUD binding contracts guard a single real radar snapshot. See [direct-motion QA](RIVAL_RELATIVE_MOTION_QA.md).
+- **Source candidate, not a playable release:** independent source-only v0.5.65 publisher workflow prepared; licensed UE 5.8 UHT/editor compilation, real cooked map and Win64/Android installed hardware QA remain outstanding. Current published source-only tag remains v0.5.60 until the publisher succeeds.
+
 ## v0.5.63 source development — sustained rival proximity awareness and UE HUD scope fix
 
 - **Unreleased HUD improvement:** Real rival radar samples now also drive a compact/desktop close-opponent warning. It enters only after 0.6s continuously at or within 15m DIRECT planar separation and remains visible until the rival is farther than 20m. Invalid, unsupported, nonfinite, paused or interrupted race samples clear it; this is not a collision prediction or race ranking.
