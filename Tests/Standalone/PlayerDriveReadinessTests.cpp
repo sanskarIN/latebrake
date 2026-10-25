@@ -71,6 +71,31 @@ int main()
                 PlayerDriveDecision::RaceFinished,
             "finish cannot keep accelerating while clock is frozen");
 
+    // Source v0.5.50 extends the six independent conditions with explicit
+    // restart placement authorization. All pre-existing 64 masks remain
+    // valid (the new trailing field defaults to the initial-spawn state).
+    auto rejectedRestart = ready;
+    rejectedRestart.RestartPlacementReady = false;
+    Require(!CanApplyPlayerDrive(rejectedRestart) &&
+            EvaluatePlayerDrive(rejectedRestart) ==
+                PlayerDriveDecision::RestartPlacementUnverified,
+            "healthy physics with rejected grid placement cannot drive");
+    rejectedRestart.RestartPlacementReady = true;
+    Require(CanApplyPlayerDrive(rejectedRestart),
+            "verified restart placement can restore driving authorization");
+    for (int combination = 0; combination < 128; ++combination)
+    {
+        PlayerDriveConditions state{
+            (combination & 1) != 0, (combination & 2) != 0,
+            (combination & 4) != 0, (combination & 8) != 0,
+            (combination & 16) != 0, (combination & 32) != 0,
+            (combination & 64) != 0
+        };
+        const bool allowed = combination == 67;
+        Require(CanApplyPlayerDrive(state) == allowed,
+                "complete seven-bit driving matrix must fail closed");
+    }
+
     // Exhaustively ensure that every single blocked condition and every
     // combination of blocked states fails closed; only fully ready drives.
     for (int combination = 0; combination < 64; ++combination)
