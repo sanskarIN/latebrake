@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.42 — In development; NOT released (2026-10-25)
+## v0.5.42 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Close an input/physics fairness gap when ordinary menu/engine pause fails but Unreal still ticks the player pawn: the race clock and checkpoints already stop, but raw gamepad axes could still rebuild thrust and steering. The player now blocks new driving force, clears raw/filtered inputs and held touch ownership, and neutralizes previous physical momentum whenever the race is not eligible to accept driving.
 - Apply the same fail-closed rule when the track is not ready, a race has finished, or no authoritative GameMode exists. Existing focus-loss and deliberate PAUSE resume policies are retained; active racing re-enables driving after explicit unpause/restart.
