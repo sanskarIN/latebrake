@@ -31,6 +31,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         WrongWayHint.Reset();
         OffTrackHint.Reset();
+        RivalProximityHint.Reset();
         LastWayfindingPawn.Reset();
         return;
     }
@@ -200,6 +201,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         // Menu navigation must not retain an old driving-direction alert.
         WrongWayHint.Reset();
         OffTrackHint.Reset();
+        RivalProximityHint.Reset();
         return;
     }
 
@@ -280,6 +282,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         WrongWayHint.Reset();
         OffTrackHint.Reset();
+        RivalProximityHint.Reset();
         LastWayfindingPawn = Car;
         LastWayfindingSession = CurrentWayfindingSession;
         LastWayfindingTeleport = CurrentWayfindingTeleport;
@@ -291,6 +294,39 @@ void ALatebrakeRaceHUD::DrawHUD()
         !Mode->IsManualRacePauseActive() && !Race.IsFinished();
     const FVector WayfindingPosition = Car->GetActorLocation();
     const FVector WayfindingVelocity = Car->GetVelocity();
+
+    // Use the same real, validated radar sample for desktop map and the
+    // all-viewport warning. Time Attack, invalid physics and blocked race
+    // states must never manufacture an opponent for the UI.
+    const int32 CurrentRivalVerifiedRecoveries =
+        Mode->GetRivalSuccessfulRecoveryCount();
+    if (LastRivalVerifiedRecoveries != CurrentRivalVerifiedRecoveries)
+    {
+        RivalProximityHint.Reset();
+        LastRivalVerifiedRecoveries = CurrentRivalVerifiedRecoveries;
+    }
+    const bool bRivalRace = !bTimeAttack && Mode->HasRival();
+    FVector RivalWorldPosition = FVector::ZeroVector;
+    const bool bRivalPositionVerified =
+        bRivalRace && bWayfindingEligible &&
+        Mode->TryGetRivalRadarPosition(RivalWorldPosition);
+    const latebrake::RaceMiniMapSnapshot Radar =
+        latebrake::BuildRaceMiniMapSnapshot(
+            {WayfindingPosition.X, WayfindingPosition.Y},
+            Car->GetActorRotation().Yaw,
+            bWayfindingEligible, Race.GetNextCheckpoint(),
+            bRivalRace,
+            {RivalWorldPosition.X, RivalWorldPosition.Y},
+            bRivalPositionVerified);
+    if (RivalProximityHint.Update(
+            Radar, GetWorld()->GetDeltaSeconds(),
+            bWayfindingEligible && bRivalRace))
+    {
+        Line(FString::Printf(
+            bCompact ? TEXT("RIVAL CLOSE | %.0fm DIRECT")
+                     : TEXT("RIVAL CLOSE | %.0fm DIRECT (ADVISORY)"),
+            Radar.DirectRivalSeparationMeters), Accent);
+    }
     if (WrongWayHint.Update(
             {WayfindingPosition.X, WayfindingPosition.Y},
             {WayfindingVelocity.X, WayfindingVelocity.Y},
@@ -480,18 +516,6 @@ void ALatebrakeRaceHUD::DrawHUD()
     // It is deliberately NOT an order/placement or reward calculation.
     if (!bCompact && Canvas->SizeX >= 1120)
     {
-        FVector RivalWorldPosition = FVector::ZeroVector;
-        const bool bRivalPositionVerified =
-            Mode->TryGetRivalRadarPosition(RivalWorldPosition);
-        const bool bRivalRace = !bTimeAttack && Mode->HasRival();
-        const latebrake::RaceMiniMapSnapshot Radar =
-            latebrake::BuildRaceMiniMapSnapshot(
-                {WayfindingPosition.X, WayfindingPosition.Y},
-                Car->GetActorRotation().Yaw,
-                bWayfindingEligible, Race.GetNextCheckpoint(),
-                bRivalRace,
-                {RivalWorldPosition.X, RivalWorldPosition.Y},
-                bRivalPositionVerified);
         const float MapSize = 150.f * Scale;
         const float MapLeft = Canvas->SizeX - MapSize - 22.f * Scale;
         const float MapTop = 72.f * Scale;
