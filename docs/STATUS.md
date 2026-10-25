@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.42 development — ordinary menu pause and finished-race driving safety
+
+- Identified a gap after the v0.5.39 focus-loss safeguard: when an ordinary menu or manual world pause request fails (or the race is finished while the engine still ticks), player input still flowed through the pawn's force/torque integrator even as GameMode clock and checkpoint scoring were stopped.
+- Added portable typed `PlayerDriveReadiness` gating of authoritative GameMode, circuit readiness, menu, engine pause, focus interruption and finished-race state. The pawn now neutralizes driving input and existing linear/angular momentum **before applying any thrust or torque** if those states are blocked. Explicit close/resume/restart makes active racing eligible again.
+- Portable C++20 tests cover all 64 combinations; Unreal source-binding tests check real callsite ordering, not engine behavior. Real UE 5.8 Editor/UHT, actual pause-failure/Chaos behavior, cooked map and installed Windows/Android QA remain outstanding.
+- **Not released.** The latest published milestone remains v0.5.41 source-only. Do not infer a playable game.
+
 ## v0.5.41 published source-only pre-release — real map receipt integrity safeguards
 
 - The prior Editor-generated `starter-map-result.json` established package name and byte length, but not byte equality; a modified map of identical length could satisfy the local receipt. A direct `New-StarterMap.ps1` invocation also did not independently validate engine/project version 5.8.

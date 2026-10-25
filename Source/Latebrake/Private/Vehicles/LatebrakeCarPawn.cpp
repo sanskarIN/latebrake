@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
+#include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
@@ -159,7 +160,7 @@ void ALatebrakeCarPawn::HandleAppFocusLost()
             if (Mode->IsFocusLossGuardActive())
             {
                 // Pause may have failed: stop any pre-loss momentum now.
-                NeutralizeMotionWhileFocusSuspended();
+                NeutralizeMotionWhenDrivingBlocked();
             }
         }
     }
@@ -204,12 +205,13 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     TouchDrive.Clear();
 }
 
-void ALatebrakeCarPawn::NeutralizeMotionWhileFocusSuspended()
+void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
     ClearDriverInputs();
-    // The world can keep simulating after a failed SetGamePaused. Leaving
-    // momentum or a newly delivered throttle active would move the player
-    // while competitive time and checkpoints are intentionally frozen.
+    // A failed pause may keep Chaos simulating while race time is frozen.
+    // Neutralize driver commands plus current momentum during menu/world
+    // pause, OS suspension, invalid track and completed race states. A real
+    // physics or input-device pause must still be qualified in Unreal.
     if (IsValid(Chassis) && Chassis->IsSimulatingPhysics())
     {
         Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
@@ -241,19 +243,24 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
-    // Application focus can be lost without Unreal successfully pausing its
-    // world. Fail closed even when physics continues ticking on that platform.
-    if (UWorld* World = GetWorld())
+    // Physics may keep ticking if Unreal rejects manual SetGamePaused, and
+    // OS focus loss may occur while already paused. Do not drive at all if
+    // the authoritative racing clock/checkpoint gate denies progression.
+    // World/GameMode absence also fails closed rather than driving a pawn
+    // whose progress cannot be measured or saved.
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanApplyPlayerDrive({
+            true,
+            Mode->IsCircuitReadyForGameplay(),
+            Mode->IsMenuOpen(),
+            UGameplayStatics::IsGamePaused(this),
+            Mode->IsFocusLossGuardActive(),
+            Mode->GetRace().IsFinished()}))
     {
-        if (ALatebrakeRaceGameMode* Mode =
-                World->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        {
-            if (Mode->IsFocusLossGuardActive())
-            {
-                NeutralizeMotionWhileFocusSuspended();
-                return;
-            }
-        }
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
     }
 
 #if PLATFORM_ANDROID
@@ -508,7 +515,7 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         // Even if SetGamePaused fails, a backgrounded app must not accept
         // driving fingers or recovery/career/restart commands. A NEW PAUSE
         // tap is an explicit player action allowed to resume the race.
-        NeutralizeMotionWhileFocusSuspended();
+        NeutralizeMotionWhenDrivingBlocked();
         if (latebrake::CanResumeFocusSuspendedRaceFromTouch(
                 bAllowAcquire, Region))
         {
