@@ -81,7 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
-| v0.5.46 (development; not released) | Verify actual Unreal recovery transform before committing five-second fee, with safe checkpoint trace rebase | Production C++20 verifier and penalty transaction; portable failure/commit tests, genuine UE/device validation still required |
+| v0.5.46 (published source-only pre-release) | Verify actual Unreal recovery transform before committing five-second fee, with safe checkpoint trace rebase | Production C++20 verifier and penalty transaction; portable failure/commit tests, genuine UE/device validation still required |
 | v0.5.45 (published source-only pre-release) | Require finite Chaos chassis angular velocity and positive finite mass for player/rival driving, timing, ordered checkpoints and stable HUD speed | Production C++ policy and real RaceProgress portable tests; licensed UE 5.8 / installed Win64/Android collision QA remains outstanding |
 | v0.5.44 (published source-only pre-release) | Bind Unreal build/cook candidate and Win64/Android pair to exact 5.8 Build.version SHA256 in new schema-2 manifests | Synthetic PowerShell version mutations and manifest pair checks; real UE binary, packaging and installed-device QA pending |
 | v0.5.43 (published source-only pre-release) | Add independently latched manual PAUSE fallback so rejected Unreal world pause cannot leave clock, gate, AI, recovery or physical controls active | C++20 standalone cross-boundary tests and Python callsite checks; real Unreal failed-pause/Android QA still required |
