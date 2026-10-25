@@ -19,31 +19,42 @@ int main()
 {
     using namespace latebrake;
     constexpr PlayerDriveConditions ready{
-        true, true, false, false, false, false
+        true, true, false, false, false, false, true
     };
     static_assert(CanApplyPlayerDrive(ready));
+    // The original six-value aggregate is deliberately rejected: forgetting
+    // to forward GameMode's grid authorization cannot silently enable torque.
+    constexpr PlayerDriveConditions omittedPlacement{
+        true, true, false, false, false, false
+    };
+    static_assert(!CanApplyPlayerDrive(omittedPlacement));
+    static_assert(EvaluatePlayerDrive(omittedPlacement) ==
+                  PlayerDriveDecision::RestartPlacementUnverified);
+    static_assert(!CanApplyPlayerDrive(PlayerDriveConditions{}));
+    Require(!CanApplyPlayerDrive(omittedPlacement),
+            "omitted seventh bit denies even an otherwise drivable pawn");
     Require(EvaluatePlayerDrive(ready) == PlayerDriveDecision::Allowed,
             "active track, authoritative mode and running race drive normally");
 
     // Every closed boundary must independently stop propulsion even when
     // SetGamePaused has FAILED and the engine keeps ticking the pawn.
     constexpr PlayerDriveConditions noMode{
-        false, true, false, false, false, false
+        false, true, false, false, false, false, true
     };
     constexpr PlayerDriveConditions missingCircuit{
-        true, false, false, false, false, false
+        true, false, false, false, false, false, true
     };
     constexpr PlayerDriveConditions menuFailedPause{
-        true, true, true, false, false, false
+        true, true, true, false, false, false, true
     };
     constexpr PlayerDriveConditions worldPaused{
-        true, true, false, true, false, false
+        true, true, false, true, false, false, true
     };
     constexpr PlayerDriveConditions osFocusFailedPause{
-        true, true, false, false, true, false
+        true, true, false, false, true, false, true
     };
     constexpr PlayerDriveConditions finished{
-        true, true, false, false, false, true
+        true, true, false, false, false, true, true
     };
     static_assert(!CanApplyPlayerDrive(noMode));
     static_assert(!CanApplyPlayerDrive(missingCircuit));
@@ -71,9 +82,8 @@ int main()
                 PlayerDriveDecision::RaceFinished,
             "finish cannot keep accelerating while clock is frozen");
 
-    // Source v0.5.50 extends the six independent conditions with explicit
-    // restart placement authorization. All pre-existing 64 masks remain
-    // valid (the new trailing field defaults to the initial-spawn state).
+    // Source v0.5.51 requires callers to explicitly supply the seventh
+    // authorization bit. A six-field initializer is fail-closed.
     auto rejectedRestart = ready;
     rejectedRestart.RestartPlacementReady = false;
     Require(!CanApplyPlayerDrive(rejectedRestart) &&
@@ -106,7 +116,8 @@ int main()
             (combination & 4) != 0,
             (combination & 8) != 0,
             (combination & 16) != 0,
-            (combination & 32) != 0
+            (combination & 32) != 0,
+            true // explicitly verified initial spawn/grid
         };
         const bool expected = combination == 3;
         Require(CanApplyPlayerDrive(conditions) == expected,

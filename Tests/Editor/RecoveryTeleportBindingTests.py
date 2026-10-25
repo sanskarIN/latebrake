@@ -41,9 +41,27 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
         self.assertIn("Car->TryRecoverTo(Target, Facing)", recovery)
         self.assertIn("ManualPause.IsSuspended()", recovery)
         self.assertIn("AppFocusGuard.IsSuspended()", recovery)
-        self.assertIn("Car->IsRacePhysicsReady()", recovery)
+        # Physical chassis readiness alone does not prove the player
+        # reached the start grid after a failed race RESTART.
+        self.assertIn("HasLocalPlayerDriver()", recovery)
+        self.assertNotIn("Car->IsRacePhysicsReady()", recovery)
+        self.assertLess(recovery.index("HasLocalPlayerDriver()"),
+                        recovery.index("Car->TryRecoverTo(Target, Facing)"))
         self.assertNotIn("Car->RecoverTo(", recovery)
         self.assertNotIn("TryChargePlayerRecoveryIfReady(", recovery)
+
+    def test_regression_omitting_restart_driver_gate_is_observable(self):
+        recovery = body(
+            self.mode,
+            "void ALatebrakeRaceGameMode::RecoverPlayer(",
+            "void ALatebrakeRaceGameMode::LoadRecords(",
+        )
+        bypass = recovery.replace(
+            "HasLocalPlayerDriver()",
+            "Car->IsRacePhysicsReady() /* source-only bypass regression */",
+        )
+        self.assertNotIn("HasLocalPlayerDriver()", bypass)
+        self.assertIn("HasLocalPlayerDriver()", recovery)
 
     def test_shared_transaction_commits_only_after_success(self):
         self.assertIn("RaceProgress pendingRace = race;", self.policy)

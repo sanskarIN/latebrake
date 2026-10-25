@@ -15,7 +15,9 @@ struct PlayerDriveConditions final
     bool RaceFinished = false;
     // After a restart, a finite physics body alone does not prove the
     // player actually reached the intended grid location.
-    bool RestartPlacementReady = true;
+    // A caller that forgets this field is NOT allowed to opt into drive.
+    // The authoritative Unreal pawn supplies the actual GameMode state.
+    bool RestartPlacementReady = false;
 };
 
 enum class PlayerDriveDecision

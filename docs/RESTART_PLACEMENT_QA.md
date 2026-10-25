@@ -53,6 +53,45 @@ This safeguard **does not claim** that an unsuccessfully moved body
 was automatically rolled back, is road-safe, or has been physically
 recovered; it only refuses further scoring/driving authorization.
 
+## v0.5.51 correction — paid RECOVER and omitted drive permission
+
+A post-v0.5.50 audit revealed that the actual player `RecoverPlayer()`
+callsite still passed **only** `Car->IsRacePhysicsReady()` into the
+staged penalty/teleport transaction. That contradicted the intended
+single authoritative `HasLocalPlayerDriver()` boundary. A rejected
+restart does not necessarily make Chaos physics invalid: a healthy
+body remaining at its **old** position was enough to attempt a paid
+recovery despite frozen timing and checkpoint scoring.
+
+The Unreal GameMode now passes `HasLocalPlayerDriver()` to
+`TryChargePlayerRecoveryAfterVerifiedTeleport`. The same check
+explicitly requires **both** a ready live chassis and a verified
+restart placement. Failed attempts cannot invoke the engine
+teleport callback, count a recovery, or charge a penalty.
+
+The seven-field `PlayerDriveConditions` aggregate additionally
+defaults `RestartPlacementReady` to **false**, not true. A future
+caller forgetting the seventh argument fails closed; all legitimate
+Unreal/portable fixtures explicitly provide that bit. The real player
+pawn already forwards `Mode->IsRestartPlacementReady()`.
+
+Required QA additions:
+
+1. With a physically healthy but wrongly positioned car, induce
+   a rejected RESTART and press **RECOVER**. Confirm neither the
+   five-second fee nor the engine teleport occurs and clock/gates
+   remain denied.
+2. Explicitly RESTART again with a **verified** grid placement and
+   confirm a subsequent paid RECOVER succeeds exactly once, with the
+   unchanged normal five-second fee.
+3. Build a new C++ callsite that omits the seventh driving-policy
+   field. Confirm it is **denied**, rather than silently allowing
+   acceleration after an unverified restart. Check all 128 seven-bit
+   combinations and manual pause/resume behavior.
+4. Repeat on installed Win64 and Android with real Chaos telemetry.
+   Pure policy tests do not prove actual movement failure can be
+   induced safely on a real vehicle.
+
 ## Portable test procedures
 
 ```sh

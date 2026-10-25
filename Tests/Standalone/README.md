@@ -209,3 +209,22 @@ ctest --test-dir Tests/Standalone/build -R '^(RestartPlacementGuard|PlayerDriveR
 Unreal bindings are also checked by
 `Tests/Editor/RestartPlacementBindingTests.py`, but live engine
 teleports and Windows/Android builds remain separately required.
+
+
+### v0.5.51 — denied-restart recovery escape regression
+
+`RestartPlacementGuardTests.cpp` now simulates a healthy old-position
+chassis after a rejected engine RESTART, verifies that paid recovery
+does not even invoke the teleport callback, then checks the intended
+five-second charge after an explicitly verified restart. The Unreal
+`RecoverPlayer()` callsite is checked in Python to require
+`HasLocalPlayerDriver()` instead of only physical-body validity.
+
+`PlayerDriveReadinessTests.cpp` also statically rejects a six-value
+aggregate (omitted grid permission) and exercises all 128 complete
+seven-bit states; `ManualRacePauseGuardTests.cpp` explicitly supplies
+the verified start bit so the pause behavior itself remains tested.
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(RestartPlacementGuard|PlayerDriveReadiness|ManualRacePauseGuard|RecoveryTeleportTransaction)$' --output-on-failure
+```

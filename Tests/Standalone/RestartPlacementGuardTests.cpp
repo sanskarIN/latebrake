@@ -70,6 +70,18 @@ int main()
     Require(!Advance(30.0) && !CanPass() && !TryRecover() &&
             race.GetElapsedSeconds() == 3.0 && recoveries == 0,
             "a healthy pre-restart chassis cannot keep earning time or fees");
+    // The unguarded Unreal RECOVER path was using chassis readiness alone.
+    // Model that bug explicitly: physical readiness remains true, but the
+    // authoritative combined driver gate has to veto the staged teleport.
+    constexpr bool healthyOldPositionChassis = true;
+    bool attemptedPhysicsMove = false;
+    const bool paidDespiteRejectedGrid = TryChargePlayerRecoveryAfterVerifiedTeleport(
+        race, recoveries, true, false,
+        healthyOldPositionChassis && gate.CanRace(),
+        [&] { attemptedPhysicsMove = true; return true; });
+    Require(!paidDespiteRejectedGrid && !attemptedPhysicsMove &&
+            recoveries == 0 && race.GetElapsedSeconds() == 3.0,
+            "failed grid denies even an otherwise healthy chassis recovery callback");
 
     gate.OnRestartRequested();
     Require(!gate.CanRace() &&
@@ -83,6 +95,11 @@ int main()
     Require(CanDrive() && Advance(2.0) && CanPass() &&
             race.GetElapsedSeconds() == 5.0,
             "only active time after a verified retry accrues");
+    Require(TryRecover() && recoveries == 1 &&
+            race.GetElapsedSeconds() == 10.0,
+            "verified restart allows exactly one physically acknowledged paid recovery");
+    Require(CanDrive() && CanPass(),
+            "paid recovery does not revoke a verified restart placement");
 
     gate.OnRestartRequested();
     gate.OnRestartRequested();

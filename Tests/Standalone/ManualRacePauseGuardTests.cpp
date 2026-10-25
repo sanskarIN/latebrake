@@ -67,7 +67,7 @@ int main()
                 inactive, driverReady, false),
             "rival cannot continue driving while manual pause is latched");
     Require(!CanApplyPlayerDrive({true, trackReady, false,
-                actualUnrealPaused || pause.IsSuspended(), false, false}),
+                actualUnrealPaused || pause.IsSuspended(), false, false, true}),
             "player force/torque are denied while world ignores pause");
     Require(!gate.SampleDetailed(0, 0, epoch.Current(),
                 crossed, 300.0, 0.0).Crossed(),
@@ -86,7 +86,7 @@ int main()
             "fresh forward crossing is still accepted");
     Require(AdvancePlayerRaceClockIfReady(race, true, false, true, 2.0),
             "clock resumes after explicit manual resume");
-    Require(CanApplyPlayerDrive({true, true, false, false, false, false}),
+    Require(CanApplyPlayerDrive({true, true, false, false, false, false, true}),
             "player can drive after legitimate resumed race");
 
     // If engine PAUSE succeeds, the same fallback latch still protects
@@ -94,7 +94,7 @@ int main()
     Require(pause.OnToggleRequested(false) && pause.IsSuspended(),
             "second pause cycle latches");
     Require(!CanApplyPlayerDrive({true, true, false,
-                pause.IsSuspended(), false, false}),
+                pause.IsSuspended(), false, false, true}),
             "surprise world unpause still leaves player input gated");
     Require(pause.IsSuspended(), "OS world unpause cannot clear manual intent");
     Require(!pause.OnToggleRequested(true) && !pause.IsSuspended(),

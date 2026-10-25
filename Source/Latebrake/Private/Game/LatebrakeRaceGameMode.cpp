@@ -1273,7 +1273,10 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
     if (!latebrake::TryChargePlayerRecoveryAfterVerifiedTeleport(
             Race, RecoveriesThisRace, bCircuitReady, bInactive,
-            Car->IsRacePhysicsReady(),
+            // Match the exact same driver authorization as race clock,
+            // checkpoints and rival readiness. Physical Chaos validity
+            // alone does not prove a failed RESTART reached the grid.
+            HasLocalPlayerDriver(),
             [Car, Target, Facing]() { return Car->TryRecoverTo(Target, Facing); }))
     {
         UE_LOG(LogTemp, Warning,

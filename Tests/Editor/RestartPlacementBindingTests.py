@@ -69,6 +69,12 @@ class RestartPlacementBindingTests(unittest.TestCase):
         self.assertIn("Car->IsRacePhysicsReady()", self.mode)
         self.assertIn("RestartPlacement.CanRace() && IsValid(Car)", self.mode)
         self.assertIn("Car->TryRecoverTo(Target, Facing)", self.mode)
+        recovery = section(
+            self.mode, "void ALatebrakeRaceGameMode::RecoverPlayer(",
+            "void ALatebrakeRaceGameMode::LoadRecords("
+        )
+        self.assertIn("HasLocalPlayerDriver()", recovery)
+        self.assertNotIn("Car->IsRacePhysicsReady()", recovery)
 
     def test_pawn_neutralizes_motor_before_force_if_grid_unverified(self):
         tick = section(
@@ -84,6 +90,7 @@ class RestartPlacementBindingTests(unittest.TestCase):
         self.assertLess(tick.index("NeutralizeMotionWhenDrivingBlocked();"),
                         tick.index("Chassis->AddTorqueInRadians("))
         self.assertIn("if (!state.RestartPlacementReady)", self.drive)
+        self.assertIn("bool RestartPlacementReady = false;", self.drive)
         self.assertIn("PlayerDriveDecision::RestartPlacementUnverified", self.drive)
 
     def test_hud_explains_blocked_restart(self):
