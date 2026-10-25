@@ -51,7 +51,8 @@ int main()
           !warning.Update(radarAt(16.0), 0.1, true) &&
           !warning.Update(near, 0.2, true),
           "leaving 15m entry corridor resets debounce");
-    Check(warning.Update(near, 0.2, true),
+    Check(!warning.Update(near, 0.2, true) &&
+          warning.Update(near, 0.2, true),
           "new continuous samples can trigger after interruption");
     Check(!warning.Update(near, 0.1, false) && !warning.IsActive(),
           "pause, results and loss of race eligibility clear alert");
