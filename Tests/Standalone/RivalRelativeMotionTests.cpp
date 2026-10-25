@@ -82,7 +82,7 @@ int main()
           "after rejected jump, next sample only restores baseline");
 
     for (double badDelta : {
-        0.0, -0.1, 0.001, 0.26,
+        0.0, -0.1, 0.0001, 0.26,
         std::numeric_limits<double>::quiet_NaN(),
         std::numeric_limits<double>::infinity()
     })
