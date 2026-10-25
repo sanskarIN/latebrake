@@ -81,13 +81,27 @@ AActor* ALatebrakeRaceGameMode::ChoosePlayerStart_Implementation(AController* Pl
     return RuntimePlayerStart;
 }
 
+bool ALatebrakeRaceGameMode::IsRestartPlacementReady() const
+{
+    // Initial APlayerStart spawning does not rely on an explicit restart.
+    // After RESTART, eligibility is exclusive to the exact verified pawn.
+    // TWeakObjectPtr rejects destroyed actors, even if Unreal reuses memory.
+    const ALatebrakeCarPawn* CurrentDriver = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    const bool bSameVerifiedPawn =
+        IsValid(CurrentDriver) && VerifiedRestartPawn.IsValid() &&
+        VerifiedRestartPawn.Get() == CurrentDriver;
+    return RestartPlacement.CanRace(bSameVerifiedPawn);
+}
+
 bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const
 {
     // Possession alone is insufficient: missing chassis mesh or disabled
-    // physics/collision must not accumulate ghost race time.
+    // physics/collision must not accumulate ghost race time. Even a valid
+    // replacement pawn cannot inherit someone else's RESTART verification.
     const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
-    return RestartPlacement.CanRace() && IsValid(Car) && Car->IsRacePhysicsReady();
+    return IsRestartPlacementReady() && IsValid(Car) && Car->IsRacePhysicsReady();
 }
 
 void ALatebrakeRaceGameMode::BeginPlay()
@@ -1209,6 +1223,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     // the actual chassis placement. Invalidate the previous race's
     // authorization BEFORE any fallible pawn movement or world unpause.
     RestartPlacement.OnRestartRequested();
+    VerifiedRestartPawn.Reset();
 
     // Only unpause and reset AFTER career replay preparation succeeds.
     // Restart invalidates sampled positions even if no pawn exists yet or
@@ -1231,6 +1246,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     const bool bPlacedOnGrid =
         IsValid(Car) && Car->TryRecoverTo(GetStartPosition(), GetStartRotation());
     RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);
+    VerifiedRestartPawn = bPlacedOnGrid ? Car : nullptr;
     if (!bPlacedOnGrid)
     {
         UE_LOG(LogTemp, Warning,
