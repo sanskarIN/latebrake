@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.50 source development — fail-closed player restart-grid placement
+
+- **Unreleased:** A race RESTART previously reset the authoritative clock then used a `void RecoverTo` that ignored engine teleport failure. A perfectly finite old-position chassis could still earn racing time and ordered gates after a rejected grid placement.
+- New portable `RestartPlacementGuard` invalidates the previous start authorization before reset and restores it only after live Unreal `TryRecoverTo` verifies the start pose, post-move body and motion. Missing or rejected grid placement leaves race time, checkpoint awards, paid RECOVER, player/rival driving and HUD eligibility blocked; an explicit successful retry restores play.
+- Initial `APlayerStart` spawning remains eligible subject to ordinary physics readiness. New C++20 `RaceProgress`-linked state-machine tests, extended seven-bit input matrix and Python Unreal/HUD source integration checks accompany [restart grid QA](RESTART_PLACEMENT_QA.md).
+- **Not a playable build:** authorized UE 5.8 UHT/Editor compilation, cooked circuit, real Windows/Android executables and installed failure/retry QA are still pending.
+
 ## v0.5.49 source development — rival recovery outcome integrity
 
 - **Unreleased:** The AI had been using the legacy `void RecoverTo` for stuck recovery. Unreal could reject/misplace a teleport, while the existing finite recovery counter still looked like a successful move. Now the route tracks bounded attempts with a pending state and explicit verified/rejected outcomes.

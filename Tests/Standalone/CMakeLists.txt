@@ -606,3 +606,18 @@ else()
     target_compile_options(latebrake_rival_recovery_outcome_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalRecoveryOutcome COMMAND latebrake_rival_recovery_outcome_tests)
+
+# v0.5.50: race-clock, checkpoint, recovery and motor authorization must
+# fail closed until an actual Unreal RESTART placement is verified.
+add_executable(latebrake_restart_placement_guard_tests
+    RestartPlacementGuardTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_restart_placement_guard_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_restart_placement_guard_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_restart_placement_guard_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_restart_placement_guard_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RestartPlacementGuard COMMAND latebrake_restart_placement_guard_tests)

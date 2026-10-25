@@ -13,6 +13,9 @@ struct PlayerDriveConditions final
     bool EnginePaused = false;
     bool FocusSuspended = false;
     bool RaceFinished = false;
+    // After a restart, a finite physics body alone does not prove the
+    // player actually reached the intended grid location.
+    bool RestartPlacementReady = true;
 };
 
 enum class PlayerDriveDecision
@@ -23,7 +26,8 @@ enum class PlayerDriveDecision
     MenuOpen,
     EnginePaused,
     FocusSuspended,
-    RaceFinished
+    RaceFinished,
+    RestartPlacementUnverified
 };
 
 inline constexpr PlayerDriveDecision EvaluatePlayerDrive(
@@ -33,6 +37,8 @@ inline constexpr PlayerDriveDecision EvaluatePlayerDrive(
     // that Chaos simulation itself can be paused on any installed platform.
     if (!state.HasAuthoritativeMode)
         return PlayerDriveDecision::NoAuthoritativeMode;
+    if (!state.RestartPlacementReady)
+        return PlayerDriveDecision::RestartPlacementUnverified;
     if (!state.CircuitReady)
         return PlayerDriveDecision::CircuitNotReady;
     if (state.FocusSuspended)

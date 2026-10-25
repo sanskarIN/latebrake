@@ -57,6 +57,10 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             MenuLine(TEXT("TRACK INCOMPLETE - RACE CLOCK AND SCORING DISABLED"), true);
         }
+        else if (!Mode->IsRestartPlacementReady())
+        {
+            MenuLine(TEXT("RESTART GRID NOT VERIFIED - RACE DISABLED"), true);
+        }
         else if (!Mode->HasLocalPlayerDriver())
         {
             MenuLine(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), true);
@@ -216,6 +220,12 @@ void ALatebrakeRaceHUD::DrawHUD()
     if (!Mode->IsCircuitReadyForGameplay())
     {
         Line(TEXT("TRACK NOT READY - RACE CLOCK AND GATES DISABLED"), Accent);
+    }
+    else if (!Mode->IsRestartPlacementReady())
+    {
+        Line(bCompact ? TEXT("RESTART FAILED - RACE DISABLED")
+                      : TEXT("RESTART GRID NOT VERIFIED - PRESS RESTART AGAIN"),
+             Accent);
     }
     else if (!Mode->HasLocalPlayerDriver())
     {

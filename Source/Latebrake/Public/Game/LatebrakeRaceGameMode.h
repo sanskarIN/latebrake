@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/RaceSessionEpoch.h"
+#include "Racing/RestartPlacementGuard.h"
 #include "Racing/AppFocusRaceGuard.h"
 #include "Racing/ManualRacePauseGuard.h"
 #include "Racing/RaceEvents.h"
@@ -71,6 +72,7 @@ public:
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsCircuitReadyForGameplay() const { return bCircuitReady; }
     bool HasLocalPlayerDriver() const;
+    bool IsRestartPlacementReady() const { return RestartPlacement.CanRace(); }
     uint64 GetCheckpointSessionRevision() const { return CheckpointSession.Current(); }
     float GetPersonalBestSeconds() const { return PersonalBestSeconds; }
     float GetPersonalBestLapSeconds() const { return PersonalBestLapSeconds; }
@@ -118,6 +120,7 @@ private:
     bool bCircuitReady = false;
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
+    latebrake::RestartPlacementGuard RestartPlacement;
     latebrake::AppFocusRaceGuard AppFocusGuard;
     latebrake::ManualRacePauseGuard ManualPause;
     float PersonalBestSeconds = 0.f;

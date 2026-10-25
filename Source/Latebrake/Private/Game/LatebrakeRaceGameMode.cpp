@@ -87,7 +87,7 @@ bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const
     // physics/collision must not accumulate ghost race time.
     const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
-    return IsValid(Car) && Car->IsRacePhysicsReady();
+    return RestartPlacement.CanRace() && IsValid(Car) && Car->IsRacePhysicsReady();
 }
 
 void ALatebrakeRaceGameMode::BeginPlay()
@@ -1205,6 +1205,11 @@ void ALatebrakeRaceGameMode::RestartRace()
         CareerStartedVehicleId = Replay.StartingVehicle;
     }
 
+    // The new start position is not authoritative until Unreal confirms
+    // the actual chassis placement. Invalidate the previous race's
+    // authorization BEFORE any fallible pawn movement or world unpause.
+    RestartPlacement.OnRestartRequested();
+
     // Only unpause and reset AFTER career replay preparation succeeds.
     // Restart invalidates sampled positions even if no pawn exists yet or
     // its physics recovery is not observed until the next actor tick.
@@ -1221,9 +1226,15 @@ void ALatebrakeRaceGameMode::RestartRace()
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
     RecoveriesThisRace = 0;
-    if (ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
+    ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    const bool bPlacedOnGrid =
+        IsValid(Car) && Car->TryRecoverTo(GetStartPosition(), GetStartRotation());
+    RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);
+    if (!bPlacedOnGrid)
     {
-        Car->RecoverTo(GetStartPosition(), GetStartRotation());
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: RESTART_GRID_UNVERIFIED - race clock, gates and driving blocked"));
     }
     if (IsValid(RivalCar))
     {

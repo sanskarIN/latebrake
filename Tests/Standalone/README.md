@@ -191,3 +191,21 @@ ctest --test-dir Tests/Standalone/build -R '^(RivalRoute|RivalRecoveryOutcome)$'
 These test the pure C++ decision and accounting layers, **not** the
 actual Unreal engine's teleport, Chaos simulation or live game build.
 See [Rival recovery QA](../../docs/RIVAL_RECOVERY_QA.md).
+
+
+### v0.5.50 — fail-closed race restart placement
+
+`RestartPlacementGuardTests.cpp` links the real production
+`RaceProgress.cpp` plus player race-clock, checkpoint, paid recovery
+and driving policies. It exercises unverified and rejected grid placement,
+late duplicate engine results and verified explicit retries. The existing
+`PlayerDriveReadinessTests.cpp` now exhaustively checks the new seventh
+readiness bit in all 128 combinations.
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(RestartPlacementGuard|PlayerDriveReadiness)$' --output-on-failure
+```
+
+Unreal bindings are also checked by
+`Tests/Editor/RestartPlacementBindingTests.py`, but live engine
+teleports and Windows/Android builds remain separately required.

@@ -88,7 +88,10 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::RecoverPressed(",
         )
         self.assertIn("TryRecoverTo(Position, Rotation)", compatibility)
-        self.assertIn("Car->RecoverTo(GetStartPosition()", self.mode)
+        # Player RESTART must use the bool-verified path; the legacy
+        # Blueprint void API remains for non-competitive callers.
+        self.assertIn("Car->TryRecoverTo(GetStartPosition(), GetStartRotation())", self.mode)
+        self.assertNotIn("Car->RecoverTo(GetStartPosition()", self.mode)
         self.assertIn("RivalCar->RecoverTo(", self.mode)
 
     def test_observed_3d_pose_and_wrapped_yaw_are_checked(self):
