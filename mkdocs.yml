@@ -103,6 +103,7 @@ nav:
       - Vehicle dynamics readiness QA: VEHICLE_DYNAMICS_QA.md
       - Steering and handling stability QA: DRIVING_STABILITY_QA.md
       - Verified recovery teleport QA: VERIFIED_RECOVERY_QA.md
+      - Restart-grid placement QA: RESTART_PLACEMENT_QA.md
       - Rival recovery outcomes QA: RIVAL_RECOVERY_QA.md
       - Save migration: SAVE_MIGRATION.md
   - Roadmap & history:
