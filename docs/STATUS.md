@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.52 source development — verified restart cannot transfer to another pawn
+
+- **Unreleased:** A successful `RESTART` previously left `RestartPlacement` globally `VerifiedPlacement`. If the possessed player pawn was later destroyed/replaced with a physically valid car, that new actor could inherit the old pawn's grid authorization without ever passing the original start-position verification.
+- The portable `RestartPlacementGuard::CanRace(bool isSameVerifiedPawn)` now keeps ordinary initial `APlayerStart` behavior, but requires verified actor identity after an explicit restart. Unreal GameMode records `TWeakObjectPtr<ALatebrakeCarPawn> VerifiedRestartPawn` only after `TryRecoverTo` succeeds; destroyed, recycled or replaced actors fail the weak identity check. Another explicit restart clears the previous binding before attempting to verify the newly possessed pawn.
+- The central `IsRestartPlacementReady()` check now covers time, gates, paid RECOVER, rival eligibility and pawn motor forces. C++20 regressions emulate successful restart, replacement/possession loss, frozen race clock, no new checkpoints or recovery fees, re-possession and a fresh verified restart; Unreal source integration tests require the actual weak binding. See [restart-grid QA](RESTART_PLACEMENT_QA.md).
+- **No playable release:** actual UE 5.8 compilation/cooked original circuit and installed Windows/Android pawn-destruction, re-possession and driving QA are still outstanding.
+
 ## v0.5.51 source development — close paid RECOVER restart-grid bypass
 
 - **Unreleased corrective work:** Source audit caught an inconsistency in v0.5.50. `HasLocalPlayerDriver()` already blocked clock, scoring and rival eligibility after failed restart-grid placement, but `RecoverPlayer()` passed only `Car->IsRacePhysicsReady()` to its staged fee/teleport policy. A physically valid car in the wrong location could therefore still authorize a paid RECOVER.
