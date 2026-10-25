@@ -18,6 +18,7 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repo 'Latebrake.uproject'
 $editor = Join-Path $EngineRoot 'Engine/Binaries/Win64/UnrealEditor.exe'
+$versionFile = Join-Path $EngineRoot 'Engine/Build/Build.version'
 $python = Join-Path $PSScriptRoot 'Unreal/CreateStarterMap.py'
 $map = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
 $receipt = Join-Path $repo 'Saved/LatebrakeAutomation/starter-map-result.json'
@@ -30,6 +31,17 @@ if (-not (Test-Path -LiteralPath $editor -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "Editor map creation script missing: $python"
+}
+if (-not (Test-Path -LiteralPath $versionFile -PathType Leaf)) {
+    throw "Unreal engine version metadata unavailable: $versionFile"
+}
+$engine = Get-Content -LiteralPath $versionFile -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+if ($engine.MajorVersion -ne 5 -or $engine.MinorVersion -ne 8) {
+    throw "Starter level must be authored with Unreal Engine 5.8, found $($engine.MajorVersion).$($engine.MinorVersion)"
+}
+$descriptor = Get-Content -LiteralPath $project -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+if ($descriptor.EngineAssociation -cne '5.8') {
+    throw "Latebrake.uproject must target Unreal Engine 5.8, found $($descriptor.EngineAssociation)"
 }
 
 $project = (Resolve-Path -LiteralPath $project).Path
@@ -52,13 +64,11 @@ if (-not (Test-Path -LiteralPath $map -PathType Leaf)) {
 if (-not (Test-Path -LiteralPath $receipt -PathType Leaf)) {
     throw 'Unreal Editor did not write a fresh successful map-authoring receipt. Check Python/Unreal logs even if the process exited zero.'
 }
-$result = Get-Content -LiteralPath $receipt -Raw | ConvertFrom-Json -ErrorAction Stop
-if ($result.status -ne 'saved_by_unreal_editor' -or
-    $result.map -ne '/Game/Maps/LatebrakeCircuit' -or
-    $result.operation -notin @('created', 'loaded') -or
-    $result.bytes -ne (Get-Item -LiteralPath $map).Length) {
-    throw 'The fresh map-authoring receipt does not match the actual project level.'
-}
+# A same-size mutation after Editor save must never satisfy the
+# authoring receipt. Verify explicit UE 5.8 provenance, map identity and
+# cryptographic byte equality BEFORE accepting header plausibility.
+& (Join-Path $PSScriptRoot 'Test-MapAuthoringReceipt.ps1') -MapPath $map -ReceiptPath $receipt
+if (-not $?) { throw 'Unreal Editor map receipt did not match the saved map bytes.' }
 & (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $map
 if (-not $?) { throw 'Unreal starter map failed serialized-package header sanity check.' }
 Write-Host "Unreal created/confirmed map: $map"
