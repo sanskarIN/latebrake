@@ -3,6 +3,7 @@
 #include "UI/HudLayout.h"
 #include "UI/HudVerticalPlan.h"
 #include "UI/HudTextBounds.h"
+#include "UI/HudMenuVerticalPlan.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/CurrentLapPotential.h"
@@ -117,18 +118,30 @@ void ALatebrakeRaceHUD::DrawHUD()
         const float UIScale = static_cast<float>(Layout.Scale);
         const float X = static_cast<float>(Layout.Left);
         float Y = static_cast<float>(Layout.Top);
+        const latebrake::HudMenuVerticalPlan MenuPlan =
+            latebrake::CalculateHudMenuVerticalPlan(
+                static_cast<double>(Canvas->SizeX),
+                static_cast<double>(Canvas->SizeY), Layout, bTouchHUD);
+        int32 DrawnMenuRows = 0;
+        bool bMenuOverflow = false;
         const FLinearColor White(0.96f, 0.97f, 1.f);
         const FLinearColor Gold(1.f, 0.73f, 0.17f);
         const auto MenuLine = [&](const FString& Value, bool bAccent = false)
         {
+            if (!MenuPlan.Valid || DrawnMenuRows >= MenuPlan.MaxDetailsRows)
+            {
+                bMenuOverflow = true;
+                return;
+            }
             const FString Fitted = FitHudText(
                 Value, GEngine->GetSmallFont(), UIScale);
             if (!Fitted.IsEmpty())
             {
                 DrawText(Fitted, bAccent ? Gold : White, X, Y,
                     GEngine->GetSmallFont(), UIScale);
+                ++DrawnMenuRows;
+                Y += 28.f * UIScale;
             }
-            Y += 28.f * UIScale;
         };
         MenuLine(FString::Printf(TEXT("LATEBRAKE / %s"), *Mode->GetMenuPageTitle()), true);
         if (!Mode->IsCircuitReadyForGameplay())
@@ -243,9 +256,35 @@ void ALatebrakeRaceHUD::DrawHUD()
             break;
         default: break;
         }
-        if (Mode->HasProgressSaveError())
+        // A long career/results page may exhaust the available menu
+        // height. Show the information-loss notice rather than rendering
+        // hidden text below the physical lower steering hit region.
+        if (MenuPlan.Valid && bMenuOverflow)
         {
-            MenuLine(TEXT("WARNING: PROGRESS NOT SAVED"), true);
+            const FString ClippedNotice = FitHudText(
+                TEXT("MORE MENU DETAILS HIDDEN"), GEngine->GetSmallFont(),
+                UIScale);
+            if (!ClippedNotice.IsEmpty())
+            {
+                DrawText(ClippedNotice, Gold, X,
+                    static_cast<float>(MenuPlan.OverflowNoticeY),
+                    GEngine->GetSmallFont(), UIScale);
+            }
+        }
+        // SAVE failures must stay visible even if every optional menu
+        // detail row has already been consumed.
+        if (MenuPlan.Valid && Mode->HasProgressSaveError())
+        {
+            const FString SaveNotice = FitHudText(
+                bTouchHUD ? TEXT("SAVE FAILED")
+                          : TEXT("WARNING: PROGRESS NOT SAVED"),
+                GEngine->GetSmallFont(), UIScale);
+            if (!SaveNotice.IsEmpty())
+            {
+                DrawText(SaveNotice, Gold, X,
+                    static_cast<float>(MenuPlan.SaveWarningY),
+                    GEngine->GetSmallFont(), UIScale);
+            }
         }
 #if PLATFORM_ANDROID
         const auto Pads = latebrake::CalculateTouchControlLayout(
