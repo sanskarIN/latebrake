@@ -27,6 +27,8 @@ void ALatebrakeRaceHUD::DrawHUD()
     const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(PlayerOwner->GetPawn());
     if (!Mode || !Car)
     {
+        WrongWayHint.Reset();
+        LastWayfindingPawn.Reset();
         return;
     }
 
@@ -190,6 +192,8 @@ void ALatebrakeRaceHUD::DrawHUD()
             DrawMenuPad(Pads.Pause, TEXT("CLOSE"));
         }
 #endif
+        // Menu navigation must not retain an old driving-direction alert.
+        WrongWayHint.Reset();
         return;
     }
 
@@ -259,6 +263,36 @@ void ALatebrakeRaceHUD::DrawHUD()
     Line(Mode->UsesMilesPerHour()
         ? FString::Printf(TEXT("SPEED  %.0f mph"), Car->GetSpeedKmH() * 0.621371f)
         : FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
+
+    // The warning is pure HUD feedback. It must reset on pawn replacement,
+    // checkpoint-session boundary and teleport, and must never influence
+    // the real ordered checkpoint or award system.
+    const uint64 CurrentWayfindingSession = Mode->GetCheckpointSessionRevision();
+    const uint64 CurrentWayfindingTeleport = Car->GetTeleportRevision();
+    if (LastWayfindingPawn.Get() != Car ||
+        LastWayfindingSession != CurrentWayfindingSession ||
+        LastWayfindingTeleport != CurrentWayfindingTeleport)
+    {
+        WrongWayHint.Reset();
+        LastWayfindingPawn = Car;
+        LastWayfindingSession = CurrentWayfindingSession;
+        LastWayfindingTeleport = CurrentWayfindingTeleport;
+    }
+    const bool bWayfindingEligible =
+        Mode->IsCircuitReadyForGameplay() && Mode->HasLocalPlayerDriver() &&
+        !UGameplayStatics::IsGamePaused(this) &&
+        !Mode->IsFocusLossGuardActive() &&
+        !Mode->IsManualRacePauseActive() && !Race.IsFinished();
+    const FVector WayfindingPosition = Car->GetActorLocation();
+    const FVector WayfindingVelocity = Car->GetVelocity();
+    if (WrongWayHint.Update(
+            {WayfindingPosition.X, WayfindingPosition.Y},
+            {WayfindingVelocity.X, WayfindingVelocity.Y},
+            GetWorld()->GetDeltaSeconds(), bWayfindingEligible))
+    {
+        Line(bCompact ? TEXT("WRONG WAY - TURN AROUND")
+                      : TEXT("WRONG WAY - RETURN TO CIRCUIT DIRECTION"), Accent);
+    }
     Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
         DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);

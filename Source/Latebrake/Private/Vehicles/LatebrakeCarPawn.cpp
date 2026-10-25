@@ -1,6 +1,7 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
+#include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
@@ -309,7 +310,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     SmoothedThrottle = static_cast<float>(latebrake::SmoothThrottle(
         SmoothedThrottle, TouchDrive.ThrottleActive() ? 1.0 : static_cast<double>(Throttle),
         static_cast<double>(DeltaSeconds)));
-    const float EffectiveThrottle = SmoothedThrottle;
+    const float RawThrottle = SmoothedThrottle;
     const float EffectiveSteering = TouchDrive.SteeringActive()
         ? static_cast<float>(TouchDrive.Steering()) : Steering;
     SmoothedSteering = static_cast<float>(latebrake::SmoothSteering(
@@ -347,6 +348,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         return;
     }
 
+    // Apply the same bounded corner-assist policy to controller, touch
+    // and rival throttle. Brake/reverse demand is never reduced by it.
+    const float EffectiveThrottle = static_cast<float>(
+        latebrake::StabilizeCornerThrottle(
+            RawThrottle, LongitudinalSpeed, LateralSpeed, bArcade));
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);

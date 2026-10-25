@@ -244,3 +244,26 @@ a new actor must pass a fresh explicit RESTART.
 actual GameMode to bind a generation-aware `TWeakObjectPtr` only after
 successful placement and invalidate it before the next restart. The
 test source does not execute Unreal, UHT, Chaos or a live pawn lifecycle.
+
+
+### v0.5.53 — corner traction and wrong-way UI
+
+`CornerTractionAssistTests.cpp` exercises actual non-allocating C++20
+traction policy for both handling modes, full straight/launch demand,
+strong lateral-slide intervention, backward/neutral throttle invariants,
+finite bounds, monotonicity and nonfinite input rejection.
+
+`WrongWayIndicatorTests.cpp` covers all four circuit directions,
+corners/lane exclusion, sideways and low-speed motion, sustained
+0.8-second opposite direction and immediate reset on world interruption.
+`Tests/Editor/HandlingAndWayfindingBindingTests.py` asserts the real
+Chaos pawn calls traction after its validity gate, while the HUD uses
+the portable warning and resets it on teleport/session/pawn changes.
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(CornerTractionAssist|WrongWayIndicator|SpeedSensitiveSteering)$' --output-on-failure
+```
+
+A passing policy suite is **not** a UE 5.8 compile or real Win64/
+Android HUD/driving qualification. See
+[handling and wayfinding QA](../../docs/HANDLING_WAYFINDING_QA.md).

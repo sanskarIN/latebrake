@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.53 source development — corner traction and wrong-way guidance
+
+- **Unreleased gameplay source:** A new `CornerTractionAssist.h` tempers **positive motor demand** under sustained high-speed lateral sliding, with stronger intervention in Simulation Inspired than Arcade. It preserves full launch/straight authority, does not rewrite driver BRAKE or reverse input, and applies after Chaos velocity validation in the shared player/gamepad/touch/rival pawn physics tick.
+- **New HUD wayfinding feature:** `WrongWayIndicator.h` compares actual XY motion against the intended direction on all four **unambiguous straight sections** of the original circuit. It waits for 0.8s sustained opposite motion, suppresses corners/slow/sideways samples, and resets on pause/menu, race ineligibility, pawn changes, checkpoint-session changes and teleports/restarts. It is advisory only and never affects checkpoint awards or race time.
+- Two strict C++20 test suites cover speed/slip and finite-input behavior, all four route directions, warning debounce and resets; Python source contracts verify actual Unreal pawn/HUD callsite ordering and CMake registration. See [handling and wayfinding QA](HANDLING_WAYFINDING_QA.md).
+- **Real engine and device validation still missing:** no licensed UE 5.8 UHT/Editor/game compilation, original cooked map, installed Windows/Android packages, driving comparison or mobile HUD/finger QA is claimed.
+
 ## v0.5.52 source development — verified restart cannot transfer to another pawn
 
 - **Unreleased:** A successful `RESTART` previously left `RestartPlacement` globally `VerifiedPlacement`. If the possessed player pawn was later destroyed/replaced with a physically valid car, that new actor could inherit the old pawn's grid authorization without ever passing the original start-position verification.
