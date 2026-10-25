@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.39](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.39) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** This version adds fail-closed chassis momentum and mobile touch neutralization after app focus loss when Unreal does not pause. Source tests passed on Windows, macOS and Ubuntu; **there is no verified Windows EXE, Android APK/AAB or Linux game**. GitHub source ZIP/tar.gz files are developer snapshots, not installers. Real Unreal Engine 5.8 Editor/UHT compilation, cookable project map, platform packages and installed Win64/Android driving QA remain outstanding.
+> **Latest published: [v0.5.40](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.40) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** This version requires actual active race-clock advancement on each completed lap before medals, credits, records or saved results can be awarded; recovery penalty time by itself cannot qualify a lap. Portable CI passed on Windows, macOS and Ubuntu. **No verified Windows EXE, Android APK/AAB or Linux game exists.** GitHub source ZIP/tar.gz archives are not installers; authentic Unreal Engine 5.8 Editor/UHT compilation, original cooked map, installed Win64/Android builds and driving QA are outstanding.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
@@ -22,6 +22,7 @@
 - v0.5.0: offline career/championship and challenge rules, versioned career progression saves, prototype menu/navigation, and extended portable tests.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
 - v0.5.32 (published source-only pre-release): expanded HUD shows live current-lap **best-sector potential** against the achieved best lap, backed by strict C++20 tests; this estimate cannot award records.
+- v0.5.40 (published source-only pre-release): award integrity now requires a valid active-clock advance on every completed lap. Zero-duration or penalty-only laps are not eligible for credits, medals, records or a final results card. Real engine/device qualification remains outstanding.
 - v0.5.39 (published source-only pre-release): on OS focus loss, neutralize vehicle linear/angular momentum and held input if Unreal cannot pause; while suspended, only a new PAUSE touch may explicitly resume racing. This is source-verified, not installed-device qualified.
 - v0.5.38 (published source-only pre-release): any new app focus-loss suspension advances the checkpoint epoch even if the OS already paused Unreal, preventing a pre-loss position sample from counting as a post-resume crossing. Portable and source binding tests do not replace real device QA.
 - v0.5.35 (published source-only pre-release): app focus-loss suspension blocks ghost race time, checkpoint credit, paid recovery and rival route advancement until explicit player resume even if engine pausing fails. Real Unreal/device QA remains required.
