@@ -105,6 +105,7 @@ nav:
       - Verified recovery teleport QA: VERIFIED_RECOVERY_QA.md
       - Restart-grid placement QA: RESTART_PLACEMENT_QA.md
       - Handling and wrong-way QA: HANDLING_WAYFINDING_QA.md
+      - Race HUD vertical overflow QA: HUD_VERTICAL_QA.md
       - Driving session metrics QA: DRIVING_SESSION_QA.md
       - Next-gate guidance QA: NEXT_GATE_GUIDANCE_QA.md
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
