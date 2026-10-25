@@ -96,8 +96,15 @@ void ALatebrakeRaceHUD::DrawHUD()
             break;
         case latebrake::MenuPage::Results:
         {
-            MenuLine(FString::Printf(TEXT("Last event reward: +%d credits"),
-                Mode->GetLastRaceCredits()));
+            if (!latebrake::CanAwardFinishedRace(Mode->GetRace()))
+            {
+                MenuLine(TEXT("FINISH NOT RECORDABLE - missing active timing or invalid clock"), true);
+            }
+            else
+            {
+                MenuLine(FString::Printf(TEXT("Last event reward: +%d credits"),
+                    Mode->GetLastRaceCredits()));
+            }
             const latebrake::FinishedRaceInsights Insights =
                 latebrake::BuildFinishedRaceInsights(Mode->GetRace());
             if (Insights.Valid)
@@ -447,13 +454,20 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Insights.LatestVsPreviousDeltaSeconds), Primary);
             }
         }
-        Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
-            Mode->GetLastRaceCredits()), Accent);
-        if (Mode->IsCareerRace())
+        if (!latebrake::CanAwardFinishedRace(Race))
         {
-            const auto Award = Mode->GetLastCareerAward();
-            Line(FString::Printf(TEXT("CAREER MEDAL %d/3  |  SERIES BONUS +%d"),
-                static_cast<int32>(Award.Medal), Award.ChampionshipBonus), Accent);
+            Line(TEXT("FINISH NOT RECORDABLE - UNTIMED LAP OR INVALID CLOCK"), Accent);
+        }
+        else
+        {
+            Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
+                Mode->GetLastRaceCredits()), Accent);
+            if (Mode->IsCareerRace())
+            {
+                const auto Award = Mode->GetLastCareerAward();
+                Line(FString::Printf(TEXT("CAREER MEDAL %d/3  |  SERIES BONUS +%d"),
+                    static_cast<int32>(Award.Medal), Award.ChampionshipBonus), Accent);
+            }
         }
     }
     else if (!bCompact)
@@ -466,7 +480,9 @@ void ALatebrakeRaceHUD::DrawHUD()
     }
     else if (Race.IsFinished())
     {
-        Line(TEXT("FINISHED! PRESS T TO RACE AGAIN"), Accent, true);
+        Line(latebrake::CanAwardFinishedRace(Race)
+            ? TEXT("FINISHED! PRESS T TO RACE AGAIN")
+            : TEXT("INVALID FINISH - PRESS T TO RETRY"), Accent, true);
     }
 
     // Keep controls visible without overlapping the main telemetry panel.
