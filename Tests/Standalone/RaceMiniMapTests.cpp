@@ -1,5 +1,6 @@
 #include "Track/RaceMiniMap.h"
 
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
