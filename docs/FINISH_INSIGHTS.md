@@ -58,3 +58,24 @@ clock samples cannot fabricate one.
   local result projection. Review actual completed race saves.
 - Record source SHA, device model, engine logs and observed outcomes.
   Do not close hardware/engine QA issues based on portable CTest.
+
+## v0.5.40 source development: finished does not always mean awardable
+
+An ordered last gate still changes the race state to `Finished`, even
+if a zero-duration lap is observed. For medals, saved records, credits and
+full Results insights, however, **every completed lap** must have (1) a
+strictly positive finite duration and (2) its **own successful active
+race-clock advance**. A recovery fee alone does not satisfy condition
+(2); charged fees remain included in reported lap and sector times.
+
+The new `FinishTimingEligibility.h` shares this boundary between the
+authoritative GameMode reward path and the HUD's finished-results
+reporting. This does **not** claim real physical driving evidence: an
+active clock advance means an eligible race tick occurred; it does not
+prove wheel distance or valid checkpoint movement. Actual Unreal 5.8
+physics, map and device acceptance testing are still needed.
+
+Unrecordable finishes stay visibly invalid with no medal, new personal
+best, race completion increment, earned credits or SaveGame update.
+Source-level C++20 and Unreal callsite-binding tests cover this;
+no compiled game has been verified.

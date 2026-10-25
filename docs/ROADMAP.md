@@ -77,10 +77,11 @@ run installed QA, then follow with Android candidate and mobile controls.
 A manual authorized self-hosted runner may execute the new pipeline; the
 ordinary CI cannot package Unreal games. No new version is being published
 solely because packaging helper scripts now exist.
-### Recent published source-only milestones
+### Recent source-only milestones
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.40 (development, not released) | Require active clock advancement on every completed lap before any award or final insight; reject zero-duration and penalty-only laps | Real RaceProgress C++20 regressions and source-binding checks; Unreal 5.8, cooked map and installed package QA pending |
 | v0.5.39 (published source-only pre-release) | Neutralize player momentum/inputs when OS focus-loss pause fails and allow only fresh PAUSE touches to resume | Three-OS portable policy tests plus Unreal source contracts; Unreal physics and real-device qualification remain outstanding |
 | v0.5.38 (published source-only pre-release) | Ensure every new OS focus-loss suspension invalidates checkpoint motion even if Unreal was already paused; retain manual resume | Strict portable C++20 plus Unreal-source binding checks; actual Unreal/Android/Win64 interruption and crossing QA outstanding |
 | v0.5.37 (published source-only pre-release) | Attribute charged recovery fees to current and last completed lap only at ordered lap boundaries; show actual attribution on non-compact HUD | Strict three-OS C++20 and Editor binding contracts, plus required future Unreal/device rendering QA |

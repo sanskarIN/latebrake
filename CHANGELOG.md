@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.40 — Development candidate (2026-10-25; NOT released)
+
+- Add separate allocation-free active-lap clock evidence. Only actual successful `RaceProgress::Advance` updates count toward an actively timed lap; paid recovery penalties and rejected deltas cannot satisfy the requirement.
+- Refuse medals, credits, records, completion counts and profile writes when **any** completed lap has zero duration or lacks its own active clock advancement, even when the overall race time is otherwise recordable.
+- Keep ordered gate completion unchanged; invalid finish states present an explicit no-recordable-finish status instead of valid finished-race insights or misleading rewards.
+- Add strict real `RaceProgress.cpp` regression tests and Unreal source-binding contracts. This is SOURCE ONLY, not licensed Unreal 5.8 Editor/UHT, cooked-map, Win64/Android or installed-game qualification.
+
 ## v0.5.39 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - When Unreal does not actually pause after OS deactivation, the focus guard now neutralizes player linear/angular chassis velocity as well as throttle, steering and held touch controls both on deactivation and on later physics ticks.

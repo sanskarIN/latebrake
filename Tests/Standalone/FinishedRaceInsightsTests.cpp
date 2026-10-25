@@ -112,13 +112,13 @@ int main()
     Require(mixed.PassCheckpoint(0), "second physically timed lap");
     const FinishedRaceInsights mixedReport = BuildFinishedRaceInsights(mixed);
     Require(!mixedReport.HasLatestVsPrevious &&
-            mixedReport.LatestTimedLapNumber == 2 &&
+            mixedReport.LatestTimedLapNumber == 0 &&
             mixedReport.PreviousTimedLapNumber == 0 &&
             mixed.GetRecentTimedLapCount() == 1,
-            "zero-duration first lap cannot become comparison baseline");
-    Require(mixedReport.Valid && mixedReport.CompletedLaps == 2 &&
-            mixedReport.TimedLaps == 1 && !mixedReport.HasLapSpread,
-            "a zero-duration lap does not invent a comparison population");
+            "invalid complete run cannot expose any final comparison");
+    Require(!mixedReport.Valid &&
+            !CanAwardFinishedRace(mixed),
+            "a zero-duration first lap cannot become awardable final insights");
 
     RaceProgress tooLong(1, 1);
     tooLong.Advance(604801.0);

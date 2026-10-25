@@ -25,6 +25,7 @@
 #include "Garage/CareerGaragePolicy.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
+#include "Racing/FinishTimingEligibility.h"
 #include "Racing/RaceClockReadiness.h"
 #include "Racing/PlayerRaceClockReadiness.h"
 #include "Racing/RecoveryCharge.h"
@@ -482,18 +483,20 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         return;
     }
 
-    // The SaveGame schema records best times as floats with an existing
-    // seven-day bound. Do not grant career medals, completion counts or
-    // quick-race credits for a finish which this schema cannot represent
-    // reliably, e.g. elapsed doubles outside that bound or a zero lap.
-    if (!latebrake::IsValidFinishedRaceTime(Race.GetElapsedSeconds()) ||
-        !latebrake::IsValidFinishedRaceTime(Race.GetBestLapSeconds()))
+    // Ordered gate completion is necessary but not sufficient for rewards.
+    // Every lap must have its own successful active race-clock advancement:
+    // zero-time laps and penalty-only laps cannot earn medals or be saved as
+    // recordable completions. The existing seven-day float bound still applies.
+    const latebrake::FinishTimingEligibility FinishTiming =
+        latebrake::ValidateFinishTiming(Race);
+    if (FinishTiming != latebrake::FinishTimingEligibility::Eligible)
     {
         LastCareerAward = {};
         LastRaceCredits = 0;
-        CareerFeedback = TEXT("Finish rejected: race/lap clock is outside supported record range. Restart to retry.");
+        CareerFeedback = TEXT("Finish rejected: missing per-lap active timing or unrecordable clock. Restart to retry.");
         UE_LOG(LogTemp, Warning,
-            TEXT("Latebrake: refusing non-recordable finish times; no rewards, records or SaveGame write"));
+            TEXT("Latebrake: refusing finish timing eligibility=%d; no rewards, records or SaveGame write"),
+            static_cast<int32>(FinishTiming));
         return;
     }
 
