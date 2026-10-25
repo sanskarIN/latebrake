@@ -41,13 +41,14 @@ try {
     [IO.File]::WriteAllBytes($payloadPath, $originalBytes)
     $actualHash = (Get-FileHash -LiteralPath $payloadPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $state = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         project = 'LateBrake'
         platform = 'Win64'
         status = 'UNVERIFIED_CANDIDATE_NOT_PLAYTESTED'
         source_commit = ('a' * 40)
         source_tree_tracked_changes = $false
         unreal_engine_version = '5.8'
+        unreal_engine_build_sha256 = ('c' * 64)
         starter_map_sha256 = ('b' * 64)
         created_utc = '2000-01-01T00:00:00Z'
         files = @(
@@ -115,6 +116,32 @@ try {
         & $verifier -ManifestJson $manifestPath -Platform Win64
     }
     $state.source_tree_tracked_changes = $false
+
+    # The new schema cannot silently accept absent or malformed exact UE
+    # build provenance while payload bytes and source revision are correct.
+    $state.unreal_engine_build_sha256 = ('C' * 64)
+    Write-Fixture
+    Expect-Rejection 'uppercase engine metadata digest' {
+        & $verifier -ManifestJson $manifestPath -Platform Win64
+    }
+    $state.unreal_engine_build_sha256 = ('c' * 63)
+    Write-Fixture
+    Expect-Rejection 'truncated engine metadata digest' {
+        & $verifier -ManifestJson $manifestPath -Platform Win64
+    }
+    $state.unreal_engine_build_sha256 = ('c' * 64)
+    $state.Remove('unreal_engine_build_sha256')
+    Write-Fixture
+    Expect-Rejection 'missing engine metadata fingerprint' {
+        & $verifier -ManifestJson $manifestPath -Platform Win64
+    }
+    $state.unreal_engine_build_sha256 = ('c' * 64)
+    $state.schema_version = 1
+    Write-Fixture
+    Expect-Rejection 'legacy schema without mandatory engine build identity' {
+        & $verifier -ManifestJson $manifestPath -Platform Win64
+    }
+    $state.schema_version = 2
 
     $state.status = 'PLAYTESTED_THIS_IS_NOT_SUPPORTED'
     Write-Fixture

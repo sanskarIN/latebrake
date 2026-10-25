@@ -25,23 +25,25 @@ try {
     $winPath = Join-Path $temp 'win64-candidate.json'
     $androidPath = Join-Path $temp 'android-candidate.json'
     $win = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         project = 'LateBrake'
         platform = 'Win64'
         status = 'UNVERIFIED_CANDIDATE_NOT_PLAYTESTED'
         source_commit = ('a' * 40)
         source_tree_tracked_changes = $false
         unreal_engine_version = '5.8'
+        unreal_engine_build_sha256 = ('c' * 64)
         starter_map_sha256 = ('b' * 64)
     }
     $android = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         project = 'LateBrake'
         platform = 'Android'
         status = 'UNVERIFIED_CANDIDATE_NOT_PLAYTESTED'
         source_commit = ('a' * 40)
         source_tree_tracked_changes = $false
         unreal_engine_version = '5.8'
+        unreal_engine_build_sha256 = ('c' * 64)
         starter_map_sha256 = ('b' * 64)
     }
     function Write-Fixtures {
@@ -71,6 +73,28 @@ try {
     Expect-Rejection 'different engine patch versions' { Verify-Pair }
     $android.unreal_engine_version = '5.8'
 
+    # Matching '5.8' is insufficient when different installed UE builds
+    # carry different changelist/build metadata. Even valid digests differ.
+    $android.unreal_engine_build_sha256 = ('d' * 64)
+    Write-Fixtures
+    Expect-Rejection 'same 5.8 and circuit but different exact Unreal build' { Verify-Pair }
+    $android.unreal_engine_build_sha256 = ('c' * 64)
+
+    $android.unreal_engine_build_sha256 = ('c' * 63)
+    Write-Fixtures
+    Expect-Rejection 'truncated Android UE build identity' { Verify-Pair }
+    $android.unreal_engine_build_sha256 = ('c' * 64)
+
+    $win.unreal_engine_build_sha256 = ''
+    Write-Fixtures
+    Expect-Rejection 'missing Win64 UE build identity' { Verify-Pair }
+    $win.unreal_engine_build_sha256 = ('c' * 64)
+
+    $win.unreal_engine_build_sha256 = ('C' * 64)
+    Write-Fixtures
+    Expect-Rejection 'uppercase Win64 UE build digest' { Verify-Pair }
+    $win.unreal_engine_build_sha256 = ('c' * 64)
+
     $android.starter_map_sha256 = ('b' * 63)
     Write-Fixtures
     Expect-Rejection 'missing hex character in Android map hash' { Verify-Pair }
@@ -99,7 +123,7 @@ try {
     $win.schema_version = 999
     Write-Fixtures
     Expect-Rejection 'unsupported manifest schema' { Verify-Pair }
-    $win.schema_version = 1
+    $win.schema_version = 2
 
     $android.project = 'AnotherGame'
     Write-Fixtures

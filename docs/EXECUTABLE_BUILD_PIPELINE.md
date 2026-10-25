@@ -17,6 +17,41 @@ been performed by this repository's ordinary three-OS CI.
 - Enough storage and disk permissions for cooked/staged Unreal games. The
   source repository does not redistribute the engine or its licensed assets.
 
+## v0.5.44 development: exact Unreal Engine 5.8 build metadata continuity
+
+`Engine/Build/Build.version` contains more identifying metadata than
+`MajorVersion=5` / `MinorVersion=8` (for example a changelist). A Win64
+build using one Unreal 5.8 installation and an Android package using another
+could previously pass the version-only candidate pairing gate.
+
+The **schema-2** `Latebrake-candidate-manifest.json` now includes
+`unreal_engine_build_sha256`, a lowercase SHA256 digest of the exact
+`Engine/Build/Build.version` file bytes. The one-command build pins this
+digest before Editor compilation, checks it again after map authoring,
+validates it before and after UAT, and requires the same digest when writing
+the candidate manifest. Direct UAT script calls take an optional
+`-ExpectedEngineSha256` and always check their own before/after snapshot.
+
+To review Win64 and Android archives together, both manifests must report
+the **same source commit, exact Build.version SHA256, engine version and
+identical authored circuit-map SHA256**. Schema-1 manifests intentionally
+fail the new gate; rebuild candidates from a pinned source/engine instead
+of silently upgrading old evidence. The installed hardware QA report must
+still match the new manifest's own SHA256.
+
+Offline synthetic tests (not real UE build attempts):
+
+```powershell
+pwsh ./scripts/Test-EngineBuildSnapshotPolicy.ps1
+pwsh ./scripts/Test-CandidateManifestPolicy.ps1
+pwsh ./scripts/Test-CandidatePairIdentityPolicy.ps1
+```
+
+**Limit:** matching Build.version hashes do not prove two Unreal binaries
+are identical, that an authorized UE compiler was run, that the circuit
+cooked correctly, or that any target device was tested. Real engine/SDK
+provenance and installed gameplay evidence are still required.
+
 ## Source provenance check (v0.5.24 development, not released)
 
 Before running the expensive UE 5.8 build, `Test-SourceProvenance.ps1` now

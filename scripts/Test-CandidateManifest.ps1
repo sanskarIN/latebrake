@@ -52,13 +52,14 @@ function Assert-SafeArchiveParents {
 
 $manifest = Get-Content -LiteralPath $manifestFile.FullName -Raw |
     ConvertFrom-Json -ErrorAction Stop
-if ($manifest.schema_version -ne 1 -or
+if ($manifest.schema_version -ne 2 -or
     $manifest.project -cne 'LateBrake' -or
     $manifest.platform -cne $Platform -or
     $manifest.status -cne 'UNVERIFIED_CANDIDATE_NOT_PLAYTESTED' -or
     $manifest.source_commit -notmatch '^[a-fA-F0-9]{40}$' -or
     $manifest.unreal_engine_version -notmatch '^5\.8(\.|$)' -or
     $manifest.starter_map_sha256 -notmatch '^[a-fA-F0-9]{64}$' -or
+    $manifest.unreal_engine_build_sha256 -cnotmatch '^[a-f0-9]{64}$' -or
     $manifest.source_tree_tracked_changes -ne $false) {
     throw 'Wrong project, platform, schema, engine version, status, source provenance or dirty source tree.'
 }

@@ -13,7 +13,8 @@ param(
     [Parameter(Mandatory)][ValidateSet('Win64', 'Android')][string]$Platform,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$ExpectedCommit,
-    [string]$ExpectedMapSha256
+    [string]$ExpectedMapSha256,
+    [string]$ExpectedEngineSha256
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -43,6 +44,16 @@ $engineVersion = Get-Content -LiteralPath $engineVersionPath -Raw | ConvertFrom-
 if ($engineVersion.MajorVersion -ne 5 -or $engineVersion.MinorVersion -ne 8) {
     throw "Unreal 5.8 required; found $($engineVersion.MajorVersion).$($engineVersion.MinorVersion)"
 }
+# The precise version-metadata bytes (including changelist/branch/build
+# revision when present) must remain unchanged across the long UAT cook.
+$engineBeforeCook = (Get-FileHash -LiteralPath $engineVersionPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($PSBoundParameters.ContainsKey('ExpectedEngineSha256')) {
+    if ($ExpectedEngineSha256 -cne $engineBeforeCook) {
+        throw 'Unreal Build.version is not the engine metadata pinned before Editor compilation.'
+    }
+}
+& (Join-Path $PSScriptRoot 'Test-EngineBuildSnapshot.ps1') -EngineRoot $EngineRoot -ExpectedSha256 $engineBeforeCook
+if (-not $?) { throw 'Unreal 5.8 build metadata preflight failed.' }
 $descriptor = Get-Content -LiteralPath $project -Raw | ConvertFrom-Json -ErrorAction Stop
 if ($descriptor.EngineAssociation -ne '5.8') {
     throw "Project engine association is not 5.8: $($descriptor.EngineAssociation)"
@@ -111,6 +122,8 @@ if ($LASTEXITCODE -ne 0) {
 if (-not $?) { throw 'Source HEAD or working tree changed during UAT packaging.' }
 & (Join-Path $PSScriptRoot 'Test-CandidateMapSnapshot.ps1') -MapPath $requiredMap -ExpectedSha256 $mapBeforeCook
 if (-not $?) { throw 'Circuit map changed while Unreal cooked the candidate.' }
+& (Join-Path $PSScriptRoot 'Test-EngineBuildSnapshot.ps1') -EngineRoot $EngineRoot -ExpectedSha256 $engineBeforeCook
+if (-not $?) { throw 'Engine Build.version changed during UAT packaging.' }
 
 # Unreal returning 0 is necessary but not enough. Reject implausible EXEs,
 # tiny cooked packages and malformed APKs BEFORE recording a manifest or

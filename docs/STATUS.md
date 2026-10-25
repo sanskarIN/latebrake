@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.44 source development — exact installed Unreal engine build identity
+
+- Discovered that candidate manifest schema 1 and Win64/Android pairing required only an `unreal_engine_version` string such as `5.8`. Different installed 5.8 builds can share that string but have different changelists/metadata.
+- The candidate pipeline now hashes the exact installed `Engine/Build/Build.version` bytes before compiling and rechecks this identity after Editor authoring, before/after cooking and when creating a schema-2 manifest. Manifest and pair verifiers require `unreal_engine_build_sha256`; otherwise mixed-engine build review fails.
+- Windows CI synthetic metadata and manifest tests exercise changed same-size changelist JSON, missing fingerprints, unsupported schema and different Win64/Android engine metadata. **Build.version SHA is metadata continuity, not authentication of UE binaries or running a game**.
+- **Development only; latest published prerelease remains v0.5.43 source-only**, pending any separately verified new release.
+
 ## v0.5.43 published source-only pre-release — standalone PAUSE survives rejected world pause
 
 - Detected a distinct gap not covered by v0.5.42's player-driving readiness: a keyboard/gamepad/touch **standalone PAUSE** pressed while the engine was running had no independent fallback state if Unreal's `SetGamePaused(true)` did not actually pause. As a result, the race clock and ordered gates could continue while the player believed PAUSE was requested.

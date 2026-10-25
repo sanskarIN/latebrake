@@ -12,7 +12,8 @@ param(
     [Parameter(Mandatory)][string]$PackageDirectory,
     [Parameter(Mandatory)][string]$EngineRoot,
     [string]$ExpectedCommit,
-    [string]$ExpectedMapSha256
+    [string]$ExpectedMapSha256,
+    [string]$ExpectedEngineSha256
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -49,6 +50,13 @@ $engine = Get-Content -LiteralPath $versionPath -Raw | ConvertFrom-Json -ErrorAc
 if ($engine.MajorVersion -ne 5 -or $engine.MinorVersion -ne 8) {
     throw 'Only licensed Unreal Engine 5.8 candidates are supported.'
 }
+$engineBuildSha256 = (Get-FileHash -LiteralPath $versionPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($PSBoundParameters.ContainsKey('ExpectedEngineSha256') -and
+    $ExpectedEngineSha256 -cne $engineBuildSha256) {
+    throw 'Candidate manifest cannot claim a different Unreal Build.version than the compilation/cook snapshot.'
+}
+& (Join-Path $PSScriptRoot 'Test-EngineBuildSnapshot.ps1') -EngineRoot $EngineRoot -ExpectedSha256 $engineBuildSha256
+if (-not $?) { throw 'Engine build snapshot validation failed before manifest creation.' }
 
 $sourceSha = (& git -C $repo rev-parse HEAD 2>$null)
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($sourceSha)) {
@@ -97,13 +105,14 @@ $fingerprints = @(
     }
 )
 $manifest = [ordered]@{
-    schema_version = 1
+    schema_version = 2
     project = 'LateBrake'
     platform = $Platform
     status = 'UNVERIFIED_CANDIDATE_NOT_PLAYTESTED'
     source_commit = "$sourceSha".Trim()
     source_tree_tracked_changes = ($modifiedTrackedFiles.Count -gt 0)
     unreal_engine_version = "$($engine.MajorVersion).$($engine.MinorVersion)"
+    unreal_engine_build_sha256 = $engineBuildSha256
     starter_map_sha256 = (Get-FileHash -LiteralPath $projectMap -Algorithm SHA256).Hash.ToLowerInvariant()
     created_utc = [DateTime]::UtcNow.ToString('o')
     files = $fingerprints
