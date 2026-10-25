@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.60">v0.5.60</a>, a <strong>source-only pre-release</strong>. Active v0.5.65 source development adds grounded rival radar, close-opponent alerts and measured direct closing/separating advice. Portable C++20 policy and source-contract tests are not proof of a playable engine build. <strong>No verified Windows or Android game binaries are available.</strong> Licensed Unreal Engine 5.8 Editor/UHT compilation, an actual cooked circuit, installed packages and physical-device QA remain outstanding.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.65">v0.5.65</a>, a <strong>source-only pre-release with zero executable attachments</strong>. It includes grounded player/opponent race radar, off-track return advice, close-rival warnings and measured direct separation-rate guidance, validated by portable C++20 and source-level tests. <strong>No verified Windows or Android game binaries are available.</strong> Licensed Unreal Engine 5.8 Editor/UHT compilation, a cooked circuit, installed packages and physical-device QA are still outstanding.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
