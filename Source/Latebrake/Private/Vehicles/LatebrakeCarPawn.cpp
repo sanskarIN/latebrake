@@ -211,6 +211,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
+    DrivingStats.Suspend();
     ClearDriverInputs();
     // A failed pause may keep Chaos simulating while race time is frozen.
     // Neutralize driver commands plus current momentum during menu/world
@@ -353,6 +354,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float EffectiveThrottle = static_cast<float>(
         latebrake::StabilizeCornerThrottle(
             RawThrottle, LongitudinalSpeed, LateralSpeed, bArcade));
+    // Advisory metrics only: no scoring, lap records or tire-forces use
+    // these values. Invalid long frames are rejected by the policy.
+    DrivingStats.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(Speed), static_cast<double>(LateralSpeed),
+        bEffectiveBraking});
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
@@ -451,6 +457,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     // Even a failed Unreal transform request can disturb the body state;
     // invalidate all pre-recovery checkpoint samples BEFORE attempting it.
     ++TeleportRevision;
+    DrivingStats.Suspend();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())
     {
