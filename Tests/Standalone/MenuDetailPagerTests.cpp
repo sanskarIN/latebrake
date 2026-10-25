@@ -42,6 +42,9 @@ int main()
     pager.Synchronize(MenuPage::Results, 11, 5);
     Check(pager.Window().Begin == 5 && pager.Window().End == 10,
           "live resize clamps current page without losing page identity");
+    pager.Synchronize(MenuPage::Results, 11, 2);
+    Check(pager.Window().Begin <= 5 && pager.Window().End > 5,
+          "narrowing viewport retains the formerly first visible row");
     pager.Synchronize(MenuPage::Results, 2, 5);
     Check(pager.Window().Begin == 0 && pager.Window().PageCount == 1 &&
           !pager.Next(), "shrinking content clamps to valid first page");
