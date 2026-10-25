@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <initializer_list>
 #include <limits>
 
 namespace
@@ -57,7 +58,7 @@ int main()
     Check(!warning.Update(near, 0.1, false) && !warning.IsActive(),
           "pause, results and loss of race eligibility clear alert");
 
-    for (const auto invalid : {
+    for (const auto& invalid : {
         radarAt(10.0, false, true, true),
         radarAt(10.0, true, false, true),
         radarAt(10.0, true, true, false),
