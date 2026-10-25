@@ -4,6 +4,7 @@
 #include "GameFramework/HUD.h"
 #include "Racing/WrongWayIndicator.h"
 #include "Track/OffTrackAdvisor.h"
+#include "Track/RivalProximityIndicator.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -20,7 +21,9 @@ private:
     // Advisory only: no race awarding, control input or network telemetry.
     latebrake::WrongWayIndicator WrongWayHint;
     latebrake::OffTrackIndicator OffTrackHint;
+    latebrake::RivalProximityIndicator RivalProximityHint;
     TWeakObjectPtr<APawn> LastWayfindingPawn;
     uint64 LastWayfindingSession = 0;
     uint64 LastWayfindingTeleport = 0;
+    int32 LastRivalVerifiedRecoveries = 0;
 };
