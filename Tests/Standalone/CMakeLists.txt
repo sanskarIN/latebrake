@@ -517,3 +517,17 @@ else()
     target_compile_options(latebrake_finish_timing_eligibility_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME FinishTimingEligibility COMMAND latebrake_finish_timing_eligibility_tests)
+
+# v0.5.42: no motor/torque while menu, finish or OS/world pause has
+# frozen the race clock, even if Unreal keeps ticking after pause failure.
+add_executable(latebrake_player_drive_readiness_tests
+    PlayerDriveReadinessTests.cpp
+)
+target_include_directories(latebrake_player_drive_readiness_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_player_drive_readiness_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_player_drive_readiness_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_player_drive_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PlayerDriveReadiness COMMAND latebrake_player_drive_readiness_tests)
