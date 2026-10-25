@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.47 source development — full orientation and post-move recovery verification
+
+- **Unreleased development work:** Paid RECOVER now requires all three observed Euler axes within 2° of requested orientation, not only yaw. A successful Unreal transform is also insufficient unless the **post-move** Chaos body still passes the existing physical chassis readiness policy and its instantaneous 3D linear/angular motion is finite and bounded (1 cm/s, 1°/s).
+- The production `RecoveryTeleportVerification.cpp` classifies tilted placement, disabled/nonfinite post-move physics and unintended residual motion. The actual Unreal pawn collects the post-teleport snapshots before allowing GameMode's staged penalty transaction to commit; rejected attempts keep the race clock, penalty audit and recovery counter unchanged.
+- Extended three-OS C++20 regression coverage and Python Unreal-source binding checks, plus [engine and device QA matrix](VERIFIED_RECOVERY_QA.md). **Unreal 5.8 compilation and installed Windows/Android testing remain unverified**; this work is not a playable build or stable release.
+- An unexpectedly moved body on a rejected recovery can still require manual on-device remediation; this change prevents a *charge*, not all possible consequences of a failed engine transform.
+
 ## v0.5.46 published source-only pre-release — paid RECOVER requires verified engine placement
 
 - The player RECOVER path previously charged its five-second time penalty and recovery count **before** calling a void Unreal `RecoverTo`; `SetActorLocationAndRotation` could fail without the caller knowing.
