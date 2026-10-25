@@ -33,6 +33,14 @@ if ($LASTEXITCODE -ne 0 -or $sourceCommit.Count -ne 1 -or
     throw 'Could not pin the starting Git commit before Unreal compilation.'
 }
 $sourceCommit = [string]$sourceCommit[0]
+$engineVersionPath = Join-Path $EngineRoot 'Engine/Build/Build.version'
+if (-not (Test-Path -LiteralPath $engineVersionPath -PathType Leaf)) {
+    throw 'Cannot fingerprint a missing Unreal Build.version before compilation.'
+}
+$engineBuildSha256 = (Get-FileHash -LiteralPath $engineVersionPath -Algorithm SHA256).Hash.ToLowerInvariant()
+& (Join-Path $PSScriptRoot 'Test-EngineBuildSnapshot.ps1') -EngineRoot $EngineRoot -ExpectedSha256 $engineBuildSha256
+if (-not $?) { throw 'Unreal 5.8 Build.version snapshot was invalid before compilation.' }
+Write-Host "Pinned Unreal engine Build.version SHA256: $engineBuildSha256"
 Write-Host "Pinned candidate source commit: $sourceCommit"
 
 Write-Host 'Stage 1/3: compile editor and catch UHT/C++ errors.'
@@ -42,6 +50,8 @@ if (-not $?) { throw 'Editor compilation stage failed.' }
 Write-Host 'Stage 2/3: create or confirm true Unreal starter level.'
 & (Join-Path $PSScriptRoot 'New-StarterMap.ps1') -EngineRoot $EngineRoot
 if (-not $?) { throw 'Real Unreal level generation failed.' }
+& (Join-Path $PSScriptRoot 'Test-EngineBuildSnapshot.ps1') -EngineRoot $EngineRoot -ExpectedSha256 $engineBuildSha256
+if (-not $?) { throw 'Engine version metadata changed during Editor compile or map authoring.' }
 
 # The Editor may have saved an existing tracked map or left a new asset.
 # Recheck before cooking so its provenance is not a surprise at upload.
@@ -52,11 +62,11 @@ $mapSnapshot = (Get-FileHash -LiteralPath $mapPath -Algorithm SHA256).Hash.ToLow
 Write-Host "Pinned circuit map SHA256 before cook: $mapSnapshot"
 
 Write-Host "Stage 3/3: cook and package real $Platform candidate."
-& (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $EngineRoot -Platform $Platform -OutputDirectory $OutputDirectory -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot
+& (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $EngineRoot -Platform $Platform -OutputDirectory $OutputDirectory -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot -ExpectedEngineSha256 $engineBuildSha256
 if (-not $?) { throw 'BuildCookRun/package stage failed.' }
 
 Write-Host 'Recording traceable source/engine/map and package SHA256 data.'
-& (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -Platform $Platform -PackageDirectory $OutputDirectory -EngineRoot $EngineRoot -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot
+& (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -Platform $Platform -PackageDirectory $OutputDirectory -EngineRoot $EngineRoot -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot -ExpectedEngineSha256 $engineBuildSha256
 if (-not $?) { throw 'Candidate fingerprint manifest stage failed.' }
 
 # Verify the complete closed-world archive immediately after writing the
