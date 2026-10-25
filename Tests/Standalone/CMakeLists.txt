@@ -563,8 +563,8 @@ else()
 endif()
 add_test(NAME VehicleDynamicsReadiness COMMAND latebrake_vehicle_dynamics_readiness_tests)
 
-# v0.5.46: paid RECOVER is a transaction: charge only after Unreal's
-# accepted position/rotation has been verified by production C++ policy.
+# v0.5.46+v0.5.47: paid RECOVER commits a fee only after the actual
+# production verifier confirms complete pose and post-move chassis motion.
 add_executable(latebrake_recovery_teleport_transaction_tests
     RecoveryTeleportTransactionTests.cpp
     ../../Source/Latebrake/Private/Racing/RecoveryTeleportVerification.cpp

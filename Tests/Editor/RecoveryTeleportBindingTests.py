@@ -67,6 +67,13 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
         self.assertIn("const bool bEngineMoved =", attempt)
         self.assertIn("GetActorLocation();", attempt)
         self.assertIn("GetActorRotation();", attempt)
+        self.assertIn("Chassis->GetPhysicsLinearVelocity()", attempt)
+        self.assertIn("Chassis->GetPhysicsAngularVelocityInDegrees()", attempt)
+        self.assertIn("bChassisStillValid && IsRacePhysicsReady()", attempt)
+        self.assertIn("Rotation.Pitch, Rotation.Roll", attempt)
+        self.assertIn("ObservedRotation.Pitch, ObservedRotation.Roll", attempt)
+        self.assertIn("PostLinearVelocity.X, PostLinearVelocity.Y, PostLinearVelocity.Z", attempt)
+        self.assertIn("PostAngularVelocity.X, PostAngularVelocity.Y, PostAngularVelocity.Z", attempt)
         self.assertIn("latebrake::EvaluateRecoveryTeleport({", attempt)
         self.assertLess(attempt.index("++TeleportRevision;"),
                         attempt.index("SetActorLocationAndRotation("))
@@ -96,6 +103,38 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
         self.assertIn("std::remainder(", self.verification)
         self.assertIn("RecoveryTeleportDecision::PositionMismatch", self.verification)
         self.assertIn("RecoveryTeleportDecision::HeadingMismatch", self.verification)
+
+    def test_post_move_readiness_and_motion_are_mandatory(self):
+        for expected in (
+            "sample.TargetPitchDegrees", "sample.TargetRollDegrees",
+            "sample.ActualPitchDegrees", "sample.ActualRollDegrees",
+            "sample.ChassisReadyAfterMove", "sample.PostLinearVelocityX",
+            "sample.PostLinearVelocityY", "sample.PostLinearVelocityZ",
+            "sample.PostAngularVelocityXDegrees",
+            "sample.PostAngularVelocityYDegrees",
+            "sample.PostAngularVelocityZDegrees",
+            "RecoveryTeleportDecision::OrientationMismatch",
+            "RecoveryTeleportDecision::PostMovePhysicsUnavailable",
+            "RecoveryTeleportDecision::NonfinitePostMoveMotion",
+            "RecoveryTeleportDecision::ResidualMotion",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, self.verification)
+        self.assertIn("MaxResidualSpeedCmPerSecond", self.verification)
+        self.assertIn("MaxResidualAngularSpeedDegreesPerSecond", self.verification)
+        self.assertIn("IsRotationWithinTolerance(", self.verification)
+
+    def test_mutation_removed_chassis_snapshot_is_detected(self):
+        attempt = body(
+            self.pawn, "bool ALatebrakeCarPawn::TryRecoverTo(",
+            "void ALatebrakeCarPawn::RecoverTo(",
+        )
+        removed = attempt.replace(
+            "bChassisStillValid && IsRacePhysicsReady()",
+            "true /* unsafe readiness bypass */",
+        )
+        self.assertNotIn("bChassisStillValid && IsRacePhysicsReady()", removed)
+        self.assertIn("bChassisStillValid && IsRacePhysicsReady()", attempt)
 
     def test_production_cpp_is_compiled_by_standalone_suite(self):
         self.assertIn("RecoveryTeleportTransactionTests.cpp", self.cmake)
