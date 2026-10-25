@@ -51,3 +51,20 @@ waypoint for **every career event which actually spawns a rival**, plus
 one-event replay resets, stuck-recovery reset and out-of-range configuration.
 Real UE physics, steering/cornering, opponent competitiveness and
 installed-game display behavior remain unverified.
+
+
+## v0.5.49 source development — checked rival recovery outcomes
+
+The route counter is explicitly **attempts**, not successes. Each stalled
+recovery request now becomes pending until the actual Unreal
+`TryRecoverTo` verifier reports placement. `RivalRouteProgress`
+separately counts verified and rejected engine outcomes; duplicate or
+unsolicited acknowledgements cannot alter counters, and a pending
+attempt cannot advance approximate waypoint or lap telemetry. Both
+failure and success consume one of the same finite recovery budget slots.
+
+The non-compact HUD distinguishes attempted from verified and rejected
+rival teleports. These values do not modify the player-authoritative
+race result or qualify the experimental AI as competitive. See
+[Rival recovery QA](RIVAL_RECOVERY_QA.md) for portable tests and required
+real Unreal/device validation. This change is **unreleased source work**.

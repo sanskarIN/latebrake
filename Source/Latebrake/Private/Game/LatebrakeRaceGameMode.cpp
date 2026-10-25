@@ -932,6 +932,16 @@ int32 ALatebrakeRaceGameMode::GetRivalRecoveryCount() const
     return IsValid(RivalCar) ? RivalCar->GetPilotRecoveries() : 0;
 }
 
+int32 ALatebrakeRaceGameMode::GetRivalSuccessfulRecoveryCount() const
+{
+    return IsValid(RivalCar) ? RivalCar->GetPilotSuccessfulRecoveries() : 0;
+}
+
+int32 ALatebrakeRaceGameMode::GetRivalFailedRecoveryCount() const
+{
+    return IsValid(RivalCar) ? RivalCar->GetPilotFailedRecoveries() : 0;
+}
+
 bool ALatebrakeRaceGameMode::HasRivalFinishedRoute() const
 {
     return IsValid(RivalCar) && RivalCar->HasCompletedRoute();

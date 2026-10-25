@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.49 source development — rival recovery outcome integrity
+
+- **Unreleased:** The AI had been using the legacy `void RecoverTo` for stuck recovery. Unreal could reject/misplace a teleport, while the existing finite recovery counter still looked like a successful move. Now the route tracks bounded attempts with a pending state and explicit verified/rejected outcomes.
+- Actual `ALatebrakeRivalCar::Tick` calls `TryRecoverTo` and reports its success only after engine pose, body health and motion validation. Unresolved requests cannot advance rival route telemetry; rejected placements request braking and may retry only after a fresh stall interval.
+- GameMode and non-compact HUD display ATTEMPTS plus separate VERIFIED/REJECTED counts; route reset and event changes clear outcome state. New production-linked C++20 regressions, existing route budget tests and Python source integration contract cover both outcomes; see [rival recovery QA](RIVAL_RECOVERY_QA.md).
+- **No licensed Unreal 5.8 C++/UHT compilation, installed game, actual Chaos teleport failure injection or device steering QA has been completed.** This is a source-level improvement, not proof of playable opponent behavior.
+
 ## v0.5.48 source development — speed-sensitive steering and finite orientation
 
 - **Unreleased:** A new header-only portable C++20 `SpeedSensitiveSteering.h` tapers physical yaw torque as real planar speed rises, preserving full steering up to 900 cm/s and reducing it above 5400 cm/s to 55% Arcade / 40% Simulation Inspired. Both presets retain the existing smoothing, low-speed speed authority and reverse turn correction. Actual Unreal base-pawn torque applies this to player keyboard/controller/touch and autonomous rival commands.

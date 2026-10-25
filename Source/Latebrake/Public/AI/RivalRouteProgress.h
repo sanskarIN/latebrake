@@ -43,12 +43,18 @@ public:
         CompletedLaps = 0;
         StationarySeconds = 0.0;
         Recoveries = 0;
+        SuccessfulRecoveries = 0;
+        FailedRecoveries = 0;
+        RecoveryPending = false;
     }
 
     RouteObservation Observe(double distanceCm, double speedCmPerSecond,
                              double deltaSeconds) noexcept
     {
-        if (IsFinished() || !std::isfinite(distanceCm) || distanceCm < 0.0 ||
+        // Until the engine has reported the outcome, a pending recovery
+        // cannot silently advance a waypoint or trigger another attempt.
+        if (RecoveryPending || IsFinished() ||
+            !std::isfinite(distanceCm) || distanceCm < 0.0 ||
             !std::isfinite(speedCmPerSecond) || speedCmPerSecond < 0.0 ||
             !std::isfinite(deltaSeconds) || deltaSeconds <= 0.0)
         {
@@ -87,16 +93,44 @@ public:
                 return {};
             }
             ++Recoveries;
+            RecoveryPending = true;
             return {false, true, false};
         }
         return {};
+    }
+
+    // Caller must synchronously report the actual verified Unreal teleport
+    // outcome; repeated or unsolicited results cannot modify telemetry.
+    // Every issued request consumes one finite budget slot regardless of
+    // success. A failed move may be retried only after a fresh 8s stall.
+    bool ReportRecoveryResult(bool enginePlacementVerified) noexcept
+    {
+        if (!RecoveryPending)
+        {
+            return false;
+        }
+        RecoveryPending = false;
+        if (enginePlacementVerified)
+        {
+            ++SuccessfulRecoveries;
+        }
+        else
+        {
+            ++FailedRecoveries;
+        }
+        return true;
     }
 
     int GetNextWaypoint() const noexcept { return NextWaypoint; }
     int GetWaypointCount() const noexcept { return WaypointCount; }
     int GetRequiredLaps() const noexcept { return RequiredLaps; }
     int GetCompletedLaps() const noexcept { return CompletedLaps; }
+    // Historical recovery count remains the number of ATTEMPTS, not
+    // successes; separate audit counters make failed engine moves visible.
     int GetRecoveryCount() const noexcept { return Recoveries; }
+    int GetSuccessfulRecoveryCount() const noexcept { return SuccessfulRecoveries; }
+    int GetFailedRecoveryCount() const noexcept { return FailedRecoveries; }
+    bool HasPendingRecovery() const noexcept { return RecoveryPending; }
     bool IsFinished() const noexcept { return CompletedLaps >= RequiredLaps; }
 
 private:
@@ -105,6 +139,9 @@ private:
     int NextWaypoint = 0;
     int CompletedLaps = 0;
     int Recoveries = 0;
+    int SuccessfulRecoveries = 0;
+    int FailedRecoveries = 0;
+    bool RecoveryPending = false;
     double StationarySeconds = 0.0;
 };
 } // namespace latebrake

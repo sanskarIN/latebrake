@@ -173,3 +173,21 @@ and revision wrapping are also covered. The player-readiness suite
 additionally tests the scoring guard after a real finish.
 These do not execute Unreal actor Tick, real pause events or packaged
 physical gameplay.
+
+
+### v0.5.49 — checked rival recovery outcomes
+
+`RivalRouteTests.cpp` now tests a pending recovery transaction,
+exact-once physical outcome reporting, restart/round resets and a full
+finite budget with mixed successful and failed attempts.
+`RivalRecoveryOutcomeTests.cpp` links the actual production
+`RecoveryTeleportVerification.cpp` and exercises reported outcomes for
+healthy and rejected/misaligned/unstable engine snapshots:
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(RivalRoute|RivalRecoveryOutcome)$' --output-on-failure
+```
+
+These test the pure C++ decision and accounting layers, **not** the
+actual Unreal engine's teleport, Chaos simulation or live game build.
+See [Rival recovery QA](../../docs/RIVAL_RECOVERY_QA.md).

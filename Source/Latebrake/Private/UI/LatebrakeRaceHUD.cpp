@@ -347,11 +347,18 @@ void ALatebrakeRaceHUD::DrawHUD()
         if (!bTimeAttack)
         {
             Line(Mode->HasRival()
-                ? FString::Printf(TEXT("RIVAL ROUTE  %d/%d LAPS | RECOVERIES  %d%s"),
+                ? FString::Printf(TEXT("RIVAL ROUTE  %d/%d LAPS | RECOVERY ATTEMPTS  %d%s"),
                     Mode->GetRivalApproximateLaps(), Mode->GetRivalPlannedLaps(),
                     Mode->GetRivalRecoveryCount(),
                     Mode->HasRivalFinishedRoute() ? TEXT(" | DONE") : TEXT(""))
                 : FString(TEXT("RIVAL UNAVAILABLE")), Primary);
+            if (Mode->HasRival() && Mode->GetRivalRecoveryCount() > 0)
+            {
+                Line(FString::Printf(
+                    TEXT("RIVAL TELEPORTS VERIFIED %d | REJECTED %d"),
+                    Mode->GetRivalSuccessfulRecoveryCount(),
+                    Mode->GetRivalFailedRecoveryCount()), Primary);
+            }
         }
     }
 

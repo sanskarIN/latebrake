@@ -591,3 +591,18 @@ else()
     target_compile_options(latebrake_recovery_teleport_transaction_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RecoveryTeleportTransaction COMMAND latebrake_recovery_teleport_transaction_tests)
+
+# v0.5.49: link the actual production teleport verifier to rival
+# request/result accounting; Unreal must still be device-qualified.
+add_executable(latebrake_rival_recovery_outcome_tests
+    RivalRecoveryOutcomeTests.cpp
+    ../../Source/Latebrake/Private/Racing/RecoveryTeleportVerification.cpp
+)
+target_include_directories(latebrake_rival_recovery_outcome_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_recovery_outcome_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_recovery_outcome_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_recovery_outcome_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalRecoveryOutcome COMMAND latebrake_rival_recovery_outcome_tests)
