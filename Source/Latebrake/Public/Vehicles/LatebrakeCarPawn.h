@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
+#include "Racing/DrivingSessionStats.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
 #include "LatebrakeCarPawn.generated.h"
@@ -43,6 +44,8 @@ public:
     // Actual installed collision and vehicle handling still require QA.
     bool IsRacePhysicsReady() const;
     float GetSpeedKmH() const;
+    const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
+    void ResetDrivingStats() { DrivingStats.Reset(); }
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     void ClearDriverInputs();
     void HandleAppInputInterruption();
@@ -136,6 +139,7 @@ private:
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bNearCamera = false;
+    latebrake::DrivingSessionStats DrivingStats;
     latebrake::TouchDriveState TouchDrive;
     latebrake::TouchPressTracker TouchPresses;
     latebrake::TouchViewportGuard TouchViewport;
