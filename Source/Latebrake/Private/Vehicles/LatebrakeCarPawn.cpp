@@ -248,7 +248,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // the authoritative racing clock/checkpoint gate denies progression.
     // World/GameMode absence also fails closed rather than driving a pawn
     // whose progress cannot be measured or saved.
-    const UWorld* World = GetWorld();
+    UWorld* World = GetWorld();
     const ALatebrakeRaceGameMode* Mode =
         World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !latebrake::CanApplyPlayerDrive({
