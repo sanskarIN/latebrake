@@ -1,5 +1,6 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
+#include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
@@ -335,6 +336,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float LongitudinalSpeed = FVector::DotProduct(FlatVelocity, Forward);
     const float LateralSpeed = FVector::DotProduct(FlatVelocity, Right);
     const float Mass = Chassis->GetMass();
+    // Finite velocity components alone do not ensure that derived speed
+    // and directional projections stay representable in float precision.
+    if (!FMath::IsFinite(Speed) || !FMath::IsFinite(LongitudinalSpeed) ||
+        !FMath::IsFinite(LateralSpeed))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Latebrake: nonfinite derived speed; stopping chassis"));
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
 
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
@@ -355,7 +365,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
     const float SteerDirection = LongitudinalSpeed < -75.f ? -1.f : 1.f;
-    const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) * SmoothedSteering * SteeringAuthority * SteerDirection;
+    // The same actual vehicle speed governs keyboard, gamepad, touch and
+    // rival steering. Preserve low-speed agility while tempering high-speed
+    // torque (Arcade stays more responsive than Simulation Inspired).
+    const float AssistedSteering = static_cast<float>(
+        latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
+    const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) *
+        AssistedSteering * SteeringAuthority * SteerDirection;
     Chassis->AddTorqueInRadians(FVector(0.f, 0.f, TurnTorque));
 
     if (Speed > MaxSpeed)
@@ -376,6 +392,7 @@ bool ALatebrakeCarPawn::IsRacePhysicsReady() const
     // simulation, wrong collision mode or nonfinite state must not keep
     // accumulating race time or authorize directional gate credits.
     const FVector Position = GetActorLocation();
+    const FRotator Rotation = GetActorRotation();
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
     const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInDegrees();
     return latebrake::IsRaceVehiclePhysicsReady({
@@ -385,7 +402,8 @@ bool ALatebrakeCarPawn::IsRacePhysicsReady() const
         Chassis->GetCollisionEnabled() == ECollisionEnabled::QueryAndPhysics,
         Chassis->GetCollisionResponseToChannel(ECC_WorldStatic) == ECR_Block,
         Position.X, Position.Y, Position.Z,
-        Velocity.X, Velocity.Y, Velocity.Z
+        Velocity.X, Velocity.Y, Velocity.Z,
+        Rotation.Pitch, Rotation.Yaw, Rotation.Roll
     }) && latebrake::AreVehicleDynamicsReady({
         Chassis->GetMass(),
         AngularVelocity.X, AngularVelocity.Y, AngularVelocity.Z

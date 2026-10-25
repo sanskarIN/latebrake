@@ -61,6 +61,19 @@ else()
 endif()
 add_test(NAME SteeringFilter COMMAND latebrake_steering_tests)
 
+# v0.5.48: shared player/touch/controller/rival high-speed steering policy.
+add_executable(latebrake_speed_sensitive_steering_tests
+    SpeedSensitiveSteeringTests.cpp
+)
+target_include_directories(latebrake_speed_sensitive_steering_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_speed_sensitive_steering_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_speed_sensitive_steering_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_speed_sensitive_steering_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SpeedSensitiveSteering COMMAND latebrake_speed_sensitive_steering_tests)
+
 add_executable(latebrake_garage_tests GarageStateTests.cpp)
 target_include_directories(latebrake_garage_tests PRIVATE ../../Source/Latebrake/Public)
 target_compile_features(latebrake_garage_tests PRIVATE cxx_std_20)
