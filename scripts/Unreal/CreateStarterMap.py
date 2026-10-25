@@ -7,6 +7,7 @@ Do not check levels with EditorAssetLibrary.does_asset_exist: the Unreal 5.8
 API explicitly documents that method for assets *other than levels*.
 """
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -31,7 +32,22 @@ def create_or_load_level(subsystem, map_file: Path = MAP_FILE) -> str:
     return "created"
 
 
+def map_sha256(path: Path) -> str:
+    """Hash editor-saved bytes; never attest merely to the file's size."""
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def main() -> None:
+    engine_version = str(unreal.SystemLibrary.get_engine_version())
+    if not engine_version.startswith("5.8."):
+        raise RuntimeError(
+            f"LateBrake starter-map authoring requires Unreal 5.8; "
+            f"running Editor reports {engine_version}"
+        )
     subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     if subsystem is None:
         raise RuntimeError(
@@ -53,10 +69,13 @@ def main() -> None:
     RESULT_FILE.parent.mkdir(parents=True, exist_ok=True)
     RESULT_FILE.write_text(
         json.dumps({
+            "schema_version": 1,
             "status": "saved_by_unreal_editor",
+            "engine_version": "5.8",
             "map": PACKAGE,
             "operation": action,
             "bytes": MAP_FILE.stat().st_size,
+            "sha256": map_sha256(MAP_FILE),
         }, sort_keys=True),
         encoding="utf-8",
     )
