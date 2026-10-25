@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.63 source development — sustained rival proximity awareness and UE HUD scope fix
+
+- **Unreleased HUD improvement:** Real rival radar samples now also drive a compact/desktop close-opponent warning. It enters only after 0.6s continuously at or within 15m DIRECT planar separation and remains visible until the rival is farther than 20m. Invalid, unsupported, nonfinite, paused or interrupted race samples clear it; this is not a collision prediction or race ranking.
+- The HUD resets proximity on player replacement, checkpoint session changes, player teleports and verified rival recoveries. The all-viewport warning reuses the single production mini-map snapshot instead of sampling actors twice, and never modifies scoring, physics, recovery costs or persistent progression.
+- **Compile fix:** Moved `const RaceProgress& Race` before the early results-menu branch which previously used `Race` before its local C++ declaration. Dedicated Unreal-source binding tests guard the scope while portable three-OS C++20 tests exercise the new alert policy.
+- See [rival proximity and installation QA](RIVAL_PROXIMITY_QA.md). This source milestone is **not** a licensed UE 5.8 compile, installed Android/Windows game test or new GitHub release; v0.5.60 remains the latest published pre-release.
+
 ## v0.5.62 source development — live player and opponent racing radar
 
 - **Unreleased feature:** Expanded desktop circuit minimap now shows actual player yaw with a north-up heading tick, a physically verified opponent marker when present, the true next scored checkpoint, and finite **direct** rival separation (never an invented race ranking or time gap).

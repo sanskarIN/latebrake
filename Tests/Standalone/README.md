@@ -339,3 +339,23 @@ ctest --test-dir Tests/Standalone/build -R '^(RaceMiniMap|CircuitMap)$' --output
 
 This is source-only validation; see [race radar QA](../../docs/RACE_RADAR_QA.md)
 for the engine/UHT, cooked map, viewport and installed-device gate.
+
+### v0.5.63 — real close-rival warning and results-menu scope fix
+
+`RivalProximityIndicatorTests.cpp` compiles against the actual production
+`Private/Track/RaceMiniMap.cpp` and tests the proximity state machine with
+real geometric separations. It covers continuous 15m/0.6s entry, 20m/21m
+exit, zero-distance overlap, race mode and rival eligibility, malformed
+samples, long sessions and explicit resets.
+
+`Tests/Editor/RivalProximityBindingTests.py` confirms the Unreal HUD uses a
+single radar sample for the minimap and both-viewport notice, and that the
+results-menu `Race` variable is declared before its use. These Python
+source checks do not substitute for an actual UE compiler.
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(RivalProximityIndicator|RaceMiniMap)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'RivalProximityBindingTests.py' -v
+```
+
+See [rival proximity device QA](../../docs/RIVAL_PROXIMITY_QA.md).
