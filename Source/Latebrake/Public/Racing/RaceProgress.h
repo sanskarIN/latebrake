@@ -35,6 +35,10 @@ public:
     // Count laps with a strictly positive finite measured duration. An
     // immediate t=0 checkpoint pass is not evidence of a timed lap.
     int GetTimedLapCount() const noexcept { return TimedLapCount; }
+    // Unlike time penalties, successful Advance() calls represent actual
+    // active race-clock updates. A lap with only charged recovery time is
+    // not evidence of a driven/timed lap for rewards and record eligibility.
+    int GetActiveTimedLapCount() const noexcept { return ActiveTimedLapCount; }
     // Allocation-free last eight positive lap durations. The returned lap
     // number is the physical completed-lap index (not a best-lap rank).
     TimedLapRecord GetRecentTimedLap(int offset) const noexcept
@@ -79,6 +83,8 @@ private:
     int NextCheckpoint = 0;
     int CompletedLaps = 0;
     int TimedLapCount = 0;
+    int ActiveTimedLapCount = 0;
+    bool ActiveClockAdvancedThisLap = false;
     RecentTimedLaps RecentLaps;
     double ElapsedSeconds = 0.0;
     int TimePenaltyCount = 0;
