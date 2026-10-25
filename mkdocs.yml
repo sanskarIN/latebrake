@@ -110,6 +110,7 @@ nav:
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
       - Off-track and AI approach QA: OFF_TRACK_AND_RIVAL_APPROACH_QA.md
       - Rival proximity HUD QA: RIVAL_PROXIMITY_QA.md
+      - Rival separation motion QA: RIVAL_RELATIVE_MOTION_QA.md
       - Race radar minimap QA: RACE_RADAR_QA.md
       - Rival recovery outcomes QA: RIVAL_RECOVERY_QA.md
       - Save migration: SAVE_MIGRATION.md
