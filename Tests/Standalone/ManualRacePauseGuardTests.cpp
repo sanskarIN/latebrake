@@ -93,8 +93,9 @@ int main()
     // against a surprise external automatic world unpause.
     Require(pause.OnToggleRequested(false) && pause.IsSuspended(),
             "second pause cycle latches");
-    Require(!CanApplyPlayerDrive({true,true,false,false,false,false}) ==
-                false, "portable allowed baseline remains unaffected");
+    Require(!CanApplyPlayerDrive({true, true, false,
+                pause.IsSuspended(), false, false}),
+            "surprise world unpause still leaves player input gated");
     Require(pause.IsSuspended(), "OS world unpause cannot clear manual intent");
     Require(!pause.OnToggleRequested(true) && !pause.IsSuspended(),
             "unpause requests clear the latch");
