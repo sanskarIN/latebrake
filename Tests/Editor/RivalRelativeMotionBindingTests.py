@@ -47,7 +47,7 @@ class RivalRelativeMotionBindingTests(unittest.TestCase):
                        "LastWayfindingTeleport != CurrentWayfindingTeleport",
                        "LastRivalVerifiedRecoveries != CurrentRivalVerifiedRecoveries"):
             self.assertIn(marker, self.hud)
-        for marker in ("radar.DirectRivalSeparationValid", "deltaSeconds < 0.01",
+        for marker in ("radar.DirectRivalSeparationValid", "deltaSeconds < 0.001",
                        "deltaSeconds > 0.25", "std::abs(radial) > 90.0",
                        "ConfirmSeconds = 0.4", "MinMotionMetersPerSecond = 2.0",
                        "std::min(ConfirmSeconds, CandidateSeconds + deltaSeconds)"):
