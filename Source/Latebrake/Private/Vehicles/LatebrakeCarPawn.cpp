@@ -255,7 +255,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             true,
             Mode->IsCircuitReadyForGameplay(),
             Mode->IsMenuOpen(),
-            UGameplayStatics::IsGamePaused(this),
+            UGameplayStatics::IsGamePaused(this) ||
+                Mode->IsManualRacePauseActive(),
             Mode->IsFocusLossGuardActive(),
             Mode->GetRace().IsFinished()}))
     {
@@ -537,7 +538,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         }
         return;
     }
-    if (UGameplayStatics::IsGamePaused(this))
+    if (UGameplayStatics::IsGamePaused(this) ||
+        (Mode && Mode->IsManualRacePauseActive()))
     {
         // A standalone Escape/gamepad pause has no menu focus. Reject new
         // gas, brake and steering presses until explicit unpause; otherwise
