@@ -1,6 +1,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "UI/HudVerticalPlan.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/CurrentLapPotential.h"
@@ -40,9 +41,15 @@ void ALatebrakeRaceHUD::DrawHUD()
     const latebrake::HudLayout Layout = latebrake::CalculateHudLayout(
         static_cast<double>(Canvas->SizeX), static_cast<double>(Canvas->SizeY));
     bool bCompact = Layout.Compact;
+    bool bTouchHUD = false;
 #if PLATFORM_ANDROID
     bCompact = true;
+    bTouchHUD = true;
 #endif
+    const latebrake::HudVerticalPlan VerticalPlan =
+        latebrake::CalculateHudVerticalPlan(
+            static_cast<double>(Canvas->SizeX),
+            static_cast<double>(Canvas->SizeY), Layout, bTouchHUD);
 
     const latebrake::RaceProgress& Race = Mode->GetRace();
 
@@ -213,12 +220,23 @@ void ALatebrakeRaceHUD::DrawHUD()
     const float Left = static_cast<float>(Layout.Left);
     const float Step = static_cast<float>(Layout.LineHeight);
     float Y = static_cast<float>(Layout.Top);
+    int32 DrawnTelemetryLines = 0;
 
+    // Detailed source-only statistics can exceed a real screen height.
+    // Clip optional rows before the reserved SAVE and FINISH/PAUSE region,
+    // never below the fixed controls or into Android GAS/BRAKE targets.
     const auto Line = [&](const FString& Content, const FLinearColor& Color, bool bHeading = false)
     {
+        if (!VerticalPlan.Valid ||
+            DrawnTelemetryLines >= VerticalPlan.MaxTelemetryLines ||
+            Content.IsEmpty())
+        {
+            return;
+        }
         DrawText(Content, Color, Left, Y,
             bHeading ? GEngine->GetMediumFont() : GEngine->GetSmallFont(),
             Scale * (bHeading ? 1.08f : 1.0f));
+        ++DrawnTelemetryLines;
         Y += Step;
     };
 
@@ -272,6 +290,12 @@ void ALatebrakeRaceHUD::DrawHUD()
     Line(Mode->UsesMilesPerHour()
         ? FString::Printf(TEXT("SPEED  %.0f mph"), Car->GetSpeedKmH() * 0.621371f)
         : FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
+
+    // Always prioritize authoritative lap/next gate and race clock above
+    // optional proximity, wayfinding and driving telemetry on small phones.
+    Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
+        DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
+    Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
 
     // The warning is pure HUD feedback. It must reset on pawn replacement,
     // checkpoint-session boundary and teleport, and must never influence
@@ -406,8 +430,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                      : TEXT("DIRECT TO NEXT GATE %.0fm | BEARING %s"),
             RouteAdvice.DirectDistanceMeters, Hint), Primary);
     }
-    Line(FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
-        DisplayLap, Race.GetRequiredLaps(), Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
+
     if (!bCompact)
     {
         const latebrake::DrivingSessionStats& DriveStats =
@@ -425,7 +448,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 DriveStats.GetHighSlipSeconds()), Primary);
         }
     }
-    Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+
 
     if (!bCompact)
     {
@@ -633,9 +656,13 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
         Line(Mode->GetGarageFeedback(), Primary);
     }
-    if (Mode->HasProgressSaveError())
+    // Dedicated warning baseline is independent of optional text overflow.
+    // A save failure must remain visible after all racing stats are clipped.
+    if (Mode->HasProgressSaveError() && VerticalPlan.Valid)
     {
-        Line(TEXT("WARNING: LOCAL PROGRESS COULD NOT BE SAVED"), Accent);
+        DrawText(TEXT("WARNING: LOCAL PROGRESS COULD NOT BE SAVED"),
+            Accent, Left, static_cast<float>(VerticalPlan.SaveWarningY),
+            GEngine->GetSmallFont(), Scale);
     }
 
     if (Race.IsFinished())
@@ -687,19 +714,30 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(Mode->GetCareerSelectionFeedback(), Primary);
     }
-    if (UGameplayStatics::IsGamePaused(this) || Mode->IsManualRacePauseActive())
+    // A reserved lower status baseline stays visible even when the
+    // bounded telemetry above exhausts every available row.
+    if (VerticalPlan.Valid)
     {
-        Line(TEXT("PAUSED  -  ESC TO RESUME"), Accent, true);
-    }
-    else if (Race.IsFinished())
-    {
-        Line(latebrake::CanAwardFinishedRace(Race)
-            ? TEXT("FINISHED! PRESS T TO RACE AGAIN")
-            : TEXT("INVALID FINISH - PRESS T TO RETRY"), Accent, true);
+        const float StatusY = static_cast<float>(VerticalPlan.RaceStatusY);
+        if (UGameplayStatics::IsGamePaused(this) ||
+            Mode->IsManualRacePauseActive())
+        {
+            DrawText(TEXT("PAUSED  -  ESC TO RESUME"), Accent, Left,
+                StatusY, GEngine->GetSmallFont(), Scale);
+        }
+        else if (Race.IsFinished())
+        {
+            DrawText(latebrake::CanAwardFinishedRace(Race)
+                ? TEXT("FINISHED! PRESS T TO RACE AGAIN")
+                : TEXT("INVALID FINISH - PRESS T TO RETRY"),
+                Accent, Left, StatusY, GEngine->GetSmallFont(), Scale);
+        }
     }
 
-    // Keep controls visible without overlapping the main telemetry panel.
-    const float FooterY = FMath::Max(Y + 3.f, Canvas->SizeY - 28.f * Scale);
+    // A deterministic footer no longer follows an unbounded telemetry Y.
+    const float FooterY = VerticalPlan.Valid
+        ? static_cast<float>(VerticalPlan.FooterY)
+        : FMath::Max(0.f, Canvas->SizeY - 28.f * Scale);
 #if PLATFORM_ANDROID
     (void)FooterY;
     // Draw exactly the same pixel rectangles that the touch dispatcher
