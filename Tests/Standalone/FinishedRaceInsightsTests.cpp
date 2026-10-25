@@ -116,9 +116,9 @@ int main()
             mixedReport.PreviousTimedLapNumber == 0 &&
             mixed.GetRecentTimedLapCount() == 1,
             "zero-duration first lap cannot become comparison baseline");
-    Require(mixedReport.Valid && mixedReport.CompletedLaps == 2 &&
-            mixedReport.TimedLaps == 1 && !mixedReport.HasLapSpread,
-            "a zero-duration lap does not invent a comparison population");
+    Require(!mixedReport.Valid &&
+            !CanAwardFinishedRace(mixed),
+            "a zero-duration first lap cannot become awardable final insights");
 
     RaceProgress tooLong(1, 1);
     tooLong.Advance(604801.0);
