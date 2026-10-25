@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.66 source development — viewport-bounded HUD and critical race messages
+
+- **Unreleased:** Existing racing HUD telemetry could grow past its viewport and push keyboard hints below the bottom. Source-only `HudVerticalPlan` now bounds ordinary text rows using the real `HudLayout`, reserves separate visible save-warning and race-status rows, and fixes the footer baseline.
+- The authoritative LAP/GATE and TIME readouts now precede optional rival, wayfinding, driving/garage and split stats on small screens; surplus optional rows are suppressed without changing the game clock, scoring or UI input owner.
+- Portable strict C++20 tests evaluate small/fullscreen, wide/portrait, Windows and Android geometry, genuine touch pad Y limits and nonfinite viewport values. Python Unreal source contract checks actual `DrawHUD` integration; see [HUD vertical QA](HUD_VERTICAL_QA.md).
+- **Not playable-verified:** cross-platform portable CI is not UE 5.8 UHT/Editor compilation or a cooked, installed Win64/Android game. v0.5.65 remains the latest published source-only GitHub pre-release.
+
 ## v0.5.65 published source-only pre-release — signed measured rival approach
 
 - **Unreleased source feature:** A real production radar-linked `RivalRelativeMotionTracker` watches successive grounded player/rival direct separations and only displays CLOSING or SEPARATING after 0.4s sustained change of at least 2m/s. The tracked signal is signed direct separation rate, not opponent physical velocity, collision prediction or race order.
