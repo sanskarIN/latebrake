@@ -81,6 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.68 (source development, unreleased) | Bound results/career/garage menu content above real Android steering pad; reserve honest details-hidden and save-failure banners | Strict C++20 and Unreal-source callsite tests; actual Android/UE5.8 typography, scrolling and physical touch QA pending |
 | v0.5.67 (source development, unreleased) | Font-measured safe HUD text lane using real Android touch geometry; log-time ellipsis across race, menu, status and footer; compact LAP/GATE readability | Three-OS strict C++20 and real Unreal HUD source contracts; genuine UE5.8 Canvas/DPI, localization and physical touch QA pending |
 | v0.5.66 (source development, unreleased) | Protect core LAP/TIME against optional HUD overflow; reserve save/pause/finish messaging; bound text rows above physical Android pedals and keep desktop footer inside viewport | Portable strict C++20 geometry tests and Unreal source-binding contracts; actual UE 5.8 rendering, Android safe-area and glyph-width QA outstanding |
 | v0.5.65 (published source-only pre-release; game not qualified) | Real validated radar sample-to-sample signed direct separation changes; 0.4s debounced closing/separating advisory; immutable source publisher with three-OS CI | Portable C++20 production-geometry tests, Python source binding, docs/PowerShell gates; real UE 5.8/UHT, cook, Win64/Android gameplay and device QA still required |
