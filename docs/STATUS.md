@@ -1,17 +1,17 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.39 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.39), tagged at tested source commit `e06bd702c8069cfd752cc4979a02416c2c4fb7fd`.
+**Latest published milestone:** [v0.5.40 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.40), tagged at tested source commit `9f78ba4af2c4271f3effca9ce54a63e8d423ea89`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.40 development candidate — per-lap active clock eligibility
+## v0.5.40 published source-only pre-release — per-lap active clock eligibility
 
 - Found a source-level completion/award consistency gap: a positive overall race time could coexist with a completed zero-duration lap, or a penalty-only lap could look timed despite no successful active clock update. The previous award boundary validated elapsed/best times but not independent timing evidence for **every** completed lap.
 - Track `ActiveTimedLapCount` separately from the pre-existing penalty-inclusive `TimedLapCount`. The count increases once per completed lap only after a successful `RaceProgress::Advance` has advanced the actual clock in that lap; reset and rejected deltas clear/retain evidence correctly.
 - `FinishTimingEligibility` requires a finished ordered event, a representable elapsed/last/best/slowest clock, and both lap counts equaling required laps. GameMode rejects ineligible finishes **before** transaction construction, awards, credits, record updates or SaveGame I/O; the source HUD and finished insights do not claim a verified result.
 - Regression cases include valid multi-lap penalties, zero-time first laps, penalty-only first/final laps, invalid deltas, overlong clocks, restart, and one-gate races. Real Unreal 5.8/UHT, editor map cooking, runtime checkpoint timing, Windows and Android installed QA remain **unverified**.
-- **In development, not released.** The latest published pre-release remains v0.5.39.
+- **Published SOURCE-ONLY pre-release on 2026-10-25, with zero compiled game assets.** The independent publisher passed the complete Windows/macOS/Ubuntu portable C++20 suite, focused `FinishTimingEligibility` test, Python source-contract tests and packaging-policy fixtures. Genuine Unreal Engine and installed device gameplay remain unverified.
 
 ## v0.5.39 published source-only pre-release — neutralize player motion if OS pause fails
 
