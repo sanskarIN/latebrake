@@ -72,7 +72,7 @@ int main()
     Check(pager.Window().Begin == 1023 && !pager.Next(),
           "no overflow when scrolling thousands of details");
     pager.Reset();
-    Check(pager.Page() == MenuPage::Closed && !pager.Previous(),
+    Check(pager.GetPage() == MenuPage::Closed && !pager.Previous(),
           "explicit reset is idempotent");
     std::cout << "Menu detail pagination tests passed.\n";
     return EXIT_SUCCESS;
