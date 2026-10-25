@@ -488,3 +488,17 @@ else()
     target_compile_options(latebrake_lap_penalty_attribution_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME LapPenaltyAttribution COMMAND latebrake_lap_penalty_attribution_tests)
+
+# v0.5.39: a failed Unreal world pause cannot authorize new driving,
+# recovery, menu navigation or duplicate-finger resume via mobile touch.
+add_executable(latebrake_focus_suspended_touch_policy_tests
+    FocusSuspendedTouchPolicyTests.cpp
+)
+target_include_directories(latebrake_focus_suspended_touch_policy_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_focus_suspended_touch_policy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_focus_suspended_touch_policy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_focus_suspended_touch_policy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FocusSuspendedTouchPolicy COMMAND latebrake_focus_suspended_touch_policy_tests)

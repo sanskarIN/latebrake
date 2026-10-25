@@ -6,6 +6,7 @@
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
 #include "UI/TouchResidualSafety.h"
+#include "UI/FocusSuspendedTouchPolicy.h"
 #include "Garage/GarageState.h"
 
 #include "Camera/CameraComponent.h"
@@ -155,6 +156,11 @@ void ALatebrakeCarPawn::HandleAppFocusLost()
                 World->GetAuthGameMode<ALatebrakeRaceGameMode>())
         {
             Mode->PauseForAppInterruption();
+            if (Mode->IsFocusLossGuardActive())
+            {
+                // Pause may have failed: stop any pre-loss momentum now.
+                NeutralizeMotionWhileFocusSuspended();
+            }
         }
     }
 }
@@ -198,6 +204,19 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     TouchDrive.Clear();
 }
 
+void ALatebrakeCarPawn::NeutralizeMotionWhileFocusSuspended()
+{
+    ClearDriverInputs();
+    // The world can keep simulating after a failed SetGamePaused. Leaving
+    // momentum or a newly delivered throttle active would move the player
+    // while competitive time and checkpoints are intentionally frozen.
+    if (IsValid(Chassis) && Chassis->IsSimulatingPhysics())
+    {
+        Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
+        Chassis->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+    }
+}
+
 void ALatebrakeCarPawn::ThrottleInput(float Value)
 {
     Throttle = static_cast<float>(latebrake::SanitizeDriveAxis(Value));
@@ -221,6 +240,21 @@ void ALatebrakeCarPawn::BrakeReleased()
 void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+
+    // Application focus can be lost without Unreal successfully pausing its
+    // world. Fail closed even when physics continues ticking on that platform.
+    if (UWorld* World = GetWorld())
+    {
+        if (ALatebrakeRaceGameMode* Mode =
+                World->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        {
+            if (Mode->IsFocusLossGuardActive())
+            {
+                NeutralizeMotionWhileFocusSuspended();
+                return;
+            }
+        }
+    }
 
 #if PLATFORM_ANDROID
     // Orientation and viewport resizing can arrive without *any* subsequent
@@ -469,6 +503,19 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         latebrake::HitTestTouchControl(Layout, Location.X, Location.Y);
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (Mode && Mode->IsFocusLossGuardActive())
+    {
+        // Even if SetGamePaused fails, a backgrounded app must not accept
+        // driving fingers or recovery/career/restart commands. A NEW PAUSE
+        // tap is an explicit player action allowed to resume the race.
+        NeutralizeMotionWhileFocusSuspended();
+        if (latebrake::CanResumeFocusSuspendedRaceFromTouch(
+                bAllowAcquire, Region))
+        {
+            TogglePause();
+        }
+        return;
+    }
     if (Mode && Mode->IsMenuOpen())
     {
         // Menus own focus: never acquire or move driving fingers while paused.

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.39 — In development (2026-10-25; not released)
+
+- When Unreal does not actually pause after OS deactivation, the focus guard now neutralizes player linear/angular chassis velocity as well as throttle, steering and held touch controls both on deactivation and on later physics ticks.
+- Ignore recovery/restart/career/driving touch inputs during a latched focus interruption; only a **fresh, explicit PAUSE press** can resume through the existing GameMode player-resume path.
+- Add portable C++20 focus-suspended mobile resume tests, three-OS CTest registration and Python Unreal-source wiring regressions. These do not validate actual UE 5.8 builds, physical suspension or device touch delivery.
+
 ## v0.5.38 — Published SOURCE-ONLY pre-release (2026-10-24)
 
 - Fix a real source-level focus-loss state distinction: an OS-already-paused race latches a **new** interruption but must still invalidate checkpoint sweep motion.

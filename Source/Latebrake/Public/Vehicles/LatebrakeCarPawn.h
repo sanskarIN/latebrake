@@ -91,6 +91,7 @@ private:
     void SteerInput(float Value);
     void BrakePressed();
     void BrakeReleased();
+    void NeutralizeMotionWhileFocusSuspended();
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
