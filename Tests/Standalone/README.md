@@ -400,3 +400,24 @@ python3 -m unittest discover -s Tests/Editor -p 'HudVerticalPlanBindingTests.py'
 ```
 
 See [real device QA](../../docs/HUD_VERTICAL_QA.md).
+
+### v0.5.67 — font-measured phone-safe HUD text
+
+`HudTextBoundsTests.cpp` compiles the production `HudTextBounds.h`
+with actual `HudLayout` and `TouchControlLayout` code. It checks
+the right edge of a phone's text lane against the closest action-pad
+rectangles, full-width desktop fallback, invalid/nonfinite viewport
+and font measurements, ellipsis suffix edge cases and logarithmic
+prefix search. The Unreal integration source check ensures the
+actual HUD passes `GetTextSize` measured width into the same
+portable decision, including race/menu/footer/status messages.
+
+```sh
+ctest --test-dir Tests/Standalone/build -C Release -R '^(TouchControlLayout|HudVerticalPlan|HudTextBounds)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'HudTextBoundsBindingTests.py' -v
+```
+
+Pixel-accurate UE Canvas drawing, font DPI, Android device safe areas
+and installed playable binaries still require actual licensed
+UE 5.8 builds and device QA. See
+[HUD text QA](../../docs/HUD_TEXT_WIDTH_QA.md).
