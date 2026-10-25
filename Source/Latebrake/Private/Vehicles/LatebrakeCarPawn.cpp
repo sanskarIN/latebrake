@@ -436,16 +436,28 @@ bool ALatebrakeCarPawn::TryRecoverTo(
         Position, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
     const FVector Observed = GetActorLocation();
     const FRotator ObservedRotation = GetActorRotation();
+    const bool bChassisStillValid = IsValid(Chassis);
+    const FVector PostLinearVelocity = bChassisStillValid
+        ? Chassis->GetPhysicsLinearVelocity() : FVector::ZeroVector;
+    const FVector PostAngularVelocity = bChassisStillValid
+        ? Chassis->GetPhysicsAngularVelocityInDegrees() : FVector::ZeroVector;
+    // Compare full orientation and the live chassis state AFTER Unreal moves
+    // the actor; the pre-move readiness gate does not prove post-move health.
     const latebrake::RecoveryTeleportDecision Result =
         latebrake::EvaluateRecoveryTeleport({
             bEngineMoved,
             Position.X, Position.Y, Position.Z, Rotation.Yaw,
-            Observed.X, Observed.Y, Observed.Z, ObservedRotation.Yaw
+            Observed.X, Observed.Y, Observed.Z, ObservedRotation.Yaw,
+            Rotation.Pitch, Rotation.Roll,
+            ObservedRotation.Pitch, ObservedRotation.Roll,
+            bChassisStillValid && IsRacePhysicsReady(),
+            PostLinearVelocity.X, PostLinearVelocity.Y, PostLinearVelocity.Z,
+            PostAngularVelocity.X, PostAngularVelocity.Y, PostAngularVelocity.Z
         });
     if (Result != latebrake::RecoveryTeleportDecision::Verified)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("Latebrake: recovery transform not verified (%s); no player time charged"),
+            TEXT("Latebrake: recovery transform or physics not verified (%s); no player time charged"),
             UTF8_TO_TCHAR(latebrake::RecoveryTeleportDecisionName(Result)));
         return false;
     }
