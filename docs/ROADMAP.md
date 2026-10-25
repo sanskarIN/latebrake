@@ -81,6 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.52 (source development, unreleased) | Bind verified restart-grid permission to the same weak Unreal pawn; block replacement/unpossessed actors until their own verified RESTART | Real RaceProgress-linked C++20 identity regression and Unreal GameMode binding checks; original game cook and installed Win64/Android QA pending |
 | v0.5.51 (source development, unreleased) | Close missed paid-RECOVER path after rejected restart; require all driving policy callers to explicitly supply grid authorization | Three-OS C++20 recovery/drive regressions, Unreal callsite source contracts; genuine UE 5.8/Win64/Android gameplay QA still pending |
 | v0.5.50 (source development, unreleased) | Block racing, gates, paid recovery and player/rival driving after an unverified restart-grid teleport; require explicit successful placement to resume | Real RaceProgress C++20 guard tests, Unreal source contracts; actual engine/cooked map/Win64/Android QA required |
 | v0.5.49 (source development, unreleased) | Require verified Unreal result for AI stuck teleports; account for pending/verified/rejected recoveries and expose HUD counters | Portable production-linked C++20 tests and binding contracts; licensed Unreal gameplay, rival steering and device QA required |

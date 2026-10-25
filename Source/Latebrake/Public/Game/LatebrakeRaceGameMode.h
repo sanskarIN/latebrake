@@ -72,7 +72,7 @@ public:
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsCircuitReadyForGameplay() const { return bCircuitReady; }
     bool HasLocalPlayerDriver() const;
-    bool IsRestartPlacementReady() const { return RestartPlacement.CanRace(); }
+    bool IsRestartPlacementReady() const;
     uint64 GetCheckpointSessionRevision() const { return CheckpointSession.Current(); }
     float GetPersonalBestSeconds() const { return PersonalBestSeconds; }
     float GetPersonalBestLapSeconds() const { return PersonalBestLapSeconds; }
@@ -121,6 +121,9 @@ private:
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
     latebrake::RestartPlacementGuard RestartPlacement;
+    // UE weak pointer verifies the actual actor instance and object generation.
+    // Explicit restart authorization must not transfer to a new possessed car.
+    TWeakObjectPtr<ALatebrakeCarPawn> VerifiedRestartPawn;
     latebrake::AppFocusRaceGuard AppFocusGuard;
     latebrake::ManualRacePauseGuard ManualPause;
     float PersonalBestSeconds = 0.f;

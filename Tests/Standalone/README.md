@@ -228,3 +228,19 @@ the verified start bit so the pause behavior itself remains tested.
 ```sh
 ctest --test-dir Tests/Standalone/build -R '^(RestartPlacementGuard|PlayerDriveReadiness|ManualRacePauseGuard|RecoveryTeleportTransaction)$' --output-on-failure
 ```
+
+
+### v0.5.52 — verified restart belongs to one pawn
+
+`RestartPlacementGuardTests.cpp` now supplies the GameMode's
+`sameVerifiedPawn` identity predicate to `CanRace`. It tests a
+healthy replacement pawn after verified RESTART: engine-independent
+race clock, ordered checkpoint eligibility, staged paid RECOVER and
+motor force all remain denied without another accepted grid move.
+A re-possessed original verified pawn may regain its own authorization;
+a new actor must pass a fresh explicit RESTART.
+
+`Tests/Editor/RestartPlacementBindingTests.py` separately requires the
+actual GameMode to bind a generation-aware `TWeakObjectPtr` only after
+successful placement and invalidate it before the next restart. The
+test source does not execute Unreal, UHT, Chaos or a live pawn lifecycle.

@@ -92,6 +92,50 @@ Required QA additions:
    Pure policy tests do not prove actual movement failure can be
    induced safely on a real vehicle.
 
+## v0.5.52 — verified grid authorization belongs to one pawn
+
+A verified `RESTART` previously authorized **any later possessed pawn**
+with apparently healthy physics. This matters when an editor, respawn
+manager, game mode or future vehicle-swapping flow destroys/replaces the
+player actor after grid placement: the new actor did not actually pass
+the old `TryRecoverTo` check, but could still race.
+
+The actual Unreal GameMode now holds a `TWeakObjectPtr` to the exact
+pawn instance that passed verified restart placement. The
+engine-neutral `RestartPlacementGuard::CanRace(bool isSameVerifiedPawn)`
+requires identity match **only after an explicit verified restart**;
+normal initial APlayerStart spawning retains its existing readiness
+contract. Unreal weak identity also prevents a destroyed UObject's
+recycled raw address from being treated as the same live car.
+
+On a subsequent RESTART, the old weak handle is invalidated **before**
+any teleport. On successful placement the newly verified pawn is bound;
+on failure no handle is authorized. Gate scoring, player race clock,
+the staged five-second player recovery, rival eligibility, motor force
+and the existing HUD warning all share the check.
+
+Extend the real UE and device acceptance matrix:
+
+1. Complete a verified RESTART, then replace the possessed pawn through
+   development-only actor replacement. Ensure the new pawn is physically
+   ready but has not completed its own grid teleport.
+2. Confirm **no** clock increment, ordered checkpoint, player RECOVER
+   teleport/fee, autonomous rival progress or motor force on the new
+   pawn. The UI must warn that restart authorization is unavailable.
+3. Destroy the original verified pawn; spawn another actor and attempt
+   to occupy the same memory slot in a controlled test. Weak UObject
+   identity must reject the new generation regardless of pointer reuse.
+4. Re-possess the original still-live verified pawn (where supported);
+   verify its own authorization is retained and no unrelated pawn
+   inherits it. Attempt a new explicit RESTART on a replacement:
+   only a verified grid teleport may restore normal play.
+5. Repeat at safe installed Win64 and Android test setups with a
+   legitimate paused/foreground transition, hold-release touch inputs
+   and fresh checkpoint samples; retain engine/version/candidate hashes.
+
+These are **requirements**, not claims that Unreal/UHT/Chaos or real
+installed-device actor replacement has been tested.
+
 ## Portable test procedures
 
 ```sh

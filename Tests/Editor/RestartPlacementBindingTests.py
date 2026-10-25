@@ -36,12 +36,23 @@ class RestartPlacementBindingTests(unittest.TestCase):
     def test_game_mode_owns_restart_guard(self):
         self.assertIn('#include "Racing/RestartPlacementGuard.h"', self.mode_h)
         self.assertIn("latebrake::RestartPlacementGuard RestartPlacement;", self.mode_h)
-        self.assertIn("bool IsRestartPlacementReady() const", self.mode_h)
+        self.assertIn("bool IsRestartPlacementReady() const;", self.mode_h)
+        self.assertIn("TWeakObjectPtr<ALatebrakeCarPawn> VerifiedRestartPawn;", self.mode_h)
+        identity = section(
+            self.mode, "bool ALatebrakeRaceGameMode::IsRestartPlacementReady() const",
+            "bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const"
+        )
+        self.assertIn("VerifiedRestartPawn.IsValid()", identity)
+        self.assertIn("VerifiedRestartPawn.Get() == CurrentDriver", identity)
+        self.assertIn("RestartPlacement.CanRace(bSameVerifiedPawn)", identity)
+        self.assertLess(identity.index("VerifiedRestartPawn.IsValid()"),
+                        identity.index("RestartPlacement.CanRace(bSameVerifiedPawn)"))
         ready = section(
             self.mode, "bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const",
             "void ALatebrakeRaceGameMode::BeginPlay()"
         )
-        self.assertIn("RestartPlacement.CanRace()", ready)
+        self.assertIn("IsRestartPlacementReady()", ready)
+        self.assertNotIn("RestartPlacement.CanRace()", ready)
         self.assertIn("Car->IsRacePhysicsReady()", ready)
 
     def test_restart_invalidates_first_then_verifies_physical_move(self):
@@ -50,6 +61,14 @@ class RestartPlacementBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::RecoverPlayer("
         )
         self.assertIn("RestartPlacement.OnRestartRequested();", restart)
+        self.assertIn("VerifiedRestartPawn.Reset();", restart)
+        self.assertIn("VerifiedRestartPawn = bPlacedOnGrid ? Car : nullptr;", restart)
+        self.assertLess(restart.index("RestartPlacement.OnRestartRequested();"),
+                        restart.index("VerifiedRestartPawn.Reset();"))
+        self.assertLess(restart.index("VerifiedRestartPawn.Reset();"),
+                        restart.index("TryRecoverTo(GetStartPosition()"))
+        self.assertLess(restart.index("RestartPlacement.OnRestartPlacementResult("),
+                        restart.index("VerifiedRestartPawn = bPlacedOnGrid ? Car : nullptr;"))
         self.assertIn("Car->TryRecoverTo(GetStartPosition(), GetStartRotation())", restart)
         self.assertIn("RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);", restart)
         self.assertIn("IsValid(Car) && Car->TryRecoverTo(", restart)
@@ -67,7 +86,7 @@ class RestartPlacementBindingTests(unittest.TestCase):
         self.assertIn("const bool bLocalPlayerReady = HasLocalPlayerDriver();",
                       self.mode)
         self.assertIn("Car->IsRacePhysicsReady()", self.mode)
-        self.assertIn("RestartPlacement.CanRace() && IsValid(Car)", self.mode)
+        self.assertIn("IsRestartPlacementReady() && IsValid(Car)", self.mode)
         self.assertIn("Car->TryRecoverTo(Target, Facing)", self.mode)
         recovery = section(
             self.mode, "void ALatebrakeRaceGameMode::RecoverPlayer(",
@@ -102,7 +121,8 @@ class RestartPlacementBindingTests(unittest.TestCase):
     def test_portable_state_machine_and_race_progress_compiled(self):
         for required in ("AwaitingPlacement", "RejectedPlacement",
                          "VerifiedPlacement", "OnRestartRequested()",
-                         "OnRestartPlacementResult(bool verified)"):
+                         "OnRestartPlacementResult(bool verified)",
+                         "CanRace(bool isSameVerifiedPawn)"):
             self.assertIn(required, self.guard)
         self.assertIn("RestartPlacementGuardTests.cpp", self.cmake)
         self.assertIn("Private/Racing/RaceProgress.cpp", self.cmake)
@@ -110,10 +130,16 @@ class RestartPlacementBindingTests(unittest.TestCase):
 
     def test_regression_can_be_detected(self):
         bypass = self.mode.replace(
-            "RestartPlacement.CanRace() && IsValid(Car)",
-            "IsValid(Car) /* unsafe grid bypass */",
+            "IsRestartPlacementReady() && IsValid(Car)",
+            "IsValid(Car) /* unsafe grid or pawn identity bypass */",
         )
-        self.assertNotIn("RestartPlacement.CanRace() && IsValid(Car)", bypass)
+        self.assertNotIn("IsRestartPlacementReady() && IsValid(Car)", bypass)
+        self.assertIn("IsRestartPlacementReady() && IsValid(Car)", self.mode)
+        forged = self.mode.replace(
+            "VerifiedRestartPawn.Get() == CurrentDriver",
+            "true /* unsafe pawn replacement transfer */",
+        )
+        self.assertNotIn("VerifiedRestartPawn.Get() == CurrentDriver", forged)
         bypass_pawn = self.pawn.replace(
             "Mode->IsRestartPlacementReady()",
             "true /* unsafe torque authorization */",
