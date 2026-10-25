@@ -81,6 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.48 (source development, unreleased) | Speed-dependent steering authority for both handling modes and reject invalid derived speed / actor rotation before physics or scoring | Strict C++20 tests and Unreal-source contracts; real Chaos handling, rival route, Win64 and Android hardware QA required |
 | v0.5.47 (source development, unreleased) | Full post-recovery orientation, Chaos readiness and residual-motion checks before applying the timed penalty | Portable policy regressions and Unreal source contracts; actual UE 5.8 compile and installed Win64/Android QA pending |
 | v0.5.46 (published source-only pre-release) | Verify actual Unreal recovery transform before committing five-second fee, with safe checkpoint trace rebase | Production C++20 verifier and penalty transaction; portable failure/commit tests, genuine UE/device validation still required |
 | v0.5.45 (published source-only pre-release) | Require finite Chaos chassis angular velocity and positive finite mass for player/rival driving, timing, ordered checkpoints and stable HUD speed | Production C++ policy and real RaceProgress portable tests; licensed UE 5.8 / installed Win64/Android collision QA remains outstanding |
