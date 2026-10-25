@@ -711,3 +711,18 @@ else()
     target_compile_options(latebrake_race_minimap_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RaceMiniMap COMMAND latebrake_race_minimap_tests)
+
+# v0.5.63: real race radar proximity alert, finite sample admission,
+# 15/20-meter hysteresis, 0.6-second debounce and state invalidation.
+add_executable(latebrake_rival_proximity_indicator_tests
+    RivalProximityIndicatorTests.cpp
+    ../../Source/Latebrake/Private/Track/RaceMiniMap.cpp
+)
+target_include_directories(latebrake_rival_proximity_indicator_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_proximity_indicator_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_proximity_indicator_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_proximity_indicator_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalProximityIndicator COMMAND latebrake_rival_proximity_indicator_tests)
