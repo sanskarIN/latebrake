@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.43](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.43) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** An explicit standalone PAUSE now freezes race progression and vehicle controls even if Unreal's world-pause request fails; it is tested with portable clock, checkpoint, recovery, rival and input-policy regressions. **There is no verified Windows EXE, Android APK/AAB or Linux game.** Source ZIP/tar.gz archives are not installers. Actual UE 5.8 Editor/UHT compilation, original cooked circuit, installed packages and hardware driving QA remain outstanding.
+> **Latest published: [v0.5.44](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.44) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** The candidate build pipeline now pins exact Unreal 5.8 `Build.version` SHA256 before compiling, throughout Editor/UAT and in schema-2 Win64/Android manifests; mismatched engine metadata blocks dual-platform review. **There is no verified Windows EXE, Android APK/AAB or Linux game.** Source archives are not installers. Authentic UE 5.8 Editor/UHT compilation, cooked circuit, installed packages and real hardware gameplay QA remain outstanding.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
@@ -22,6 +22,7 @@
 - v0.5.0: offline career/championship and challenge rules, versioned career progression saves, prototype menu/navigation, and extended portable tests.
 - Portable, engine-independent lap/checkpoint rules with C++20 CMake tests on Linux, Windows and macOS CI.
 - v0.5.32 (published source-only pre-release): expanded HUD shows live current-lap **best-sector potential** against the achieved best lap, backed by strict C++20 tests; this estimate cannot award records.
+- v0.5.44 (published source-only pre-release): require matching SHA256 of exact installed UE 5.8 build metadata in compile/cook workflow, schema-2 manifest and Win64/Android pair acceptance; synthetic QA only, no real packages.
 - v0.5.43 (published source-only pre-release): latch keyboard/gamepad/touch PAUSE before fallible Unreal world pause, block competitive timing, gate awards, rivals, recovery and player driving when engine pausing fails; portable source QA only.
 - v0.5.42 (published source-only pre-release): block player thrust/steering and clear chassis momentum whenever the authoritative race is paused, in a menu, finished or unsafe to drive; run 64-state portable readiness tests. Real Unreal engine/device behavior is still unverified.
 - v0.5.41 (published source-only pre-release): strengthen authentic Unreal Editor map receipt with UE 5.8 version preflight and SHA256 byte identity, backed by synthetic same-size tampering regressions. Source QA is not actual editor/game qualification.
