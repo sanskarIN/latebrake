@@ -502,3 +502,18 @@ else()
     target_compile_options(latebrake_focus_suspended_touch_policy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME FocusSuspendedTouchPolicy COMMAND latebrake_focus_suspended_touch_policy_tests)
+
+# v0.5.40: every awarded finish needs a real clock advance for EACH lap;
+# recovery charges cannot substitute for active timing evidence.
+add_executable(latebrake_finish_timing_eligibility_tests
+    FinishTimingEligibilityTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_finish_timing_eligibility_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_finish_timing_eligibility_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_finish_timing_eligibility_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_finish_timing_eligibility_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FinishTimingEligibility COMMAND latebrake_finish_timing_eligibility_tests)
