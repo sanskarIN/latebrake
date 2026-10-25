@@ -30,9 +30,15 @@ inline double CornerThrottleFactor(
     const double start = arcadeHandling ? 0.18 : 0.13;
     const double saturated = arcadeHandling ? 0.75 : 0.55;
     const double minimum = arcadeHandling ? 0.58 : 0.45;
-    const double blend = std::clamp(
+    const double slipBlend = std::clamp(
         (slip - start) / (saturated - start), 0.0, 1.0);
-    return 1.0 - blend * (1.0 - minimum);
+    // No abrupt force step at the 900cm/s forward or 250cm/s lateral
+    // threshold: smoothly fade in over another 500/300cm/s.
+    const double speedBlend = std::clamp(
+        (longitudinal - 900.0) / 500.0, 0.0, 1.0);
+    const double lateralBlend = std::clamp(
+        (lateral - 250.0) / 300.0, 0.0, 1.0);
+    return 1.0 - slipBlend * speedBlend * lateralBlend * (1.0 - minimum);
 }
 
 inline double StabilizeCornerThrottle(
