@@ -5,6 +5,14 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.62 source development — live player and opponent racing radar
+
+- **Unreleased feature:** Expanded desktop circuit minimap now shows actual player yaw with a north-up heading tick, a physically verified opponent marker when present, the true next scored checkpoint, and finite **direct** rival separation (never an invented race ranking or time gap).
+- New production `RaceMiniMap.h/.cpp` builds a bounded snapshot from real engine positions, official gate geometry and mode/race eligibility. Invalid positions, unhealthy/absent rivals, Time Attack events and off-display car coordinates hide vehicle markers instead of pinning a phantom marker at map center or boundary.
+- `ALatebrakeRaceGameMode::TryGetRivalRadarPosition` verifies a live rival actor and physics body before returning a finite real location. The Unreal HUD renders validated markers without modifying race timing, checkpoints, AI, collision, career rewards or save data.
+- A new strictly compiled Windows/macOS/Ubuntu production C++20 target and Unreal-source binding checks cover the grounded radar path; [race radar QA](RACE_RADAR_QA.md) specifies remaining real UE 5.8 and installed-device HUD/physics tests.
+- **No new playable release:** v0.5.60 remains the latest published GitHub source-only pre-release; genuine UE/UHT build and Win64/Android device QA are still outstanding.
+
 ## v0.5.61 source development — road-return guidance and inbound-only rival corner braking
 
 - **Unreleased improvement:** New `OffTrackAdvisor.h` derives the nearest paved road return direction/distance from the same four rectangles as the existing circuit geometry. A debounced `OffTrackIndicator` raises an advisory only after 0.8s sustained off-pavement driving; it resets on pause/menu, malformed sample, checkpoint session or teleport, and pawn replacement.
