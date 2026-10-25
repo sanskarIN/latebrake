@@ -1,16 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.40 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.40), tagged at tested source commit `9f78ba4af2c4271f3effca9ce54a63e8d423ea89`.
+**Latest published milestone:** [v0.5.41 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.41), tagged at tested source commit `da667fee6c29b0fa3274b2e22b0915571ad4e2c3`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.41 development candidate — real map receipt authenticity safeguards
+## v0.5.41 published source-only pre-release — real map receipt integrity safeguards
 
 - The prior Editor-generated `starter-map-result.json` established package name and byte length, but not byte equality; a modified map of identical length could satisfy the local receipt. A direct `New-StarterMap.ps1` invocation also did not independently validate engine/project version 5.8.
 - Require UE `Build.version`, project EngineAssociation, actual Editor-reported version, versioned SHA256 receipt and exact saved-file hash match before accepting the map. Existing serialized-header, post-authoring source provenance and pre-/post-UAT map snapshot checks remain in place.
 - New synthetic PowerShell negative tests and Unreal Python mocks explicitly do not stand in for actual Editor execution; see [MAP_AUTHORING_QA.md](MAP_AUTHORING_QA.md).
-- **Not released; current published version is still v0.5.40.** Licensed UE 5.8 Editor/UHT, genuine authored/cooked `.umap`, packages and device QA remain open.
+- **Published SOURCE-ONLY pre-release on 2026-10-25, with zero compiled game assets.** The independent pinned publisher passed Windows/macOS/Ubuntu portable C++20 checks, Windows synthetic map-authoring tamper cases and Python Editor stub tests. Actual licensed UE 5.8 Editor/UHT, authentic cooked `.umap`, packages and installed device QA remain open.
 
 ## v0.5.40 published source-only pre-release — per-lap active clock eligibility
 

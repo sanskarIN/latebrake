@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.41 — Development candidate (2026-10-25; NOT released)
+## v0.5.41 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Bind the genuine Unreal Editor map-authoring receipt to **SHA256 of saved map bytes**, schema version 1 and reported engine version 5.8. The previous map-name/byte-size-only receipt could accept an altered same-size file.
 - Fail direct `New-StarterMap.ps1` execution on engine/project version mismatch before launching the editor; reject stale, malformed, unexpected-version or byte-mutated receipts before continuing to header checks or packaging.
