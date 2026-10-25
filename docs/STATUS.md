@@ -1,16 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.38 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.38).
+**Latest published milestone:** [v0.5.39 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.39), tagged at tested source commit `e06bd702c8069cfd752cc4979a02416c2c4fb7fd`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.39 development candidate — neutralize player motion if OS pause fails
+## v0.5.39 published source-only pre-release — neutralize player motion if OS pause fails
 
 - Address a remaining fair-play and input safety hole: v0.5.38 stopped the race clock, checkpoints, recoveries and rivals on application deactivation, but a failed Unreal world pause could leave the *player chassis* simulating momentum and accepting newly delivered inputs while competitive time was stopped.
 - Stop held/filtered drive input and zero finite physical linear/angular velocity on the new focus-loss event and during each surviving pawn tick while the guard is latched. This policy intentionally sacrifices momentum continuity on interruption for fair timing; actual Chaos motion still requires testing.
 - Fail closed on suspended mobile touch: only a fresh PAUSE tap can intentionally resume; throttle, steering, dragging, recover, restart and career pads cannot dispatch. Physical press identity tracking remains in place.
-- Add portable touch-policy C++20 tests, CMake matrix registration and Python source-binding assertions. **Source development only, not yet prereleased or qualified as a runnable game.** Licensed Unreal 5.8/UHT, real-world physics/OS pause failure and Android tests are still open in #31 and #13.
+- The independently gated GitHub release workflow passed full portable C++20 on Windows, macOS and Ubuntu, Python source-contract tests and PowerShell fixture tests, then published the unchanged commit as an asset-free prerelease. The release includes new portable touch-policy C++20 tests, CMake matrix registration and Python source-binding assertions. **Published SOURCE-ONLY prerelease on 2026-10-25, not qualified as a runnable game.** Licensed Unreal 5.8/UHT, real-world physics/OS pause failure and Android tests are still open in #31 and #13.
 
 ## v0.5.38 published source-only pre-release — already-paused app focus-loss checkpoint integrity
 

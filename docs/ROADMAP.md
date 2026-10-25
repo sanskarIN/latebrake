@@ -77,8 +77,12 @@ run installed QA, then follow with Android candidate and mobile controls.
 A manual authorized self-hosted runner may execute the new pipeline; the
 ordinary CI cannot package Unreal games. No new version is being published
 solely because packaging helper scripts now exist.
+### Recent published source-only milestones
+
+| Version | Source scope | Qualification outstanding |
+| --- | --- | --- |
+| v0.5.39 (published source-only pre-release) | Neutralize player momentum/inputs when OS focus-loss pause fails and allow only fresh PAUSE touches to resume | Three-OS portable policy tests plus Unreal source contracts; Unreal physics and real-device qualification remain outstanding |
 | v0.5.38 (published source-only pre-release) | Ensure every new OS focus-loss suspension invalidates checkpoint motion even if Unreal was already paused; retain manual resume | Strict portable C++20 plus Unreal-source binding checks; actual Unreal/Android/Win64 interruption and crossing QA outstanding |
 | v0.5.37 (published source-only pre-release) | Attribute charged recovery fees to current and last completed lap only at ordered lap boundaries; show actual attribution on non-compact HUD | Strict three-OS C++20 and Editor binding contracts, plus required future Unreal/device rendering QA |
 | v0.5.36 (published source-only pre-release) | Track only successfully charged recovery/time fees atomically; show already-included total on HUD/results and verify source integration | Strict C++20 and Python HUD contracts; installed Unreal and device rendering/physics QA remains open |
 | v0.5.35 (published source-only pre-release) | Suspend player time, checkpoint scoring, recoveries and rival driving on app focus loss independently of a successful engine world pause; explicitly resume after player action | C++20 and source bindings; genuine Unreal 5.8 and installed Win64/Android focus-loss QA still required |
-| v0.5.39 (in development, not released) | Neutralize player momentum/inputs when OS focus-loss pause fails and allow only fresh PAUSE touches to resume | Three-OS portable policy tests plus Unreal source contracts; Unreal physics and real-device qualification remain outstanding |
