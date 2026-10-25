@@ -1,16 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.60 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.60), tagged at tested source commit `cfe4ded6489d1564f337e0ba318ec3e7ac0e17ca`.
+**Latest published milestone:** [v0.5.65 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.65), tagged at independently source-qualified commit `7005f7cecb0ca4e4cbe580710c8ceb93e8d94a4d`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.65 source candidate — signed measured rival approach
+## v0.5.65 published source-only pre-release — signed measured rival approach
 
 - **Unreleased source feature:** A real production radar-linked `RivalRelativeMotionTracker` watches successive grounded player/rival direct separations and only displays CLOSING or SEPARATING after 0.4s sustained change of at least 2m/s. The tracked signal is signed direct separation rate, not opponent physical velocity, collision prediction or race order.
 - The HUD now displays verified sustained CLOSING on compact and desktop views and SEPARATING on expanded desktop views. Invalid actors/positions, disallowed race states, noisy radial changes, large (>90m/s) inferred discontinuities and invalid time deltas clear the trend; teleport, checkpoint epoch, menu, verified rival recovery and focus state all reset historical samples.
 - Strict portable C++20 tests link the real production `RaceMiniMap.cpp` and cover first-frame safety, sign reversal, 0.4s debounce, jump rejection, bad frames, missing rivals, Time Attack and bounded state. Unreal HUD binding contracts guard a single real radar snapshot. See [direct-motion QA](RIVAL_RELATIVE_MOTION_QA.md).
-- **Source candidate, not a playable release:** independent source-only v0.5.65 publisher workflow prepared; licensed UE 5.8 UHT/editor compilation, real cooked map and Win64/Android installed hardware QA remain outstanding. Current published source-only tag remains v0.5.60 until the publisher succeeds.
+- **Published SOURCE-ONLY pre-release, not a playable game:** the independent v0.5.65 publisher qualified the exact merged source commit on Windows/macOS/Linux with source-policy and documentation checks, then created an asset-free immutable tag. Licensed UE 5.8 UHT/editor compilation, a real cooked map, and Win64/Android installed hardware QA remain outstanding.
 
 ## v0.5.63 source development — sustained rival proximity awareness and UE HUD scope fix
 
