@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.45 — In development, NOT released (2026-10-25)
+
+- Add the full production C++20 `VehicleDynamicsReadiness.h/.cpp` pair, rejecting **zero/negative/nonfinite chassis mass** and **NaN/infinite angular velocity on all three axes**. Previously the shared physics-readiness gate checked only body presence, collision, world position and *linear* velocity; broken angular/mass state could still appear driver-ready.
+- Bind the shared policy to the actual Unreal car's `IsRacePhysicsReady()`. This automatically blocks real GameMode race-clock advancement and checkpoint sampling/scoring when Chaos state is unhealthy. The car's physics tick now neutralizes held controls and linear/angular motion **before applying any new motor or steering forces** whenever readiness fails.
+- The rival now checks its **own** dynamics before updating AI route progress. HUD speed returns finite zero instead of NaN/Inf for corrupted linear measurements. Valid restored dynamics resume only subsequent healthy clock frames.
+- New strict cross-platform C++20 `VehicleDynamicsReadinessTests.cpp`, linked with the production dynamics `.cpp` and real `RaceProgress.cpp`, plus Python Unreal callsite-binding tests and `docs/VEHICLE_DYNAMICS_QA.md` for genuine engine/device acceptance. Source-only tests are **not UE 5.8/UHT compilation, Chaos playtests or APK/EXE builds**.
+
 ## v0.5.44 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Candidate archives now use **manifest schema 2** with `unreal_engine_build_sha256`: SHA256 of the exact installed `Engine/Build/Build.version` bytes, not just the broad `5.8` version string. Previously two UE 5.8 builds with different underlying changelists/metadata could be treated as one Win64/Android candidate.
