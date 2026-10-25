@@ -28,7 +28,8 @@ function Read-CandidateIdentity {
         $info.status -cne 'UNVERIFIED_CANDIDATE_NOT_PLAYTESTED' -or
         $info.source_tree_tracked_changes -ne $false -or
         [string]$info.source_commit -cnotmatch '^[a-fA-F0-9]{40}$' -or
-        [string]$info.starter_map_sha256 -cnotmatch '^[a-fA-F0-9]{64}
+        [string]$info.starter_map_sha256 -cnotmatch '^[a-fA-F0-9]{64}$' -or
+        [string]$info.unreal_engine_build_sha256 -cnotmatch '^[a-f0-9]{64}$' -or
         [string]$info.unreal_engine_version -cnotmatch '^5[.]8([.]|$)') {
         throw "Malformed or unqualified $Platform candidate identity."
     }
@@ -44,54 +45,11 @@ if ($windows.unreal_engine_version -cne $android.unreal_engine_version) {
     throw 'Windows and Android packages used different Unreal Engine versions.'
 }
 if ($windows.unreal_engine_build_sha256 -cne $android.unreal_engine_build_sha256) {
-    throw 'Win64 and Android candidates used different Unreal Build.version bytes despite matching engine major/minor versions.'
+    throw 'Win64 and Android candidates used different Unreal Build.version bytes despite matching major/minor engine versions.'
 }
 if ($windows.starter_map_sha256 -ine $android.starter_map_sha256) {
     throw 'Windows and Android packages were cooked from different circuit map bytes.'
 }
 
 Write-Host "Win64/Android metadata agree on source, exact UE build metadata and circuit SHA256: $($windows.starter_map_sha256)"
-Write-Host 'Metadata equality is NOT game compilation, installed-device QA or playable release evidence.'
- -or
-        [string]$info.unreal_engine_build_sha256 -cnotmatch '^[a-f0-9]{64}
-        [string]$info.unreal_engine_version -cnotmatch '^5[.]8([.]|$)') {
-        throw "Malformed or unqualified $Platform candidate identity."
-    }
-    return $info
-}
-
-$windows = Read-CandidateIdentity -Path $Win64ManifestJson -Platform 'Win64'
-$android = Read-CandidateIdentity -Path $AndroidManifestJson -Platform 'Android'
-if ($windows.source_commit -ine $android.source_commit) {
-    throw 'Windows and Android packages come from different source commits.'
-}
-if ($windows.unreal_engine_version -cne $android.unreal_engine_version) {
-    throw 'Windows and Android packages used different Unreal Engine versions.'
-}
-if ($windows.starter_map_sha256 -ine $android.starter_map_sha256) {
-    throw 'Windows and Android packages were cooked from different circuit map bytes.'
-}
-
-Write-Host "Win64/Android metadata agree on source, UE version and circuit SHA256: $($windows.starter_map_sha256)"
-Write-Host 'Metadata equality is NOT game compilation, installed-device QA or playable release evidence.'
- -or
-        [string]$info.unreal_engine_version -cnotmatch '^5[.]8([.]|$)') {
-        throw "Malformed or unqualified $Platform candidate identity."
-    }
-    return $info
-}
-
-$windows = Read-CandidateIdentity -Path $Win64ManifestJson -Platform 'Win64'
-$android = Read-CandidateIdentity -Path $AndroidManifestJson -Platform 'Android'
-if ($windows.source_commit -ine $android.source_commit) {
-    throw 'Windows and Android packages come from different source commits.'
-}
-if ($windows.unreal_engine_version -cne $android.unreal_engine_version) {
-    throw 'Windows and Android packages used different Unreal Engine versions.'
-}
-if ($windows.starter_map_sha256 -ine $android.starter_map_sha256) {
-    throw 'Windows and Android packages were cooked from different circuit map bytes.'
-}
-
-Write-Host "Win64/Android metadata agree on source, UE version and circuit SHA256: $($windows.starter_map_sha256)"
 Write-Host 'Metadata equality is NOT game compilation, installed-device QA or playable release evidence.'
