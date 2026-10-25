@@ -317,3 +317,25 @@ ctest --test-dir Tests/Standalone/build -R '^(OffTrackAdvisor|RivalCornerAnticip
 
 Passing source tests does not imply licensed UE 5.8 compilation, Chaos
 steering reliability or installed Win64/Android gameplay acceptance.
+
+
+### v0.5.62 — physically grounded live race radar
+
+`RaceMiniMapTests.cpp` compiles the real new
+`Private/Track/RaceMiniMap.cpp` production projection. It tests
+next-gate geometry, cardinal/wrapped yaw, player/rival marker order,
+direct separation units, absent Time Attack opponent, disabled Chaos
+physics, rejected restart, NaN/Infinity, off-display location and
+zero-distance overlap.
+
+`Tests/Editor/RaceMiniMapBindingTests.py` binds the actual Unreal
+GameMode rival position check (real actor physics plus finite 3D pose)
+to the full-width HUD radar, independently of ranking and reward
+calculations.
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(RaceMiniMap|CircuitMap)$' --output-on-failure
+```
+
+This is source-only validation; see [race radar QA](../../docs/RACE_RADAR_QA.md)
+for the engine/UHT, cooked map, viewport and installed-device gate.
