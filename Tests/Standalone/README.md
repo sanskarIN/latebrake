@@ -295,3 +295,25 @@ actual Chaos Tick feeds its policy after finite guards, actual HUD
 uses the player's authoritative next gate and the AI applies the
 corner policy after computing `PlanRivalTurn`. No suite compiles
 licensed UE 5.8 C++/UHT or replaces installed gameplay QA.
+
+
+### v0.5.61 — on-road guidance and inbound rival corner checks
+
+`OffTrackAdvisorTests.cpp` runs strict C++20 tests on the actual
+four-rectangle paved circuit surface, including all shoulders, nearest
+pavement displacement, nonfinite/extreme pose rejection and sustained
+warning debounce. `RivalCornerAnticipationTests.cpp` extends the
+v0.5.60 production-linked AI suite to reject beyond-gate and cross-lane
+radial false positives on all four corners while preserving valid
+inbound brake responses.
+
+`Tests/Editor/OffTrackAndRivalApproachBindingTests.py` checks that the
+real Unreal HUD hosts the advisor, resets it after discontinuities
+and does not use it for race-scoring authorization.
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(OffTrackAdvisor|RivalCornerAnticipation|WrongWayIndicator)$' --output-on-failure
+```
+
+Passing source tests does not imply licensed UE 5.8 compilation, Chaos
+steering reliability or installed Win64/Android gameplay acceptance.

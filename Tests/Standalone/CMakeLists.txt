@@ -684,3 +684,15 @@ else()
     target_compile_options(latebrake_rival_corner_anticipation_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalCornerAnticipation COMMAND latebrake_rival_corner_anticipation_tests)
+
+# v0.5.61: nearest original-circuit pavement guidance and alert debounce.
+# No Unreal/Chaos runtime is exercised by this portable test.
+add_executable(latebrake_off_track_advisor_tests OffTrackAdvisorTests.cpp)
+target_include_directories(latebrake_off_track_advisor_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_off_track_advisor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_off_track_advisor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_off_track_advisor_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OffTrackAdvisor COMMAND latebrake_off_track_advisor_tests)

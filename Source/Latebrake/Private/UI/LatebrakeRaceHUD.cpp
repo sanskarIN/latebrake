@@ -29,6 +29,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     if (!Mode || !Car)
     {
         WrongWayHint.Reset();
+        OffTrackHint.Reset();
         LastWayfindingPawn.Reset();
         return;
     }
@@ -195,6 +196,7 @@ void ALatebrakeRaceHUD::DrawHUD()
 #endif
         // Menu navigation must not retain an old driving-direction alert.
         WrongWayHint.Reset();
+        OffTrackHint.Reset();
         return;
     }
 
@@ -275,6 +277,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         LastWayfindingTeleport != CurrentWayfindingTeleport)
     {
         WrongWayHint.Reset();
+        OffTrackHint.Reset();
         LastWayfindingPawn = Car;
         LastWayfindingSession = CurrentWayfindingSession;
         LastWayfindingTeleport = CurrentWayfindingTeleport;
@@ -293,6 +296,30 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(bCompact ? TEXT("WRONG WAY - TURN AROUND")
                       : TEXT("WRONG WAY - RETURN TO CIRCUIT DIRECTION"), Accent);
+    }
+    // A second, independent advisory surfaces sustained off-pavement
+    // driving and a bounded nearest-road direction. Its geometry uses
+    // the same four strips as IsOnPavedSurface and never awards gates.
+    const latebrake::CircuitPoint PlanarPosition{
+        WayfindingPosition.X, WayfindingPosition.Y};
+    if (OffTrackHint.Update(
+            PlanarPosition, GetWorld()->GetDeltaSeconds(),
+            bWayfindingEligible))
+    {
+        const latebrake::RoadReturnAdvice ToRoad =
+            latebrake::AdviseReturnToCircuit(PlanarPosition);
+        if (ToRoad.Valid && ToRoad.OffPavement)
+        {
+            const TCHAR* ReturnDirection =
+                FMath::Abs(ToRoad.UnitDirection.X) >
+                    FMath::Abs(ToRoad.UnitDirection.Y)
+                    ? (ToRoad.UnitDirection.X >= 0.0 ? TEXT("EAST") : TEXT("WEST"))
+                    : (ToRoad.UnitDirection.Y >= 0.0 ? TEXT("NORTH") : TEXT("SOUTH"));
+            Line(FString::Printf(
+                bCompact ? TEXT("OFF TRACK | ROAD %.0fm %s")
+                         : TEXT("OFF TRACK | NEAREST PAVED ROAD %.0fm %s"),
+                ToRoad.DistanceMeters, ReturnDirection), Accent);
+        }
     }
     // Guidance is projected from the actual next authoritative gate;
     // the direct-line range is NOT a track distance or a scoring shortcut.

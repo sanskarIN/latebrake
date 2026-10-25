@@ -1,11 +1,18 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.46 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.46), tagged at tested source commit `e16c1067d455151f31597608e8ebe16d6c7bdab4`.
+**Latest published milestone:** [v0.5.60 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.60), tagged at tested source commit `cfe4ded6489d1564f337e0ba318ec3e7ac0e17ca`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.60 source pre-release candidate — race navigation, measured driving and rival corners
+## v0.5.61 source development — road-return guidance and inbound-only rival corner braking
+
+- **Unreleased improvement:** New `OffTrackAdvisor.h` derives the nearest paved road return direction/distance from the same four rectangles as the existing circuit geometry. A debounced `OffTrackIndicator` raises an advisory only after 0.8s sustained off-pavement driving; it resets on pause/menu, malformed sample, checkpoint session or teleport, and pawn replacement.
+- The actual expanded and compact Unreal HUD displays the approximate **direct** return-to-pavement distance and cardinal direction. It does not change authoritative checkpoint, save, medal, race clock or paid recovery rules.
+- **Rival correction:** `RivalCornerAnticipation.cpp` now gates anticipation by an inbound previous-gate→current-gate projection (440–2200cm), cross-track corridor of 620cm, and pavement membership, instead of radial corner proximity alone. Beyond-gate, off-shoulder and nonfinite observations cannot trigger speculative corner braking.
+- Added strict C++20 geometry/debounce tests, expanded all-four-corner AI regressions, new Unreal-source HUD/AI binding contracts and [QA procedures](OFF_TRACK_AND_RIVAL_APPROACH_QA.md). These improvements require real UE 5.8 and installed Windows/Android gameplay qualification and are not tagged or published.
+
+## v0.5.60 source-only GitHub pre-release — race navigation, measured driving and rival corners
 
 - **New real production code, not placeholder version bumps:** `DrivingSessionStats.h/.cpp` accumulates bounded, run-local approximate distance, peak speed, distinct braking actions and high-side-slip/braking time from actual Chaos physics tick samples. `ALatebrakeCarPawn` owns the tracker, resets it at race RESTART and suspends continuity at any physics/OS interruption or teleport. The expanded HUD displays the measured information without altering saves, rewards or scoring.
 - **Player wayfinding:** `CircuitRouteAdvisor.h/.cpp` computes direct-line meters and a steering bearing toward the actual next `RaceProgress` checkpoint from the engine position and yaw. Guidance fails closed for invalid gates, off-track/malformed samples and ineligible sessions; compact HUD only shows near-gate guidance. It has no authority to award a checkpoint.
