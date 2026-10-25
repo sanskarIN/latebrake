@@ -43,6 +43,7 @@ class PlayerDriveBindingTests(unittest.TestCase):
             "UGameplayStatics::IsGamePaused(this)",
             "Mode->IsFocusLossGuardActive()",
             "Mode->GetRace().IsFinished()",
+            "Mode->IsRestartPlacementReady()",
         )
         guard_start = tick.index(gate)
         guard_end = tick.index("NeutralizeMotionWhenDrivingBlocked();", guard_start)
