@@ -58,6 +58,16 @@ int main()
               "cardinal, negative and wrapped yaw point correctly on screen");
     }
 
+    const auto largeButBoundedHeading = BuildRaceMiniMapSnapshot(
+        p, 360000.0, true, 0, false, {}, false);
+    const auto corruptedHeading = BuildRaceMiniMapSnapshot(
+        p, 360001.0, true, 0, true, rival, true);
+    Check(largeButBoundedHeading.Player.Position.Valid &&
+          Near(largeButBoundedHeading.Player.DirectionX, 1.0) &&
+          !corruptedHeading.Player.Position.Valid &&
+          !corruptedHeading.Rival.Valid,
+          "bounded wrapped yaw is valid but physically implausible giant yaw is not");
+
     const auto noRival = BuildRaceMiniMapSnapshot(
         p, 0.0, true, 0, false, rival, true);
     const auto invalidRival = BuildRaceMiniMapSnapshot(
