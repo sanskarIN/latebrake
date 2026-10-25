@@ -112,10 +112,10 @@ int main()
     Require(mixed.PassCheckpoint(0), "second physically timed lap");
     const FinishedRaceInsights mixedReport = BuildFinishedRaceInsights(mixed);
     Require(!mixedReport.HasLatestVsPrevious &&
-            mixedReport.LatestTimedLapNumber == 2 &&
+            mixedReport.LatestTimedLapNumber == 0 &&
             mixedReport.PreviousTimedLapNumber == 0 &&
             mixed.GetRecentTimedLapCount() == 1,
-            "zero-duration first lap cannot become comparison baseline");
+            "invalid complete run cannot expose any final comparison");
     Require(!mixedReport.Valid &&
             !CanAwardFinishedRace(mixed),
             "a zero-duration first lap cannot become awardable final insights");
