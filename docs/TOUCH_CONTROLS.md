@@ -34,6 +34,28 @@ when the menu is toggled stays latched until its genuine release, so
 duplicate presses cannot replay PAUSE/RESTART/RECOVER. Android input
 routing during pause still requires actual device verification.
 
+## v0.5.43 manual PAUSE fallback (source-only, unqualified)
+
+A standalone keyboard/gamepad or mobile PAUSE press now latches a game-level
+pause **before** requesting Unreal `SetGamePaused(true)`. If the engine
+continues ticking despite this request, the latch still blocks the racing
+clock, ordered gates, recovery, player force/torque, rivals and driving touches.
+The HUD shows PAUSED, and the mobile PAUSE pad remains highlighted. A genuinely
+new PAUSE press can explicitly clear the fallback; dragging or reusing a
+physically held finger cannot. Menu close and accepted restart also clear it.
+
+**Required actual Win64/Android checks:** verify normal PAUSE/RESUME first;
+instrument or deliberately simulate an engine world-pause refusal in an
+authorized non-shipping Unreal build, confirm that the world may still tick
+but the race clock, HUD, checkpoints, rival and car propulsion are frozen,
+confirm a fresh second PAUSE press resumes, and validate no pre-pause
+checkpoint sample can credit a gate after resuming. Repeat with app focus
+loss and an Android PAUSE tap; foreground alone must not resume. Preserve
+logs linked to the exact tested executable and source revision.
+
+Portable C++20 and source-binding tests simulate the policy; they do
+**not** demonstrate that Unreal or any phone has delivered these events.
+
 ## Engine/device acceptance checklist (NOT YET COMPLETED)
 
 1. Compile `LatebrakeEditor` and the game target with a licensed Unreal 5.8
