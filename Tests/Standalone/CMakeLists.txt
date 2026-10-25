@@ -531,3 +531,18 @@ else()
     target_compile_options(latebrake_player_drive_readiness_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PlayerDriveReadiness COMMAND latebrake_player_drive_readiness_tests)
+
+# v0.5.43: standalone manual PAUSE stays authoritative when Unreal world
+# pause is rejected; prevents time, ordered gates, rivals and paid recovery.
+add_executable(latebrake_manual_race_pause_guard_tests
+    ManualRacePauseGuardTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_manual_race_pause_guard_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_manual_race_pause_guard_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_manual_race_pause_guard_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_manual_race_pause_guard_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ManualRacePauseGuard COMMAND latebrake_manual_race_pause_guard_tests)
