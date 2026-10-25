@@ -1,16 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.42 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.42), tagged at tested source commit `60d82151f9316e0c6d63fa6d6f71019de25ef3af`.
+**Latest published milestone:** [v0.5.43 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.43), tagged at tested source commit `8d5cd3d3576877f4efa79f696be6d318d2d95e8a`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.43 source development — standalone PAUSE intent survives rejected world pause
+## v0.5.43 published source-only pre-release — standalone PAUSE survives rejected world pause
 
 - Detected a distinct gap not covered by v0.5.42's player-driving readiness: a keyboard/gamepad/touch **standalone PAUSE** pressed while the engine was running had no independent fallback state if Unreal's `SetGamePaused(true)` did not actually pause. As a result, the race clock and ordered gates could continue while the player believed PAUSE was requested.
 - `ManualRacePauseGuard` now latches first-press intent before the world-pause request and clears only on explicit second press, menu return or accepted restart. All authoritative clock, checkpoint, recovery, rival and pawn-driving consumers respect this latch. PAUSE touch dispatch and HUD remain usable when world pausing fails.
 - Source regression tests cover failed PAUSE/UNPAUSE, real race-progress clock behavior, checkpoint session revision, recovery/rival denial and player input readiness. No UE Editor/UHT compiled artifact, Chaos runtime or real Win64/Android installed pause QA is claimed. See issues #31 and #13.
-- **Development only; latest published source preview remains v0.5.42.**
+- **Published asset-free SOURCE-ONLY pre-release on 2026-10-25.** The pinned independent workflow passed Windows/macOS/Ubuntu strict C++20 tests, isolated `ManualRacePauseGuard` regressions, Python Unreal source integration and Windows PowerShell policy. Licensed UE/UHT, real pause failure, cooked circuit, playable executables and installed device physics remain unverified.
 
 ## v0.5.42 published source-only pre-release — ordinary menu pause and finished-race driving safety
 
