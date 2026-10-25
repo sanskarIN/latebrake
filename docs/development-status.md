@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.42](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.42), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.42 (published source-only preview)** on `main`; active driver-readiness gating passed exhaustive portable C++20 and Unreal source-binding tests, but real physics and device playtests remain unverified |
+| Latest published GitHub pre-release | [v0.5.43](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.43), **source only**, no runnable assets |
+| Latest source-development milestone | **v0.5.43 (published source-only preview)** on `main`; independent manual-PAUSE fallback now blocks racing if Unreal refuses to pause; portable C++20 and source bindings passed, actual engine/device execution remains unverified |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
