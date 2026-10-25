@@ -81,6 +81,13 @@ int main()
     Check(ChooseHudTextPrefix(20, 2.0, 20.0, 3.0, monospace) == -1,
           "no draw when even ellipsis cannot fit");
 
+    Check(ChooseHudTextPrefix(10, 9.0, 100.0, 3.0,
+          [](int) { return 0.0; }) == 9,
+          "contradictory font callback cannot admit oversized original");
+    Check(ChooseHudTextPrefix(0, 1.0, 10.0, 2.0,
+          [](int) { return 2.0; }) == -1,
+          "zero-length malformed width cannot bypass suffix policy");
+
     int calls = 0;
     const int clipped = ChooseHudTextPrefix(
         1'000'000, 24.0, 1'000'000.0, 3.0,
