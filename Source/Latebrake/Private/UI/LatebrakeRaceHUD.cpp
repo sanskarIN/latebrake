@@ -7,6 +7,7 @@
 #include "Racing/LiveSectorTarget.h"
 #include "UI/TouchControlLayout.h"
 #include "Track/CircuitMap.h"
+#include "Track/RaceMiniMap.h"
 #include "Track/CircuitRouteAdvisor.h"
 #include "Engine/Engine.h"
 #include "Engine/Canvas.h"
@@ -473,39 +474,83 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
     }
 
-    // Prototype north-up circuit overview: the next checkpoint and live car
-    // position share the same track geometry as the race and AI systems.
-    // Hidden on compact viewports until a production adaptive UI is authored.
+    // Source-only prototype racing radar: project real sampled player and
+    // rival actor positions; suppress invalid/unavailable vehicle markers.
+    // It is deliberately NOT an order/placement or reward calculation.
     if (!bCompact && Canvas->SizeX >= 1120)
     {
+        FVector RivalWorldPosition = FVector::ZeroVector;
+        const bool bRivalPositionVerified =
+            Mode->TryGetRivalRadarPosition(RivalWorldPosition);
+        const bool bRivalRace = !bTimeAttack && Mode->HasRival();
+        const latebrake::RaceMiniMapSnapshot Radar =
+            latebrake::BuildRaceMiniMapSnapshot(
+                {WayfindingPosition.X, WayfindingPosition.Y},
+                Car->GetActorRotation().Yaw,
+                bWayfindingEligible, Race.GetNextCheckpoint(),
+                bRivalRace,
+                {RivalWorldPosition.X, RivalWorldPosition.Y},
+                bRivalPositionVerified);
         const float MapSize = 150.f * Scale;
         const float MapLeft = Canvas->SizeX - MapSize - 22.f * Scale;
         const float MapTop = 72.f * Scale;
-        const auto ToScreen = [&](latebrake::CircuitPoint Position)
+        const auto ToScreen = [&](latebrake::CircuitMapPoint M)
         {
-            const latebrake::CircuitMapPoint M = latebrake::NormalizeCircuitMap(Position);
-            return FVector2D(MapLeft + static_cast<float>(M.U) * MapSize,
-                             MapTop + static_cast<float>(1.0 - M.V) * MapSize);
+            return FVector2D(
+                MapLeft + static_cast<float>(M.U) * MapSize,
+                MapTop + static_cast<float>(1.0 - M.V) * MapSize);
         };
-
-        DrawText(TEXT("CIRCUIT / NORTH UP"), Accent,
-            MapLeft, MapTop - 30.f * Scale, GEngine->GetSmallFont(), 0.8f * Scale);
+        const auto ScreenMarker = [&](latebrake::RadarMarker M)
+        {
+            return ToScreen({M.U, M.V});
+        };
+        DrawText(TEXT("RACE RADAR / NORTH UP"), Accent,
+            MapLeft, MapTop - 30.f * Scale,
+            GEngine->GetSmallFont(), 0.8f * Scale);
         for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)
         {
-            const FVector2D From = ToScreen(latebrake::CircuitGate(Index));
-            const FVector2D To = ToScreen(latebrake::CircuitGate(
-                (Index + 1) % latebrake::CircuitGateCount));
+            const FVector2D From = ToScreen(
+                latebrake::NormalizeCircuitMap(latebrake::CircuitGate(Index)));
+            const FVector2D To = ToScreen(
+                latebrake::NormalizeCircuitMap(latebrake::CircuitGate(
+                    (Index + 1) % latebrake::CircuitGateCount)));
             DrawLine(From.X, From.Y, To.X, To.Y,
                 FLinearColor(0.75f, 0.78f, 0.85f), 2.f * Scale);
         }
-        const FVector2D Next = ToScreen(latebrake::CircuitGate(Race.GetNextCheckpoint()));
-        DrawRect(Accent, Next.X - 5.f * Scale, Next.Y - 5.f * Scale,
-                 10.f * Scale, 10.f * Scale);
-        const FVector CarPosition = Car->GetActorLocation();
-        const FVector2D Player = ToScreen({CarPosition.X, CarPosition.Y});
-        DrawRect(FLinearColor(0.08f, 0.80f, 0.95f),
-                 Player.X - 4.f * Scale, Player.Y - 4.f * Scale,
-                 8.f * Scale, 8.f * Scale);
+        if (Radar.NextGate.Valid)
+        {
+            const FVector2D Next = ScreenMarker(Radar.NextGate);
+            DrawRect(Accent, Next.X - 5.f * Scale, Next.Y - 5.f * Scale,
+                     10.f * Scale, 10.f * Scale);
+        }
+        if (Radar.Rival.Valid)
+        {
+            const FVector2D Rival = ScreenMarker(Radar.Rival);
+            DrawRect(FLinearColor(1.f, 0.39f, 0.23f),
+                Rival.X - 4.f * Scale, Rival.Y - 4.f * Scale,
+                8.f * Scale, 8.f * Scale);
+            if (Radar.DirectRivalSeparationValid)
+            {
+                DrawText(FString::Printf(
+                    TEXT("RIVAL %.0fm DIRECT"), Radar.DirectRivalSeparationMeters),
+                    Accent, MapLeft, MapTop + MapSize + 8.f * Scale,
+                    GEngine->GetSmallFont(), 0.75f * Scale);
+            }
+        }
+        if (Radar.Player.Position.Valid)
+        {
+            const FVector2D Player = ScreenMarker(Radar.Player.Position);
+            const FLinearColor PlayerColor(0.08f, 0.80f, 0.95f);
+            DrawRect(PlayerColor,
+                Player.X - 4.f * Scale, Player.Y - 4.f * Scale,
+                8.f * Scale, 8.f * Scale);
+            // A heading tick makes a marker useful when player and rival
+            // cross. Screen Y increases downward; radar already converts yaw.
+            DrawLine(Player.X, Player.Y,
+                Player.X + static_cast<float>(Radar.Player.DirectionX) * 12.f * Scale,
+                Player.Y + static_cast<float>(Radar.Player.DirectionY) * 12.f * Scale,
+                PlayerColor, 2.f * Scale);
+        }
     }
 
     if (bCompact)
