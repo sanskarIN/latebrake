@@ -317,7 +317,7 @@ finger. Also test duplicate deactivation/foreground callbacks, menu-open
 deactivation, and interrupted SaveGame operations. Portable source tests
 cannot confirm actual OS event delivery or in-engine pausing.
 
-### v0.5.39 development candidate: physics and touch on failed OS pause
+### v0.5.39 source-only pre-release: physics and touch on failed OS pause
 
 If the app deactivates but Unreal fails to pause the world, the race-suspension
 latch also zeros the player's throttle, steering, filtered axes, and physical
