@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.48 source development — speed-sensitive steering and finite orientation
+
+- **Unreleased:** A new header-only portable C++20 `SpeedSensitiveSteering.h` tapers physical yaw torque as real planar speed rises, preserving full steering up to 900 cm/s and reducing it above 5400 cm/s to 55% Arcade / 40% Simulation Inspired. Both presets retain the existing smoothing, low-speed speed authority and reverse turn correction. Actual Unreal base-pawn torque applies this to player keyboard/controller/touch and autonomous rival commands.
+- **Nonfinite derived physics guard:** Reject invalid calculated planar, longitudinal or lateral speed before any motor/steering force, rather than relying only on finite raw chassis velocity components.
+- **Complete orientation gate:** Shared `RaceVehiclePhysicsReadiness` now demands finite actor pitch/yaw/roll before race time, ordered checkpoint awards, player recovery or rival movement. This prevents an invalid forward/right transform from affecting race physics.
+- **New strict C++20 numerical regressions and Python Unreal-source integration contracts** with [required hardware QA matrix](DRIVING_STABILITY_QA.md). **This is not evidence of a licensed UE 5.8 compilation, playable Windows/Android game or stable release.**
+
 ## v0.5.47 source development — full orientation and post-move recovery verification
 
 - **Unreleased development work:** Paid RECOVER now requires all three observed Euler axes within 2° of requested orientation, not only yaw. A successful Unreal transform is also insufficient unless the **post-move** Chaos body still passes the existing physical chassis readiness policy and its instantaneous 3D linear/angular motion is finite and bounded (1 cm/s, 1°/s).
