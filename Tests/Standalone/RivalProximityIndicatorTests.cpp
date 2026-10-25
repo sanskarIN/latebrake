@@ -58,6 +58,17 @@ int main()
     Check(!warning.Update(near, 0.1, false) && !warning.IsActive(),
           "pause, results and loss of race eligibility clear alert");
 
+    warning.Reset();
+    const auto atEntryBoundary = radarAt(15.0);
+    Check(!warning.Update(atEntryBoundary, 0.2, true) &&
+          !warning.Update(atEntryBoundary, 0.2, true) &&
+          warning.Update(atEntryBoundary, 0.2, true),
+          "exactly 15m is eligible after full debounce");
+    const auto noOpponent = radarAt(10.0, false, true, true);
+    Check(!warning.Update(noOpponent, 0.1, true) &&
+          !warning.IsActive() && warning.GetNearSeconds() == 0.0,
+          "loss of physical opponent clears an existing active warning");
+
     for (const auto& invalid : {
         radarAt(10.0, false, true, true),
         radarAt(10.0, true, false, true),
