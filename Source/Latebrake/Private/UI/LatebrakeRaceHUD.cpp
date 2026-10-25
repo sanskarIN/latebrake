@@ -20,6 +20,20 @@
 #include "GameFramework/PlayerController.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 
+void ALatebrakeRaceHUD::ScrollMenuDetails(int direction)
+{
+    // Called exclusively from a newly admitted keyboard/touch action while
+    // the paused menu owns focus. No game-state authority is mutated here.
+    if (direction > 0)
+    {
+        MenuPager.Next();
+    }
+    else if (direction < 0)
+    {
+        MenuPager.Previous();
+    }
+}
+
 void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
@@ -37,6 +51,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         RivalProximityHint.Reset();
         RivalRelativeMotionHint.Reset();
         LastWayfindingPawn.Reset();
+        MenuPager.Reset();
         return;
     }
 
@@ -126,24 +141,41 @@ void ALatebrakeRaceHUD::DrawHUD()
         bool bMenuOverflow = false;
         const FLinearColor White(0.96f, 0.97f, 1.f);
         const FLinearColor Gold(1.f, 0.73f, 0.17f);
+
+        // Build the logical page first. The former unbounded MenuLine
+        // simply discarded overflow, including essential Results details.
+        // Keep the title/nav pinned and paginate ALL generated details.
+        TArray<TPair<FString, bool>> MenuDetails;
         const auto MenuLine = [&](const FString& Value, bool bAccent = false)
         {
-            if (!MenuPlan.Valid || DrawnMenuRows >= MenuPlan.MaxDetailsRows)
-            {
-                bMenuOverflow = true;
-                return;
-            }
             const FString Fitted = FitHudText(
                 Value, GEngine->GetSmallFont(), UIScale);
             if (!Fitted.IsEmpty())
             {
-                DrawText(Fitted, bAccent ? Gold : White, X, Y,
-                    GEngine->GetSmallFont(), UIScale);
-                ++DrawnMenuRows;
-                Y += 28.f * UIScale;
+                MenuDetails.Emplace(Fitted, bAccent);
             }
         };
-        MenuLine(FString::Printf(TEXT("LATEBRAKE / %s"), *Mode->GetMenuPageTitle()), true);
+        if (MenuPlan.Valid)
+        {
+            const auto DrawPinned = [&](const FString& Text, bool bAccent)
+            {
+                const FString Fitted = FitHudText(
+                    Text, GEngine->GetSmallFont(), UIScale);
+                if (!Fitted.IsEmpty() && DrawnMenuRows < MenuPlan.MaxDetailsRows)
+                {
+                    DrawText(Fitted, bAccent ? Gold : White, X, Y,
+                        GEngine->GetSmallFont(), UIScale);
+                    ++DrawnMenuRows;
+                    Y += 28.f * UIScale;
+                }
+            };
+            DrawPinned(FString::Printf(TEXT("LATEBRAKE / %s"),
+                *Mode->GetMenuPageTitle()), true);
+            DrawPinned(bTouchHUD
+                ? TEXT("UP/DOWN DETAILS | NEXT MENU | SELECT")
+                : TEXT("TAB CLOSE | PAGE UP/DOWN MENU | UP/DOWN DETAILS | ENTER"),
+                false);
+        }
         if (!Mode->IsCircuitReadyForGameplay())
         {
             MenuLine(TEXT("TRACK INCOMPLETE - RACE CLOCK AND SCORING DISABLED"), true);
@@ -156,7 +188,6 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             MenuLine(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), true);
         }
-        MenuLine(TEXT("TAB CLOSE | PAGE DOWN/UP NAVIGATE | ENTER SELECT"));
         switch (Mode->GetMenuPage())
         {
         case latebrake::MenuPage::Main:
@@ -256,14 +287,41 @@ void ALatebrakeRaceHUD::DrawHUD()
             break;
         default: break;
         }
-        // A long career/results page may exhaust the available menu
-        // height. Show the information-loss notice rather than rendering
-        // hidden text below the physical lower steering hit region.
+        // Page all generated detail rows in a bounded window instead of
+        // silently losing late Results/Career lines. A page transition,
+        // resize or changed detail count clamps stale offsets to a valid
+        // range. PageUp/PageDown still navigate *menu categories*.
+        MenuPager.Synchronize(Mode->GetMenuPage(), MenuDetails.Num(),
+            MenuPlan.Valid ? FMath::Max(0, MenuPlan.MaxDetailsRows -
+                DrawnMenuRows) : 0);
+        const latebrake::MenuDetailWindow DetailWindow = MenuPager.Window();
+        if (MenuPlan.Valid)
+        {
+            for (int32 Index = DetailWindow.Begin;
+                 Index < DetailWindow.End; ++Index)
+            {
+                if (DrawnMenuRows >= MenuPlan.MaxDetailsRows)
+                {
+                    bMenuOverflow = true;
+                    break;
+                }
+                const auto& Detail = MenuDetails[Index];
+                DrawText(Detail.Key, Detail.Value ? Gold : White,
+                    X, Y, GEngine->GetSmallFont(), UIScale);
+                ++DrawnMenuRows;
+                Y += 28.f * UIScale;
+            }
+            bMenuOverflow = bMenuOverflow ||
+                DetailWindow.HasPrevious || DetailWindow.HasNext;
+        }
         if (MenuPlan.Valid && bMenuOverflow)
         {
             const FString ClippedNotice = FitHudText(
-                TEXT("MORE MENU DETAILS HIDDEN"), GEngine->GetSmallFont(),
-                UIScale);
+                DetailWindow.PageCount > 1
+                    ? FString::Printf(TEXT("DETAIL PAGE %d/%d | UP/DOWN"),
+                        DetailWindow.PageNumber, DetailWindow.PageCount)
+                    : FString(TEXT("MORE MENU DETAILS HIDDEN")),
+                GEngine->GetSmallFont(), UIScale);
             if (!ClippedNotice.IsEmpty())
             {
                 DrawText(ClippedNotice, Gold, X,
@@ -301,6 +359,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                     static_cast<float>(Rect.Y + 4.0),
                     GEngine->GetSmallFont(), UIScale);
             };
+            DrawMenuPad(Pads.Restart, TEXT("UP"));
+            DrawMenuPad(Pads.Recover, TEXT("DOWN"));
             DrawMenuPad(Pads.CareerNext, TEXT("NEXT"));
             DrawMenuPad(Pads.CareerStart, TEXT("SELECT"));
             DrawMenuPad(Pads.MenuBrowse, TEXT("BROWSE"));
@@ -314,6 +374,9 @@ void ALatebrakeRaceHUD::DrawHUD()
         RivalRelativeMotionHint.Reset();
         return;
     }
+
+    // Closing the menu must not retain a previous page's view offset.
+    MenuPager.Reset();
 
     const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
     const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);

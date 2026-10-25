@@ -357,3 +357,20 @@ turning command, and verify genuine new steering/throttle presses work.
 Repeat for already-paused focus loss, duplicate OS events and OS auto-unpause.
 Check an installed Win64 candidate and physical Android hardware; the source
 contracts and portable policy tests cannot substitute for this evidence.
+
+## v0.5.69 navigable paused menu details (source-only)
+
+When a menu is open, the top-right pads normally labelled
+**RESTART** and **RECOVER** in racing are drawn as **UP** and
+**DOWN**. A newly admitted press scrolls the *detail pages*
+instead of restarting or charging a recovery; the existing NEXT,
+SELECT, BROWSE and CLOSE menu pads keep their original roles.
+While driving, RESTART and RECOVER retain their racing behavior.
+Keyboard **Up/Down** arrows control detail pages; **PageUp/PageDown**
+continue to switch menu categories.
+
+The title is pinned and a numbered page notice explains when
+additional results are available. Source regression tests check
+pause-eligible dispatch and bounded UI-only state; physical Android
+gesture delivery and readability still require licensed UE 5.8
+runtime/device testing.

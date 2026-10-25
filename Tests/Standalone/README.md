@@ -440,3 +440,26 @@ python3 -m unittest discover -s Tests/Editor -p 'HudMenuVerticalBindingTests.py'
 ```
 
 See [menu UI QA](../../docs/HUD_MENU_VERTICAL_QA.md).
+
+### v0.5.69 — recoverable Results/Career menu detail pages
+
+`MenuDetailPagerTests.cpp` compiles the production
+`UI/MenuDetailPager.h` and verifies bounded multi-page lists,
+partial tail-page visibility, next/previous boundary behavior,
+changing viewport row capacity, changing page contents, and
+page-category/close/reopen isolation.
+
+`Tests/Editor/MenuDetailPaginationBindingTests.py` checks the
+actual Unreal HUD saves all menu details before choosing a page,
+and verifies that dedicated keyboard Up/Down actions and menu-only
+Android UP/DOWN pads are routed while paused without stealing the
+original RESTART/RECOVER driving actions. The independent SAVE
+failure warning still does not depend on page contents.
+
+```sh
+ctest --test-dir Tests/Standalone/build -C Release -R '^(MenuNavigation|HudMenuVerticalPlan|MenuDetailPager)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'MenuDetailPaginationBindingTests.py' -v
+```
+
+See [real runtime paging QA](../../docs/MENU_DETAIL_PAGING_QA.md).
+Source validation is not actual UE5.8 UHT/Editor build or phone QA.

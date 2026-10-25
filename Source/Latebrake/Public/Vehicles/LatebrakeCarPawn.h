@@ -116,6 +116,8 @@ private:
     void MenuToggle();
     void MenuNext();
     void MenuPrevious();
+    void MenuDetailsNext();
+    void MenuDetailsPrevious();
     void MenuActivate();
     void NextGarageVehicle();
     void UnlockGarageVehicle();

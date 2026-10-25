@@ -6,6 +6,7 @@
 #include "Track/OffTrackAdvisor.h"
 #include "Track/RivalProximityIndicator.h"
 #include "Track/RivalRelativeMotion.h"
+#include "UI/MenuDetailPager.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -17,6 +18,7 @@ class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
 
 public:
     virtual void DrawHUD() override;
+    void ScrollMenuDetails(int direction);
 
 private:
     // Advisory only: no race awarding, control input or network telemetry.
@@ -24,6 +26,7 @@ private:
     latebrake::OffTrackIndicator OffTrackHint;
     latebrake::RivalProximityIndicator RivalProximityHint;
     latebrake::RivalRelativeMotionTracker RivalRelativeMotionHint;
+    latebrake::MenuDetailPager MenuPager;
     TWeakObjectPtr<APawn> LastWayfindingPawn;
     uint64 LastWayfindingSession = 0;
     uint64 LastWayfindingTeleport = 0;

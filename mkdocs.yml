@@ -108,6 +108,7 @@ nav:
       - Race HUD vertical overflow QA: HUD_VERTICAL_QA.md
       - Mobile HUD measured text QA: HUD_TEXT_WIDTH_QA.md
       - Mobile menu vertical overflow QA: HUD_MENU_VERTICAL_QA.md
+      - Navigable menu details QA: MENU_DETAIL_PAGING_QA.md
       - Driving session metrics QA: DRIVING_SESSION_QA.md
       - Next-gate guidance QA: NEXT_GATE_GUIDANCE_QA.md
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
