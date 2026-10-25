@@ -1,16 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.45 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.45), tagged at tested source commit `14ae339bcb869ce72a5c6a5dc104bc3a9e38eae2`.
+**Latest published milestone:** [v0.5.46 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.46), tagged at tested source commit `e16c1067d455151f31597608e8ebe16d6c7bdab4`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.46 source development — paid RECOVER requires verified engine placement
+## v0.5.46 published source-only pre-release — paid RECOVER requires verified engine placement
 
 - The player RECOVER path previously charged its five-second time penalty and recovery count **before** calling a void Unreal `RecoverTo`; `SetActorLocationAndRotation` could fail without the caller knowing.
 - New C++ production verification policy checks Unreal acceptance, finite 3D destination, placement within 5 cm, and yaw within 2°. New pawn `TryRecoverTo` reports success/failure while retaining the old Blueprint API, invalidates pre-move checkpoint traces and neutralizes driver controls.
 - GameMode uses a staged `RaceProgress`/counter transaction and commits its full fee only after verified movement. Failure preserves elapsed clock, total penalty, penalty count and recovery count.
-- New portable C++20 and Unreal source-binding regressions; genuine UE 5.8 compile, cooked-map gameplay and Android/Windows installed recovery validation still required. **Development only, not a published v0.5.46 release.**
+- New portable C++20 and Unreal source-binding regressions; independent publisher workflow #40178570042 passed all three-OS source checks, PowerShell packaging policies and immutable tag verification. **Published asset-free SOURCE-ONLY pre-release on 2026-10-25**. Genuine UE 5.8 compile, cooked-map gameplay and Android/Windows installed recovery validation remain unverified.
 
 ## v0.5.45 published source-only pre-release — real physics mass and angular velocity validity
 
