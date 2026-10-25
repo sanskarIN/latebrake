@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.39](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.39), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.39 (published source-only preview)** on `main`; focus-suspension chassis/touch safety passed portable CI, but UE 5.8 compilation, map cooking and installed driving qualification remain next priorities |
+| Latest published GitHub pre-release | [v0.5.40](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.40), **source only**, no runnable assets |
+| Latest source-development milestone | **v0.5.40 (published source-only preview)** on `main`; per-lap active clock and reward integrity passed portable CI; UE 5.8 compilation, original map cooking and installed driving qualification remain outstanding |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |

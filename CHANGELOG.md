@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.40 — Development candidate (2026-10-25; NOT released)
+## v0.5.40 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Add separate allocation-free active-lap clock evidence. Only actual successful `RaceProgress::Advance` updates count toward an actively timed lap; paid recovery penalties and rejected deltas cannot satisfy the requirement.
 - Refuse medals, credits, records, completion counts and profile writes when **any** completed lap has zero duration or lacks its own active clock advancement, even when the overall race time is otherwise recordable.

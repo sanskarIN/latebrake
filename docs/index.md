@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.39">v0.5.39</a>, a <strong>source-only pre-release</strong>. It adds fail-closed chassis momentum and touch-input neutralization after operating-system focus loss, including when Unreal fails to pause. The code passed portable CI but has <strong>no downloadable verified Windows or Android game</strong>. Unreal Editor/UHT compilation, a cooked original circuit map, packaged executable builds, and installed-device gameplay tests are still outstanding.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.40">v0.5.40</a>, a <strong>source-only pre-release</strong>. The latest source milestone prevents a completed but untimed or penalty-only lap from earning race records, credits or career medals without valid per-lap clock evidence. Portable C++20 tests passed; <strong>there are no verified downloadable Windows or Android game binaries</strong>. Unreal Engine 5.8 Editor/UHT compilation, an authored and cooked circuit map, actual packages and installed-device driving tests are still outstanding.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
