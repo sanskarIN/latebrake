@@ -18,6 +18,8 @@ void RaceProgress::Reset() noexcept
     NextCheckpoint = 0;
     CompletedLaps = 0;
     TimedLapCount = 0;
+    ActiveTimedLapCount = 0;
+    ActiveClockAdvancedThisLap = false;
     RecentLaps.Reset();
     ElapsedSeconds = 0.0;
     TimePenaltyCount = 0;
@@ -43,7 +45,12 @@ void RaceProgress::Advance(double deltaSeconds) noexcept
     if (State == RaceState::Running && std::isfinite(deltaSeconds) && deltaSeconds > 0.0 &&
         deltaSeconds <= std::numeric_limits<double>::max() - ElapsedSeconds)
     {
-        ElapsedSeconds += deltaSeconds;
+        const double updated = ElapsedSeconds + deltaSeconds;
+        if (updated > ElapsedSeconds)
+        {
+            ElapsedSeconds = updated;
+            ActiveClockAdvancedThisLap = true;
+        }
     }
 }
 
@@ -120,6 +127,13 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
     {
         NextCheckpoint = 0;
         ++CompletedLaps;
+        if (ActiveClockAdvancedThisLap)
+        {
+            ++ActiveTimedLapCount;
+        }
+        // A future lap needs its OWN successful active clock update.
+        // Penalty-only and zero-duration laps cannot inherit evidence.
+        ActiveClockAdvancedThisLap = false;
         LastLapSeconds = ElapsedSeconds - LapStartSeconds;
         // Snapshot penalty provenance at the same ordered finish gate as
         // the measured lap: the next lap begins at zero charged fees.
