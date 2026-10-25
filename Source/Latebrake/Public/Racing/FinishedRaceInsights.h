@@ -2,6 +2,7 @@
 
 #include "Progression/RecordValidation.h"
 #include "Racing/RaceProgress.h"
+#include "Racing/FinishTimingEligibility.h"
 
 namespace latebrake
 {
@@ -32,11 +33,10 @@ inline FinishedRaceInsights BuildFinishedRaceInsights(
     const RaceProgress& race) noexcept
 {
     FinishedRaceInsights result;
-    // Invalid/clamped clocks are not results. Match the same seven-day
-    // float-representability policy used for rewards and SaveGame records.
-    if (!race.IsFinished() ||
-        !IsValidFinishedRaceTime(race.GetElapsedSeconds()) ||
-        !IsValidFinishedRaceTime(race.GetBestLapSeconds()))
+    // A completed gate sequence is not necessarily an awardable finish:
+    // invalid/zero-time and penalty-only laps cannot become a polished
+    // results card while the authoritative reward path refuses them.
+    if (!CanAwardFinishedRace(race))
     {
         return result;
     }
