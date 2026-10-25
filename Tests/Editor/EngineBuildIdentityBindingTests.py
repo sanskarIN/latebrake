@@ -62,7 +62,7 @@ class EngineBuildIdentityBindingTests(unittest.TestCase):
 
     def test_synthetic_windows_policy_is_registered(self):
         self.assertIn("Test-EngineBuildSnapshotPolicy.ps1", self.ci)
-        self.assertIn("Test-EngineBuildSnapshot.ps1", self.snapshot)
+        self.assertIn("ExpectedSha256", self.snapshot)
         self.assertIn("Build.version changed", self.snapshot)
 
     def test_engine_gate_cannot_be_replaced_with_version_string(self):
