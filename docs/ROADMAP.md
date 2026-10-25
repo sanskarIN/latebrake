@@ -81,7 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
-| v0.5.42 (development, not released) | Unify player driving readiness across menu/world pause, focus guard, unavailable circuit and finished results so no force accrues with stopped clock | Pure C++20 readiness matrix and Unreal source contracts; real UE 5.8 pause-failure physics and installed package QA needed |
+| v0.5.42 (published source-only pre-release) | Unify player driving readiness across menu/world pause, focus guard, unavailable circuit and finished results so no force accrues with stopped clock | Pure C++20 readiness matrix and Unreal source contracts; real UE 5.8 pause-failure physics and installed package QA needed |
 | v0.5.41 (published source-only pre-release) | Bind genuine UE 5.8 authored map receipt to exact SHA256 saved bytes and reject same-size modified files in independent QA policy | Windows synthetic tamper cases plus Python Unreal stubs passed; real UE map authoring/cook and installed device QA pending |
 | v0.5.40 (published source-only pre-release) | Require active clock advancement on every completed lap before any award or final insight; reject zero-duration and penalty-only laps | Real RaceProgress C++20 regressions and source-binding checks; Unreal 5.8, cooked map and installed package QA pending |
 | v0.5.39 (published source-only pre-release) | Neutralize player momentum/inputs when OS focus-loss pause fails and allow only fresh PAUSE touches to resume | Three-OS portable policy tests plus Unreal source contracts; Unreal physics and real-device qualification remain outstanding |

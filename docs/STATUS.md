@@ -1,16 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.41 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.41), tagged at tested source commit `da667fee6c29b0fa3274b2e22b0915571ad4e2c3`.
+**Latest published milestone:** [v0.5.42 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.42), tagged at tested source commit `60d82151f9316e0c6d63fa6d6f71019de25ef3af`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.42 development — ordinary menu pause and finished-race driving safety
+## v0.5.42 published source-only pre-release — ordinary menu pause and finished-race driving safety
 
 - Identified a gap after the v0.5.39 focus-loss safeguard: when an ordinary menu or manual world pause request fails (or the race is finished while the engine still ticks), player input still flowed through the pawn's force/torque integrator even as GameMode clock and checkpoint scoring were stopped.
 - Added portable typed `PlayerDriveReadiness` gating of authoritative GameMode, circuit readiness, menu, engine pause, focus interruption and finished-race state. The pawn now neutralizes driving input and existing linear/angular momentum **before applying any thrust or torque** if those states are blocked. Explicit close/resume/restart makes active racing eligible again.
 - Portable C++20 tests cover all 64 combinations; Unreal source-binding tests check real callsite ordering, not engine behavior. Real UE 5.8 Editor/UHT, actual pause-failure/Chaos behavior, cooked map and installed Windows/Android QA remain outstanding.
-- **Not released.** The latest published milestone remains v0.5.41 source-only. Do not infer a playable game.
+- **Published asset-free SOURCE-ONLY pre-release on 2026-10-25.** Independent publisher run passed strict Windows/macOS/Ubuntu C++20 tests, isolated `PlayerDriveReadiness` checks, Python source contracts and PowerShell package-policy tests. Real UE 5.8/Chaos pause delivery, authentic cooked map, installed Win64/Android builds and driving QA are still outstanding.
 
 ## v0.5.41 published source-only pre-release — real map receipt integrity safeguards
 
