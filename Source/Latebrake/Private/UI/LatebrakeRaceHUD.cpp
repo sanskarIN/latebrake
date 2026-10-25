@@ -32,6 +32,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         WrongWayHint.Reset();
         OffTrackHint.Reset();
         RivalProximityHint.Reset();
+        RivalRelativeMotionHint.Reset();
         LastWayfindingPawn.Reset();
         return;
     }
@@ -202,6 +203,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         WrongWayHint.Reset();
         OffTrackHint.Reset();
         RivalProximityHint.Reset();
+        RivalRelativeMotionHint.Reset();
         return;
     }
 
@@ -283,6 +285,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         WrongWayHint.Reset();
         OffTrackHint.Reset();
         RivalProximityHint.Reset();
+        RivalRelativeMotionHint.Reset();
         LastWayfindingPawn = Car;
         LastWayfindingSession = CurrentWayfindingSession;
         LastWayfindingTeleport = CurrentWayfindingTeleport;
@@ -303,6 +306,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     if (LastRivalVerifiedRecoveries != CurrentRivalVerifiedRecoveries)
     {
         RivalProximityHint.Reset();
+        RivalRelativeMotionHint.Reset();
         LastRivalVerifiedRecoveries = CurrentRivalVerifiedRecoveries;
     }
     const bool bRivalRace = !bTimeAttack && Mode->HasRival();
@@ -326,6 +330,27 @@ void ALatebrakeRaceHUD::DrawHUD()
             bCompact ? TEXT("RIVAL CLOSE | %.0fm DIRECT")
                      : TEXT("RIVAL CLOSE | %.0fm DIRECT (ADVISORY)"),
             Radar.DirectRivalSeparationMeters), Accent);
+    }
+    // This is a signed change in DIRECT radar separation, not placement,
+    // impact probability or opponent speed. Short-lived/jittery observations
+    // and teleport-sized discontinuities are deliberately suppressed.
+    const latebrake::RivalRelativeMotionAdvice RivalTrend =
+        RivalRelativeMotionHint.Update(
+            Radar, GetWorld()->GetDeltaSeconds(),
+            bWayfindingEligible && bRivalRace);
+    if (RivalTrend.Trend == latebrake::RivalRelativeTrend::Closing)
+    {
+        Line(FString::Printf(
+            bCompact ? TEXT("RIVAL CLOSING | %.0fm/s DIRECT")
+                     : TEXT("RIVAL CLOSING | %.1fm/s DIRECT RATE"),
+            RivalTrend.SeparationChangeMetersPerSecond), Accent);
+    }
+    else if (!bCompact &&
+             RivalTrend.Trend == latebrake::RivalRelativeTrend::Opening)
+    {
+        Line(FString::Printf(
+            TEXT("RIVAL SEPARATING | %.1fm/s DIRECT RATE"),
+            RivalTrend.SeparationChangeMetersPerSecond), Primary);
     }
     if (WrongWayHint.Update(
             {WayfindingPosition.X, WayfindingPosition.Y},
