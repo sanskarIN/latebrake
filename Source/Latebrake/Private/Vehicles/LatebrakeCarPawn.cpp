@@ -392,6 +392,7 @@ bool ALatebrakeCarPawn::IsRacePhysicsReady() const
     // simulation, wrong collision mode or nonfinite state must not keep
     // accumulating race time or authorize directional gate credits.
     const FVector Position = GetActorLocation();
+    const FRotator Rotation = GetActorRotation();
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
     const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInDegrees();
     return latebrake::IsRaceVehiclePhysicsReady({
@@ -401,7 +402,8 @@ bool ALatebrakeCarPawn::IsRacePhysicsReady() const
         Chassis->GetCollisionEnabled() == ECollisionEnabled::QueryAndPhysics,
         Chassis->GetCollisionResponseToChannel(ECC_WorldStatic) == ECR_Block,
         Position.X, Position.Y, Position.Z,
-        Velocity.X, Velocity.Y, Velocity.Z
+        Velocity.X, Velocity.Y, Velocity.Z,
+        Rotation.Pitch, Rotation.Yaw, Rotation.Roll
     }) && latebrake::AreVehicleDynamicsReady({
         Chassis->GetMass(),
         AngularVelocity.X, AngularVelocity.Y, AngularVelocity.Z
