@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.44 — In development; NOT released (2026-10-25)
+## v0.5.44 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Candidate archives now use **manifest schema 2** with `unreal_engine_build_sha256`: SHA256 of the exact installed `Engine/Build/Build.version` bytes, not just the broad `5.8` version string. Previously two UE 5.8 builds with different underlying changelists/metadata could be treated as one Win64/Android candidate.
 - `Build-PlayableCandidate.ps1` pins that engine metadata before Editor compilation, verifies it after map authoring and passes it to both UAT cooking and candidate manifest writing. Direct `Build-PreRelease.ps1` also rechecks engine metadata before/after UAT; the manifest writer refuses a different expected build fingerprint.
