@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.45](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.45), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.45 (published source-only preview)** on `main`; player and rival chassis readiness now checks mass and angular velocity; production-linked C++20 and Unreal source contracts passed, actual engine/device QA remains outstanding |
+| Latest published GitHub pre-release | [v0.5.46](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.46), **source only**, no runnable assets |
+| Latest source-development milestone | **v0.5.46 (published source-only preview)** on `main`; player RECOVER now stages penalty and recovery count until an actual observed, engine-approved teleport passes C++20 verification; no real UE/device QA |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
