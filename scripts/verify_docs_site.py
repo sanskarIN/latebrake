@@ -52,6 +52,7 @@ REQUIRED_HTML = (
     "releases/v0.5.40/index.html",
     "releases/v0.5.41/index.html",
     "releases/v0.5.42/index.html",
+    "releases/v0.5.43/index.html",
 )
 REQUIRED_ASSETS = (
     "assets/stylesheets/extra.css",
@@ -76,7 +77,7 @@ def verify(site_dir: Path) -> None:
 
     home = (site_dir / "index.html").read_text(encoding="utf-8")
     home_low = home.lower()
-    for phrase in ("source only", "v0.5.42", "unreal engine 5.8", "c++20"):
+    for phrase in ("source only", "v0.5.43", "unreal engine 5.8", "c++20"):
         if phrase not in home_low:
             raise ValueError(f"home page missing accurate core/status copy: {phrase}")
     status = (site_dir / "development-status/index.html").read_text(
@@ -86,7 +87,7 @@ def verify(site_dir: Path) -> None:
         "not yet verified",
         "windows playable binary",
         "android apk",
-        "v0.5.42",
+        "v0.5.43",
     ):
         if phrase not in status:
             raise ValueError(f"status page lost current qualification detail: {phrase}")
