@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.46 — Development candidate; NOT released (2026-10-25)
+## v0.5.46 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Fix paid RECOVER fairness when Unreal rejects `SetActorLocationAndRotation` or reports a nonmatching placement. Previously the race clock and recovery counter were charged **before** a void teleport whose engine result was never inspected.
 - Add production C++20 `RecoveryTeleportVerification.h/.cpp` to classify Unreal move refusal, nonfinite target/observed 3D coordinates, displacement beyond 5 cm and heading mismatch beyond 2°; equivalent wrapped headings remain valid.
