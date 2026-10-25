@@ -261,7 +261,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             UGameplayStatics::IsGamePaused(this) ||
                 Mode->IsManualRacePauseActive(),
             Mode->IsFocusLossGuardActive(),
-            Mode->GetRace().IsFinished()}))
+            Mode->GetRace().IsFinished(),
+            Mode->IsRestartPlacementReady()}))
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
