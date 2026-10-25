@@ -42,13 +42,22 @@ public:
             Reset();
             return;
         }
-        if (CurrentPage != page)
+        const bool changedPage = CurrentPage != page;
+        const int previousFirstRow = SelectedPage * RowsPerPage;
+        if (changedPage)
         {
             SelectedPage = 0;
             CurrentPage = page;
         }
         TotalRows = std::clamp(total, 0, 1024);
         RowsPerPage = std::clamp(capacity, 0, 100);
+        // Keep the first previously visible detail in view after resize
+        // rather than retaining an arbitrary old page ordinal (which
+        // could jump over information when available rows increase).
+        if (!changedPage && RowsPerPage > 0)
+        {
+            SelectedPage = previousFirstRow / RowsPerPage;
+        }
         const int count = PageCount();
         SelectedPage = count > 0
             ? std::min(SelectedPage, count - 1) : 0;
