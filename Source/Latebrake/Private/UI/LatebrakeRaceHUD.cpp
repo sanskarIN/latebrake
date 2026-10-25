@@ -42,6 +42,8 @@ void ALatebrakeRaceHUD::DrawHUD()
     bCompact = true;
 #endif
 
+    const latebrake::RaceProgress& Race = Mode->GetRace();
+
     if (Mode->IsMenuOpen())
     {
         // This is a functional asset-free development UI, NOT a polished
@@ -216,7 +218,6 @@ void ALatebrakeRaceHUD::DrawHUD()
         Y += Step;
     };
 
-    const latebrake::RaceProgress& Race = Mode->GetRace();
     const bool bTimeAttack = Mode->GetSelectedEvent() == latebrake::EventKind::TimeAttack;
     const int32 DisplayLap = FMath::Min(Race.GetCompletedLaps() + 1, Race.GetRequiredLaps());
     const double Elapsed = FMath::Clamp(Race.GetElapsedSeconds(), 0.0, 3599999.0);
