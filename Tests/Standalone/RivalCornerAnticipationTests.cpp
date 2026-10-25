@@ -37,6 +37,30 @@ int main()
         Check(fast.Brake && fast.Throttle == 0.0 &&
               fast.Steering == base.Steering && !fast.Arrived,
               "all four turns request early braking without stealing steering");
+        const CircuitPoint past{
+            target.X + vectorX / length * 700.0,
+            target.Y + vectorY / length * 700.0
+        };
+        const auto beyondGate = AnticipateRivalCorner(
+            base, gate, past, 3200.0);
+        Check(!beyondGate.Brake && beyondGate.Throttle == base.Throttle,
+              "radial proximity beyond the scored gate must not trigger a corner brake");
+        const CircuitPoint shoulder{
+            close.X - vectorY / length * 700.0,
+            close.Y + vectorX / length * 700.0
+        };
+        const auto wrongLane = AnticipateRivalCorner(
+            base, gate, shoulder, 3200.0);
+        Check(!wrongLane.Brake && wrongLane.Throttle == base.Throttle,
+              "cross-track offset outside approach corridor cannot request early brake");
+        const CircuitPoint aligned{
+            close.X - vectorY / length * 150.0,
+            close.Y + vectorX / length * 150.0
+        };
+        const auto nearCenter = AnticipateRivalCorner(
+            base, gate, aligned, 3200.0);
+        Check(nearCenter.Brake && nearCenter.Throttle == 0.0,
+              "slightly off center but inbound can request ordinary early braking");
         const auto slow = AnticipateRivalCorner(
             base, gate, close, 1000.0);
         Check(!slow.Brake && slow.Throttle == base.Throttle,
@@ -68,6 +92,11 @@ int main()
               invalidSpeed.Brake && invalidSpeed.Throttle == 0,
               "invalid source samples fail closed");
     }
+    const auto outsidePavement = AnticipateRivalCorner(
+        base, 0, {4700.0, SouthY}, 3200.0);
+    Check(!outsidePavement.Brake &&
+          outsidePavement.Throttle == base.Throttle,
+          "corner anticipator does not assume off-pavement traffic belongs to approach");
     const auto invalidGate = AnticipateRivalCorner(
         base, -1, {2500, SouthY}, 2300);
     Check(invalidGate.Brake && invalidGate.Throttle == 0,
