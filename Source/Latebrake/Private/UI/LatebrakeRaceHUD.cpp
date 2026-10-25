@@ -474,7 +474,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(Mode->GetCareerSelectionFeedback(), Primary);
     }
-    if (UGameplayStatics::IsGamePaused(this))
+    if (UGameplayStatics::IsGamePaused(this) || Mode->IsManualRacePauseActive())
     {
         Line(TEXT("PAUSED  -  ESC TO RESUME"), Accent, true);
     }
@@ -512,7 +512,8 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.Steering, TEXT("STEER"), Car->IsTouchSteeringActive());
         DrawPad(Pads.Throttle, TEXT("GAS"), Car->IsTouchThrottleActive());
         DrawPad(Pads.Brake, TEXT("BRAKE"), Car->IsTouchBrakeActive());
-        DrawPad(Pads.Pause, TEXT("PAUSE"), UGameplayStatics::IsGamePaused(this));
+        DrawPad(Pads.Pause, TEXT("PAUSE"),
+            UGameplayStatics::IsGamePaused(this) || Mode->IsManualRacePauseActive());
         DrawPad(Pads.Restart, TEXT("RESTART"), false);
         DrawPad(Pads.Recover, TEXT("RECOVER"), false);
         DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
