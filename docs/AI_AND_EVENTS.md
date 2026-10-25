@@ -68,3 +68,21 @@ rival teleports. These values do not modify the player-authoritative
 race result or qualify the experimental AI as competitive. See
 [Rival recovery QA](RIVAL_RECOVERY_QA.md) for portable tests and required
 real Unreal/device validation. This change is **unreleased source work**.
+
+
+## v0.5.60 — original-circuit corner anticipation
+
+The prototype rival still uses `PlanRivalTurn` for steering/arrival.
+`AnticipateRivalCorner` now examines the current gate and the original
+four-gate predecessor/successor geometry. Inside a close approach to a
+known 90-degree turn it can request brake and zero positive throttle
+when actual planar speed exceeds a continuously distance-dependent
+target. The policy cannot move waypoints, mark laps, revise the route's
+finite verified/rejected recovery audit or modify player credits.
+Invalid sensor readings fail closed.
+
+The decision is compiled and tested against the real C++20 policy in
+`RivalCornerAnticipationTests.cpp` (all four bends), with Unreal-source
+integration checks. The change is not a claim that the AI will physically
+take the bend correctly in Chaos. See
+[RIVAL_CORNER_QA.md](RIVAL_CORNER_QA.md) for real engine and device tests.
