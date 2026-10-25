@@ -25,6 +25,8 @@ public:
     int32 GetExpectedLaps() const { return Route.GetRequiredLaps(); }
     int32 GetApproximateLaps() const { return Route.GetCompletedLaps(); }
     int32 GetPilotRecoveries() const { return Route.GetRecoveryCount(); }
+    int32 GetPilotSuccessfulRecoveries() const { return Route.GetSuccessfulRecoveryCount(); }
+    int32 GetPilotFailedRecoveries() const { return Route.GetFailedRecoveryCount(); }
     bool HasCompletedRoute() const { return Route.IsFinished(); }
 
 private:
