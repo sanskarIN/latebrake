@@ -13,6 +13,10 @@ PAWN_H = ROOT / "Source/Latebrake/Public/Vehicles/LatebrakeCarPawn.h"
 PAWN_CPP = ROOT / "Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp"
 TEST = ROOT / "Tests/Standalone/RivalRouteTests.cpp"
 CMAKE = ROOT / "Tests/Standalone/CMakeLists.txt"
+RIVAL_H = ROOT / "Source/Latebrake/Public/AI/LatebrakeRivalCar.h"
+MODE_H = ROOT / "Source/Latebrake/Public/Game/LatebrakeRaceGameMode.h"
+MODE = ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+HUD = ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
 
 
 class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
@@ -24,6 +28,10 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
         cls.pawn = PAWN_CPP.read_text(encoding="utf-8")
         cls.test = TEST.read_text(encoding="utf-8")
         cls.cmake = CMAKE.read_text(encoding="utf-8")
+        cls.rival_h = RIVAL_H.read_text(encoding="utf-8")
+        cls.mode_h = MODE_H.read_text(encoding="utf-8")
+        cls.mode = MODE.read_text(encoding="utf-8")
+        cls.hud = HUD.read_text(encoding="utf-8")
 
     def rival_tick(self):
         method = "void ALatebrakeRivalCar::Tick(float DeltaSeconds)"
@@ -71,6 +79,21 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
         # Recovery budget stays on REQUEST, not post-hoc engine success.
         self.assertLess(self.route.index("++Recoveries;"),
                         self.route.index("RecoveryPending = true;"))
+
+    def test_hud_exposes_actual_verified_vs_failed_recovery(self):
+        for expected in (
+            "GetPilotSuccessfulRecoveries()", "GetPilotFailedRecoveries()",
+        ):
+            self.assertIn(expected, self.rival_h)
+        for expected in (
+            "GetRivalSuccessfulRecoveryCount()",
+            "GetRivalFailedRecoveryCount()",
+        ):
+            self.assertIn(expected, self.mode_h)
+            self.assertIn(expected, self.mode)
+            self.assertIn(expected, self.hud)
+        self.assertIn("RIVAL TELEPORTS VERIFIED %d | REJECTED %d", self.hud)
+        self.assertIn("RIVAL ROUTE  %d/%d LAPS | RECOVERY ATTEMPTS  %d%s", self.hud)
 
     def test_tests_exercise_both_outcomes_and_reset(self):
         self.assertIn("ReportRecoveryResult(true)", self.test)
