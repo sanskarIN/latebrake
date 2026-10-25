@@ -5,6 +5,7 @@
 #include "Racing/WrongWayIndicator.h"
 #include "Track/OffTrackAdvisor.h"
 #include "Track/RivalProximityIndicator.h"
+#include "Track/RivalRelativeMotion.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -22,6 +23,7 @@ private:
     latebrake::WrongWayIndicator WrongWayHint;
     latebrake::OffTrackIndicator OffTrackHint;
     latebrake::RivalProximityIndicator RivalProximityHint;
+    latebrake::RivalRelativeMotionTracker RivalRelativeMotionHint;
     TWeakObjectPtr<APawn> LastWayfindingPawn;
     uint64 LastWayfindingSession = 0;
     uint64 LastWayfindingTeleport = 0;
