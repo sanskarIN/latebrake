@@ -81,6 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.63 (source development, unreleased) | Fix results-menu HUD Race variable compile scope; add 0.6s debounced 15m/20m hysteretic direct rival proximity warning on both desktop and mobile from the actual verified radar snapshot | Portable three-OS C++ tests, Python Unreal-source contracts; real UE/UHT build, cooked map and Win64/Android proximity/HUD QA still needed |
 | v0.5.62 (source development, unreleased) | Physically grounded opponent marker and player heading on existing desktop minimap, direct 2D separation, invalid/race-ineligible actor suppression | Strict C++20 real production tests + Unreal-source integration; licensed engine/game/editor compile and real Win64/Android viewport QA outstanding |
 | v0.5.61 (source development, unreleased) | Add nearest-road off-track HUD advisory with debouncing and correct rival corner braking to real inbound pavement corridor | Strict three-OS policy testing and Unreal source binding checks; true UE gameplay/hardware QA still required |
 | v0.5.60 (source-only GitHub pre-release target) | New measured driving telemetry, next-gate direct-range bearing, rival corner-anticipatory braking, three production-linked C++20 suites, two source-binding suites and CI-gated source publication; collects merged v0.5.47–v0.5.53 work | Three OS C++20 + Python + PowerShell + docs on immutable source candidate; **no Unreal compilation, cooked map, Windows EXE or Android APK/device QA yet** |
