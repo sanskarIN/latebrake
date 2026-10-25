@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.69 source development — accessible paged menu details
+
+- **Unreleased source feature:** Results/Career/Garage menu rows hidden by the v0.5.68 safety cap can now be visited page by page rather than permanently lost. The HUD pins the menu title/instructions, collects all eligible text rows, renders one bounded `MenuDetailWindow`, and shows a real page number in its reserved notice strip.
+- Up/Down keyboard actions and menu-specific Android UP/DOWN pad labels navigate detail pages without altering PageUp/PageDown category navigation, Enter/SELECT actions, normal RESTART/RECOVER racing, menu pause or race logic.
+- The portable `MenuDetailPager` resets on menu-category switch and close, clamps after resized viewport/changed result counts, and refuses invalid capacity; independent SAVE FAILED remains visible. Strict C++20 and Unreal-source binding tests cover policy and real input routing. See [menu paging QA](MENU_DETAIL_PAGING_QA.md).
+- This is not licensed UE 5.8/UHT compilation or physical device validation; v0.5.65 remains the most recently published source-only GitHub pre-release.
+
 ## v0.5.68 source development — bounded career/results menus
 
 - **Unreleased:** The menu-side `MenuLine` used a separate unbounded Y cursor despite v0.5.66/v0.5.67 improvements to the race HUD. New portable `HudMenuVerticalPlan` limits visible menu details above physical Android steering controls, reserves a `MORE MENU DETAILS HIDDEN` notice and keeps a SAVE FAILED banner visible independently of the regular menu list.
