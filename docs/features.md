@@ -12,6 +12,22 @@ This page distinguishes source-level features from tested game builds. All gamep
 
 Read [track design](TRACK.md), [AI and events](AI_AND_EVENTS.md), [sector timing](SECTOR_TIMING.md) and [finish insights](FINISH_INSIGHTS.md).
 
+## Post-race source analysis (v0.5.71 development)
+
+- **Recent lap distribution:** mean, median, population standard deviation,
+  signed last-lap difference and consecutive faster laps over only the last
+  eight retained valid and actively timed laps.
+- **Sector analysis:** actual positive best split at each official gate and
+  their **theoretical**, potentially mixed-lap sum — never an achieved record.
+- **Sampled car statistics:** approximate speed-integrated distance,
+  measured peak speed, brake applications, fraction of sample time braking
+  and high lateral-slip. These are not official odometer readings or grades.
+
+The Results screen uses bounded, reachable detail pages. These source
+features have regression tests, but still need real Unreal Engine and
+Windows/Android gameplay qualification; see
+[Results insights QA](RESULTS_INSIGHTS_QA.md).
+
 ## Driving and controls
 
 The prototype car is built from engine primitives and uses Chaos-backed rigid-body forces with Arcade and simulation-inspired presets. It is **not** a production tire/suspension simulation.

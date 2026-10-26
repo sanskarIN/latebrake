@@ -800,3 +800,45 @@ else()
     target_compile_options(latebrake_recent_lap_review_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RecentLapReview COMMAND latebrake_recent_lap_review_tests)
+
+# v0.5.71: production-linked, engine-neutral Results insight policy.
+add_executable(latebrake_recent_lap_pace_statistics_tests
+    RecentLapPaceStatisticsTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_recent_lap_pace_statistics_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_recent_lap_pace_statistics_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_recent_lap_pace_statistics_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_recent_lap_pace_statistics_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RecentLapPaceStatistics COMMAND latebrake_recent_lap_pace_statistics_tests)
+
+# v0.5.71: production-linked, engine-neutral Results insight policy.
+add_executable(latebrake_best_sector_review_tests
+    BestSectorReviewTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_best_sector_review_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_best_sector_review_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_best_sector_review_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_best_sector_review_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BestSectorReview COMMAND latebrake_best_sector_review_tests)
+
+# v0.5.71: production-linked, engine-neutral Results insight policy.
+add_executable(latebrake_sampled_driving_review_tests
+    SampledDrivingReviewTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp
+)
+target_include_directories(latebrake_sampled_driving_review_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sampled_driving_review_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sampled_driving_review_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sampled_driving_review_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SampledDrivingReview COMMAND latebrake_sampled_driving_review_tests)

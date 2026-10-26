@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.65](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.65) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** This source snapshot adds true rival race radar, off-track direction advice, live close-rival warnings, measured direct opponent CLOSING/SEPARATING indicators and Unreal HUD scope safety. Three-OS portable C++20 source CI passed independently. **No verified Win64 EXE, Android APK/AAB or Linux game is included.** Source archives are not installers; licensed UE 5.8 Editor/UHT compilation, cooked map and installed hardware QA remain required.
+> **Latest published: [v0.5.70](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.70) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** This independently qualified source snapshot combines safe Android/desktop HUD text bounds, accessible paged menus and a genuine eight-lap Results review. The newer v0.5.71 work adds timed-lap distributions, real best sector breakdowns and speed-sampled driving summaries, but is **not yet released**. **No verified Win64 EXE, Android APK/AAB or Linux game is included.** GitHub source archives are not installers; licensed UE 5.8 Editor/UHT compilation, cooked original map and installed hardware QA remain required.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 

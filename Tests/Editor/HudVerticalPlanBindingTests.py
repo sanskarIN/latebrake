@@ -48,9 +48,15 @@ class HudVerticalPlanBindingTests(unittest.TestCase):
                         hud.index("RivalRelativeMotionHint.Update("))
         self.assertLess(hud.index("TIME  %02d:%05.2f"),
                         hud.index("RivalProximityHint.Update("))
-        self.assertLess(hud.index("TIME  %02d:%05.2f"),
-                        hud.index("DrivingStats.Get") if
-                        "DrivingStats.Get" in hud else hud.index("GetDrivingStats()"))
+        # The Results menu now also reads sampled driving stats.
+        # This ordering guard checks only the *live* HUD `Line` pipeline,
+        # not the earlier paused Results branch.
+        racing_hud = hud[hud.index("const auto Line = [&]"):]
+        self.assertLess(
+            racing_hud.index("TIME  %02d:%05.2f"),
+            racing_hud.index("DrivingStats.Get") if
+            "DrivingStats.Get" in racing_hud else
+            racing_hud.index("GetDrivingStats()"))
 
     def test_critical_status_drawn_without_ordinary_row_budget(self):
         hud = self.hud
