@@ -43,6 +43,7 @@ def validate_manual_workstation_workflow(source: str) -> None:
         "retention-days: 3",
         "compression-level: 0",
         "Remove-Item -LiteralPath $target -Recurse -Force",
+        "[IO.FileAttributes]::ReparsePoint",
         "if: always()",
         "cancel-in-progress: false",
     )
@@ -111,6 +112,8 @@ class UnrealWorkstationWorkflowPolicyTests(unittest.TestCase):
                            "CANDIDATE_PLATFORM: Win64", 1),
             source.replace("retention-days: 3",
                            "retention-days: 90", 1),
+            source.replace("[IO.FileAttributes]::ReparsePoint",
+                           "[IO.FileAttributes]::Normal", 1),
             source + "\n  pull_request:\n",
         )
         for broken in mutants:

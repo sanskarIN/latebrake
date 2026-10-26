@@ -52,6 +52,8 @@ toward real engine builds, not evidence that one has run or passed.
   release asset or declared playable without installed QA.
 - The job cleans its unique temporary candidate directory after the
   Actions artifact handoff, without deleting other runner directories.
+  Before cleanup it rejects output-directory junctions/reparse-point
+  links rather than recursively traversing a possibly redirected path.
 - Source contracts cannot prove that this workflow has executed in
   Unreal or that the machine meets the required platform settings.
 

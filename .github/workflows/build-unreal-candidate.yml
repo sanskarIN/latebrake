@@ -106,6 +106,10 @@ jobs:
             $target = [System.IO.Path]::GetFullPath($env:CANDIDATE_OUTPUT)
             if ($target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) -and
                 (Test-Path -LiteralPath $target -PathType Container)) {
+              $item = Get-Item -LiteralPath $target -Force
+              if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw 'Refusing to clean an untrusted candidate junction/symlink.'
+              }
               Remove-Item -LiteralPath $target -Recurse -Force
             }
           }
