@@ -1084,7 +1084,14 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
         // MenuBrowse has a disjoint reserved hit rectangle. Reuse it as
         // CAM in racing without moving the existing safety/control pads.
-        DrawPad(Pads.MenuBrowse, TEXT("CAM"), false);
+        // Visible numbered selection even when phone HUD is compact.
+        const int32 ViewNumber =
+            latebrake::CameraViewNumber(Car->GetCameraView());
+        const TCHAR* CameraPadLabel =
+            ViewNumber == 2 ? TEXT("CAM 2") :
+            ViewNumber == 3 ? TEXT("CAM 3") :
+            ViewNumber == 4 ? TEXT("CAM 4") : TEXT("CAM 1");
+        DrawPad(Pads.MenuBrowse, CameraPadLabel, false);
     }
 #else
     const float FooterScale = Scale * (bCompact ? 0.90f : 0.78f);

@@ -57,13 +57,16 @@ class CameraPresetBindingTests(unittest.TestCase):
     def test_android_cam_reuses_actual_press_only_menu_browse_pad(self):
         self.assertIn("TouchRect MenuBrowse;", self.layout)
         self.assertIn("layout.MenuBrowse.Contains(x, y)", self.layout)
-        self.assertIn("DrawPad(Pads.MenuBrowse, TEXT(\"CAM\"), false);",
+        self.assertIn("DrawPad(Pads.MenuBrowse, CameraPadLabel, false);",
                       self.hud)
         self.assertIn(
             "case latebrake::TouchControl::MenuBrowse:", self.pawn)
         self.assertIn("CanCycleCameraFromTouch({", self.pawn)
         self.assertIn("ChangeCamera();", self.pawn)
         self.assertIn('"Vehicles/TouchCameraCyclePolicy.h"', self.pawn)
+        self.assertIn("CameraViewNumber(Car->GetCameraView())", self.hud)
+        self.assertIn('TEXT("CAM 1")', self.hud)
+        self.assertIn('TEXT("CAM 4")', self.hud)
         self.assertIn("TouchCameraCyclePolicyTests.cpp", self.cmake)
         self.assertIn("NAME TouchCameraCyclePolicy", self.cmake)
         self.assertIn(

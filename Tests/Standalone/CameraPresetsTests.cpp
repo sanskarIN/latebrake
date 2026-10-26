@@ -37,6 +37,11 @@ int main()
     }
     Require(cycle.Current() == CameraView::Chase,
             "four presses return to original view");
+    Require(CameraViewNumber(CameraView::Chase) == 1 &&
+            CameraViewNumber(CameraView::CloseChase) == 2 &&
+            CameraViewNumber(CameraView::Hood) == 3 &&
+            CameraViewNumber(CameraView::High) == 4,
+            "phone camera pad shows the active preset index");
     const CameraPreset chase = GetCameraPreset(CameraView::Chase);
     const CameraPreset close = GetCameraPreset(CameraView::CloseChase);
     const CameraPreset hood = GetCameraPreset(CameraView::Hood);
@@ -66,7 +71,8 @@ int main()
             "reset clears previous camera selection");
     constexpr auto unknown = static_cast<CameraView>(255);
     Require(Near(GetCameraPreset(unknown).ArmLengthCm, 560.0) &&
-            std::string(CameraViewName(unknown)) == "CHASE",
+            std::string(CameraViewName(unknown)) == "CHASE" &&
+            CameraViewNumber(unknown) == 1,
             "unsupported enum falls back to safe default");
     CameraPreset bad = chase;
     bad.ArmLengthCm = std::numeric_limits<double>::quiet_NaN();

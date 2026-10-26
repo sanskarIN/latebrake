@@ -42,6 +42,17 @@ constexpr CameraPreset GetCameraPreset(CameraView view) noexcept
     }
 }
 
+constexpr int CameraViewNumber(CameraView view) noexcept
+{
+    switch (view)
+    {
+    case CameraView::CloseChase: return 2;
+    case CameraView::Hood: return 3;
+    case CameraView::High: return 4;
+    default: return 1;
+    }
+}
+
 constexpr const char* CameraViewName(CameraView view) noexcept
 {
     switch (view)

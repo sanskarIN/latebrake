@@ -20,7 +20,7 @@ Unsupported enum values fall back to safe CHASE. The non-compact HUD
 shows the view name **after** official race lap/time lines.
 
 On Android, the **already reserved upper-middle MenuBrowse rectangle**
-displays **CAM** during driving, and keeps its existing **BROWSE** menu
+displays **CAM 1/2/3/4** during driving, indicating the active preset, and keeps its existing **BROWSE** menu
 function while the menu is open. The new policy only accepts a genuine
 freshly pressed finger on this specific control when a real mode,
 qualified circuit and local driver exist, with no game/menu pause or
@@ -63,7 +63,7 @@ These are source tests, **not Unreal Editor/UHT compilation**.
   CAM must not steal or latch accelerator/steering fingers or permit a
   camera cycle on an invalid or unfinished race world.
 - Check several device aspect ratios and DPI: low right-hand buttons
-  remain clear; upper-middle CAM must not overlap the speed/time HUD,
+  remain clear; upper-middle numbered CAM must not overlap the speed/time HUD,
   SAVE FAILED warning or menu controls. Verify natural camera lag, lens field of view and
   spring arm collision behavior at high speeds and narrow track walls.
 - Attach actual package provenance, screenshots, device model/OS,

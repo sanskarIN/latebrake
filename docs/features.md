@@ -34,7 +34,7 @@ Press **C** (existing desktop/gamepad Camera action) to rotate through
 CHASE, CLOSE CHASE, HOOD, HIGH CHASE. Each view has an explicit Unreal
 spring-arm distance, angle, socket offset, collision and lag policy.
 The selected mode is shown on spacious racing HUD layouts. On Android
-the existing upper-middle pad displays **CAM** during gameplay, while
+the existing upper-middle pad displays **CAM 1–4** during gameplay, indicating the active view, while
 its menu meaning stays **BROWSE**. Touch camera activation requires
 a fresh press in a ready, unpaused, focused race. The steering and
 gas/brake hit rectangles are unchanged. [Camera test plan](CAMERA_PRESETS_QA.md).
