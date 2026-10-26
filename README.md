@@ -2,11 +2,11 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.71](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.71) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified v0.5.71 source adds real retained-lap mean/median/deviation and improvement streaks, best gate sector analysis, and speed-sampled distance, braking and lateral-slip Results details. Earlier v0.5.70 added safe mobile/desktop HUD text, accessible paged menus and authentic recent lap review. **Both snapshots have zero game executable assets.** There is **no verified Win64 EXE, Android APK/AAB or Linux game**; GitHub source archives are not installers. Licensed UE 5.8 Editor/UHT compilation, an original cooked map and installed physics/device QA remain mandatory.
+> **Latest published: [v0.5.72](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.72) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source includes four native camera views (Chase, Close Chase, Hood, High Chase), actual spring-arm distance, orientation, lag, collision and lens FOV, plus the press-only Android CAM 1–4 button with separate menu BROWSE behavior. Earlier v0.5.71 provided sampled car and timed-lap Results insights. **No verified Win64 EXE, Android APK/AAB or Linux game is included.** Source archives are not installers; licensed UE 5.8 Editor/UHT compilation, an original cooked circuit, and installed physics/mobile/device QA remain outstanding.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
-**v0.5.72 source development:** four deterministic camera presets
+**v0.5.72 published source preview:** four deterministic camera presets
 (Chase, Close Chase, Hood, High Chase) replace the old near/far toggle,
 with the existing keyboard/gamepad C binding and a press-only Android
 CAM button using the safe reserved menu-browse rectangle. The strict

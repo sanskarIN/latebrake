@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.71](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.71), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.71 published source-only pre-release** on `main`: valid retained-lap analytics, mixed best-sector analysis and sampled chassis Results data, building on v0.5.70 safe HUD and menu paging. Unreal 5.8 and installed hardware QA are still unavailable |
+| Latest published GitHub pre-release | [v0.5.72](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.72), **source only**, no runnable assets |
+| Latest source-development milestone | **v0.5.72 published source-only pre-release** on `main`: four engine-source camera presets and Android CAM admission, building on v0.5.71 Results analytics. Unreal 5.8, real runtime camera and installed phone QA are still unavailable |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
