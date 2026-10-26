@@ -15,13 +15,14 @@ No credits, career awards, best times, saves or vehicle handling depend on it.
 - Use active race clock minus charged recovery penalties. Invalid frames,
   nonfinite velocity, red lights, pause/menu/focus loss and unqualified physics
   cannot invent a launch. A clock rollback or over-30s threshold invalidates
-  an uncaptured estimate. A successful paid recovery invalidates this
-  attempt; failed recovery requests cannot erase it.
+  an uncaptured estimate. A successful paid recovery invalidates an **uncaptured** launch attempt;
+  a previously captured estimate remains unchanged. Failed recovery
+  requests cannot erase it.
 - An accepted restart clears prior telemetry. A captured observation is
   immutable for the remaining race. No persistent records are written.
 - Expanded HUD shows an approximate launch time near the start; Results
-  optionally shows the same session estimate. Small screens clip optional
-  telemetry before authoritative time/position readouts.
+  optionally shows the same session estimate. Small screens can clip optional
+  telemetry **after** authoritative time/position readouts.
 
 ## Automated source checks
 
