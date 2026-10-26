@@ -376,6 +376,27 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            // Unofficial style score from real chassis slip samples;
+            // finished-race rewards never consume this value.
+            if (latebrake::CanAwardFinishedRace(Race))
+            {
+                const latebrake::DriftComboMeter& Drift =
+                    Car->GetDriftMeter();
+                if (Drift.GetComboCount() > 0)
+                {
+                    MenuLine(TEXT("ARCADE DRIFT SCORE (NO CREDITS)"), true);
+                    MenuLine(FString::Printf(
+                        TEXT("Drift %.0f pts | combos %d | best %.0f"),
+                        Drift.GetTotalPoints(),
+                        Drift.GetComboCount(), Drift.GetBestComboPoints()));
+                    if (!bCompact)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("Qualified slip time %.1fs this run"),
+                            Drift.GetTotalDriftSeconds()));
+                    }
+                }
+            }
             MenuLine(TEXT("Select to retry the current event."));
             break;
         }
@@ -729,6 +750,16 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("MOTION  %.1fs BRAKING | %.1fs HIGH SIDE SLIP"),
                 DriveStats.GetBrakingSeconds(),
                 DriveStats.GetHighSlipSeconds()), Primary);
+            // Visually styled combo, never official race classification.
+            const latebrake::DriftComboMeter& Drift =
+                Car->GetDriftMeter();
+            if (Drift.HasActiveCombo())
+            {
+                Line(FString::Printf(
+                    TEXT("DRIFT COMBO %.0f pts | %.1fs"),
+                    Drift.GetCurrentComboPoints(),
+                    Drift.GetCurrentComboSeconds()), Accent);
+            }
         }
     }
 
