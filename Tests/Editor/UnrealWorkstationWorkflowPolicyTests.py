@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 WF = ROOT / ".github/workflows/build-unreal-candidate.yml"
 DOC = ROOT / "docs/UE58_WORKSTATION_QA.md"
 BUILD_SCRIPT = ROOT / "scripts/Build-PlayableCandidate.ps1"
+INLINE_SCRIPT = ROOT / "scripts/Test-UnrealCandidateWorkflowInlineSyntax.ps1"
+INLINE_FIXTURES = ROOT / "scripts/Test-UnrealCandidateWorkflowInlineSyntaxPolicy.ps1"
+CORE_CI = ROOT / ".github/workflows/core-tests.yml"
 
 
 def validate_manual_workstation_workflow(source: str) -> None:
@@ -87,6 +90,19 @@ class UnrealWorkstationWorkflowPolicyTests(unittest.TestCase):
             "Write-CandidateManifest.ps1", "Test-CandidateManifest.ps1",
         ):
             self.assertIn(marker, self.script)
+
+    def test_inline_power_shell_blocks_checked_without_ue(self):
+        validator = INLINE_SCRIPT.read_text(encoding="utf-8")
+        fixture = INLINE_FIXTURES.read_text(encoding="utf-8")
+        ci = CORE_CI.read_text(encoding="utf-8")
+        for token in (
+            "ParseInput(", "contentIndent", "Expected at least 3",
+            "Malformed workflow PowerShell block",
+        ):
+            self.assertIn(token, validator)
+        self.assertIn("did not fail closed", fixture)
+        self.assertIn("Test-UnrealCandidateWorkflowInlineSyntaxPolicy.ps1", ci)
+        self.assertIn("shell: pwsh", ci)
 
     def test_mutated_security_and_source_gates_fail_closed(self):
         source = self.source
