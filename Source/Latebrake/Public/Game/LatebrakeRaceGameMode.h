@@ -5,6 +5,7 @@
 #include "Racing/RaceProgress.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
+#include "Racing/LaunchSpeedMeter.h"
 #include "Racing/RestartPlacementGuard.h"
 #include "Racing/AppFocusRaceGuard.h"
 #include "Racing/ManualRacePauseGuard.h"
@@ -73,6 +74,7 @@ public:
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
+    const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     latebrake::RaceStartPhase GetRaceStartPhase() const
     {
         return StartLights.Phase();
@@ -127,6 +129,8 @@ private:
     // Explicit per-attempt start gate: no paid race clock or chassis force
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
+    // Session-only advisory forward-speed estimate; never alters RaceProgress.
+    latebrake::LaunchSpeedMeter LaunchMeter;
     bool bCircuitReady = false;
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
