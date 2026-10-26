@@ -59,6 +59,7 @@ REQUIRED_HTML = (
     "releases/v0.5.60/index.html",
     "releases/v0.5.65/index.html",
     "releases/v0.5.70/index.html",
+    "releases/v0.5.71/index.html",
     "RESULTS_INSIGHTS_QA/index.html",
 )
 REQUIRED_ASSETS = (
