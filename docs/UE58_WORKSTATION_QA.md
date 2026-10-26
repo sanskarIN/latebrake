@@ -52,8 +52,15 @@ toward real engine builds, not evidence that one has run or passed.
   release asset or declared playable without installed QA.
 - The job cleans its unique temporary candidate directory after the
   Actions artifact handoff, without deleting other runner directories.
-  Before cleanup it rejects output-directory junctions/reparse-point
-  links rather than recursively traversing a possibly redirected path.
+  Before cleanup it refuses both a reparse-point/junction **candidate
+  root** and **any nested junction/symlink**, walking direct directory
+  entries without following links. This matters even when an editor/cook
+  step fails before the manifest writer gets to scan package contents.
+  Unsafe cleanup aborts and leaves the candidate for authorized manual
+  inspection; never force-delete redirected data.
+- This is defense-in-depth for a trusted, access-controlled workstation,
+  not a guarantee against filesystem races or a substitute for restricting
+  who can write to the licensed runner's workspace/temp directories.
 - Source contracts cannot prove that this workflow has executed in
   Unreal or that the machine meets the required platform settings.
 
