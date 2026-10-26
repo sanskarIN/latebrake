@@ -89,6 +89,7 @@ nav:
       - Architecture: ARCHITECTURE.md
       - Maintaining the website: WEBSITE.md
       - Build instructions: BUILDING.md
+      - Private Win64 test build: WINDOWS_PERSONAL_PLAYTEST.md
       - Testing & QA: TESTING.md
       - Executable build pipeline: EXECUTABLE_BUILD_PIPELINE.md
       - Circuit startup audit: CIRCUIT_STARTUP_AUDIT.md
