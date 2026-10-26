@@ -2,9 +2,9 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.74](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.74) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source adds player-only signed analog controller deadzones (12% steering, 5.5% throttle/reverse) with smooth remaining range and full keyboard/trigger authority. Earlier v0.5.73 added the no-credit arcade drift combo meter. **There is no verified Win64 EXE, Android APK/AAB or installed playable game.** GitHub source archives are not installers; genuine UE 5.8/UHT game build, owned cooked circuit and real hardware QA are still outstanding.
+> **Latest published: [v0.5.75](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified racing source adds an authoritative 3→2→1→GO countdown that gates real player/rival driving, recovery, checkpoint scoring and race timing, with correct post-green frame accounting. Earlier v0.5.74 added analog controller deadzones. **There is no verified Win64 EXE, Android APK/AAB or installed playable game.** GitHub source archives are not installers; genuine UE 5.8/UHT compilation, original cooked map and installed hardware driving QA remain mandatory.
 
-**v0.5.75 source development:** a genuine start-light countdown
+**v0.5.75 published source feature:** a genuine start-light countdown
 with shared player/rival/clock/checkpoint authorization, fractional
 start-frame accounting and pause-safe 3 / 2 / 1 / GO display. Source
 tests validate the race policy; real licensed Unreal, cooked map

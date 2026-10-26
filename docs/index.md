@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest GitHub tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.74">v0.5.74</a>, an independently tested <strong>source-only pre-release with zero game executable attachments</strong>. The repository includes human analog controller deadzones, run-local arcade drift combos, four camera views and Android CAM controls. <strong>No verified Windows or Android game binary is available.</strong> UE 5.8/UHT compilation, an original cooked circuit and installed gameplay QA remain mandatory.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75">v0.5.75</a>, an independently source-tested <strong>pre-release with zero playable game attachments</strong>. The source has a genuine 3/2/1/GO race gate, measured lap and drift reports, gamepad deadzones and camera modes. <strong>No verified Windows or Android executable is available.</strong> UE 5.8/UHT compilation, original cooked track and installed gameplay/device tests remain mandatory.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
