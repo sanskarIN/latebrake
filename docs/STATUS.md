@@ -5,7 +5,7 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Unreleased source development — 0–5 km/h forward launch estimate
+## Merged source development; v0.5.76 publication qualification pending — 0–5 km/h forward launch estimate
 
 - A portable `LaunchSpeedMeter` records only a first observed signed
   **forward** crossing of 5 km/h after a stationary/slow post-GO sample,
@@ -16,8 +16,9 @@
 - Real player chassis physics feeds GameMode; the expanded HUD and Results
   label the result as a **session estimate**, not reaction time or a racing
   record. No save, credit, medal, handling or sector code is modified.
-- Added portable C++20 boundary tests and Python Unreal-source binding
-  tests. **Unreleased, source-only and not Unreal/gameplay-qualified.**
+- Added portable C++20 boundary tests, real RaceProgress-linked timing
+  checks and Python Unreal-source binding tests. **Merged in PR #157,
+  but v0.5.76 is not yet published; source-only and not Unreal-qualified.**
   See [launch-speed QA](LAUNCH_SPEED_QA.md).
 
 ## v0.5.75 published source-only pre-release — genuine green-light race start
