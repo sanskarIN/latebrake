@@ -30,8 +30,13 @@ int main()
     Require(!meter.Observe(0.0, 0.0, false) &&
             !meter.Observe(0.0, 100.0, false) && !meter.HasSample(),
         "red lights, pause and unqualified frames never produce an estimate");
-    Require(!meter.Observe(0.02, 8.0, true) && !meter.HasSample(),
-        "first already-moving sample cannot invent a start crossing");
+    Require(!meter.Observe(0.02, 8.0, true) && !meter.HasSample() &&
+            meter.IsInvalidated(),
+        "first already-moving sample permanently rejects this launch");
+    Require(!meter.Observe(0.03, 0.0, true) &&
+            !meter.Observe(0.18, 5.0, true) && !meter.HasSample(),
+        "a late deceleration cannot manufacture an original grid start");
+    meter.Reset();
     Require(!meter.Observe(0.03, -12.0, true) &&
             !meter.Observe(0.12, 4.99, true),
         "reversing and sub-threshold speed do not complete forward launch");
