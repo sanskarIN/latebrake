@@ -110,6 +110,24 @@ jobs:
               if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
                 throw 'Refusing to clean an untrusted candidate junction/symlink.'
               }
+              # A failed UAT run may leave nested junctions BEFORE the
+              # manifest writer's separate reparse-point guard executes.
+              # Inspect each directory WITHOUT recursively following any
+              # child links before the final Remove-Item. A refused cleanup
+              # leaves evidence for an operator to inspect on the runner.
+              $directories = [System.Collections.Generic.Stack[string]]::new()
+              $directories.Push($target)
+              while ($directories.Count -gt 0) {
+                $directory = $directories.Pop()
+                foreach ($child in @(Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop)) {
+                  if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                    throw "Refusing to clean candidate containing nested junction/symlink: $($child.FullName)"
+                  }
+                  if ($child.PSIsContainer) {
+                    $directories.Push($child.FullName)
+                  }
+                }
+              }
               Remove-Item -LiteralPath $target -Recurse -Force
             }
           }
