@@ -81,7 +81,17 @@ class FocusSuspendedDriverBindingTests(unittest.TestCase):
             "if (false /* regression fixture */)",
         )
         touch = method(broken, "ApplyTouch")
-        self.assertNotIn("Mode && Mode->IsFocusLossGuardActive()", touch)
+        # The later CAM-command admission deliberately repeats this
+        # condition. This mutation must remove the *early* global guard,
+        # even when a safe secondary camera check still references focus.
+        self.assertNotIn(
+            "if (Mode && Mode->IsFocusLossGuardActive())", touch)
+        self.assertIn("if (false /* regression fixture */)", touch)
+        self.assertIn(
+            "Mode && Mode->IsFocusLossGuardActive()", touch)
+        self.assertLess(
+            touch.index("if (false /* regression fixture */)"),
+            touch.index("if (Mode && Mode->IsMenuOpen())"))
 
 
 if __name__ == "__main__":
