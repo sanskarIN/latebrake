@@ -7,7 +7,10 @@ No credits, career awards, best times, saves or vehicle handling depend on it.
 
 ## Rules
 
-- A real, qualified 3 / 2 / 1 / GO is mandatory; an observed **below 5
+- A real, qualified 3 / 2 / 1 / GO is mandatory; the **first valid** post-GO
+  chassis sample must be below 5 km/h. A first sample already at or above
+  5 km/h invalidates the entire attempt rather than allowing a later
+  deceleration to masquerade as the initial launch. An observed **below 5
   km/h** chassis-forward sample must precede an observed **5 km/h or more**
   forward sample within 30 seconds of GO.
 - Source input is the genuine player's signed *forward* Chaos velocity, **not**
