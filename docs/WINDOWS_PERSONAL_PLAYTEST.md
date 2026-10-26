@@ -1,0 +1,103 @@
+# Build LateBrake for personal Windows testing
+
+**No ready-to-download LateBrake Windows game EXE has been produced or
+verified by the source-only GitHub CI.** This guide builds the **actual
+Unreal game** on a Windows PC; it does not download an Unreal installer,
+rename a source ZIP, or turn the standalone CMake tests into a game.
+
+## What you need on your Windows PC
+
+- A legally authorized installed **Unreal Engine 5.8**, including
+  `UnrealEditor.exe`, `Build.bat` and `RunUAT.bat`.
+- Visual Studio's compatible **C++ game-development workload**, Windows
+  SDK and other build components required by that UE 5.8 installation.
+- **Git**, **Git LFS** and **PowerShell 7 (`pwsh`)**.
+- Adequate free disk space for the Editor/UHT compile and cooked Win64
+  Development game, and a working Windows graphics driver.
+
+Do not use GitHub's “Download ZIP” as a substitute for a clean Git
+checkout: the candidate pipeline deliberately requires traceable Git
+source metadata. Run the following once:
+
+```powershell
+git clone https://github.com/sanskarIN/latebrake.git
+cd latebrake
+git lfs install
+git lfs pull
+```
+
+## One-click: personal candidate
+
+Double-click **`Build-Windows-Playtest.cmd`** in the repository root.
+The wrapper defaults to
+`C:\Program Files\Epic Games\UE_5.8` and uses PowerShell 7.
+
+If the authorized engine lives elsewhere, run this from PowerShell 7
+inside the repository:
+
+```powershell
+pwsh ./scripts/Build-WindowsPlaytest.ps1 -EngineRoot 'D:\UE_5.8'
+```
+
+To open the game immediately **only after a successful real build**:
+
+```powershell
+pwsh ./scripts/Build-WindowsPlaytest.ps1 -EngineRoot 'D:\UE_5.8' -Launch
+```
+
+The script calls the existing `Build-PlayableCandidate.ps1`, which
+compiles the real `LatebrakeEditor` target through UE/UHT, asks licensed
+Unreal Editor to create/save the genuine project circuit level (if it
+does not exist), cooks a Win64 Development game through `RunUAT.bat`,
+and verifies the package files and source/map/engine SHA256 manifest.
+
+Each run gets a **new** directory below
+`out/Win64Playtests/LateBrake-Win64-<timestamp>-<unique-id>/`.
+This location is Git-ignored; previous packages are never replaced.
+A successful run prints the **full exact path** of the packaged
+`Latebrake.exe` and the SHA256 of that EXE and its candidate manifest.
+
+**Keep all cooked files in their packaged directory.**
+`Latebrake.exe` alone is not a portable game: moving it without its
+supporting cooked assets can cause startup errors.
+
+## What to test personally
+
+1. Launch the actual `Latebrake.exe` printed by the script. If it fails,
+   keep the full UHT/UAT console output and the real Unreal game log.
+2. Confirm the circuit, physical car, engine-provided meshes and HUD
+   appear; try basic steering, accelerate, reverse, brake and camera switch.
+3. Test the 3/2/1/GO gate, each of four sequential checkpoints, laps,
+   Time Attack, restart, paid recovery, pause/unpause and focus loss.
+4. Drive several sessions, inspect save/reload, offline garage/career,
+   rival car, race Results and advisory launch/drift readings.
+5. Record Windows version, CPU/GPU, frame rates, issues and the printed
+   EXE/candidate-manifest SHA256. Do not report an untested option as passed.
+
+An output directory and an EXE signature alone do not prove that a game
+really starts or handles input. A Windows **personal test candidate**
+should remain **UNVERIFIED** until you run and inspect it yourself.
+The formal QA/release gate is stricter and remains open in
+[issue #148](https://github.com/sanskarIN/latebrake/issues/148);
+Android is independently tracked in
+[issue #13](https://github.com/sanskarIN/latebrake/issues/13).
+
+## Troubleshooting
+
+- **Missing Unreal Engine 5.8 component**: install/configure the
+  authorized engine or pass the correct `-EngineRoot`; no EXE can be
+  built from portable CMake checks alone.
+- **PowerShell 7 not found**: install `pwsh` before using the double-click
+  entry point.
+- **Dirty/untracked source**: commit intentional source changes or use
+  a fresh `git clone`; only the Editor-authored starter map exception
+  is accepted and separately hashed.
+- **UHT/C++ or cooker failure**: inspect the actual Unreal error output.
+  This helper does **not** suppress compiler or packaging errors.
+- **Missing packaged Latebrake.exe**: do not distribute or rename a
+  different EXE. Preserve failed build logs, inspect the real UAT output
+  and correct the packaging problem.
+
+This helper does not upload private game files or change GitHub release
+status. Source tests can check script structure, but only an installed
+UE 5.8 Windows workstation can establish actual compilation/gameplay.
