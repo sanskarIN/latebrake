@@ -4,6 +4,7 @@
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
+#include "Vehicles/DriveAxisDeadzone.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
 #include "Racing/RecoveryTeleportVerification.h"
@@ -229,12 +230,14 @@ void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 
 void ALatebrakeCarPawn::ThrottleInput(float Value)
 {
-    Throttle = static_cast<float>(latebrake::SanitizeDriveAxis(Value));
+    Throttle = static_cast<float>(
+        latebrake::FilterHumanThrottleAxis(Value));
 }
 
 void ALatebrakeCarPawn::SteerInput(float Value)
 {
-    Steering = static_cast<float>(latebrake::SanitizeDriveAxis(Value));
+    Steering = static_cast<float>(
+        latebrake::FilterHumanSteeringAxis(Value));
 }
 
 void ALatebrakeCarPawn::BrakePressed()
