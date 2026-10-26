@@ -47,6 +47,12 @@ def validate_manual_workstation_workflow(source: str) -> None:
         "compression-level: 0",
         "Remove-Item -LiteralPath $target -Recurse -Force",
         "[IO.FileAttributes]::ReparsePoint",
+        # A failure before Write-CandidateManifest still leaves mutable
+        # staging contents; never delete through nested junctions.
+        "[System.Collections.Generic.Stack[string]]::new()",
+        "Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop",
+        "if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)",
+        "$directories.Push($child.FullName)",
         "if: always()",
         "cancel-in-progress: false",
     )
@@ -130,8 +136,28 @@ class UnrealWorkstationWorkflowPolicyTests(unittest.TestCase):
                            "retention-days: 90", 1),
             source.replace("[IO.FileAttributes]::ReparsePoint",
                            "[IO.FileAttributes]::Normal", 1),
+            source.replace(
+                "Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop",
+                "Get-ChildItem -LiteralPath $directory -Force -ErrorAction SilentlyContinue",
+                1,
+            ),
+            source.replace(
+                "if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)",
+                "if ($false)", 1,
+            ),
+            source.replace("$directories.Push($child.FullName)", "# skip nested directories", 1),
             source + "\n  pull_request:\n",
         )
+        cleanup_root_check = source.index(
+            "if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint)"
+        )
+        child_check = source.index(
+            "if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint)"
+        )
+        cleanup_delete = source.index("Remove-Item -LiteralPath $target -Recurse -Force")
+        self.assertLess(cleanup_root_check, child_check)
+        self.assertLess(child_check, cleanup_delete)
+
         for broken in mutants:
             with self.subTest(fragment=broken[-90:]):
                 with self.assertRaises(ValueError):
