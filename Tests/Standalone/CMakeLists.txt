@@ -900,3 +900,17 @@ else()
     target_compile_options(latebrake_race_start_lights_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RaceStartLights COMMAND latebrake_race_start_lights_tests)
+
+# v0.5.76: source-measured forward throttle onset, no career reward changes.
+add_executable(latebrake_launch_input_onset_tests
+    LaunchInputOnsetTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_launch_input_onset_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_launch_input_onset_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_launch_input_onset_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_launch_input_onset_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME LaunchInputOnset COMMAND latebrake_launch_input_onset_tests)

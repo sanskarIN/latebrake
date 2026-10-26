@@ -372,6 +372,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     DriftMeter.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed), static_cast<double>(LateralSpeed),
         bEffectiveBraking});
+    // Presentation-only launch INPUT timing. Official race clock and
+    // verified local possession provide the time/actor identity.
+    // Never record a rival, a pre-GO event, a brake-only command or
+    // a missing driver. This value cannot affect acceleration/rewards.
+    LaunchOnset.Observe(
+        Mode->GetRace().GetElapsedSeconds(),
+        static_cast<double>(EffectiveThrottle), bEffectiveBraking,
+        UGameplayStatics::GetPlayerPawn(this, 0) == this &&
+            Mode->HasLocalPlayerDriver() && Mode->IsRaceStartGreen());
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);

@@ -397,6 +397,16 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            // First physically eligible positive human throttle after GO.
+            // This is input-onset time on the official game clock, NOT
+            // a reflex/skill grade, motion telemetry, medal or reward.
+            if (latebrake::CanAwardFinishedRace(Race) &&
+                Car->GetLaunchOnset().HasInputOnset())
+            {
+                MenuLine(FString::Printf(
+                    TEXT("FIRST FORWARD INPUT AFTER GO: %.2fs (NO BONUS)"),
+                    Car->GetLaunchOnset().FirstForwardInputSeconds()));
+            }
             MenuLine(TEXT("Select to retry the current event."));
             break;
         }
