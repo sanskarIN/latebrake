@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-26
-**Latest published milestone:** [v0.5.75 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75), tagged at independently qualified commit `f19a83186377aab9e4be5d76ef28e36ccd245365` (zero executable assets).
+**Latest published milestone:** [v0.5.76 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.76), tagged at independently qualified commit `de975173e899a180f123feea93c9a2c64e5cc66c` (zero executable assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Next source development (unreleased v0.5.77) — bounded launch precision
+## Merged source development (unreleased v0.5.77) — bounded launch precision
 
 - Interpolate the physical 0–5 km/h threshold only between consecutive
   eligible post-green chassis samples separated by 0.25s or less.
@@ -17,7 +17,7 @@
   Actual UE 5.8, Chaos frame ordering and installed device QA remain open.
   See [launch QA](LAUNCH_SPEED_QA.md).
 
-## Merged source development; v0.5.76 publication qualification pending — 0–5 km/h forward launch estimate
+## v0.5.76 published source-only pre-release — 0–5 km/h forward launch estimate
 
 - A portable `LaunchSpeedMeter` records only a first observed signed
   **forward** crossing of 5 km/h after a stationary/slow post-GO sample,
@@ -30,7 +30,7 @@
   record. No save, credit, medal, handling or sector code is modified.
 - Added portable C++20 boundary tests, real RaceProgress-linked timing
   checks and Python Unreal-source binding tests. **Merged in PR #157,
-  but v0.5.76 is not yet published; source-only and not Unreal-qualified.**
+  and subsequently published in asset-free v0.5.76 after independent three-OS source qualification; not Unreal-qualified.**
   See [launch-speed QA](LAUNCH_SPEED_QA.md).
 
 ## v0.5.75 published source-only pre-release — genuine green-light race start
