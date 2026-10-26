@@ -104,7 +104,7 @@ def verify(site_dir: Path) -> None:
     # Extract from the specifically identified status sentence, rather
     # than matching unrelated historic release links elsewhere on Pages.
     latest_match = re.search(
-        r"/releases/tag/(v\\d+\\.\\d+\\.\\d+)",
+        r"/releases/tag/(v[0-9]+[.][0-9]+[.][0-9]+)",
         home_low[marker_at:marker_at + 500],
     )
     if not latest_match:
