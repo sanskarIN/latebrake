@@ -72,6 +72,14 @@ class DriftComboBindingTests(unittest.TestCase):
         self.assertIn('TEXT("DRIFT %.0f pts | x%.2f | %.1fs")', self.hud)
         self.assertIn("Drift.GetCurrentComboPoints()", self.hud)
         self.assertIn("Drift.GetCurrentComboMultiplier()", self.hud)
+        self.assertIn('TEXT("DRIFT %.0f | x%.2f")', self.hud)
+        self.assertIn("bCompact && Car->GetDriftMeter().HasActiveCombo()",
+                      self.hud)
+        live = self.hud[self.hud.index("const auto Line = [&]"):]
+        self.assertLess(live.index('TEXT("TIME  %02d:%05.2f")'),
+                        live.index('TEXT("DRIFT %.0f | x%.2f")'))
+        self.assertIn("DrawnTelemetryLines >= VerticalPlan.MaxTelemetryLines",
+                      self.hud)
         self.assertIn("Drift.GetTotalPoints()", self.hud)
         self.assertIn("Drift.GetTotalDriftSeconds()", self.hud)
         self.assertIn("if (latebrake::CanAwardFinishedRace(Race))", self.hud)

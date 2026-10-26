@@ -743,6 +743,16 @@ void ALatebrakeRaceHUD::DrawHUD()
             RouteAdvice.DirectDistanceMeters, Hint), Primary);
     }
 
+    // Optional compact drift feedback, AFTER authentic lap/clock and
+    // wayfinding lines; bounded HUD budget may hide it on small phones.
+    // Display only measured, qualified in-game drift, never credits.
+    if (bCompact && Car->GetDriftMeter().HasActiveCombo())
+    {
+        Line(FString::Printf(TEXT("DRIFT %.0f | x%.2f"),
+            Car->GetDriftMeter().GetCurrentComboPoints(),
+            Car->GetDriftMeter().GetCurrentComboMultiplier()), Accent);
+    }
+
     if (!bCompact)
     {
         const latebrake::DrivingSessionStats& DriveStats =
