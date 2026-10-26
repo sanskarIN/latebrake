@@ -1,9 +1,25 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-26
-**Latest published milestone:** [v0.5.73 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.73), tagged at independently qualified commit `3104855426eb5dda4c17286192bfe6e509cceb65` (zero executable assets).
+**Latest published milestone:** [v0.5.74 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.74), tagged at independently qualified commit `4c7bce754a08089b4641f3f60a367b6a3fd7a601` (zero executable assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.74 published source-only pre-release — signed player controller deadzones
+
+- Human steering has a 12% symmetric center deadzone; signed
+  throttle/reverse inputs have a 5.5% center deadzone. Remaining
+  travel is rescaled continuously to full range and keyboard extremes
+  remain ±1. Invalid inputs and thresholds fail closed.
+- Real native UE `ThrottleInput` and `SteerInput` callbacks use this
+  policy. Autonomous rivals and Android touch inputs are unchanged.
+  No physics, awards, racing record or saved user settings change.
+- A new strict C++20 `DriveAxisDeadzone` regression and Unreal
+  source-binding tests independently verify source behavior and
+  mappings. See [controller acceptance QA](ANALOG_INPUT_QA.md).
+- **Published source-only** at a separately qualified immutable main
+  SHA; the source archive is not an installed build and contains zero
+  executable attachments. UE/device gameplay QA is still required.
 
 ## v0.5.73 published source-only pre-release — grounded arcade drift combos
 

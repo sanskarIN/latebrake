@@ -28,6 +28,15 @@ features have regression tests, but still need real Unreal Engine and
 Windows/Android gameplay qualification; see
 [Results insights QA](RESULTS_INSIGHTS_QA.md).
 
+## Human analog controls (v0.5.74 source-only pre-release)
+
+Player steering has a symmetric 12% center deadzone and signed
+throttle/reverse has a 5.5% deadzone, with a smooth full-range
+remapping of remaining analog travel. Full keyboard input and full
+trigger/stick extremes remain intact. Invalid values are neutralized
+without applying these filters to rival AI and phone touch geometry.
+Requires actual UE and controller QA; see [analog input QA](ANALOG_INPUT_QA.md).
+
 ## Camera viewpoints (v0.5.72 source-only pre-release)
 
 Press **C** (existing desktop/gamepad Camera action) to rotate through

@@ -81,6 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.74 (published source-only pre-release) | Signed 12% human steering / 5.5% signed throttle deadzones with continuous travel rescaling, invalid-input safety and preserved touch/rival paths | Strict C++20, Python and docs source checks; real UE 5.8 gamepad/Android QA pending |
 | v0.5.73 (published source-only pre-release) | Run-local, finite arcade drift-combo feedback from genuine chassis velocity samples; gap grace/termination, pause/focus/recovery and reset policy; live HUD and bounded finished Results marked NO CREDITS | Strict C++20 and Unreal-source policy checks, real UE 5.8/chassis/device QA not yet performed |
 | v0.5.72 (published source-only pre-release) | Four native camera spring-arm presets (Chase, Close Chase, Hood, High Chase), keyboard/gamepad cycle, measured HUD label and disjoint Android fresh-press CAM with retained BROWSE menu action | Strict camera/geometry/input source tests; UE Editor/UHT, actual camera clipping and installed Android multitouch QA remain required |
 | v0.5.71 (published source-only pre-release) | Genuine last-eight timed-lap distributions and consecutive faster-lap streak; per-gate best sector review; speed-sampled driving breakdown inside the safe paged Results menu | Strict portable production-linked C++20 and Unreal-source binding tests; engine compilation, original cook and hardware QA outstanding |
