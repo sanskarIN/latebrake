@@ -1,4 +1,8 @@
 #include "Racing/LaunchSpeedMeter.h"
+#include "Racing/RaceStartLights.h"
+#include "Racing/RaceProgress.h"
+
+#include <cmath>
 
 #include <cstdlib>
 #include <iostream>
@@ -78,6 +82,37 @@ int main()
             meter.Observe(0.5, 5.2, true) &&
             meter.SecondsToFiveKmh() == 0.5,
         "fresh restart permits a new estimate");
+
+    // Exercise the production green-light and race clock together. Red
+    // frames cannot produce official elapsed time or a launch observation.
+    latebrake::RaceStartLights lights;
+    latebrake::RaceProgress race(4, 3);
+    LaunchSpeedMeter integrated;
+    for (int i = 0; i < 5; ++i)
+    {
+        race.Advance(lights.Advance(0.5, true));
+    }
+    Require(!lights.IsGreen() && race.GetElapsedSeconds() == 0.0,
+        "five red-light frames cannot advance production race clock");
+    race.Advance(lights.Advance(0.5, true));
+    Require(lights.IsGreen() && race.GetElapsedSeconds() == 0.0,
+        "exact green boundary starts with zero official time");
+    Require(!integrated.Observe(
+        race.GetElapsedSeconds() - race.GetTotalPenaltySeconds(),
+        0.0, lights.IsGreen()),
+        "first post-green stationary sample arms telemetry");
+    race.Advance(lights.Advance(0.3, true));
+    Require(integrated.Observe(
+        race.GetElapsedSeconds() - race.GetTotalPenaltySeconds(),
+        5.5, lights.IsGreen()) &&
+        std::abs(integrated.SecondsToFiveKmh() - 0.3) < 1e-9,
+        "launch estimate uses genuine production green-light race seconds");
+    Require(race.AddTimePenalty(5.0) &&
+        std::abs((race.GetElapsedSeconds() - race.GetTotalPenaltySeconds()) - 0.3) < 1e-9,
+        "recovery fees are excluded from advisory elapsed driving time");
+    integrated.Invalidate();
+    Require(std::abs(integrated.SecondsToFiveKmh() - 0.3) < 1e-9,
+        "a recorded launch remains immutable after an unrelated recovery");
 
     std::cout << "Launch speed telemetry policy passed.\n";
     return EXIT_SUCCESS;
