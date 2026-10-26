@@ -1,3 +1,19 @@
+# v0.5.71 Results insights validation
+
+Three new portable C++20 targets link real race/vehicle source logic:
+`RecentLapPaceStatistics`, `BestSectorReview`, and
+`SampledDrivingReview`. Regression tests require eligible timed finishes,
+real checkpoint split records, a fixed eight-lap retained sample window,
+valid observed chassis metrics, and restart/suspension safety.
+Source-level Python binding contracts verify the actual Results menu
+consumes the new models before existing detail pagination.
+
+These checks are **not** Unreal Engine 5.8 editor/UHT compilation, pixel
+QA, authentic circuit cooking, installed Win64/Android packaging or
+hardware driving tests. See [Results insights QA](RESULTS_INSIGHTS_QA.md).
+
+---
+
 ## v0.5.9 — race clock readiness and fail-closed startup
 
 `RaceClockReadinessTests.cpp` links `RaceProgress.cpp`, not a mock.
