@@ -40,7 +40,42 @@ class WindowsPlaytestSourceTests(unittest.TestCase):
                 self.assertIn(required, self.script)
         self.assertIn("$gameExecutables.Count -ne 1", self.script)
         self.assertIn("if ($Launch)", self.script)
-        self.assertIn("Start-Process -FilePath $game.FullName", self.script)
+        self.assertIn("Run-WindowsPlaytest.ps1", self.script)
+
+    def test_guarded_runtime_session_has_accurate_evidence(self):
+        runtime = (ROOT / "scripts/Run-WindowsPlaytest.ps1").read_text(encoding="utf-8")
+        policy = (ROOT / "scripts/Test-WindowsRuntimePlaytestPolicy.ps1").read_text(encoding="utf-8")
+        for marker in (
+            "Test-CandidateManifest.ps1",
+            "Test-UATPackageStructure.ps1",
+            "-Platform Win64",
+            "Latebrake-candidate-manifest.json",
+            "Where-Object { $_.Name -ieq 'Latebrake.exe' }",
+            "$executables.Count -ne 1",
+            "Get-FileHash",
+            "Start-Process -FilePath $game.FullName",
+            "-PassThru -Wait",
+            "-ABSLOG=",
+            "unreal_log_present",
+            "process_exit_code",
+            "gameplay_verified = $false",
+            "UNVERIFIED_PERSONAL_RUNTIME_PROBE",
+            "LogDirectory must be outside",
+            "ConvertTo-Json",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, runtime)
+        self.assertIn("rejectedFake", policy)
+        self.assertIn("rejectedMalformed", policy)
+        self.assertIn("Test-WindowsRuntimePlaytestPolicy.ps1", self.ci)
+        self.assertIn("Run-WindowsPlaytest.ps1", self.ci)
+
+    def test_double_click_existing_candidate_launcher(self):
+        cmd = (ROOT / "Play-Windows-Candidate.cmd").read_text(encoding="utf-8")
+        self.assertIn("Run-WindowsPlaytest.ps1", cmd)
+        self.assertIn('"%~1"', cmd)
+        self.assertIn("where pwsh.exe", cmd)
+        self.assertNotIn("gh release", cmd)
 
     def test_no_fake_executable_or_automatic_release(self):
         for forbidden in (
