@@ -46,6 +46,8 @@ public:
     // Actual installed collision and vehicle handling still require QA.
     bool IsRacePhysicsReady() const;
     float GetSpeedKmH() const;
+    // Signed Chaos forward velocity for advisory start telemetry; NaN if unavailable.
+    float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
     void ResetDrivingStats() { DrivingStats.Reset(); DriftMeter.Reset(); }
