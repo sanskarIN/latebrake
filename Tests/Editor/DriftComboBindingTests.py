@@ -69,8 +69,9 @@ class DriftComboBindingTests(unittest.TestCase):
     def test_source_hud_never_changes_rewards(self):
         self.assertIn("Car->GetDriftMeter()", self.hud)
         self.assertIn('TEXT("ARCADE DRIFT SCORE (NO CREDITS)")', self.hud)
-        self.assertIn('TEXT("DRIFT COMBO %.0f pts | %.1fs")', self.hud)
+        self.assertIn('TEXT("DRIFT %.0f pts | x%.2f | %.1fs")', self.hud)
         self.assertIn("Drift.GetCurrentComboPoints()", self.hud)
+        self.assertIn("Drift.GetCurrentComboMultiplier()", self.hud)
         self.assertIn("Drift.GetTotalPoints()", self.hud)
         self.assertIn("Drift.GetTotalDriftSeconds()", self.hud)
         self.assertIn("if (latebrake::CanAwardFinishedRace(Race))", self.hud)

@@ -44,6 +44,8 @@ int main()
           m.GetCurrentComboPoints() > 0.0 &&
           Near(m.GetCurrentComboSeconds(), 0.6),
           "real sustained 0.6s drift qualifies once");
+    Check(Near(m.GetCurrentComboMultiplier(), 1.0),
+          "newly qualified arcade combo has x1 multiplier");
     const double beginning = m.GetCurrentComboPoints();
     Check(m.Observe(Sample(0.2, 1600.0, 1000.0)) &&
           m.GetCurrentComboPoints() > beginning,
@@ -93,6 +95,21 @@ int main()
           !m.HasActiveCombo(), "small lateral ratio does not create points");
     Check(m.GetTotalPoints() > 0.0,
           "inactive sample does not erase properly banked previous score");
+    DriftComboMeter lengthy;
+    for (int n = 0; n < 17; ++n)
+    {
+        Check(lengthy.Observe(Sample(0.2, 1700.0, 950.0)),
+              "sustained measured drift sample accepted");
+    }
+    Check(lengthy.HasActiveCombo() &&
+          Near(lengthy.GetCurrentComboMultiplier(), 1.25),
+          "measured three-second combo earns first arcade multiplier");
+    lengthy.Suspend();
+    Check(!lengthy.HasActiveCombo() &&
+          Near(lengthy.GetCurrentComboMultiplier(), 1.0) &&
+          lengthy.GetTotalPoints() > 0.0,
+          "banked combo cannot retain old multiplier");
+
     DriftComboMeter fragmented;
     Check(fragmented.Observe(Sample(0.2, 1600.0, 1000.0)),
           "first isolated slip accepted");

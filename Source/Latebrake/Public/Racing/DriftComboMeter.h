@@ -112,13 +112,22 @@ public:
         {
             CurrentSeconds = std::min(
                 MaxSessionSeconds, CurrentSeconds + sample.DeltaSeconds);
-            const double multiplier = std::min(
-                3.0, 1.0 + 0.25 * std::floor(CurrentSeconds / 3.0));
+            const double multiplier = GetCurrentComboMultiplier();
             const double gain = sample.DeltaSeconds *
                 (100.0 + 120.0 * slipRatio) * multiplier;
             CurrentScore = std::min(MaxScore, CurrentScore + gain);
         }
         return true;
+    }
+
+    // Visual next-sample combo multiplier, not an engine physics or
+    // progression modifier. Reset to x1 on pause or recovery.
+    double GetCurrentComboMultiplier() const noexcept
+    {
+        return Active
+            ? std::min(3.0, 1.0 +
+                0.25 * std::floor(CurrentSeconds / 3.0))
+            : 1.0;
     }
 
     bool HasActiveCombo() const noexcept { return Active; }

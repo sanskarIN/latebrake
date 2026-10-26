@@ -11,10 +11,10 @@ not a measured competition record or a safety/driving lesson.
 - No combo exists without sustained high-speed *in-game* lateral slip
   over a short contiguous qualification window. A single sudden skid,
   brake input or invalid frame earns nothing.
-- A short loss of slip permits continuity; sustained recovery to grip,
+- A short loss of slip permits continuity **after the combo has qualified**;\n  any interruption before qualification resets the candidate. Sustained recovery to grip,
   pause, focus loss, paid recovery or physics invalidity ends and banks
   the current provisional combo without double counting.
-- The live racing HUD shows the running combo on spacious displays.
+- The live racing HUD shows the running combo and its current\n  time-based arcade scoring multiplier on spacious displays.
   The paged finished Results menu shows run-local total arcade points,
   combo count, best combo and qualified sample seconds, but ONLY if a
   real valid awardable race finish exists.

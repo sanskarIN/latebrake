@@ -764,8 +764,9 @@ void ALatebrakeRaceHUD::DrawHUD()
             if (Drift.HasActiveCombo())
             {
                 Line(FString::Printf(
-                    TEXT("DRIFT COMBO %.0f pts | %.1fs"),
+                    TEXT("DRIFT %.0f pts | x%.2f | %.1fs"),
                     Drift.GetCurrentComboPoints(),
+                    Drift.GetCurrentComboMultiplier(),
                     Drift.GetCurrentComboSeconds()), Accent);
             }
         }
