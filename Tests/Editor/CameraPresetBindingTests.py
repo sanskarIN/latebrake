@@ -62,6 +62,7 @@ class CameraPresetBindingTests(unittest.TestCase):
         self.assertIn(
             "case latebrake::TouchControl::MenuBrowse:", self.pawn)
         self.assertIn("CanCycleCameraFromTouch({", self.pawn)
+        self.assertIn("Mode && Mode->GetRace().IsFinished()", self.pawn)
         self.assertIn("ChangeCamera();", self.pawn)
         self.assertIn('"Vehicles/TouchCameraCyclePolicy.h"', self.pawn)
         self.assertIn("CameraViewNumber(Car->GetCameraView())", self.hud)

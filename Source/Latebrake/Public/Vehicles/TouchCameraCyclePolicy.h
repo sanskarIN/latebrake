@@ -17,6 +17,7 @@ struct CameraTouchRequest final
     bool MenuOpen = false;
     bool Paused = false;
     bool FocusSuspended = false;
+    bool RaceFinished = false;
 };
 
 constexpr bool CanCycleCameraFromTouch(CameraTouchRequest request) noexcept
@@ -24,6 +25,7 @@ constexpr bool CanCycleCameraFromTouch(CameraTouchRequest request) noexcept
     return request.Region == TouchControl::MenuBrowse &&
         request.FreshPress && request.HasRaceMode &&
         request.CircuitReady && request.PlayerReady &&
-        !request.MenuOpen && !request.Paused && !request.FocusSuspended;
+        !request.MenuOpen && !request.Paused && !request.FocusSuspended &&
+        !request.RaceFinished;
 }
 } // namespace latebrake

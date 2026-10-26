@@ -23,8 +23,8 @@ On Android, the **already reserved upper-middle MenuBrowse rectangle**
 displays **CAM 1/2/3/4** during driving, indicating the active preset, and keeps its existing **BROWSE** menu
 function while the menu is open. The new policy only accepts a genuine
 freshly pressed finger on this specific control when a real mode,
-qualified circuit and local driver exist, with no game/menu pause or
-focus-loss latch. Dragging a steering/pedal finger into CAM never
+qualified circuit and local driver exist, with no game/menu pause,
+focus-loss latch or finished event. Dragging a steering/pedal finger into CAM never
 switches the view. Input safety and viewport ownership remain unchanged.
 
 ## Independent strict source tests

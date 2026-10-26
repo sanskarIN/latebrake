@@ -16,7 +16,7 @@
   `MenuBrowse` rectangle becomes the CAM touch action; in menus it
   remains BROWSE. A portable fail-closed admission policy requires
   a fresh distinct press, valid mode/circuit/driver and no pause/focus
-  loss, without acquiring steering/pedal ownership. HUD draws CAM
+  loss or finished race, without acquiring steering/pedal ownership. HUD draws CAM
   using precisely the same hit-test rectangle and shows the selected
   view name below lap/time on larger viewports.
 - **Qualification:** strict C++20 preset and touch geometry/admission

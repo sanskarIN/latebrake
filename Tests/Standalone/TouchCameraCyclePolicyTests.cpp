@@ -21,7 +21,7 @@ int main()
     using namespace latebrake;
     CameraTouchRequest ok{
         TouchControl::MenuBrowse, true, true, true, true,
-        false, false, false
+        false, false, false, false
     };
     Check(CanCycleCameraFromTouch(ok), "fresh CAM in ready race permitted");
     for (auto xy : {240.0, 640.0, 1920.0})
@@ -60,6 +60,10 @@ int main()
     ok.FocusSuspended = true;
     Check(!CanCycleCameraFromTouch(ok), "OS focus loss blocks camera");
     ok.FocusSuspended = false;
+    ok.RaceFinished = true;
+    Check(!CanCycleCameraFromTouch(ok),
+          "finished events cannot activate the live-race CAM control");
+    ok.RaceFinished = false;
     ok.CircuitReady = false;
     Check(!CanCycleCameraFromTouch(ok),
           "missing qualified circuit blocks action");

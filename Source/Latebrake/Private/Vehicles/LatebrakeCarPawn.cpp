@@ -744,7 +744,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
                 Mode && Mode->IsMenuOpen(),
                 UGameplayStatics::IsGamePaused(this) ||
                     (Mode && Mode->IsManualRacePauseActive()),
-                Mode && Mode->IsFocusLossGuardActive()}))
+                Mode && Mode->IsFocusLossGuardActive(),
+                Mode && Mode->GetRace().IsFinished()}))
         {
             ChangeCamera();
         }
