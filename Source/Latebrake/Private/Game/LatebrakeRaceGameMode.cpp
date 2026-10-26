@@ -111,6 +111,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     BuildCircuit();
     Race.Reset();
     StartLights.Reset();
+    LaunchMeter.Reset();
     RefreshRival();
 }
 
@@ -135,6 +136,19 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     latebrake::AdvancePlayerRaceClockIfReady(
         Race, bCircuitReady, bInactive || !StartLights.IsGreen(),
         bLocalPlayerReady, LiveDelta);
+    // Observational only: use the already-authorized post-GO clock,
+    // excluding recovery fees, and signed actual player chassis speed.
+    if (bStartQualified && StartLights.IsGreen())
+    {
+        const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
+            UGameplayStatics::GetPlayerPawn(this, 0));
+        if (IsValid(Car))
+        {
+            LaunchMeter.Observe(
+                Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds(),
+                static_cast<double>(Car->GetForwardSpeedKmH()), bStartQualified);
+        }
+    }
     ApplyGarageToPlayer();
 }
 
@@ -1271,6 +1285,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     ManualPause.OnExplicitResume();
     Race.Reset();
     StartLights.Reset();
+    LaunchMeter.Reset();
     LastCareerAward = {};
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
@@ -1339,6 +1354,9 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
                  "or Unreal did not verify the car's new position/heading; no fee charged"));
         return;
     }
+    // A real paid teleport cannot be mistaken for a grid launch. A rejected
+    // recovery above returns without erasing an otherwise valid sample.
+    LaunchMeter.Invalidate();
 }
 
 void ALatebrakeRaceGameMode::LoadRecords()
