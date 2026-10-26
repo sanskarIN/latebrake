@@ -42,9 +42,11 @@ int main()
     const CameraPreset hood = GetCameraPreset(CameraView::Hood);
     const CameraPreset high = GetCameraPreset(CameraView::High);
     Require(Near(chase.ArmLengthCm, 560.0) &&
+            Near(chase.FieldOfViewDegrees, 90.0) &&
             chase.CameraLagEnabled && chase.CollisionProbeEnabled,
             "default camera reproduces original wide chase settings");
     Require(close.ArmLengthCm < chase.ArmLengthCm &&
+            close.FieldOfViewDegrees < chase.FieldOfViewDegrees &&
             close.CameraLagSpeed > chase.CameraLagSpeed,
             "close chase genuinely changes framing and lag");
     Require(Near(hood.ArmLengthCm, 0.0) &&
@@ -52,6 +54,7 @@ int main()
             !hood.CameraLagEnabled && !hood.CollisionProbeEnabled,
             "hood puts view ahead of chassis and bypasses boom probe");
     Require(high.ArmLengthCm > chase.ArmLengthCm &&
+            high.FieldOfViewDegrees < chase.FieldOfViewDegrees &&
             high.PitchDegrees < chase.PitchDegrees,
             "high chase uses higher-angle longer-distance view");
     Require(std::string(CameraViewName(CameraView::Hood)) == "HOOD",
@@ -75,6 +78,12 @@ int main()
     bad.CameraLagEnabled = true;
     bad.CameraLagSpeed = 0.0;
     Require(!IsSafeCameraPreset(bad), "enabled lag must have positive speed");
+    bad = chase;
+    bad.FieldOfViewDegrees = 0.0;
+    Require(!IsSafeCameraPreset(bad), "zero field of view rejected");
+    bad = chase;
+    bad.FieldOfViewDegrees = std::numeric_limits<double>::quiet_NaN();
+    Require(!IsSafeCameraPreset(bad), "nonfinite lens rejected");
     bad = chase;
     bad.ForwardOffsetCm = std::numeric_limits<double>::infinity();
     Require(!IsSafeCameraPreset(bad), "infinite camera offset rejected");

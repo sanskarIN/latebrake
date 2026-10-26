@@ -21,6 +21,7 @@ struct CameraPreset final
     double ForwardOffsetCm;
     double HeightOffsetCm;
     double CameraLagSpeed;
+    double FieldOfViewDegrees;
     bool CameraLagEnabled;
     bool CollisionProbeEnabled;
 };
@@ -30,14 +31,14 @@ constexpr CameraPreset GetCameraPreset(CameraView view) noexcept
     switch (view)
     {
     case CameraView::CloseChase:
-        return {270.0, -9.0, 0.0, 110.0, 10.0, true, true};
+        return {270.0, -9.0, 0.0, 110.0, 10.0, 84.0, true, true};
     case CameraView::Hood:
-        return {0.0, -3.0, 215.0, 86.0, 0.0, false, false};
+        return {0.0, -3.0, 215.0, 86.0, 0.0, 92.0, false, false};
     case CameraView::High:
-        return {720.0, -40.0, 0.0, 240.0, 5.5, true, true};
+        return {720.0, -40.0, 0.0, 240.0, 5.5, 78.0, true, true};
     case CameraView::Chase:
     default:
-        return {560.0, -12.0, 0.0, 120.0, 7.0, true, true};
+        return {560.0, -12.0, 0.0, 120.0, 7.0, 90.0, true, true};
     }
 }
 
@@ -61,11 +62,13 @@ inline bool IsSafeCameraPreset(CameraPreset p) noexcept
         std::isfinite(p.ForwardOffsetCm) &&
         std::isfinite(p.HeightOffsetCm) &&
         std::isfinite(p.CameraLagSpeed) &&
+        std::isfinite(p.FieldOfViewDegrees) &&
         p.ArmLengthCm >= 0.0 && p.ArmLengthCm <= 1200.0 &&
         p.PitchDegrees >= -80.0 && p.PitchDegrees <= 5.0 &&
         p.ForwardOffsetCm >= -100.0 && p.ForwardOffsetCm <= 300.0 &&
         p.HeightOffsetCm >= 0.0 && p.HeightOffsetCm <= 350.0 &&
         p.CameraLagSpeed >= 0.0 && p.CameraLagSpeed <= 20.0 &&
+        p.FieldOfViewDegrees >= 60.0 && p.FieldOfViewDegrees <= 105.0 &&
         (!p.CameraLagEnabled || p.CameraLagSpeed > 0.0);
 }
 

@@ -545,6 +545,13 @@ void ALatebrakeCarPawn::ApplyCameraPreset()
     CameraBoom->CameraLagSpeed = static_cast<float>(View.CameraLagSpeed);
     CameraBoom->bEnableCameraLag = View.CameraLagEnabled;
     CameraBoom->bDoCollisionTest = View.CollisionProbeEnabled;
+    if (IsValid(FollowCamera))
+    {
+        // Distinct, bounded static lens framing. No racing-speed camera
+        // pumping, reward logic, physics mutation or save format change.
+        FollowCamera->SetFieldOfView(
+            static_cast<float>(View.FieldOfViewDegrees));
+    }
 }
 
 void ALatebrakeCarPawn::ChangeCamera()

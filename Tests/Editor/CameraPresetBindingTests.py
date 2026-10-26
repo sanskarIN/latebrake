@@ -30,6 +30,7 @@ class CameraPresetBindingTests(unittest.TestCase):
             "CameraView::Hood", "CameraView::High",
             "CameraViewCycle", "IsSafeCameraPreset(",
             "CollisionProbeEnabled", "CameraLagEnabled",
+            "FieldOfViewDegrees",
         ):
             self.assertIn(fragment, self.policy)
         self.assertIn('"Vehicles/CameraPresets.h"', self.pawn_h)
@@ -43,6 +44,8 @@ class CameraPresetBindingTests(unittest.TestCase):
             "CameraBoom->CameraLagSpeed =",
             "CameraBoom->bEnableCameraLag =",
             "CameraBoom->bDoCollisionTest =",
+            "FollowCamera->SetFieldOfView(",
+            "View.FieldOfViewDegrees",
             "IsSafeCameraPreset(Requested)",
         ):
             self.assertIn(fragment, self.pawn)

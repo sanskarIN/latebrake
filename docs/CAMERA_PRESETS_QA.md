@@ -13,7 +13,7 @@ The original single C-key near/far toggle has been replaced by a
 | 3: HIGH CHASE | 720 cm | -40° | Steep elevated view of nearby track |
 
 Each preset explicitly controls spring arm/socket offsets, lag and
-collision probe. Camera state is ephemeral to the pawn; it does not
+collision probe and bounded static lens field of view. Camera state is ephemeral to the pawn; it does not
 change driving/AI forces, checkpoint scoring, career progression,
 reward accounting, multiplayer, game saves or lap record eligibility.
 Unsupported enum values fall back to safe CHASE. The non-compact HUD
@@ -64,7 +64,7 @@ These are source tests, **not Unreal Editor/UHT compilation**.
   camera cycle on an invalid or unfinished race world.
 - Check several device aspect ratios and DPI: low right-hand buttons
   remain clear; upper-middle CAM must not overlap the speed/time HUD,
-  SAVE FAILED warning or menu controls. Verify natural camera lag and
+  SAVE FAILED warning or menu controls. Verify natural camera lag, lens field of view and
   spring arm collision behavior at high speeds and narrow track walls.
 - Attach actual package provenance, screenshots, device model/OS,
   failures and benchmark metrics to
