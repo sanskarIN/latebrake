@@ -72,5 +72,4 @@ tests are UE game runtime or physical chassis playtests.
   models/versions and QA to [Playable-release gate #148](
   https://github.com/sanskarIN/latebrake/issues/148) as appropriate.
 
-**v0.5.73 drift source is not yet engine-qualified, published, playable
-or stable. No compiled Windows/Android game asset is available.**
+**v0.5.73 is a published SOURCE-ONLY pre-release with zero executable game assets. It remains unqualified in UE 5.8 and on real Windows/Android installs, and is not a playable or stable release.**
