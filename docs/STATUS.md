@@ -5,6 +5,26 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.72 source development — four race views and touch camera
+
+- **Source-only feature:** C cycles four deterministic Chase, Close
+  Chase, Hood and High Chase presets instead of a two-distance toggle.
+  Each applies a real UE spring-arm length, pitch, forward/vertical
+  offset, collision probe and camera lag. The shared camera policy is
+  allocation-free and refuses unsafe/nonfinite values.
+- **Android CAM:** During an active race, the previously unused visible
+  `MenuBrowse` rectangle becomes the CAM touch action; in menus it
+  remains BROWSE. A portable fail-closed admission policy requires
+  a fresh distinct press, valid mode/circuit/driver and no pause/focus
+  loss, without acquiring steering/pedal ownership. HUD draws CAM
+  using precisely the same hit-test rectangle and shows the selected
+  view name below lap/time on larger viewports.
+- **Qualification:** strict C++20 preset and touch geometry/admission
+  regression tests plus actual Unreal pawn/HUD source-binding tests.
+  [Camera QA](CAMERA_PRESETS_QA.md) defines essential UE 5.8
+  compilation, actual framing and Android multitouch acceptance.
+  **This is not yet published as a pre-release or qualified as playable.**
+
 ## v0.5.71 published source-only pre-release — race Results insights
 
 - **Source-only implementation:** Three additional real Results reviews:

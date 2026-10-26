@@ -6,6 +6,14 @@
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
+**v0.5.72 source development:** four deterministic camera presets
+(Chase, Close Chase, Hood, High Chase) replace the old near/far toggle,
+with the existing keyboard/gamepad C binding and a press-only Android
+CAM button using the safe reserved menu-browse rectangle. The strict
+portable camera/input policies have regression tests; engine camera
+framing and phone touch QA remain outstanding.
+See [camera QA](docs/CAMERA_PRESETS_QA.md).
+
 ## What's in source today?
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.

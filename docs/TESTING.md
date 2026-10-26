@@ -1,3 +1,18 @@
+# v0.5.72 camera source validation
+
+`CameraPresetsTests.cpp` covers all four native view configurations,
+four-step wrap, reset, safety bounds and safe fallback. The new
+`TouchCameraCyclePolicyTests.cpp` validates actual shared touch layout
+hit-testing and one-press camera command policy, blocking paused/
+backgrounded/menu/invalid races and other touch regions. Unreal source
+contract tests assert native spring-arm properties, CAM-vs-BROWSE,
+C key binding and optional camera label **after** official lap/clock.
+Read [camera QA](CAMERA_PRESETS_QA.md) for required installed-game
+work before playable claims. No licensed Unreal runtime build, cooked
+map, Win64/Android binary or screenshot is produced by these tests.
+
+---
+
 # v0.5.71 Results insights validation
 
 Three new portable C++20 targets link real race/vehicle source logic:

@@ -28,6 +28,19 @@ features have regression tests, but still need real Unreal Engine and
 Windows/Android gameplay qualification; see
 [Results insights QA](RESULTS_INSIGHTS_QA.md).
 
+## Camera viewpoints (v0.5.72 source development)
+
+Press **C** (existing desktop/gamepad Camera action) to rotate through
+CHASE, CLOSE CHASE, HOOD, HIGH CHASE. Each view has an explicit Unreal
+spring-arm distance, angle, socket offset, collision and lag policy.
+The selected mode is shown on spacious racing HUD layouts. On Android
+the existing upper-middle pad displays **CAM** during gameplay, while
+its menu meaning stays **BROWSE**. Touch camera activation requires
+a fresh press in a ready, unpaused, focused race. The steering and
+gas/brake hit rectangles are unchanged. [Camera test plan](CAMERA_PRESETS_QA.md).
+
+No screenshots or original cooked asset/runtime validation are claimed.
+
 ## Driving and controls
 
 The prototype car is built from engine primitives and uses Chaos-backed rigid-body forces with Arcade and simulation-inspired presets. It is **not** a production tire/suspension simulation.
