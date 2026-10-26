@@ -5,6 +5,22 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.70 source development — timed lap review in Results
+
+- **Unreleased source feature:** The Results menu now shows a bounded
+  eight-lap review from actual finished-run `RaceProgress` records with
+  physical lap numbers, run-best comparisons and signed deltas against the
+  preceding retained timed lap (desktop). Mobile displays compact single
+  rows through the existing safe detail pager; no race authority, reward
+  or save format is changed.
+- Invalid, incomplete, penalty-only and zero-time finishes fail closed.
+  Strict production-linked C++20 tests cover three-lap, one-lap, twelve-lap,
+  reset, and invalid-run cases; Python source contracts check HUD binding.
+  See [recent lap review QA](RECENT_LAP_REVIEW_QA.md).
+- **Not engine qualified:** Licensed Unreal Engine 5.8/UHT build, actual
+  Canvas rendering, real packages and Windows/Android device tests remain
+  outstanding; **v0.5.65** remains the latest published GitHub pre-release.
+
 ## v0.5.69 source development — accessible paged menu details
 
 - **Unreleased source feature:** Results/Career/Garage menu rows hidden by the v0.5.68 safety cap can now be visited page by page rather than permanently lost. The HUD pins the menu title/instructions, collects all eligible text rows, renders one bounded `MenuDetailWindow`, and shows a real page number in its reserved notice strip.
