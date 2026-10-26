@@ -16,38 +16,88 @@ on:
 permissions:
   contents: read
 
+# One real engine installation can cook only one project candidate at a
+# time. Never cancel/replace an active BuildCookRun with a newer dispatch.
+concurrency:
+  group: latebrake-ue58-candidate
+  cancel-in-progress: false
+
 jobs:
   real-engine-candidate:
     name: Genuine ${{ inputs.platform }} candidate — NOT device qualified
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, Windows, X64, unreal-5-8]
     timeout-minutes: 180
     steps:
-      - name: Checkout source and real authored Git LFS assets
+      - name: Checkout immutable main SHA and real authored Git LFS assets
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           lfs: true
+          persist-credentials: false
 
-      - name: Verify authorized Windows UE 5.8 environment
+      - name: Verify immutable source, authorized UE 5.8 and fresh output
+        id: preflight
         shell: pwsh
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.sha }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:LATEBRAKE_UNREAL_ROOT)) {
-            throw 'Configure LATEBRAKE_UNREAL_ROOT for the runner service with your licensed Unreal Engine 5.8 directory.'
+            throw 'Configure LATEBRAKE_UNREAL_ROOT on the licensed Windows UE 5.8 runner.'
           }
+          $versionPath = Join-Path $env:LATEBRAKE_UNREAL_ROOT 'Engine/Build/Build.version'
           $engine = Join-Path $env:LATEBRAKE_UNREAL_ROOT 'Engine/Build/BatchFiles/Build.bat'
-          if (-not (Test-Path -LiteralPath $engine -PathType Leaf)) {
-            throw "Unreal Build.bat not found on runner: $engine"
+          if (-not (Test-Path -LiteralPath $engine -PathType Leaf) -or
+              -not (Test-Path -LiteralPath $versionPath -PathType Leaf)) {
+            throw 'Genuine UE Build.bat and Build.version are both mandatory.'
           }
+          $version = Get-Content -LiteralPath $versionPath -Raw | ConvertFrom-Json
+          if ($version.MajorVersion -ne 5 -or $version.MinorVersion -ne 8) {
+            throw 'Wrong licensed Unreal version: this manual workflow requires 5.8.'
+          }
+          $actualSha = (@(& git rev-parse --verify HEAD) | Select-Object -First 1).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualSha -cne $env:EXPECTED_SOURCE_SHA) {
+            throw 'Checkout does not match the immutable manual-dispatch SHA.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+            throw 'Missing runner temporary directory.'
+          }
+          $candidate = Join-Path $env:RUNNER_TEMP ('LateBrake-ue58-' + $env:GITHUB_RUN_ID + '-' + $env:GITHUB_RUN_ATTEMPT + '-${{ inputs.platform }}')
+          if (Test-Path -LiteralPath $candidate) {
+            throw 'Refusing to reuse an existing candidate output directory.'
+          }
+          "candidate_output=$candidate" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Authorized UE 5.8 candidate source SHA: $actualSha"
+          Write-Host 'This remains an UNVERIFIED build, not a game release.'
 
-      - name: Compile Editor, create actual map and cook real candidate
+      - name: Compile Editor, author actual map, cook and hash real candidate
         shell: pwsh
         run: |
-          ./scripts/Build-PlayableCandidate.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT -Platform '${{ inputs.platform }}' -OutputDirectory "./dist/candidates/${{ inputs.platform }}"
+          ./scripts/Build-PlayableCandidate.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT -Platform '${{ inputs.platform }}' -OutputDirectory '${{ steps.preflight.outputs.candidate_output }}'
 
-      - name: Save UNVERIFIED candidate for on-device QA (NOT GitHub Release)
+      - name: Save UNVERIFIED candidate for real installed QA (NOT GitHub Release)
         uses: actions/upload-artifact@v4
         with:
-          name: LateBrake-${{ inputs.platform }}-UNVERIFIED-candidate
-          path: dist/candidates/${{ inputs.platform }}/
+          name: LateBrake-${{ inputs.platform }}-UNVERIFIED-${{ github.run_id }}
+          path: ${{ steps.preflight.outputs.candidate_output }}/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
           compression-level: 0
+
+      # GitHub Actions artifact is for private candidate inspection ONLY.
+      # No GitHub release, no claim of Windows/Android QA or store readiness.
+      - name: Remove temporary runner candidate after artifact handoff
+        if: always()
+        shell: pwsh
+        env:
+          CANDIDATE_OUTPUT: ${{ steps.preflight.outputs.candidate_output }}
+        run: |
+          if (-not [string]::IsNullOrWhiteSpace($env:CANDIDATE_OUTPUT) -and
+              -not [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+            $root = [System.IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\','/') + [System.IO.Path]::DirectorySeparatorChar
+            $target = [System.IO.Path]::GetFullPath($env:CANDIDATE_OUTPUT)
+            if ($target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) -and
+                (Test-Path -LiteralPath $target -PathType Container)) {
+              Remove-Item -LiteralPath $target -Recurse -Force
+            }
+          }
