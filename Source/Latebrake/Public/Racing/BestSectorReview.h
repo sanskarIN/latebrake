@@ -61,3 +61,4 @@ inline BestSectorReview BuildBestSectorReview(
     result.SecondsBehindAchievedBest = bestAchieved - theoretical;
     return result;
 }
+} // namespace latebrake

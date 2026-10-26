@@ -104,3 +104,4 @@ inline RecentLapPaceStatistics CalculateRecentLapPaceStatistics(
     result.ConsecutiveImprovements = streak;
     return result;
 }
+} // namespace latebrake

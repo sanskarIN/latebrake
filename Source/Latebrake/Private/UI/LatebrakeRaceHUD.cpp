@@ -6,6 +6,9 @@
 #include "UI/HudMenuVerticalPlan.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/RecentLapReview.h"
+#include "Racing/RecentLapPaceStatistics.h"
+#include "Racing/BestSectorReview.h"
+#include "Racing/SampledDrivingReview.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/CurrentLapPotential.h"
 #include "Racing/LiveSectorTarget.h"
@@ -292,6 +295,84 @@ void ALatebrakeRaceHUD::DrawHUD()
                         MenuLine(FString::Printf(
                             TEXT("  LAP %d vs prior timed: %+.2fs"),
                             Row.CompletedLap, Row.DeltaToPreviousSeconds));
+                    }
+                }
+            }
+            // Run-local pace distribution. The most recent at most eight
+            // genuine timed laps are analyzed; earlier laps may have been
+            // evicted and can never be reconstructed from this buffer.
+            const latebrake::RecentLapPaceStatistics PaceStatistics =
+                latebrake::CalculateRecentLapPaceStatistics(Race);
+            if (PaceStatistics.Valid)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("LAST %d TIMED LAPS: %d-%d"),
+                    PaceStatistics.SampleCount,
+                    PaceStatistics.OldestLap,
+                    PaceStatistics.NewestLap), true);
+                MenuLine(FString::Printf(
+                    TEXT("Recent avg %.2fs | median %.2fs"),
+                    PaceStatistics.AverageSeconds,
+                    PaceStatistics.MedianSeconds));
+                MenuLine(FString::Printf(
+                    TEXT("Latest vs recent avg: %+.2fs"),
+                    PaceStatistics.NewestVsAverageSeconds));
+                if (!bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Recent range %.2f-%.2fs | std dev %.2fs"),
+                        PaceStatistics.FastestSampleSeconds,
+                        PaceStatistics.SlowestSampleSeconds,
+                        PaceStatistics.PopulationDeviationSeconds));
+                }
+                if (PaceStatistics.ConsecutiveImprovements > 0)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Faster in last %d consecutive lap comparisons"),
+                        PaceStatistics.ConsecutiveImprovements));
+                }
+            }
+
+            // Best splits come from measured ordered gates and may belong to
+            // DIFFERENT laps. Theoretical sum is not an achieved record.
+            const latebrake::BestSectorReview SectorReview =
+                latebrake::BuildBestSectorReview(Race);
+            if (SectorReview.Valid)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("MIXED BEST SECTORS: %.2fs (NOT A TIMED LAP)"),
+                    SectorReview.MixedBestSectorsSeconds), true);
+                for (int32 Index = 0; Index < SectorReview.Count; ++Index)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("GATE %d best split %.2fs"),
+                        Index + 1, SectorReview.SectorSeconds[Index]));
+                }
+            }
+
+            // Chassis telemetry is sampled independently from the race
+            // clock. Never label speed-integrated distance official.
+            if (latebrake::CanAwardFinishedRace(Race))
+            {
+                const latebrake::SampledDrivingReview DriveReview =
+                    latebrake::BuildSampledDrivingReview(
+                        Car->GetDrivingStats());
+                if (DriveReview.Valid)
+                {
+                    MenuLine(TEXT("SAMPLED CAR TELEMETRY (ESTIMATED)"), true);
+                    MenuLine(FString::Printf(
+                        TEXT("%.2fkm speed-est | peak %.0f km/h"),
+                        DriveReview.EstimatedDistanceKm,
+                        DriveReview.PeakSpeedKmH));
+                    MenuLine(FString::Printf(
+                        TEXT("Brake %.0f%% sampled | %d applications"),
+                        DriveReview.BrakingPercent,
+                        DriveReview.BrakeApplications));
+                    if (!bCompact)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("High lateral slip %.0f%% of sampled time"),
+                            DriveReview.HighLateralSlipPercent));
                     }
                 }
             }

@@ -50,3 +50,4 @@ inline SampledDrivingReview BuildSampledDrivingReview(
     result.HighLateralSlipPercent = 100.0 * slipping / time;
     return result;
 }
+} // namespace latebrake
