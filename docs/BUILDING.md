@@ -12,6 +12,20 @@
 
 Unreal Engine is **not** redistributed by this repository.
 
+## Personal Windows game executable (requires actual UE 5.8)
+
+For a single **private Win64 Development candidate**, use
+[the personal Win64 build/test guide](WINDOWS_PERSONAL_PLAYTEST.md):
+clone the repository on an authorized Windows Unreal Engine 5.8
+workstation, then double-click `Build-Windows-Playtest.cmd` or run
+`pwsh ./scripts/Build-WindowsPlaytest.ps1`. The helper invokes the
+real Editor/UHT, genuine map authoring and Unreal UAT packaging;
+it prints the exact `Latebrake.exe` path and package fingerprints
+only after successful engine commands. It cannot create any Windows
+game executable from CMake tests or this documentation site.
+It never publishes a GitHub Release. Local gameplay testing remains
+mandatory before claiming a playable or stable build.
+
 ## Windows editor workflow
 
 1. `git clone https://github.com/sanskarIN/latebrake.git`.
