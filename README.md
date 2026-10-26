@@ -6,6 +6,8 @@
 
 **Merged source development (v0.5.76 release qualification pending):** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
+**Next source development (v0.5.77, unreleased):** launch telemetry now estimates the 5 km/h crossing *between consecutive, valid short-interval chassis speed samples*, and conservatively refuses interpolation across a pause, malformed sample or physics hitch. It remains an optional, run-local observation only; [testing limitations](docs/LAUNCH_SPEED_QA.md).
+
 **v0.5.75 published source feature:** a genuine start-light countdown
 with shared player/rival/clock/checkpoint authorization, fractional
 start-frame accounting and pause-safe 3 / 2 / 1 / GO display. Source
