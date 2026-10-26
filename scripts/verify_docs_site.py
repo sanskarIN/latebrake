@@ -62,6 +62,8 @@ REQUIRED_HTML = (
     "releases/v0.5.71/index.html",
     "RESULTS_INSIGHTS_QA/index.html",
     "CAMERA_PRESETS_QA/index.html",
+    "DRIFT_COMBO_QA/index.html",
+    "releases/v0.5.73/index.html",
 )
 REQUIRED_ASSETS = (
     "assets/stylesheets/extra.css",
