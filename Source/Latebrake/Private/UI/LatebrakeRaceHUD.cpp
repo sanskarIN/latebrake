@@ -280,13 +280,13 @@ void ALatebrakeRaceHUD::DrawHUD()
                 for (int32 Offset = 0; Offset < LapReview.Count; ++Offset)
                 {
                     const auto& Row = LapReview.Rows[Offset];
+                    const FString BestLabel = Row.EqualsRunBest
+                        ? FString(TEXT("RUN BEST"))
+                        : FString::Printf(TEXT("+%.2fs TO BEST"),
+                            Row.SecondsBehindRunBest);
                     MenuLine(FString::Printf(
                         TEXT("LAP %d: %.2fs | %s"),
-                        Row.CompletedLap, Row.LapSeconds,
-                        Row.EqualsRunBest
-                            ? TEXT("RUN BEST")
-                            : *FString::Printf(TEXT("+%.2fs TO BEST"),
-                                Row.SecondsBehindRunBest)));
+                        Row.CompletedLap, Row.LapSeconds, *BestLabel));
                     if (!bCompact && Row.HasPrevious)
                     {
                         MenuLine(FString::Printf(

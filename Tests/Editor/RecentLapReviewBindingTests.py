@@ -54,11 +54,8 @@ class RecentLapReviewBindingTests(unittest.TestCase):
             self.assertIn(mark, self.model)
         for mark in (
             "penaltyOnly", "zeroLap", "many", "race.Reset()",
-            "Latest", "bounded.Valid",
+            "bounded.Valid",
         ):
-            # Test variable names and assertions are deliberate source contracts.
-            if mark == "Latest":
-                continue
             self.assertIn(mark, self.test)
         for mark in ("RecentLapReviewTests.cpp", "NAME RecentLapReview",
                      "RaceProgress.cpp", "/W4 /WX", "-Wpedantic -Werror"):

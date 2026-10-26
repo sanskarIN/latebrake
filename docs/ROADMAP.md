@@ -81,6 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.70 (source development, not released) | Recent eight timed laps visible in paged Results menu with run-best and previous-lap comparisons | Strict portable source tests; UE 5.8/UHT, authentic circuit cook and installed Win64/Android QA still required |
 | v0.5.69 (source development, unreleased) | Retain and page all otherwise-hidden Results, Career and Garage text; keyboard Up/Down plus Android menu UP/DOWN pads; pinned title and save banner; resize/reset hygiene | Portable strict three-OS C++20 pagination and Unreal input-source contracts; actual UE5.8 Editor, cooked map, installed Android touch and accessibility QA pending |
 | v0.5.68 (source development, unreleased) | Bound results/career/garage menu content above real Android steering pad; reserve honest details-hidden and save-failure banners | Strict C++20 and Unreal-source callsite tests; actual Android/UE5.8 typography, scrolling and physical touch QA pending |
 | v0.5.67 (source development, unreleased) | Font-measured safe HUD text lane using real Android touch geometry; log-time ellipsis across race, menu, status and footer; compact LAP/GATE readability | Three-OS strict C++20 and real Unreal HUD source contracts; genuine UE5.8 Canvas/DPI, localization and physical touch QA pending |
@@ -110,4 +111,3 @@ solely because packaging helper scripts now exist.
 | v0.5.36 (published source-only pre-release) | Track only successfully charged recovery/time fees atomically; show already-included total on HUD/results and verify source integration | Strict C++20 and Python HUD contracts; installed Unreal and device rendering/physics QA remains open |
 | v0.5.35 (published source-only pre-release) | Suspend player time, checkpoint scoring, recoveries and rival driving on app focus loss independently of a successful engine world pause; explicitly resume after player action | C++20 and source bindings; genuine Unreal 5.8 and installed Win64/Android focus-loss QA still required |
 
-| v0.5.70 (source development, not released) | Recent eight timed laps visible in paged Results menu with run-best and previous-lap comparisons | Strict portable source tests; UE 5.8/UHT, authentic circuit cook and installed Win64/Android QA still required |
