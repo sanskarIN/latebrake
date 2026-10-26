@@ -30,6 +30,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
     previous_by_version = {
         "v0.5.60": "v0.5.46",
         "v0.5.65": "v0.5.60",  # Intermediate source milestones were not tagged.
+        "v0.5.70": "v0.5.65",  # Includes safe HUD and completed-lap review.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -85,7 +86,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -241,6 +242,34 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(fragment=invalid[-100:]):
                 with self.assertRaises(ValueError):
                     verify_modern_source_release("v0.5.65", invalid, notes)
+
+    def test_v0570_dynamic_source_release_rejects_missing_gates(self):
+        source = (WORKFLOWS / "publish-v0.5.70-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.70.md").read_text(
+            encoding="utf-8"
+        )
+        verify_modern_source_release("v0.5.70", source, notes)
+        mutations = (
+            source.replace("const sha = context.sha;",
+                           "const sha = '0' * 40;", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("published.assets.length !== 0",
+                           "false /* unsafe assets */", 1),
+            source.replace(
+                "needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                "needs: [source-tests]", 1),
+            source.replace("prerelease: true", "prerelease: false", 1),
+            source.replace("ref: ${{ github.sha }}",
+                           "ref: main", 1),
+            source.replace("tag: 'v0.5.65'",
+                           "tag: 'v0.5.69'", 1),
+        )
+        for invalid in mutations:
+            with self.subTest(fragment=invalid[-100:]):
+                with self.assertRaises(ValueError):
+                    verify_modern_source_release("v0.5.70", invalid, notes)
 
     def test_required_release_warnings_fail_closed(self):
         version = "v0.5.32"
