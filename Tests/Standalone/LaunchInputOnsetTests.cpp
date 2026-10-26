@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <initializer_list>
 #include <limits>
 
 namespace
