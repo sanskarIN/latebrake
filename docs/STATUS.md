@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-26
-**Latest published milestone:** [v0.5.72 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.72), tagged at independently qualified commit `95d9ecdf11eecfd37d7636b328ec8860463cef33` (zero executable assets).
+**Latest published milestone:** [v0.5.73 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.73), tagged at independently qualified commit `3104855426eb5dda4c17286192bfe6e509cceb65` (zero executable assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.73 source development — grounded arcade drift combos
+## v0.5.73 published source-only pre-release — grounded arcade drift combos
 
 - **Source-only addition:** fixed-state `DriftComboMeter` observes the
   actual car's bounded planar and lateral velocity samples, requiring
@@ -25,8 +25,7 @@
   [Drift QA plan](DRIFT_COMBO_QA.md) lists additional mandatory
   UE 5.8 compilation, original track, physics, Windows/Android
   rendering and hardware tests.
-- **v0.5.73 is currently source development, not a published tag or
-  verified playable game.** Latest published source preview remains v0.5.72.
+- **Published SOURCE-ONLY pre-release:** the exact main commit passed three-OS portable C++20, Python source-binding, synthetic PowerShell policies and documentation integrity checks. The tag has zero runnable assets; a playable game and real engine/device qualifications are still outstanding.
 
 ## v0.5.72 published source-only pre-release — four race views and touch camera
 
