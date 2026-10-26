@@ -28,6 +28,7 @@
 #include "Misc/CoreDelegates.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
+#include <limits>
 
 namespace
 {
@@ -449,6 +450,26 @@ float ALatebrakeCarPawn::GetSpeedKmH() const
     }
     const float SpeedKmH = FVector(V.X, V.Y, 0.f).Size() * 0.036f;
     return FMath::IsFinite(SpeedKmH) ? FMath::Max(0.f, SpeedKmH) : 0.f;
+}
+
+float ALatebrakeCarPawn::GetForwardSpeedKmH() const
+{
+    // Never treat malformed or missing chassis motion as a valid stopped
+    // launch sample. A true reverse velocity remains signed and negative.
+    if (!IsValid(Chassis))
+    {
+        return std::numeric_limits<float>::quiet_NaN();
+    }
+    const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
+    const FVector Forward = GetActorForwardVector();
+    const double ForwardKmH = FVector::DotProduct(Velocity, Forward) * 0.036;
+    if (!FMath::IsFinite(ForwardKmH) ||
+        ForwardKmH > static_cast<double>(std::numeric_limits<float>::max()) ||
+        ForwardKmH < -static_cast<double>(std::numeric_limits<float>::max()))
+    {
+        return std::numeric_limits<float>::quiet_NaN();
+    }
+    return static_cast<float>(ForwardKmH);
 }
 
 bool ALatebrakeCarPawn::TryRecoverTo(
