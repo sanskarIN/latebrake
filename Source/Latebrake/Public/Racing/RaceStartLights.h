@@ -58,16 +58,27 @@ public:
     double Advance(double deltaSeconds, bool raceReady) noexcept
     {
         if (!raceReady || !std::isfinite(deltaSeconds) ||
-            deltaSeconds <= 0.0 || deltaSeconds > MaxAcceptedFrameSeconds)
+            deltaSeconds <= 0.0)
         {
             return 0.0;
         }
 
+        // Once the race is live, a genuine positive frame hitch must
+        // still count toward the official clock. Applying the red-light
+        // anti-skip cap AFTER green would silently undercount a driven
+        // lap when the renderer stutters or the device drops frames.
         if (Green)
         {
             TimeSinceGreenSeconds = std::min(
                 GoVisibleSeconds, TimeSinceGreenSeconds + deltaSeconds);
             return deltaSeconds;
+        }
+
+        // Only the still-red startup countdown rejects an implausible
+        // large frame; this prevents an artificial jump straight to GO.
+        if (deltaSeconds > MaxAcceptedFrameSeconds)
+        {
+            return 0.0;
         }
 
         const double remaining = CountdownSeconds - ElapsedCountdownSeconds;

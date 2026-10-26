@@ -27,9 +27,11 @@ unpaused race displays **START LIGHTS 3 / 2 / 1 / GO!**. The actual
   and race elapsed time. No SaveGame schema or credits change.
 
 A short GO cue remains visible for approximately 0.85 seconds of
-qualified running time. Unreasonably long (>0.5s) or invalid frames do
-not consume start-sequence time; this protects against timer jumps,
-though very low frame-rate devices need genuine performance testing.
+qualified running time. Before green, long (>0.5s) or invalid frames do not consume the
+countdown, protecting against a sudden skipped-light transition. **After
+GO**, a real finite positive frame hitch still counts toward official
+race time, preventing stuttered devices from gaining free racing seconds.
+Very low frame-rate hardware still requires installed QA.
 
 ## Portable and Unreal-source tests
 

@@ -92,6 +92,16 @@ int main()
             start.Phase() == RaceStartPhase::Racing,
             "brief GO cue eventually disappears");
 
+    const double timeOnHitch = start.Advance(1.2, true);
+    Require(Near(timeOnHitch, 1.2) &&
+            start.Phase() == RaceStartPhase::Racing,
+            "once GO is live, real positive hitch time is counted");
+    Require(Near(start.Advance(1.2, false), 0.0),
+            "paused race never clocks a real hitch");
+    Require(Near(start.Advance(
+                std::numeric_limits<double>::infinity(), true), 0.0),
+            "invalid post-green clock frames still fail closed");
+
     start.Reset();
     race.Reset();
     Require(!start.IsGreen() &&

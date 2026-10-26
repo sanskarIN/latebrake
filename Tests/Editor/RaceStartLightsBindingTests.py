@@ -122,6 +122,7 @@ class RaceStartLightsBindingTests(unittest.TestCase):
             "std::isfinite(deltaSeconds)", "MaxAcceptedFrameSeconds",
             "const double liveSeconds = deltaSeconds - remaining",
             "if (!raceReady", "TimeSinceGreenSeconds",
+            "if (deltaSeconds > MaxAcceptedFrameSeconds)",
             "GoVisibleSeconds", "return liveSeconds;",
         ):
             self.assertIn(required, self.lights)
@@ -141,6 +142,7 @@ class RaceStartLightsBindingTests(unittest.TestCase):
             "authoritative clock excludes all earlier lights",
             "exact start boundary never contributes time",
             "red light remains one at 2.5 eligible seconds",
+            "once GO is live, real positive hitch time is counted",
         ):
             self.assertIn(case, self.portable)
 
