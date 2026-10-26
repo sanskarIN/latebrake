@@ -66,6 +66,9 @@ int main()
     Require(Near(start.Advance(0.45, false), 0.0) &&
             Near(start.SecondsUntilGreen(), 1.0),
             "app interruption freezes final red light");
+    Require(Near(start.Advance(0.5, true), 0.0) &&
+            start.Phase() == RaceStartPhase::One,
+            "red light remains one at 2.5 eligible seconds");
     Require(Near(start.Advance(0.4, true), 0.0),
             "final red light still denies lap-clock progression");
     Require(!start.IsGreen(), "race has not begun before green");

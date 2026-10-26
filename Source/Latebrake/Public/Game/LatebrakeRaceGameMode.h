@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/RaceSessionEpoch.h"
+#include "Racing/RaceStartLights.h"
 #include "Racing/RestartPlacementGuard.h"
 #include "Racing/AppFocusRaceGuard.h"
 #include "Racing/ManualRacePauseGuard.h"
@@ -71,6 +72,11 @@ public:
     void RecoverPlayer(ALatebrakeCarPawn* Car);
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
+    bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
+    latebrake::RaceStartPhase GetRaceStartPhase() const
+    {
+        return StartLights.Phase();
+    }
     bool IsCircuitReadyForGameplay() const { return bCircuitReady; }
     bool HasLocalPlayerDriver() const;
     bool IsRestartPlacementReady() const;
@@ -118,6 +124,9 @@ private:
     int32 CareerStartedVehicleId = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
+    // Explicit per-attempt start gate: no paid race clock or chassis force
+    // until a genuine local player, map and safe grid are ready.
+    latebrake::RaceStartLights StartLights;
     bool bCircuitReady = false;
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
