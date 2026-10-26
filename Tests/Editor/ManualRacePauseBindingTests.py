@@ -97,11 +97,16 @@ class ManualRacePauseBindingTests(unittest.TestCase):
 
     def test_policy_regression_mutations_fail_contract(self):
         broken = self.mode.replace(
-            "AppFocusGuard.IsSuspended() || ManualPause.IsSuspended(),",
-            "AppFocusGuard.IsSuspended(),",
+            "AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();",
+            "AppFocusGuard.IsSuspended();",
         )
         self.assertNotIn("ManualPause.IsSuspended()",
                          body(broken, "ALatebrakeRaceGameMode", "Tick"))
+        self.assertIn("ManualPause.IsSuspended()",
+                      body(self.mode, "ALatebrakeRaceGameMode", "Tick"))
+        # Start-light readiness and official race clock both depend on
+        # bInactive: deleting the original fallback pause would weaken both.
+        self.assertIn("!bInactive", body(self.mode, "ALatebrakeRaceGameMode", "Tick"))
         no_player_gate = self.pawn.replace(
             "Mode->IsManualRacePauseActive(),",
             "false,",

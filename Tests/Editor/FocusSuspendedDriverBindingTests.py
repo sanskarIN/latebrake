@@ -50,7 +50,10 @@ class FocusSuspendedDriverBindingTests(unittest.TestCase):
         self.assertLess(tick.index("NeutralizeMotionWhenDrivingBlocked();"),
                         tick.index("Chassis->AddTorqueInRadians("))
         self.assertIn("!latebrake::CanApplyPlayerDrive({", tick)
-        blocked = tick.split("if (!Mode || !latebrake::CanApplyPlayerDrive({", 1)[1]
+        self.assertIn("!Mode->IsRaceStartGreen()", tick)
+        blocked = tick.split(
+            "if (!Mode || !Mode->IsRaceStartGreen() ||", 1)[1]
+        self.assertIn("!latebrake::CanApplyPlayerDrive({", blocked)
         blocked = blocked.split("#if PLATFORM_ANDROID", 1)[0]
         self.assertIn("return;", blocked)
         self.assertIn("Mode->IsCircuitReadyForGameplay()", blocked)

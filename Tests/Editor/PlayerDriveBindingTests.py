@@ -35,7 +35,9 @@ class PlayerDriveBindingTests(unittest.TestCase):
     def test_tick_requires_all_authoritative_safety_flags(self):
         tick = method(self.cpp, "Tick")
         self.assertIn("World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>()", tick)
-        gate = "if (!Mode || !latebrake::CanApplyPlayerDrive({"
+        gate = "if (!Mode || !Mode->IsRaceStartGreen() ||"
+        self.assertIn("!latebrake::CanApplyPlayerDrive({", tick)
+        self.assertIn("Mode->IsRaceStartGreen()", tick)
         self.assertEqual(tick.count(gate), 1)
         required = (
             "Mode->IsCircuitReadyForGameplay()",
