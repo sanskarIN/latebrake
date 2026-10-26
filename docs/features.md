@@ -13,6 +13,17 @@ GO notice appears in the race HUD after the official clock row.
 Actual Unreal/installed QA is still required. See
 [start-sequence QA](RACE_START_QA.md).
 
+## Launch feedback (v0.5.76 published source preview)
+
+The run-local, optional 0–5 km/h launch estimate uses signed forward
+velocity from the real player chassis and the authoritative post-GO clock,
+not virtual reaction time or a predicted countdown. The next
+**unreleased v0.5.77** source refinement interpolates only across short,
+consecutive qualified physics samples; interruptions and larger gaps fail
+closed. It never changes credits, competitive records, saves or vehicle
+forces. Actual Unreal physics sampling and installed Win64/Android QA
+remain unverified. [Launch QA](LAUNCH_SPEED_QA.md).
+
 ## Racing
 
 - Four ordered directional circuit gates; rejected crossings include wrong-way and implausible trajectories.

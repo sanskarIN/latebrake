@@ -7,6 +7,7 @@ an Unreal build, package verifier or functional browser accessibility audit.
 from __future__ import annotations
 
 import argparse
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
@@ -66,6 +67,7 @@ REQUIRED_HTML = (
     "releases/v0.5.73/index.html",
     "releases/v0.5.74/index.html",
     "releases/v0.5.75/index.html",
+    "releases/v0.5.76/index.html",
     "UE58_WORKSTATION_QA/index.html",
     "RACE_START_QA/index.html",
 )
@@ -92,9 +94,25 @@ def verify(site_dir: Path) -> None:
 
     home = (site_dir / "index.html").read_text(encoding="utf-8")
     home_low = home.lower()
-    for phrase in ("source only", "v0.5.75", "unreal engine 5.8", "c++20"):
+    for phrase in ("source only", "unreal engine 5.8", "c++20"):
         if phrase not in home_low:
             raise ValueError(f"home page missing accurate core/status copy: {phrase}")
+    marker = "latest github source tag is"
+    marker_at = home_low.find(marker)
+    if marker_at < 0:
+        raise ValueError("home page lacks explicit latest published source tag")
+    # Extract from the specifically identified status sentence, rather
+    # than matching unrelated historic release links elsewhere on Pages.
+    latest_match = re.search(
+        r"/releases/tag/(v[0-9]+[.][0-9]+[.][0-9]+)",
+        home_low[marker_at:marker_at + 500],
+    )
+    if not latest_match:
+        raise ValueError("home page has no linked latest GitHub source tag")
+    latest_tag = latest_match.group(1)
+    if not (site_dir / f"releases/{latest_tag}/index.html").is_file():
+        raise ValueError(f"latest published source notes not rendered: {latest_tag}")
+
     status = (site_dir / "development-status/index.html").read_text(
         encoding="utf-8"
     ).lower()
@@ -102,7 +120,7 @@ def verify(site_dir: Path) -> None:
         "not yet verified",
         "windows playable binary",
         "android apk",
-        "v0.5.75",
+        latest_tag,
     ):
         if phrase not in status:
             raise ValueError(f"status page lost current qualification detail: {phrase}")

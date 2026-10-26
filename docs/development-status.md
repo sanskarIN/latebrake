@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.75](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.76 source code merged, release qualification pending**: optional 0–5 km/h forward launch telemetry after real GO. **v0.5.75 remains latest published**. Previously, v0.5.75 on `main` added an actual shared green-light gate for clock, player/rival driving, checkpoint scoring and recovery, with precise GO-frame timing; v0.5.74 added analog deadzones. Real UE 5.8/UHT compilation, an original cooked circuit and installed phone/desktop QA remain unavailable |
+| Latest published GitHub pre-release | [v0.5.76](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.76), **source only**, zero runnable assets |
+| Latest source-development milestone | **v0.5.77 merged, unreleased**: bounded interpolation for the advisory launch-speed estimate, with interruption and same-clock guards. **v0.5.76 is published** at independently source-qualified commit `de975173e899a180f123feea93c9a2c64e5cc66c` and adds measured forward 0–5 km/h feedback after the v0.5.75 green-light gate. Real Unreal 5.8/UHT compilation, an original cooked circuit and installed phone/desktop QA remain unavailable |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
