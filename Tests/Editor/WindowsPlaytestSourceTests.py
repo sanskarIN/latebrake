@@ -1,0 +1,80 @@
+"""Source-only guarantees for the private Windows Unreal build launcher.
+
+These tests do not compile UE/UHT or produce a playable EXE.
+"""
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parents[2]
+WRAPPER = ROOT / "scripts/Build-WindowsPlaytest.ps1"
+CMD = ROOT / "Build-Windows-Playtest.cmd"
+DOCS = ROOT / "docs/WINDOWS_PERSONAL_PLAYTEST.md"
+CI = ROOT / ".github/workflows/core-tests.yml"
+
+
+class WindowsPlaytestSourceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.script = WRAPPER.read_text(encoding="utf-8")
+        cls.launcher = CMD.read_text(encoding="utf-8")
+        cls.docs = DOCS.read_text(encoding="utf-8")
+        cls.ci = CI.read_text(encoding="utf-8")
+
+    def test_game_is_built_by_real_engine_pipeline(self):
+        for required in (
+            "UnrealEditor.exe",
+            "Engine/Build/BatchFiles/Build.bat",
+            "Engine/Build/BatchFiles/RunUAT.bat",
+            "Engine/Build/Build.version",
+            "Test-SourceProvenance.ps1",
+            "Build-PlayableCandidate.ps1",
+            "-Platform Win64",
+            "Test-CandidateManifest.ps1",
+            "-Platform Win64",
+            "Latebrake-candidate-manifest.json",
+            "Latebrake.exe",
+            "Get-FileHash",
+            "UNVERIFIED",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, self.script)
+        self.assertIn("$gameExecutables.Count -ne 1", self.script)
+        self.assertIn("if ($Launch)", self.script)
+        self.assertIn("Start-Process -FilePath $game.FullName", self.script)
+
+    def test_no_fake_executable_or_automatic_release(self):
+        for forbidden in (
+            "cmake --build", "gh release create", "upload-artifact",
+            "WriteAllBytes", "Set-Content -Path $game",
+            "Copy-Item -LiteralPath $project",
+        ):
+            self.assertNotIn(forbidden, self.script)
+        self.assertIn("if (Test-Path -LiteralPath $candidate)", self.script)
+        self.assertIn("out/Win64Playtests", self.script)
+        self.assertIn("SourceProvenance", self.script)
+
+    def test_double_click_launcher_uses_real_wrapper(self):
+        self.assertIn("where pwsh.exe", self.launcher)
+        self.assertIn('scripts\\Build-WindowsPlaytest.ps1', self.launcher)
+        self.assertIn('%*', self.launcher)
+        self.assertNotIn('Test/Standalone', self.launcher)
+
+    def test_documentation_distinguishes_candidate_from_playable_release(self):
+        for text in (
+            "PowerShell 7", "Unreal Engine 5.8",
+            "Build-Windows-Playtest.cmd",
+            "Build-WindowsPlaytest.ps1",
+            "UNVERIFIED",
+            "out/Win64Playtests",
+            "cooked",
+            "#148",
+        ):
+            self.assertIn(text, self.docs)
+
+    def test_ci_runs_synthetic_negative_preflight(self):
+        self.assertIn("Build-WindowsPlaytest.ps1", self.ci)
+        self.assertIn("Test-WindowsPlaytestWrapperPolicy.ps1", self.ci)
+
+
+if __name__ == "__main__":
+    unittest.main()
