@@ -85,11 +85,10 @@ class ReleaseStatusConsistencyTests(unittest.TestCase):
 
     def test_stale_status_is_rejected(self):
         mismatch = dict(self.documents)
+        version = require_consistent_release_status(mismatch)
+        stale_version = version.rsplit(".", 1)[0] + ".999"
         mismatch["docs/index.md"] = mismatch["docs/index.md"].replace(
-            "latest GitHub source tag is <a href=",
-            "latest GitHub source tag is <a href=",
-        ).replace(
-            "/releases/tag/v0.5.76", "/releases/tag/v0.5.75", 1
+            f"/releases/tag/v{version}", f"/releases/tag/v{stale_version}", 1
         )
         with self.assertRaises(ValueError):
             require_consistent_release_status(mismatch)
