@@ -902,7 +902,10 @@ endif()
 add_test(NAME RaceStartLights COMMAND latebrake_race_start_lights_tests)
 
 # Next source candidate: honest per-run forward launch speed estimate.
-add_executable(latebrake_launch_speed_meter_tests LaunchSpeedMeterTests.cpp)
+add_executable(latebrake_launch_speed_meter_tests
+    LaunchSpeedMeterTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
 target_include_directories(latebrake_launch_speed_meter_tests PRIVATE ../../Source/Latebrake/Public)
 target_compile_features(latebrake_launch_speed_meter_tests PRIVATE cxx_std_20)
 if (MSVC)
