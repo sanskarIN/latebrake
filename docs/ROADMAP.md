@@ -81,6 +81,7 @@ solely because packaging helper scripts now exist.
 
 | Version | Source scope | Qualification outstanding |
 | --- | --- | --- |
+| v0.5.73 (source development, not released) | Run-local, finite arcade drift-combo feedback from genuine chassis velocity samples; gap grace/termination, pause/focus/recovery and reset policy; live HUD and bounded finished Results marked NO CREDITS | Strict C++20 and Unreal-source policy checks, real UE 5.8/chassis/device QA not yet performed |
 | v0.5.72 (published source-only pre-release) | Four native camera spring-arm presets (Chase, Close Chase, Hood, High Chase), keyboard/gamepad cycle, measured HUD label and disjoint Android fresh-press CAM with retained BROWSE menu action | Strict camera/geometry/input source tests; UE Editor/UHT, actual camera clipping and installed Android multitouch QA remain required |
 | v0.5.71 (published source-only pre-release) | Genuine last-eight timed-lap distributions and consecutive faster-lap streak; per-gate best sector review; speed-sampled driving breakdown inside the safe paged Results menu | Strict portable production-linked C++20 and Unreal-source binding tests; engine compilation, original cook and hardware QA outstanding |
 | v0.5.70 (published source-only pre-release) | Recent eight timed laps visible in paged Results menu with run-best and previous-lap comparisons | Strict portable source tests; UE 5.8/UHT, authentic circuit cook and installed Win64/Android QA still required |

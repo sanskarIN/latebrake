@@ -14,6 +14,16 @@ portable camera/input policies have regression tests; engine camera
 framing and phone touch QA remain outstanding.
 See [camera QA](docs/CAMERA_PRESETS_QA.md).
 
+**v0.5.73 source development (not published):** an optional,
+run-local **arcade drift-combo meter** reads the measured chassis speed
+and lateral motion and presents provisional points in the desktop HUD
+and genuine finish Results. It never grants credits, affects race
+timing, changes vehicle forces or modifies saved records. Its
+invalid-frame, pause, recovery, reset and no-phantom-score behavior is
+covered by C++20 and Unreal-source regression tests. Real UE 5.8
+rendering/physics QA remains necessary; see
+[drift combo QA](docs/DRIFT_COMBO_QA.md).
+
 ## What's in source today?
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.
