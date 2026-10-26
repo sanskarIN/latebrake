@@ -22,7 +22,9 @@ toward real engine builds, not evidence that one has run or passed.
    `Android`. No push, pull_request, fork or user-supplied source
    reference is allowed to execute in the licensed runner. The job
    checks out `github.sha` and disables persisted checkout credentials.
-5. Each run uses a new candidate path within the runner temporary
+5. The platform and generated candidate output path are carried through
+   GitHub Actions **environment variables**, never interpolated into
+   PowerShell code. Each run uses a new candidate path within the runner temporary
    directory. Build-PlayableCandidate invokes the project's genuine
    Editor/UHT compilation, real map authoring, UAT cook, provenance
    hash/manifest generation and post-build candidate consistency

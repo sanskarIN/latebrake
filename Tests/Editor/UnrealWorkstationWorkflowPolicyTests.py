@@ -33,6 +33,10 @@ def validate_manual_workstation_workflow(source: str) -> None:
         "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT",
         "candidate_output=$candidate",
         "Build-PlayableCandidate.ps1",
+        "CANDIDATE_PLATFORM: ${{ inputs.platform }}",
+        "CANDIDATE_OUTPUT: ${{ steps.preflight.outputs.candidate_output }}",
+        "-Platform $env:CANDIDATE_PLATFORM",
+        "-OutputDirectory $env:CANDIDATE_OUTPUT",
         "Test-Path -LiteralPath $candidate",
         "actions/upload-artifact@v4",
         "UNVERIFIED",
@@ -51,6 +55,8 @@ def validate_manual_workstation_workflow(source: str) -> None:
     for forbidden in (
         "continue-on-error: true", "github.rest.repos.createRelease",
         "gh release create", "make_latest:", "release-action",
+        "-OutputDirectory '${{ steps.preflight.outputs.candidate_output }}'",
+        "-Platform '${{ inputs.platform }}'",
     ):
         if forbidden in source:
             raise ValueError("Unverified UE candidate cannot publish a public release")
@@ -99,6 +105,10 @@ class UnrealWorkstationWorkflowPolicyTests(unittest.TestCase):
             source.replace("UNVERIFIED", "READY_TO_PUBLISH"),
             source.replace("Build-PlayableCandidate.ps1",
                            "Build-PreRelease.ps1", 1),
+            source.replace("-OutputDirectory $env:CANDIDATE_OUTPUT",
+                           "-OutputDirectory './stale-output'", 1),
+            source.replace("CANDIDATE_PLATFORM: ${{ inputs.platform }}",
+                           "CANDIDATE_PLATFORM: Win64", 1),
             source.replace("retention-days: 3",
                            "retention-days: 90", 1),
             source + "\n  pull_request:\n",

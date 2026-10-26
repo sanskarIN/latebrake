@@ -72,8 +72,16 @@ jobs:
 
       - name: Compile Editor, author actual map, cook and hash real candidate
         shell: pwsh
+        # Never splice the output path into PowerShell source; Windows
+        # temp directories can contain quotes or other shell characters.
+        env:
+          CANDIDATE_PLATFORM: ${{ inputs.platform }}
+          CANDIDATE_OUTPUT: ${{ steps.preflight.outputs.candidate_output }}
         run: |
-          ./scripts/Build-PlayableCandidate.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT -Platform '${{ inputs.platform }}' -OutputDirectory '${{ steps.preflight.outputs.candidate_output }}'
+          if ([string]::IsNullOrWhiteSpace($env:CANDIDATE_OUTPUT)) {
+            throw 'Candidate output path was not set by successful preflight.'
+          }
+          ./scripts/Build-PlayableCandidate.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT -Platform $env:CANDIDATE_PLATFORM -OutputDirectory $env:CANDIDATE_OUTPUT
 
       - name: Save UNVERIFIED candidate for real installed QA (NOT GitHub Release)
         uses: actions/upload-artifact@v4
