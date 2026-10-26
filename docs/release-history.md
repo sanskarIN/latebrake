@@ -5,6 +5,10 @@
 
 **Current state:** v0.5.75 is the latest published source-only pre-release, still without a runnable Unreal game. Its genuine three-second red→green race-start policy controls the authoritative clock, AI/player movement and ordered checkpoints, building on v0.5.74 controller deadzones. Actual Unreal/Win64/Android package and installed device qualification remain required.
 
+## In qualification
+
+The proposed **v0.5.76** source-only launch-speed update is merged as code and has a dedicated release workflow. The tag and release are **not published** until independently passing source checks for its exact release commit. No runnable game binaries are available. [Candidate notes](releases/v0.5.76.md).
+
 ## Published source previews
 
 Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). Individual documentation snapshots are also preserved here:

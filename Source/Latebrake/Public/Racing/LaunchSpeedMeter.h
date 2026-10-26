@@ -55,6 +55,14 @@ public:
             return false;
         }
 
+        // A late first physics observation already above the threshold
+        // cannot prove a post-GO acceleration from rest. Fail closed for
+        // the entire attempt, even if the car later decelerates below 5.
+        if (!HaveLastSample && forwardKmh >= ThresholdKmh)
+        {
+            Invalidate();
+            return false;
+        }
         HaveLastSample = true;
         LastSampleSeconds = activeSeconds;
         if (forwardKmh < ThresholdKmh)
@@ -64,8 +72,8 @@ public:
         }
         if (!SawBelowThreshold)
         {
-            // The first sample was already in motion: do not assume
-            // the car crossed 5 km/h after the actual green flag.
+            // No confirmed below-threshold baseline is available; the
+            // meter remains unqualified until a genuine slow sample.
             return false;
         }
         TimeToFiveKmhSeconds = activeSeconds;

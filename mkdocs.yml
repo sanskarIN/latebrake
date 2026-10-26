@@ -100,6 +100,7 @@ nav:
       - Gate QA summaries: GATE_QA_SUMMARIES.md
       - Player race clock QA: PLAYER_RACE_CLOCK_QA.md
       - Race clock readiness QA: RACE_CLOCK_READINESS_QA.md
+      - Launch-speed feedback QA: LAUNCH_SPEED_QA.md
       - Vehicle dynamics readiness QA: VEHICLE_DYNAMICS_QA.md
       - Steering and handling stability QA: DRIVING_STABILITY_QA.md
       - Verified recovery teleport QA: VERIFIED_RECOVERY_QA.md
