@@ -725,6 +725,12 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     case latebrake::TouchControl::CareerStart:
         CareerStart();
         return;
+    case latebrake::TouchControl::MenuBrowse:
+        // This separate existing upper-middle pad is BROWSE in menus
+        // but CAM during a live race. It never acquires drive input.
+        // Only a genuinely new press can change the view.
+        ChangeCamera();
+        return;
     default:
         break;
     }

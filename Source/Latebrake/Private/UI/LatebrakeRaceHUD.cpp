@@ -1082,6 +1082,9 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.Recover, TEXT("RECOVER"), false);
         DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
         DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
+        // MenuBrowse has a disjoint reserved hit rectangle. Reuse it as
+        // CAM in racing without moving the existing safety/control pads.
+        DrawPad(Pads.MenuBrowse, TEXT("CAM"), false);
     }
 #else
     const float FooterScale = Scale * (bCompact ? 0.90f : 0.78f);
