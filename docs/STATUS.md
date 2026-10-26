@@ -1,13 +1,30 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-25
-**Latest published milestone:** [v0.5.65 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.65), tagged at independently source-qualified commit `7005f7cecb0ca4e4cbe580710c8ceb93e8d94a4d`.
+**Updated:** 2026-10-26
+**Latest published milestone:** [v0.5.70 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.70), tagged at independently qualified commit `ddee1234b16a0db14177b7a15bff8b7349f5ce7c` (zero executable assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.70 source development — timed lap review in Results
+## v0.5.71 source development — race Results insights
 
-- **Unreleased source feature:** The Results menu now shows a bounded
+- **Source-only implementation:** Three additional real Results reviews:
+  last eight retained completed timed laps' average, median, population
+  deviation and consecutive faster-lap streak; real best per-gate
+  sectors and explicitly mixed-lap theoretical sum; independently
+  sampled chassis distance, peak speed, brake usage and high lateral
+  slip time. No official timing, rewards, handling, SaveGame or career
+  state is modified.
+- The existing touch-safe Results pager makes the additional rows
+  reachable; compact displays hide secondary lines. Data policies
+  refuse unawardable timing, insufficient/invalid windows and
+  malformed chassis samples. Portable C++20 and Unreal HUD source
+  contracts are included; **engine and device QA remain outstanding**.
+  See [Results insights QA](RESULTS_INSIGHTS_QA.md).
+- This v0.5.71 branch is **not yet a published pre-release**.
+
+## v0.5.70 published source-only pre-release — timed lap review in Results
+
+- **Published in source preview:** The Results menu shows a bounded
   eight-lap review from actual finished-run `RaceProgress` records with
   physical lap numbers, run-best comparisons and signed deltas against the
   preceding retained timed lap (desktop). Mobile displays compact single
@@ -19,7 +36,7 @@
   See [recent lap review QA](RECENT_LAP_REVIEW_QA.md).
 - **Not engine qualified:** Licensed Unreal Engine 5.8/UHT build, actual
   Canvas rendering, real packages and Windows/Android device tests remain
-  outstanding; **v0.5.65** remains the latest published GitHub pre-release.
+  outstanding; **v0.5.70** is the latest published GitHub pre-release.
 
 ## v0.5.69 source development — accessible paged menu details
 

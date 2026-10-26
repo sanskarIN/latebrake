@@ -480,3 +480,25 @@ ctest --test-dir Tests/Standalone/build -R '^(RecentLapReview|MenuDetailPager|Fi
 These are C++20 source checks, **not** Unreal 5.8/UHT compile,
 genuine cooked game binaries, HUD pixel validation or device QA.
 See [recent lap review QA](../../docs/RECENT_LAP_REVIEW_QA.md).
+
+### v0.5.71 — Results analytics and sampled driving details
+
+Three new engine-neutral tests are linked to the **actual production**
+`RaceProgress.cpp` or `DrivingSessionStats.cpp`:
+
+- `RecentLapPaceStatisticsTests.cpp`: last eight retained timed laps,
+  mean/median, population standard deviation, signed pace difference,
+  genuine adjacent improvement streak, restart and unawardable finishes.
+- `BestSectorReviewTests.cpp`: actual gate-by-gate positive best splits,
+  mixed-lap theoretical sum, completed eligibility and invalid finishes.
+- `SampledDrivingReviewTests.cpp`: speed-integrated distance, peak
+  speed, brake activations, real accepted sample time ratios, interruption
+  and fail-closed insufficient data.
+
+```sh
+ctest --test-dir Tests/Standalone/build -C Release -R '^(RecentLapPaceStatistics|BestSectorReview|SampledDrivingReview)$' --output-on-failure
+```
+
+These policies do not compile or run Unreal Engine 5.8, test Canvas
+legibility, package any executable, or validate driving physics on real
+hardware. See [Results insights QA](../../docs/RESULTS_INSIGHTS_QA.md).
