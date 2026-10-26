@@ -27,6 +27,25 @@ No credits, career awards, best times, saves or vehicle handling depend on it.
   optionally shows the same session estimate. Small screens can clip optional
   telemetry **after** authoritative time/position readouts.
 
+## Next source refinement (v0.5.77, not a playable build)
+
+- For two **consecutive valid** post-GO physics samples separated by at
+  most **0.25 seconds**, estimate the first 5 km/h crossing by bounded
+  linear interpolation. The estimate must lie between the measured
+  samples; it is an approximation, **not reaction time**, an exact sensor
+  timestamp or performance-certified acceleration.
+- On malformed/nonfinite velocity, pause, focus loss, unqualified frame
+  or a longer data gap, **do not interpolate across the interruption**.
+  The next physically observed threshold is used conservatively instead.
+- Reject a forward 5 km/h crossing reported at the exact timestamp of
+  the preceding lower-speed sample; the two readings cannot prove elapsed
+  acceleration. An initial already-moving reading still invalidates the
+  launch attempt. Verified recovery and race restart keep their existing
+  safety semantics.
+- The policy is run-local HUD/Results information only. No credits,
+  personal bests, career progression, checkpoint gates or tuning depend
+  on the interpolated value.
+
 ## Automated source checks
 
 ```sh
