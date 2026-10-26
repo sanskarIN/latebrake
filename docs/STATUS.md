@@ -5,6 +5,18 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Next source development (unreleased v0.5.77) — bounded launch precision
+
+- Interpolate the physical 0–5 km/h threshold only between consecutive
+  eligible post-green chassis samples separated by 0.25s or less.
+  Interrupted, malformed and stalled samples use the observed endpoint,
+  never an invented crossing. Equal-clock speed spikes fail closed.
+- Pure C++20 tests cover exact mid-frame interpolation, successive slow
+  baselines, NaN, suspended sessions, frame gaps, reverse launch and
+  impossible duplicate-clock speeds. No official scoring or saves change.
+  Actual UE 5.8, Chaos frame ordering and installed device QA remain open.
+  See [launch QA](LAUNCH_SPEED_QA.md).
+
 ## Merged source development; v0.5.76 publication qualification pending — 0–5 km/h forward launch estimate
 
 - A portable `LaunchSpeedMeter` records only a first observed signed
