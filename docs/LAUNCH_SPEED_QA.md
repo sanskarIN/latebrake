@@ -1,4 +1,4 @@
-# Launch speed estimate — source QA (unreleased v0.5.76 candidate)
+# Launch-speed estimate — v0.5.76 published source QA and v0.5.77 development
 
 LateBrake adds a **session-only 0–5 km/h forward launch estimate** measured
 using the authoritative time since GO. This is *not* a human reaction-time
@@ -27,7 +27,7 @@ No credits, career awards, best times, saves or vehicle handling depend on it.
   optionally shows the same session estimate. Small screens can clip optional
   telemetry **after** authoritative time/position readouts.
 
-## Next source refinement (v0.5.77, not a playable build)
+## Merged source refinement (v0.5.77, unreleased and not a playable build)
 
 - For two **consecutive valid** post-GO physics samples separated by at
   most **0.25 seconds**, estimate the first 5 km/h crossing by bounded
