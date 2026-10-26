@@ -46,7 +46,7 @@ def validate_manual_workstation_workflow(source: str) -> None:
         "retention-days: 3",
         "compression-level: 0",
         "Remove-Item -LiteralPath $target -Recurse -Force",
-        "[IO.FileAttributes]::ReparsePoint",
+        "if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)",
         # A failure before Write-CandidateManifest still leaves mutable
         # staging contents; never delete through nested junctions.
         "[System.Collections.Generic.Stack[string]]::new()",
