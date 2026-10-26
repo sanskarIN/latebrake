@@ -70,6 +70,4 @@ These are source tests, **not Unreal Editor/UHT compilation**.
   failures and benchmark metrics to
   [Android issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 
-**The v0.5.72 implementation is source-only development, not proof of
-a working UE camera, cooked original track or playable game build.
-Source archives contain zero verified game executables.**
+**v0.5.72 is published as a source-only pre-release with zero executable assets. This is not proof of a working UE camera, cooked original track or playable game build.**

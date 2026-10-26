@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-26
-**Latest published milestone:** [v0.5.71 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.71), tagged at independently qualified commit `caf9c8f47f9d06bd4d1e6915f554083990d50403` (zero executable assets).
+**Latest published milestone:** [v0.5.72 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.72), tagged at independently qualified commit `95d9ecdf11eecfd37d7636b328ec8860463cef33` (zero executable assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.72 source development — four race views and touch camera
+## v0.5.72 published source-only pre-release — four race views and touch camera
 
 - **Source-only feature:** C cycles four deterministic Chase, Close
   Chase, Hood and High Chase presets instead of a two-distance toggle.
@@ -23,7 +23,7 @@
   regression tests plus actual Unreal pawn/HUD source-binding tests.
   [Camera QA](CAMERA_PRESETS_QA.md) defines essential UE 5.8
   compilation, actual framing and Android multitouch acceptance.
-  **This is not yet published as a pre-release or qualified as playable.**
+  **The source-only pre-release has been published with zero executable assets; the engine and mobile behavior remain unqualified.**
 
 ## v0.5.71 published source-only pre-release — race Results insights
 
