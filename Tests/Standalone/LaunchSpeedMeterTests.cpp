@@ -88,6 +88,49 @@ int main()
             meter.SecondsToFiveKmh() == 0.5,
         "fresh restart permits a new estimate");
 
+    // Short, uninterrupted consecutive post-GO samples permit a bounded
+    // linear crossing estimate, rather than rounding every crossing to
+    // the end of its frame. This is still approximate, not a stopwatch.
+    meter.Reset();
+    Require(!meter.Observe(0.10, 0.0, true) &&
+            meter.Observe(0.20, 10.0, true) &&
+            std::abs(meter.SecondsToFiveKmh() - 0.15) < 1e-9,
+        "0 to 10 km/h across 100ms estimates the 5 km/h halfway crossing");
+    meter.Reset();
+    Require(!meter.Observe(0.10, 0.0, true) &&
+            !meter.Observe(0.14, 3.0, true) &&
+            meter.Observe(0.20, 7.0, true) &&
+            std::abs(meter.SecondsToFiveKmh() - 0.17) < 1e-9,
+        "interpolation uses the immediately preceding eligible slow sample");
+    meter.Reset();
+    Require(!meter.Observe(0.10, 0.0, true) &&
+            !meter.Observe(0.11, bad, true) &&
+            meter.Observe(0.20, 10.0, true) &&
+            std::abs(meter.SecondsToFiveKmh() - 0.20) < 1e-9,
+        "nonfinite samples interrupt interpolation but not basic observation");
+    meter.Reset();
+    Require(!meter.Observe(0.10, 0.0, true) &&
+            !meter.Observe(0.15, 4.0, false) &&
+            meter.Observe(0.20, 10.0, true) &&
+            std::abs(meter.SecondsToFiveKmh() - 0.20) < 1e-9,
+        "pause/focus/readiness interruptions cannot bridge an interpolated gap");
+    meter.Reset();
+    Require(!meter.Observe(0.10, 0.0, true) &&
+            meter.Observe(0.50, 10.0, true) &&
+            std::abs(meter.SecondsToFiveKmh() - 0.50) < 1e-9,
+        "long physics gaps use conservative observed threshold time");
+    meter.Reset();
+    Require(!meter.Observe(0.10, 0.0, true) &&
+            !meter.Observe(0.10, 10.0, true) &&
+            meter.IsInvalidated() && !meter.HasSample(),
+        "impossible same-clock crossing cannot manufacture elapsed time");
+    meter.Reset();
+    Require(!meter.Observe(0.10, -12.0, true) &&
+            meter.Observe(0.20, 5.0, true) &&
+            meter.SecondsToFiveKmh() >= 0.10 &&
+            meter.SecondsToFiveKmh() <= 0.20,
+        "reverse-to-forward crossing remains bounded by physical observations");
+
     // Exercise the production green-light and race clock together. Red
     // frames cannot produce official elapsed time or a launch observation.
     latebrake::RaceStartLights lights;
