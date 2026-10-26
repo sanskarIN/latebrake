@@ -2,6 +2,17 @@
 
 This page distinguishes source-level features from tested game builds. All gameplay below describes code in the repository, **not confirmed functionality of an installed game**.
 
+## Start lights (v0.5.75 source development)
+
+A single three-second 3→2→1→GO gate controls the real race clock,
+checkpoint scoring, player/recovery inputs and AI rival motion. An
+unready start grid, paused menu, focus-loss latch or unqualified
+circuit stops the countdown; a game restart clears it. Only the
+fraction of a frame *after* GO counts as racing time. A temporary
+GO notice appears in the race HUD after the official clock row.
+Actual Unreal/installed QA is still required. See
+[start-sequence QA](RACE_START_QA.md).
+
 ## Racing
 
 - Four ordered directional circuit gates; rejected crossings include wrong-way and implausible trajectories.

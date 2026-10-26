@@ -4,6 +4,13 @@
 
 > **Latest published: [v0.5.74](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.74) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source adds player-only signed analog controller deadzones (12% steering, 5.5% throttle/reverse) with smooth remaining range and full keyboard/trigger authority. Earlier v0.5.73 added the no-credit arcade drift combo meter. **There is no verified Win64 EXE, Android APK/AAB or installed playable game.** GitHub source archives are not installers; genuine UE 5.8/UHT game build, owned cooked circuit and real hardware QA are still outstanding.
 
+**v0.5.75 source development:** a genuine start-light countdown
+with shared player/rival/clock/checkpoint authorization, fractional
+start-frame accounting and pause-safe 3 / 2 / 1 / GO display. Source
+tests validate the race policy; real licensed Unreal, cooked map
+and installed Windows/Android playtests are outstanding.
+[Race-start QA](docs/RACE_START_QA.md).
+
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
 **v0.5.72 published source preview:** four deterministic camera presets
@@ -14,7 +21,7 @@ portable camera/input policies have regression tests; engine camera
 framing and phone touch QA remain outstanding.
 See [camera QA](docs/CAMERA_PRESETS_QA.md).
 
-**v0.5.73 source development (not published):** an optional,
+**v0.5.73 published source feature:** an optional,
 run-local **arcade drift-combo meter** reads the measured chassis speed
 and lateral motion and presents provisional points in the desktop HUD
 and genuine finish Results. It never grants credits, affects race

@@ -523,3 +523,13 @@ grace, banked points, repeated suspension and restart are covered.
 These unofficial style points never affect timing or career rewards.
 Physical drift behavior still needs real UE and device qualification:
 [Drift QA](../../docs/DRIFT_COMBO_QA.md).
+
+### v0.5.75 — three-second start light gate
+
+`RaceStartLightsTests.cpp` compiles the genuine `RaceProgress.cpp`
+and checks finite 3/2/1/GO phase changes, pause/focus and hitch
+exclusion, exact boundary accounting and honest race-clock timing.
+The real Unreal integration is independently source-checked by
+`RaceStartLightsBindingTests.py`. Neither test is an engine
+compilation, cooked level or installed game.
+See [race start QA](../../docs/RACE_START_QA.md).

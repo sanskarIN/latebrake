@@ -66,6 +66,7 @@ REQUIRED_HTML = (
     "releases/v0.5.73/index.html",
     "releases/v0.5.74/index.html",
     "UE58_WORKSTATION_QA/index.html",
+    "RACE_START_QA/index.html",
 )
 REQUIRED_ASSETS = (
     "assets/stylesheets/extra.css",
