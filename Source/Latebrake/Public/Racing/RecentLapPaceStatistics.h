@@ -44,16 +44,16 @@ inline RecentLapPaceStatistics CalculateRecentLapPaceStatistics(
 
     std::array<double, RecentTimedLaps::Capacity> values{};
     double sum = 0.0;
-    int previousLap = race.GetCompletedLaps() + 1;
+    int expectedLap = race.GetCompletedLaps();
     for (int index = 0; index < count; ++index)
     {
         const TimedLapRecord lap = race.GetRecentTimedLap(index);
         if (!lap.Valid() || !IsValidFinishedRaceTime(lap.Seconds) ||
-            lap.CompletedLap != previousLap - 1)
+            lap.CompletedLap != expectedLap)
         {
             return {};
         }
-        previousLap = lap.CompletedLap;
+        --expectedLap;
         values[static_cast<std::size_t>(index)] = lap.Seconds;
         sum += lap.Seconds; // <= 8 * 604800 due to source validation.
     }
@@ -93,7 +93,7 @@ inline RecentLapPaceStatistics CalculateRecentLapPaceStatistics(
     }
     result.Valid = true;
     result.SampleCount = count;
-    result.OldestLap = previousLap;
+    result.OldestLap = expectedLap + 1;
     result.NewestLap = race.GetCompletedLaps();
     result.AverageSeconds = mean;
     result.MedianSeconds = median;
