@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.5.77 — Unreleased source development
+
+- Improve the launch-speed estimate using bounded, finite linear interpolation
+  across consecutive valid post-GO signed chassis observations at most
+  0.25 seconds apart. Never interpolate across pause/focus/physics
+  interruptions or malformed input; longer sampling gaps use the actual
+  measured crossing time instead of guessing.
+- Reject impossible same-clock positive threshold crossings while retaining
+  initial already-moving, restart, recovery and prior result immutability
+  guarantees. Portable strict C++20 regressions, Unreal-source contracts and
+  updated source QA are included.
+- Source-only, **not** verified UE 5.8/UHT, cooked map, game installer or
+  device QA; v0.5.77 is not a published release.
+
+
 ## v0.5.46 — Published SOURCE-ONLY pre-release (2026-10-25)
 
 - Fix paid RECOVER fairness when Unreal rejects `SetActorLocationAndRotation` or reports a nonmatching placement. Previously the race clock and recovery counter were charged **before** a void teleport whose engine result was never inspected.
