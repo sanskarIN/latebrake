@@ -5,6 +5,24 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.75 source development — genuine green-light race start
+
+- New engine-neutral `RaceStartLights` enforces a measured 3→2→1→GO
+  countdown. The real GameMode authorizes its advance only with
+  complete circuit, verified grid, local driver and unpaused/focused
+  running. The official clock receives *only post-green frame time*.
+- Player physics input, autonomous rival drive, checkpoint scoring
+  and recovery are all gated by this single real GameMode state.
+  Restart zeroes the sequence; pause, menu, focus loss and invalid
+  frames do not advance it. The live HUD renders the correct light
+  state without an independent fake timer.
+- New strict C++20 `RaceStartLights` tests link production
+  `RaceProgress.cpp`; Python source contracts cover the actual
+  pawn/rival/GameMode/HUD decisions. See [start lights QA](RACE_START_QA.md).
+- **Unreleased source work:** engine/UHT, actual circuit cook,
+  platform-specific physics/input frame ordering and device testing
+  remain unverified; latest published source tag is v0.5.74.
+
 ## v0.5.74 published source-only pre-release — signed player controller deadzones
 
 - Human steering has a 12% symmetric center deadzone; signed

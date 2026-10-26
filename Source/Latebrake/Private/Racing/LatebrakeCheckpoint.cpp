@@ -90,6 +90,7 @@ void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
     ALatebrakeRaceGameMode* Mode =
         GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!IsValid(Mode) || !Mode->IsCircuitReadyForGameplay() ||
+        !Mode->IsRaceStartGreen() ||
         UGameplayStatics::IsGamePaused(this) || Mode->IsMenuOpen() ||
         (Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive()))
     {

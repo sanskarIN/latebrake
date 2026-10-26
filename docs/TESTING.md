@@ -1,3 +1,17 @@
+# v0.5.75 — authoritative race-start gate
+
+`RaceStartLightsTests.cpp` links the actual `RaceProgress.cpp`;
+no pre-green elapsed race seconds, strict pause/focus and invalid
+frame freeze, exactly accounted post-GO crossing-frame residual,
+short GO banner visibility, and correct reset are covered.
+`RaceStartLightsBindingTests.py` verifies that the real Unreal
+GameMode, pawn, rival, checkpoint and recovery paths ALL use the
+same green gate. Source tests cannot confirm licensed Unreal engine
+build, actual game physics, map cook or installed platform behavior.
+See [race start QA](RACE_START_QA.md).
+
+---
+
 # v0.5.73 — Arcade drift source verification
 
 `DriftComboMeterTests.cpp` is a strict C++20 test of persistent

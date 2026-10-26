@@ -600,6 +600,31 @@ void ALatebrakeRaceHUD::DrawHUD()
             DisplayLap, Race.GetRequiredLaps(),
             Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+    // A genuinely guarded race-start sequence. Countdowns take a bounded
+    // priority row only when track, physical player and grid are ready.
+    // The authoritative clock / gate / physics / rival policies all use
+    // this same GameMode start light (not an independent HUD timer).
+    if (Mode->IsCircuitReadyForGameplay() &&
+        Mode->HasLocalPlayerDriver() && Mode->IsRestartPlacementReady())
+    {
+        switch (Mode->GetRaceStartPhase())
+        {
+        case latebrake::RaceStartPhase::Three:
+            Line(TEXT("START LIGHTS  3"), Accent, true);
+            break;
+        case latebrake::RaceStartPhase::Two:
+            Line(TEXT("START LIGHTS  2"), Accent, true);
+            break;
+        case latebrake::RaceStartPhase::One:
+            Line(TEXT("START LIGHTS  1"), Accent, true);
+            break;
+        case latebrake::RaceStartPhase::Go:
+            Line(TEXT("GO!"), Accent, true);
+            break;
+        default:
+            break;
+        }
+    }
     // Keyboard/gamepad camera choice is advisory. Place after official
     // lap/time readouts, and reserve scarce phone rows for driving.
     if (!bCompact)

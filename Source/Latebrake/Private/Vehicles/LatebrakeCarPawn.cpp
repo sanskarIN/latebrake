@@ -263,7 +263,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     UWorld* World = GetWorld();
     const ALatebrakeRaceGameMode* Mode =
         World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
-    if (!Mode || !latebrake::CanApplyPlayerDrive({
+    if (!Mode || !Mode->IsRaceStartGreen() ||
+        !latebrake::CanApplyPlayerDrive({
             true,
             Mode->IsCircuitReadyForGameplay(),
             Mode->IsMenuOpen(),

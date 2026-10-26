@@ -110,6 +110,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     LoadRecords();
     BuildCircuit();
     Race.Reset();
+    StartLights.Reset();
     RefreshRival();
 }
 
@@ -120,11 +121,20 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // required collision responses, gate actors or safe spawns failed.
     // Explicit pause check also defends unusual manually ticked worlds.
     const bool bLocalPlayerReady = HasLocalPlayerDriver();
-    latebrake::AdvancePlayerRaceClockIfReady(
-        Race, bCircuitReady,
+    const bool bInactive =
         UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
-            AppFocusGuard.IsSuspended() || ManualPause.IsSuspended(),
-        bLocalPlayerReady, static_cast<double>(DeltaSeconds));
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
+    const bool bStartQualified =
+        bCircuitReady && bLocalPlayerReady && !bInactive &&
+        !Race.IsFinished() && IsRestartPlacementReady();
+    // The countdown consumes ready, unpaused frames only. On the first
+    // GO frame it returns JUST the residual frame time after green.
+    // Keep authoritative timing and checkpoint-scoring on one light gate.
+    const double LiveDelta = StartLights.Advance(
+        static_cast<double>(DeltaSeconds), bStartQualified);
+    latebrake::AdvancePlayerRaceClockIfReady(
+        Race, bCircuitReady, bInactive || !StartLights.IsGreen(),
+        bLocalPlayerReady, LiveDelta);
     ApplyGarageToPlayer();
 }
 
@@ -482,6 +492,10 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
     // A failed ground/road/barrier spawn cannot produce legitimate racing
     // progress or a career medal, even when four gate actors exist.
+    if (!StartLights.IsGreen())
+    {
+        return; // Gate 0 is not scoreable during the red start lights.
+    }
     if (!latebrake::CanScorePlayerCheckpoint(
             Race, bCircuitReady,
             UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
@@ -1256,6 +1270,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     ManualPause.OnExplicitResume();
     Race.Reset();
+    StartLights.Reset();
     LastCareerAward = {};
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
@@ -1294,9 +1309,10 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
 {
     // Only the possessed local player may request a paid race recovery.
     // A stale pawn or a rival is not allowed to charge the race clock.
-    if (!IsValid(Car) || Car != UGameplayStatics::GetPlayerPawn(this, 0))
+    if (!IsValid(Car) || Car != UGameplayStatics::GetPlayerPawn(this, 0) ||
+        !StartLights.IsGreen())
     {
-        return;
+        return; // No paid recovery or circuit jumps before GO.
     }
 
     // An engine teleport can fail even after the race is eligible to

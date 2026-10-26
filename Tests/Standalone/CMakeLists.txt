@@ -886,3 +886,17 @@ else()
     target_compile_options(latebrake_drive_axis_deadzone_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME DriveAxisDeadzone COMMAND latebrake_drive_axis_deadzone_tests)
+
+# v0.5.75: exact frame-boundary race clock/start-gate source contract.
+add_executable(latebrake_race_start_lights_tests
+    RaceStartLightsTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_race_start_lights_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_start_lights_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_start_lights_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_start_lights_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceStartLights COMMAND latebrake_race_start_lights_tests)
