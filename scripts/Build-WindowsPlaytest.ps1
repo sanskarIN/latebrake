@@ -111,6 +111,7 @@ Write-Host 'Keep the complete cooked directory together; do not copy the EXE alo
 Write-Host 'Test startup, keyboard/gamepad, all gates, pause, restart, saves and physics.'
 Write-Host 'Only installed, observed gameplay can qualify this as a playable build.'
 if ($Launch) {
-    Write-Host 'Launching the personal test game on this Windows machine.'
-    Start-Process -FilePath $game.FullName -WorkingDirectory $game.DirectoryName
+    Write-Host 'Starting guarded private test session with dedicated Unreal logs.'
+    & (Join-Path $PSScriptRoot 'Run-WindowsPlaytest.ps1') -CandidateDirectory $candidate
+    if (-not $?) { throw 'Personal Windows playtest session reported an error.' }
 }
