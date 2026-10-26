@@ -4,7 +4,7 @@
 
 > **Latest published: [v0.5.75](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified racing source adds an authoritative 3→2→1→GO countdown that gates real player/rival driving, recovery, checkpoint scoring and race timing, with correct post-green frame accounting. Earlier v0.5.74 added analog controller deadzones. **There is no verified Win64 EXE, Android APK/AAB or installed playable game.** GitHub source archives are not installers; genuine UE 5.8/UHT compilation, original cooked map and installed hardware driving QA remain mandatory.
 
-**Next source development (unreleased):** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
+**Merged source development (v0.5.76 release qualification pending):** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
 **v0.5.75 published source feature:** a genuine start-light countdown
 with shared player/rival/clock/checkpoint authorization, fractional
