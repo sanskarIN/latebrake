@@ -2,11 +2,11 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.75](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified racing source adds an authoritative 3→2→1→GO countdown that gates real player/rival driving, recovery, checkpoint scoring and race timing, with correct post-green frame accounting. Earlier v0.5.74 added analog controller deadzones. **There is no verified Win64 EXE, Android APK/AAB or installed playable game.** GitHub source archives are not installers; genuine UE 5.8/UHT compilation, original cooked map and installed hardware driving QA remain mandatory.
+> **Latest published: [v0.5.76](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.76) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independent source qualification passed at commit `de975173e899a180f123feea93c9a2c64e5cc66c`. This milestone adds advisory, real-chassis 0–5 km/h forward launch feedback after the authoritative 3→2→1→GO gate from v0.5.75. **There is no verified Win64 EXE, Android APK/AAB or installed playable game.** GitHub source archives are not installers; genuine UE 5.8/UHT compilation, original cooked map and installed hardware driving QA remain mandatory.
 
-**Merged source development (v0.5.76 release qualification pending):** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
+**v0.5.76 published source feature:** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
-**Next source development (v0.5.77, unreleased):** launch telemetry now estimates the 5 km/h crossing *between consecutive, valid short-interval chassis speed samples*, and conservatively refuses interpolation across a pause, malformed sample or physics hitch. It remains an optional, run-local observation only; [testing limitations](docs/LAUNCH_SPEED_QA.md).
+**Merged next source development (v0.5.77, not yet released):** launch telemetry now estimates the 5 km/h crossing *between consecutive, valid short-interval chassis speed samples*, and conservatively refuses interpolation across a pause, malformed sample or physics hitch. It remains an optional, run-local observation only; [testing limitations](docs/LAUNCH_SPEED_QA.md).
 
 **v0.5.75 published source feature:** a genuine start-light countdown
 with shared player/rival/clock/checkpoint authorization, fractional
