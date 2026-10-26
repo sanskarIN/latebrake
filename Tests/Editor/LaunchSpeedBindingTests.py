@@ -53,6 +53,18 @@ class LaunchSpeedBindingTests(unittest.TestCase):
                         recover.index("LaunchMeter.Invalidate();"))
         self.assertIn("return;", recover[:recover.index("LaunchMeter.Invalidate();")])
 
+    def test_interpolation_is_bounded_and_not_gameplay_authority(self):
+        for token in (
+            "MaxInterpolationGapSeconds = 0.25",
+            "ContinuousSamples = false;",
+            "activeSeconds <= LastSampleSeconds",
+            "std::isfinite(speedChange)",
+            "LastSampleSeconds + gap * fraction",
+        ):
+            self.assertIn(token, self.policy)
+        self.assertNotIn("AddTimePenalty(", self.policy)
+        self.assertNotIn("SetTime", self.policy)
+
     def test_hud_is_advisory_only(self):
         for token in (
             "GetLaunchSpeedMeter()", "HasSample()",
