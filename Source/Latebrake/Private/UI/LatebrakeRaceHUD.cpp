@@ -235,6 +235,12 @@ void ALatebrakeRaceHUD::DrawHUD()
                 MenuLine(FString::Printf(TEXT("Last event reward: +%d credits"),
                     Mode->GetLastRaceCredits()));
             }
+            if (Mode->GetLaunchSpeedMeter().HasSample())
+            {
+                MenuLine(FString::Printf(
+                    TEXT("0-5 km/h launch estimate (session): %.2fs"),
+                    Mode->GetLaunchSpeedMeter().SecondsToFiveKmh()));
+            }
             const latebrake::FinishedRaceInsights Insights =
                 latebrake::BuildFinishedRaceInsights(Mode->GetRace());
             if (Insights.Valid)
@@ -624,6 +630,14 @@ void ALatebrakeRaceHUD::DrawHUD()
         default:
             break;
         }
+    }
+    // Approximate physics sampling only. Never affects official race time,
+    // awards or saved progression and never displaces compact phone rows.
+    if (!bCompact && Mode->GetLaunchSpeedMeter().HasSample() &&
+        Race.GetElapsedSeconds() <= 15.0)
+    {
+        Line(FString::Printf(TEXT("LAUNCH 0-5 km/h  %.2fs EST"),
+            Mode->GetLaunchSpeedMeter().SecondsToFiveKmh()), Primary);
     }
     // Keyboard/gamepad camera choice is advisory. Place after official
     // lap/time readouts, and reserve scarce phone rows for driving.
