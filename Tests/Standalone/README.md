@@ -502,3 +502,14 @@ ctest --test-dir Tests/Standalone/build -C Release -R '^(RecentLapPaceStatistics
 These policies do not compile or run Unreal Engine 5.8, test Canvas
 legibility, package any executable, or validate driving physics on real
 hardware. See [Results insights QA](../../docs/RESULTS_INSIGHTS_QA.md).
+
+### v0.5.72 — Four-view camera and touch CAM policy
+
+`CameraPresetsTests.cpp` checks CHASE / CLOSE CHASE / HOOD /
+HIGH CHASE ordering and bounded camera arm/pitch, lag, collision,
+fallback and reset. `TouchCameraCyclePolicyTests.cpp` checks true
+geometry/hit-testing for the shared Android `MenuBrowse` rectangle and
+fresh-press, menu, focus, pause, physical driver and circuit requirements.
+Portable policies do not replace actual UE 5.8 spring-arm rendering or
+touch hardware QA. See
+[Camera presets QA](../../docs/CAMERA_PRESETS_QA.md).

@@ -843,6 +843,28 @@ else()
 endif()
 add_test(NAME SampledDrivingReview COMMAND latebrake_sampled_driving_review_tests)
 
+# v0.5.72: production camera framing policy remains Unreal-free and strict.
+add_executable(latebrake_camera_presets_tests CameraPresetsTests.cpp)
+target_include_directories(latebrake_camera_presets_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_camera_presets_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_camera_presets_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_camera_presets_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CameraPresets COMMAND latebrake_camera_presets_tests)
+
+# v0.5.72: real disjoint touch geometry and one-shot CAM admission.
+add_executable(latebrake_touch_camera_cycle_policy_tests TouchCameraCyclePolicyTests.cpp)
+target_include_directories(latebrake_touch_camera_cycle_policy_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_touch_camera_cycle_policy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_touch_camera_cycle_policy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_touch_camera_cycle_policy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TouchCameraCyclePolicy COMMAND latebrake_touch_camera_cycle_policy_tests)
+
 # v0.5.73: source-observed arcade drift meter, never an award/record.
 add_executable(latebrake_drift_combo_meter_tests DriftComboMeterTests.cpp)
 target_include_directories(latebrake_drift_combo_meter_tests PRIVATE ../../Source/Latebrake/Public)

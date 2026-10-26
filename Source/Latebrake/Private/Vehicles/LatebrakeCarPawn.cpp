@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
+#include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
@@ -110,6 +111,7 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+    ApplyCameraPreset();
 }
 
 void ALatebrakeCarPawn::BeginPlay()
@@ -361,8 +363,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed), static_cast<double>(LateralSpeed),
         bEffectiveBraking});
-    // Advisory arcade meter reads the same validated chassis sample.
-    // It never feeds force, steering, achievements, career or credits.
+    // Advisory arcade meter observes genuine same-frame chassis velocity.
+    // It does not control driving forces or award saved credits.
     DriftMeter.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed), static_cast<double>(LateralSpeed),
         bEffectiveBraking});
@@ -528,10 +530,41 @@ void ALatebrakeCarPawn::RestartPressed()
     }
 }
 
+void ALatebrakeCarPawn::ApplyCameraPreset()
+{
+    if (!IsValid(CameraBoom))
+    {
+        return;
+    }
+    const latebrake::CameraPreset Requested =
+        latebrake::GetCameraPreset(CameraViews.Current());
+    // Fail closed on a corrupted/future preset rather than installing
+    // nonfinite camera transforms into an active physics scene.
+    const latebrake::CameraPreset View =
+        latebrake::IsSafeCameraPreset(Requested)
+            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
+    CameraBoom->TargetArmLength = static_cast<float>(View.ArmLengthCm);
+    CameraBoom->SetRelativeRotation(FRotator(
+        static_cast<float>(View.PitchDegrees), 0.f, 0.f));
+    CameraBoom->SocketOffset = FVector(
+        static_cast<float>(View.ForwardOffsetCm), 0.f,
+        static_cast<float>(View.HeightOffsetCm));
+    CameraBoom->CameraLagSpeed = static_cast<float>(View.CameraLagSpeed);
+    CameraBoom->bEnableCameraLag = View.CameraLagEnabled;
+    CameraBoom->bDoCollisionTest = View.CollisionProbeEnabled;
+    if (IsValid(FollowCamera))
+    {
+        // Distinct, bounded static lens framing. No racing-speed camera
+        // pumping, reward logic, physics mutation or save format change.
+        FollowCamera->SetFieldOfView(
+            static_cast<float>(View.FieldOfViewDegrees));
+    }
+}
+
 void ALatebrakeCarPawn::ChangeCamera()
 {
-    bNearCamera = !bNearCamera;
-    CameraBoom->TargetArmLength = bNearCamera ? 270.f : 560.f;
+    CameraViews.Next();
+    ApplyCameraPreset();
 }
 
 void ALatebrakeCarPawn::TogglePause()
@@ -706,6 +739,23 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         return;
     case latebrake::TouchControl::CareerStart:
         CareerStart();
+        return;
+    case latebrake::TouchControl::MenuBrowse:
+        // The same rectangle means BROWSE only in menus and CAM in racing.
+        // Explicit portable admission is a second barrier after the
+        // already checked one-shot press, input owners and pause guards.
+        if (latebrake::CanCycleCameraFromTouch({
+                Region, bAllowAcquire, Mode != nullptr,
+                Mode && Mode->IsCircuitReadyForGameplay(),
+                Mode && Mode->HasLocalPlayerDriver(),
+                Mode && Mode->IsMenuOpen(),
+                UGameplayStatics::IsGamePaused(this) ||
+                    (Mode && Mode->IsManualRacePauseActive()),
+                Mode && Mode->IsFocusLossGuardActive(),
+                Mode && Mode->GetRace().IsFinished()}))
+        {
+            ChangeCamera();
+        }
         return;
     default:
         break;

@@ -6,6 +6,7 @@
 #include "UI/TouchDriveState.h"
 #include "Racing/DrivingSessionStats.h"
 #include "Racing/DriftComboMeter.h"
+#include "Vehicles/CameraPresets.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
 #include "LatebrakeCarPawn.generated.h"
@@ -46,6 +47,7 @@ public:
     bool IsRacePhysicsReady() const;
     float GetSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
+    latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
     void ResetDrivingStats() { DrivingStats.Reset(); DriftMeter.Reset(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
@@ -105,6 +107,7 @@ private:
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
+    void ApplyCameraPreset();
     void TogglePause();
     void TouchPressed(ETouchIndex::Type FingerIndex, FVector Location);
     void TouchMoved(ETouchIndex::Type FingerIndex, FVector Location);
@@ -142,7 +145,7 @@ private:
     int32 GarageVehicleId = 0;
     uint64 TeleportRevision = 0;
     bool bBraking = false;
-    bool bNearCamera = false;
+    latebrake::CameraViewCycle CameraViews;
     latebrake::DrivingSessionStats DrivingStats;
     latebrake::DriftComboMeter DriftMeter;
     latebrake::TouchDriveState TouchDrive;
