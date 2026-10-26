@@ -70,8 +70,18 @@ public:
             speed >= 900.0 && sideways >= 450.0 && slipRatio >= 0.35;
         if (!drifting)
         {
-            if (CandidateSeconds > 0.0)
+            if (!Active)
             {
+                // A qualifying drift must be truly contiguous. Brief
+                // separated slip impulses may not accumulate towards a
+                // fictitious sustained 0.55s driving interval.
+                CandidateSeconds = 0.0;
+                GapSeconds = 0.0;
+            }
+            else
+            {
+                // Once qualified, a very brief grip correction may be
+                // tolerated without breaking an established combo.
                 GapSeconds += sample.DeltaSeconds;
                 if (GapSeconds >= 0.3)
                 {

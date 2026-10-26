@@ -93,6 +93,22 @@ int main()
           !m.HasActiveCombo(), "small lateral ratio does not create points");
     Check(m.GetTotalPoints() > 0.0,
           "inactive sample does not erase properly banked previous score");
+    DriftComboMeter fragmented;
+    Check(fragmented.Observe(Sample(0.2, 1600.0, 1000.0)),
+          "first isolated slip accepted");
+    Check(fragmented.Observe(Sample(0.1, 1600.0, 0.0)),
+          "ordinary grip interrupts before qualifying");
+    Check(fragmented.Observe(Sample(0.2, 1600.0, 1000.0)) &&
+          fragmented.Observe(Sample(0.2, 1600.0, 1000.0)),
+          "new qualifying sequence begins after early grip correction");
+    Check(!fragmented.HasActiveCombo() &&
+          Near(fragmented.GetTotalPoints(), 0.0) &&
+          fragmented.GetComboCount() == 0,
+          "separated prequalification slips never fabricate a combo");
+    Check(fragmented.Observe(Sample(0.2, 1600.0, 1000.0)) &&
+          fragmented.HasActiveCombo(),
+          "third uninterrupted qualifying sample starts combo");
+
     m.Reset();
     Check(!m.HasActiveCombo() && m.GetComboCount() == 0 &&
           Near(m.GetTotalPoints(), 0.0) &&
