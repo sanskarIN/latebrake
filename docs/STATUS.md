@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-26
-**Latest published milestone:** [v0.5.70 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.70), tagged at independently qualified commit `ddee1234b16a0db14177b7a15bff8b7349f5ce7c` (zero executable assets).
+**Latest published milestone:** [v0.5.71 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.71), tagged at independently qualified commit `caf9c8f47f9d06bd4d1e6915f554083990d50403` (zero executable assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.71 source development — race Results insights
+## v0.5.71 published source-only pre-release — race Results insights
 
 - **Source-only implementation:** Three additional real Results reviews:
   last eight retained completed timed laps' average, median, population
@@ -20,7 +20,7 @@
   malformed chassis samples. Portable C++20 and Unreal HUD source
   contracts are included; **engine and device QA remain outstanding**.
   See [Results insights QA](RESULTS_INSIGHTS_QA.md).
-- This v0.5.71 branch is **not yet a published pre-release**.
+- **Published SOURCE-ONLY pre-release:** the exact merged main commit was independently qualified on three OS source CI, Python contracts, synthetic PowerShell policies and site integrity before publication. No actual playable game assets were produced. UE 5.8/UHT, genuine authored cooked map and installed device QA remain outstanding.
 
 ## v0.5.70 published source-only pre-release — timed lap review in Results
 

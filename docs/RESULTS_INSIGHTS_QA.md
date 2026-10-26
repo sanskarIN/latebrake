@@ -93,5 +93,6 @@ bounds and time-share calculations.
    [qualification #13](https://github.com/sanskarIN/latebrake/issues/13).
 
 No licensed engine test, cook, Win64 or Android game package, or
-physical device session is claimed by this branch. v0.5.71 is
-**source development**, not a playable or published release.
+physical device session is claimed by the source suite. v0.5.71 is a
+**published source-only pre-release with zero executable binaries**, not
+a playable or stable release.
