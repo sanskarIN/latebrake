@@ -12,6 +12,7 @@ MODE_CPP = ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
 PAWN = ROOT / "Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp"
 RIVAL = ROOT / "Source/Latebrake/Private/AI/LatebrakeRivalCar.cpp"
 HUD = ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
+CHECKPOINT = ROOT / "Source/Latebrake/Private/Racing/LatebrakeCheckpoint.cpp"
 LIGHTS = ROOT / "Source/Latebrake/Public/Racing/RaceStartLights.h"
 CMAKE = ROOT / "Tests/Standalone/CMakeLists.txt"
 PORTABLE = ROOT / "Tests/Standalone/RaceStartLightsTests.cpp"
@@ -25,6 +26,7 @@ class RaceStartLightsBindingTests(unittest.TestCase):
         cls.pawn = PAWN.read_text(encoding="utf-8")
         cls.rival = RIVAL.read_text(encoding="utf-8")
         cls.hud = HUD.read_text(encoding="utf-8")
+        cls.checkpoint = CHECKPOINT.read_text(encoding="utf-8")
         cls.lights = LIGHTS.read_text(encoding="utf-8")
         cls.cmake = CMAKE.read_text(encoding="utf-8")
         cls.portable = PORTABLE.read_text(encoding="utf-8")
@@ -69,6 +71,21 @@ class RaceStartLightsBindingTests(unittest.TestCase):
                         checkpoint.index("CanScorePlayerCheckpoint("))
         self.assertLess(recovery.index("!StartLights.IsGreen()"),
                         recovery.index("TryChargePlayerRecoveryAfterVerifiedTeleport("))
+
+    def test_gate_trace_does_not_sample_motion_during_red(self):
+        gate_tick = self.checkpoint.split(
+            "void ALatebrakeCheckpoint::Tick(", 1)[1]
+        self.assertIn("!Mode->IsRaceStartGreen()", gate_tick)
+        self.assertLess(
+            gate_tick.index("!Mode->IsRaceStartGreen()"),
+            gate_tick.index("MotionTrace.SampleDetailed("))
+        self.assertIn("MotionTrace.Reset();", gate_tick)
+        self.assertLess(
+            gate_tick.index("MotionTrace.Reset();"),
+            gate_tick.index("MotionTrace.SampleDetailed("))
+        self.assertLess(
+            gate_tick.index("!Mode->IsRaceStartGreen()"),
+            gate_tick.index("Mode->RegisterCheckpoint("))
 
     def test_pawn_and_rival_both_refuse_pregreen_forces(self):
         player_tick = self.pawn.split(

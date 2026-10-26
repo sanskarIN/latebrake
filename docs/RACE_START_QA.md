@@ -11,8 +11,11 @@ unpaused race displays **START LIGHTS 3 / 2 / 1 / GO!**. The actual
   time. When a frame crosses GO, only the fraction *after* the third
   second reaches `RaceProgress`. Thus no premature lap clock or
   unearned active-timing evidence is fabricated.
-- **Checkpoint and recovery:** touching a gate before green never
-  advances a lap; no charge/teleport is permitted before green.
+- **Checkpoint and recovery:** the real checkpoint actor refuses and
+  **clears directional motion sampling during red**, preventing a
+  pre-green trajectory from spanning into the first green gate. The
+  GameMode independently rejects scoring, and no charge/teleport
+  is permitted before green.
 - **Player controls and rival:** both player chassis propulsion and
   autonomous rival drive are disabled until the *same* green state.
   Neutralization continues for any failed restart-grid, missing
