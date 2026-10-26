@@ -93,6 +93,20 @@ try {
 }
 $ended = [DateTimeOffset]::UtcNow
 
+# Analyze original runtime startup markers when a log exists. The source
+# marker grammar can catch missing geometry/track initialization. It cannot
+# prove actual rendering, vehicle physics or installed gameplay.
+$startupLogMarkersPass = $false
+$startupLogError = $null
+if (Test-Path -LiteralPath $log -PathType Leaf) {
+    try {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $log
+        $startupLogMarkersPass = $true
+    } catch {
+        $startupLogError = $_.Exception.Message
+    }
+}
+
 $report = [ordered]@{
     schema_version = 1
     status = 'UNVERIFIED_PERSONAL_RUNTIME_PROBE'
@@ -109,6 +123,8 @@ $report = [ordered]@{
     process_start_error = $startFailure
     unreal_log_path = $log
     unreal_log_present = (Test-Path -LiteralPath $log -PathType Leaf)
+    startup_log_markers_pass = $startupLogMarkersPass
+    startup_log_error = $startupLogError
     note = 'EXE exit status and a log never prove playable gameplay; record hands-on QA separately.'
 }
 $report | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $receipt -Encoding utf8 -NoNewline
@@ -117,6 +133,9 @@ if ($report.unreal_log_present) {
     Write-Host "Unreal wrote a diagnostic log: $log"
 } else {
     Write-Warning 'No ABSLOG file was produced; inspect startup/crash and packaged Saved/Logs.'
+}
+if (-not $startupLogMarkersPass) {
+    Write-Warning "Track startup markers are NOT verified. Inspect $receipt and $log."
 }
 if ($null -ne $startFailure) {
     throw "The packaged EXE could not start: $startFailure. Session diagnostics: $receipt"
