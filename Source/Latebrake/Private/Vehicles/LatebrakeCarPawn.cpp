@@ -110,6 +110,7 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+    ApplyCameraPreset();
 }
 
 void ALatebrakeCarPawn::BeginPlay()
@@ -521,10 +522,34 @@ void ALatebrakeCarPawn::RestartPressed()
     }
 }
 
+void ALatebrakeCarPawn::ApplyCameraPreset()
+{
+    if (!IsValid(CameraBoom))
+    {
+        return;
+    }
+    const latebrake::CameraPreset Requested =
+        latebrake::GetCameraPreset(CameraViews.Current());
+    // Fail closed on a corrupted/future preset rather than installing
+    // nonfinite camera transforms into an active physics scene.
+    const latebrake::CameraPreset View =
+        latebrake::IsSafeCameraPreset(Requested)
+            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
+    CameraBoom->TargetArmLength = static_cast<float>(View.ArmLengthCm);
+    CameraBoom->SetRelativeRotation(FRotator(
+        static_cast<float>(View.PitchDegrees), 0.f, 0.f));
+    CameraBoom->SocketOffset = FVector(
+        static_cast<float>(View.ForwardOffsetCm), 0.f,
+        static_cast<float>(View.HeightOffsetCm));
+    CameraBoom->CameraLagSpeed = static_cast<float>(View.CameraLagSpeed);
+    CameraBoom->bEnableCameraLag = View.CameraLagEnabled;
+    CameraBoom->bDoCollisionTest = View.CollisionProbeEnabled;
+}
+
 void ALatebrakeCarPawn::ChangeCamera()
 {
-    bNearCamera = !bNearCamera;
-    CameraBoom->TargetArmLength = bNearCamera ? 270.f : 560.f;
+    CameraViews.Next();
+    ApplyCameraPreset();
 }
 
 void ALatebrakeCarPawn::TogglePause()

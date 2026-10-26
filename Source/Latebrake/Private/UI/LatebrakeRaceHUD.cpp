@@ -579,6 +579,14 @@ void ALatebrakeRaceHUD::DrawHUD()
             DisplayLap, Race.GetRequiredLaps(),
             Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+    // Keyboard/gamepad camera choice is advisory. Place after official
+    // lap/time readouts, and reserve scarce phone rows for driving.
+    if (!bCompact)
+    {
+        Line(FString::Printf(TEXT("CAMERA %s | C TO CYCLE"),
+            ANSI_TO_TCHAR(latebrake::CameraViewName(Car->GetCameraView()))),
+            Primary);
+    }
 
     // The warning is pure HUD feedback. It must reset on pawn replacement,
     // checkpoint-session boundary and teleport, and must never influence
