@@ -28,7 +28,7 @@ features have regression tests, but still need real Unreal Engine and
 Windows/Android gameplay qualification; see
 [Results insights QA](RESULTS_INSIGHTS_QA.md).
 
-## Camera viewpoints (v0.5.72 source development)
+## Camera viewpoints (v0.5.72 source-only pre-release)
 
 Press **C** (existing desktop/gamepad Camera action) to rotate through
 CHASE, CLOSE CHASE, HOOD, HIGH CHASE. Each view has an explicit Unreal
