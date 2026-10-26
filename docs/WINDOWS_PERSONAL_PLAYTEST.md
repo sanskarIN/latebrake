@@ -73,8 +73,8 @@ pwsh ./scripts/Build-WindowsPlaytest.ps1 -EngineRoot 'D:\UE_5.8' -Launch
 ```
 
 To **relaunch an already-built** private candidate without compiling again,
-double-click `Play-Windows-Candidate.cmd` **after passing your full
-candidate folder as its first argument**, or use:
+drag the full built-candidate **folder onto** `Play-Windows-Candidate.cmd`
+(which passes the folder as its first argument), or use:
 
 ```powershell
 pwsh ./scripts/Run-WindowsPlaytest.ps1 -CandidateDirectory 'D:\LatebrakeCandidates\YourRealWin64BuildFolder'
@@ -90,7 +90,9 @@ outside the immutable candidate folder, to a sibling
 
 After **you close the game**, the helper records an equally private
 JSON receipt with source artifact checksums, UTC times, process exit
-code and log presence. No network upload occurs. A zero exit code
+code and log presence. It also runs the existing `Verify-RuntimeStartupLog.ps1`
+check for track geometry/gate/scenery markers when the log exists; the
+receipt records whether this **text-only** audit passed and why it failed. No network upload occurs. A zero exit code
 **does not** qualify rendering, user input, racing, saves or hardware
 performance. Even with `-ABSLOG`, other engine runtime files may be
 created under the package: re-run manifest validation before reusing
