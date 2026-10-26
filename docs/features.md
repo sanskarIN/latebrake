@@ -41,7 +41,7 @@ gas/brake hit rectangles are unchanged. [Camera test plan](CAMERA_PRESETS_QA.md)
 
 No screenshots or original cooked asset/runtime validation are claimed.
 
-## Optional arcade drift score (v0.5.73 source development)
+## Optional arcade drift score (v0.5.73 source-only pre-release)
 
 The latest source work includes a **virtual drift-combo meter** driven
 by observed car speed and lateral slip samples. It only scores sustained

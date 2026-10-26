@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The latest published GitHub tag is **v0.5.72**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The latest published GitHub tag is **v0.5.73**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current state:** v0.5.72 is the latest published source-only pre-release, still without a runnable Unreal executable. It adds multiple camera spring-arm views and fail-closed Android CAM input to the previously source-qualified lap statistics and results systems. Actual Unreal/Win64/Android game qualification remains required.
+**Current state:** v0.5.73 is the latest published source-only pre-release, still without a runnable Unreal executable. It adds real-sample arcade drift combos, finite score multipliers and optional mobile HUD display with no credits/rewards. v0.5.72 introduced the four-camera and Android CAM systems. Actual Unreal/Win64/Android game qualification remains required.
 
 ## Published source previews
 
@@ -11,6 +11,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.73 | [Release notes](releases/v0.5.73.md) |
 | v0.5.72 | [Release notes](releases/v0.5.72.md) |
 | v0.5.71 | [Release notes](releases/v0.5.71.md) |
 | v0.5.70 | [Release notes](releases/v0.5.70.md) |

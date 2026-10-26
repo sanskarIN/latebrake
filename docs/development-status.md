@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.72](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.72), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.72 published source-only pre-release** on `main`: source-qualified four camera views and Android CAM admission. v0.5.73 arcade drift-combo feedback is currently under source development, not a published playable release. Real UE 5.8/UHT, original circuit, installed phone and desktop QA are still unavailable |
+| Latest published GitHub pre-release | [v0.5.73](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.73), **source only**, no runnable assets |
+| Latest source-development milestone | **v0.5.73 published source-only pre-release** on `main`: bounded and explicitly no-credit arcade drift-combo HUD and Results from real finite chassis samples, building on v0.5.72 camera views. Real UE 5.8/UHT compilation, an original cooked circuit and installed phone/desktop QA are still unavailable |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |

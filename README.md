@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.72](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.72) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source includes four native camera views (Chase, Close Chase, Hood, High Chase), actual spring-arm distance, orientation, lag, collision and lens FOV, plus the press-only Android CAM 1–4 button with separate menu BROWSE behavior. Earlier v0.5.71 provided sampled car and timed-lap Results insights. **No verified Win64 EXE, Android APK/AAB or Linux game is included.** Source archives are not installers; licensed UE 5.8 Editor/UHT compilation, an original cooked circuit, and installed physics/mobile/device QA remain outstanding.
+> **Latest published: [v0.5.73](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.73) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified code includes a finite, real-chassis-sample-driven arcade drift-combo meter, timed points/multiplier and touch-safe live/finished race feedback with no rewards or saved records. Earlier v0.5.72 added four native camera views and a guarded Android CAM control. **No verified Win64 EXE, Android APK/AAB or Linux game is included.** Source archives are not installers; licensed UE 5.8 Editor/UHT compilation, an original cooked circuit and installed physics/mobile-device QA remain required.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
