@@ -1,13 +1,11 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The latest published GitHub tag is **v0.5.75**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The latest published GitHub tag is **v0.5.76**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current state:** v0.5.75 is the latest published source-only pre-release, still without a runnable Unreal game. Its genuine three-second red→green race-start policy controls the authoritative clock, AI/player movement and ordered checkpoints, building on v0.5.74 controller deadzones. Actual Unreal/Win64/Android package and installed device qualification remain required.
+**Current state:** [v0.5.76](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.76) is the latest published **source-only pre-release**. The independently qualified commit `de975173e899a180f123feea93c9a2c64e5cc66c` adds a post-GO 0–5 km/h forward chassis launch estimate to v0.5.75's authoritative 3→2→1→GO racing gate. The pre-release has **zero executable assets**. Real Unreal 5.8/UHT, a project-owned cooked circuit, installed Win64/Android packages and hardware QA remain mandatory.
 
-## In qualification
-
-The proposed **v0.5.76** source-only launch-speed update is merged as code and has a dedicated release workflow. The tag and release are **not published** until independently passing source checks for its exact release commit. No runnable game binaries are available. [Candidate notes](releases/v0.5.76.md).
+**Next source work:** v0.5.77 improves bounded estimate precision; it is merged source development, **not a published pre-release or a playable game**. [Launch measurement QA](LAUNCH_SPEED_QA.md).
 
 ## Published source previews
 
@@ -15,6 +13,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.76 | [Release notes](releases/v0.5.76.md) |
 | v0.5.75 | [Release notes](releases/v0.5.75.md) |
 | v0.5.74 | [Release notes](releases/v0.5.74.md) |
 | v0.5.73 | [Release notes](releases/v0.5.73.md) |
