@@ -14,7 +14,7 @@ def extract_latest_release_versions(documents: dict[str, str]) -> dict[str, str]
     """Read independently maintained *latest published* labels, not history."""
     patterns = {
         "README.md": r"Latest published:\s*\[v(\d+\.\d+\.\d+)\]",
-        "docs/STATUS.md": r"Latest published milestone:\s*\[v(\d+\.\d+\.\d+)",
+        "docs/STATUS.md": r"Latest published milestone:(?:\*\*)?\s*\[v(\d+\.\d+\.\d+)",
         "docs/development-status.md": (
             r"Latest published GitHub pre-release\s*\|\s*\[v(\d+\.\d+\.\d+)"
         ),
