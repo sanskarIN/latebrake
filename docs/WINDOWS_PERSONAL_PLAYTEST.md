@@ -61,6 +61,47 @@ A successful run prints the **full exact path** of the packaged
 `Latebrake.exe` alone is not a portable game: moving it without its
 supporting cooked assets can cause startup errors.
 
+## Private diagnostic game run (new)
+
+After a **successful** game package, run the genuine EXE through the
+candidate verifier/diagnostic launcher, not an unrelated desktop EXE.
+The original build command's `-Launch` option now does this
+automatically, then waits for you to close the game:
+
+```powershell
+pwsh ./scripts/Build-WindowsPlaytest.ps1 -EngineRoot 'D:\UE_5.8' -Launch
+```
+
+To **relaunch an already-built** private candidate without compiling again,
+double-click `Play-Windows-Candidate.cmd` **after passing your full
+candidate folder as its first argument**, or use:
+
+```powershell
+pwsh ./scripts/Run-WindowsPlaytest.ps1 -CandidateDirectory 'D:\LatebrakeCandidates\YourRealWin64BuildFolder'
+```
+
+The new launcher checks the complete closed-world SHA256 candidate
+manifest, verifies Win64 EXE/cooked-content structure, then launches the
+packaged `Latebrake.exe` with Unreal's documented `-log` and `-ABSLOG`
+arguments. The latter directs the **private diagnostic runtime log**
+outside the immutable candidate folder, to a sibling
+`LateBrakePlaytestLogs` directory by default. You can customize
+`-LogDirectory`, but it must not be inside the game folder.
+
+After **you close the game**, the helper records an equally private
+JSON receipt with source artifact checksums, UTC times, process exit
+code and log presence. No network upload occurs. A zero exit code
+**does not** qualify rendering, user input, racing, saves or hardware
+performance. Even with `-ABSLOG`, other engine runtime files may be
+created under the package: re-run manifest validation before reusing
+the exact archive. If the process crashes too early, an Unreal log
+might not exist; retain the real UAT/Windows crash information.
+
+Official Epic documentation:
+[Unreal Engine command-line argument reference](
+https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-command-line-arguments-reference)
+describes `ABSLOG` as an absolute log filename argument.
+
 ## What to test personally
 
 1. Launch the actual `Latebrake.exe` printed by the script. If it fails,
