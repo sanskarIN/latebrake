@@ -65,6 +65,7 @@ REQUIRED_HTML = (
     "DRIFT_COMBO_QA/index.html",
     "releases/v0.5.73/index.html",
     "releases/v0.5.74/index.html",
+    "UE58_WORKSTATION_QA/index.html",
 )
 REQUIRED_ASSETS = (
     "assets/stylesheets/extra.css",

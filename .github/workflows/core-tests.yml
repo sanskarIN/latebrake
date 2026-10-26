@@ -56,6 +56,9 @@ jobs:
             }
             Write-Host "PowerShell syntax OK: $script"
           }
+      - name: Parse inline manual Unreal candidate PowerShell without launching UE
+        shell: pwsh
+        run: ./scripts/Test-UnrealCandidateWorkflowInlineSyntaxPolicy.ps1
       - name: Reject invalid packaging fixtures without engine
         shell: pwsh
         run: ./scripts/Test-PackagingPolicy.ps1

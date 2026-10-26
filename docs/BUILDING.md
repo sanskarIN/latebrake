@@ -50,6 +50,23 @@ These compile the **same RaceProgress.cpp** used by the game. They cannot valida
 - Development runtime creates road and props using engine built-in primitive assets; no project-owned cooked map/art package is checked in.
 - No packaged executable, APK, AAB, or platform benchmarks exist yet.
 
+## Authorized self-hosted Unreal runner (manual only)
+
+The existing GitHub workflow
+[`build-unreal-candidate.yml`](https://github.com/sanskarIN/latebrake/blob/main/.github/workflows/build-unreal-candidate.yml)
+can invoke these same honest packaging scripts **only** after an
+authorized Windows machine with licensed Unreal Engine 5.8 is
+connected as an explicitly labelled private self-hosted runner.
+It refuses non-main source, pins the exact SHA, checks installed
+Unreal 5.8 metadata and uploads a short-retention **UNVERIFIED**
+candidate to the workflow run for genuine device QA, never to a
+published game release.
+
+See [licensed UE 5.8 runner security and QA](
+UE58_WORKSTATION_QA.md) before configuring any runner.
+**No runner execution, cooked game, published EXE/APK or installed
+hardware playtest has been verified yet.**
+
 ## Candidate packaging helpers (unverified until executed with UE 5.8)
 
 On a licensed Windows Unreal Engine build workstation, the optional helper `scripts/Build-PreRelease.ps1` calls Epic's own `RunUAT.bat BuildCookRun` and checks for a real platform package. Example:
