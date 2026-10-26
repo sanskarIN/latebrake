@@ -5,6 +5,7 @@
 #include "UI/HudTextBounds.h"
 #include "UI/HudMenuVerticalPlan.h"
 #include "Racing/FinishedRaceInsights.h"
+#include "Racing/RecentLapReview.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/CurrentLapPotential.h"
 #include "Racing/LiveSectorTarget.h"
@@ -266,6 +267,32 @@ void ALatebrakeRaceHUD::DrawHUD()
                 {
                     MenuLine(FString::Printf(TEXT("Final lap penalties included: +%.2fs"),
                         Race.GetLastLapPenaltySeconds()));
+                }
+            }
+            // Review the actual run's latest eight timed laps. Results
+            // pagination keeps each row reachable even on small Android
+            // viewports, without changing records or reward authority.
+            const latebrake::RecentLapReview LapReview =
+                latebrake::BuildRecentLapReview(Race);
+            if (LapReview.Valid)
+            {
+                MenuLine(TEXT("RECENT TIMED LAPS (NEWEST FIRST)"), true);
+                for (int32 Offset = 0; Offset < LapReview.Count; ++Offset)
+                {
+                    const auto& Row = LapReview.Rows[Offset];
+                    const FString BestLabel = Row.EqualsRunBest
+                        ? FString(TEXT("RUN BEST"))
+                        : FString::Printf(TEXT("+%.2fs TO BEST"),
+                            Row.SecondsBehindRunBest);
+                    MenuLine(FString::Printf(
+                        TEXT("LAP %d: %.2fs | %s"),
+                        Row.CompletedLap, Row.LapSeconds, *BestLabel));
+                    if (!bCompact && Row.HasPrevious)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("  LAP %d vs prior timed: %+.2fs"),
+                            Row.CompletedLap, Row.DeltaToPreviousSeconds));
+                    }
                 }
             }
             MenuLine(TEXT("Select to retry the current event."));

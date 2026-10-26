@@ -463,3 +463,20 @@ python3 -m unittest discover -s Tests/Editor -p 'MenuDetailPaginationBindingTest
 
 See [real runtime paging QA](../../docs/MENU_DETAIL_PAGING_QA.md).
 Source validation is not actual UE5.8 UHT/Editor build or phone QA.
+
+### v0.5.70 — finished-run recent lap review
+
+`RecentLapReviewTests.cpp` links real `RaceProgress.cpp`. It verifies
+the actual newest-to-oldest last-eight timed laps, equality to run best,
+positive/negative pace changes against the preceding retained timed lap,
+single-lap and long-race ring bounds, and fail-closed incomplete,
+penalty-only, zero-time and restarted races. HUD source contracts check
+that Results consumes this bounded derived review before menu paging.
+
+```sh
+ctest --test-dir Tests/Standalone/build -R '^(RecentLapReview|MenuDetailPager|FinishedRaceInsights)$' --output-on-failure
+```
+
+These are C++20 source checks, **not** Unreal 5.8/UHT compile,
+genuine cooked game binaries, HUD pixel validation or device QA.
+See [recent lap review QA](../../docs/RECENT_LAP_REVIEW_QA.md).

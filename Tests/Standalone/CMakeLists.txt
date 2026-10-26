@@ -785,3 +785,18 @@ else()
     target_compile_options(latebrake_menu_detail_pager_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME MenuDetailPager COMMAND latebrake_menu_detail_pager_tests)
+
+# v0.5.70: genuine finished-run lap review using production
+# RaceProgress and eight-record ring. Results presentation only.
+add_executable(latebrake_recent_lap_review_tests
+    RecentLapReviewTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_recent_lap_review_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_recent_lap_review_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_recent_lap_review_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_recent_lap_review_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RecentLapReview COMMAND latebrake_recent_lap_review_tests)
