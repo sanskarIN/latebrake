@@ -12,7 +12,7 @@ This page distinguishes source-level features from tested game builds. All gamep
 
 Read [track design](TRACK.md), [AI and events](AI_AND_EVENTS.md), [sector timing](SECTOR_TIMING.md) and [finish insights](FINISH_INSIGHTS.md).
 
-## Post-race source analysis (v0.5.71 development)
+## Post-race source analysis (v0.5.71 source pre-release)
 
 - **Recent lap distribution:** mean, median, population standard deviation,
   signed last-lap difference and consecutive faster laps over only the last

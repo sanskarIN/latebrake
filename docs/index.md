@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest published tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.70">v0.5.70</a>, an independently source-tested <strong>pre-release with zero executable attachments</strong>. The current source has safe mobile HUD text, bounded menu paging and genuine recent lap results; newer race insights are under development. <strong>No verified Windows or Android game binary is available.</strong> Unreal Engine 5.8 Editor/UHT compilation, an original cooked circuit and installed gameplay QA still remain mandatory.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.71">v0.5.71</a>, an independently tested <strong>source-only pre-release with zero game executable attachments</strong>. The source includes phone-safe HUD, paged Results, measured recent-lap statistics, best sectors and approximate driving telemetry. <strong>No verified Windows or Android game binary is available.</strong> UE 5.8/UHT compilation, an authentic original cooked circuit and installed device/physics QA remain required.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
