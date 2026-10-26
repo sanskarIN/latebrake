@@ -513,3 +513,13 @@ fresh-press, menu, focus, pause, physical driver and circuit requirements.
 Portable policies do not replace actual UE 5.8 spring-arm rendering or
 touch hardware QA. See
 [Camera presets QA](../../docs/CAMERA_PRESETS_QA.md).
+
+### v0.5.73 — measured arcade drift combo meter
+
+`DriftComboMeterTests.cpp` directly checks the same standalone
+`DriftComboMeter` source included by the UE pawn. Qualifying sustained
+lateral motion, minimum speed, malformed samples, brief grip-loss
+grace, banked points, repeated suspension and restart are covered.
+These unofficial style points never affect timing or career rewards.
+Physical drift behavior still needs real UE and device qualification:
+[Drift QA](../../docs/DRIFT_COMBO_QA.md).

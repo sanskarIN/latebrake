@@ -376,6 +376,27 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            // Unofficial style score from real chassis slip samples;
+            // finished-race rewards never consume this value.
+            if (latebrake::CanAwardFinishedRace(Race))
+            {
+                const latebrake::DriftComboMeter& Drift =
+                    Car->GetDriftMeter();
+                if (Drift.GetComboCount() > 0)
+                {
+                    MenuLine(TEXT("ARCADE DRIFT SCORE (NO CREDITS)"), true);
+                    MenuLine(FString::Printf(
+                        TEXT("Drift %.0f pts | combos %d | best %.0f"),
+                        Drift.GetTotalPoints(),
+                        Drift.GetComboCount(), Drift.GetBestComboPoints()));
+                    if (!bCompact)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("Qualified slip time %.1fs this run"),
+                            Drift.GetTotalDriftSeconds()));
+                    }
+                }
+            }
             MenuLine(TEXT("Select to retry the current event."));
             break;
         }
@@ -722,6 +743,16 @@ void ALatebrakeRaceHUD::DrawHUD()
             RouteAdvice.DirectDistanceMeters, Hint), Primary);
     }
 
+    // Optional compact drift feedback, AFTER authentic lap/clock and
+    // wayfinding lines; bounded HUD budget may hide it on small phones.
+    // Display only measured, qualified in-game drift, never credits.
+    if (bCompact && Car->GetDriftMeter().HasActiveCombo())
+    {
+        Line(FString::Printf(TEXT("DRIFT %.0f | x%.2f"),
+            Car->GetDriftMeter().GetCurrentComboPoints(),
+            Car->GetDriftMeter().GetCurrentComboMultiplier()), Accent);
+    }
+
     if (!bCompact)
     {
         const latebrake::DrivingSessionStats& DriveStats =
@@ -737,6 +768,17 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("MOTION  %.1fs BRAKING | %.1fs HIGH SIDE SLIP"),
                 DriveStats.GetBrakingSeconds(),
                 DriveStats.GetHighSlipSeconds()), Primary);
+            // Visually styled combo, never official race classification.
+            const latebrake::DriftComboMeter& Drift =
+                Car->GetDriftMeter();
+            if (Drift.HasActiveCombo())
+            {
+                Line(FString::Printf(
+                    TEXT("DRIFT %.0f pts | x%.2f | %.1fs"),
+                    Drift.GetCurrentComboPoints(),
+                    Drift.GetCurrentComboMultiplier(),
+                    Drift.GetCurrentComboSeconds()), Accent);
+            }
         }
     }
 

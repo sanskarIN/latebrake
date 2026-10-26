@@ -865,6 +865,17 @@ else()
 endif()
 add_test(NAME TouchCameraCyclePolicy COMMAND latebrake_touch_camera_cycle_policy_tests)
 
+# v0.5.73: source-observed arcade drift meter, never an award/record.
+add_executable(latebrake_drift_combo_meter_tests DriftComboMeterTests.cpp)
+target_include_directories(latebrake_drift_combo_meter_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_drift_combo_meter_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_drift_combo_meter_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_drift_combo_meter_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DriftComboMeter COMMAND latebrake_drift_combo_meter_tests)
+
 # v0.5.74: player-axis noise gates are independent of Unreal and rivals.
 add_executable(latebrake_drive_axis_deadzone_tests DriveAxisDeadzoneTests.cpp)
 target_include_directories(latebrake_drive_axis_deadzone_tests PRIVATE ../../Source/Latebrake/Public)

@@ -41,6 +41,21 @@ gas/brake hit rectangles are unchanged. [Camera test plan](CAMERA_PRESETS_QA.md)
 
 No screenshots or original cooked asset/runtime validation are claimed.
 
+## Optional arcade drift score (v0.5.73 source development)
+
+The latest source work includes a **virtual drift-combo meter** driven
+by observed car speed and lateral slip samples. It only scores sustained
+arcade-style sideways chassis movement, handles short breaks without
+duplicating combos, and stops on pause, app focus loss, recovery or
+gameplay end. The existing Results detail pager can show unofficial
+combo totals and sample time after a valid finish.
+
+**These points are decorative; they do not grant career credits,
+achievements, records, upgrades, payments or race wins.** The player
+can continue normal circuit and time-attack racing without using the
+meter. Physical validity and legible HUD output require actual licensed
+Unreal Engine/device qualification. [Drift QA plan](DRIFT_COMBO_QA.md).
+
 ## Driving and controls
 
 The prototype car is built from engine primitives and uses Chaos-backed rigid-body forces with Arcade and simulation-inspired presets. It is **not** a production tire/suspension simulation.

@@ -216,6 +216,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
     DrivingStats.Suspend();
+    DriftMeter.Suspend();
     ClearDriverInputs();
     // A failed pause may keep Chaos simulating while race time is frozen.
     // Neutralize driver commands plus current momentum during menu/world
@@ -365,6 +366,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed), static_cast<double>(LateralSpeed),
         bEffectiveBraking});
+    // Advisory arcade meter observes genuine same-frame chassis velocity.
+    // It does not control driving forces or award saved credits.
+    DriftMeter.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(Speed), static_cast<double>(LateralSpeed),
+        bEffectiveBraking});
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
@@ -464,6 +470,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     // invalidate all pre-recovery checkpoint samples BEFORE attempting it.
     ++TeleportRevision;
     DrivingStats.Suspend();
+    DriftMeter.Suspend();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())
     {
