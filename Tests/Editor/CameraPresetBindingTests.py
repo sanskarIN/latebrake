@@ -57,11 +57,12 @@ class CameraPresetBindingTests(unittest.TestCase):
         self.assertIn("DrawPad(Pads.MenuBrowse, TEXT(\"CAM\"), false);",
                       self.hud)
         self.assertIn(
-            "case latebrake::TouchControl::MenuBrowse:\n"
-            "        ChangeCamera();", self.pawn.replace(
-                "        // This separate existing upper-middle pad is BROWSE in menus\n"
-                "        // but CAM during a live race. It never acquires drive input.\n"
-                "        // Only a genuinely new press can change the view.\n", ""))
+            "case latebrake::TouchControl::MenuBrowse:", self.pawn)
+        self.assertIn("CanCycleCameraFromTouch({", self.pawn)
+        self.assertIn("ChangeCamera();", self.pawn)
+        self.assertIn('"Vehicles/TouchCameraCyclePolicy.h"', self.pawn)
+        self.assertIn("TouchCameraCyclePolicyTests.cpp", self.cmake)
+        self.assertIn("NAME TouchCameraCyclePolicy", self.cmake)
         self.assertIn(
             "else if (Region == latebrake::TouchControl::MenuBrowse) "
             "CareerNext();", self.pawn)

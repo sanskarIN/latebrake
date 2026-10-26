@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
+#include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
@@ -726,10 +727,20 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         CareerStart();
         return;
     case latebrake::TouchControl::MenuBrowse:
-        // This separate existing upper-middle pad is BROWSE in menus
-        // but CAM during a live race. It never acquires drive input.
-        // Only a genuinely new press can change the view.
-        ChangeCamera();
+        // The same rectangle means BROWSE only in menus and CAM in racing.
+        // Explicit portable admission is a second barrier after the
+        // already checked one-shot press, input owners and pause guards.
+        if (latebrake::CanCycleCameraFromTouch({
+                Region, bAllowAcquire, Mode != nullptr,
+                Mode && Mode->IsCircuitReadyForGameplay(),
+                Mode && Mode->HasLocalPlayerDriver(),
+                Mode && Mode->IsMenuOpen(),
+                UGameplayStatics::IsGamePaused(this) ||
+                    (Mode && Mode->IsManualRacePauseActive()),
+                Mode && Mode->IsFocusLossGuardActive()}))
+        {
+            ChangeCamera();
+        }
         return;
     default:
         break;
