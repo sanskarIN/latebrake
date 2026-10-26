@@ -76,5 +76,4 @@ unlinked display-only animation.
    and controller/real gameplay results to
    [playable qualification #148](https://github.com/sanskarIN/latebrake/issues/148).
 
-**This source milestone is NOT proof of real UE compilation, installed
-playable packages, physical device quality or a stable game release.**
+**v0.5.75 is a published SOURCE-ONLY pre-release with zero executable assets. It is NOT proof of real UE 5.8 compilation, an authentic cooked map, installed playable game packages, device QA or a stable release.**

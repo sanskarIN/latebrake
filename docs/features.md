@@ -2,7 +2,7 @@
 
 This page distinguishes source-level features from tested game builds. All gameplay below describes code in the repository, **not confirmed functionality of an installed game**.
 
-## Start lights (v0.5.75 source development)
+## Start lights (v0.5.75 source-only pre-release)
 
 A single three-second 3→2→1→GO gate controls the real race clock,
 checkpoint scoring, player/recovery inputs and AI rival motion. An

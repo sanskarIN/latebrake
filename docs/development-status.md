@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.74](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.74), **source only**, no runnable assets |
-| Latest source-development milestone | **v0.5.74 published source-only pre-release** on `main`: signed human analog steering and throttle deadzones with full-range rescaling, building on v0.5.73 drift combos. Real UE 5.8/UHT compilation, an original cooked circuit and installed phone/desktop QA remain unavailable |
+| Latest published GitHub pre-release | [v0.5.75](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75), **source only**, no runnable assets |
+| Latest source-development milestone | **v0.5.75 published source-only pre-release** on `main`: an actual shared green-light gate for clock, player/rival driving, checkpoint scoring and recovery, with precise GO-frame timing; v0.5.74 added analog deadzones. Real UE 5.8/UHT compilation, an original cooked circuit and installed phone/desktop QA remain unavailable |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |

@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The latest published GitHub tag is **v0.5.74**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The latest published GitHub tag is **v0.5.75**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current state:** v0.5.74 is the latest published source-only pre-release, with no runnable Unreal executable. It adds human controller analog deadzones, preserving full travel and independent Android touch/rival input paths; v0.5.73 adds optional arcade drift combos and v0.5.72 adds four camera views. Actual Unreal/Win64/Android package and device qualification remain required.
+**Current state:** v0.5.75 is the latest published source-only pre-release, still without a runnable Unreal game. Its genuine three-second red→green race-start policy controls the authoritative clock, AI/player movement and ordered checkpoints, building on v0.5.74 controller deadzones. Actual Unreal/Win64/Android package and installed device qualification remain required.
 
 ## Published source previews
 
@@ -11,6 +11,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.75 | [Release notes](releases/v0.5.75.md) |
 | v0.5.74 | [Release notes](releases/v0.5.74.md) |
 | v0.5.73 | [Release notes](releases/v0.5.73.md) |
 | v0.5.72 | [Release notes](releases/v0.5.72.md) |

@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-26
-**Latest published milestone:** [v0.5.74 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.74), tagged at independently qualified commit `4c7bce754a08089b4641f3f60a367b6a3fd7a601` (zero executable assets).
+**Latest published milestone:** [v0.5.75 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.75), tagged at independently qualified commit `f19a83186377aab9e4be5d76ef28e36ccd245365` (zero executable assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## v0.5.75 source development — genuine green-light race start
+## v0.5.75 published source-only pre-release — genuine green-light race start
 
 - New engine-neutral `RaceStartLights` enforces a measured 3→2→1→GO
   countdown. The real GameMode authorizes its advance only with
@@ -19,9 +19,7 @@
 - New strict C++20 `RaceStartLights` tests link production
   `RaceProgress.cpp`; Python source contracts cover the actual
   pawn/rival/GameMode/HUD decisions. See [start lights QA](RACE_START_QA.md).
-- **Unreleased source work:** engine/UHT, actual circuit cook,
-  platform-specific physics/input frame ordering and device testing
-  remain unverified; latest published source tag is v0.5.74.
+- **Published independently qualified SOURCE-ONLY pre-release:** all strict portable three-OS C++20 tests, Python Unreal source contracts, synthetic PowerShell provenance policies and documentation checks passed for the exact merged commit. No genuine UE 5.8 compilation, actual cooked map, installed Win64/Android package or hardware QA was performed; zero executable assets.
 
 ## v0.5.74 published source-only pre-release — signed player controller deadzones
 
