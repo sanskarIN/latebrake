@@ -5,6 +5,29 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## v0.5.73 source development — grounded arcade drift combos
+
+- **Source-only addition:** fixed-state `DriftComboMeter` observes the
+  actual car's bounded planar and lateral velocity samples, requiring
+  sustained sideways movement before starting an arcade combo.
+  Validated frames increase finite points; brief gaps preserve a
+  combo but recovered grip ends/banks it once. Physics-invalid,
+  paused/focus-suspended and recovered driving break the sequence;
+  race restart resets all current-session arcade points.
+- The non-compact active HUD shows combo timing/points. The paged
+  finished Results menu shows total style points, best combo and
+  genuine qualified sample time only after a recordable finish, with
+  the prominent text **NO CREDITS**. Scores are purely ornamental:
+  no additional rewards, career points, saved records, achievements,
+  tire forces or race timing changes are allowed.
+- Real pawn Tick/teleport and Results HUD are covered by strict C++20
+  and Unreal-source integration regressions. The
+  [Drift QA plan](DRIFT_COMBO_QA.md) lists additional mandatory
+  UE 5.8 compilation, original track, physics, Windows/Android
+  rendering and hardware tests.
+- **v0.5.73 is currently source development, not a published tag or
+  verified playable game.** Latest published source preview remains v0.5.72.
+
 ## v0.5.72 published source-only pre-release — four race views and touch camera
 
 - **Source-only feature:** C cycles four deterministic Chase, Close

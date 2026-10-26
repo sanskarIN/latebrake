@@ -1,3 +1,20 @@
+# v0.5.73 — Arcade drift source verification
+
+`DriftComboMeterTests.cpp` is a strict C++20 test of persistent
+run-local style-point accounting from bounded measured chassis samples.
+It verifies time/slip qualification, two separate valid combos,
+short interruption grace, bank-on-grip, pause/recovery invalidation,
+nonfinite/hitch sample rejection and complete race reset.
+`DriftComboBindingTests.py` ties this policy to actual Unreal pawn
+Tick, recovery, GameMode restart and bounded Results drawing, without
+altering official timing, credits, career or save formats.
+
+See [Drift combo QA](DRIFT_COMBO_QA.md). Source policy tests do
+**not** compile Unreal 5.8, prove chassis dynamics/collision, cook an
+original track or produce playable Win64/Android packages.
+
+---
+
 # v0.5.72 camera source validation
 
 `CameraPresetsTests.cpp` covers all four native view configurations,
