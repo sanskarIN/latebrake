@@ -61,5 +61,4 @@ the exact runtime callbacks and `DefaultInput.ini` mappings.
   screenshots/logs and actual build/package receipt for
   [playable qualification #148](https://github.com/sanskarIN/latebrake/issues/148).
 
-**v0.5.74 is source development, not a published or playable release.
-No real UE/device validation or executable package is claimed.**
+**v0.5.74 is a published SOURCE-ONLY pre-release with zero game executable assets, not a playable or stable game. Genuine UE 5.8 and installed controller/Android validation remain unverified.**
