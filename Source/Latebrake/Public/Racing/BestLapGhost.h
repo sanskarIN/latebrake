@@ -68,7 +68,7 @@ public:
         {
             const LapGhostPose& last = Candidate[CandidateCount - 1];
             const double dt = pose.Seconds - last.Seconds;
-            if (!std::isfinite(dt) || dt < 0.0 || dt > 0.45)
+            if (!std::isfinite(dt) || dt <= 0.0 || dt > 0.45)
             {
                 InvalidateCurrentLap();
                 return false;
