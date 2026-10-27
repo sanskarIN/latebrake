@@ -39,7 +39,7 @@ int main()
             "a distant approach reduces rival motor power without stealing steering");
 
     for (const auto& observation : {
-        Traffic(-300, 0), Traffic(90, 0), Traffic(1800, 0),
+        Traffic(-300, 0), Traffic(0, 0), Traffic(1800, 0),
         Traffic(500, 250), Traffic(500, -250),
         Traffic(400, 10, 350.0, 0.0),
         Traffic(400, 0, 1800.0, 1700.0),
@@ -51,6 +51,10 @@ int main()
                 !untouched.Brake && untouched.Steering == cruise.Steering,
                 "player behind, adjacent, far or not closing cannot trigger brake");
     }
+
+    const auto overlapApproach = YieldRivalToPlayer(cruise, Traffic(90, 0));
+    Require(overlapApproach.Brake && overlapApproach.Throttle == 0.0,
+            "a nearby in-lane player ahead cannot bypass emergency braking");
 
     const auto mildClose = YieldRivalToPlayer(
         cruise, Traffic(350, 0, 1600.0, 1400.0));
