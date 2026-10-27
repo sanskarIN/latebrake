@@ -95,3 +95,21 @@ actor, zero collision and lack of saved score authority.
    Archive genuine installed test observations and logs.
 
 **Status: source-only, unverified visual gameplay experiment.**
+
+## Optional post-v0.5.79 desktop ghost visibility control
+
+A distinct source development branch adds a press-only **G** keyboard
+binding. While the real race clock/input are active and the player car
+is verified, pressing G hides or restores the floating visual marker.
+The recording policy and existing in-memory fastest lap are retained.
+Menu/pause/focus-lost/finished/invalid-player commands are refused.
+The feature is not a race-speed modifier and does not overwrite a
+personal-best result, saved preference or garage state.
+
+The current implementation is a **desktop keyboard option only**; no
+Android touch-region button, gamepad mapping, settings persistence or
+translucent full-car ghost has been added. Test G toggling during an
+actual installed Win64 race with a valid best lap and after pause,
+menu, OS focus loss, recovery and restart. Verify the marker vanishes
+immediately without needing another Tick and reappears only after
+explicit re-enable and valid replay conditions.
