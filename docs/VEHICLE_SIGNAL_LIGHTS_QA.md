@@ -17,7 +17,9 @@ headlamp rendering or physical simulation.
 - Braking and reversing can occur at once; both signals may illuminate.
 - Red/reverse intensity is clamped to deterministic small policy values
   to avoid nonfinite light setup. Three point lights have short
-  170-cm attenuation radii. This is an early stylized effect, not
+  170-cm attenuation radii. Dynamic shadow casting, volumetric
+shadows, global illumination and reflection contributions are all
+disabled for the prototype lights to limit renderer workload. This is an early stylized effect, not
   photometric driving illumination.
 - None of the lights changes physics force, collision, lap timing,
   AI routing, career credits, records, driver input, saved profile or
