@@ -210,13 +210,32 @@ void ALatebrakeRaceGameMode::SuspendBestLapGhost()
     }
 }
 
+void ALatebrakeRaceGameMode::ToggleBestLapGhostView()
+{
+    // Press-only local input, never a pause/resume shortcut. No ghost
+    // preference may alter the best-lap recorder or racing authority.
+    const bool bHumanInputAllowed =
+        bCircuitReady && StartLights.IsGreen() && !Race.IsFinished() &&
+        !Menu.IsOpen() && !UGameplayStatics::IsGamePaused(this) &&
+        !AppFocusGuard.IsSuspended() && !ManualPause.IsSuspended() &&
+        HasLocalPlayerDriver();
+    if (GhostDisplay.Toggle(bHumanInputAllowed) &&
+        !GhostDisplay.IsEnabled() && IsValid(BestLapGhostMarker))
+    {
+        // Paused worlds may stop ticking. Hiding is immediate rather than
+        // waiting for the next replay update to observe the new preference.
+        BestLapGhostMarker->SetActorHiddenInGame(true);
+    }
+}
+
 void ALatebrakeRaceGameMode::UpdateBestLapGhostMarker(bool bReplayAuthorized)
 {
     // A ghost is only displayed on a subsequent lap with a legitimate
     // active running clock. Never show a preview during menus, countdown,
     // invalid track, unfinished first lap, pause, or Results.
     latebrake::LapGhostPose Sample;
-    const bool bShouldShow = bReplayAuthorized && !Race.IsFinished() &&
+    const bool bShouldShow = GhostDisplay.CanRender(bReplayAuthorized) &&
+        !Race.IsFinished() &&
         Race.GetCompletedLaps() > 0 && GhostRecorder.HasBest() &&
         GhostRecorder.Evaluate(Race.GetCurrentLapSeconds(), Sample);
     if (!bShouldShow)
