@@ -48,7 +48,7 @@ class RouteAndRivalIntegrationTests(unittest.TestCase):
                        "SetAutonomousControls("):
             self.assertIn(marker, self.rival)
         self.assertLess(tick.index("latebrake::PlanRivalTurn("),
-                        tick.index("SetAutonomousControls(static_cast<float>(Command.Throttle)"))
+                        tick.index("latebrake::YieldRivalToPlayer(Command, {"))\n        self.assertLess(tick.index("latebrake::YieldRivalToPlayer(Command, {"),\n                        tick.index("SetAutonomousControls(static_cast<float>(TrafficCommand.Throttle)"))
         self.assertIn("commanded.Throttle = 0.0;", self.corner)
         self.assertIn("commanded.Brake = true;", self.corner)
         self.assertIn("if (commanded.Arrived || commanded.Brake)", self.corner)
