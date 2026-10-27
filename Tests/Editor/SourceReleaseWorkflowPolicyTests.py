@@ -39,6 +39,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.76": "v0.5.75",  # Signed forward launch telemetry.
         "v0.5.77": "v0.5.76",  # Chassis G estimates and private Win64 QA.
         "v0.5.78": "v0.5.77",  # Wheel visuals and rival lane-aware AI.
+        "v0.5.79": "v0.5.78",  # Run-local best-lap ghost and rear signals.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -82,6 +83,15 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
+    if version == "v0.5.79":
+        for new_gate in (
+            "BestLapGhost|VehicleSignalLights",
+            "Test-WindowsPlaytestWrapperPolicy.ps1",
+            "Test-WindowsRuntimePlaytestPolicy.ps1",
+            "Test-WindowsLogDirectoryPolicy.ps1",
+        ):
+            require(new_gate, "v0.5.79 ghost/signals and Win64 source checks")
+
     if version == "v0.5.78":
         for new_gate in (
             "WheelVisualMotion|RivalTrafficAwareness",
@@ -112,7 +122,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -239,6 +249,27 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(mutation=mutation[-80:]):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release("v0.5.78", mutation, notes)
+
+    def test_v0579_source_release_requires_real_ghost_and_light_policies(self):
+        source = (WORKFLOWS / "publish-v0.5.79-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.79.md").read_text(
+            encoding="utf-8"
+        )
+        verify_live_ci_source_release("v0.5.79", source, notes)
+        for mutation in (
+            source.replace("BestLapGhost|VehicleSignalLights",
+                           "VehicleSignalLights", 1),
+            source.replace("tag: 'v0.5.78'", "tag: 'v0.5.77'", 1),
+            source.replace("published.assets.length !== 0", "false", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                           "needs: [source-tests, editor-tests]", 1),
+        ):
+            with self.subTest(mutation=mutation[-90:]):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release("v0.5.79", mutation, notes)
 
     def test_known_yaml_truncation_and_revision_drift_are_rejected(self):
         version = "v0.5.32"
