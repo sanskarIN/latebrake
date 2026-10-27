@@ -117,11 +117,11 @@ solely because packaging helper scripts now exist.
 | v0.5.35 (published source-only pre-release) | Suspend player time, checkpoint scoring, recoveries and rival driving on app focus loss independently of a successful engine world pause; explicitly resume after player action | C++20 and source bindings; genuine Unreal 5.8 and installed Win64/Android focus-loss QA still required |
 
 
-### Current unreleased chassis G-meter development
+### v0.5.77 published source-only G-meter development
 
-The next source candidate includes an optional bounded chassis world-velocity
-G-force estimator with noncompact HUD and finished Results feedback. It is not
-a released feature, car physics qualification or sensor-calibrated gameplay.
+The independently source-qualified v0.5.77 preview includes a bounded chassis world-velocity
+G-force estimator with noncompact HUD and finished Results feedback. It is only a published source feature, not a playable game,
+car physics qualification or sensor-calibrated gameplay.
 Use [Vehicle G-force QA](VEHICLE_G_FORCE_QA.md) and maintain the real
 engine/hardware release gate in issue #148; do not treat passing portable
 C++20 CI as proof of a playable game.
