@@ -218,6 +218,7 @@ void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
     DrivingStats.Suspend();
     DriftMeter.Suspend();
+    GForceMeter.Suspend();
     ClearDriverInputs();
     // A failed pause may keep Chaos simulating while race time is frozen.
     // Neutralize driver commands plus current momentum during menu/world
@@ -313,6 +314,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
+        GForceMeter.Suspend();
         return;
     }
 
@@ -339,6 +341,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         !FMath::IsFinite(Velocity.Z))
     {
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: physics velocity was nonfinite; clearing vehicle motion"));
+        GForceMeter.Suspend();
         Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
         ClearDriverInputs();
         return;
@@ -373,6 +376,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     DriftMeter.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed), static_cast<double>(LateralSpeed),
         bEffectiveBraking});
+    // Physical acceleration telemetry differentiates WORLD velocity,
+    // then projects its vector on the actual car yaw. This is visual
+    // feedback only: never alters forces, rewards, saves or the race clock.
+    GForceMeter.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(Velocity.X), static_cast<double>(Velocity.Y),
+        static_cast<double>(GetActorRotation().Yaw), bEffectiveBraking});
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
@@ -493,6 +502,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     ++TeleportRevision;
     DrivingStats.Suspend();
     DriftMeter.Suspend();
+    GForceMeter.Suspend();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())
     {
