@@ -79,7 +79,7 @@ inline PilotCommand YieldRivalToPlayer(
     constexpr double LaneCorridorCm = 225.0;
     constexpr double MaxAwarenessDistanceCm = 1450.0;
     constexpr double EmergencyDistanceCm = 600.0;
-    if (forwardDistance <= 110.0 ||
+    if (forwardDistance <= 0.0 ||
         forwardDistance >= MaxAwarenessDistanceCm ||
         lateralDistance >= LaneCorridorCm ||
         sample.RivalPlanarSpeedCmPerSecond < 450.0 ||
