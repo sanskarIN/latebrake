@@ -51,6 +51,10 @@ class VehicleSignalBindingTests(unittest.TestCase):
             "Lamps[Index]->SetRelativeLocation(",
             "Lamps[Index]->SetAttenuationRadius(170.f);",
             "Lamps[Index]->SetIntensity(0.f);",
+            "Lamps[Index]->SetCastShadows(false);",
+            "Lamps[Index]->SetCastVolumetricShadow(false);",
+            "Lamps[Index]->SetAffectGlobalIllumination(false);",
+            "Lamps[Index]->SetAffectReflection(false);",
             "Lamps[Index]->SetLightColor(",
         ):
             self.assertIn(marker, constructor)
