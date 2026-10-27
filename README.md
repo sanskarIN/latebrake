@@ -23,6 +23,8 @@ and installed Windows/Android playtests are outstanding.
 
 **Unreleased visual gameplay improvement:** procedural front steering, forward/reverse wheel roll and collision-free rotating spokes now follow actual Chaos chassis motion on the prototype car; race scoring and vehicle physics are unchanged. [Visual wheel QA and limitations](docs/WHEEL_VISUAL_QA.md). This is source-only until genuine UE 5.8/installed game verification.
 
+**Next-source prototype visual signals (not yet released):** two red rear brake lamps brighten from real effective brake input, and one white reverse lamp responds only to measured backward vehicle motion. Pure C++20 safety policies and Unreal pawn attachments are in development; no real installed device rendering has been qualified. [Signal-light QA](docs/VEHICLE_SIGNAL_LIGHTS_QA.md).
+
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
 **v0.5.72 published source preview:** four deterministic camera presets
