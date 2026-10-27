@@ -127,7 +127,8 @@ class BestLapGhostBindingTests(unittest.TestCase):
     def test_visual_status_never_replaces_official_hud_lines(self):
         self.assertIn("Mode->HasBestLapGhost()", self.hud)
         self.assertIn("SESSION GHOST BEACON:", self.hud)
-        self.assertIn("BEST-LAP GHOST BEACON", self.hud)
+        self.assertIn("BEST-LAP GHOST %.2fs | G HIDE", self.hud)
+        self.assertIn("BEST-LAP GHOST HIDDEN | G SHOW", self.hud)
         self.assertIn("GetBestLapGhostSeconds()", self.game_h)
         self.assertNotIn("GhostRecorder", self.game.split(
             "void ALatebrakeRaceGameMode::SaveRecords()", 1
