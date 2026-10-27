@@ -25,6 +25,8 @@ and installed Windows/Android playtests are outstanding.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
+**Unreleased rival AI improvement:** the prototype opponent now senses the real player car directly ahead in its lane and can gently reduce throttle or request normal braking when closing too quickly. It does not swerve or create official rival results, and requires real Unreal/installed-device QA. [Rival traffic QA](docs/RIVAL_TRAFFIC_QA.md).
+
 **v0.5.72 published source preview:** four deterministic camera presets
 (Chase, Close Chase, Hood, High Chase) replace the old near/far toggle,
 with the existing keyboard/gamepad C binding and a press-only Android

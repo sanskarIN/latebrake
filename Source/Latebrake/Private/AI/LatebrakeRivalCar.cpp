@@ -2,6 +2,7 @@
 
 #include "AI/RivalPilot.h"
 #include "AI/RivalCornerAnticipation.h"
+#include "AI/RivalTrafficAwareness.h"
 #include "AI/RivalDriveReadiness.h"
 #include "Track/CircuitLayout.h"
 #include "Engine/World.h"
@@ -101,8 +102,25 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     // Plan the control for this physics tick, not one frame after applying
     // the previous command.
-    SetAutonomousControls(static_cast<float>(Command.Throttle),
-                          static_cast<float>(Command.Steering),
-                          Command.Brake);
+    // A real possessed player can be driving just ahead of the rival on
+    // the same circuit lane. Do not change route steering or invent an
+    // overtaking path: only reduce throttle or request ordinary braking
+    // when the rival is actually closing on an observed in-lane car.
+    const ALatebrakeCarPawn* Player = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    const bool bPlayerReady = IsValid(Player) && Player->IsRacePhysicsReady();
+    const FVector PlayerPosition = bPlayerReady
+        ? Player->GetActorLocation() : FVector::ZeroVector;
+    const FVector PlayerVelocity = bPlayerReady
+        ? Player->GetVelocity() : FVector::ZeroVector;
+    const latebrake::PilotCommand TrafficCommand =
+        latebrake::YieldRivalToPlayer(Command, {
+            Position.X, Position.Y, Heading, FlatSpeed,
+            PlayerPosition.X, PlayerPosition.Y,
+            PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady
+        });
+    SetAutonomousControls(static_cast<float>(TrafficCommand.Throttle),
+                          static_cast<float>(TrafficCommand.Steering),
+                          TrafficCommand.Brake);
     Super::Tick(DeltaSeconds);
 }

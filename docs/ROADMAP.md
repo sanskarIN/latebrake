@@ -60,6 +60,17 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 
 Playable game releases must include genuine installed packages, actual hardware/gameplay testing, change notes, known issues, and no unsupported promises. Source-only preview archives are **not** playable game artifacts.
 
+
+### Current unreleased rival traffic-awareness development
+
+A conservative in-lane prototype rival AI limiter is implemented in
+portable C++20, using actual player location and velocity to choose
+ordinary throttle reductions or braking. It neither swerves nor
+changes laps, race rewards or the authorized player clock. Its
+shortcuts and collisions remain **unqualified in real UE 5.8**, the
+original cooked circuit and target devices.
+See [rival traffic QA](RIVAL_TRAFFIC_QA.md).
+
 ### Engine-first roadmap requirement
 
 Future milestones must first secure a real Unreal 5.8 editor/UHT build,
