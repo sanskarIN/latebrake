@@ -100,6 +100,10 @@ int main()
     Check(!g.Record(Pose(0.80, 8.0), true),
           "long world-pause/physics hitch breaks a lap");
     g.StartLap();
+    Check(g.Record(Pose(0.10, 1.0), true), "start strict time check");
+    Check(!g.Record(Pose(0.10, 1.0), true),
+          "repeated or non-advancing clock is not a valid new sample");
+    g.StartLap();
     Check(g.Record(Pose(0.10, 1.0), true), "new lap re-arms after hitch");
     Check(!g.Record(Pose(0.20, 4000.0), true),
           "unexplained teleport-sized spatial jump is rejected");
