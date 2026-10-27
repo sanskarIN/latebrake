@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The latest published GitHub tag is **v0.5.78**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The latest published GitHub tag is **v0.5.79**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current state:** [v0.5.78](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.78) is the latest published **source-only pre-release**, qualified at commit `184dd7223556684afeefc70e4d2c89f5b7525965`. It includes true rigid-body-speed procedural wheel steering/rolling and real player-aware rival courtesy braking. The source preview has **zero executable game assets**, and actual UE 5.8/UHT, original cooked circuit, Win64/Android install and hardware QA remain outstanding.
+**Current state:** [v0.5.79](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.79) is the latest published **source-only pre-release**, independently qualified at commit `c4525893f34028fa702e1dc2e563a6daa3f6f607`. It adds a fixed-memory, real-chassis best-lap ghost beacon and bounded brake/reverse visual signals. The preview has **zero executable game assets**. Genuine Unreal 5.8/UHT compilation, original cooked circuit, installed Win64/Android games and hardware QA are still outstanding.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 
@@ -13,6 +13,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.79 | [Release notes](releases/v0.5.79.md) |
 | v0.5.78 | [Release notes](releases/v0.5.78.md) |
 | v0.5.77 | [Release notes](releases/v0.5.77.md) |
 | v0.5.76 | [Release notes](releases/v0.5.76.md) |

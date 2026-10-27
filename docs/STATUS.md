@@ -1,9 +1,15 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-27
-**Latest published milestone:** [v0.5.78 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.78), qualified at immutable commit `184dd7223556684afeefc70e4d2c89f5b7525965` (zero compiled game assets).
+**Latest published milestone:** [v0.5.79 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.79), qualified at immutable commit `c4525893f34028fa702e1dc2e563a6daa3f6f607` (zero compiled game assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.79 published source-only pre-release — best-lap ghost beacon and signal lights
+
+- The actual player chassis generates a bounded run-local best-lap pose trace, with replay as a small non-colliding floating beacon after a legitimate driven lap. It never records a persistent best ghost or qualifies official score; [ghost QA](BEST_LAP_GHOST_QA.md).
+- Two red brake/tail lamps and one white reverse lamp use real effective braking and negative chassis velocity. The lights do not affect collision, handling or scoring; [signal QA](VEHICLE_SIGNAL_LIGHTS_QA.md).
+- This is **source-only**: Windows, Ubuntu and macOS portable C++20 qualification, Python binding tests and docs are not real UE 5.8 compilation, cooked map or installed driving QA.
 
 ## v0.5.78 published source-only pre-release — procedural vehicle visuals and player-aware rival
 

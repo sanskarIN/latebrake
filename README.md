@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.78](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.78) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently source-tested commit `184dd7223556684afeefc70e4d2c89f5b7525965` includes visible prototype wheel rotation/steering, lane-aware rival courtesy braking, and previous real-chassis G/launch telemetry. **No verified Win64 game EXE, Android APK/AAB or installed playable build is available.** Source archives are not installers; real Unreal 5.8 UHT compilation, original cooked track and installed gameplay QA remain required.
+> **Latest published: [v0.5.79](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.79) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source at commit `c4525893f34028fa702e1dc2e563a6daa3f6f607` includes real player best-lap pose sampling with a small non-colliding run-local ghost beacon and cosmetic rear brake/reverse lights, alongside existing wheel/rival features. **No verified Win64 game EXE, Android APK/AAB or installed playable build is available.** GitHub source archives are not installers; genuine UE 5.8 UHT compilation, original cooked track and installed gameplay QA remain outstanding.
 
 **v0.5.76 published source feature:** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
@@ -23,9 +23,9 @@ and installed Windows/Android playtests are outstanding.
 
 **v0.5.78 source visual gameplay:** procedural front steering, forward/reverse wheel roll and collision-free rotating spokes now follow actual Chaos chassis motion on the prototype car; race scoring and vehicle physics are unchanged. [Visual wheel QA and limitations](docs/WHEEL_VISUAL_QA.md). This is source-only until genuine UE 5.8/installed game verification.
 
-**Merged post-v0.5.78 prototype visual signals (not in a tagged release):** two red rear brake lamps brighten from real effective brake input, and one white reverse lamp responds only to measured backward vehicle motion. Pure C++20 safety policies and Unreal pawn attachments are in development; no real installed device rendering has been qualified. [Signal-light QA](docs/VEHICLE_SIGNAL_LIGHTS_QA.md).
+**v0.5.79 source-only rear visual signals:** two red rear brake lamps brighten from real effective brake input, and one white reverse lamp responds only to measured backward vehicle motion. Pure C++20 safety policies and Unreal pawn attachments are in development; no real installed device rendering has been qualified. [Signal-light QA](docs/VEHICLE_SIGNAL_LIGHTS_QA.md).
 
-**Next-cycle run-local best-lap ghost (under development):** after a truly completed penalty-free timed lap, the game samples player transforms and replays the fastest valid lap of this attempt as a small non-colliding 3D beacon. Fixed-memory source policy rejects teleports, missing physics, race pauses and malformed samples. This is not an official time, saved ghost, third-party service or verified Unreal build. [Ghost replay QA](docs/BEST_LAP_GHOST_QA.md).
+**v0.5.79 source-only run-local best-lap ghost:** after a truly completed penalty-free timed lap, the game samples player transforms and replays the fastest valid lap of this attempt as a small non-colliding 3D beacon. Fixed-memory source policy rejects teleports, missing physics, race pauses and malformed samples. This is not an official time, saved ghost, third-party service or verified Unreal build. [Ghost replay QA](docs/BEST_LAP_GHOST_QA.md).
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
