@@ -146,7 +146,7 @@ Unreal 5.8 compilation, cook, rendered wheel axes or game/device QA.
 See [visual wheel QA](WHEEL_VISUAL_QA.md). Stable/playable status is not
 changed by this decorative feature.
 
-### Next-source cosmetic rear vehicle signals
+### v0.5.79 published source-only cosmetic rear vehicle signals
 
 The prototype chassis has a bounded, actual-motion brake/reverse light
 signal policy and three short-range decorative point-light components.
@@ -155,7 +155,7 @@ eligibility or awards. Unreal 5.8 rendering and real Windows/Android
 performance, materials and lamp positions are not yet verified.
 See [vehicle signal-light QA](VEHICLE_SIGNAL_LIGHTS_QA.md).
 
-### Next-source run-local best-lap ghost beacon
+### v0.5.79 published source-only run-local best-lap ghost beacon
 
 A bounded C++20 recorder now keeps the fastest genuinely sampled,
 penalty-free driven lap **within the same attempt**. Source GameMode
