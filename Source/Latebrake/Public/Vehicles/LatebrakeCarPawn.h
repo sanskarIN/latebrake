@@ -9,6 +9,7 @@
 #include "Racing/VehicleGForceMeter.h"
 #include "Vehicles/CameraPresets.h"
 #include "Vehicles/WheelVisualMotion.h"
+#include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
 #include "LatebrakeCarPawn.generated.h"
@@ -16,6 +17,7 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class UPointLightComponent;
 
 UENUM(BlueprintType)
 enum class ELatebrakeHandlingMode : uint8
@@ -113,6 +115,14 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> RearRightSpoke;
 
+    // Bounded, decorative rear lights only. They are not physics sensors.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
+    TObjectPtr<UPointLightComponent> RearLeftSignal;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
+    TObjectPtr<UPointLightComponent> RearRightSignal;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
+    TObjectPtr<UPointLightComponent> ReverseSignal;
+
 private:
     void ThrottleInput(float Value);
     void SteerInput(float Value);
@@ -122,6 +132,8 @@ private:
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);
     void ApplyWheelVisualPose();
+    void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
+                           double SignedForwardSpeedCmPerSecond);
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
