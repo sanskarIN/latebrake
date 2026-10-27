@@ -52,21 +52,11 @@ $manifestSha256 = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.T
 if ([string]::IsNullOrWhiteSpace($LogDirectory)) {
     $LogDirectory = Join-Path (Split-Path -Parent $root) 'LateBrakePlaytestLogs'
 }
-$absoluteLogs = [IO.Path]::GetFullPath($LogDirectory)
-$relative = [IO.Path]::GetRelativePath($root, $absoluteLogs)
-if ($relative -eq '.' -or
-    ($relative -ne '..' -and -not $relative.StartsWith('..' + [IO.Path]::DirectorySeparatorChar))) {
-    throw 'LogDirectory must be outside the immutable packaged candidate folder.'
-}
-if (Test-Path -LiteralPath $absoluteLogs) {
-    $logsItem = Get-Item -LiteralPath $absoluteLogs -Force -ErrorAction Stop
-    if (-not $logsItem.PSIsContainer -or
-        ($logsItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-        throw 'LogDirectory must be an ordinary directory, not a junction or file.'
-    }
-} else {
-    [void](New-Item -ItemType Directory -Path $absoluteLogs -Force -ErrorAction Stop)
-}
+# Check the candidate AND all output directory ancestors for junctions.
+# This blocks paths that look external but resolve back into a cooked archive.
+$absoluteLogs = & (Join-Path $PSScriptRoot 'Assert-SafeWindowsPlaytestLogDirectory.ps1') `
+    -CandidateRoot $root -LogDirectory $LogDirectory
+if (-not $?) { throw 'Unsafe Win64 runtime diagnostic directory.' }
 $session = 'LateBrake-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') +
     '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $log = Join-Path $absoluteLogs ($session + '.log')
