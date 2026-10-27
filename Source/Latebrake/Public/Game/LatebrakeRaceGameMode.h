@@ -118,6 +118,7 @@ private:
     void RefreshRival();
     void ApplyGarageToPlayer();
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
+    void SuspendBestLapGhost();
     void CloseMenuForRace();
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
