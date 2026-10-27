@@ -125,3 +125,13 @@ car physics qualification or sensor-calibrated gameplay.
 Use [Vehicle G-force QA](VEHICLE_G_FORCE_QA.md) and maintain the real
 engine/hardware release gate in issue #148; do not treat passing portable
 C++20 CI as proof of a playable game.
+
+### Current unreleased rival traffic-awareness development
+
+A conservative in-lane prototype rival AI limiter is implemented in
+portable C++20, using actual player location and velocity to choose
+ordinary throttle reductions or braking. It neither swerves nor
+changes laps, race rewards or the authorized player clock. Its
+shortcuts and collisions remain **unqualified in real UE 5.8**, the
+original cooked circuit and target devices.
+See [rival traffic QA](RIVAL_TRAFFIC_QA.md).
