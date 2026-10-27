@@ -59,6 +59,9 @@ class BestLapGhostBindingTests(unittest.TestCase):
                         source.index("GhostRecorder.FinishLap("))
         self.assertLess(source.index("GhostRecorder.FinishLap("),
                         source.index("ValidateFinishTiming(Race)"))
+        self.assertIn("SuspendBestLapGhost();", source.split(
+            "if (!Race.IsFinished())", 1
+        )[1])
 
     def test_ghost_actor_no_collision_or_gameplay_authority(self):
         ghost = self.game.split(
