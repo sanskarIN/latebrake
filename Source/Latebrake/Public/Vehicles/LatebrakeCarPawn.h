@@ -137,6 +137,7 @@ private:
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
+    void ToggleBestLapGhost();
     void ApplyCameraPreset();
     void TogglePause();
     void TouchPressed(ETouchIndex::Type FingerIndex, FVector Location);
