@@ -29,6 +29,8 @@ and installed Windows/Android playtests are outstanding.
 
 **Next-cycle optional ghost visibility:** press **G** (keyboard) or the **left gamepad face button** during a qualified race to hide/show the observational best-lap beacon without deleting the best trace or changing brakes, steering, timing, records or saved progress. Disabled by paused/menu/focus-owned input. No Android touch toggle/UI has been implemented. [Ghost QA](docs/BEST_LAP_GHOST_QA.md).
 
+**Next-cycle Android ghost control (source development):** a dedicated on-screen **GHOST ON/OFF** pad below RECOVER uses the same rectangle for HUD display and fresh-press touch admission, without stealing GAS, BRAKE, steering, CAM or menu actions. Only an eligible, green-light active race may toggle the visual beacon; recorded best laps and competitive state remain unchanged. Real Android rendering and input QA is pending. [Ghost QA](docs/BEST_LAP_GHOST_QA.md).
+
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
 **v0.5.78 source rival AI:** the prototype opponent now senses the real player car directly ahead in its lane and can gently reduce throttle or request normal braking when closing too quickly. It does not swerve or create official rival results, and requires real Unreal/installed-device QA. [Rival traffic QA](docs/RIVAL_TRAFFIC_QA.md).
