@@ -68,6 +68,9 @@ jobs:
           }
           foreach ($script in @(
             './scripts/Test-PackagingPolicy.ps1',
+            './scripts/Test-WindowsPlaytestWrapperPolicy.ps1',
+            './scripts/Test-WindowsRuntimePlaytestPolicy.ps1',
+            './scripts/Test-WindowsLogDirectoryPolicy.ps1',
             './scripts/Test-CandidateManifestPolicy.ps1',
             './scripts/Test-SourceProvenancePolicy.ps1',
             './scripts/Test-CandidateMapSnapshotPolicy.ps1',
