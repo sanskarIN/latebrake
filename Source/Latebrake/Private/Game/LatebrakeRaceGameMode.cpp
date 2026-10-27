@@ -147,7 +147,12 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     if (bStartQualified && StartLights.IsGreen() && LiveDelta > 0.0 &&
         IsValid(GhostDriver) && GhostDriver->IsRacePhysicsReady())
     {
-        if (!GhostTrackedPawn.IsValid())
+        // A fresh lap may rebind its OWN driver/session after a previous
+        // pause or recovery invalidated that previous candidate. Never
+        // rebind mid-lap to stitch unrelated movement into a ghost.
+        if (GhostRecorder.GetCandidateCount() == 0 &&
+            GhostRecorder.IsCandidateAllowed() &&
+            Race.GetCurrentLapSeconds() <= 0.45)
         {
             GhostTrackedPawn = const_cast<ALatebrakeCarPawn*>(GhostDriver);
             GhostTeleportRevision = GhostDriver->GetTeleportRevision();
