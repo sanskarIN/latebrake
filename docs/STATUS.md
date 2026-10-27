@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-26
-**Latest published milestone:** [v0.5.76 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.76), tagged at independently qualified commit `de975173e899a180f123feea93c9a2c64e5cc66c` (zero executable assets).
+**Updated:** 2026-10-27
+**Latest published milestone:** [v0.5.77 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.77), qualified at immutable commit `433c1a4d027e6a3ce02c5ae9e08eeaf196678424` (zero compiled game assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Merged source development (unreleased v0.5.77) — bounded launch precision
+## v0.5.77 published source-only pre-release — measured chassis telemetry and Windows QA
 
 - Interpolate the physical 0–5 km/h threshold only between consecutive
   eligible post-green chassis samples separated by 0.25s or less.
@@ -16,6 +16,13 @@
   impossible duplicate-clock speeds. No official scoring or saves change.
   Actual UE 5.8, Chaos frame ordering and installed device QA remain open.
   See [launch QA](LAUNCH_SPEED_QA.md).
+- A new optional real-world-velocity `VehicleGForceMeter` estimates
+  longitudinal/lateral chassis acceleration, peak braking and cornering G
+  in HUD/Results without affecting race rules, credits or saves. It fails
+  closed on malformed samples and teleports; see [G-force QA](VEHICLE_G_FORCE_QA.md).
+- Local Win64 build/playtest scripts and private hash-linked manual review
+  tooling help collect actual engine/hardware observations. This is NOT
+  a verified packaged game; see [Windows QA](WINDOWS_PERSONAL_PLAYTEST.md).
 
 ## v0.5.76 published source-only pre-release — 0–5 km/h forward launch estimate
 
