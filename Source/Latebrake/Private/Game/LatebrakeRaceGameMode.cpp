@@ -671,6 +671,9 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     {
         return;
     }
+    // The Results page can pause the world before GameMode gets another
+    // Tick. Clear the beacon synchronously with the final ordered gate.
+    SuspendBestLapGhost();
 
     // Ordered gate completion is necessary but not sufficient for rewards.
     // Every lap must have its own successful active race-clock advancement:
