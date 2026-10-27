@@ -134,3 +134,12 @@ bounded steering command. Source regression tests cannot verify actual
 Unreal 5.8 compilation, cook, rendered wheel axes or game/device QA.
 See [visual wheel QA](WHEEL_VISUAL_QA.md). Stable/playable status is not
 changed by this decorative feature.
+
+### Next-source cosmetic rear vehicle signals
+
+The prototype chassis has a bounded, actual-motion brake/reverse light
+signal policy and three short-range decorative point-light components.
+The effect is source-only and deliberately cannot change handling, lap
+eligibility or awards. Unreal 5.8 rendering and real Windows/Android
+performance, materials and lamp positions are not yet verified.
+See [vehicle signal-light QA](VEHICLE_SIGNAL_LIGHTS_QA.md).
