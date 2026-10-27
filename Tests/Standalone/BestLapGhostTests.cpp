@@ -104,7 +104,7 @@ int main()
     Check(!g.Record(Pose(0.20, 4000.0), true),
           "unexplained teleport-sized spatial jump is rejected");
 
-    for (const LapGhostPose invalid : {
+    for (const LapGhostPose& invalid : {
         Pose(0.1, std::numeric_limits<double>::quiet_NaN()),
         Pose(0.1, std::numeric_limits<double>::infinity()),
         Pose(0.1, 500001.0),
