@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.76](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.76), **source only**, zero runnable assets |
-| Latest source-development milestone | **v0.5.77 merged, unreleased**: bounded interpolation for the advisory launch-speed estimate, with interruption and same-clock guards. **v0.5.76 is published** at independently source-qualified commit `de975173e899a180f123feea93c9a2c64e5cc66c` and adds measured forward 0–5 km/h feedback after the v0.5.75 green-light gate. Real Unreal 5.8/UHT compilation, an original cooked circuit and installed phone/desktop QA remain unavailable |
+| Latest published GitHub pre-release | [v0.5.77](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.77), **source only**, zero runnable assets |
+| Latest source-development milestone | **v0.5.77 published at independently tested commit `433c1a4d027e6a3ce02c5ae9e08eeaf196678424`:** chassis G telemetry, bounded forward launch timing, private Windows build/playtest launcher and hash-linked manual QA. All are **source-only**; no UE 5.8/UHT compile, original cooked circuit or installed phone/desktop game was verified |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub release](https://github.com/sanskarIN/latebrake/releases/latest).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.77).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.
