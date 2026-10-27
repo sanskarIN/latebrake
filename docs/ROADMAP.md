@@ -165,3 +165,12 @@ career awards, AI steering, garage saves or online replay are touched.
 The small beacon is intentionally not a full translucent ghost car.
 Unreal 5.8 cook/rendering, installed gameplay, memory and mobile
 performance testing remain necessary. [Ghost QA](BEST_LAP_GHOST_QA.md).
+
+### Next-cycle ghost visibility control (source-only)
+
+Prototype desktop **G** key to hide/show the run-local visual beacon,
+without resetting the best trace or changing authoritative race data.
+Human input must be qualified; no menu, focus loss, paused world or
+finished race may toggle its preference. Mobile/gamepad controls and
+persistent settings are not implemented yet.
+[Ghost QA](BEST_LAP_GHOST_QA.md).
