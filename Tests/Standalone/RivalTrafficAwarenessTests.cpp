@@ -72,8 +72,9 @@ int main()
             "waypoint arrival is never reclassified as traffic");
     const auto idle = YieldRivalToPlayer(
         {0.0, 0.4, false, false}, Traffic(380, 0));
-    Require(!idle.Brake && idle.Throttle == 0.0,
-            "traffic cannot add throttle to a coasting rival");
+    Require(idle.Brake && idle.Throttle == 0.0 &&
+            idle.Steering == 0.4,
+            "a coasting but fast-closing rival still brakes and never adds throttle");
 
     constexpr double HalfPi = 1.57079632679489661923;
     const RivalTrafficObservation ninety{
