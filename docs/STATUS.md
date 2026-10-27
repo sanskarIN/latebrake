@@ -1,9 +1,15 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-27
-**Latest published milestone:** [v0.5.77 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.77), qualified at immutable commit `433c1a4d027e6a3ce02c5ae9e08eeaf196678424` (zero compiled game assets).
+**Latest published milestone:** [v0.5.78 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.78), qualified at immutable commit `184dd7223556684afeefc70e4d2c89f5b7525965` (zero compiled game assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.78 published source-only pre-release — procedural vehicle visuals and player-aware rival
+
+- The actual Chaos rigid-body car now has decorative wheel roll/reverse, front steering and rotating spokes; actual tire/suspension physics is unchanged. [Wheel visual QA](WHEEL_VISUAL_QA.md).
+- The rival reads the real player position and velocity, reducing throttle or braking on approach in-lane without steering or race authority changes. [Traffic AI QA](RIVAL_TRAFFIC_QA.md).
+- The full source publishing matrix (Windows, Ubuntu, macOS, Python/PowerShell and MkDocs) remains **not** a real Unreal build, cooked level or installed game test.
 
 ## v0.5.77 published source-only pre-release — measured chassis telemetry and Windows QA
 
