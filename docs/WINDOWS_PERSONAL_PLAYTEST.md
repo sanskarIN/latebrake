@@ -113,8 +113,8 @@ the actual runtime receipt, candidate manifest and EXE hashes:
 
 ```powershell
 python ./scripts/Review-WindowsPlaytest.py init `
-  --receipt 'D:\\LateBrakePlaytestLogs\\LateBrake-your-session.json' `
-  --output 'D:\\LateBrakeQA\\manual-checklist.json'
+  --receipt 'D:\LateBrakePlaytestLogs\LateBrake-your-session.json' `
+  --output 'D:\LateBrakeQA\manual-checklist.json'
 ```
 
 Edit `manual-checklist.json` *after actual hands-on driving*. For each
@@ -129,9 +129,9 @@ observations.** For example, if no real game started, leave everything
 
 ```powershell
 python ./scripts/Review-WindowsPlaytest.py evaluate `
-  --receipt 'D:\\LateBrakePlaytestLogs\\LateBrake-your-session.json' `
-  --checklist 'D:\\LateBrakeQA\\manual-checklist.json' `
-  --output 'D:\\LateBrakeQA\\manual-review.json'
+  --receipt 'D:\LateBrakePlaytestLogs\LateBrake-your-session.json' `
+  --checklist 'D:\LateBrakeQA\manual-checklist.json' `
+  --output 'D:\LateBrakeQA\manual-review.json'
 ```
 
 The offline evaluator refuses a changed EXE/manifest, another session's
