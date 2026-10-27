@@ -125,3 +125,12 @@ car physics qualification or sensor-calibrated gameplay.
 Use [Vehicle G-force QA](VEHICLE_G_FORCE_QA.md) and maintain the real
 engine/hardware release gate in issue #148; do not treat passing portable
 C++20 CI as proof of a playable game.
+
+### Current unreleased procedural wheel display
+
+The primitive-car source now couples collision-free wheel ornaments
+and visible spokes to the real chassis' signed forward speed and
+bounded steering command. Source regression tests cannot verify actual
+Unreal 5.8 compilation, cook, rendered wheel axes or game/device QA.
+See [visual wheel QA](WHEEL_VISUAL_QA.md). Stable/playable status is not
+changed by this decorative feature.
