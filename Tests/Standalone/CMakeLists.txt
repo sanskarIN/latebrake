@@ -971,3 +971,15 @@ else()
     target_compile_options(latebrake_best_lap_ghost_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME BestLapGhost COMMAND latebrake_best_lap_ghost_tests)
+
+# Player-only display preference. Ghost recording, official race timing and
+# saved progression remain unchanged when a visual replay is hidden.
+add_executable(latebrake_ghost_display_preference_tests GhostDisplayPreferenceTests.cpp)
+target_include_directories(latebrake_ghost_display_preference_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_ghost_display_preference_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_ghost_display_preference_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_ghost_display_preference_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GhostDisplayPreference COMMAND latebrake_ghost_display_preference_tests)
