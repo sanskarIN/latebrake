@@ -38,7 +38,7 @@ int main()
             approach.Steering == cruise.Steering,
             "a distant approach reduces rival motor power without stealing steering");
 
-    for (const auto observation : {
+    for (const auto& observation : {
         Traffic(-300, 0), Traffic(90, 0), Traffic(1800, 0),
         Traffic(500, 250), Traffic(500, -250),
         Traffic(400, 10, 350.0, 0.0),
