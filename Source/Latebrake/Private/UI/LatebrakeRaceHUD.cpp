@@ -665,8 +665,16 @@ void ALatebrakeRaceHUD::DrawHUD()
         Race.GetCompletedLaps() > 0 && !Race.IsFinished() &&
         Mode->IsRaceStartGreen() && Mode->HasLocalPlayerDriver())
     {
-        Line(FString::Printf(TEXT("BEST-LAP GHOST BEACON %.2fs (RUN ONLY)"),
-            Mode->GetBestLapGhostSeconds()), Primary);
+        if (Mode->IsBestLapGhostDisplayEnabled())
+        {
+            Line(FString::Printf(
+                TEXT("BEST-LAP GHOST %.2fs | G HIDE (RUN ONLY)"),
+                Mode->GetBestLapGhostSeconds()), Primary);
+        }
+        else
+        {
+            Line(TEXT("BEST-LAP GHOST HIDDEN | G SHOW (RUN ONLY)"), Primary);
+        }
     }
     // Keyboard/gamepad camera choice is advisory. Place after official
     // lap/time readouts, and reserve scarce phone rows for driving.
