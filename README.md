@@ -17,6 +17,8 @@ and installed Windows/Android playtests are outstanding.
 
 **For your own Windows testing:** a new [private Win64 build guide](docs/WINDOWS_PERSONAL_PLAYTEST.md) and `Build-Windows-Playtest.cmd` run the **real** Unreal Engine 5.8 Editor/UHT + map cook/packaging pipeline on an authorized Windows machine. No downloadable EXE is currently verified; this produces an **unverified local candidate** only, not a published playable release.
 
+**Private Win64 QA evidence (source development, not a release):** after an actual Unreal-built Windows playtest, `scripts/Review-WindowsPlaytest.py` can create and evaluate an offline, hash-linked hands-on checklist. It never launches a game or calls self-reported observations a verified playable build. [Personal Win64 QA guide](docs/WINDOWS_PERSONAL_PLAYTEST.md).
+
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
 **v0.5.72 published source preview:** four deterministic camera presets

@@ -109,6 +109,54 @@ Official Epic documentation:
 https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-command-line-arguments-reference)
 describes `ABSLOG` as an absolute log filename argument.
 
+## Record a private, self-reported Win64 QA review
+
+After closing the real game session, the diagnostic runner prints the path
+to a **private JSON receipt**. Keep it outside the candidate alongside the
+runtime logs. On your own workstation, make an editable checklist tied to
+the actual runtime receipt, candidate manifest and EXE hashes:
+
+```powershell
+python ./scripts/Review-WindowsPlaytest.py init `
+  --receipt 'D:\LateBrakePlaytestLogs\LateBrake-your-session.json' `
+  --output 'D:\LateBrakeQA\manual-checklist.json'
+```
+
+Edit `manual-checklist.json` *after actual hands-on driving*. For each
+check, set `result` to `pass`, `fail`, or `not_tested`; give an actual
+observation in `notes` (at least 12 characters for pass/fail). Record
+Windows version and CPU/GPU/controller details if you wish. The nine
+required checks include scene/physics, brake/reverse, steering/camera,
+GO/gates, pause/focus/restart, recovery penalty, save/reload and
+hardware performance. **Never substitute source tests for manual
+observations.** For example, if no real game started, leave everything
+`not_tested` or describe the failure honestly.
+
+```powershell
+python ./scripts/Review-WindowsPlaytest.py evaluate `
+  --receipt 'D:\LateBrakePlaytestLogs\LateBrake-your-session.json' `
+  --checklist 'D:\LateBrakeQA\manual-checklist.json' `
+  --output 'D:\LateBrakeQA\manual-review.json'
+```
+
+The offline evaluator refuses a changed EXE/manifest, another session's
+receipt, missing checks, undocumented pass/fail choices and output paths
+inside the sealed package. It does not overwrite existing evidence,
+upload files or run a game. The report always says
+`SELF_REPORTED_WIN64_QA_UNVERIFIED` and
+`ready_for_release: false`, **even when every test was marked pass**.
+That is intentional: user-authored JSON can be edited and does not prove
+independent QA.
+
+Before treating a candidate as a genuine playable build, also rerun
+`scripts/Test-CandidateManifest.ps1` against the whole archive,
+preserve real UHT/UAT build receipts, inspect actual installed driving
+and satisfy [playable-release gate #148](https://github.com/sanskarIN/latebrake/issues/148).
+The Python reviewer checks the two main file hashes and runtime
+receipt link; **it does not revalidate every cooked asset**. Protect
+your personal hardware details and do not upload private QA files
+without reviewing them.
+
 ## What to test personally
 
 1. Launch the actual `Latebrake.exe` printed by the script. If it fails,
