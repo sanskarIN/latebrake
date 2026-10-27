@@ -191,6 +191,20 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     ApplyGarageToPlayer();
 }
 
+void ALatebrakeRaceGameMode::SuspendBestLapGhost()
+{
+    // Paused Unreal worlds can stop ticking before the next GameMode
+    // render update. Never leave a stale physical-looking beacon visible.
+    if (StartLights.IsGreen() && !Race.IsFinished())
+    {
+        GhostRecorder.InvalidateCurrentLap();
+    }
+    if (IsValid(BestLapGhostMarker))
+    {
+        BestLapGhostMarker->SetActorHiddenInGame(true);
+    }
+}
+
 void ALatebrakeRaceGameMode::UpdateBestLapGhostMarker(bool bReplayAuthorized)
 {
     // A ghost is only displayed on a subsequent lap with a legitimate
@@ -756,6 +770,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     {
         return;
     }
+    SuspendBestLapGhost();
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
@@ -772,6 +787,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
+    SuspendBestLapGhost();
     Menu.Toggle();
     if (!Menu.IsOpen())
     {
@@ -792,6 +808,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
 
 void ALatebrakeRaceGameMode::ToggleRacePause()
 {
+    SuspendBestLapGhost();
     // Standalone keyboard/gamepad/touch PAUSE does not open the menu.
     // An engine-world pause may fail, so the *player's requested pause*
     // must independently freeze racing, checkpoints and driving.
@@ -856,6 +873,7 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
         return;
     }
 
+    SuspendBestLapGhost();
     // A fresh focus interruption invalidates pre-loss motion regardless of
     // whether Unreal/OS already paused the world before our callback.
     // Repeated deactivation events do not bump this epoch a second time.
@@ -1492,6 +1510,7 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     }
     // A real paid teleport cannot be mistaken for a grid launch. A rejected
     // recovery above returns without erasing an otherwise valid sample.
+    SuspendBestLapGhost();
     LaunchMeter.Invalidate();
 }
 
