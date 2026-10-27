@@ -7,6 +7,7 @@
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
 #include "Racing/BestLapGhost.h"
+#include "Racing/GhostDisplayPreference.h"
 #include "Racing/RestartPlacementGuard.h"
 #include "Racing/AppFocusRaceGuard.h"
 #include "Racing/ManualRacePauseGuard.h"
@@ -78,6 +79,8 @@ public:
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
     bool HasBestLapGhost() const { return GhostRecorder.HasBest(); }
+    bool IsBestLapGhostDisplayEnabled() const { return GhostDisplay.IsEnabled(); }
+    void ToggleBestLapGhostView();
     double GetBestLapGhostSeconds() const { return GhostRecorder.GetBestSeconds(); }
     latebrake::RaceStartPhase GetRaceStartPhase() const
     {
@@ -139,6 +142,7 @@ private:
     latebrake::LaunchSpeedMeter LaunchMeter;
     // Fixed-size in-memory candidate/best traces never become SaveGame data.
     latebrake::BestLapGhost GhostRecorder;
+    latebrake::GhostDisplayPreference GhostDisplay;
     TWeakObjectPtr<ALatebrakeCarPawn> GhostTrackedPawn;
     uint64 GhostTeleportRevision = 0;
     uint64 GhostSessionRevision = 0;
