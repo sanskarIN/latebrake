@@ -140,6 +140,12 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         Lamps[Index]->SetupAttachment(Chassis);
         Lamps[Index]->SetRelativeLocation(LampLocations[Index] / ChassisScale);
         Lamps[Index]->SetAttenuationRadius(170.f);
+        // Short-range cosmetic signals must not create costly per-frame
+        // shadow passes, volumetric shadows or indirect/reflection updates.
+        Lamps[Index]->SetCastShadows(false);
+        Lamps[Index]->SetCastVolumetricShadow(false);
+        Lamps[Index]->SetAffectGlobalIllumination(false);
+        Lamps[Index]->SetAffectReflection(false);
         Lamps[Index]->SetIntensity(0.f);
         Lamps[Index]->SetLightColor(Index == 2
             ? FLinearColor(0.95f, 0.97f, 1.0f)
