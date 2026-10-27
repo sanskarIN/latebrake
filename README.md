@@ -19,6 +19,8 @@ and installed Windows/Android playtests are outstanding.
 
 **Private Win64 QA evidence (source development, not a release):** after an actual Unreal-built Windows playtest, `scripts/Review-WindowsPlaytest.py` can create and evaluate an offline, hash-linked hands-on checklist. It never launches a game or calls self-reported observations a verified playable build. [Personal Win64 QA guide](docs/WINDOWS_PERSONAL_PLAYTEST.md).
 
+**New unreleased gameplay source — chassis G meter:** the real player pawn samples world-space velocity changes for approximate forward/lateral G, braking and cornering peaks. It is optional on desktop HUD and Results, and never affects car physics, scores or awards. Engine and installed-device results remain unverified. [G-force QA and limitations](docs/VEHICLE_G_FORCE_QA.md).
+
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
 **v0.5.72 published source preview:** four deterministic camera presets

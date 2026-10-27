@@ -914,3 +914,16 @@ else()
     target_compile_options(latebrake_launch_speed_meter_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME LaunchSpeedMeter COMMAND latebrake_launch_speed_meter_tests)
+
+# Optional actual world-velocity G-force telemetry; no Unreal dependency.
+add_executable(latebrake_vehicle_g_force_meter_tests
+    VehicleGForceMeterTests.cpp
+)
+target_include_directories(latebrake_vehicle_g_force_meter_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_vehicle_g_force_meter_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_vehicle_g_force_meter_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_vehicle_g_force_meter_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VehicleGForceMeter COMMAND latebrake_vehicle_g_force_meter_tests)
