@@ -748,6 +748,17 @@ void ALatebrakeCarPawn::ChangeCamera()
     ApplyCameraPreset();
 }
 
+void ALatebrakeCarPawn::ToggleBestLapGhost()
+{
+    // Display-only: do not neutralize acceleration or steer inputs, and
+    // never let rival pawn/AI own a human ghost visibility command.
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()
+            ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr)
+    {
+        Mode->ToggleBestLapGhostView();
+    }
+}
+
 void ALatebrakeCarPawn::TogglePause()
 {
     // Route both standalone Escape/gamepad pause and open-menu resume
@@ -1118,6 +1129,7 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
+    PlayerInputComponent->BindAction(TEXT("GhostView"), IE_Pressed, this, &ALatebrakeCarPawn::ToggleBestLapGhost);
     FInputTouchBinding& PressedTouch = PlayerInputComponent->BindTouch(
         IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
     PressedTouch.bExecuteWhenPaused = true; // Mobile PAUSE pad can also resume play.
