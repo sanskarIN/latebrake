@@ -20,6 +20,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -119,6 +120,30 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
                 28.f, 0.f, Locations[Index].Y < 0.f ? 51.5f : -51.5f));
             Spokes[Index]->SetRelativeScale3D(FVector(0.14f, 0.24f, 0.09f));
         }
+    }
+
+    // Three low-range attached lamps, with no collision or engine-owned art.
+    // Chassis uses non-uniform static-mesh scaling, so divide intended
+    // world-relative rear positions by the scaled parent components.
+    RearLeftSignal = CreateDefaultSubobject<UPointLightComponent>(TEXT("RearLeftSignal"));
+    RearRightSignal = CreateDefaultSubobject<UPointLightComponent>(TEXT("RearRightSignal"));
+    ReverseSignal = CreateDefaultSubobject<UPointLightComponent>(TEXT("ReverseSignal"));
+    UPointLightComponent* Lamps[] = {RearLeftSignal, RearRightSignal, ReverseSignal};
+    const FVector LampLocations[] = {
+        FVector(-385.f, -115.f, 22.f),
+        FVector(-385.f, 115.f, 22.f),
+        FVector(-390.f, 0.f, 22.f)
+    };
+    const FVector ChassisScale(3.8f, 1.8f, 0.65f);
+    for (int32 Index = 0; Index < 3; ++Index)
+    {
+        Lamps[Index]->SetupAttachment(Chassis);
+        Lamps[Index]->SetRelativeLocation(LampLocations[Index] / ChassisScale);
+        Lamps[Index]->SetAttenuationRadius(170.f);
+        Lamps[Index]->SetIntensity(0.f);
+        Lamps[Index]->SetLightColor(Index == 2
+            ? FLinearColor(0.95f, 0.97f, 1.0f)
+            : FLinearColor(1.f, 0.012f, 0.008f));
     }
 
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -237,6 +262,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
+    ApplySignalLights(false, false, 0.0);
     WheelMotion.Suspend();
     ApplyWheelVisualPose();
     DrivingStats.Suspend();
@@ -337,6 +363,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
+        ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
         GForceMeter.Suspend();
@@ -367,6 +394,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: physics velocity was nonfinite; clearing vehicle motion"));
         GForceMeter.Suspend();
+        ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
         Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
@@ -387,6 +415,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+
+    // Read real valid signed chassis velocity and effective brake input,
+    // never motor demand alone. Advisory decorative light intensities only.
+    ApplySignalLights(true, bEffectiveBraking,
+        static_cast<double>(LongitudinalSpeed));
 
     // Apply the same bounded corner-assist policy to controller, touch
     // and rival throttle. Brake/reverse demand is never reduced by it.
@@ -446,6 +479,34 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         const FVector Limited = FlatVelocity.GetClampedToMaxSize(MaxSpeed);
         Chassis->SetPhysicsLinearVelocity(FVector(Limited.X, Limited.Y, Velocity.Z));
+    }
+}
+
+void ALatebrakeCarPawn::ApplySignalLights(
+    bool bRaceDrivingAllowed, bool bEffectiveBraking,
+    double SignedForwardSpeedCmPerSecond)
+{
+    const latebrake::VehicleSignalLights Signals =
+        latebrake::SelectVehicleSignalLights({
+            bRaceDrivingAllowed, bEffectiveBraking,
+            SignedForwardSpeedCmPerSecond
+        });
+    // No collision, race state, steering, vehicle energy or gameplay reward
+    // is touched. These prototype point lights have short attenuation.
+    if (IsValid(RearLeftSignal))
+    {
+        RearLeftSignal->SetIntensity(
+            static_cast<float>(Signals.RedRearIntensity));
+    }
+    if (IsValid(RearRightSignal))
+    {
+        RearRightSignal->SetIntensity(
+            static_cast<float>(Signals.RedRearIntensity));
+    }
+    if (IsValid(ReverseSignal))
+    {
+        ReverseSignal->SetIntensity(
+            static_cast<float>(Signals.WhiteReverseIntensity));
     }
 }
 
@@ -574,6 +635,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     DrivingStats.Suspend();
     DriftMeter.Suspend();
     GForceMeter.Suspend();
+    ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
     ApplyWheelVisualPose();
     ClearDriverInputs();
