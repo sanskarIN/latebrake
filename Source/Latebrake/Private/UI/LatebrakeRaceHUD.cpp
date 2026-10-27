@@ -394,6 +394,14 @@ void ALatebrakeRaceHUD::DrawHUD()
                     TEXT("Peak braking %.2fg | peak cornering %.2fg"),
                     G.GetPeakBrakingG(), G.GetPeakCorneringG()));
             }
+            // A run-local visual reference, neither a saved all-time
+            // leaderboard lap nor a qualifying race classification.
+            if (Mode->HasBestLapGhost())
+            {
+                MenuLine(FString::Printf(
+                    TEXT("SESSION GHOST BEACON: %.2fs BEST RECORDED LAP (UNOFFICIAL)"),
+                    Mode->GetBestLapGhostSeconds()), true);
+            }
             // Unofficial style score from real chassis slip samples;
             // finished-race rewards never consume this value.
             if (latebrake::CanAwardFinishedRace(Race))
@@ -650,6 +658,15 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(FString::Printf(TEXT("LAUNCH 0-5 km/h  %.2fs EST"),
             Mode->GetLaunchSpeedMeter().SecondsToFiveKmh()), Primary);
+    }
+    // Show only after a completed, valid sampled lap. A small non-colliding
+    // 3D reference beacon follows the best *this attempt*, not profile data.
+    if (!bCompact && Mode->HasBestLapGhost() &&
+        Race.GetCompletedLaps() > 0 && !Race.IsFinished() &&
+        Mode->IsRaceStartGreen() && Mode->HasLocalPlayerDriver())
+    {
+        Line(FString::Printf(TEXT("BEST-LAP GHOST BEACON %.2fs (RUN ONLY)"),
+            Mode->GetBestLapGhostSeconds()), Primary);
     }
     // Keyboard/gamepad camera choice is advisory. Place after official
     // lap/time readouts, and reserve scarce phone rows for driving.
