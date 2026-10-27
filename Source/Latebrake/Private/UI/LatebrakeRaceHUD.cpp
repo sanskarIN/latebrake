@@ -382,6 +382,18 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            // G peaks are optional per-run world-velocity estimates,
+            // never official lap, car performance, award or safety ratings.
+            if (latebrake::CanAwardFinishedRace(Race) &&
+                Car->GetVehicleGForceMeter().GetAcceptedPairs() > 0)
+            {
+                const latebrake::VehicleGForceMeter& G =
+                    Car->GetVehicleGForceMeter();
+                MenuLine(TEXT("CHASSIS G-FORCE ESTIMATES (SESSION)"), true);
+                MenuLine(FString::Printf(
+                    TEXT("Peak braking %.2fg | peak cornering %.2fg"),
+                    G.GetPeakBrakingG(), G.GetPeakCorneringG()));
+            }
             // Unofficial style score from real chassis slip samples;
             // finished-race rewards never consume this value.
             if (latebrake::CanAwardFinishedRace(Race))
@@ -807,6 +819,14 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("MOTION  %.1fs BRAKING | %.1fs HIGH SIDE SLIP"),
                 DriveStats.GetBrakingSeconds(),
                 DriveStats.GetHighSlipSeconds()), Primary);
+            const latebrake::VehicleGForceMeter& G =
+                Car->GetVehicleGForceMeter();
+            if (G.GetAcceptedPairs() > 0)
+            {
+                Line(FString::Printf(
+                    TEXT("CHASSIS G (EST)  LONG %+.2fg | LAT %+.2fg"),
+                    G.GetLiveLongitudinalG(), G.GetLiveLateralG()), Primary);
+            }
             // Visually styled combo, never official race classification.
             const latebrake::DriftComboMeter& Drift =
                 Car->GetDriftMeter();
