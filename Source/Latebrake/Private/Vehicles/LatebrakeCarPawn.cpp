@@ -176,6 +176,7 @@ void ALatebrakeCarPawn::BeginPlay()
 
 void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    ApplySignalLights(false, false, 0.0);
     FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundInputHandle);
     FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(DeactivatedInputHandle);
     FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
@@ -186,6 +187,7 @@ void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void ALatebrakeCarPawn::UnPossessed()
 {
+    ApplySignalLights(false, false, 0.0);
     TouchViewport.Reset();
     TouchPresses.Reset();
     ClearDriverInputs();
@@ -194,6 +196,9 @@ void ALatebrakeCarPawn::UnPossessed()
 
 void ALatebrakeCarPawn::HandleAppInputInterruption()
 {
+    // Engine pause may suppress Tick entirely. Clear lamp output on the
+    // lifecycle callback itself, not on a later optional physics tick.
+    ApplySignalLights(false, false, 0.0);
     // Focus changes may discard release events; start a fresh touch session.
     TouchViewport.Reset();
     TouchPresses.Reset();
