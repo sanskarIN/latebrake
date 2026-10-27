@@ -1,0 +1,97 @@
+# Run-local best-lap ghost beacon — source QA
+
+## Why this exists
+
+A driving-line reference is more useful than another results statistic.
+After the player successfully drives a complete **eligible, ordered-gate,
+penalty-free** lap, LateBrake can replay the real observed position and yaw
+from that faster lap as a **small floating non-colliding beacon** on later
+laps of the **same attempt**. It is not an AI racer, a transparent car,
+a persistent personal-best ghost, a network replay or a physical vehicle.
+No third-party game art, server or AI API is involved.
+
+The source provides an engine-independent fixed-memory C++20 recorder
+(`Racing/BestLapGhost.h`) and an Unreal GameMode integration with the
+existing car pawn, RaceProgress and guarded race-start clock.
+
+## Acceptance and invalidation boundaries
+
+- GameMode samples the actual possessed, physics-ready local player
+  transform only after valid post-GO active race-clock advancement.
+- Each lap starts independently at a near-zero clock; a late first
+  sample cannot be interpreted as a full lap.
+- Samples are stored at most about 10 times per second, up to 4,096
+  frames and 360 seconds. Sampling never calls an API or allocates heap
+  memory per tick. A long hitch, nonmonotone clock, malformed transform,
+  impossible sampled jump or capacity exhaustion invalidates the
+  **entire candidate lap**, not an existing complete best lap.
+- Pawn replacement, focus/menu/pause session changes and the pawn's
+  teleport/recovery revision invalidate that lap. The best completed
+  lap may still be displayed after a later resumed clock, without
+  crediting the interrupted attempt.
+- Only `RegisterCheckpoint` after a real accepted final ordered gate
+  can finalize a candidate. It requires the actual RaceProgress lap
+  duration, an active clock update and no recovery penalty. A lap with
+  only penalty time or no successful active time is rejected.
+- A slower lap cannot overwrite the existing faster trace. Restart,
+  new career event and initial BeginPlay clear the entire ghost state.
+  No saved profile, career awards, records or leaderboard fields store it.
+- Each render frame uses bounded binary time lookup and shortest-angle
+  yaw interpolation. A ghost is hidden after its own best-lap duration
+  rather than freezing indefinitely ahead of the current car.
+
+## Current prototype rendering
+
+Unreal spawns a single mobile `AStaticMeshActor` only after a valid
+best lap. The marker uses the original engine cube art, scaled to a
+small floating beacon and positioned about 130 cm above recorded
+chassis pose. It has **no collision, overlap events, physics simulation,
+navigation effect or dynamic shadow**. The marker is *not a full
+translucent ghost car*. Material coloration is an optional fallback
+and depends on the built-in engine material exposing a Color parameter;
+without it the shape may appear in its default material. The desktop
+HUD and Results also label it as **RUN ONLY** and **UNOFFICIAL**.
+
+An actual translucent/outline vehicle model, user settings to disable
+the feature, memory/performance profiling and real replay rendering
+are later work. The fixed 2 x 4,096 double-precision pose buffers
+are approximately 320 KiB per game mode even with no active ghost.
+
+## Portable/source verification
+
+```sh
+cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+cmake --build Tests/Standalone/build --config Release
+ctest --test-dir Tests/Standalone/build -C Release -R '^BestLapGhost$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'BestLapGhostBindingTests.py' -v
+```
+
+Portable C++ tests cover first/last playback, interpolation and yaw wrap,
+best replacement, slower lap rejection, menu/recovery invalidation,
+invalid coordinates and race-clock input, penalties, non-active laps,
+max-duration and restart. Source binding tests verify the real player
+pawn, same authoritative clock, ordered checkpoint transition, transient
+actor, zero collision and lack of saved score authority.
+
+## Unreal 5.8 and installed Windows/Android QA still required
+
+1. Compile the genuine Unreal Editor/Game through UHT, cook the
+   original circuit, and install a Development game package.
+2. Drive a valid first lap, then confirm a single small marker follows
+   the prior trace at proper speed without clipping into track or
+   obscuring braking/gates. Test 0/low frame rate and different
+   camera positions.
+3. Drive a faster second lap, slower third lap, then replay only while
+   a new valid lap is running. Note that the default three-lap circuit
+   may require starting another event to inspect future refinements;
+   the ghost intentionally does not persist across restart.
+4. Pause/resume, minimize/reactivate, recover/teleport, restart, finish,
+   change event and replace/respawn pawn. Verify an interrupted lap
+   never becomes the best ghost and the beacon clears whenever needed.
+5. Verify race clock, checkpoints, career credits, garage, SaveGame,
+   player-rival contact, AI and drive forces are unchanged.
+6. Profile renderer/performance on Win64 and multiple real Android
+   phones. A functioning CMake binary is not the packaged game.
+   Archive genuine installed test observations and logs.
+
+**Status: source-only, unverified visual gameplay experiment.**
