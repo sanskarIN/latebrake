@@ -19,8 +19,9 @@ class GhostDisplayBindingTests(unittest.TestCase):
         cls.cpp = read("Source/Latebrake/Public/Racing/GhostDisplayPreference.h")
         cls.cmake = read("Tests/Standalone/CMakeLists.txt")
 
-    def test_keyboard_press_only_and_no_collision_with_existing_camera(self):
+    def test_keyboard_gamepad_press_only_and_no_collision_with_existing_actions(self):
         self.assertIn('+ActionMappings=(ActionName="GhostView",Key=G)', self.inputs)
+        self.assertIn('+ActionMappings=(ActionName="GhostView",Key=Gamepad_FaceButton_Left)', self.inputs)
         self.assertIn('+ActionMappings=(ActionName="Camera",Key=C)', self.inputs)
         self.assertIn('BindAction(TEXT("GhostView"), IE_Pressed, this, '
                       '&ALatebrakeCarPawn::ToggleBestLapGhost)', self.pawn)
