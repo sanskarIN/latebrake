@@ -168,9 +168,10 @@ performance testing remain necessary. [Ghost QA](BEST_LAP_GHOST_QA.md).
 
 ### Next-cycle ghost visibility control (source-only)
 
-Prototype desktop **G** key to hide/show the run-local visual beacon,
+Prototype desktop **G** key and left gamepad face button to hide/show
+the run-local visual beacon,
 without resetting the best trace or changing authoritative race data.
 Human input must be qualified; no menu, focus loss, paused world or
-finished race may toggle its preference. Mobile/gamepad controls and
+finished race may toggle its preference. Mobile touch controls and
 persistent settings are not implemented yet.
 [Ghost QA](BEST_LAP_GHOST_QA.md).
