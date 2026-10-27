@@ -80,7 +80,7 @@ int main()
         Sample(0.0, 10.0), Sample(-0.1, 10.0),
         Sample(0.251, 10.0), Sample(bad, 10.0),
         Sample(0.1, bad), Sample(0.1, inf),
-        Sample(0.1, 10000.01), Sample(0.1, -10000.01),
+        Sample(0.1, 15000.01), Sample(0.1, -15000.01),
         Sample(0.1, 100.0, bad), Sample(0.1, 100.0, 1.01),
         Sample(0.1, 100.0, -1.01),
         Sample(0.1, 100.0, 0.5, bad),
