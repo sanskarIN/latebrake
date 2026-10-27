@@ -83,8 +83,13 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FrontRightWheel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FrontRightWheel"));
     RearLeftWheel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RearLeftWheel"));
     RearRightWheel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RearRightWheel"));
+    FrontLeftSpoke = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FrontLeftSpoke"));
+    FrontRightSpoke = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FrontRightSpoke"));
+    RearLeftSpoke = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RearLeftSpoke"));
+    RearRightSpoke = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RearRightSpoke"));
 
     UStaticMeshComponent* Wheels[] = {FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel};
+    UStaticMeshComponent* Spokes[] = {FrontLeftSpoke, FrontRightSpoke, RearLeftSpoke, RearRightSpoke};
     const FVector Locations[] =
     {
         FVector(122.f, -94.f, -22.f), FVector(122.f, 94.f, -22.f),
@@ -96,7 +101,23 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         if (Cylinder.Succeeded())
         {
             ConfigureDecorativeMesh(Wheels[Index], Cylinder.Object, Locations[Index], FVector(0.58f, 0.58f, 0.25f));
-            Wheels[Index]->SetRelativeRotation(FRotator(90.f, 0.f, 0.f));
+            // Align the cylinder's original Z axis with the car's Y axis:
+            // this is a *wheel spindle*, not a tire facing nose-to-tail.
+            Wheels[Index]->SetRelativeRotation(FRotator(0.f, 0.f, 90.f));
+        }
+        // The primitive cylinder is rotationally symmetric. A light,
+        // collision-free offset spoke makes measured roll visually legible.
+        Spokes[Index]->SetupAttachment(Wheels[Index]);
+        Spokes[Index]->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Spokes[Index]->SetSimulatePhysics(false);
+        Spokes[Index]->SetCastShadow(false);
+        if (Cube.Succeeded())
+        {
+            Spokes[Index]->SetStaticMesh(Cube.Object);
+            // Position on the outward-facing cylinder cap of each side.
+            Spokes[Index]->SetRelativeLocation(FVector(
+                28.f, 0.f, Locations[Index].Y < 0.f ? 51.5f : -51.5f));
+            Spokes[Index]->SetRelativeScale3D(FVector(0.14f, 0.24f, 0.09f));
         }
     }
 
@@ -216,6 +237,8 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
+    WheelMotion.Suspend();
+    ApplyWheelVisualPose();
     DrivingStats.Suspend();
     DriftMeter.Suspend();
     GForceMeter.Suspend();
@@ -314,6 +337,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
         GForceMeter.Suspend();
         return;
     }
@@ -342,6 +367,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: physics velocity was nonfinite; clearing vehicle motion"));
         GForceMeter.Suspend();
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
         Chassis->SetPhysicsLinearVelocity(FVector::ZeroVector);
         ClearDriverInputs();
         return;
@@ -408,12 +435,56 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
     const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) *
         AssistedSteering * SteeringAuthority * SteerDirection;
+    // Decorative wheels track real forward chassis motion, including
+    // reverse, using the same bounded speed-sensitive visual steering.
+    UpdateWheelVisuals(static_cast<double>(DeltaSeconds),
+        static_cast<double>(LongitudinalSpeed),
+        static_cast<double>(AssistedSteering));
     Chassis->AddTorqueInRadians(FVector(0.f, 0.f, TurnTorque));
 
     if (Speed > MaxSpeed)
     {
         const FVector Limited = FlatVelocity.GetClampedToMaxSize(MaxSpeed);
         Chassis->SetPhysicsLinearVelocity(FVector(Limited.X, Limited.Y, Velocity.Z));
+    }
+}
+
+void ALatebrakeCarPawn::ApplyWheelVisualPose()
+{
+    const latebrake::WheelVisualPose Pose = WheelMotion.Current();
+    // Cylinder spindle is local Z; first lay it along chassis Y, then
+    // roll around spindle and yaw only the two front decorative wheels.
+    constexpr double Pi = 3.14159265358979323846;
+    const double Radians = Pi / 180.0;
+    const FQuat Base(FRotator(0.f, 0.f, 90.f));
+    const FQuat Rolling(FVector::UpVector, Pose.RollDegrees * Radians);
+    const FQuat Steering(FVector::UpVector, Pose.FrontSteerDegrees * Radians);
+    UStaticMeshComponent* Wheels[] = {
+        FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel
+    };
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        if (IsValid(Wheels[Index]))
+        {
+            const FQuat Visual = (Index < 2 ? Steering : FQuat::Identity) *
+                Base * Rolling;
+            Wheels[Index]->SetRelativeRotation(Visual.Rotator());
+        }
+    }
+}
+
+void ALatebrakeCarPawn::UpdateWheelVisuals(
+    double DeltaSeconds, double ForwardSpeedCmPerSecond, double VisualSteering)
+{
+    if (WheelMotion.Advance({
+            DeltaSeconds, ForwardSpeedCmPerSecond, VisualSteering, 29.0}))
+    {
+        ApplyWheelVisualPose();
+    }
+    else
+    {
+        // A missing/bad physics sample cannot animate decorative tires.
+        ApplyWheelVisualPose();
     }
 }
 
@@ -503,6 +574,8 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     DrivingStats.Suspend();
     DriftMeter.Suspend();
     GForceMeter.Suspend();
+    WheelMotion.Reset();
+    ApplyWheelVisualPose();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())
     {

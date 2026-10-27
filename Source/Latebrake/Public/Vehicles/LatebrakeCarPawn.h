@@ -8,6 +8,7 @@
 #include "Racing/DriftComboMeter.h"
 #include "Racing/VehicleGForceMeter.h"
 #include "Vehicles/CameraPresets.h"
+#include "Vehicles/WheelVisualMotion.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
 #include "LatebrakeCarPawn.generated.h"
@@ -51,7 +52,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); }
+    void ResetDrivingStats() { DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
@@ -102,12 +103,25 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> RearRightWheel;
 
+    // Small, collision-free wheel spokes make cylinder rotation visible.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle")
+    TObjectPtr<UStaticMeshComponent> FrontLeftSpoke;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle")
+    TObjectPtr<UStaticMeshComponent> FrontRightSpoke;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle")
+    TObjectPtr<UStaticMeshComponent> RearLeftSpoke;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle")
+    TObjectPtr<UStaticMeshComponent> RearRightSpoke;
+
 private:
     void ThrottleInput(float Value);
     void SteerInput(float Value);
     void BrakePressed();
     void BrakeReleased();
     void NeutralizeMotionWhenDrivingBlocked();
+    void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
+                            double VisualSteering);
+    void ApplyWheelVisualPose();
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
@@ -153,6 +167,7 @@ private:
     latebrake::DrivingSessionStats DrivingStats;
     latebrake::DriftComboMeter DriftMeter;
     latebrake::VehicleGForceMeter GForceMeter;
+    latebrake::WheelVisualMotion WheelMotion;
     latebrake::TouchDriveState TouchDrive;
     latebrake::TouchPressTracker TouchPresses;
     latebrake::TouchViewportGuard TouchViewport;
