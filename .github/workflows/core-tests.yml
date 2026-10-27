@@ -46,7 +46,7 @@ jobs:
       - name: Parse package and verification scripts
         shell: pwsh
         run: |
-          foreach ($script in @('scripts/Build-Editor.ps1', 'scripts/New-StarterMap.ps1', 'scripts/Test-MapAuthoringReceipt.ps1', 'scripts/Test-MapAuthoringReceiptPolicy.ps1', 'scripts/Test-SourceProvenance.ps1', 'scripts/Test-SourceProvenancePolicy.ps1', 'scripts/Test-CandidateMapSnapshot.ps1', 'scripts/Test-CandidateMapSnapshotPolicy.ps1', 'scripts/Test-EngineBuildSnapshot.ps1', 'scripts/Test-EngineBuildSnapshotPolicy.ps1', 'scripts/Test-CandidatePairIdentity.ps1', 'scripts/Test-CandidatePairIdentityPolicy.ps1', 'scripts/Build-PlayableCandidate.ps1', 'scripts/Build-WindowsPlaytest.ps1', 'scripts/Test-WindowsPlaytestWrapperPolicy.ps1', 'scripts/Run-WindowsPlaytest.ps1', 'scripts/Test-WindowsRuntimePlaytestPolicy.ps1', 'scripts/Build-PreRelease.ps1', 'scripts/Verify-ReleaseArtifacts.ps1', 'scripts/Verify-PlatformPackage.ps1', 'scripts/Write-CandidateManifest.ps1', 'scripts/Verify-UnrealMapHeader.ps1', 'scripts/Verify-RuntimeStartupLog.ps1', 'scripts/Test-UATPackageStructure.ps1', 'scripts/Test-CandidateManifest.ps1', 'scripts/Test-CandidateManifestPolicy.ps1', 'scripts/Test-PackagingPolicy.ps1')) {
+          foreach ($script in @('scripts/Build-Editor.ps1', 'scripts/New-StarterMap.ps1', 'scripts/Test-MapAuthoringReceipt.ps1', 'scripts/Test-MapAuthoringReceiptPolicy.ps1', 'scripts/Test-SourceProvenance.ps1', 'scripts/Test-SourceProvenancePolicy.ps1', 'scripts/Test-CandidateMapSnapshot.ps1', 'scripts/Test-CandidateMapSnapshotPolicy.ps1', 'scripts/Test-EngineBuildSnapshot.ps1', 'scripts/Test-EngineBuildSnapshotPolicy.ps1', 'scripts/Test-CandidatePairIdentity.ps1', 'scripts/Test-CandidatePairIdentityPolicy.ps1', 'scripts/Build-PlayableCandidate.ps1', 'scripts/Build-WindowsPlaytest.ps1', 'scripts/Test-WindowsPlaytestWrapperPolicy.ps1', 'scripts/Run-WindowsPlaytest.ps1', 'scripts/Assert-SafeWindowsPlaytestLogDirectory.ps1', 'scripts/Test-WindowsLogDirectoryPolicy.ps1', 'scripts/Test-WindowsRuntimePlaytestPolicy.ps1', 'scripts/Build-PreRelease.ps1', 'scripts/Verify-ReleaseArtifacts.ps1', 'scripts/Verify-PlatformPackage.ps1', 'scripts/Write-CandidateManifest.ps1', 'scripts/Verify-UnrealMapHeader.ps1', 'scripts/Verify-RuntimeStartupLog.ps1', 'scripts/Test-UATPackageStructure.ps1', 'scripts/Test-CandidateManifest.ps1', 'scripts/Test-CandidateManifestPolicy.ps1', 'scripts/Test-PackagingPolicy.ps1')) {
             $tokens = $null
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors)
@@ -68,6 +68,9 @@ jobs:
       - name: Reject fake private Win64 runtime candidates before any EXE launch
         shell: pwsh
         run: ./scripts/Test-WindowsRuntimePlaytestPolicy.ps1
+      - name: Reject junction-escaped and contained private Win64 runtime log paths
+        shell: pwsh
+        run: ./scripts/Test-WindowsLogDirectoryPolicy.ps1
       - name: Test full archive manifest integrity with disposable fake files
         shell: pwsh
         run: ./scripts/Test-CandidateManifestPolicy.ps1
