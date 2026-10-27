@@ -46,7 +46,8 @@ Assert-NoReparseAncestor -FullPath $root
 
 $relative = [IO.Path]::GetRelativePath($root, $absoluteLogs)
 if ($relative -eq '.' -or
-    ($relative -ne '..' -and
+    (-not [IO.Path]::IsPathRooted($relative) -and
+     $relative -ne '..' -and
      -not $relative.StartsWith('..' + [IO.Path]::DirectorySeparatorChar))) {
     throw 'LogDirectory must be outside the immutable packaged candidate folder.'
 }
