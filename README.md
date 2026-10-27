@@ -27,6 +27,8 @@ and installed Windows/Android playtests are outstanding.
 
 **Next-cycle run-local best-lap ghost (under development):** after a truly completed penalty-free timed lap, the game samples player transforms and replays the fastest valid lap of this attempt as a small non-colliding 3D beacon. Fixed-memory source policy rejects teleports, missing physics, race pauses and malformed samples. This is not an official time, saved ghost, third-party service or verified Unreal build. [Ghost replay QA](docs/BEST_LAP_GHOST_QA.md).
 
+**Next-cycle optional ghost visibility:** press **G** during a qualified race to hide/show the observational best-lap beacon without deleting the best trace or changing brakes, steering, timing, records or saved progress. Disabled by paused/menu/focus-owned input. Keyboard-only for now; mobile toggle/UI has not been implemented. [Ghost QA](docs/BEST_LAP_GHOST_QA.md).
+
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
 **v0.5.78 source rival AI:** the prototype opponent now senses the real player car directly ahead in its lane and can gently reduce throttle or request normal braking when closing too quickly. It does not swerve or create official rival results, and requires real Unreal/installed-device QA. [Rival traffic QA](docs/RIVAL_TRAFFIC_QA.md).
