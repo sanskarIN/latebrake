@@ -29,7 +29,7 @@ class WheelVisualMotion final
 {
 public:
     static constexpr double MaxDeltaSeconds = 0.25;
-    static constexpr double MaxForwardSpeedCmPerSecond = 10000.0;
+    static constexpr double MaxForwardSpeedCmPerSecond = 15000.0;
     static constexpr double MaxSteerDegrees = 30.0;
     static constexpr double MinRadiusCm = 5.0;
     static constexpr double MaxRadiusCm = 100.0;
