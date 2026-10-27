@@ -2,11 +2,11 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.76](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.76) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independent source qualification passed at commit `de975173e899a180f123feea93c9a2c64e5cc66c`. This milestone adds advisory, real-chassis 0–5 km/h forward launch feedback after the authoritative 3→2→1→GO gate from v0.5.75. **There is no verified Win64 EXE, Android APK/AAB or installed playable game.** GitHub source archives are not installers; genuine UE 5.8/UHT compilation, original cooked map and installed hardware driving QA remain mandatory.
+> **Latest published: [v0.5.77](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.77) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source at commit `433c1a4d027e6a3ce02c5ae9e08eeaf196678424`: real-player chassis G-force estimates, bounded launch interpolation and private Windows build/playtest QA tools. **No verified Win64 game EXE, Android APK/AAB or installed playable build is available.** Source archives are not installers; genuine UE 5.8/UHT compilation, original cooked map and installed hardware driving QA remain mandatory.
 
 **v0.5.76 published source feature:** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
-**Merged next source development (v0.5.77, not yet released):** launch telemetry now estimates the 5 km/h crossing *between consecutive, valid short-interval chassis speed samples*, and conservatively refuses interpolation across a pause, malformed sample or physics hitch. It remains an optional, run-local observation only; [testing limitations](docs/LAUNCH_SPEED_QA.md).
+**v0.5.77 source feature — launch interpolation:** launch telemetry now estimates the 5 km/h crossing *between consecutive, valid short-interval chassis speed samples*, and conservatively refuses interpolation across a pause, malformed sample or physics hitch. It remains an optional, run-local observation only; [testing limitations](docs/LAUNCH_SPEED_QA.md).
 
 **v0.5.75 published source feature:** a genuine start-light countdown
 with shared player/rival/clock/checkpoint authorization, fractional
@@ -17,9 +17,9 @@ and installed Windows/Android playtests are outstanding.
 
 **For your own Windows testing:** a new [private Win64 build guide](docs/WINDOWS_PERSONAL_PLAYTEST.md) and `Build-Windows-Playtest.cmd` run the **real** Unreal Engine 5.8 Editor/UHT + map cook/packaging pipeline on an authorized Windows machine. No downloadable EXE is currently verified; this produces an **unverified local candidate** only, not a published playable release.
 
-**Private Win64 QA evidence (source development, not a release):** after an actual Unreal-built Windows playtest, `scripts/Review-WindowsPlaytest.py` can create and evaluate an offline, hash-linked hands-on checklist. It never launches a game or calls self-reported observations a verified playable build. [Personal Win64 QA guide](docs/WINDOWS_PERSONAL_PLAYTEST.md).
+**Private Win64 QA evidence (included in v0.5.77 source preview):** after an actual Unreal-built Windows playtest, `scripts/Review-WindowsPlaytest.py` can create and evaluate an offline, hash-linked hands-on checklist. It never launches a game or calls self-reported observations a verified playable build. [Personal Win64 QA guide](docs/WINDOWS_PERSONAL_PLAYTEST.md).
 
-**New unreleased gameplay source — chassis G meter:** the real player pawn samples world-space velocity changes for approximate forward/lateral G, braking and cornering peaks. It is optional on desktop HUD and Results, and never affects car physics, scores or awards. Engine and installed-device results remain unverified. [G-force QA and limitations](docs/VEHICLE_G_FORCE_QA.md).
+**v0.5.77 source feature — chassis G meter:** the real player pawn samples world-space velocity changes for approximate forward/lateral G, braking and cornering peaks. It is optional on desktop HUD and Results, and never affects car physics, scores or awards. Engine and installed-device results remain unverified. [G-force QA and limitations](docs/VEHICLE_G_FORCE_QA.md).
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
