@@ -81,6 +81,15 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
+    if version == "v0.5.77":
+        for new_gate in (
+            "VehicleGForceMeter|LaunchSpeedMeter",
+            "Test-WindowsPlaytestWrapperPolicy.ps1",
+            "Test-WindowsRuntimePlaytestPolicy.ps1",
+            "Test-WindowsLogDirectoryPolicy.ps1",
+        ):
+            require(new_gate, "v0.5.77 feature and Win64 synthetic acceptance")
+
     if source.count("ref: ${{ github.sha }}") != 5:
         raise ValueError(f"{version}: each qualification/release job must pin same SHA")
 
@@ -185,6 +194,10 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
         self.assertIn("zero executable binaries", notes)
         for broken in (
             source.replace("tag: 'v0.5.76'", "tag: 'v0.5.75'", 1),
+            source.replace("Test-WindowsLogDirectoryPolicy.ps1",
+                           "Test-Placeholder.ps1", 1),
+            source.replace("VehicleGForceMeter|LaunchSpeedMeter",
+                           "LaunchSpeedMeter", 1),
             source.replace("ref: ${{ github.sha }}", "ref: main", 1),
             source.replace("published.assets.length !== 0",
                            "false /* no asset check */", 1),
