@@ -86,7 +86,12 @@ packaged `Latebrake.exe` with Unreal's documented `-log` and `-ABSLOG`
 arguments. The latter directs the **private diagnostic runtime log**
 outside the immutable candidate folder, to a sibling
 `LateBrakePlaytestLogs` directory by default. You can customize
-`-LogDirectory`, but it must not be inside the game folder.
+`-LogDirectory`, but it must not be inside the game folder. The launcher
+also rejects **junction/symlink parent directories** in either candidate
+or diagnostic path: a folder that *appears* outside the package must not
+resolve through a linked ancestor back inside the fingerprinted game.
+For a custom location on another Windows drive, use an ordinary directory
+without reparse-point parents.
 
 After **you close the game**, the helper records an equally private
 JSON receipt with source artifact checksums, UTC times, process exit
