@@ -21,6 +21,8 @@ and installed Windows/Android playtests are outstanding.
 
 **v0.5.77 source feature — chassis G meter:** the real player pawn samples world-space velocity changes for approximate forward/lateral G, braking and cornering peaks. It is optional on desktop HUD and Results, and never affects car physics, scores or awards. Engine and installed-device results remain unverified. [G-force QA and limitations](docs/VEHICLE_G_FORCE_QA.md).
 
+**Unreleased visual gameplay improvement:** procedural front steering, forward/reverse wheel roll and collision-free rotating spokes now follow actual Chaos chassis motion on the prototype car; race scoring and vehicle physics are unchanged. [Visual wheel QA and limitations](docs/WHEEL_VISUAL_QA.md). This is source-only until genuine UE 5.8/installed game verification.
+
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
 **v0.5.72 published source preview:** four deterministic camera presets
