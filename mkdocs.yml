@@ -114,6 +114,7 @@ nav:
       - Driving session metrics QA: DRIVING_SESSION_QA.md
       - Decorative wheel movement QA: WHEEL_VISUAL_QA.md
       - Brake and reverse signal QA: VEHICLE_SIGNAL_LIGHTS_QA.md
+      - Best-lap ghost beacon QA: BEST_LAP_GHOST_QA.md
       - Chassis G-force telemetry QA: VEHICLE_G_FORCE_QA.md
       - Next-gate guidance QA: NEXT_GATE_GUIDANCE_QA.md
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md

@@ -29,6 +29,7 @@
 #include "Racing/RaceClockReadiness.h"
 #include "Racing/PlayerRaceClockReadiness.h"
 #include "Racing/RecoveryCharge.h"
+#include "Racing/BestLapGhost.h"
 #include "Track/CircuitLayout.h"
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
@@ -112,6 +113,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     Race.Reset();
     StartLights.Reset();
     LaunchMeter.Reset();
+    GhostRecorder.ResetRun();
     RefreshRival();
 }
 
@@ -136,6 +138,48 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     latebrake::AdvancePlayerRaceClockIfReady(
         Race, bCircuitReady, bInactive || !StartLights.IsGreen(),
         bLocalPlayerReady, LiveDelta);
+    // Unofficial reference trace observes the SAME guarded player/clock
+    // frame as official lap timing, but can never modify timing or physics.
+    // World pause and focus loss can produce zero gameplay ticks; the
+    // session revision guard also refuses to stitch resumed frames.
+    const ALatebrakeCarPawn* GhostDriver = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    if (bStartQualified && StartLights.IsGreen() && LiveDelta > 0.0 &&
+        IsValid(GhostDriver) && GhostDriver->IsRacePhysicsReady())
+    {
+        // A fresh lap may rebind its OWN driver/session after a previous
+        // pause or recovery invalidated that previous candidate. Never
+        // rebind mid-lap to stitch unrelated movement into a ghost.
+        if (GhostRecorder.GetCandidateCount() == 0 &&
+            GhostRecorder.IsCandidateAllowed() &&
+            Race.GetCurrentLapSeconds() <= 0.45)
+        {
+            GhostTrackedPawn = const_cast<ALatebrakeCarPawn*>(GhostDriver);
+            GhostTeleportRevision = GhostDriver->GetTeleportRevision();
+            GhostSessionRevision = CheckpointSession.Current();
+        }
+        if (GhostTrackedPawn.Get() != GhostDriver ||
+            GhostTeleportRevision != GhostDriver->GetTeleportRevision() ||
+            GhostSessionRevision != CheckpointSession.Current())
+        {
+            GhostRecorder.InvalidateCurrentLap();
+        }
+        else
+        {
+            const FVector P = GhostDriver->GetActorLocation();
+            GhostRecorder.Record({Race.GetCurrentLapSeconds(),
+                static_cast<double>(P.X), static_cast<double>(P.Y),
+                static_cast<double>(P.Z),
+                static_cast<double>(GhostDriver->GetActorRotation().Yaw)}, true);
+        }
+    }
+    else if (StartLights.IsGreen() && !Race.IsFinished() &&
+             !bStartQualified)
+    {
+        GhostRecorder.InvalidateCurrentLap();
+    }
+    UpdateBestLapGhostMarker(bStartQualified && StartLights.IsGreen());
+
     // Observational only: use the already-authorized post-GO clock,
     // excluding recovery fees, and signed actual player chassis speed.
     if (bStartQualified && StartLights.IsGreen())
@@ -150,6 +194,94 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
         }
     }
     ApplyGarageToPlayer();
+}
+
+void ALatebrakeRaceGameMode::SuspendBestLapGhost()
+{
+    // Paused Unreal worlds can stop ticking before the next GameMode
+    // render update. Never leave a stale physical-looking beacon visible.
+    if (StartLights.IsGreen() && !Race.IsFinished())
+    {
+        GhostRecorder.InvalidateCurrentLap();
+    }
+    if (IsValid(BestLapGhostMarker))
+    {
+        BestLapGhostMarker->SetActorHiddenInGame(true);
+    }
+}
+
+void ALatebrakeRaceGameMode::UpdateBestLapGhostMarker(bool bReplayAuthorized)
+{
+    // A ghost is only displayed on a subsequent lap with a legitimate
+    // active running clock. Never show a preview during menus, countdown,
+    // invalid track, unfinished first lap, pause, or Results.
+    latebrake::LapGhostPose Sample;
+    const bool bShouldShow = bReplayAuthorized && !Race.IsFinished() &&
+        Race.GetCompletedLaps() > 0 && GhostRecorder.HasBest() &&
+        GhostRecorder.Evaluate(Race.GetCurrentLapSeconds(), Sample);
+    if (!bShouldShow)
+    {
+        if (IsValid(BestLapGhostMarker))
+        {
+            BestLapGhostMarker->SetActorHiddenInGame(true);
+        }
+        return;
+    }
+
+    if (!IsValid(BestLapGhostMarker))
+    {
+        UStaticMesh* Cube = LoadObject<UStaticMesh>(
+            nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+        UWorld* World = GetWorld();
+        if (!Cube || !World)
+        {
+            return; // Renderer unavailable: gameplay continues unaltered.
+        }
+        FActorSpawnParameters Parameters;
+        Parameters.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        BestLapGhostMarker = World->SpawnActor<AStaticMeshActor>(
+            AStaticMeshActor::StaticClass(), FVector::ZeroVector,
+            FRotator::ZeroRotator, Parameters);
+        if (!IsValid(BestLapGhostMarker))
+        {
+            return;
+        }
+#if WITH_EDITOR
+        BestLapGhostMarker->SetActorLabel(TEXT("RunLocalBestLapGhostBeacon"));
+#endif
+        UStaticMeshComponent* Mesh = BestLapGhostMarker->GetStaticMeshComponent();
+        if (!IsValid(Mesh))
+        {
+            BestLapGhostMarker->Destroy();
+            BestLapGhostMarker = nullptr;
+            return;
+        }
+        Mesh->SetMobility(EComponentMobility::Movable);
+        Mesh->SetStaticMesh(Cube);
+        Mesh->SetSimulatePhysics(false);
+        Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Mesh->SetGenerateOverlapEvents(false);
+        Mesh->SetCastShadow(false);
+        Mesh->SetCanEverAffectNavigation(false);
+        BestLapGhostMarker->SetActorEnableCollision(false);
+        // Floating small beacon rather than an opaque full-car imitation.
+        // A genuine translucent car-shell material is future asset work.
+        BestLapGhostMarker->SetActorScale3D(FVector(0.65, 0.65, 0.18));
+        if (UMaterialInstanceDynamic* Material =
+                Mesh->CreateAndSetMaterialInstanceDynamic(0))
+        {
+            Material->SetVectorParameterValue(TEXT("Color"),
+                FLinearColor(0.08f, 0.75f, 0.90f));
+        }
+    }
+    // A real ghost path is observed world motion. Raise its small beacon
+    // above the prior chassis so it cannot obstruct the current car.
+    const FVector MarkerPosition(Sample.X, Sample.Y, Sample.Z + 130.0);
+    BestLapGhostMarker->SetActorLocationAndRotation(
+        MarkerPosition, FRotator(0.0, Sample.YawDegrees, 0.0),
+        false, nullptr, ETeleportType::TeleportPhysics);
+    BestLapGhostMarker->SetActorHiddenInGame(false);
 }
 
 AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label,
@@ -520,10 +652,28 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     }
     // RaceProgress only flips to Finished on a valid ordered player gate.
     // Once finished all subsequent overlap callbacks return false.
-    if (!Race.PassCheckpoint(CheckpointIndex) || !Race.IsFinished())
+    const int32 LapsBeforeGate = Race.GetCompletedLaps();
+    if (!Race.PassCheckpoint(CheckpointIndex))
     {
         return;
     }
+    if (Race.GetCompletedLaps() > LapsBeforeGate)
+    {
+        // Observe the authoritative, ordered-gate boundary. Never use a
+        // ghost frame to accept a checkpoint or create an official time.
+        const bool bRealLapHadActiveTime =
+            Race.GetActiveTimedLapCount() == Race.GetCompletedLaps();
+        GhostRecorder.FinishLap(Race.GetLastLapSeconds(),
+            bRealLapHadActiveTime,
+            Race.GetLastLapPenaltySeconds() == 0.0);
+    }
+    if (!Race.IsFinished())
+    {
+        return;
+    }
+    // The Results page can pause the world before GameMode gets another
+    // Tick. Clear the beacon synchronously with the final ordered gate.
+    SuspendBestLapGhost();
 
     // Ordered gate completion is necessary but not sufficient for rewards.
     // Every lap must have its own successful active race-clock advancement:
@@ -628,6 +778,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     {
         return;
     }
+    SuspendBestLapGhost();
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
@@ -644,6 +795,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
+    SuspendBestLapGhost();
     Menu.Toggle();
     if (!Menu.IsOpen())
     {
@@ -664,6 +816,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
 
 void ALatebrakeRaceGameMode::ToggleRacePause()
 {
+    SuspendBestLapGhost();
     // Standalone keyboard/gamepad/touch PAUSE does not open the menu.
     // An engine-world pause may fail, so the *player's requested pause*
     // must independently freeze racing, checkpoints and driving.
@@ -728,6 +881,7 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
         return;
     }
 
+    SuspendBestLapGhost();
     // A fresh focus interruption invalidates pre-loss motion regardless of
     // whether Unreal/OS already paused the world before our callback.
     // Repeated deactivation events do not bump this epoch a second time.
@@ -1286,6 +1440,14 @@ void ALatebrakeRaceGameMode::RestartRace()
     Race.Reset();
     StartLights.Reset();
     LaunchMeter.Reset();
+    GhostRecorder.ResetRun();
+    GhostTrackedPawn.Reset();
+    GhostTeleportRevision = 0;
+    GhostSessionRevision = CheckpointSession.Current();
+    if (IsValid(BestLapGhostMarker))
+    {
+        BestLapGhostMarker->SetActorHiddenInGame(true);
+    }
     LastCareerAward = {};
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
@@ -1356,6 +1518,7 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     }
     // A real paid teleport cannot be mistaken for a grid launch. A rejected
     // recovery above returns without erasing an otherwise valid sample.
+    SuspendBestLapGhost();
     LaunchMeter.Invalidate();
 }
 

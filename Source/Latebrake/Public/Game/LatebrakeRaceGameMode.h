@@ -6,6 +6,7 @@
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
+#include "Racing/BestLapGhost.h"
 #include "Racing/RestartPlacementGuard.h"
 #include "Racing/AppFocusRaceGuard.h"
 #include "Racing/ManualRacePauseGuard.h"
@@ -75,6 +76,9 @@ public:
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
+    // A run-local cosmetic marker only. Not a saved or official record.
+    bool HasBestLapGhost() const { return GhostRecorder.HasBest(); }
+    double GetBestLapGhostSeconds() const { return GhostRecorder.GetBestSeconds(); }
     latebrake::RaceStartPhase GetRaceStartPhase() const
     {
         return StartLights.Phase();
@@ -113,6 +117,8 @@ private:
     void SaveRecords();
     void RefreshRival();
     void ApplyGarageToPlayer();
+    void UpdateBestLapGhostMarker(bool bReplayAuthorized);
+    void SuspendBestLapGhost();
     void CloseMenuForRace();
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
@@ -131,6 +137,11 @@ private:
     latebrake::RaceStartLights StartLights;
     // Session-only advisory forward-speed estimate; never alters RaceProgress.
     latebrake::LaunchSpeedMeter LaunchMeter;
+    // Fixed-size in-memory candidate/best traces never become SaveGame data.
+    latebrake::BestLapGhost GhostRecorder;
+    TWeakObjectPtr<ALatebrakeCarPawn> GhostTrackedPawn;
+    uint64 GhostTeleportRevision = 0;
+    uint64 GhostSessionRevision = 0;
     bool bCircuitReady = false;
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
@@ -157,4 +168,8 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<ALatebrakeRivalCar> RivalCar;
+
+    // One non-colliding prototype beacon follows a valid best-lap trace.
+    UPROPERTY(Transient)
+    TObjectPtr<AStaticMeshActor> BestLapGhostMarker;
 };

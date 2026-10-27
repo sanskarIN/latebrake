@@ -154,3 +154,14 @@ The effect is source-only and deliberately cannot change handling, lap
 eligibility or awards. Unreal 5.8 rendering and real Windows/Android
 performance, materials and lamp positions are not yet verified.
 See [vehicle signal-light QA](VEHICLE_SIGNAL_LIGHTS_QA.md).
+
+### Next-source run-local best-lap ghost beacon
+
+A bounded C++20 recorder now keeps the fastest genuinely sampled,
+penalty-free driven lap **within the same attempt**. Source GameMode
+wiring adds a small non-colliding marker at interpolated past chassis
+poses on subsequent laps. Restart wipes the entire trace; no scores,
+career awards, AI steering, garage saves or online replay are touched.
+The small beacon is intentionally not a full translucent ghost car.
+Unreal 5.8 cook/rendering, installed gameplay, memory and mobile
+performance testing remain necessary. [Ghost QA](BEST_LAP_GHOST_QA.md).
