@@ -61,7 +61,7 @@ Milestones are goals, not claims of delivered features. Preserve offline single-
 Playable game releases must include genuine installed packages, actual hardware/gameplay testing, change notes, known issues, and no unsupported promises. Source-only preview archives are **not** playable game artifacts.
 
 
-### Current unreleased rival traffic-awareness development
+### v0.5.78 published source-only rival traffic-awareness development
 
 A conservative in-lane prototype rival AI limiter is implemented in
 portable C++20, using actual player location and velocity to choose
@@ -137,9 +137,9 @@ Use [Vehicle G-force QA](VEHICLE_G_FORCE_QA.md) and maintain the real
 engine/hardware release gate in issue #148; do not treat passing portable
 C++20 CI as proof of a playable game.
 
-### Current unreleased procedural wheel display
+### v0.5.78 published source-only procedural wheel display
 
-The primitive-car source now couples collision-free wheel ornaments
+The v0.5.78 source preview couples collision-free wheel ornaments
 and visible spokes to the real chassis' signed forward speed and
 bounded steering command. Source regression tests cannot verify actual
 Unreal 5.8 compilation, cook, rendered wheel axes or game/device QA.
