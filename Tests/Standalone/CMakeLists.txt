@@ -928,6 +928,17 @@ else()
 endif()
 add_test(NAME VehicleGForceMeter COMMAND latebrake_vehicle_g_force_meter_tests)
 
+# Decorative, non-physical wheel rotation/steering from genuine car velocity.
+add_executable(latebrake_wheel_visual_motion_tests WheelVisualMotionTests.cpp)
+target_include_directories(latebrake_wheel_visual_motion_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_wheel_visual_motion_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_wheel_visual_motion_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_wheel_visual_motion_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WheelVisualMotion COMMAND latebrake_wheel_visual_motion_tests)
+
 # Physical player-aware AI caution: no Unreal SDK, no race placement changes.
 add_executable(latebrake_rival_traffic_awareness_tests RivalTrafficAwarenessTests.cpp)
 target_include_directories(latebrake_rival_traffic_awareness_tests PRIVATE ../../Source/Latebrake/Public)
