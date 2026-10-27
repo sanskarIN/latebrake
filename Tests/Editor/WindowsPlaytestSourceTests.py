@@ -63,7 +63,7 @@ class WindowsPlaytestSourceTests(unittest.TestCase):
             "startup_log_error",
             "gameplay_verified = $false",
             "UNVERIFIED_PERSONAL_RUNTIME_PROBE",
-            "LogDirectory must be outside",
+            "Assert-SafeWindowsPlaytestLogDirectory.ps1",
             "ConvertTo-Json",
         ):
             with self.subTest(marker=marker):
@@ -72,6 +72,16 @@ class WindowsPlaytestSourceTests(unittest.TestCase):
         self.assertIn("rejectedMalformed", policy)
         self.assertIn("Test-WindowsRuntimePlaytestPolicy.ps1", self.ci)
         self.assertIn("Run-WindowsPlaytest.ps1", self.ci)
+        guard = (ROOT / "scripts/Assert-SafeWindowsPlaytestLogDirectory.ps1").read_text(encoding="utf-8")
+        fixture = (ROOT / "scripts/Test-WindowsLogDirectoryPolicy.ps1").read_text(encoding="utf-8")
+        for name in ("GetRelativePath", "IsPathRooted", "Assert-NoReparseAncestor",
+                     "ReparsePoint", "GetParent", "New-Item", "LogDirectory must be outside"):
+            self.assertIn(name, guard)
+        self.assertIn("New-Item -ItemType Junction", fixture)
+        self.assertIn("rejectedLinkedParent", fixture)
+        self.assertIn("rejectedLinkedCandidate", fixture)
+        self.assertIn("Test-WindowsLogDirectoryPolicy.ps1", self.ci)
+        self.assertIn("Assert-SafeWindowsPlaytestLogDirectory.ps1", self.ci)
 
     def test_double_click_existing_candidate_launcher(self):
         cmd = (ROOT / "Play-Windows-Candidate.cmd").read_text(encoding="utf-8")
