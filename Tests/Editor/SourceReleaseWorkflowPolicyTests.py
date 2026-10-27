@@ -37,6 +37,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.74": "v0.5.73",  # Rescaled human controller deadzones.
         "v0.5.75": "v0.5.74",  # Exact post-green frame timing gate.
         "v0.5.76": "v0.5.75",  # Signed forward launch telemetry.
+        "v0.5.77": "v0.5.76",  # Chassis G estimates and private Win64 QA.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -92,7 +93,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -171,6 +172,29 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
                     version, path.read_text(encoding="utf-8"),
                     notes_file.read_text(encoding="utf-8"),
                 )
+
+    def test_v0577_g_force_source_publisher_retains_all_qualification_gates(self):
+        source = (WORKFLOWS / "publish-v0.5.77-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.77.md").read_text(
+            encoding="utf-8"
+        )
+        verify_live_ci_source_release("v0.5.77", source, notes)
+        self.assertIn("VehicleGForceMeter|LaunchSpeedMeter", source)
+        self.assertIn("zero executable binaries", notes)
+        for broken in (
+            source.replace("tag: 'v0.5.76'", "tag: 'v0.5.75'", 1),
+            source.replace("ref: ${{ github.sha }}", "ref: main", 1),
+            source.replace("published.assets.length !== 0",
+                           "false /* no asset check */", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                           "needs: [source-tests]", 1),
+        ):
+            with self.subTest(marker=broken[-95:]):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release("v0.5.77", broken, notes)
 
     def test_known_yaml_truncation_and_revision_drift_are_rejected(self):
         version = "v0.5.32"
