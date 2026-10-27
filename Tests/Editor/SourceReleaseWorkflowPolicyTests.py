@@ -38,6 +38,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.75": "v0.5.74",  # Exact post-green frame timing gate.
         "v0.5.76": "v0.5.75",  # Signed forward launch telemetry.
         "v0.5.77": "v0.5.76",  # Chassis G estimates and private Win64 QA.
+        "v0.5.78": "v0.5.77",  # Wheel visuals and rival lane-aware AI.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -81,6 +82,15 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
+    if version == "v0.5.78":
+        for new_gate in (
+            "WheelVisualMotion|RivalTrafficAwareness",
+            "Test-WindowsPlaytestWrapperPolicy.ps1",
+            "Test-WindowsRuntimePlaytestPolicy.ps1",
+            "Test-WindowsLogDirectoryPolicy.ps1",
+        ):
+            require(new_gate, "v0.5.78 gameplay/Win64 source qualification")
+
     if version == "v0.5.77":
         for new_gate in (
             "VehicleGForceMeter|LaunchSpeedMeter",
@@ -102,7 +112,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -208,6 +218,27 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(marker=broken[-95:]):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release("v0.5.77", broken, notes)
+
+    def test_v0578_source_release_checks_actual_wheels_and_rival(self):
+        source = (WORKFLOWS / "publish-v0.5.78-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.78.md").read_text(
+            encoding="utf-8"
+        )
+        verify_live_ci_source_release("v0.5.78", source, notes)
+        for mutation in (
+            source.replace("WheelVisualMotion|RivalTrafficAwareness",
+                           "VehicleGForceMeter", 1),
+            source.replace("tag: 'v0.5.77'", "tag: 'v0.5.76'", 1),
+            source.replace("published.assets.length !== 0", "false", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("Test-WindowsLogDirectoryPolicy.ps1",
+                           "Test-DummyPolicy.ps1", 1),
+        ):
+            with self.subTest(mutation=mutation[-80:]):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release("v0.5.78", mutation, notes)
 
     def test_known_yaml_truncation_and_revision_drift_are_rejected(self):
         version = "v0.5.32"
