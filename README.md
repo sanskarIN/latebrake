@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.77](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.77) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source at commit `433c1a4d027e6a3ce02c5ae9e08eeaf196678424`: real-player chassis G-force estimates, bounded launch interpolation and private Windows build/playtest QA tools. **No verified Win64 game EXE, Android APK/AAB or installed playable build is available.** Source archives are not installers; genuine UE 5.8/UHT compilation, original cooked map and installed hardware driving QA remain mandatory.
+> **Latest published: [v0.5.78](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.78) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently source-tested commit `184dd7223556684afeefc70e4d2c89f5b7525965` includes visible prototype wheel rotation/steering, lane-aware rival courtesy braking, and previous real-chassis G/launch telemetry. **No verified Win64 game EXE, Android APK/AAB or installed playable build is available.** Source archives are not installers; real Unreal 5.8 UHT compilation, original cooked track and installed gameplay QA remain required.
 
 **v0.5.76 published source feature:** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
@@ -21,11 +21,11 @@ and installed Windows/Android playtests are outstanding.
 
 **v0.5.77 source feature — chassis G meter:** the real player pawn samples world-space velocity changes for approximate forward/lateral G, braking and cornering peaks. It is optional on desktop HUD and Results, and never affects car physics, scores or awards. Engine and installed-device results remain unverified. [G-force QA and limitations](docs/VEHICLE_G_FORCE_QA.md).
 
-**Unreleased visual gameplay improvement:** procedural front steering, forward/reverse wheel roll and collision-free rotating spokes now follow actual Chaos chassis motion on the prototype car; race scoring and vehicle physics are unchanged. [Visual wheel QA and limitations](docs/WHEEL_VISUAL_QA.md). This is source-only until genuine UE 5.8/installed game verification.
+**v0.5.78 source visual gameplay:** procedural front steering, forward/reverse wheel roll and collision-free rotating spokes now follow actual Chaos chassis motion on the prototype car; race scoring and vehicle physics are unchanged. [Visual wheel QA and limitations](docs/WHEEL_VISUAL_QA.md). This is source-only until genuine UE 5.8/installed game verification.
 
 **Documentation website:** [Latebrake project guide](https://sanskarin.github.io/latebrake/) — project overview, gameplay systems, build setup, verified-vs-unverified status, roadmap and contribution documentation. The website is documentation only, not a browser-playable game.
 
-**Unreleased rival AI improvement:** the prototype opponent now senses the real player car directly ahead in its lane and can gently reduce throttle or request normal braking when closing too quickly. It does not swerve or create official rival results, and requires real Unreal/installed-device QA. [Rival traffic QA](docs/RIVAL_TRAFFIC_QA.md).
+**v0.5.78 source rival AI:** the prototype opponent now senses the real player car directly ahead in its lane and can gently reduce throttle or request normal braking when closing too quickly. It does not swerve or create official rival results, and requires real Unreal/installed-device QA. [Rival traffic QA](docs/RIVAL_TRAFFIC_QA.md).
 
 **v0.5.72 published source preview:** four deterministic camera presets
 (Chase, Close Chase, Hood, High Chase) replace the old near/far toggle,
