@@ -85,6 +85,23 @@ class BestLapGhostBindingTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, ghost)
 
+    def test_pause_and_focus_hide_immediately_even_when_world_stops_ticking(self):
+        suspend = self.game.split(
+            "void ALatebrakeRaceGameMode::SuspendBestLapGhost()", 1
+        )[1].split(
+            "void ALatebrakeRaceGameMode::UpdateBestLapGhostMarker(", 1
+        )[0]
+        self.assertIn("GhostRecorder.InvalidateCurrentLap()", suspend)
+        self.assertIn("BestLapGhostMarker->SetActorHiddenInGame(true)", suspend)
+        for heading in (
+            "CloseMenuForRace()", "ToggleMenu()", "ToggleRacePause()",
+            "PauseForAppInterruption()", "RecoverPlayer(",
+        ):
+            fragment = self.game.split(
+                "void ALatebrakeRaceGameMode::" + heading, 1
+            )[1].split("void ALatebrakeRaceGameMode::", 1)[0]
+            self.assertIn("SuspendBestLapGhost();", fragment, heading)
+
     def test_restart_and_source_run_isolation(self):
         restart = self.game.split(
             "void ALatebrakeRaceGameMode::RestartRace()", 1
