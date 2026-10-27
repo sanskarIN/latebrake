@@ -112,6 +112,7 @@ nav:
       - Mobile menu vertical overflow QA: HUD_MENU_VERTICAL_QA.md
       - Navigable menu details QA: MENU_DETAIL_PAGING_QA.md
       - Driving session metrics QA: DRIVING_SESSION_QA.md
+      - Decorative wheel movement QA: WHEEL_VISUAL_QA.md
       - Chassis G-force telemetry QA: VEHICLE_G_FORCE_QA.md
       - Next-gate guidance QA: NEXT_GATE_GUIDANCE_QA.md
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
