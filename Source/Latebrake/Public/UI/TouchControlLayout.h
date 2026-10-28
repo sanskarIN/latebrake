@@ -30,6 +30,7 @@ enum class TouchControl
     Pause,
     Restart,
     Recover,
+    GhostView,
     CareerNext,
     CareerStart,
     MenuBrowse
@@ -43,6 +44,7 @@ struct TouchControlLayout final
     TouchRect Pause;
     TouchRect Restart;
     TouchRect Recover;
+    TouchRect GhostView;
     TouchRect CareerNext;
     TouchRect CareerStart;
     TouchRect MenuBrowse;
@@ -72,6 +74,9 @@ inline TouchControlLayout CalculateTouchControlLayout(
         {viewportWidth * 0.69, viewportHeight * 0.16,
          viewportWidth * 0.27, viewportHeight * 0.10},
         {viewportWidth * 0.69, viewportHeight * 0.28,
+         viewportWidth * 0.27, viewportHeight * 0.10},
+        // Press-only visual ghost toggle: below RECOVER, above GAS.
+        {viewportWidth * 0.69, viewportHeight * 0.40,
          viewportWidth * 0.27, viewportHeight * 0.10},
         {viewportWidth * 0.43, viewportHeight * 0.04,
          viewportWidth * 0.23, viewportHeight * 0.10},
@@ -113,6 +118,10 @@ inline TouchControl HitTestTouchControl(const TouchControlLayout& layout,
     if (layout.Recover.Contains(x, y))
     {
         return TouchControl::Recover;
+    }
+    if (layout.GhostView.Contains(x, y))
+    {
+        return TouchControl::GhostView;
     }
     if (layout.CareerNext.Contains(x, y))
     {

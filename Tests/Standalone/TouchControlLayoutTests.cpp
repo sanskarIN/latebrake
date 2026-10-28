@@ -33,6 +33,10 @@ int main()
           "action buttons cannot accidentally accelerate");
     Check(layout.Recover.X + layout.Recover.Width < 1280.0,
           "action buttons stay in the right viewport");
+    Check(layout.Recover.Y + layout.Recover.Height < layout.GhostView.Y,
+          "ghost toggle is below recover with no overlap");
+    Check(layout.GhostView.Y + layout.GhostView.Height < layout.Throttle.Y,
+          "ghost toggle is above throttle with no overlap");
     Check(layout.CareerNext.X + layout.CareerNext.Width < layout.Pause.X,
           "career pads do not intersect pause");
     Check(layout.CareerNext.Y + layout.CareerNext.Height < layout.CareerStart.Y,
@@ -58,6 +62,8 @@ int main()
           layout.Restart.Y + 10.0) == TouchControl::Restart, "restart button");
     Check(HitTestTouchControl(layout, layout.Recover.X + 10.0,
           layout.Recover.Y + 10.0) == TouchControl::Recover, "recovery button");
+    Check(HitTestTouchControl(layout, layout.GhostView.X + 10.0,
+          layout.GhostView.Y + 10.0) == TouchControl::GhostView, "ghost pad");
     Check(HitTestTouchControl(layout, layout.CareerNext.X + 10.0,
           layout.CareerNext.Y + 10.0) == TouchControl::CareerNext, "career browse");
     Check(HitTestTouchControl(layout, layout.CareerStart.X + 10.0,

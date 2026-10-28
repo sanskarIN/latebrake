@@ -1206,6 +1206,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             UGameplayStatics::IsGamePaused(this) || Mode->IsManualRacePauseActive());
         DrawPad(Pads.Restart, TEXT("RESTART"), false);
         DrawPad(Pads.Recover, TEXT("RECOVER"), false);
+        // The screen and touch dispatcher use the exact same geometry.
+        // Visibility is run-local; no official records or timing change.
+        DrawPad(Pads.GhostView,
+            Mode->IsBestLapGhostDisplayEnabled()
+                ? TEXT("GHOST ON") : TEXT("GHOST OFF"), false);
         DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
         DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
         // MenuBrowse has a disjoint reserved hit rectangle. Reuse it as

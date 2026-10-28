@@ -10,6 +10,7 @@
 #include "Racing/RecoveryTeleportVerification.h"
 #include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
+#include "UI/GhostTouchPolicy.h"
 #include "UI/LatebrakeRaceHUD.h"
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
@@ -931,6 +932,23 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         return;
     case latebrake::TouchControl::CareerStart:
         CareerStart();
+        return;
+    case latebrake::TouchControl::GhostView:
+        // A NEW physical press in a dedicated, disjoint mobile rectangle.
+        // The GameMode performs the final authoritative race/pause guard.
+        if (latebrake::CanToggleGhostFromTouch({
+                Region, bAllowAcquire, Mode != nullptr,
+                Mode && Mode->IsCircuitReadyForGameplay(),
+                Mode && Mode->HasLocalPlayerDriver(),
+                Mode && Mode->IsRaceStartGreen(),
+                Mode && Mode->IsMenuOpen(),
+                UGameplayStatics::IsGamePaused(this) ||
+                    (Mode && Mode->IsManualRacePauseActive()),
+                Mode && Mode->IsFocusLossGuardActive(),
+                Mode && Mode->GetRace().IsFinished()}))
+        {
+            ToggleBestLapGhost();
+        }
         return;
     case latebrake::TouchControl::MenuBrowse:
         // The same rectangle means BROWSE only in menus and CAM in racing.

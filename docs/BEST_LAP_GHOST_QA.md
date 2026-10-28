@@ -113,3 +113,39 @@ actual installed Win64 race with a valid best lap and after pause,
 menu, OS focus loss, recovery and restart. Verify the marker vanishes
 immediately without needing another Tick and reappears only after
 explicit re-enable and valid replay conditions.
+
+## Android ghost visibility pad — next-cycle source candidate
+
+The non-colliding best-lap beacon can be hidden/shown during an eligible
+active race using **G** on keyboard, the left face button on gamepad, or
+the new on-screen **GHOST ON / GHOST OFF** pad on Android. The pad sits
+directly below RECOVER in the right action column, with a neutral gap
+before GAS. It does not displace steering, gas, brake, pause, recovery,
+restart or the existing CAM pad. The same pure C++20 rectangle definition
+feeds hit testing and Unreal HUD drawing.
+
+Only a fresh physical touch-down in the dedicated rectangle is eligible.
+Moving a held gas/steering finger into the pad, duplicate presses and
+touches while the menu, countdown, finish or OS focus guard owns input
+must not toggle the beacon. The GameMode independently rechecks the
+authoritative green start, actual human driver and pause/focus state.
+Hiding a beacon never deletes an eligible best-lap trace, and the
+preference never changes physics, checkpoints, lap times, credits or saves.
+A touch release merely frees its physical-down identity.
+
+Portable QA:
+
+```sh
+cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+cmake --build Tests/Standalone/build --config Release
+ctest --test-dir Tests/Standalone/build -C Release -R '^(GhostTouchPolicy|TouchControlLayout|GhostDisplayPreference)$' --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'AndroidGhostTouchBindingTests.py' -v
+```
+
+**Real Android qualification still required:** confirm readable/high-DPI
+landscape and portrait positions, OS touch event delivery, multi-finger
+gas/steer plus GHOST interactions, pause/focus interruption, and whether
+the pad obstructs HUD or track view on low-resolution devices. Also
+confirm the beacon is never physically collidable and that input never
+updates scoring or saved records. This is source-only; no APK or real
+device observation is claimed.

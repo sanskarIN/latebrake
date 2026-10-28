@@ -983,3 +983,15 @@ else()
     target_compile_options(latebrake_ghost_display_preference_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GhostDisplayPreference COMMAND latebrake_ghost_display_preference_tests)
+
+# Android-only ghost visibility action: exact shared touch rectangle and
+# authoritative eligibility. No engine headers or game packages required.
+add_executable(latebrake_ghost_touch_policy_tests GhostTouchPolicyTests.cpp)
+target_include_directories(latebrake_ghost_touch_policy_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_ghost_touch_policy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_ghost_touch_policy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_ghost_touch_policy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GhostTouchPolicy COMMAND latebrake_ghost_touch_policy_tests)
