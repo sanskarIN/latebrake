@@ -1,4 +1,4 @@
-#include "UI/GhostSeparation.h"
+#include "Racing/GhostSeparation.h"
 
 #include <cmath>
 #include <cstdlib>
