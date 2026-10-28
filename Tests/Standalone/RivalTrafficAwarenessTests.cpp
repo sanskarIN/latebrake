@@ -32,7 +32,7 @@ int main()
             close.Steering == cruise.Steering && !close.Arrived,
             "closing on a player in the same lane triggers courtesy braking");
 
-    const auto approach = YieldRivalToPlayer(cruise, Traffic(1050, 0));
+    const auto approach = YieldRivalToPlayer(cruise, Traffic(1400, 0));
     Require(!approach.Brake && approach.Throttle >= 0.15 &&
             approach.Throttle < cruise.Throttle &&
             approach.Steering == cruise.Steering,
