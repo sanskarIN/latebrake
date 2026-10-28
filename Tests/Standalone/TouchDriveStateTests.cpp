@@ -37,7 +37,7 @@ int main()
           "invalid move cannot move valid steering owner");
     drive.Release(MaxTrackedTouchFingers - 1);
     Check(!drive.SteeringActive(), "valid boundary finger can release");
-    drive.Press(layout, 1, center, sy);
+    drive.Press(layout, 1, center + 0.05 * layout.Steering.Width * 0.5, sy);
     drive.Press(layout, 2, gasX, gasY);
     Check(drive.SteeringActive() && drive.ThrottleActive() &&
           drive.SteeringOwner() == 1 && drive.PedalOwner() == 2,
