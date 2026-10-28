@@ -32,4 +32,5 @@ public:
 
 private:
     latebrake::RivalRouteProgress Route{4, 3};
+    latebrake::RivalFollowingBrakeHold FollowingBrakeHold;
 };
