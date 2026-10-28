@@ -66,6 +66,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     if (Observation.NeedsRecovery)
     {
+        FollowingBrakeHold.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
