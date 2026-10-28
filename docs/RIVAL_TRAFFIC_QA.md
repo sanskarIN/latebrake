@@ -87,6 +87,10 @@ game packages or authoritative race results.
 The rival's straight, same-lane player-following policy now computes a
 bounded **time-to-contact estimate** from the observed relative forward
 velocity and distance, subtracting a conservative 380 cm separation margin.
+Both cars' true WORLD velocity vectors are projected onto rival heading:
+the rival's planar speed magnitude is cross-checked but **not mistaken
+for forward closing speed during a lateral drift or reverse movement**.
+Malformed/inconsistent velocity samples fail closed to braking.
 For a closing speed of at least 500 cm/s, an estimated contact time
 **at or under 0.75 seconds** requests normal braking before the older
 600 cm-only emergency threshold. The existing slower/near emergency,
