@@ -676,6 +676,28 @@ void ALatebrakeRaceHUD::DrawHUD()
             Line(TEXT("BEST-LAP GHOST HIDDEN | G SHOW (RUN ONLY)"), Primary);
         }
     }
+    // Purely geometric 3D distance at the SAME lap clock, not a race
+    // position/pace delta. Hidden/paused ghosts and compact mobile layouts
+    // never add this optional telemetry row.
+    if (!bCompact)
+    {
+        double GhostDistanceMeters = 0.0;
+        if (Mode->TryGetBestLapGhostSeparationMeters(GhostDistanceMeters))
+        {
+            if (Mode->UsesMilesPerHour())
+            {
+                Line(FString::Printf(
+                    TEXT("GHOST DIST  %.0f ft (SAME LAP TIME)"),
+                    GhostDistanceMeters * 3.280839895), Primary);
+            }
+            else
+            {
+                Line(FString::Printf(
+                    TEXT("GHOST DIST  %.0f m (SAME LAP TIME)"),
+                    GhostDistanceMeters), Primary);
+            }
+        }
+    }
     // Keyboard/gamepad camera choice is advisory. Place after official
     // lap/time readouts, and reserve scarce phone rows for driving.
     if (!bCompact)
