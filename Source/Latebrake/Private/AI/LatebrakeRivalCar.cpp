@@ -27,6 +27,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     // Do not preserve approximation/recovery history from a different
     // event or replay. The RaceProgress clock remains player-authoritative.
     Route.Configure(CheckpointCount, RequiredLaps);
+    FollowingBrakeHold.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
