@@ -30,6 +30,7 @@
 #include "Racing/PlayerRaceClockReadiness.h"
 #include "Racing/RecoveryCharge.h"
 #include "Racing/BestLapGhost.h"
+#include "Racing/GhostSeparation.h"
 #include "Track/CircuitLayout.h"
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
