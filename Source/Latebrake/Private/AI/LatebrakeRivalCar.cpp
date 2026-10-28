@@ -122,7 +122,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         latebrake::YieldRivalToPlayer(Command, {
             Position.X, Position.Y, Heading, FlatSpeed,
             PlayerPosition.X, PlayerPosition.Y,
-            PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady
+            PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady,
+            Velocity.X, Velocity.Y
         });
     // A short, fail-closed hold prevents brake chatter near the
     // projected contact boundary; it cannot re-route or score a rival.
