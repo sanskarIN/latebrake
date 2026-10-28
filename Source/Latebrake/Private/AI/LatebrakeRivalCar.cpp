@@ -124,8 +124,14 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             PlayerPosition.X, PlayerPosition.Y,
             PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady
         });
-    SetAutonomousControls(static_cast<float>(TrafficCommand.Throttle),
-                          static_cast<float>(TrafficCommand.Steering),
-                          TrafficCommand.Brake);
+    // A short, fail-closed hold prevents brake chatter near the
+    // projected contact boundary; it cannot re-route or score a rival.
+    const latebrake::PilotCommand SafeTrafficCommand =
+        FollowingBrakeHold.Apply(
+            TrafficCommand, static_cast<double>(DeltaSeconds),
+            bPlayerReady, TrafficCommand.Brake && !Command.Brake);
+    SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle),
+                          static_cast<float>(SafeTrafficCommand.Steering),
+                          SafeTrafficCommand.Brake);
     Super::Tick(DeltaSeconds);
 }
