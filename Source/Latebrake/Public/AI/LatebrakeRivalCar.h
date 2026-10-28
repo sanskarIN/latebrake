@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AI/RivalRouteProgress.h"
+#include "AI/RivalFollowingBrakeHold.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
