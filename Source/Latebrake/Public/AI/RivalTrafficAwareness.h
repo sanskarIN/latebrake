@@ -91,8 +91,22 @@ inline PilotCommand YieldRivalToPlayer(
     // Strong approach to an occupied lane: prioritize slowing over
     // simulated contact. This is not collision prediction: moving cars,
     // walls, track curvature and overtakes still need Unreal playtests.
-    if (forwardDistance < EmergencyDistanceCm &&
-        closingSpeed >= 230.0)
+    // Distance alone is too late for high closing speeds: a rival moving
+    // much faster than the player may traverse the remaining gap before
+    // the next ordinary near-distance brake threshold. The projection is
+    // deliberately conservative and valid ONLY inside the same-lane,
+    // positive-forward, finite-velocity guards above.
+    constexpr double ConservativeContactClearanceCm = 380.0;
+    constexpr double CriticalTimeToContactSeconds = 0.75;
+    const double availableGap = std::max(
+        0.0, forwardDistance - ConservativeContactClearanceCm);
+    const double timeToContact = availableGap / closingSpeed;
+    const bool nearEmergency =
+        forwardDistance < EmergencyDistanceCm && closingSpeed >= 230.0;
+    const bool predictedEmergency =
+        closingSpeed >= 500.0 &&
+        timeToContact <= CriticalTimeToContactSeconds;
+    if (nearEmergency || predictedEmergency)
     {
         command.Throttle = 0.0;
         command.Brake = true;
