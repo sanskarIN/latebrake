@@ -384,7 +384,9 @@ rescaled response to full left/right lock, then return to neutral while
 a separate GAS finger remains held. GAS/BRAKE, one-shot action hit areas,
 capture ownership, pause/focus handling and gamepad's independent deadzone
 are unchanged. The filter has no stored input state and performs no physics
-or reward calculations.
+or reward calculations. Returning to the neutral band also immediately
+clears the owned smoothed steering output; otherwise a recently held turn
+could leave residual applied torque while the thumb appears centered.
 
 Strict C++20 portable tests cover both signs, a dense monotonicity sweep,
 exact full lock, invalid inputs and two-finger gas/steering transitions.
