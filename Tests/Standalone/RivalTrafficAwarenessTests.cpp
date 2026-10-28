@@ -99,7 +99,7 @@ int main()
     constexpr double HalfPi = 1.57079632679489661923;
     const RivalTrafficObservation ninety{
         1200.0, -700.0, HalfPi, 2000.0,
-        1190.0, -300.0, 0.0, 900.0, true
+        1190.0, -300.0, 0.0, 900.0, true, 0.0, 2000.0
     };
     const auto rotating = YieldRivalToPlayer(cruise, ninety);
     Require(rotating.Brake && rotating.Throttle == 0.0 &&
