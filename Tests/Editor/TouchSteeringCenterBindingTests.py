@@ -42,6 +42,11 @@ class TouchSteeringCenterBindingTests(unittest.TestCase):
             "PedalState = Pedal::Neutral;",
         ):
             self.assertIn(marker, self.drive)
+        residual = (ROOT / "Source/Latebrake/Public/UI/TouchResidualSafety.h").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("wasSteeringOwner && drive.Steering() == 0.0", residual)
+        self.assertIn("smoothedSteering = 0.f;", residual)
         self.assertIn("NeutralizeMotionWhenDrivingBlocked();", self.pawn)
         self.assertIn("SmoothedSteering = 0.f;", self.pawn)
 
