@@ -374,3 +374,28 @@ additional results are available. Source regression tests check
 pause-eligible dispatch and bounded UI-only state; physical Android
 gesture delivery and readability still require licensed UE 5.8
 runtime/device testing.
+
+## Experimental touch steering center-noise filter (next source cycle)
+
+The center 8% of the **normalized steering-pad half-width** now maps to
+neutral steering. This is not a literal 8% of screen width. A captured
+finger can move outside the band and receive a continuous, symmetric
+rescaled response to full left/right lock, then return to neutral while
+a separate GAS finger remains held. GAS/BRAKE, one-shot action hit areas,
+capture ownership, pause/focus handling and gamepad's independent deadzone
+are unchanged. The filter has no stored input state and performs no physics
+or reward calculations.
+
+Strict C++20 portable tests cover both signs, a dense monotonicity sweep,
+exact full lock, invalid inputs and two-finger gas/steering transitions.
+A Python source contract checks that Unreal's press and move paths use the
+same shared policy. This is **not** measured Android input latency,
+thumb comfort, motor/steering performance or UE compilation.
+
+On actual Android devices, test: press and jitter within the center band
+while holding GAS with another finger (car should travel straight);
+drag just past either edge of the band and back; reach both full locks;
+release/rotate/pause while accelerating; and verify no unintended
+torque, button overlap or stuck input. Evaluate both portrait and landscape
+sizes and collect hardware feedback before tuning 8% or claiming the
+feature device-qualified.
