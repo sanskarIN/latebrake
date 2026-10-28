@@ -18,6 +18,7 @@ ALatebrakeRivalCar::ALatebrakeRivalCar()
 void ALatebrakeRivalCar::ResetPilot()
 {
     Route.Reset();
+    FollowingBrakeHold.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
