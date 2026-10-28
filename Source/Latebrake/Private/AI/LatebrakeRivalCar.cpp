@@ -46,6 +46,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive(),
             Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
+        FollowingBrakeHold.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
