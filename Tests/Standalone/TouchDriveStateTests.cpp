@@ -40,8 +40,16 @@ int main()
     drive.Press(layout, 1, center + 0.05 * layout.Steering.Width * 0.5, sy);
     drive.Press(layout, 2, gasX, gasY);
     Check(drive.SteeringActive() && drive.ThrottleActive() &&
-          drive.SteeringOwner() == 1 && drive.PedalOwner() == 2,
-          "two independent fingers steer and accelerate");
+          drive.SteeringOwner() == 1 && drive.PedalOwner() == 2 &&
+          drive.Steering() == 0.0,
+          "center jitter stays neutral while gas remains independently held");
+    drive.Move(layout, 1, center + 0.5 * layout.Steering.Width * 0.5, sy);
+    Check(drive.Steering() > 0.0 && drive.Steering() < 1.0 &&
+          drive.ThrottleActive(),
+          "owned finger can steer out of deadzone without releasing gas");
+    drive.Move(layout, 1, center + 0.01 * layout.Steering.Width * 0.5, sy);
+    Check(drive.Steering() == 0.0 && drive.ThrottleActive(),
+          "returning to jitter band neutralizes steering without cutting gas");
 
     drive.Move(layout, 1, layout.Steering.X - 100, sy);
     Check(drive.Steering() == -1.0 && drive.ThrottleActive(),
