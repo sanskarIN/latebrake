@@ -56,6 +56,25 @@ int main()
     Require(overlapApproach.Brake && overlapApproach.Throttle == 0.0,
             "a nearby in-lane player ahead cannot bypass emergency braking");
 
+    // At fast closing speed, the original 600 cm-only emergency threshold
+    // could react too late even in a straight, occupied lane.
+    const auto predictive = YieldRivalToPlayer(cruise, Traffic(1050, 0));
+    Require(predictive.Brake && predictive.Throttle == 0.0 &&
+            predictive.Steering == cruise.Steering,
+            "predicted short time-to-contact brakes before 600 cm threshold");
+    const auto fastCatch = YieldRivalToPlayer(
+        cruise, Traffic(1400, 0, 3400.0, 500.0));
+    Require(fastCatch.Brake && fastCatch.Throttle == 0.0,
+            "high closing speed triggers early braking even at fourteen meters");
+    const auto slowCatch = YieldRivalToPlayer(
+        cruise, Traffic(1050, 0, 1500.0, 900.0));
+    Require(!slowCatch.Brake && slowCatch.Throttle > 0.0 &&
+            slowCatch.Throttle < cruise.Throttle,
+            "plenty of time before contact keeps a smooth throttle reduction");
+    const auto outsideLane = YieldRivalToPlayer(
+        cruise, Traffic(1050, 226.0, 3400.0, 500.0));
+    Require(!outsideLane.Brake && outsideLane.Throttle == cruise.Throttle,
+            "prediction cannot brake for a player outside the lane corridor");
     const auto mildClose = YieldRivalToPlayer(
         cruise, Traffic(350, 0, 1600.0, 1400.0));
     Require(!mildClose.Brake && mildClose.Throttle < cruise.Throttle,
