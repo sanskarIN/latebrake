@@ -31,6 +31,7 @@ class RivalFollowingBindingTests(unittest.TestCase):
             "Player->IsRacePhysicsReady()",
             "Player->GetActorLocation()",
             "Player->GetVelocity()",
+            "Velocity.X, Velocity.Y",
             "PlanRivalTurn(",
             "AnticipateRivalCorner(",
             "YieldRivalToPlayer(Command, {",
