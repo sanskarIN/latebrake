@@ -75,8 +75,11 @@ inline PilotCommand YieldRivalToPlayer(
     const double playerForwardSpeed =
         sample.PlayerWorldVelocityX * facingX +
         sample.PlayerWorldVelocityY * facingY;
+    const double rivalForwardSpeed =
+        sample.RivalWorldVelocityX * facingX +
+        sample.RivalWorldVelocityY * facingY;
     const double closingSpeed =
-        sample.RivalPlanarSpeedCmPerSecond - playerForwardSpeed;
+        rivalForwardSpeed - playerForwardSpeed;
     if (!std::isfinite(forwardDistance) ||
         !std::isfinite(lateralDistance) ||
         !std::isfinite(closingSpeed))
