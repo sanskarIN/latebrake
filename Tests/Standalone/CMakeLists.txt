@@ -995,3 +995,15 @@ else()
     target_compile_options(latebrake_ghost_touch_policy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GhostTouchPolicy COMMAND latebrake_ghost_touch_policy_tests)
+
+# Read-only separation between real car and same-lap-time ghost position.
+# No signed race position, physics forces, timing or awards involved.
+add_executable(latebrake_ghost_separation_tests GhostSeparationTests.cpp)
+target_include_directories(latebrake_ghost_separation_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_ghost_separation_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_ghost_separation_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_ghost_separation_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GhostSeparation COMMAND latebrake_ghost_separation_tests)
