@@ -106,6 +106,26 @@ int main()
             rotating.Steering == cruise.Steering,
             "90-degree world-Y driving uses correct forward lane projections");
 
+    // A sideways-sliding rival has genuine planar speed but no forward
+    // approach. Treating speed magnitude as forward motion invents contact.
+    auto sliding = Traffic(850, 0, 2200.0, 0.0);
+    sliding.RivalWorldVelocityX = 0.0;
+    sliding.RivalWorldVelocityY = 2200.0;
+    const auto lateral = YieldRivalToPlayer(cruise, sliding);
+    Require(!lateral.Brake && lateral.Throttle == cruise.Throttle &&
+            lateral.Steering == cruise.Steering,
+            "sideways speed alone cannot invent forward collision risk");
+    auto reversing = Traffic(850, 0, 2200.0, 0.0);
+    reversing.RivalWorldVelocityX = -2200.0;
+    const auto backing = YieldRivalToPlayer(cruise, reversing);
+    Require(!backing.Brake && backing.Throttle == cruise.Throttle,
+            "physical reversing motion does not register as closing");
+    auto inconsistent = Traffic(850, 0, 2200.0, 0.0);
+    inconsistent.RivalWorldVelocityX = 200.0;
+    const auto invalidSpeed = YieldRivalToPlayer(cruise, inconsistent);
+    Require(invalidSpeed.Brake && invalidSpeed.Throttle == 0.0,
+            "mismatched rival speed and world velocity fail closed");
+
     const double nan = std::numeric_limits<double>::quiet_NaN();
     const double inf = std::numeric_limits<double>::infinity();
     const RivalTrafficObservation invalid[] = {
