@@ -22,6 +22,10 @@ struct RivalTrafficObservation final
     double PlayerWorldVelocityX = 0.0;
     double PlayerWorldVelocityY = 0.0;
     bool PlayerReady = false;
+    // Genuine rival WORLD velocity, needed to project actual forward closing.
+    // Planar speed magnitude alone overestimates contact during lateral slip.
+    double RivalWorldVelocityX = 0.0;
+    double RivalWorldVelocityY = 0.0;
 };
 
 inline PilotCommand YieldRivalToPlayer(
