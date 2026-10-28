@@ -19,7 +19,8 @@ latebrake::RivalTrafficObservation Traffic(
     double distance, double side, double rivalSpeed = 2200.0,
     double playerSpeed = 900.0)
 {
-    return {0.0, 0.0, 0.0, rivalSpeed, distance, side, playerSpeed, 0.0, true};
+    return {0.0, 0.0, 0.0, rivalSpeed, distance, side,
+            playerSpeed, 0.0, true, rivalSpeed, 0.0};
 }
 }
 
