@@ -82,6 +82,9 @@ public:
     bool IsBestLapGhostDisplayEnabled() const { return GhostDisplay.IsEnabled(); }
     void ToggleBestLapGhostView();
     double GetBestLapGhostSeconds() const { return GhostRecorder.GetBestSeconds(); }
+    // Optional world-space distance to the visible sampled best-lap beacon.
+    // Never determines lead/lag, official timing, classification or rewards.
+    bool TryGetBestLapGhostSeparationMeters(double& OutMeters) const;
     latebrake::RaceStartPhase GetRaceStartPhase() const
     {
         return StartLights.Phase();
