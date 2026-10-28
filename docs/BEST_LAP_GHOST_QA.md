@@ -149,3 +149,31 @@ the pad obstructs HUD or track view on low-resolution devices. Also
 confirm the beacon is never physically collidable and that input never
 updates scoring or saved records. This is source-only; no APK or real
 device observation is claimed.
+
+## Next-cycle read-only ghost separation — source candidate
+
+The expanded **non-compact** HUD may show **GHOST DIST** in meters or feet
+(based on the player's existing speed unit setting). This is the 3D distance
+between the real player's chassis and the recorded best-lap pose evaluated at
+the **same elapsed lap time**. It is **not** a lap time delta, signed race
+lead/lag, racing classification or official result. The marker's decorative
+130 cm vertical rendering offset is deliberately excluded from the distance.
+
+The independent, bounded C++20 computation rejects NaN/infinity, out-of-world
+coordinates and separation greater than 250 m. Unreal GameMode additionally
+requires a visible, actually spawned beacon, valid chassis and circuit,
+completed prior lap, active GO race, and no menu, focus loss, pause or finish.
+No value is stored, persisted or forwarded into car physics, timing, rewards,
+career progress or ghost pose recording. Compact Android screens keep their
+official timing and control rows rather than adding this optional text.
+
+**Required real UE/installed acceptance before playable claims:** use an
+authored cookable track and qualified Win64 build, complete a clean full lap,
+confirm live ghost distance follows a physical player moving relative to the
+beacon, and verify both metric/imperial displays. Toggle ghost OFF, pause,
+switch to menu, lose focus and finish: the number should disappear immediately
+or on the next eligible HUD paint as appropriate. Check that teleports,
+off-track recovery, invalid physics and a missing beacon cannot display a
+stale distance, and that the timing/results/profile are unchanged. Run the
+same visual/layout test on real Android hardware. Portable policy and source
+contract tests are **not** UE compilation or installed gameplay QA.
