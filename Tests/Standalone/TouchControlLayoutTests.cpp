@@ -74,6 +74,37 @@ int main()
           "race telemetry region cannot accelerate");
 
     Check(TouchSteeringValue(layout, steerMiddle) == 0.0, "center means straight");
+    // An 8% symmetric steering band suppresses tiny center-thumb jitter,
+    // but the remaining travel still reaches both physical full locks.
+    const double halfSteer = layout.Steering.Width * 0.5;
+    Check(TouchSteeringCenterDeadzone == 0.08,
+          "touch deadzone is explicit and independent of gamepad policy");
+    for (double amount : {-0.08, -0.04, 0.0, 0.04, 0.08})
+    {
+        Check(std::abs(TouchSteeringValue(
+            layout, steerMiddle + amount * halfSteer)) < 1e-12,
+            "touches inside center jitter band remain straight");
+    }
+    const double rightQuarter = TouchSteeringValue(
+        layout, steerMiddle + 0.25 * halfSteer);
+    const double leftQuarter = TouchSteeringValue(
+        layout, steerMiddle - 0.25 * halfSteer);
+    Check(std::abs(rightQuarter - (0.25 - 0.08) / 0.92) < 1e-12 &&
+          std::abs(leftQuarter + rightQuarter) < 1e-12,
+          "outside-deadzone axis re-scales symmetrically without a jump");
+    Check(TouchSteeringValue(layout, steerMiddle + 0.081 * halfSteer) > 0.0 &&
+          TouchSteeringValue(layout, steerMiddle - 0.081 * halfSteer) < 0.0,
+          "steering responds immediately outside the neutral band");
+    double lastSteer = 0.0;
+    for (int index = 0; index <= 1000; ++index)
+    {
+        const double normalized = static_cast<double>(index) / 1000.0;
+        const double next = TouchSteeringValue(
+            layout, steerMiddle + normalized * halfSteer);
+        Check(std::isfinite(next) && next >= lastSteer - 1e-12 &&
+              next <= 1.0, "positive touch curve stays bounded and monotonic");
+        lastSteer = next;
+    }
     Check(TouchSteeringValue(layout, layout.Steering.X) == -1.0, "left edge turns left");
     Check(TouchSteeringValue(layout,
           layout.Steering.X + layout.Steering.Width) == 1.0, "right edge turns right");

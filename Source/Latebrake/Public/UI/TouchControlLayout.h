@@ -138,14 +138,35 @@ inline TouchControl HitTestTouchControl(const TouchControlLayout& layout,
     return TouchControl::None;
 }
 
+// A small finger-jitter band around the steering pad midpoint. This is
+// independent of keyboard/gamepad analog deadzones and is deliberately
+// symmetric, continuous and exactly full-lock at both pad extremes.
+inline constexpr double TouchSteeringCenterDeadzone = 0.08;
+
 inline double TouchSteeringValue(const TouchControlLayout& layout,
                                 double x) noexcept
 {
-    if (!layout.Valid || !std::isfinite(x) || layout.Steering.Width <= 0.0)
+    if (!layout.Valid || !std::isfinite(x) ||
+        !std::isfinite(layout.Steering.X) ||
+        !std::isfinite(layout.Steering.Width) ||
+        layout.Steering.Width <= 0.0)
     {
         return 0.0;
     }
     const double middle = layout.Steering.X + layout.Steering.Width * 0.5;
-    return std::clamp((x - middle) / (layout.Steering.Width * 0.5), -1.0, 1.0);
+    if (!std::isfinite(middle))
+    {
+        return 0.0;
+    }
+    const double raw = std::clamp(
+        (x - middle) / (layout.Steering.Width * 0.5), -1.0, 1.0);
+    const double magnitude = std::abs(raw);
+    if (magnitude <= TouchSteeringCenterDeadzone)
+    {
+        return 0.0;
+    }
+    const double output = (magnitude - TouchSteeringCenterDeadzone) /
+        (1.0 - TouchSteeringCenterDeadzone);
+    return std::copysign(std::clamp(output, 0.0, 1.0), raw);
 }
 } // namespace latebrake

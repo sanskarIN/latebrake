@@ -69,6 +69,21 @@ int main()
     Require(drive.ThrottleActive(), "brake-to-gas drag still drives under same owner");
 
     smoothGas = 0.85f;
+    // A finger moving back into the new midpoint band immediately clears
+    // residual steering, rather than slowly decaying a former full lock.
+    const double steerCenter = layout.Steering.X + layout.Steering.Width * 0.5;
+    MoveTouchWithResidualSafety(
+        drive, layout, 2, steerCenter + layout.Steering.Width * 0.02,
+        steerY, smoothGas, smoothSteer);
+    Require(drive.SteeringOwner() == 2 && drive.Steering() == 0.0 &&
+            smoothSteer == 0.f && drive.ThrottleActive() &&
+            smoothGas == 0.85f,
+            "center band immediately neutralizes residual turning, not gas");
+    MoveTouchWithResidualSafety(
+        drive, layout, 2, steerX, steerY, smoothGas, smoothSteer);
+    Require(drive.Steering() == 1.0 && drive.ThrottleActive(),
+            "steering reacquires outside deadzone without a new finger press");
+    smoothSteer = 0.7f;
     MoveTouchWithResidualSafety(
         drive, layout, 2, steerX,
         layout.Steering.Y - 40., smoothGas, smoothSteer);

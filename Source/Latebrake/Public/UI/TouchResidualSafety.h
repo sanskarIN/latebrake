@@ -58,9 +58,11 @@ inline void MoveTouchWithResidualSafety(
     {
         smoothedThrottle = 0.f;
     }
-    if (wasSteeringOwner &&
-        (y < layout.Steering.Y ||
-         y > layout.Steering.Y + layout.Steering.Height))
+    // The new center noise band must remove already-smoothed turn torque
+    // immediately. Otherwise a recent full-lock sample could keep turning
+    // after the thumb reaches straight-ahead. Preserve gas ownership.
+    // Moving back outside the band resumes ordinary steering smoothing.
+    if (wasSteeringOwner && drive.Steering() == 0.0)
     {
         smoothedSteering = 0.f;
     }
