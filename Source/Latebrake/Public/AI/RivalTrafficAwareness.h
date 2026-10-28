@@ -48,7 +48,14 @@ inline PilotCommand YieldRivalToPlayer(
         !std::isfinite(sample.PlayerWorldVelocityX) ||
         !std::isfinite(sample.PlayerWorldVelocityY) ||
         std::hypot(sample.PlayerWorldVelocityX, sample.PlayerWorldVelocityY) >
-            15000.0)
+            15000.0 ||
+        !std::isfinite(sample.RivalWorldVelocityX) ||
+        !std::isfinite(sample.RivalWorldVelocityY) ||
+        std::hypot(sample.RivalWorldVelocityX, sample.RivalWorldVelocityY) >
+            15000.0 ||
+        std::abs(std::hypot(sample.RivalWorldVelocityX,
+                            sample.RivalWorldVelocityY) -
+                 sample.RivalPlanarSpeedCmPerSecond) > 1.0)
     {
         return {}; // default PilotCommand brakes and has no throttle
     }
