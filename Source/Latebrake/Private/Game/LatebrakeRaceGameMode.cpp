@@ -229,6 +229,44 @@ void ALatebrakeRaceGameMode::ToggleBestLapGhostView()
     }
 }
 
+bool ALatebrakeRaceGameMode::TryGetBestLapGhostSeparationMeters(
+    double& OutMeters) const
+{
+    OutMeters = 0.0;
+    // Only the currently rendered replay reference is measured. A hidden
+    // marker, failed asset spawn or invalid race cannot show stale telemetry.
+    if (!bCircuitReady || !StartLights.IsGreen() || Race.IsFinished() ||
+        Race.GetCompletedLaps() <= 0 || !GhostRecorder.HasBest() ||
+        !GhostDisplay.IsEnabled() || Menu.IsOpen() ||
+        UGameplayStatics::IsGamePaused(this) ||
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended() ||
+        !HasLocalPlayerDriver() || !IsValid(BestLapGhostMarker) ||
+        BestLapGhostMarker->IsHidden())
+    {
+        return false;
+    }
+    const ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    if (!IsValid(Car) || !Car->IsRacePhysicsReady())
+    {
+        return false;
+    }
+
+    latebrake::LapGhostPose Sample;
+    if (!GhostRecorder.Evaluate(Race.GetCurrentLapSeconds(), Sample))
+    {
+        return false;
+    }
+    const FVector PlayerPosition = Car->GetActorLocation();
+    return latebrake::TryComputeGhostSeparationMeters({
+        true, true,
+        static_cast<double>(PlayerPosition.X),
+        static_cast<double>(PlayerPosition.Y),
+        static_cast<double>(PlayerPosition.Z),
+        Sample.X, Sample.Y, Sample.Z
+    }, OutMeters);
+}
+
 void ALatebrakeRaceGameMode::UpdateBestLapGhostMarker(bool bReplayAuthorized)
 {
     // A ghost is only displayed on a subsequent lap with a legitimate
