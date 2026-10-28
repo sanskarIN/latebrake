@@ -91,6 +91,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     if (Observation.Completed)
     {
+        FollowingBrakeHold.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
