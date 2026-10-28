@@ -36,7 +36,9 @@ class RivalTrafficBindingTests(unittest.TestCase):
             self.assertIn(token, tick)
         self.assertLess(tick.index("PlanRivalTurn("), tick.index("YieldRivalToPlayer("))
         self.assertLess(tick.index("YieldRivalToPlayer("),
-                        tick.index("SetAutonomousControls(static_cast<float>(TrafficCommand.Throttle)"))
+                        tick.index("FollowingBrakeHold.Apply("))
+        self.assertLess(tick.index("FollowingBrakeHold.Apply("),
+                        tick.index("SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)"))
 
     def test_never_mutates_race_or_player_control(self):
         for forbidden in (
