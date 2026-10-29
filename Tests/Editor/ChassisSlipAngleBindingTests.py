@@ -59,6 +59,7 @@ class ChassisSlipAngleBindingTests(unittest.TestCase):
         self.assertIn("CHASSIS SLIP (EST)", self.hud)
         self.assertIn("PEAK CHASSIS SLIP (EST)", self.hud)
         self.assertIn("if (!bCompact)", self.hud)
+        self.assertIn("VerticalPlan.MaxTelemetryLines >= 28", self.hud)
         self.assertIn("latebrake::CanAwardFinishedRace(Race)", self.hud)
         for forbidden in (
             "AddForce", "AddTorque", "SaveGame", "UCLASS(", "PassCheckpoint",
