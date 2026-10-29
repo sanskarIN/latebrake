@@ -463,8 +463,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         // Opposite throttle acts as engine braking until the car slows.
         Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *
-            static_cast<float>(latebrake::FrameStableDampingRate(
-                3.0, DeltaSeconds)));
+            static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)));
     }
 
     // Anti-slide assistance is stronger in Arcade; both presets remain tunable.
