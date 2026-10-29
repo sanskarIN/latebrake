@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
+#include "Vehicles/FrameStableDamping.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/DriveAxisDeadzone.h"
@@ -461,14 +462,22 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     else if (!bEffectiveBraking)
     {
         // Opposite throttle acts as engine braking until the car slows.
-        Chassis->AddForce(-Forward * LongitudinalSpeed * Mass * 3.f);
+        Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *
+            static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)));
     }
 
     // Anti-slide assistance is stronger in Arcade; both presets remain tunable.
-    Chassis->AddForce(-Right * LateralSpeed * Mass * GripRate);
+    // The shared base pawn serves human and rival drivers. On a lagging
+    // frame, constrain purely resistive impulses to avoid a synthetic
+    // one-frame reversal of the measured velocity component.
+    const float StableGripRate = static_cast<float>(
+        latebrake::FrameStableDampingRate(GripRate, DeltaSeconds));
+    Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate);
     if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)
     {
-        Chassis->AddForce(-Forward * LongitudinalSpeed * Mass * BrakeRate);
+        const float StableBrakeRate = static_cast<float>(
+            latebrake::FrameStableDampingRate(BrakeRate, DeltaSeconds));
+        Chassis->AddForce(-Forward * LongitudinalSpeed * Mass * StableBrakeRate);
     }
 
     const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
