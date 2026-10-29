@@ -7,6 +7,7 @@
 #include "Racing/DrivingSessionStats.h"
 #include "Racing/DriftComboMeter.h"
 #include "Racing/VehicleGForceMeter.h"
+#include "Racing/ChassisSlipAngleMeter.h"
 #include "Vehicles/CameraPresets.h"
 #include "Vehicles/WheelVisualMotion.h"
 #include "Vehicles/VehicleSignalLights.h"
@@ -54,9 +55,10 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
+    const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     void ClearDriverInputs();
     void HandleAppInputInterruption();
@@ -180,6 +182,7 @@ private:
     latebrake::DrivingSessionStats DrivingStats;
     latebrake::DriftComboMeter DriftMeter;
     latebrake::VehicleGForceMeter GForceMeter;
+    latebrake::ChassisSlipAngleMeter SlipAngleMeter;
     latebrake::WheelVisualMotion WheelMotion;
     latebrake::TouchDriveState TouchDrive;
     latebrake::TouchPressTracker TouchPresses;
