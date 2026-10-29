@@ -891,7 +891,9 @@ void ALatebrakeRaceHUD::DrawHUD()
             // chassis motion, never the player's steering command.
             const latebrake::ChassisSlipAngleMeter& Slip =
                 Car->GetChassisSlipAngleMeter();
-            if (Slip.HasLiveReading())
+            // Do not let optional extra telemetry consume the limited line
+            // budget on a 720p window before the essential lap timings.
+            if (Slip.HasLiveReading() && VerticalPlan.MaxTelemetryLines >= 28)
             {
                 Line(FString::Printf(
                     TEXT("CHASSIS SLIP (EST)  %+.1f deg | HIGH-ANGLE %.1fs"),
