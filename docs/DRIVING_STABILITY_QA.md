@@ -81,3 +81,14 @@ Keep genuine source/engine/map/package hashes, logs, tester/device
 identifiers and observed behavior alongside [Android QA issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 A stable or playable release requires the separate complete acceptance
 gate; this source feature alone is insufficient.
+
+## Source development: lag-spike resistance bound
+
+The physical car now bounds requested lateral grip, explicit braking/coast
+and opposing-throttle damping to the signed momentum available within a
+single measured game frame, while preserving the original ordinary-frame
+rate constants. This helps prevent damping alone from reversing a car axis
+when a game-thread frame stalls. See
+[frame-stable chassis resistance QA](FRAME_STABLE_DAMPING_QA.md).
+No licensed UE 5.8 compilation, installed game or device handling
+measurements have been completed for this addition.
