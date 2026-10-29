@@ -19,6 +19,8 @@ and installed Windows/Android playtests are outstanding.
 
 **Private Win64 QA evidence (included in v0.5.77 source preview):** after an actual Unreal-built Windows playtest, `scripts/Review-WindowsPlaytest.py` can create and evaluate an offline, hash-linked hands-on checklist. It never launches a game or calls self-reported observations a verified playable build. [Personal Win64 QA guide](docs/WINDOWS_PERSONAL_PLAYTEST.md).
 
+**Next-cycle source-only chassis slip angle telemetry:** the actual rigid-body player car now observes its signed direction of travel relative to its nose, with a live expanded-desktop readout and session peaks in Results. It is not tire slip, a force/traction assist, a race score or a verified device feature. [Chassis slip QA](docs/CHASSIS_SLIP_ANGLE_QA.md).
+
 **v0.5.77 source feature — chassis G meter:** the real player pawn samples world-space velocity changes for approximate forward/lateral G, braking and cornering peaks. It is optional on desktop HUD and Results, and never affects car physics, scores or awards. Engine and installed-device results remain unverified. [G-force QA and limitations](docs/VEHICLE_G_FORCE_QA.md).
 
 **v0.5.78 source visual gameplay:** procedural front steering, forward/reverse wheel roll and collision-free rotating spokes now follow actual Chaos chassis motion on the prototype car; race scoring and vehicle physics are unchanged. [Visual wheel QA and limitations](docs/WHEEL_VISUAL_QA.md). This is source-only until genuine UE 5.8/installed game verification.
