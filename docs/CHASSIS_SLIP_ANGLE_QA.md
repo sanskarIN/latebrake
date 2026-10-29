@@ -11,7 +11,9 @@ a racing control assist, a verified drifting system or a safety instrument.
   speed of at least 300 cm/s and planar speed no greater than 10000 cm/s.
   Reverse, near-stationary, excessive or malformed frames clear the live
   display without manufacturing session peaks.
-- The live expanded-desktop HUD shows a ~120 ms smoothed estimate. Finished
+- On spacious expanded-desktop layouts (at least 28 telemetry rows), the
+  live HUD shows a ~120 ms smoothed estimate; smaller desktop windows omit
+  this optional line to preserve genuine lap/sector feedback. Finished
   Results show the maximum absolute raw angle and sampled time with at least
   12 degrees of chassis direction difference while traveling forward at
   900 cm/s or faster. These thresholds are *presentation choices*, not
