@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AI/RivalRouteProgress.h"
+#include "AI/RivalFollowingBrakeHold.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -31,4 +32,5 @@ public:
 
 private:
     latebrake::RivalRouteProgress Route{4, 3};
+    latebrake::RivalFollowingBrakeHold FollowingBrakeHold;
 };

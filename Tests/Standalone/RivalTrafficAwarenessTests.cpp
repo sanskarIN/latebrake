@@ -19,7 +19,8 @@ latebrake::RivalTrafficObservation Traffic(
     double distance, double side, double rivalSpeed = 2200.0,
     double playerSpeed = 900.0)
 {
-    return {0.0, 0.0, 0.0, rivalSpeed, distance, side, playerSpeed, 0.0, true};
+    return {0.0, 0.0, 0.0, rivalSpeed, distance, side,
+            playerSpeed, 0.0, true, rivalSpeed, 0.0};
 }
 }
 
@@ -32,7 +33,7 @@ int main()
             close.Steering == cruise.Steering && !close.Arrived,
             "closing on a player in the same lane triggers courtesy braking");
 
-    const auto approach = YieldRivalToPlayer(cruise, Traffic(1050, 0));
+    const auto approach = YieldRivalToPlayer(cruise, Traffic(1400, 0));
     Require(!approach.Brake && approach.Throttle >= 0.15 &&
             approach.Throttle < cruise.Throttle &&
             approach.Steering == cruise.Steering,
@@ -56,6 +57,25 @@ int main()
     Require(overlapApproach.Brake && overlapApproach.Throttle == 0.0,
             "a nearby in-lane player ahead cannot bypass emergency braking");
 
+    // At fast closing speed, the original 600 cm-only emergency threshold
+    // could react too late even in a straight, occupied lane.
+    const auto predictive = YieldRivalToPlayer(cruise, Traffic(1050, 0));
+    Require(predictive.Brake && predictive.Throttle == 0.0 &&
+            predictive.Steering == cruise.Steering,
+            "predicted short time-to-contact brakes before 600 cm threshold");
+    const auto fastCatch = YieldRivalToPlayer(
+        cruise, Traffic(1400, 0, 3400.0, 500.0));
+    Require(fastCatch.Brake && fastCatch.Throttle == 0.0,
+            "high closing speed triggers early braking even at fourteen meters");
+    const auto slowCatch = YieldRivalToPlayer(
+        cruise, Traffic(1050, 0, 1500.0, 900.0));
+    Require(!slowCatch.Brake && slowCatch.Throttle > 0.0 &&
+            slowCatch.Throttle < cruise.Throttle,
+            "plenty of time before contact keeps a smooth throttle reduction");
+    const auto outsideLane = YieldRivalToPlayer(
+        cruise, Traffic(1050, 226.0, 3400.0, 500.0));
+    Require(!outsideLane.Brake && outsideLane.Throttle == cruise.Throttle,
+            "prediction cannot brake for a player outside the lane corridor");
     const auto mildClose = YieldRivalToPlayer(
         cruise, Traffic(350, 0, 1600.0, 1400.0));
     Require(!mildClose.Brake && mildClose.Throttle < cruise.Throttle,
@@ -79,27 +99,49 @@ int main()
     constexpr double HalfPi = 1.57079632679489661923;
     const RivalTrafficObservation ninety{
         1200.0, -700.0, HalfPi, 2000.0,
-        1190.0, -300.0, 0.0, 900.0, true
+        1190.0, -300.0, 0.0, 900.0, true, 0.0, 2000.0
     };
     const auto rotating = YieldRivalToPlayer(cruise, ninety);
     Require(rotating.Brake && rotating.Throttle == 0.0 &&
             rotating.Steering == cruise.Steering,
             "90-degree world-Y driving uses correct forward lane projections");
 
+    // A sideways-sliding rival has genuine planar speed but no forward
+    // approach. Treating speed magnitude as forward motion invents contact.
+    auto sliding = Traffic(850, 0, 2200.0, 0.0);
+    sliding.RivalWorldVelocityX = 0.0;
+    sliding.RivalWorldVelocityY = 2200.0;
+    const auto lateral = YieldRivalToPlayer(cruise, sliding);
+    Require(!lateral.Brake && lateral.Throttle == cruise.Throttle &&
+            lateral.Steering == cruise.Steering,
+            "sideways speed alone cannot invent forward collision risk");
+    auto reversing = Traffic(850, 0, 2200.0, 0.0);
+    reversing.RivalWorldVelocityX = -2200.0;
+    const auto backing = YieldRivalToPlayer(cruise, reversing);
+    Require(!backing.Brake && backing.Throttle == cruise.Throttle,
+            "physical reversing motion does not register as closing");
+    auto inconsistent = Traffic(850, 0, 2200.0, 0.0);
+    inconsistent.RivalWorldVelocityX = 200.0;
+    const auto invalidSpeed = YieldRivalToPlayer(cruise, inconsistent);
+    Require(invalidSpeed.Brake && invalidSpeed.Throttle == 0.0,
+            "mismatched rival speed and world velocity fail closed");
+
     const double nan = std::numeric_limits<double>::quiet_NaN();
     const double inf = std::numeric_limits<double>::infinity();
     const RivalTrafficObservation invalid[] = {
-        {0, 0, 0, 2000, 420, 0, 0, 0, false},
-        {nan, 0, 0, 2000, 420, 0, 0, 0, true},
-        {0, inf, 0, 2000, 420, 0, 0, 0, true},
-        {0, 0, nan, 2000, 420, 0, 0, 0, true},
-        {0, 0, 8, 2000, 420, 0, 0, 0, true},
-        {0, 0, 0, -1, 420, 0, 0, 0, true},
-        {0, 0, 0, 15001, 420, 0, 0, 0, true},
-        {0, 0, 0, 2000, nan, 0, 0, 0, true},
-        {0, 0, 0, 2000, 420, inf, 0, 0, true},
-        {0, 0, 0, 2000, 420, 0, inf, 0, true},
-        {0, 0, 0, 2000, 420, 0, 15001, 0, true},
+        {0, 0, 0, 2000, 420, 0, 0, 0, false, 2000, 0},
+        {nan, 0, 0, 2000, 420, 0, 0, 0, true, 2000, 0},
+        {0, inf, 0, 2000, 420, 0, 0, 0, true, 2000, 0},
+        {0, 0, nan, 2000, 420, 0, 0, 0, true, 2000, 0},
+        {0, 0, 8, 2000, 420, 0, 0, 0, true, 2000, 0},
+        {0, 0, 0, -1, 420, 0, 0, 0, true, 0, 0},
+        {0, 0, 0, 15001, 420, 0, 0, 0, true, 15001, 0},
+        {0, 0, 0, 2000, nan, 0, 0, 0, true, 2000, 0},
+        {0, 0, 0, 2000, 420, inf, 0, 0, true, 2000, 0},
+        {0, 0, 0, 2000, 420, 0, inf, 0, true, 2000, 0},
+        {0, 0, 0, 2000, 420, 0, 15001, 0, true, 2000, 0},
+        {0, 0, 0, 2000, 420, 0, 0, 0, true, nan, 0},
+        {0, 0, 0, 2000, 420, 0, 0, 0, true, 0, inf},
     };
     for (const auto& corrupt : invalid)
     {

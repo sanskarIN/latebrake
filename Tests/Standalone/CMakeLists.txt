@@ -950,6 +950,19 @@ else()
 endif()
 add_test(NAME RivalTrafficAwareness COMMAND latebrake_rival_traffic_awareness_tests)
 
+# A short post-emergency brake hold for the single offline prototype rival.
+# No Unreal, network, physics force or results dependencies.
+add_executable(latebrake_rival_following_brake_hold_tests
+    RivalFollowingBrakeHoldTests.cpp)
+target_include_directories(latebrake_rival_following_brake_hold_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_following_brake_hold_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_following_brake_hold_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_following_brake_hold_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalFollowingBrakeHold COMMAND latebrake_rival_following_brake_hold_tests)
+
 # Optional brake/reverse visual signals, not vehicle braking physics.
 add_executable(latebrake_vehicle_signal_lights_tests VehicleSignalLightsTests.cpp)
 target_include_directories(latebrake_vehicle_signal_lights_tests PRIVATE ../../Source/Latebrake/Public)

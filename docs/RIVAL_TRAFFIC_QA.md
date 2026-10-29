@@ -81,3 +81,44 @@ hardware if rival spawning is enabled.
 **This is unverified source-only AI behavior**, not proof of safe
 collision avoidance, fully competitive rival placement, installed
 game packages or authoritative race results.
+
+## Predictive time-to-contact and brief brake hold (next source candidate)
+
+The rival's straight, same-lane player-following policy now computes a
+bounded **time-to-contact estimate** from the observed relative forward
+velocity and distance, subtracting a conservative 380 cm separation margin.
+Both cars' true WORLD velocity vectors are projected onto rival heading:
+the rival's planar speed magnitude is cross-checked but **not mistaken
+for forward closing speed during a lateral drift or reverse movement**.
+Malformed/inconsistent velocity samples fail closed to braking.
+For a closing speed of at least 500 cm/s, an estimated contact time
+**at or under 0.75 seconds** requests normal braking before the older
+600 cm-only emergency threshold. The existing slower/near emergency,
+lane width, player availability, heading, finite velocity and waypoint
+guards still apply. The projection is intentionally narrow: it is not
+a full collision predictor, autonomous overtake or racing classification.
+
+A separate engine-neutral, fixed-memory brake hold retains an actual new
+traffic-brake decision for at most **0.18 seconds** after the first safe
+frame, to avoid rapid motor/brake oscillation at the threshold. The hold
+never overrides rival waypoint arrival or steering, never adds throttle,
+and resets on event restart/configure, race readiness loss, route finish
+or attempted recovery. Invalid/oversized frame time and malformed input
+fail closed to zero motor and active braking.
+
+**Portable verification:** strict cross-platform C++20 tests cover
+relative-speed/distance/lane cases, threshold prediction, preservation
+of corner steering, brief hold and release, repeated emergencies, malformed
+input/time, route completion and event interruption. Python source contracts
+check real player Chaos position/velocity wiring and safe application
+before the pawn's physics Tick.
+
+**Real installed-game acceptance remains missing:** compile with licensed
+UE 5.8; cook and launch the original circuit on Win64 and Android; capture
+the rival approaching a slower player at multiple actual speeds, straight
+lanes, corners and diagonally crossing trajectories. Verify no oscillatory
+braking, unreasonable prolonged brake holds, rear impacts or unexpected
+steering/route changes, while actual gameplay runs at 30/60/120 FPS and
+during a long hitch. Exercise menu/focus pause, restart, recovery and
+destroyed/replaced player pawn. Measure behavior with real logs and device
+video. No source assertion can prove collision-free driving or a game build.

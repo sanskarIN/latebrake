@@ -22,6 +22,10 @@ struct RivalTrafficObservation final
     double PlayerWorldVelocityX = 0.0;
     double PlayerWorldVelocityY = 0.0;
     bool PlayerReady = false;
+    // Genuine rival WORLD velocity, needed to project actual forward closing.
+    // Planar speed magnitude alone overestimates contact during lateral slip.
+    double RivalWorldVelocityX = 0.0;
+    double RivalWorldVelocityY = 0.0;
 };
 
 inline PilotCommand YieldRivalToPlayer(
@@ -44,7 +48,14 @@ inline PilotCommand YieldRivalToPlayer(
         !std::isfinite(sample.PlayerWorldVelocityX) ||
         !std::isfinite(sample.PlayerWorldVelocityY) ||
         std::hypot(sample.PlayerWorldVelocityX, sample.PlayerWorldVelocityY) >
-            15000.0)
+            15000.0 ||
+        !std::isfinite(sample.RivalWorldVelocityX) ||
+        !std::isfinite(sample.RivalWorldVelocityY) ||
+        std::hypot(sample.RivalWorldVelocityX, sample.RivalWorldVelocityY) >
+            15000.0 ||
+        std::abs(std::hypot(sample.RivalWorldVelocityX,
+                            sample.RivalWorldVelocityY) -
+                 sample.RivalPlanarSpeedCmPerSecond) > 1.0)
     {
         return {}; // default PilotCommand brakes and has no throttle
     }
@@ -64,8 +75,11 @@ inline PilotCommand YieldRivalToPlayer(
     const double playerForwardSpeed =
         sample.PlayerWorldVelocityX * facingX +
         sample.PlayerWorldVelocityY * facingY;
+    const double rivalForwardSpeed =
+        sample.RivalWorldVelocityX * facingX +
+        sample.RivalWorldVelocityY * facingY;
     const double closingSpeed =
-        sample.RivalPlanarSpeedCmPerSecond - playerForwardSpeed;
+        rivalForwardSpeed - playerForwardSpeed;
     if (!std::isfinite(forwardDistance) ||
         !std::isfinite(lateralDistance) ||
         !std::isfinite(closingSpeed))
@@ -91,8 +105,22 @@ inline PilotCommand YieldRivalToPlayer(
     // Strong approach to an occupied lane: prioritize slowing over
     // simulated contact. This is not collision prediction: moving cars,
     // walls, track curvature and overtakes still need Unreal playtests.
-    if (forwardDistance < EmergencyDistanceCm &&
-        closingSpeed >= 230.0)
+    // Distance alone is too late for high closing speeds: a rival moving
+    // much faster than the player may traverse the remaining gap before
+    // the next ordinary near-distance brake threshold. The projection is
+    // deliberately conservative and valid ONLY inside the same-lane,
+    // positive-forward, finite-velocity guards above.
+    constexpr double ConservativeContactClearanceCm = 380.0;
+    constexpr double CriticalTimeToContactSeconds = 0.75;
+    const double availableGap = std::max(
+        0.0, forwardDistance - ConservativeContactClearanceCm);
+    const double timeToContact = availableGap / closingSpeed;
+    const bool nearEmergency =
+        forwardDistance < EmergencyDistanceCm && closingSpeed >= 230.0;
+    const bool predictedEmergency =
+        closingSpeed >= 500.0 &&
+        timeToContact <= CriticalTimeToContactSeconds;
+    if (nearEmergency || predictedEmergency)
     {
         command.Throttle = 0.0;
         command.Brake = true;

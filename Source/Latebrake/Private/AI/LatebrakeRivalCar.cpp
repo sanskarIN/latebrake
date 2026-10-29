@@ -18,6 +18,7 @@ ALatebrakeRivalCar::ALatebrakeRivalCar()
 void ALatebrakeRivalCar::ResetPilot()
 {
     Route.Reset();
+    FollowingBrakeHold.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -26,6 +27,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     // Do not preserve approximation/recovery history from a different
     // event or replay. The RaceProgress clock remains player-authoritative.
     Route.Configure(CheckpointCount, RequiredLaps);
+    FollowingBrakeHold.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -44,6 +46,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive(),
             Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
+        FollowingBrakeHold.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -63,6 +66,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     if (Observation.NeedsRecovery)
     {
+        FollowingBrakeHold.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
@@ -87,6 +91,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     if (Observation.Completed)
     {
+        FollowingBrakeHold.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -117,10 +122,17 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         latebrake::YieldRivalToPlayer(Command, {
             Position.X, Position.Y, Heading, FlatSpeed,
             PlayerPosition.X, PlayerPosition.Y,
-            PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady
+            PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady,
+            Velocity.X, Velocity.Y
         });
-    SetAutonomousControls(static_cast<float>(TrafficCommand.Throttle),
-                          static_cast<float>(TrafficCommand.Steering),
-                          TrafficCommand.Brake);
+    // A short, fail-closed hold prevents brake chatter near the
+    // projected contact boundary; it cannot re-route or score a rival.
+    const latebrake::PilotCommand SafeTrafficCommand =
+        FollowingBrakeHold.Apply(
+            TrafficCommand, static_cast<double>(DeltaSeconds),
+            bPlayerReady, TrafficCommand.Brake && !Command.Brake);
+    SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle),
+                          static_cast<float>(SafeTrafficCommand.Steering),
+                          SafeTrafficCommand.Brake);
     Super::Tick(DeltaSeconds);
 }
