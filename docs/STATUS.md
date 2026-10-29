@@ -5,6 +5,11 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Next-cycle source-only candidate — chassis slip-angle telemetry
+
+- Observes the real rigid-body forward/lateral motion direction, showing an optional signed live estimate and run-local peak/high-angle time; the model is not tire slip or suspension physics. See [chassis slip-angle QA](CHASSIS_SLIP_ANGLE_QA.md).
+- Engine build, cooked map, playable Win64/Android packages and physical hardware qualification remain outstanding. This is **not** a new published version.
+
 ## v0.5.79 published source-only pre-release — best-lap ghost beacon and signal lights
 
 - The actual player chassis generates a bounded run-local best-lap pose trace, with replay as a small non-colliding floating beacon after a legitimate driven lap. It never records a persistent best ghost or qualifies official score; [ghost QA](BEST_LAP_GHOST_QA.md).
