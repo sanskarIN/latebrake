@@ -15,6 +15,7 @@
 #include "Vehicles/SpeedReactiveCameraFov.h"
 #include "Vehicles/ArcadeTireCondition.h"
 #include "Vehicles/ArcadeBrakeHeat.h"
+#include "Vehicles/ArcadeCollisionDamage.h"
 #include "Vehicles/ArcadeSurfaceTraction.h"
 #include "Vehicles/ArcadeNitroBoost.h"
 #include "Vehicles/WheelVisualMotion.h"
@@ -27,6 +28,8 @@ class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UPointLightComponent;
+class UPrimitiveComponent;
+struct FHitResult;
 
 UENUM(BlueprintType)
 enum class ELatebrakeHandlingMode : uint8
@@ -63,12 +66,13 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
     const latebrake::ArcadeTireCondition& GetTireCondition() const noexcept { return TireCondition; }
     const latebrake::ArcadeBrakeHeat& GetBrakeHeat() const noexcept { return BrakeHeat; }
+    const latebrake::ArcadeCollisionDamage& GetCollisionDamage() const noexcept { return CollisionDamage; }
     const latebrake::ArcadeSurfaceTraction& GetSurfaceTraction() const noexcept { return SurfaceTraction; }
     const latebrake::ObservedBrakeDistance& GetObservedBrakeDistance() const { return BrakeDistance; }
     const latebrake::SlipstreamDraftBoost& GetSlipstreamBoost() const noexcept { return SlipstreamBoost; }
@@ -142,6 +146,11 @@ protected:
     TObjectPtr<UPointLightComponent> ReverseSignal;
 
 private:
+    UFUNCTION()
+    void HandleChassisHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+                          UPrimitiveComponent* OtherComp, FVector NormalImpulse,
+                          const FHitResult& Hit);
+
     void ThrottleInput(float Value);
     void SteerInput(float Value);
     void BrakePressed();
@@ -214,6 +223,8 @@ private:
     latebrake::ChassisSlipAngleMeter SlipAngleMeter;
     latebrake::ArcadeTireCondition TireCondition;
     latebrake::ArcadeBrakeHeat BrakeHeat;
+    latebrake::ArcadeCollisionDamage CollisionDamage;
+    double LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     latebrake::ArcadeSurfaceTraction SurfaceTraction;
     latebrake::ObservedBrakeDistance BrakeDistance;
     latebrake::ArcadeNitroBoost NitroBoost;

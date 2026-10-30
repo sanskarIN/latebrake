@@ -766,6 +766,19 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetBrakeHeat().HeatFraction() * 100.0,
             Car->GetBrakeHeat().ServiceBrakeMultiplier() * 100.0), Accent);
     }
+    // Actual high-speed hard chassis collisions can weaken engine and
+    // lateral arcade performance until the next race reset. Damage is a
+    // bounded race-only prototype; preserve limited mobile HUD space.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        Car->GetCollisionDamage().DamageFraction() > 0.0)
+    {
+        Line(FString::Printf(
+            TEXT("IMPACT DAMAGE %.0f%% | MOTOR %.0f%% | GRIP %.0f%%"),
+            Car->GetCollisionDamage().DamageFraction() * 100.0,
+            Car->GetCollisionDamage().MotorMultiplier() * 100.0,
+            Car->GetCollisionDamage().LateralGripMultiplier() * 100.0),
+            Accent);
+    }
     // The independent off-track direction hint may appear immediately;
     // this readout reports only CONFIRMED road-surface motor/grip effects.
     // Do not consume limited compact or low-height HUD timing lines.
