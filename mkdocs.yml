@@ -121,6 +121,7 @@ nav:
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
       - Arcade tire condition QA: ARCADE_TIRE_CONDITION_QA.md
       - Rival player-traffic awareness QA: RIVAL_TRAFFIC_QA.md
+      - Rival tire/grip corner-pace QA: RIVAL_GRIP_PACE_QA.md
       - Single-rival slipstream QA: SLIPSTREAM_DRAFT_QA.md
       - Off-track and AI approach QA: OFF_TRACK_AND_RIVAL_APPROACH_QA.md
       - Rival proximity HUD QA: RIVAL_PROXIMITY_QA.md

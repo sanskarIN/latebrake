@@ -22,6 +22,11 @@
 - Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
 - Portable C++20 policy regression and Unreal-source binding checks are not licensed UE 5.8 compile or installed Win64/Android driving evidence. [Handbrake QA](HANDBRAKE_QA.md).
 
+## Next-cycle AI grip-aware corner pace — source candidate (unreleased)
+
+- The physical autonomous rival reads its previous valid measured tire grip and real planar/lateral Chaos chassis motion. A bounded corner policy reduces throttle or requests braking under measured turn/slip risk, with a 0.12s hold to avoid brake chatter. It cannot raise throttle, steer, modify route progression or bypass player-aware traffic braking.
+- Race reset, paused/invalid physics, route completion and recovery clear transient pace state; standalone C++20 and Python source-binding tests check the race pipeline. This remains source-only pending real UE 5.8/UHT and installed AI gameplay tests. [Grip pace QA](RIVAL_GRIP_PACE_QA.md).
+
 ## v0.5.82 combined arcade acceleration budget — source-only
 
 - Concurrent local nitro and verified rival slipstream share a strictly bounded 40% maximum additive motor-force budget. Full nitro priority leaves no more than 2% simultaneous draft acceleration; without nitro, earned drafting can supply up to 6%. Malformed/inconsistent allocations fail closed.
