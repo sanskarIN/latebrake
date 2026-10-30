@@ -1,9 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-30
-**Latest published milestone:** [v0.5.84 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.84), independently verified as a published source-only release at immutable commit `fa884831fbddfd7ef30500da0fdf321a5c9a6278` with zero game attachments. GitHub confirms the exact tag target, published pre-release state, non-draft status and empty assets. The preceding v0.5.83 source tag remains confirmed at `a88f4f16944e00441c659678fba12db1df425ae7`.
+**Latest published milestone:** [v0.5.85 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85), staged at source commit `d162802425de7953d8156eb74a4893b9c7e5d033` pending independent tag, pre-release and zero-asset verification. **Do not merge these publication status documents before actual GitHub release verification.** v0.5.84 remains independently verified at `fa884831fbddfd7ef30500da0fdf321a5c9a6278`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.85 brake heat and collision damage — source-only milestone
+
+- Shared player/rival chassis code observes finite signed speed and service braking for a conservative arcade brake-heat response. Sustained high-speed heat can reduce service brake resistance to at least 74% of normal; heat gradually cools and parking brake behavior retains its own floor.
+- Root chassis hit callbacks validate impact impulse, body mass, real driving speed and contact normal. Strong predominantly horizontal impacts may add 3–13% damage, capped at 60% per race and one accepted contact per 0.40 seconds; damaged power remains >=79% and lateral grip >=85.6%.
+- These policies share the bounded existing motor/nitro/drafting and tire/traction force paths. Restart clears damage; invalid physics, pauses, recoveries and focus loss cannot create false collisions. No authoritative lap/credits/save changes are intended.
+- Exact source qualification on Windows, Ubuntu and macOS and Unreal-source binding tests **do not prove** licensed UE 5.8/UHT compilation, live Chaos collisions, a cooked circuit, installed binaries or Android touch QA. [Brake QA](ARCADE_BRAKE_HEAT_QA.md) · [Collision QA](ARCADE_COLLISION_DAMAGE_QA.md).
 
 ## v0.5.84 paved/off-pavement arcade traction — source-only release
 
