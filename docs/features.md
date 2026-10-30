@@ -24,6 +24,10 @@ closed. It never changes credits, competitive records, saves or vehicle
 forces. Actual Unreal physics sampling and installed Win64/Android QA
 remain unverified. [Launch QA](LAUNCH_SPEED_QA.md).
 
+## Next development: race-local collision damage (not a published release)
+
+- **Real chassis impact response:** high-speed, wall-like physical collision impulses can progressively reduce shared player/rival arcade motor drive and lateral grip, capped at 60% race-local wear. A 0.4-second contact cooldown guards callback bursts. Road-floor hits, low-speed bumps, invalid data and interrupted frames cannot award damage. Restart repairs the car; neither saved career currency nor official race results change. Source integration and portable tests only, not engine gameplay verification. [Collision QA](ARCADE_COLLISION_DAMAGE_QA.md).
+
 ## Next development: arcade brake thermal response (not a published release)
 
 - **BRAKE HEAT:** the real shared player/rival chassis now uses validated signed speed and service-brake demand for a bounded prototype brake-heat model. Repeated high-speed service braking can reduce existing service-brake resistance to no less than 74%; cooling restores it. The separate handbrake floor, race timing, records and compact touch HUD are preserved. This is source-only, not Unreal 5.8 or installed-game validation. [Brake heat QA](ARCADE_BRAKE_HEAT_QA.md).
