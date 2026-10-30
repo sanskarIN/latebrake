@@ -445,7 +445,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const bool bEffectiveBraking = BrakeProfile.Braking;
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
-    const float GripRate = static_cast<float>(BrakeProfile.LateralGripRate);
+    float GripRate = static_cast<float>(BrakeProfile.LateralGripRate);
     const float BrakeRate = static_cast<float>(BrakeProfile.ForwardResistanceRate);
 
     const FVector Forward = GetActorForwardVector();
@@ -495,6 +495,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     TireCondition.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed),
         static_cast<double>(LateralSpeed), bEffectiveBraking, true});
+    // Scale the normal grip policy before frame-stable resistance, so
+    // the established force-bound contract stays the final authority.
+    GripRate *= static_cast<float>(TireCondition.GripMultiplier());
     // Advisory, from actual consecutive signed-forward chassis motion
     // while braking. A single speed or pressed BRAKE command is insufficient.
     BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
@@ -543,9 +546,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // frame, constrain purely resistive impulses to avoid a synthetic
     // one-frame reversal of the measured velocity component.
     const float StableGripRate = static_cast<float>(
-        latebrake::FrameStableDampingRate(
-            GripRate * static_cast<float>(TireCondition.GripMultiplier()),
-            DeltaSeconds));
+        latebrake::FrameStableDampingRate(GripRate, DeltaSeconds));
     Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate);
     if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)
     {
