@@ -45,6 +45,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.82": "v0.5.81",  # Race-local tires, nitro, and verified drafting.
         "v0.5.83": "v0.5.82",  # Grip-aware autonomous corner pace.
         "v0.5.84": "v0.5.83",  # Measured paved/off-pavement chassis traction.
+        "v0.5.85": "v0.5.84",  # Source-only brake thermal and real chassis collision wiring.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -88,6 +89,22 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
+    if version == "v0.5.85":
+        for new_gate in (
+            "ArcadeCollisionDamage|ArcadeBrakeHeat|ArcadeSurfaceTraction",
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeCollisionDamage$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeBrakeHeat$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeSurfaceTraction$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RivalGripPace$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeTireCondition$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeNitroBoost$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^SlipstreamDraftBoost$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeBoostArbitration$" --no-tests=error',
+            "Test-CandidatePairIdentityPolicy.ps1",
+            "'OFF-PAVEMENT TRACTION', 'BRAKE HEAT', 'IMPACT DAMAGE'",
+        ):
+            require(new_gate, "v0.5.85 hard impact, brake thermal and prior racing gates")
+
     if version == "v0.5.84":
         for new_gate in (
             "ArcadeSurfaceTraction|RivalGripPace|ArcadeTireCondition",
@@ -188,7 +205,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82", "v0.5.83", "v0.5.84"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82", "v0.5.83", "v0.5.84", "v0.5.85"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -315,6 +332,33 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(mutation=mutation[-80:]):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release("v0.5.78", mutation, notes)
+
+    def test_v0585_brake_and_impact_publisher_requires_full_gates(self):
+        version = "v0.5.85"
+        source = (WORKFLOWS / "publish-v0.5.85-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.85.md").read_text(encoding="utf-8")
+        verify_live_ci_source_release(version, source, notes)
+        for mutant in (
+            source.replace("ArcadeCollisionDamage|ArcadeBrakeHeat|ArcadeSurfaceTraction",
+                           "ArcadeBrakeHeat|ArcadeSurfaceTraction", 1),
+            source.replace('^ArcadeCollisionDamage$" --no-tests=error',
+                           '^ArcadeCollisionDamage$" --output-on-failure', 1),
+            source.replace('^ArcadeBrakeHeat$" --no-tests=error',
+                           '^ArcadeBrakeHeat$" --output-on-failure', 1),
+            source.replace("tag: 'v0.5.84'", "tag: 'v0.5.83'", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("published.assets.length !== 0",
+                           "false /* removed asset check */", 1),
+            source.replace("needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                           "needs: [source-tests]", 1),
+            source.replace("'BRAKE HEAT', 'IMPACT DAMAGE'", "'UNRELATED'", 1),
+        ):
+            self.assertNotEqual(mutant, source)
+            with self.subTest(removed=mutant[:90]):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(version, mutant, notes)
 
     def test_v0584_pavement_publisher_has_strict_surface_and_legacy_gates(self):
         version = "v0.5.84"
