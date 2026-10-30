@@ -274,6 +274,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     bBraking = false;
     bHandbrakeHeld = false;
     TireCondition.Suspend();
+    SurfaceTraction.Suspend();
     NitroBoost.Suspend();
     CurrentNitroSpeedCapScale = 1.f;
     CurrentDraftAppliedFraction = 0.f;
@@ -451,6 +452,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         BrakeDistance.Suspend();
         SlipstreamBoost.Suspend();
         TireCondition.Suspend();
+        SurfaceTraction.Suspend();
         NitroBoost.Suspend();
         CurrentDraftAppliedFraction = 0.f;
         return;
@@ -516,6 +518,21 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         return;
     }
 
+    // Both driver types use the ACTUAL chassis position against the
+    // authored paved circuit footprint. Short entry/exit hysteresis avoids
+    // force flicker at road boundaries. Untrusted positions and frame hitches
+    // must fail closed before this frame's motor or lateral forces.
+    const FVector SurfacePosition = GetActorLocation();
+    const latebrake::ArcadeSurfaceOutput Surface = SurfaceTraction.Observe({
+        static_cast<double>(DeltaSeconds),
+        static_cast<double>(SurfacePosition.X),
+        static_cast<double>(SurfacePosition.Y), true});
+    if (!Surface.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
+
     // Purely visual: gently widen the human camera with measured forward
     // chassis speed. Rival cameras, reverse motion and rear view stay static.
     UpdateSpeedCameraFov(static_cast<double>(DeltaSeconds),
@@ -533,7 +550,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(LateralSpeed), bEffectiveBraking, true});
     // Scale the normal grip policy before frame-stable resistance, so
     // the established force-bound contract stays the final authority.
-    GripRate *= static_cast<float>(TireCondition.GripMultiplier());
+    GripRate *= static_cast<float>(
+        TireCondition.GripMultiplier() * Surface.LateralGripMultiplier);
     // Advisory, from actual consecutive signed-forward chassis motion
     // while braking. A single speed or pressed BRAKE command is insufficient.
     BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
@@ -624,20 +642,23 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(GetActorRotation().Yaw), bEffectiveBraking});
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
-        Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
+        Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
+            static_cast<float>(Surface.MotorMultiplier));
         // Preserve the baseline motor path; an active, human-only nitro
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-                static_cast<float>(CombinedBoost.NitroExtra));
+                static_cast<float>(CombinedBoost.NitroExtra) *
+                static_cast<float>(Surface.MotorMultiplier));
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
         if (DraftExtraForce > 0.0)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-                static_cast<float>(DraftExtraForce));
+                static_cast<float>(DraftExtraForce) *
+                static_cast<float>(Surface.MotorMultiplier));
         }
     }
     else if (!bEffectiveBraking)
