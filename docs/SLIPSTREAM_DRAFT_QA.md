@@ -30,6 +30,15 @@ multiplayer positioning or a source of official race results.
   steering, service/hand brakes, car damage/condition and AI controller
   remain authoritative. This does **not** alter saved career data,
   credits, lap time clocks, legitimate gate awards or official records.
+- When nitro and drafting overlap, the independent bonuses share a
+  single **40% total extra motor-force cap**. Nitro has priority because
+  it consumes limited charge. Drafting can contribute only the remaining
+  share (as little as 2% when nitro grants its full 38%). The HUD shows
+  the **actually granted** drafting percentage, not the unrestricted
+  geometric eligibility estimate.
+- [Cross-mechanic budget tests](../Tests/Standalone/ArcadeBoostArbitrationTests.cpp)
+  reject nonfinite inputs and excessive additive force.
+
 - An optional **SLIPSTREAM** active readout appears only in the
   expanded desktop race HUD. Compact phone controls and authoritative
   race rows remain unchanged.
