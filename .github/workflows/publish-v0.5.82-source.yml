@@ -35,7 +35,7 @@ jobs:
       - name: Run complete source test suite
         run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
       - name: Explicitly check tire, nitro, slipstream and baseline racing policies
-        run: ctest --test-dir Tests/Standalone/build -C Release -R "^(ArcadeTireCondition|ArcadeNitroBoost|SlipstreamDraftBoost|HandbrakeDrivePolicy|ObservedBrakeDistance|FrameStableDamping|RaceProgress)$" --output-on-failure
+        run: ctest --test-dir Tests/Standalone/build -C Release -R "^(ArcadeTireCondition|ArcadeNitroBoost|SlipstreamDraftBoost|ArcadeBoostArbitration|HandbrakeDrivePolicy|ObservedBrakeDistance|FrameStableDamping|RaceProgress)$" --output-on-failure
 
   editor-tests:
     name: Release Python/Unreal-source contracts (NO Unreal runtime)
