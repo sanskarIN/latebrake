@@ -755,6 +755,17 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetTireCondition().GripMultiplier() * 100.0,
             Car->GetTireCondition().WearFraction() * 100.0), Primary);
     }
+    // Optional arcade brake-temperature feedback uses measured service
+    // brake demand and actual chassis velocity, not decorative wheel heat.
+    // Keep compact mobile HUD space reserved for lap and input controls.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        Car->GetBrakeHeat().HasValidSample() &&
+        Car->GetBrakeHeat().HeatFraction() >= 0.60)
+    {
+        Line(FString::Printf(TEXT("BRAKE HEAT %.0f%% | SERVICE BRAKE %.0f%%"),
+            Car->GetBrakeHeat().HeatFraction() * 100.0,
+            Car->GetBrakeHeat().ServiceBrakeMultiplier() * 100.0), Accent);
+    }
     // The independent off-track direction hint may appear immediately;
     // this readout reports only CONFIRMED road-surface motor/grip effects.
     // Do not consume limited compact or low-height HUD timing lines.
