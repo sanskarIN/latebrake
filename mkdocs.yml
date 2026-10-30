@@ -92,6 +92,7 @@ nav:
       - Private Win64 test build: WINDOWS_PERSONAL_PLAYTEST.md
       - Testing & QA: TESTING.md
       - Executable build pipeline: EXECUTABLE_BUILD_PIPELINE.md
+      - Published source release audit: PUBLISHED_SOURCE_RELEASE_AUDIT.md
       - Circuit startup audit: CIRCUIT_STARTUP_AUDIT.md
       - Collision response QA: COLLISION_RESPONSE_QA.md
       - Collision setup QA: COLLISION_SETUP_QA.md
