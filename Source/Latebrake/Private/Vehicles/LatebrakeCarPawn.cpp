@@ -272,6 +272,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedSteering = 0.f;
     bBraking = false;
     bHandbrakeHeld = false;
+    TireCondition.Suspend();
     BrakeDistance.Suspend();
     TouchDrive.Clear();
     // Recovery, restart, focus loss and interrupted input must never
@@ -488,6 +489,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     SlipAngleMeter.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
         static_cast<double>(LateralSpeed)});
+    // Chassis-derived arcade grip condition shared by human and rival.
+    // The source policy rejects nonfinite physics and frame hitches.
+    TireCondition.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(Speed),
+        static_cast<double>(LateralSpeed), bEffectiveBraking, true});
     // Advisory, from actual consecutive signed-forward chassis motion
     // while braking. A single speed or pressed BRAKE command is insufficient.
     BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
@@ -536,7 +542,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // frame, constrain purely resistive impulses to avoid a synthetic
     // one-frame reversal of the measured velocity component.
     const float StableGripRate = static_cast<float>(
-        latebrake::FrameStableDampingRate(GripRate, DeltaSeconds));
+        latebrake::FrameStableDampingRate(
+            GripRate * static_cast<float>(TireCondition.GripMultiplier()),
+            DeltaSeconds));
     Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate);
     if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)
     {
@@ -722,6 +730,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     DriftMeter.Suspend();
     GForceMeter.Suspend();
     SlipAngleMeter.Suspend();
+    TireCondition.Suspend();
     BrakeDistance.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
