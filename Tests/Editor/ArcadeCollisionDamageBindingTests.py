@@ -34,7 +34,7 @@ class ArcadeCollisionDamageBindingTests(unittest.TestCase):
         self.assertIn("CollisionDamage.LateralGripMultiplier()", tick)
         self.assertIn("const float CombinedMotorScale =", tick)
         self.assertEqual(tick.count("static_cast<float>(CombinedMotorScale)"), 0)
-        self.assertEqual(tick.count("* CombinedMotorScale"), 3)
+        self.assertEqual(tick.count("CombinedMotorScale);"), 3)
         self.assertIn("CollisionDamage.HasEligibleFrame()", tick)
 
     def test_state_lifecycle_and_hud(self):
