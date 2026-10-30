@@ -213,6 +213,18 @@ else()
 endif()
 add_test(NAME ArcadeTireCondition COMMAND latebrake_arcade_tire_tests)
 
+# Observed actual XY circuit pavement; affects existing rigid-body
+# motor and lateral damping only. Never a replacement for UE physics.
+add_executable(latebrake_arcade_surface_traction_tests ArcadeSurfaceTractionTests.cpp)
+target_include_directories(latebrake_arcade_surface_traction_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_arcade_surface_traction_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_arcade_surface_traction_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_arcade_surface_traction_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ArcadeSurfaceTraction COMMAND latebrake_arcade_surface_traction_tests)
+
 # Strict, engine-independent rechargeable nitro/heat/physics-safety policy.
 add_executable(latebrake_arcade_nitro_tests ArcadeNitroBoostTests.cpp)
 target_include_directories(latebrake_arcade_nitro_tests PRIVATE ../../Source/Latebrake/Public)
