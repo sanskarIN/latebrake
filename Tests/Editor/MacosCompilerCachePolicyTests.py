@@ -43,6 +43,7 @@ class MacosCompilerCachePolicyTests(unittest.TestCase):
         self.assertIn('echo "available=false" >> "$GITHUB_OUTPUT"', self.matrix)
         self.assertIn('brew install ccache', self.matrix)
         self.assertIn("uses: actions/cache@v4", self.matrix)
+        self.assertIn("continue-on-error: true", self.matrix)
         self.assertIn("-DCMAKE_CXX_COMPILER_LAUNCHER=ccache", self.matrix)
         self.assertIn("CCACHE_MAXSIZE: 1G", self.matrix)
         self.assertIn("CCACHE_COMPRESS: 'true'", self.matrix)
