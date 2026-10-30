@@ -71,3 +71,7 @@ These are source tests, **not Unreal Editor/UHT compilation**.
   [Android issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 
 **v0.5.72 is published as a source-only pre-release with zero executable assets. This is not proof of a working UE camera, cooked original track or playable game build.**
+
+## Next-cycle temporary rear view (not a new camera preset)
+
+Hold **V** on keyboard or **left shoulder** on gamepad during an eligible active race to point the camera 180 degrees behind. Release immediately restores the current selected front-facing chase, close, hood or high view. Pausing or clearing driver input cancels the hold; it does not alter car heading or racing rules. [Separate source and real-game QA checklist](HELD_LOOK_BACK_CAMERA_QA.md). This has not been verified in Unreal Engine or on an installed device.

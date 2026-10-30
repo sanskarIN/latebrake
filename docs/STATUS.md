@@ -5,6 +5,12 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Next-cycle held rear-view camera — source candidate
+
+- Keyboard **V** or gamepad **left shoulder** requests a temporary rear-facing view during a qualified human race, with physical release returning to the selected chase/hood/high preset.
+- Pause, menu, lost OS focus, restart, recovery and unpossession clear the held orientation. No rival control, race clock, physics, awards or saves change; no new mobile touch button is claimed.
+- [Camera QA](HELD_LOOK_BACK_CAMERA_QA.md): UE 5.8 UHT/packaged Windows camera behavior remains unverified. **This is not a new published release.**
+
 ## Next-cycle source-only candidate — chassis slip-angle telemetry
 
 - Observes the real rigid-body forward/lateral motion direction, showing an optional signed live estimate and run-local peak/high-angle time; the model is not tire slip or suspension physics. See [chassis slip-angle QA](CHASSIS_SLIP_ANGLE_QA.md).
