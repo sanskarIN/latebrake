@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-30
-**Latest published milestone:** [v0.5.83 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83), independently published and verified at immutable commit `a88f4f16944e00441c659678fba12db1df425ae7` with zero compiled game assets. The tag, pre-release status and asset count were checked against GitHub. The predecessor [v0.5.82](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82) is confirmed source-only at `1a7754761ff11675439d82c43e27a85269dcdeee`.
+**Latest published milestone:** [v0.5.84 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.84), independently verified as a published source-only release at immutable commit `fa884831fbddfd7ef30500da0fdf321a5c9a6278` with zero game attachments. GitHub confirms the exact tag target, published pre-release state, non-draft status and empty assets. The preceding v0.5.83 source tag remains confirmed at `a88f4f16944e00441c659678fba12db1df425ae7`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Next-cycle paved/off-pavement arcade traction — source candidate (unreleased)
+## v0.5.84 paved/off-pavement arcade traction — source-only release
 
 - The actual player and physical rival chassis reuse the authored four-strip pavement footprint and observed real XY actor position after all race/Chaos gates; on-road acceleration and lateral grip are unchanged.
 - Continuous 0.15-second off-pavement confirmation reduces existing baseline/nitro/slipstream motor force to 78% and existing lateral damping to 72%; continuous 0.20-second pavement re-entry restores the baseline. These bounded prototype effects reuse the frame-stable damping rule without a new tire or collision solver.
