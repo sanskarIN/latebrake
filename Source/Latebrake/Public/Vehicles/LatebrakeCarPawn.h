@@ -10,6 +10,7 @@
 #include "Racing/ChassisSlipAngleMeter.h"
 #include "Vehicles/CameraPresets.h"
 #include "Vehicles/HeldLookBackCamera.h"
+#include "Vehicles/SpeedReactiveCameraFov.h"
 #include "Vehicles/WheelVisualMotion.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
@@ -56,7 +57,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -144,6 +145,8 @@ private:
     void LookBackReleased();
     void ToggleBestLapGhost();
     void ApplyCameraPreset();
+    void ResetSpeedCameraFov();
+    void UpdateSpeedCameraFov(double FrameSeconds, double SignedForwardSpeedKmH);
     void TogglePause();
     void TouchPressed(ETouchIndex::Type FingerIndex, FVector Location);
     void TouchMoved(ETouchIndex::Type FingerIndex, FVector Location);
@@ -183,6 +186,7 @@ private:
     bool bBraking = false;
     latebrake::CameraViewCycle CameraViews;
     latebrake::HeldLookBackCamera LookBackCamera;
+    latebrake::SpeedReactiveCameraFov ReactiveFov;
     latebrake::DrivingSessionStats DrivingStats;
     latebrake::DriftComboMeter DriftMeter;
     latebrake::VehicleGForceMeter GForceMeter;

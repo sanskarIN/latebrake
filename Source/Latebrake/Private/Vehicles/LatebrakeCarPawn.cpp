@@ -274,6 +274,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     // Recovery, restart, focus loss and interrupted input must never
     // leave the camera facing backwards after the held key is gone.
     LookBackReleased();
+    ResetSpeedCameraFov();
 }
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
@@ -380,6 +381,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
+        ResetSpeedCameraFov();
         ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
@@ -434,6 +436,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+
+    // Purely visual: gently widen the human camera with measured forward
+    // chassis speed. Rival cameras, reverse motion and rear view stay static.
+    UpdateSpeedCameraFov(static_cast<double>(DeltaSeconds),
+                         static_cast<double>(LongitudinalSpeed) * 0.036);
 
     // Observe the real chassis travel direction, not a requested steering
     // angle or decorative wheel animation. Read-only session telemetry.
@@ -736,6 +743,9 @@ void ALatebrakeCarPawn::RestartPressed()
 
 void ALatebrakeCarPawn::ApplyCameraPreset()
 {
+    // Switching any preset or rear view starts the visual response from
+    // that view's unmodified FOV; no acceleration or race state is changed.
+    ReactiveFov.Reset();
     if (!IsValid(CameraBoom))
     {
         return;
@@ -764,6 +774,47 @@ void ALatebrakeCarPawn::ApplyCameraPreset()
         FollowCamera->SetFieldOfView(
             static_cast<float>(View.FieldOfViewDegrees));
     }
+}
+
+void ALatebrakeCarPawn::ResetSpeedCameraFov()
+{
+    if (!ReactiveFov.HasActiveSample())
+    {
+        return;
+    }
+    ReactiveFov.Reset();
+    if (IsValid(FollowCamera))
+    {
+        const latebrake::CameraPreset Requested =
+            latebrake::GetCameraPreset(CameraViews.Current());
+        const latebrake::CameraPreset View =
+            latebrake::IsSafeCameraPreset(Requested)
+                ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
+        FollowCamera->SetFieldOfView(static_cast<float>(View.FieldOfViewDegrees));
+    }
+}
+
+void ALatebrakeCarPawn::UpdateSpeedCameraFov(
+    double FrameSeconds, double SignedForwardSpeedKmH)
+{
+    if (!IsValid(FollowCamera))
+    {
+        ReactiveFov.Reset();
+        return;
+    }
+    const latebrake::CameraPreset Requested =
+        latebrake::GetCameraPreset(CameraViews.Current());
+    const latebrake::CameraPreset View =
+        latebrake::IsSafeCameraPreset(Requested)
+            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
+    // In a standalone host an AI controller can also be local. Require
+    // an actual human player controller, not merely local authority.
+    const bool bHumanPlayer =
+        IsLocallyControlled() && Cast<APlayerController>(GetController()) != nullptr;
+    const double Fov = ReactiveFov.Sample(
+        View.FieldOfViewDegrees, SignedForwardSpeedKmH, FrameSeconds,
+        bHumanPlayer, LookBackCamera.IsHeld());
+    FollowCamera->SetFieldOfView(static_cast<float>(Fov));
 }
 
 void ALatebrakeCarPawn::ChangeCamera()

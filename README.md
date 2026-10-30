@@ -41,6 +41,8 @@ and installed Windows/Android playtests are outstanding.
 
 **v0.5.78 source rival AI:** the prototype opponent now senses the real player car directly ahead in its lane and can gently reduce throttle or request normal braking when closing too quickly. It does not swerve or create official rival results, and requires real Unreal/installed-device QA. [Rival traffic QA](docs/RIVAL_TRAFFIC_QA.md).
 
+**Next-cycle speed-reactive camera (source candidate):** the real human player camera now softly widens its selected preset FOV (up to 6 degrees) using validated positive chassis forward speed. Reverse, pause, focus loss, held rear view and malformed physics reset the visual effect; it never changes car handling or racing rules. Real UE/device framing remains unverified. [Speed-reactive camera QA](docs/SPEED_REACTIVE_CAMERA_QA.md).
+
 **Next-cycle held rear-view camera (source candidate):** while racing on Windows, hold **V** or the gamepad **left shoulder** to look behind; release restores the selected front-facing camera preset. Pause, focus loss, recovery and restart clear the held view. It changes camera orientation only, not steering or race results. [Look-back QA](docs/HELD_LOOK_BACK_CAMERA_QA.md). Real UE and installed device verification remains outstanding.
 
 **v0.5.72 published source preview:** four deterministic camera presets
