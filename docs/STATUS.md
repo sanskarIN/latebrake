@@ -17,6 +17,11 @@
 - Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
 - Portable C++20 policy regression and Unreal-source binding checks are not licensed UE 5.8 compile or installed Win64/Android driving evidence. [Handbrake QA](HANDBRAKE_QA.md).
 
+## Next-cycle arcade tire wear and temperature — source candidate (unreleased)
+
+- Both physical human and rival pawns use the same finite, frame-bounded chassis-derived condition policy. Lateral slip and effective braking slowly add simulated heat and wear; the existing lateral damping rate is scaled to at least 68% of its configured value, never made nonfinite or negative.
+- A new race resets both drivers; a recovery/pause cannot repair worn tires. Expanded desktop HUD displays grip and wear, but compact Android UI remains unchanged. This is **not** actual rubber physics, a pit-stop feature or a proved UE gameplay mechanic. [Tire condition QA](ARCADE_TIRE_CONDITION_QA.md).
+
 ## v0.5.80 published source-only pre-release — rival, stability and cameras
 
 - Portable, frame-time-bounded resistance handles braking and grip on long frames without oversized impulses. Rival following uses signed forward closing speed with guarded time-to-contact and bounded brake hold.

@@ -1433,6 +1433,7 @@ void ALatebrakeRaceGameMode::RefreshRival()
         // Career events can require one, two, three, four or more laps.
         // Reusing the quick-race default of three laps makes the rival
         // route-completion HUD incorrect for those races.
+        RivalCar->ResetDrivingStats();
         RivalCar->ConfigurePilot(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     }
 }
@@ -1529,6 +1530,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     {
         RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
                     latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
+        RivalCar->ResetDrivingStats();
         RivalCar->ResetPilot();
     }
     // The direct keyboard/gamepad/mobile RESTART binding does not go through
