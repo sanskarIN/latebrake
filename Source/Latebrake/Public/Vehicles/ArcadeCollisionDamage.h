@@ -57,6 +57,12 @@ public:
         }
         FrameEligible = true;
         Cooldown = std::max(0.0, Cooldown - deltaSeconds);
+        // Collapse binary floating-point residue at the exact contact
+        // boundary, so eight 50-ms frames reliably expire a 400-ms hold.
+        if (Cooldown < 1.0e-9)
+        {
+            Cooldown = 0.0;
+        }
         return true;
     }
 
