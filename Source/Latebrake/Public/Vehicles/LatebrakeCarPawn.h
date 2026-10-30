@@ -194,6 +194,7 @@ private:
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bHandbrakeHeld = false;
+    float CurrentNitroSpeedCapScale = 1.f;
     latebrake::CameraViewCycle CameraViews;
     latebrake::HeldLookBackCamera LookBackCamera;
     latebrake::SpeedReactiveCameraFov ReactiveFov;
