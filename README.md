@@ -41,6 +41,8 @@ and installed Windows/Android playtests are outstanding.
 
 **v0.5.78 source rival AI:** the prototype opponent now senses the real player car directly ahead in its lane and can gently reduce throttle or request normal braking when closing too quickly. It does not swerve or create official rival results, and requires real Unreal/installed-device QA. [Rival traffic QA](docs/RIVAL_TRAFFIC_QA.md).
 
+**Next-cycle braking-distance advisory (source candidate):** the optional desktop HUD now estimates a current-rate in-game stopping distance only after three consecutive plausible deceleration samples from the real chassis, not a commanded brake input. Reverse/slide, invalid physics, pauses, restart and recovery clear it. It never changes handling or race awards and has no installed-device accuracy claim. [Braking-distance QA](docs/OBSERVED_BRAKE_DISTANCE_QA.md).
+
 **Next-cycle prototype handbrake (source candidate):** hold **Left Shift** or click the **right gamepad stick** to request limited motor drive and reduced lateral chassis resistance for experimental controlled slides; release, pause, recovery, restart or focus loss clear it. Ordinary BRAKE and touch pads remain unchanged. No real UE/device driving has been qualified. [Handbrake QA](docs/HANDBRAKE_QA.md).
 
 **Next-cycle speed-reactive camera (source candidate):** the real human player camera now softly widens its selected preset FOV (up to 6 degrees) using validated positive chassis forward speed. Reverse, pause, focus loss, held rear view and malformed physics reset the visual effect; it never changes car handling or racing rules. Real UE/device framing remains unverified. [Speed-reactive camera QA](docs/SPEED_REACTIVE_CAMERA_QA.md).
