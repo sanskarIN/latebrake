@@ -9,7 +9,7 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release (verify publisher before merge) | [v0.5.82](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82), **source only**, zero runnable assets |
+| Latest published GitHub pre-release | [v0.5.82](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82), **source only**, zero runnable assets |
 | Latest source-development milestone | **v0.5.82 source-only, qualified at immutable commit `1a7754761ff11675439d82c43e27a85269dcdeee`:** race-local tire wear/heat, rechargeable human nitro, measured single-rival slipstream and capped combined acceleration. **No UE/UHT compilation, installed Win64/Android build or owned cooked map has been verified.** |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
