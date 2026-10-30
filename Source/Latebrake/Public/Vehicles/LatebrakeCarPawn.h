@@ -9,6 +9,7 @@
 #include "Racing/VehicleGForceMeter.h"
 #include "Racing/ChassisSlipAngleMeter.h"
 #include "Racing/ObservedBrakeDistance.h"
+#include "Racing/SlipstreamDraftBoost.h"
 #include "Vehicles/CameraPresets.h"
 #include "Vehicles/HeldLookBackCamera.h"
 #include "Vehicles/SpeedReactiveCameraFov.h"
@@ -59,12 +60,13 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); TireCondition.Reset(); BrakeDistance.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); TireCondition.Reset(); BrakeDistance.Reset(); SlipstreamBoost.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
     const latebrake::ArcadeTireCondition& GetTireCondition() const noexcept { return TireCondition; }
     const latebrake::ObservedBrakeDistance& GetObservedBrakeDistance() const { return BrakeDistance; }
+    const latebrake::SlipstreamDraftBoost& GetSlipstreamBoost() const noexcept { return SlipstreamBoost; }
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     void ClearDriverInputs();
     void HandleAppInputInterruption();
@@ -201,6 +203,7 @@ private:
     latebrake::ChassisSlipAngleMeter SlipAngleMeter;
     latebrake::ArcadeTireCondition TireCondition;
     latebrake::ObservedBrakeDistance BrakeDistance;
+    latebrake::SlipstreamDraftBoost SlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
     latebrake::TouchDriveState TouchDrive;
     latebrake::TouchPressTracker TouchPresses;
