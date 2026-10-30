@@ -24,6 +24,10 @@ closed. It never changes credits, competitive records, saves or vehicle
 forces. Actual Unreal physics sampling and installed Win64/Android QA
 remain unverified. [Launch QA](LAUNCH_SPEED_QA.md).
 
+## v0.5.84 road-surface traction (not installed gameplay)
+
+- **Off-pavement response:** after 0.15s of genuine off-road player/rival chassis positioning, normal motor and qualified boost additions use 78% of existing forces and lateral damping uses 72%; after 0.20s proven on-road return, baseline forces are restored. The source policy cannot touch race scoring, records or save files and is not a real wheel/tire physics simulation. [Surface traction QA](ARCADE_SURFACE_TRACTION_QA.md).
+
 ## v0.5.83 rival racecraft (not installed gameplay)
 
 - **Autonomous corner pacing:** real AI steering request, last valid race-local grip estimate and actual lateral chassis motion may reduce throttle or request bounded braking before a high-speed corner. Conservative sample rejection and 0.12-second brake hysteresis cannot alter course steering, official timing, scoring or traffic-awareness priorities. [Rival grip QA](RIVAL_GRIP_PACE_QA.md).
