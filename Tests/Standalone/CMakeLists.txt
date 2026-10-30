@@ -189,6 +189,17 @@ else()
 endif()
 add_test(NAME ArcadeTireCondition COMMAND latebrake_arcade_tire_tests)
 
+# Geometrically qualified single-rival drafting boost: no Unreal SDK.
+add_executable(latebrake_slipstream_tests SlipstreamDraftBoostTests.cpp)
+target_include_directories(latebrake_slipstream_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_slipstream_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_slipstream_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_slipstream_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SlipstreamDraftBoost COMMAND latebrake_slipstream_tests)
+
 # A finger release, invalid movement or drag off GAS must drop the
 # already-smoothed motor/steering command, not only its touch ownership.
 add_executable(latebrake_touch_residual_safety_tests TouchResidualSafetyTests.cpp)
