@@ -43,6 +43,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.80": "v0.5.79",  # Stable chassis, rival following and rear camera.
         "v0.5.81": "v0.5.80",  # Human speed camera, brake input and estimate.
         "v0.5.82": "v0.5.81",  # Race-local tires, nitro, and verified drafting.
+        "v0.5.83": "v0.5.82",  # Grip-aware autonomous corner pace.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -86,6 +87,19 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
+    if version == "v0.5.83":
+        for new_gate in (
+            "RivalGripPace|ArcadeTireCondition",
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RivalGripPace$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeTireCondition$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeNitroBoost$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^SlipstreamDraftBoost$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeBoostArbitration$" --no-tests=error',
+            "Test-CandidatePairIdentityPolicy.ps1",
+            "'ARCADE TIRE', 'NITRO BOOST', 'SLIPSTREAM', 'RIVAL GRIP'",
+        ):
+            require(new_gate, "v0.5.83 AI grip and existing racecraft policy gates")
+
     if version == "v0.5.82":
         for new_gate in (
             "ArcadeTireCondition|ArcadeNitroBoost|SlipstreamDraftBoost|ArcadeBoostArbitration",
@@ -159,7 +173,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82", "v0.5.83"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -286,6 +300,35 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(mutation=mutation[-80:]):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release("v0.5.78", mutation, notes)
+
+    def test_v0583_source_publisher_requires_grip_corners_and_legacy_racing(self):
+        version = "v0.5.83"
+        source = (WORKFLOWS / "publish-v0.5.83-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.83.md").read_text(
+            encoding="utf-8"
+        )
+        verify_live_ci_source_release(version, source, notes)
+        for mutation in (
+            source.replace("RivalGripPace|ArcadeTireCondition",
+                           "ArcadeTireCondition", 1),
+            source.replace('^RivalGripPace$" --no-tests=error',
+                           '^RivalGripPace$" --output-on-failure', 1),
+            source.replace('^ArcadeTireCondition$" --no-tests=error',
+                           '^ArcadeTireCondition$" --output-on-failure', 1),
+            source.replace("tag: 'v0.5.82'", "tag: 'v0.5.81'", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("published.assets.length !== 0",
+                           "false /* unsafe */", 1),
+            source.replace("needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                           "needs: [source-tests]", 1),
+            source.replace("'RIVAL GRIP'", "'UNRELATED'", 1),
+        ):
+            self.assertNotEqual(mutation, source)
+            with self.subTest(fragment=mutation[:80]):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(version, mutation, notes)
 
     def test_v0582_source_publisher_requires_all_qualified_racing_systems(self):
         version = "v0.5.82"
