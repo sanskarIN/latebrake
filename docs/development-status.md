@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.79](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.79), **source only**, zero runnable assets |
-| Latest source-development milestone | **v0.5.79 source-only, independently qualified at commit `c4525893f34028fa702e1dc2e563a6daa3f6f607`:** run-local real-physics best-lap replay beacon and visual brake/reverse lamps. No installed Win64/Android build, original cooked circuit or UE 5.8/UHT compilation was verified |
+| Latest published GitHub pre-release | [v0.5.80](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80), **source only**, zero runnable assets |
+| Latest source-development milestone | **v0.5.80 source-only, independently qualified at commit `38ca21ccca3ddaaba4002991f9688b4c575a4e3b`:** bounded braking/grip damping, signed-speed rival following, improved touch steering, ghost separation and display, chassis slip feedback and rear-view camera. No installed Win64/Android build, original cooked circuit or UE 5.8/UHT compilation was verified |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.79).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.

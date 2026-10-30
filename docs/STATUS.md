@@ -1,20 +1,16 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-27
-**Latest published milestone:** [v0.5.79 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.79), qualified at immutable commit `c4525893f34028fa702e1dc2e563a6daa3f6f607` (zero compiled game assets).
+**Updated:** 2026-10-30
+**Latest published milestone:** [v0.5.80 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80), qualified at immutable commit `38ca21ccca3ddaaba4002991f9688b4c575a4e3b` (zero compiled game assets).
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Next-cycle held rear-view camera — source candidate
+## v0.5.80 published source-only pre-release — rival, stability and cameras
 
-- Keyboard **V** or gamepad **left shoulder** requests a temporary rear-facing view during a qualified human race, with physical release returning to the selected chase/hood/high preset.
-- Pause, menu, lost OS focus, restart, recovery and unpossession clear the held orientation. No rival control, race clock, physics, awards or saves change; no new mobile touch button is claimed.
-- [Camera QA](HELD_LOOK_BACK_CAMERA_QA.md): UE 5.8 UHT/packaged Windows camera behavior remains unverified. **This is not a new published release.**
-
-## Next-cycle source-only candidate — chassis slip-angle telemetry
-
-- Observes the real rigid-body forward/lateral motion direction, showing an optional signed live estimate and run-local peak/high-angle time; the model is not tire slip or suspension physics. See [chassis slip-angle QA](CHASSIS_SLIP_ANGLE_QA.md).
-- Engine build, cooked map, playable Win64/Android packages and physical hardware qualification remain outstanding. This is **not** a new published version.
+- Portable, frame-time-bounded resistance handles braking and grip on long frames without oversized impulses. Rival following uses signed forward closing speed with guarded time-to-contact and bounded brake hold.
+- Android steering neutralizes center-touch jitter and residual torque; run-local best-lap ghost display/separation adds advisory visual race feedback.
+- The real player pawn observes signed chassis slip relative to its nose, with live/peak desktop telemetry. Holding **V** or left gamepad shoulder shows a temporary rear view that clears on pause, focus loss, restart and recovery.
+- Cross-platform source qualification passes are not licensed Unreal Engine 5.8/UHT compilation, a cooked owned map, real EXE/APK or a hardware driving test. See [chassis slip QA](CHASSIS_SLIP_ANGLE_QA.md), [rear view QA](HELD_LOOK_BACK_CAMERA_QA.md) and [playable gate #148](https://github.com/sanskarIN/latebrake/issues/148).
 
 ## v0.5.79 published source-only pre-release — best-lap ghost beacon and signal lights
 

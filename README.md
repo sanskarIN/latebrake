@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.79](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.79) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified source at commit `c4525893f34028fa702e1dc2e563a6daa3f6f607` includes real player best-lap pose sampling with a small non-colliding run-local ghost beacon and cosmetic rear brake/reverse lights, alongside existing wheel/rival features. **No verified Win64 game EXE, Android APK/AAB or installed playable build is available.** GitHub source archives are not installers; genuine UE 5.8 UHT compilation, original cooked track and installed gameplay QA remain outstanding.
+> **Latest published: [v0.5.80](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Independently qualified at source commit `38ca21ccca3ddaaba4002991f9688b4c575a4e3b`: bounded lag-spike vehicle damping, player-aware rival following, Android steering neutralization, ghost separation and visibility controls, measured chassis slip-angle telemetry, and a hold-to-look-back race camera. **No verified Windows EXE, Android APK/AAB, licensed UE 5.8 cook or installed game is included.** GitHub source archives are not installers. The playable-build and hardware gates remain open.
 
 **v0.5.76 published source feature:** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
