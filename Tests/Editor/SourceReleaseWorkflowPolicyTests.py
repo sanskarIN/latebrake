@@ -42,6 +42,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.79": "v0.5.78",  # Run-local best-lap ghost and rear signals.
         "v0.5.80": "v0.5.79",  # Stable chassis, rival following and rear camera.
         "v0.5.81": "v0.5.80",  # Human speed camera, brake input and estimate.
+        "v0.5.82": "v0.5.81",  # Race-local tires, nitro, and verified drafting.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -85,6 +86,18 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
+    if version == "v0.5.82":
+        for new_gate in (
+            "ArcadeTireCondition|ArcadeNitroBoost|SlipstreamDraftBoost|ArcadeBoostArbitration",
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeTireCondition$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeNitroBoost$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^SlipstreamDraftBoost$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeBoostArbitration$" --no-tests=error',
+            "Test-CandidatePairIdentityPolicy.ps1",
+            "'ARCADE TIRE', 'NITRO BOOST', 'SLIPSTREAM'",
+        ):
+            require(new_gate, "v0.5.82 racing source and fail-closed target gates")
+
     if version == "v0.5.81":
         for new_gate in (
             "SpeedReactiveCameraFov|HandbrakeDrivePolicy|ObservedBrakeDistance",
@@ -146,7 +159,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -273,6 +286,33 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(mutation=mutation[-80:]):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release("v0.5.78", mutation, notes)
+
+    def test_v0582_source_publisher_requires_all_qualified_racing_systems(self):
+        version = "v0.5.82"
+        source = (WORKFLOWS / "publish-v0.5.82-source.yml").read_text(
+            encoding="utf-8"
+        )
+        notes = (RELEASE_NOTES / "v0.5.82.md").read_text(
+            encoding="utf-8"
+        )
+        verify_live_ci_source_release(version, source, notes)
+        for mutant in (
+            source.replace("ArcadeTireCondition|ArcadeNitroBoost|SlipstreamDraftBoost|ArcadeBoostArbitration",
+                           "ArcadeTireCondition|ArcadeNitroBoost|SlipstreamDraftBoost", 1),
+            source.replace('^ArcadeBoostArbitration$" --no-tests=error',
+                           '^ArcadeBoostArbitration$" --output-on-failure', 1),
+            source.replace('^SlipstreamDraftBoost$" --no-tests=error',
+                           '^SlipstreamDraftBoost$" --output-on-failure', 1),
+            source.replace("tag: 'v0.5.81'", "tag: 'v0.5.80'", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("published.assets.length !== 0", "false /* unsafe */", 1),
+            source.replace("needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                           "needs: [source-tests]", 1),
+        ):
+            self.assertNotEqual(mutant, source)
+            with self.subTest(fragment=mutant[:80]):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(version, mutant, notes)
 
     def test_v0581_source_release_requires_measured_brake_and_camera(self):
         source = (WORKFLOWS / "publish-v0.5.81-source.yml").read_text(
