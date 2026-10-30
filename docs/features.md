@@ -24,6 +24,10 @@ closed. It never changes credits, competitive records, saves or vehicle
 forces. Actual Unreal physics sampling and installed Win64/Android QA
 remain unverified. [Launch QA](LAUNCH_SPEED_QA.md).
 
+## Next development: arcade brake thermal response (not a published release)
+
+- **BRAKE HEAT:** the real shared player/rival chassis now uses validated signed speed and service-brake demand for a bounded prototype brake-heat model. Repeated high-speed service braking can reduce existing service-brake resistance to no less than 74%; cooling restores it. The separate handbrake floor, race timing, records and compact touch HUD are preserved. This is source-only, not Unreal 5.8 or installed-game validation. [Brake heat QA](ARCADE_BRAKE_HEAT_QA.md).
+
 ## v0.5.84 road-surface traction (not installed gameplay)
 
 - **Off-pavement response:** after 0.15s of genuine off-road player/rival chassis positioning, normal motor and qualified boost additions use 78% of existing forces and lateral damping uses 72%; after 0.20s proven on-road return, baseline forces are restored. The source policy cannot touch race scoring, records or save files and is not a real wheel/tire physics simulation. [Surface traction QA](ARCADE_SURFACE_TRACTION_QA.md).
