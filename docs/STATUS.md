@@ -1,7 +1,7 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-30
-**Latest published milestone:** [v0.5.83 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83), subject to independent verification at exact main commit `a88f4f16944e00441c659678fba12db1df425ae7` with zero compiled game assets; **do not merge this documentation until that release is publicly verified.** The predecessor [v0.5.82](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82) is confirmed source-only at `1a7754761ff11675439d82c43e27a85269dcdeee`.
+**Latest published milestone:** [v0.5.83 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83), independently published and verified at immutable commit `a88f4f16944e00441c659678fba12db1df425ae7` with zero compiled game assets. The tag, pre-release status and asset count were checked against GitHub. The predecessor [v0.5.82](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82) is confirmed source-only at `1a7754761ff11675439d82c43e27a85269dcdeee`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 

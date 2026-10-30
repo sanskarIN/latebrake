@@ -10,7 +10,7 @@
 | Item | State |
 | --- | --- |
 | Latest published GitHub pre-release | [v0.5.83](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83), **source only**, zero runnable assets |
-| Latest source-development milestone | **v0.5.83 source-only, candidate source at `a88f4f16944e00441c659678fba12db1df425ae7`:** race-local autonomous rival corner pacing using measured chassis slip and observed tire grip; v0.5.82 added tire heat/wear, recharge-limited human nitro, verified-rival slipstream and 40% combined boost cap. **No UE/UHT compilation, installed Win64/Android build or owned cooked map has been verified.** |
+| Latest source-development milestone | **v0.5.83 source-only, published source at `a88f4f16944e00441c659678fba12db1df425ae7`:** race-local autonomous rival corner pacing using measured chassis slip and observed tire grip; v0.5.82 added tire heat/wear, recharge-limited human nitro, verified-rival slipstream and 40% combined boost cap. **No UE/UHT compilation, installed Win64/Android build or owned cooked map has been verified.** |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |

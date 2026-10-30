@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    After independently verifying the release, the latest published GitHub tag is **v0.5.83**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The latest published GitHub tag is **v0.5.83**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Publication-follow-up candidate:** [v0.5.83](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83) is a **source-only pre-release** prepared at exact source commit `a88f4f16944e00441c659678fba12db1df425ae7`, after the confirmed asset-free v0.5.82 tag. Grip-aware autonomous corner pacing is added without changing race timing or rewards. **Do not merge this update until GitHub publishes the exact pre-release with zero executable assets.** Genuine UE 5.8/UHT compilation, circuit cooking, Win64/Android packaging and installed QA are outstanding.
+**Current source release:** [v0.5.83](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83) is a **source-only pre-release** independently published at source commit `a88f4f16944e00441c659678fba12db1df425ae7`, after the confirmed asset-free v0.5.82 tag. Grip-aware autonomous corner pacing is added without changing race timing or rewards. It is confirmed as an asset-free GitHub pre-release. Genuine UE 5.8/UHT compilation, circuit cooking, Win64/Android packaging and installed QA are outstanding.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 

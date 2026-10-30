@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. Following independent GitHub tag verification, the latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83">v0.5.83</a>, a <strong>source-only pre-release with zero playable attachments</strong>. Its autonomous rival grip-aware corner policy uses real observed tire and chassis state to limit corner-entry power and braking without modifying route authority. The preceding v0.5.82 source introduced bounded tire condition, human nitro and real-rival drafting. <strong>No verified Windows EXE or Android APK/AAB is available.</strong> Licensed Unreal Engine 5.8/UHT compilation, a real cooked circuit and installed gameplay/device tests remain mandatory.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83">v0.5.83</a>, a <strong>source-only pre-release with zero playable attachments</strong>. Its autonomous rival grip-aware corner policy uses real observed tire and chassis state to limit corner-entry power and braking without modifying route authority. The preceding v0.5.82 source introduced bounded tire condition, human nitro and real-rival drafting. <strong>No verified Windows EXE or Android APK/AAB is available.</strong> Licensed Unreal Engine 5.8/UHT compilation, a real cooked circuit and installed gameplay/device tests remain mandatory.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
