@@ -26,7 +26,7 @@ class FrameStableDampingBindingTests(unittest.TestCase):
         for expression in (
             "FrameStableDampingRate(3.0, DeltaSeconds)",
             "FrameStableDampingRate(GripRate, DeltaSeconds)",
-            "FrameStableDampingRate(BrakeRate, DeltaSeconds)",
+            "FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)",
         ):
             with self.subTest(expression=expression):
                 self.assertIn(expression, tick)
@@ -47,8 +47,8 @@ class FrameStableDampingBindingTests(unittest.TestCase):
 
     def test_unbound_damping_is_detectable(self):
         bad = self.pawn.replace(
-            "FrameStableDampingRate(BrakeRate, DeltaSeconds)", "BrakeRate")
-        self.assertNotIn("FrameStableDampingRate(BrakeRate, DeltaSeconds)", bad)
+            "FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", "BrakeRate")
+        self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", bad)
 
 
 if __name__ == "__main__":
