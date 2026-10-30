@@ -755,6 +755,18 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetTireCondition().GripMultiplier() * 100.0,
             Car->GetTireCondition().WearFraction() * 100.0), Primary);
     }
+    // The independent off-track direction hint may appear immediately;
+    // this readout reports only CONFIRMED road-surface motor/grip effects.
+    // Do not consume limited compact or low-height HUD timing lines.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        Car->GetSurfaceTraction().IsOffPavement())
+    {
+        Line(FString::Printf(
+            TEXT("OFF-PAVEMENT TRACTION  MOTOR %.0f%% | GRIP %.0f%%"),
+            latebrake::ArcadeSurfaceTraction::OffPavementMotorMultiplier * 100.0,
+            latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier * 100.0),
+            Accent);
+    }
 
     // Optional, verified human-only aerodynamic *arcade* gameplay hint;
     // keep compact touch layouts focused on authoritative race status.
