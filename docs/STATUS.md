@@ -17,6 +17,11 @@
 - Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
 - Portable C++20 policy regression and Unreal-source binding checks are not licensed UE 5.8 compile or installed Win64/Android driving evidence. [Handbrake QA](HANDBRAKE_QA.md).
 
+## Next-cycle real-rival slipstream drafting — source candidate (unreleased)
+
+- Human-only sustained geometry and validated signed moving-chassis speeds can provide a bounded 0–6% additional force to existing motor acceleration while trailing a physically ready AI rival. Countdown, reverse, Time Attack, pause, finish, missing/stale targets and invalid Chaos inputs cannot qualify. The original motor, maximum speed clamp, lap/time awards, saves and AI authority stay unchanged.
+- Portable C++20 geometry tests, Python UE source bindings and [slipstream QA](SLIPSTREAM_DRAFT_QA.md) are not Unreal compilation, genuine map cooking or installed gameplay evidence.
+
 ## Next-cycle arcade tire wear and temperature — source candidate (unreleased)
 
 - Both physical human and rival pawns use the same finite, frame-bounded chassis-derived condition policy. Lateral slip and effective braking slowly add simulated heat and wear; the existing lateral damping rate is scaled to at least 68% of its configured value, never made nonfinite or negative.
