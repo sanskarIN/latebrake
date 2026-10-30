@@ -271,6 +271,9 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedSteering = 0.f;
     bBraking = false;
     TouchDrive.Clear();
+    // Recovery, restart, focus loss and interrupted input must never
+    // leave the camera facing backwards after the held key is gone.
+    LookBackReleased();
 }
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
@@ -746,7 +749,8 @@ void ALatebrakeCarPawn::ApplyCameraPreset()
             ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
     CameraBoom->TargetArmLength = static_cast<float>(View.ArmLengthCm);
     CameraBoom->SetRelativeRotation(FRotator(
-        static_cast<float>(View.PitchDegrees), 0.f, 0.f));
+        static_cast<float>(View.PitchDegrees),
+        static_cast<float>(LookBackCamera.SpringArmYawDegrees()), 0.f));
     CameraBoom->SocketOffset = FVector(
         static_cast<float>(View.ForwardOffsetCm), 0.f,
         static_cast<float>(View.HeightOffsetCm));
@@ -768,6 +772,40 @@ void ALatebrakeCarPawn::ChangeCamera()
     ApplyCameraPreset();
 }
 
+void ALatebrakeCarPawn::LookBackPressed()
+{
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    // The offline opponent inherits this pawn but cannot own player-only
+    // rear-view input. A denied press must not be saved for a later race.
+    const bool bEligible = IsLocallyControlled() && Mode &&
+        Mode->IsRaceStartGreen() &&
+        Mode->IsCircuitReadyForGameplay() &&
+        Mode->IsRestartPlacementReady() &&
+        !Mode->IsMenuOpen() &&
+        !UGameplayStatics::IsGamePaused(this) &&
+        !Mode->IsManualRacePauseActive() &&
+        !Mode->IsFocusLossGuardActive() &&
+        !Mode->GetRace().IsFinished() &&
+        IsRacePhysicsReady();
+    const bool bWasHeld = LookBackCamera.IsHeld();
+    const bool bNowHeld = LookBackCamera.Press(bEligible);
+    if (bWasHeld != bNowHeld || bNowHeld)
+    {
+        ApplyCameraPreset();
+    }
+}
+
+void ALatebrakeCarPawn::LookBackReleased()
+{
+    if (LookBackCamera.IsHeld())
+    {
+        LookBackCamera.Reset();
+        ApplyCameraPreset();
+    }
+}
+
 void ALatebrakeCarPawn::ToggleBestLapGhost()
 {
     // Display-only: do not neutralize acceleration or steer inputs, and
@@ -781,6 +819,9 @@ void ALatebrakeCarPawn::ToggleBestLapGhost()
 
 void ALatebrakeCarPawn::TogglePause()
 {
+    // World pause can stop Tick; restore front view immediately, not one
+    // possibly dropped frame after the menu takes input ownership.
+    LookBackReleased();
     // Route both standalone Escape/gamepad pause and open-menu resume
     // through GameMode so every transition invalidates checkpoint motion.
     if (ALatebrakeRaceGameMode* Mode =
@@ -1166,6 +1207,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
+    PlayerInputComponent->BindAction(TEXT("LookBack"), IE_Pressed, this, &ALatebrakeCarPawn::LookBackPressed);
+    FInputActionBinding& LookBackRelease = PlayerInputComponent->BindAction(
+        TEXT("LookBack"), IE_Released, this, &ALatebrakeCarPawn::LookBackReleased);
+    LookBackRelease.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("GhostView"), IE_Pressed, this, &ALatebrakeCarPawn::ToggleBestLapGhost);
     FInputTouchBinding& PressedTouch = PlayerInputComponent->BindTouch(
         IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
