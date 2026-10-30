@@ -274,6 +274,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     bBraking = false;
     bHandbrakeHeld = false;
     TireCondition.Suspend();
+    BrakeHeat.Suspend();
     SurfaceTraction.Suspend();
     NitroBoost.Suspend();
     CurrentNitroSpeedCapScale = 1.f;
@@ -452,6 +453,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         BrakeDistance.Suspend();
         SlipstreamBoost.Suspend();
         TireCondition.Suspend();
+        BrakeHeat.Suspend();
         SurfaceTraction.Suspend();
         NitroBoost.Suspend();
         CurrentDraftAppliedFraction = 0.f;
@@ -548,6 +550,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     TireCondition.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed),
         static_cast<double>(LateralSpeed), bEffectiveBraking, true});
+    // Shared human/rival service-brake heating from real signed chassis
+    // speed. Handbrake-only slides do not raise service-brake heat.
+    const latebrake::BrakeHeatOutput Thermal = BrakeHeat.Observe({
+        static_cast<double>(DeltaSeconds),
+        static_cast<double>(LongitudinalSpeed), bServiceBraking, true});
     // Scale the normal grip policy before frame-stable resistance, so
     // the established force-bound contract stays the final authority.
     GripRate *= static_cast<float>(
@@ -677,8 +684,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate);
     if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)
     {
+        // Respect a separate minimum parking-brake resistance when both
+        // brakes are pressed; thermal fade only modifies service braking.
+        const double EffectiveBrakeRate = bServiceBraking && Thermal.Valid
+            ? FMath::Max(BrakeProfile.HandbrakeActive ? 4.2 : 0.0,
+                         BrakeRate * Thermal.ServiceBrakeMultiplier)
+            : BrakeRate;
         const float StableBrakeRate = static_cast<float>(
-            latebrake::FrameStableDampingRate(BrakeRate, DeltaSeconds));
+            latebrake::FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds));
         Chassis->AddForce(-Forward * LongitudinalSpeed * Mass * StableBrakeRate);
     }
 
@@ -861,6 +874,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     GForceMeter.Suspend();
     SlipAngleMeter.Suspend();
     TireCondition.Suspend();
+    BrakeHeat.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
     ApplySignalLights(false, false, 0.0);
