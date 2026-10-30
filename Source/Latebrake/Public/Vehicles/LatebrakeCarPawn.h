@@ -75,6 +75,7 @@ public:
     bool IsTouchSteeringActive() const { return TouchDrive.SteeringActive(); }
     bool IsTouchThrottleActive() const { return TouchDrive.ThrottleActive(); }
     bool IsTouchBrakeActive() const { return TouchDrive.BrakeActive(); }
+    bool IsHandbrakeHeld() const noexcept { return bHandbrakeHeld; }
 
     // Physical placement must succeed before GameMode can commit its five-
     // second recovery charge. The Blueprint-compatible void API remains
@@ -132,6 +133,8 @@ private:
     void SteerInput(float Value);
     void BrakePressed();
     void BrakeReleased();
+    void HandbrakePressed();
+    void HandbrakeReleased();
     void NeutralizeMotionWhenDrivingBlocked();
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);
@@ -184,6 +187,7 @@ private:
     int32 GarageVehicleId = 0;
     uint64 TeleportRevision = 0;
     bool bBraking = false;
+    bool bHandbrakeHeld = false;
     latebrake::CameraViewCycle CameraViews;
     latebrake::HeldLookBackCamera LookBackCamera;
     latebrake::SpeedReactiveCameraFov ReactiveFov;
