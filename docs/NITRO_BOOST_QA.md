@@ -30,6 +30,12 @@ not been completed for this feature.
   recovery, the held command is cleared immediately. An interrupted
   frame must never silently restore a held boost; meter state remains
   run-local until an explicit race reset.
+- Nitro and a valid draft may overlap, but never grant an unbounded
+  combined motor bonus: the global additive cap is **40%** of baseline
+  drive force. At full 38% nitro, a further draft may supply at most 2%.
+  The actual granted drafting share appears in the expanded desktop
+  HUD. This is an arcade balancing rule, not physically measured engine
+  performance.
 - Expanded desktop HUD includes charge and active/cooling status in
   the existing speed row. Compact/touch HUD priority rows are unchanged.
 
