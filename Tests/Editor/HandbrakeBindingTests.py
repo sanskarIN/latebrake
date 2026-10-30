@@ -49,7 +49,7 @@ class HandbrakeBindingTests(unittest.TestCase):
                          'BrakeProfile.Braking', 'BrakeProfile.LateralGripRate',
                          'BrakeProfile.ForwardResistanceRate',
                          'FrameStableDampingRate(GripRate, DeltaSeconds)',
-                         'FrameStableDampingRate(BrakeRate, DeltaSeconds)'):
+                         'FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)'):
             self.assertIn(required, tick)
         self.assertLess(tick.index('SelectHandbrakeDriveProfile('),
                         tick.index('latebrake::StabilizeCornerThrottle('))
