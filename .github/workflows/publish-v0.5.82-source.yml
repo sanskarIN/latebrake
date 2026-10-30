@@ -36,6 +36,17 @@ jobs:
         run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
       - name: Explicitly check tire, nitro, slipstream and baseline racing policies
         run: ctest --test-dir Tests/Standalone/build -C Release -R "^(ArcadeTireCondition|ArcadeNitroBoost|SlipstreamDraftBoost|ArcadeBoostArbitration|HandbrakeDrivePolicy|ObservedBrakeDistance|FrameStableDamping|RaceProgress)$" --output-on-failure
+      # An absent targeted CTest is an error, not a green empty selection.
+      # This prevents publishing before the slipstream and stacking code
+      # is truly present in the independently qualified main revision.
+      - name: Require qualified tire model target
+        run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeTireCondition$" --no-tests=error --output-on-failure
+      - name: Require qualified nitro target
+        run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeNitroBoost$" --no-tests=error --output-on-failure
+      - name: Require qualified slipstream target
+        run: ctest --test-dir Tests/Standalone/build -C Release -R "^SlipstreamDraftBoost$" --no-tests=error --output-on-failure
+      - name: Require qualified combined-force target
+        run: ctest --test-dir Tests/Standalone/build -C Release -R "^ArcadeBoostArbitration$" --no-tests=error --output-on-failure
 
   editor-tests:
     name: Release Python/Unreal-source contracts (NO Unreal runtime)
