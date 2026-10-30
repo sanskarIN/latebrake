@@ -382,6 +382,19 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            // Observational chassis direction mismatch, not tire slip
+            // physics, race awards or a saved drifting leaderboard.
+            if (latebrake::CanAwardFinishedRace(Race) &&
+                Car->GetChassisSlipAngleMeter().GetAcceptedSamples() > 0)
+            {
+                const latebrake::ChassisSlipAngleMeter& Slip =
+                    Car->GetChassisSlipAngleMeter();
+                MenuLine(TEXT("CHASSIS SLIP ANGLE (EST, SESSION)"), true);
+                MenuLine(FString::Printf(
+                    TEXT("PEAK CHASSIS SLIP (EST) %.1f deg | HIGH-ANGLE %.1fs"),
+                    Slip.GetPeakAbsoluteDegrees(),
+                    Slip.GetHighAngleSeconds()));
+            }
             // G peaks are optional per-run world-velocity estimates,
             // never official lap, car performance, award or safety ratings.
             if (latebrake::CanAwardFinishedRace(Race) &&
@@ -873,6 +886,19 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Line(FString::Printf(
                     TEXT("CHASSIS G (EST)  LONG %+.2fg | LAT %+.2fg"),
                     G.GetLiveLongitudinalG(), G.GetLiveLateralG()), Primary);
+            }
+            // Optional signed direction-of-motion estimate from real
+            // chassis motion, never the player's steering command.
+            const latebrake::ChassisSlipAngleMeter& Slip =
+                Car->GetChassisSlipAngleMeter();
+            // Do not let optional extra telemetry consume the limited line
+            // budget on a 720p window before the essential lap timings.
+            if (Slip.HasLiveReading() && VerticalPlan.MaxTelemetryLines >= 28)
+            {
+                Line(FString::Printf(
+                    TEXT("CHASSIS SLIP (EST)  %+.1f deg | HIGH-ANGLE %.1fs"),
+                    Slip.GetLiveDegrees(), Slip.GetHighAngleSeconds()),
+                    Primary);
             }
             // Visually styled combo, never official race classification.
             const latebrake::DriftComboMeter& Drift =

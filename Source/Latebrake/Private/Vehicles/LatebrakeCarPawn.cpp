@@ -281,6 +281,7 @@ void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
     DrivingStats.Suspend();
     DriftMeter.Suspend();
     GForceMeter.Suspend();
+    SlipAngleMeter.Suspend();
     ClearDriverInputs();
     // A failed pause may keep Chaos simulating while race time is frozen.
     // Neutralize driver commands plus current momentum during menu/world
@@ -380,6 +381,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
         GForceMeter.Suspend();
+        SlipAngleMeter.Suspend();
         return;
     }
 
@@ -407,6 +409,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: physics velocity was nonfinite; clearing vehicle motion"));
         GForceMeter.Suspend();
+        SlipAngleMeter.Suspend();
         ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
@@ -428,6 +431,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+
+    // Observe the real chassis travel direction, not a requested steering
+    // angle or decorative wheel animation. Read-only session telemetry.
+    SlipAngleMeter.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(LongitudinalSpeed),
+        static_cast<double>(LateralSpeed)});
 
     // Read real valid signed chassis velocity and effective brake input,
     // never motor demand alone. Advisory decorative light intensities only.
@@ -656,6 +665,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     DrivingStats.Suspend();
     DriftMeter.Suspend();
     GForceMeter.Suspend();
+    SlipAngleMeter.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
     ApplyWheelVisualPose();

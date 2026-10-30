@@ -1021,6 +1021,18 @@ else()
 endif()
 add_test(NAME GhostSeparation COMMAND latebrake_ghost_separation_tests)
 
+# Read-only rigid-body travel direction relative to the car heading.
+add_executable(latebrake_chassis_slip_angle_meter_tests
+    ChassisSlipAngleMeterTests.cpp)
+target_include_directories(latebrake_chassis_slip_angle_meter_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_chassis_slip_angle_meter_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_chassis_slip_angle_meter_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_chassis_slip_angle_meter_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ChassisSlipAngleMeter COMMAND latebrake_chassis_slip_angle_meter_tests)
+
 # Source-only chassis lag-spike resistance shared by player and rival pawn.
 add_executable(latebrake_frame_stable_damping_tests FrameStableDampingTests.cpp)
 target_include_directories(latebrake_frame_stable_damping_tests PRIVATE ../../Source/Latebrake/Public)
