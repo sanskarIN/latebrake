@@ -707,19 +707,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // The same conservative impact-damage reduction applies to normal
     // motor, human-only nitro and qualified drafting. No separate boost
     // path may bypass it or exceed the existing final boost budget.
-    const float CombinedMotorScale = static_cast<float>(
-        Surface.MotorMultiplier * CollisionDamage.MotorMultiplier());
+    const float ImpactMotorScale = static_cast<float>(
+        CollisionDamage.MotorMultiplier());
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-            CombinedMotorScale);
+            static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale);
         // Preserve the baseline motor path; an active, human-only nitro
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(CombinedBoost.NitroExtra) *
-                CombinedMotorScale);
+                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale);
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
@@ -727,7 +727,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(DraftExtraForce) *
-                CombinedMotorScale);
+                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale);
         }
     }
     else if (!bEffectiveBraking)
