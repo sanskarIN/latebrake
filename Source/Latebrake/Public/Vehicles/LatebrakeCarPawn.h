@@ -14,6 +14,7 @@
 #include "Vehicles/HeldLookBackCamera.h"
 #include "Vehicles/SpeedReactiveCameraFov.h"
 #include "Vehicles/ArcadeTireCondition.h"
+#include "Vehicles/ArcadeNitroBoost.h"
 #include "Vehicles/WheelVisualMotion.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
@@ -60,7 +61,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); TireCondition.Reset(); BrakeDistance.Reset(); SlipstreamBoost.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); TireCondition.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -82,6 +83,7 @@ public:
     bool IsTouchThrottleActive() const { return TouchDrive.ThrottleActive(); }
     bool IsTouchBrakeActive() const { return TouchDrive.BrakeActive(); }
     bool IsHandbrakeHeld() const noexcept { return bHandbrakeHeld; }
+    const latebrake::ArcadeNitroBoost& GetNitroBoost() const noexcept { return NitroBoost; }
 
     // Physical placement must succeed before GameMode can commit its five-
     // second recovery charge. The Blueprint-compatible void API remains
@@ -141,6 +143,8 @@ private:
     void BrakeReleased();
     void HandbrakePressed();
     void HandbrakeReleased();
+    void NitroPressed();
+    void NitroReleased();
     void NeutralizeMotionWhenDrivingBlocked();
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);
@@ -194,6 +198,7 @@ private:
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bHandbrakeHeld = false;
+    float CurrentNitroSpeedCapScale = 1.f;
     latebrake::CameraViewCycle CameraViews;
     latebrake::HeldLookBackCamera LookBackCamera;
     latebrake::SpeedReactiveCameraFov ReactiveFov;
@@ -203,6 +208,7 @@ private:
     latebrake::ChassisSlipAngleMeter SlipAngleMeter;
     latebrake::ArcadeTireCondition TireCondition;
     latebrake::ObservedBrakeDistance BrakeDistance;
+    latebrake::ArcadeNitroBoost NitroBoost;
     latebrake::SlipstreamDraftBoost SlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
     latebrake::TouchDriveState TouchDrive;

@@ -273,6 +273,8 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     bBraking = false;
     bHandbrakeHeld = false;
     TireCondition.Suspend();
+    NitroBoost.Suspend();
+    CurrentNitroSpeedCapScale = 1.f;
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
     TouchDrive.Clear();
@@ -352,6 +354,31 @@ void ALatebrakeCarPawn::HandbrakeReleased()
     bHandbrakeHeld = false;
 }
 
+void ALatebrakeCarPawn::NitroPressed()
+{
+    // Only an actual, valid local human race driver may arm nitro.
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    const bool bEligible = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr &&
+        Mode && Mode->IsRaceStartGreen() &&
+        Mode->IsCircuitReadyForGameplay() &&
+        Mode->IsRestartPlacementReady() &&
+        !Mode->IsMenuOpen() &&
+        !UGameplayStatics::IsGamePaused(this) &&
+        !Mode->IsManualRacePauseActive() &&
+        !Mode->IsFocusLossGuardActive() &&
+        !Mode->GetRace().IsFinished() && IsRacePhysicsReady();
+    NitroBoost.Press(bEligible);
+}
+
+void ALatebrakeCarPawn::NitroReleased()
+{
+    // Released callbacks execute during pause so input cannot stay stuck.
+    NitroBoost.Release();
+}
+
 void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
@@ -422,6 +449,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
         TireCondition.Suspend();
+        NitroBoost.Suspend();
         return;
     }
 
@@ -461,6 +489,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
         BrakeDistance.Suspend();
+        NitroBoost.Suspend();
     SlipstreamBoost.Suspend();
         ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
@@ -518,6 +547,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float EffectiveThrottle = static_cast<float>(
         latebrake::StabilizeCornerThrottle(
             BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
+    // A finite, player-only boost modifies existing acceleration and speed
+    // cap; it never modifies checkpoints, rivals, rewards or race records.
+    // Steady-speed cap ramps avoid a velocity snap when a held boost ends.
+    const bool bHumanDriver = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr;
+    const latebrake::NitroDriveOutput NitroDrive = NitroBoost.Step(
+        static_cast<double>(DeltaSeconds), bHumanDriver,
+        bEffectiveBraking, static_cast<double>(EffectiveThrottle),
+        static_cast<double>(LongitudinalSpeed));
+    CurrentNitroSpeedCapScale = FMath::FInterpConstantTo(
+        CurrentNitroSpeedCapScale,
+        static_cast<float>(NitroDrive.SpeedCapMultiplier),
+        FMath::Min(DeltaSeconds, 0.1f), 0.24f);
     // Drafting must observe an actual ahead, aligned, moving rival and a
     // locally possessed human driver after all race/Chaos readiness gates.
     // Time Attack, missing/finished rival and failed physics give zero help.
@@ -573,6 +615,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
+        // Preserve the baseline motor path; an active, human-only nitro
+        // adds at most 38% bounded arcade acceleration on this same frame.
+        if (NitroDrive.Active)
+        {
+            Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
+                static_cast<float>(NitroDrive.ForceMultiplier - 1.0));
+        }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
         if (DraftExtraForce > 0.0)
@@ -618,9 +667,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(AssistedSteering));
     Chassis->AddTorqueInRadians(FVector(0.f, 0.f, TurnTorque));
 
-    if (Speed > MaxSpeed)
+    const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
+    if (Speed > ActiveSpeedCap)
     {
-        const FVector Limited = FlatVelocity.GetClampedToMaxSize(MaxSpeed);
+        const FVector Limited = FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap);
         Chassis->SetPhysicsLinearVelocity(FVector(Limited.X, Limited.Y, Velocity.Z));
     }
 }
@@ -834,6 +884,7 @@ void ALatebrakeCarPawn::RecoverTo(
 void ALatebrakeCarPawn::RecoverPressed()
 {
     HandbrakeReleased();
+    NitroReleased();
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->RecoverPlayer(this);
@@ -843,6 +894,7 @@ void ALatebrakeCarPawn::RecoverPressed()
 void ALatebrakeCarPawn::RestartPressed()
 {
     HandbrakeReleased();
+    NitroReleased();
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->RestartRace();
@@ -978,6 +1030,7 @@ void ALatebrakeCarPawn::ToggleBestLapGhost()
 
 void ALatebrakeCarPawn::TogglePause()
 {
+    NitroReleased();
     // The world may stop ticking immediately: clear the held brake before
     // GameMode attempts to pause or resume engine time.
     HandbrakeReleased();
@@ -1370,6 +1423,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& HandbrakeRelease = PlayerInputComponent->BindAction(
         TEXT("Handbrake"), IE_Released, this, &ALatebrakeCarPawn::HandbrakeReleased);
     HandbrakeRelease.bExecuteWhenPaused = true;
+    PlayerInputComponent->BindAction(TEXT("Nitro"), IE_Pressed, this, &ALatebrakeCarPawn::NitroPressed);
+    FInputActionBinding& NitroRelease = PlayerInputComponent->BindAction(
+        TEXT("Nitro"), IE_Released, this, &ALatebrakeCarPawn::NitroReleased);
+    NitroRelease.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
