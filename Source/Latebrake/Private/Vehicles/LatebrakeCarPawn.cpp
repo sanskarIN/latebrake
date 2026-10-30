@@ -274,6 +274,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     bHandbrakeHeld = false;
     TireCondition.Suspend();
     BrakeDistance.Suspend();
+    SlipstreamBoost.Suspend();
     TouchDrive.Clear();
     // Recovery, restart, focus loss and interrupted input must never
     // leave the camera facing backwards after the held key is gone.
@@ -291,6 +292,7 @@ void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
     GForceMeter.Suspend();
     SlipAngleMeter.Suspend();
     BrakeDistance.Suspend();
+    SlipstreamBoost.Suspend();
     ClearDriverInputs();
     // A failed pause may keep Chaos simulating while race time is frozen.
     // Neutralize driver commands plus current momentum during menu/world
@@ -418,6 +420,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
         BrakeDistance.Suspend();
+    SlipstreamBoost.Suspend();
         TireCondition.Suspend();
         return;
     }
@@ -458,6 +461,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
         BrakeDistance.Suspend();
+    SlipstreamBoost.Suspend();
         ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
@@ -514,6 +518,42 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float EffectiveThrottle = static_cast<float>(
         latebrake::StabilizeCornerThrottle(
             BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
+    // Drafting must observe an actual ahead, aligned, moving rival and a
+    // locally possessed human driver after all race/Chaos readiness gates.
+    // Time Attack, missing/finished rival and failed physics give zero help.
+    FVector RivalPosition = FVector::ZeroVector;
+    FVector RivalForward = FVector::ZeroVector;
+    FVector RivalVelocity = FVector::ZeroVector;
+    const bool bDraftTargetReady =
+        IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr &&
+        Mode->HasLocalPlayerDriver() &&
+        Mode->TryGetRivalDraftingState(
+            RivalPosition, RivalForward, RivalVelocity);
+    double DraftExtraForce = 0.0;
+    if (bDraftTargetReady)
+    {
+        const FVector Position = GetActorLocation();
+        const FVector Offset = RivalPosition - Position;
+        const double RivalSignedForwardSpeed =
+            FVector::DotProduct(RivalVelocity, RivalForward);
+        DraftExtraForce = SlipstreamBoost.Observe({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(LongitudinalSpeed),
+            RivalSignedForwardSpeed,
+            static_cast<double>(Forward.X), static_cast<double>(Forward.Y),
+            static_cast<double>(RivalForward.X),
+            static_cast<double>(RivalForward.Y),
+            static_cast<double>(Offset.X), static_cast<double>(Offset.Y),
+            static_cast<double>(Offset.Z),
+            static_cast<double>(EffectiveThrottle),
+            bEffectiveBraking, true
+        });
+    }
+    else
+    {
+        SlipstreamBoost.Suspend();
+    }
     // Advisory metrics only: no scoring, lap records or tire-forces use
     // these values. Invalid long frames are rejected by the policy.
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),
@@ -533,6 +573,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
+        // Preserve the unmodified base acceleration contract; bonus is
+        // additive and never exceeds six percent of positive motor demand.
+        if (DraftExtraForce > 0.0)
+        {
+            Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
+                static_cast<float>(DraftExtraForce));
+        }
     }
     else if (!bEffectiveBraking)
     {
@@ -734,6 +781,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     SlipAngleMeter.Suspend();
     TireCondition.Suspend();
     BrakeDistance.Suspend();
+    SlipstreamBoost.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
     ApplyWheelVisualPose();
