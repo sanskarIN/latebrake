@@ -69,6 +69,15 @@ class NitroBoostBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("NitroBoost.Suspend();", clear)
         self.assertIn("CurrentNitroSpeedCapScale = 1.f;", clear)
+        for entry, stop in (
+            ("RecoverPressed", "RestartPressed"),
+            ("RestartPressed", "ApplyCameraPreset"),
+            ("TogglePause", "TouchPressed"),
+        ):
+            section = self.pawn.split(
+                "void ALatebrakeCarPawn::" + entry + "()", 1
+            )[1].split("void ALatebrakeCarPawn::" + stop + "(", 1)[0]
+            self.assertIn("NitroReleased();", section)
         bind = self.pawn.split("void ALatebrakeCarPawn::SetupPlayerInputComponent(", 1)[1]
         self.assertIn('TEXT("Nitro"), IE_Pressed', bind)
         self.assertIn('TEXT("Nitro"), IE_Released', bind)
