@@ -83,11 +83,17 @@ int main()
     };
     for (const auto& sample : invalid)
     {
-        damage.Advance(0.05, true);
+        // Start with a fully armed, cooldown-free controller on EACH
+        // negative sample. Otherwise the previous hit cooldown could
+        // conceal a broken input validator and produce a false pass.
+        damage.Reset();
+        Check(damage.Advance(0.05, true), "invalid fixture is armed");
+        Check(damage.CanRecordImpact(), "invalid fixture not cooling down");
         const double before = damage.DamageFraction();
         Check(!damage.ObserveImpact(sample), "invalid impact rejected");
         Check(Near(damage.DamageFraction(), before),
               "invalid impact cannot mutate damage");
+        Check(damage.ImpactEventCount() == 0, "invalid cannot count impact");
     }
 
     Check(!damage.Advance(0.101, true), "long tick invalidates impact authority");
