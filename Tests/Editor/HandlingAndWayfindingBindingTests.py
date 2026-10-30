@@ -51,7 +51,7 @@ class HandlingAndWayfindingBindingTests(unittest.TestCase):
         self.assertLess(tick.index("if (!FMath::IsFinite(Speed)"),
                         tick.index("latebrake::StabilizeCornerThrottle("))
         self.assertLess(tick.index("latebrake::StabilizeCornerThrottle("),
-                        tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle)"))
+                        tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"))
         self.assertEqual(tick.count("static_cast<float>(Surface.MotorMultiplier)"), 3)
         self.assertNotIn("const float EffectiveThrottle = SmoothedThrottle;", tick)
 
