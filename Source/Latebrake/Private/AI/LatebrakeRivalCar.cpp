@@ -19,6 +19,7 @@ void ALatebrakeRivalCar::ResetPilot()
 {
     Route.Reset();
     FollowingBrakeHold.Reset();
+    GripPace.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -28,6 +29,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     // event or replay. The RaceProgress clock remains player-authoritative.
     Route.Configure(CheckpointCount, RequiredLaps);
     FollowingBrakeHold.Reset();
+    GripPace.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -47,6 +49,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
         FollowingBrakeHold.Reset();
+        GripPace.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -67,6 +70,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     if (Observation.NeedsRecovery)
     {
         FollowingBrakeHold.Reset();
+        GripPace.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
@@ -92,6 +96,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     if (Observation.Completed)
     {
         FollowingBrakeHold.Reset();
+        GripPace.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -99,11 +104,22 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     const latebrake::CircuitPoint NextTarget =
         latebrake::CircuitGate(Route.GetNextWaypoint());
-    const latebrake::PilotCommand Command = latebrake::AnticipateRivalCorner(
+    latebrake::PilotCommand Command = latebrake::AnticipateRivalCorner(
         latebrake::PlanRivalTurn(
             Position.X, Position.Y, Heading, FlatSpeed,
             NextTarget.X, NextTarget.Y),
         Route.GetNextWaypoint(), {Position.X, Position.Y}, FlatSpeed);
+
+    // Rival pace adapts to previous-tick real chassis slip, last valid
+    // grip condition and current steering demand. It may only throttle
+    // down or request braking; it cannot invent route or traffic state.
+    Command = GripPace.Apply(Command, {
+        static_cast<double>(DeltaSeconds), FlatSpeed,
+        static_cast<double>(FVector::DotProduct(
+            Velocity, GetActorRightVector())),
+        GetTireCondition().GripMultiplier(),
+        GetTireCondition().HasValidSample()
+    });
 
     // Plan the control for this physics tick, not one frame after applying
     // the previous command.
