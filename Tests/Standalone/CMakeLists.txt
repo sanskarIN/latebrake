@@ -200,6 +200,28 @@ else()
 endif()
 add_test(NAME ArcadeNitroBoost COMMAND latebrake_arcade_nitro_tests)
 
+# Geometrically qualified single-rival drafting boost: no Unreal SDK.
+add_executable(latebrake_slipstream_tests SlipstreamDraftBoostTests.cpp)
+target_include_directories(latebrake_slipstream_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_slipstream_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_slipstream_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_slipstream_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SlipstreamDraftBoost COMMAND latebrake_slipstream_tests)
+
+# Shared nitro/slipstream additive force budget with invalid-input gates.
+add_executable(latebrake_boost_arbitration_tests ArcadeBoostArbitrationTests.cpp)
+target_include_directories(latebrake_boost_arbitration_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_boost_arbitration_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_boost_arbitration_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_boost_arbitration_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ArcadeBoostArbitration COMMAND latebrake_boost_arbitration_tests)
+
 # A finger release, invalid movement or drag off GAS must drop the
 # already-smoothed motor/steering command, not only its touch ownership.
 add_executable(latebrake_touch_residual_safety_tests TouchResidualSafetyTests.cpp)
