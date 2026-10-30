@@ -33,6 +33,18 @@ else()
 endif()
 add_test(NAME ArcadeBrakeHeat COMMAND latebrake_arcade_brake_heat_tests)
 
+# Race-local hard wall/vehicle contacts; conservative bounded player/rival
+# damage arithmetic runs in C++20 without licensed Unreal components.
+add_executable(latebrake_arcade_collision_damage_tests ArcadeCollisionDamageTests.cpp)
+target_include_directories(latebrake_arcade_collision_damage_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_arcade_collision_damage_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_arcade_collision_damage_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_arcade_collision_damage_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ArcadeCollisionDamage COMMAND latebrake_arcade_collision_damage_tests)
+
 # Autonomous rival pace authority grounded in previously sampled tire
 # grip and actual lateral slip, independent of Unreal build/runtime.
 add_executable(latebrake_rival_grip_pace_tests RivalGripPaceTests.cpp)
