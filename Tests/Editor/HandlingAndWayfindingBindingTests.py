@@ -43,7 +43,7 @@ class HandlingAndWayfindingBindingTests(unittest.TestCase):
             "static_cast<double>(RawThrottle)",
             "BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade",
             "const float EffectiveThrottle =",
-            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);",
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
         ):
             self.assertIn(text, tick)
         self.assertLess(tick.index("SelectHandbrakeDriveProfile("),
@@ -52,6 +52,7 @@ class HandlingAndWayfindingBindingTests(unittest.TestCase):
                         tick.index("latebrake::StabilizeCornerThrottle("))
         self.assertLess(tick.index("latebrake::StabilizeCornerThrottle("),
                         tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle)"))
+        self.assertEqual(tick.count("static_cast<float>(Surface.MotorMultiplier)"), 3)
         self.assertNotIn("const float EffectiveThrottle = SmoothedThrottle;", tick)
 
     def test_corner_assist_preserves_brake_reverse_and_validates_motion(self):
