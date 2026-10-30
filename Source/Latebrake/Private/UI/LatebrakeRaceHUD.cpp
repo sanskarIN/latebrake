@@ -630,8 +630,17 @@ void ALatebrakeRaceHUD::DrawHUD()
         : FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH());
     // One existing priority row; no extra line competes with Android controls
     // or authoritative time/checkpoint status on narrow viewports.
-    Line(Car->IsHandbrakeHeld() && !bCompact
-        ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine, Primary);
+    // Keep boost meter in the speed row; compact touch layouts preserve
+    // their existing gate/time priority with no new optional overlays.
+    const FString NitroLabel = !bCompact
+        ? FString::Printf(TEXT(" | NITRO %.0f%% %s"),
+            Car->GetNitroBoost().ChargeFraction() * 100.0,
+            Car->GetNitroBoost().IsActive() ? TEXT("ACTIVE") :
+                (Car->GetNitroBoost().CooldownRemainingSeconds() > 0.0
+                    ? TEXT("COOL") : TEXT("B HOLD")))
+        : FString();
+    Line((Car->IsHandbrakeHeld() && !bCompact
+        ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine) + NitroLabel, Primary);
 
     // Always prioritize authoritative lap/next gate and race clock above
     // optional proximity, wayfinding and driving telemetry on small phones.
