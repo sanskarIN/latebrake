@@ -2,7 +2,9 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.82](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82): SOURCE-ONLY PRE-RELEASE — NOT A PLAYABLE GAME.** Its exact-source release adds race-local arcade tire temperature/wear, human rechargeable nitro, live-rival slipstream and a shared **40% cap** on their simultaneous extra motor force. Windows/macOS/Linux portable C++20 and Unreal-source contracts are not real UE 5.8/UHT compilation. **No verified Windows EXE, Android APK/AAB, authentic cooked UE circuit or installed game is included.** GitHub source archives are not installers. [Release details](docs/releases/v0.5.82.md) · [Playable qualification gate](https://github.com/sanskarIN/latebrake/issues/148).
+> **Post-publication update for [v0.5.83](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** This immutable source snapshot adds physically observed grip-aware rival corner pacing with bounded brake hysteresis, conservative invalid-sample handling and no change to checkpoint authority, steering, records or saved progression. Its v0.5.82 predecessor added tire condition, human nitro, and real-rival drafting. **No compiled Windows EXE, Android APK/AAB, licensed UE 5.8/UHT build, cooked original circuit or installed gameplay has been verified.** GitHub source archives are not installers. [Rival pace QA](docs/RIVAL_GRIP_PACE_QA.md) · [v0.5.83 source notes](docs/releases/v0.5.83.md).
+
+**v0.5.82 source-only milestone:** race-local arcade tire condition, rechargeable human nitro, measured real-rival slipstream and shared 40% boost cap. [v0.5.82 notes](docs/releases/v0.5.82.md).
 
 **v0.5.76 published source feature:** the prototype forward **0–5 km/h launch estimate** samples real player chassis motion against the authoritative post-GO race clock. It is optional run-local HUD/Results feedback, **not** human reaction time and never an award, save, record or claimed playable build. [Launch QA and limitations](docs/LAUNCH_SPEED_QA.md).
 
