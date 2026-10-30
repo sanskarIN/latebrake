@@ -272,6 +272,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedSteering = 0.f;
     bBraking = false;
     bHandbrakeHeld = false;
+    BrakeDistance.Suspend();
     TouchDrive.Clear();
     // Recovery, restart, focus loss and interrupted input must never
     // leave the camera facing backwards after the held key is gone.
@@ -288,6 +289,7 @@ void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
     DriftMeter.Suspend();
     GForceMeter.Suspend();
     SlipAngleMeter.Suspend();
+    BrakeDistance.Suspend();
     ClearDriverInputs();
     // A failed pause may keep Chaos simulating while race time is frozen.
     // Neutralize driver commands plus current momentum during menu/world
@@ -414,6 +416,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         ApplyWheelVisualPose();
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
+        BrakeDistance.Suspend();
         return;
     }
 
@@ -452,6 +455,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: physics velocity was nonfinite; clearing vehicle motion"));
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
+        BrakeDistance.Suspend();
         ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
@@ -484,6 +488,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     SlipAngleMeter.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
         static_cast<double>(LateralSpeed)});
+    // Advisory, from actual consecutive signed-forward chassis motion
+    // while braking. A single speed or pressed BRAKE command is insufficient.
+    BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(Speed),
+        static_cast<double>(LongitudinalSpeed), bEffectiveBraking});
 
     // Read real valid signed chassis velocity and effective brake input,
     // never motor demand alone. Advisory decorative light intensities only.
@@ -713,6 +722,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     DriftMeter.Suspend();
     GForceMeter.Suspend();
     SlipAngleMeter.Suspend();
+    BrakeDistance.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
     ApplyWheelVisualPose();

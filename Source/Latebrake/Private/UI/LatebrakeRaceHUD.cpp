@@ -724,6 +724,20 @@ void ALatebrakeRaceHUD::DrawHUD()
             Primary);
     }
 
+    // Measured in-game stopping projection, only while consecutive
+    // validated chassis samples show sustained forward deceleration.
+    // This is observational and never drives physics, rewards or timing.
+    if (!bCompact && Car->GetObservedBrakeDistance().HasLiveEstimate())
+    {
+        const double BrakeMeters =
+            Car->GetObservedBrakeDistance().GetDistanceMeters();
+        Line(Mode->UsesMilesPerHour()
+            ? FString::Printf(TEXT("BRAKE DIST EST %.0f ft (CURRENT RATE)"),
+                BrakeMeters * 3.280839895)
+            : FString::Printf(TEXT("BRAKE DIST EST %.0f m (CURRENT RATE)"),
+                BrakeMeters), Primary);
+    }
+
     // The warning is pure HUD feedback. It must reset on pawn replacement,
     // checkpoint-session boundary and teleport, and must never influence
     // the real ordered checkpoint or award system.
