@@ -65,9 +65,10 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
         self.assertIn("SurfaceTraction.Suspend();", clear)
         self.assertIn("SurfaceTraction.Suspend();", self.pawn)
         self.assertIn("ClearDriverInputs();", self.pawn)
-        self.assertIn("void ALatebrakeCarPawn::TryRecoverTo(", self.pawn) if (
-            "void ALatebrakeCarPawn::TryRecoverTo(" in self.pawn
-        ) else self.assertIn("bool ALatebrakeCarPawn::TryRecoverTo(", self.pawn)
+        self.assertIn("bool ALatebrakeCarPawn::TryRecoverTo(", self.pawn)
+        self.assertIn("OFF-PAVEMENT TRACTION", self.hud)
+        self.assertIn("GetSurfaceTraction().IsOffPavement()", self.hud)
+        self.assertIn("VerticalPlan.MaxTelemetryLines >= 28", self.hud)
 
     def test_paved_geometry_and_arbitrary_motor_boosts_not_in_policy(self):
         for marker in ("#include \"Track/CircuitLayout.h\"",
