@@ -66,3 +66,23 @@ control path. These are not Chaos physics simulations.
 This is **source-only** until UE compile, map cook and installed-device
 testing are documented on
 [playable gate #148](https://github.com/sanskarIN/latebrake/issues/148).
+
+
+## Cross-policy composition regression (next source development cycle)
+
+The additional `RivalRacecraftComposition` portable CTest checks the same
+source decision order as the physical rival's Tick implementation:
+route/corner planning → actual observed grip/sideways velocity →
+player-lane traffic awareness → short traffic-brake hold → motor command.
+
+The test covers independent corner and traffic braking, eventual brake-hold
+expiry, checkpoint arrival authority, missing tire/player measurements,
+nonfinite frame time and 100,000 bounded, consecutive numeric frames.
+Its Python source binding companion checks that the Unreal AI pawn still
+calls the policies in the expected order and preserves existing steering.
+
+The fixture does **not** render or run a vehicle, calculate actual Chaos
+contact, qualify road surface grip, prove the automated racer can overtake
+or verify checkpoint/collision gameplay. A licensed UE 5.8 build and
+installed Windows/Android driving assessment are required before a
+playable, stable, or competition-ready claim.

@@ -33,6 +33,18 @@ else()
 endif()
 add_test(NAME RivalGripPace COMMAND latebrake_rival_grip_pace_tests)
 
+# Test the actual composition order of route/grip/traffic/brake-hold
+# policies with safe numerical fixtures; no Unreal runtime required.
+add_executable(latebrake_rival_racecraft_composition_tests RivalRacecraftCompositionTests.cpp)
+target_include_directories(latebrake_rival_racecraft_composition_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_racecraft_composition_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_racecraft_composition_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_racecraft_composition_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalRacecraftComposition COMMAND latebrake_rival_racecraft_composition_tests)
+
 add_executable(latebrake_pilot_tests RivalPilotTests.cpp)
 target_include_directories(latebrake_pilot_tests PRIVATE ../../Source/Latebrake/Public)
 target_compile_features(latebrake_pilot_tests PRIVATE cxx_std_20)
