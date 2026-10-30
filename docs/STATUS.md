@@ -5,6 +5,11 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Next-cycle arcade nitro boost — source candidate (unreleased)
+
+- Local human B/gamepad stick-click input requests a bounded burst using real positive chassis speed and validated forward throttle. A finite run-local energy/heat policy includes regeneration, heat cutoff, fresh-press rearming and cooldown. The existing single rigid-body acceleration and target speed cap are adjusted; race authority, credits, records, rival AI and saved progress are unchanged.
+- Release, menu, focus interruption, pause, invalid physics, braking and recovery deny active boost. Compact mobile HUD adds no new control region; real UE 5.8 gameplay, pad feel, speed-cap transitions and native packaging remain unverified. [Nitro QA](NITRO_BOOST_QA.md).
+
 ## Next-cycle observed braking distance — source candidate (unreleased)
 
 - Real Chaos planar/forward speed pairs estimate only the current in-game stopping distance while the player is demonstrably braking; do not infer it from command inputs, fixed friction or rewards. The optional desktop HUD follows current speed-unit settings.
