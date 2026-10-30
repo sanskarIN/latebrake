@@ -758,10 +758,11 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     // Optional, verified human-only aerodynamic *arcade* gameplay hint;
     // keep compact touch layouts focused on authoritative race status.
-    if (!bCompact && Car->GetSlipstreamBoost().IsActive())
+    if (!bCompact && Car->GetSlipstreamBoost().IsActive() &&
+        Car->GetAppliedDraftBoostFraction() > 0.f)
     {
         Line(FString::Printf(TEXT("SLIPSTREAM +%.1f%% DRIVE"),
-            Car->GetSlipstreamBoost().ExtraForce() * 100.0), Primary);
+            Car->GetAppliedDraftBoostFraction() * 100.0), Primary);
     }
 
     // The warning is pure HUD feedback. It must reset on pawn replacement,
