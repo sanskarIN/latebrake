@@ -564,8 +564,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(GetActorRotation().Yaw), bEffectiveBraking});
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
-        Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-            static_cast<float>(NitroDrive.ForceMultiplier));
+        Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);
+        // Preserve the baseline motor path; an active, human-only nitro
+        // adds at most 38% bounded arcade acceleration on this same frame.
+        if (NitroDrive.Active)
+        {
+            Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
+                static_cast<float>(NitroDrive.ForceMultiplier - 1.0));
+        }
     }
     else if (!bEffectiveBraking)
     {
