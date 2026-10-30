@@ -36,7 +36,7 @@ multiplayer positioning or a source of official race results.
   share (as little as 2% when nitro grants its full 38%). The HUD shows
   the **actually granted** drafting percentage, not the unrestricted
   geometric eligibility estimate.
-- [Cross-mechanic budget tests](../Tests/Standalone/ArcadeBoostArbitrationTests.cpp)
+- [Cross-mechanic budget tests](https://github.com/sanskarIN/latebrake/blob/main/Tests/Standalone/ArcadeBoostArbitrationTests.cpp)
   reject nonfinite inputs and excessive additive force.
 
 - An optional **SLIPSTREAM** active readout appears only in the
