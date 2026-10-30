@@ -5,6 +5,12 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Next-cycle observed braking distance — source candidate (unreleased)
+
+- Real Chaos planar/forward speed pairs estimate only the current in-game stopping distance while the player is demonstrably braking; do not infer it from command inputs, fixed friction or rewards. The optional desktop HUD follows current speed-unit settings.
+- Reject single samples, insufficient deceleration duration, nonfinite speeds, reverse/slide, collisions and frame hitches. Reset on brake release, pause, focus loss, recovery or restart. This is a nonauthoritative visual advisory, not a driving safety guarantee.
+- Strict C++20 policy tests, Python source bindings and [braking distance QA](OBSERVED_BRAKE_DISTANCE_QA.md) qualify source behavior only; licensed UE compilation and installed hardware tests remain outstanding.
+
 ## Next-cycle human handbrake — source candidate (unreleased)
 
 - Separate held Left Shift/right-stick-click prototype handbrake, local human only: suppresses motor request, lowers lateral rigid-body damping to encourage slides, applies bounded forward resistance, and preserves stronger service BRAKE when both are held.
