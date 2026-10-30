@@ -625,9 +625,13 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Event->Round + 1), Primary);
         }
     }
-    Line(Mode->UsesMilesPerHour()
+    const FString SpeedLine = Mode->UsesMilesPerHour()
         ? FString::Printf(TEXT("SPEED  %.0f mph"), Car->GetSpeedKmH() * 0.621371f)
-        : FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH()), Primary);
+        : FString::Printf(TEXT("SPEED  %.0f km/h"), Car->GetSpeedKmH());
+    // One existing priority row; no extra line competes with Android controls
+    // or authoritative time/checkpoint status on narrow viewports.
+    Line(Car->IsHandbrakeHeld() && !bCompact
+        ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine, Primary);
 
     // Always prioritize authoritative lap/next gate and race clock above
     // optional proximity, wayfinding and driving telemetry on small phones.

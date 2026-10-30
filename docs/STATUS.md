@@ -5,6 +5,12 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Next-cycle human handbrake — source candidate (unreleased)
+
+- Separate held Left Shift/right-stick-click prototype handbrake, local human only: suppresses motor request, lowers lateral rigid-body damping to encourage slides, applies bounded forward resistance, and preserves stronger service BRAKE when both are held.
+- Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
+- Portable C++20 policy regression and Unreal-source binding checks are not licensed UE 5.8 compile or installed Win64/Android driving evidence. [Handbrake QA](HANDBRAKE_QA.md).
+
 ## v0.5.80 published source-only pre-release — rival, stability and cameras
 
 - Portable, frame-time-bounded resistance handles braking and grip on long frames without oversized impulses. Rival following uses signed forward closing speed with guarded time-to-contact and bounded brake hold.

@@ -39,11 +39,15 @@ class HandlingAndWayfindingBindingTests(unittest.TestCase):
             "const float LongitudinalSpeed =",
             "const float LateralSpeed =",
             "latebrake::StabilizeCornerThrottle(",
-            "RawThrottle, LongitudinalSpeed, LateralSpeed, bArcade",
+            "SelectHandbrakeDriveProfile(",
+            "static_cast<double>(RawThrottle)",
+            "BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade",
             "const float EffectiveThrottle =",
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);",
         ):
             self.assertIn(text, tick)
+        self.assertLess(tick.index("SelectHandbrakeDriveProfile("),
+                        tick.index("latebrake::StabilizeCornerThrottle("))
         self.assertLess(tick.index("if (!FMath::IsFinite(Speed)"),
                         tick.index("latebrake::StabilizeCornerThrottle("))
         self.assertLess(tick.index("latebrake::StabilizeCornerThrottle("),
