@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.84](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.84), **source only**, zero runnable assets (tag and release independently verified) |
-| Latest source-development milestone | **v0.5.84 published source-only milestone at `fa884831fbddfd7ef30500da0fdf321a5c9a6278`:** observed player/rival chassis XY location gates bounded off-pavement motor/nitro/drafting (78%) and lateral damping (72%) with short frame-independent hysteresis. **No Unreal UHT compilation, original cooked circuit, installed Win64/Android game or physical driving QA has been verified.** |
+| Latest published GitHub pre-release | [v0.5.85](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85), **source only**, zero runnable assets (**pending independent publication verification before this documentation merges**) |
+| Latest source-development milestone | **v0.5.85 source-only candidate at `d162802425de7953d8156eb74a4893b9c7e5d033`:** shared player/rival bounded service-brake heat, collision-impulse damage and preserved off-pavement traction/nitro/drafting force safeguards. **No UE/UHT compilation, original cooked circuit, installed Win64/Android game or physical driving QA has been verified.** |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
