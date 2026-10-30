@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The latest published GitHub tag is **v0.5.80**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The latest published GitHub tag is **v0.5.83**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current state:** [v0.5.80](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80) is the latest **source-only pre-release**, independently qualified at commit `38ca21ccca3ddaaba4002991f9688b4c575a4e3b`. The snapshot adds bounded chassis damping, predictive rival following, stronger Android controls, ghost feedback, measured chassis slip angle and held rear-view camera. It has **zero executable game assets**. Genuine Unreal 5.8/UHT compilation, original cooked circuit, installed Win64/Android games and hardware QA are still outstanding.
+**Current source release:** [v0.5.83](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83) is a **source-only pre-release** independently published at source commit `a88f4f16944e00441c659678fba12db1df425ae7`, after the confirmed asset-free v0.5.82 tag. Grip-aware autonomous corner pacing is added without changing race timing or rewards. It is confirmed as an asset-free GitHub pre-release. Genuine UE 5.8/UHT compilation, circuit cooking, Win64/Android packaging and installed QA are outstanding.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 
@@ -13,6 +13,9 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.83 | [Release notes](releases/v0.5.83.md) |
+| v0.5.82 | [Release notes](releases/v0.5.82.md) |
+| v0.5.81 | [Release notes](releases/v0.5.81.md) |
 | v0.5.80 | [Release notes](releases/v0.5.80.md) |
 | v0.5.79 | [Release notes](releases/v0.5.79.md) |
 | v0.5.78 | [Release notes](releases/v0.5.78.md) |

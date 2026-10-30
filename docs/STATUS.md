@@ -1,43 +1,43 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-30
-**Latest published milestone:** [v0.5.80 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80), qualified at immutable commit `38ca21ccca3ddaaba4002991f9688b4c575a4e3b` (zero compiled game assets).
+**Latest published milestone:** [v0.5.83 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83), independently published and verified at immutable commit `a88f4f16944e00441c659678fba12db1df425ae7` with zero compiled game assets. The tag, pre-release status and asset count were checked against GitHub. The predecessor [v0.5.82](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82) is confirmed source-only at `1a7754761ff11675439d82c43e27a85269dcdeee`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Next-cycle arcade nitro boost — source candidate (unreleased)
+## v0.5.82 human nitro — source-only release (not installed gameplay)
 
 - Local human B/gamepad stick-click input requests a bounded burst using real positive chassis speed and validated forward throttle. A finite run-local energy/heat policy includes regeneration, heat cutoff, fresh-press rearming and cooldown. The existing single rigid-body acceleration and target speed cap are adjusted; race authority, credits, records, rival AI and saved progress are unchanged.
 - Release, menu, focus interruption, pause, invalid physics, braking and recovery deny active boost. Compact mobile HUD adds no new control region; real UE 5.8 gameplay, pad feel, speed-cap transitions and native packaging remain unverified. [Nitro QA](NITRO_BOOST_QA.md).
 
-## Next-cycle observed braking distance — source candidate (unreleased)
+## v0.5.81 observed braking distance — published source-only
 
 - Real Chaos planar/forward speed pairs estimate only the current in-game stopping distance while the player is demonstrably braking; do not infer it from command inputs, fixed friction or rewards. The optional desktop HUD follows current speed-unit settings.
 - Reject single samples, insufficient deceleration duration, nonfinite speeds, reverse/slide, collisions and frame hitches. Reset on brake release, pause, focus loss, recovery or restart. This is a nonauthoritative visual advisory, not a driving safety guarantee.
 - Strict C++20 policy tests, Python source bindings and [braking distance QA](OBSERVED_BRAKE_DISTANCE_QA.md) qualify source behavior only; licensed UE compilation and installed hardware tests remain outstanding.
 
-## Next-cycle human handbrake — source candidate (unreleased)
+## v0.5.81 human handbrake — published source-only
 
 - Separate held Left Shift/right-stick-click prototype handbrake, local human only: suppresses motor request, lowers lateral rigid-body damping to encourage slides, applies bounded forward resistance, and preserves stronger service BRAKE when both are held.
 - Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
 - Portable C++20 policy regression and Unreal-source binding checks are not licensed UE 5.8 compile or installed Win64/Android driving evidence. [Handbrake QA](HANDBRAKE_QA.md).
 
-## Next-cycle AI grip-aware corner pace — source candidate (unreleased)
+## v0.5.83 AI grip-aware corner pace — source-only release
 
 - The physical autonomous rival reads its previous valid measured tire grip and real planar/lateral Chaos chassis motion. A bounded corner policy reduces throttle or requests braking under measured turn/slip risk, with a 0.12s hold to avoid brake chatter. It cannot raise throttle, steer, modify route progression or bypass player-aware traffic braking.
 - Race reset, paused/invalid physics, route completion and recovery clear transient pace state; standalone C++20 and Python source-binding tests check the race pipeline. This remains source-only pending real UE 5.8/UHT and installed AI gameplay tests. [Grip pace QA](RIVAL_GRIP_PACE_QA.md).
 
-## Next-cycle combined acceleration budget — source candidate (unreleased)
+## v0.5.82 combined arcade acceleration budget — source-only
 
 - Concurrent local nitro and verified rival slipstream share a strictly bounded 40% maximum additive motor-force budget. Full nitro priority leaves no more than 2% simultaneous draft acceleration; without nitro, earned drafting can supply up to 6%. Malformed/inconsistent allocations fail closed.
 - A portable C++20 production allocator, stress regressions and Unreal-source binding tests verify the code. The expanded desktop HUD shows only the *actually allocated* draft share. This does not qualify UE compilation or real installed gameplay; see [drafting QA](SLIPSTREAM_DRAFT_QA.md).
 
-## Next-cycle real-rival slipstream drafting — source candidate (unreleased)
+## v0.5.82 real-rival slipstream drafting — source-only
 
 - Human-only sustained geometry and validated signed moving-chassis speeds can provide a bounded 0–6% additional force to existing motor acceleration while trailing a physically ready AI rival. Countdown, reverse, Time Attack, pause, finish, missing/stale targets and invalid Chaos inputs cannot qualify. The original motor, maximum speed clamp, lap/time awards, saves and AI authority stay unchanged.
 - Portable C++20 geometry tests, Python UE source bindings and [slipstream QA](SLIPSTREAM_DRAFT_QA.md) are not Unreal compilation, genuine map cooking or installed gameplay evidence.
 
-## Next-cycle arcade tire wear and temperature — source candidate (unreleased)
+## v0.5.82 arcade tire wear and temperature — source-only
 
 - Both physical human and rival pawns use the same finite, frame-bounded chassis-derived condition policy. Lateral slip and effective braking slowly add simulated heat and wear; the existing lateral damping rate is scaled to at least 68% of its configured value, never made nonfinite or negative.
 - A new race resets both drivers; a recovery/pause cannot repair worn tires. Expanded desktop HUD displays grip and wear, but compact Android UI remains unchanged. This is **not** actual rubber physics, a pit-stop feature or a proved UE gameplay mechanic. [Tire condition QA](ARCADE_TIRE_CONDITION_QA.md).
