@@ -764,6 +764,7 @@ void ALatebrakeCarPawn::RecoverTo(
 
 void ALatebrakeCarPawn::RecoverPressed()
 {
+    HandbrakeReleased();
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->RecoverPlayer(this);
@@ -772,6 +773,7 @@ void ALatebrakeCarPawn::RecoverPressed()
 
 void ALatebrakeCarPawn::RestartPressed()
 {
+    HandbrakeReleased();
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->RestartRace();
@@ -907,6 +909,9 @@ void ALatebrakeCarPawn::ToggleBestLapGhost()
 
 void ALatebrakeCarPawn::TogglePause()
 {
+    // The world may stop ticking immediately: clear the held brake before
+    // GameMode attempts to pause or resume engine time.
+    HandbrakeReleased();
     // World pause can stop Tick; restore front view immediately, not one
     // possibly dropped frame after the menu takes input ownership.
     LookBackReleased();
