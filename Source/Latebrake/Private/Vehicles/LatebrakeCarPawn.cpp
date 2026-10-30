@@ -4,6 +4,7 @@
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/FrameStableDamping.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
+#include "Vehicles/ArcadeBoostArbitration.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/DriveAxisDeadzone.h"
@@ -275,6 +276,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     TireCondition.Suspend();
     NitroBoost.Suspend();
     CurrentNitroSpeedCapScale = 1.f;
+    CurrentDraftAppliedFraction = 0.f;
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
     TouchDrive.Clear();
@@ -447,9 +449,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
         BrakeDistance.Suspend();
-    SlipstreamBoost.Suspend();
+        SlipstreamBoost.Suspend();
         TireCondition.Suspend();
         NitroBoost.Suspend();
+        CurrentDraftAppliedFraction = 0.f;
         return;
     }
 
@@ -596,6 +599,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         SlipstreamBoost.Suspend();
     }
+    // Both independent arcade effects share one final bounded motor-force
+    // budget. Charge-consuming nitro gets first priority.
+    const latebrake::ArcadeBoostAllocation CombinedBoost =
+        latebrake::AllocateArcadeBoost(
+            NitroDrive.ForceMultiplier, DraftExtraForce, NitroDrive.Active);
+    DraftExtraForce = CombinedBoost.DraftExtra;
+    CurrentDraftAppliedFraction = static_cast<float>(DraftExtraForce);
     // Advisory metrics only: no scoring, lap records or tire-forces use
     // these values. Invalid long frames are rejected by the policy.
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),
@@ -620,7 +630,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         if (NitroDrive.Active)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-                static_cast<float>(NitroDrive.ForceMultiplier - 1.0));
+                static_cast<float>(CombinedBoost.NitroExtra));
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
