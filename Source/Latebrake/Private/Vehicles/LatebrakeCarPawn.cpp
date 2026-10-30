@@ -272,6 +272,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedSteering = 0.f;
     bBraking = false;
     bHandbrakeHeld = false;
+    TireCondition.Suspend();
     NitroBoost.Suspend();
     CurrentNitroSpeedCapScale = 1.f;
     BrakeDistance.Suspend();
@@ -444,6 +445,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
         BrakeDistance.Suspend();
+        TireCondition.Suspend();
         NitroBoost.Suspend();
         return;
     }
@@ -471,7 +473,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const bool bEffectiveBraking = BrakeProfile.Braking;
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
-    const float GripRate = static_cast<float>(BrakeProfile.LateralGripRate);
+    float GripRate = static_cast<float>(BrakeProfile.LateralGripRate);
     const float BrakeRate = static_cast<float>(BrakeProfile.ForwardResistanceRate);
 
     const FVector Forward = GetActorForwardVector();
@@ -517,6 +519,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     SlipAngleMeter.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
         static_cast<double>(LateralSpeed)});
+    // Chassis-derived arcade grip condition shared by human and rival.
+    // The source policy rejects nonfinite physics and frame hitches.
+    TireCondition.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(Speed),
+        static_cast<double>(LateralSpeed), bEffectiveBraking, true});
+    // Scale the normal grip policy before frame-stable resistance, so
+    // the established force-bound contract stays the final authority.
+    GripRate *= static_cast<float>(TireCondition.GripMultiplier());
     // Advisory, from actual consecutive signed-forward chassis motion
     // while braking. A single speed or pressed BRAKE command is insufficient.
     BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
@@ -772,6 +782,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     DriftMeter.Suspend();
     GForceMeter.Suspend();
     SlipAngleMeter.Suspend();
+    TireCondition.Suspend();
     BrakeDistance.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();

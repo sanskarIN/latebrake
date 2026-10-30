@@ -119,6 +119,7 @@ nav:
       - Chassis G-force telemetry QA: VEHICLE_G_FORCE_QA.md
       - Next-gate guidance QA: NEXT_GATE_GUIDANCE_QA.md
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
+      - Arcade tire condition QA: ARCADE_TIRE_CONDITION_QA.md
       - Rival player-traffic awareness QA: RIVAL_TRAFFIC_QA.md
       - Off-track and AI approach QA: OFF_TRACK_AND_RIVAL_APPROACH_QA.md
       - Rival proximity HUD QA: RIVAL_PROXIMITY_QA.md

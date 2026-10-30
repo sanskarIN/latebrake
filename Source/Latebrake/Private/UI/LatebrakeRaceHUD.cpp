@@ -747,6 +747,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                 BrakeMeters), Primary);
     }
 
+    // Prototype chassis-based tire condition: no tire sensor or certified
+    // physical compound model. Preserve compact mobile gate/time priority.
+    if (!bCompact && Car->GetTireCondition().HasValidSample())
+    {
+        Line(FString::Printf(TEXT("ARCADE GRIP %.0f%% | TIRE WEAR %.0f%%"),
+            Car->GetTireCondition().GripMultiplier() * 100.0,
+            Car->GetTireCondition().WearFraction() * 100.0), Primary);
+    }
+
     // The warning is pure HUD feedback. It must reset on pawn replacement,
     // checkpoint-session boundary and teleport, and must never influence
     // the real ordered checkpoint or award system.
