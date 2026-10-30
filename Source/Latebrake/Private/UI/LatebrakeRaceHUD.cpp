@@ -756,6 +756,15 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetTireCondition().WearFraction() * 100.0), Primary);
     }
 
+    // Optional, verified human-only aerodynamic *arcade* gameplay hint;
+    // keep compact touch layouts focused on authoritative race status.
+    if (!bCompact && Car->GetSlipstreamBoost().IsActive() &&
+        Car->GetAppliedDraftBoostFraction() > 0.f)
+    {
+        Line(FString::Printf(TEXT("SLIPSTREAM +%.1f%% DRIVE"),
+            Car->GetAppliedDraftBoostFraction() * 100.0), Primary);
+    }
+
     // The warning is pure HUD feedback. It must reset on pawn replacement,
     // checkpoint-session boundary and teleport, and must never influence
     // the real ordered checkpoint or award system.

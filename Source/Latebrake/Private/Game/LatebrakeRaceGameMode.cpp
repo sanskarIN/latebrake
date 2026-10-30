@@ -1190,6 +1190,33 @@ bool ALatebrakeRaceGameMode::TryGetRivalRadarPosition(FVector& OutPosition) cons
     return true;
 }
 
+bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
+    FVector& OutPosition, FVector& OutForward, FVector& OutVelocity) const
+{
+    // Source-only physics observation: a stale, missing, finished-route or
+    // unhealthy rival is never a valid aerodynamic target.
+    if (!IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady() ||
+        RivalCar->HasCompletedRoute() || Race.IsFinished())
+    {
+        return false;
+    }
+    const FVector Position = RivalCar->GetActorLocation();
+    const FVector Forward = RivalCar->GetActorForwardVector();
+    const FVector Velocity = RivalCar->GetVelocity();
+    if (!FMath::IsFinite(Position.X) || !FMath::IsFinite(Position.Y) ||
+        !FMath::IsFinite(Position.Z) ||
+        !FMath::IsFinite(Forward.X) || !FMath::IsFinite(Forward.Y) ||
+        !FMath::IsFinite(Velocity.X) || !FMath::IsFinite(Velocity.Y) ||
+        !FMath::IsFinite(Velocity.Z))
+    {
+        return false;
+    }
+    OutPosition = Position;
+    OutForward = Forward;
+    OutVelocity = Velocity;
+    return true;
+}
+
 int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps() const
 {
     return IsValid(RivalCar) ? RivalCar->GetApproximateLaps() : 0;
