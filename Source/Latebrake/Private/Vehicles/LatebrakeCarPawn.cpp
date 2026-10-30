@@ -60,6 +60,9 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     Chassis->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     Chassis->SetCollisionObjectType(ECC_Pawn);
     Chassis->SetSimulatePhysics(true);
+    // Actual Chaos chassis contacts drive the bounded race-local damage
+    // policy; decorative meshes cannot report collision damage.
+    Chassis->SetNotifyRigidBodyCollision(true);
     Chassis->SetEnableGravity(true);
     Chassis->SetLinearDamping(0.5f);
     Chassis->SetAngularDamping(7.f);
@@ -175,6 +178,7 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
 void ALatebrakeCarPawn::BeginPlay()
 {
     Super::BeginPlay();
+    Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
         this, &ALatebrakeCarPawn::HandleAppFocusLost);
@@ -186,6 +190,10 @@ void ALatebrakeCarPawn::BeginPlay()
 
 void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    if (IsValid(Chassis))
+    {
+        Chassis->OnComponentHit.RemoveDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
+    }
     ApplySignalLights(false, false, 0.0);
     FCoreDelegates::ApplicationWillEnterBackgroundDelegate.Remove(BackgroundInputHandle);
     FCoreDelegates::ApplicationWillDeactivateDelegate.Remove(DeactivatedInputHandle);
@@ -236,6 +244,45 @@ void ALatebrakeCarPawn::HandleAppFocusLost()
     }
 }
 
+void ALatebrakeCarPawn::HandleChassisHit(
+    UPrimitiveComponent* HitComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, FVector NormalImpulse,
+    const FHitResult& Hit)
+{
+    // Collision notifications during pre-GO, pauses, failed restarts,
+    // spawned overlaps or unhealthy Chaos states are NOT race impacts.
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !Mode->IsRaceStartGreen() ||
+        !Mode->IsCircuitReadyForGameplay() || !Mode->IsRestartPlacementReady() ||
+        Mode->IsMenuOpen() || Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive() || Mode->GetRace().IsFinished() ||
+        UGameplayStatics::IsGamePaused(this) ||
+        HitComponent != Chassis.Get() || !IsValid(OtherActor) ||
+        OtherActor == this || OtherComp == Chassis.Get() ||
+        !IsRacePhysicsReady() || !CollisionDamage.HasEligibleFrame())
+    {
+        return;
+    }
+
+    // The latest eligible pre-contact chassis speed protects against an
+    // impulse callback arriving after the physics body lost momentum.
+    // It is explicitly cleared by interruption, recovery and invalid frames.
+    const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
+    const double LiveSpeed = FVector(Velocity.X, Velocity.Y, 0.0).Size();
+    if (!FMath::IsFinite(LiveSpeed))
+    {
+        return;
+    }
+    const double Speed = FMath::Max(
+        LiveSpeed, LastQualifiedPlanarSpeedCmPerSecond);
+    CollisionDamage.ObserveImpact({
+        static_cast<double>(NormalImpulse.Size()),
+        static_cast<double>(Chassis->GetMass()), Speed,
+        static_cast<double>(Hit.ImpactNormal.Z), true});
+}
+
 void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake)
 {
     Throttle = static_cast<float>(latebrake::SanitizeDriveAxis(InThrottle));
@@ -275,6 +322,8 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     bHandbrakeHeld = false;
     TireCondition.Suspend();
     BrakeHeat.Suspend();
+    CollisionDamage.Suspend();
+    LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
     NitroBoost.Suspend();
     CurrentNitroSpeedCapScale = 1.f;
@@ -454,6 +503,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SlipstreamBoost.Suspend();
         TireCondition.Suspend();
         BrakeHeat.Suspend();
+        CollisionDamage.Suspend();
+        LastQualifiedPlanarSpeedCmPerSecond = 0.0;
         SurfaceTraction.Suspend();
         NitroBoost.Suspend();
         CurrentDraftAppliedFraction = 0.f;
@@ -534,6 +585,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+    // Only a finite, source-authorized live chassis tick can arm actual
+    // component-hit callbacks; a hitch or pause cannot claim new damage.
+    CollisionDamage.Advance(static_cast<double>(DeltaSeconds), true);
+    LastQualifiedPlanarSpeedCmPerSecond = CollisionDamage.HasEligibleFrame()
+        ? static_cast<double>(Speed) : 0.0;
 
     // Purely visual: gently widen the human camera with measured forward
     // chassis speed. Rival cameras, reverse motion and rear view stay static.
@@ -558,7 +614,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Scale the normal grip policy before frame-stable resistance, so
     // the established force-bound contract stays the final authority.
     GripRate *= static_cast<float>(
-        TireCondition.GripMultiplier() * Surface.LateralGripMultiplier);
+        TireCondition.GripMultiplier() * Surface.LateralGripMultiplier *
+        CollisionDamage.LateralGripMultiplier());
     // Advisory, from actual consecutive signed-forward chassis motion
     // while braking. A single speed or pressed BRAKE command is insufficient.
     BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
@@ -647,17 +704,22 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     GForceMeter.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Velocity.X), static_cast<double>(Velocity.Y),
         static_cast<double>(GetActorRotation().Yaw), bEffectiveBraking});
+    // The same conservative impact-damage reduction applies to normal
+    // motor, human-only nitro and qualified drafting. No separate boost
+    // path may bypass it or exceed the existing final boost budget.
+    const float CombinedMotorScale = static_cast<float>(
+        Surface.MotorMultiplier * CollisionDamage.MotorMultiplier());
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-            static_cast<float>(Surface.MotorMultiplier));
+            CombinedMotorScale);
         // Preserve the baseline motor path; an active, human-only nitro
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(CombinedBoost.NitroExtra) *
-                static_cast<float>(Surface.MotorMultiplier));
+                CombinedMotorScale);
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
@@ -665,7 +727,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(DraftExtraForce) *
-                static_cast<float>(Surface.MotorMultiplier));
+                CombinedMotorScale);
         }
     }
     else if (!bEffectiveBraking)
