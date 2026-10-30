@@ -31,14 +31,17 @@ class MacosCompilerCachePolicyTests(unittest.TestCase):
 
     def test_cache_is_optional_macos_only(self):
         for step in (
-            "name: Prepare macOS compiler cache",
+            "name: Prepare optional macOS compiler cache",
             "name: Restore macOS compiler object cache",
             "name: Configure macOS with reusable C++ objects",
             "name: Report macOS cache statistics",
         ):
             self.assertIn(step, self.matrix)
-        self.assertEqual(self.matrix.count("if: matrix.os == 'macos-latest'"), 4)
-        self.assertIn("if: matrix.os != 'macos-latest'", self.matrix)
+        self.assertEqual(self.matrix.count("if: matrix.os == 'macos-latest' && steps.macos_ccache.outputs.available == 'true'"), 3)
+        self.assertIn("if: matrix.os != 'macos-latest' || steps.macos_ccache.outputs.available != 'true'", self.matrix)
+        self.assertIn('id: macos_ccache', self.matrix)
+        self.assertIn('echo "available=false" >> "$GITHUB_OUTPUT"', self.matrix)
+        self.assertIn('brew install ccache', self.matrix)
         self.assertIn("uses: actions/cache@v4", self.matrix)
         self.assertIn("-DCMAKE_CXX_COMPILER_LAUNCHER=ccache", self.matrix)
         self.assertIn("CCACHE_MAXSIZE: 1G", self.matrix)
