@@ -18,11 +18,20 @@ Actual Unreal/installed QA is still required. See
 The run-local, optional 0–5 km/h launch estimate uses signed forward
 velocity from the real player chassis and the authoritative post-GO clock,
 not virtual reaction time or a predicted countdown. The next
-**unreleased v0.5.77** source refinement interpolates only across short,
+**published v0.5.77** source refinement interpolates only across short,
 consecutive qualified physics samples; interruptions and larger gaps fail
 closed. It never changes credits, competitive records, saves or vehicle
 forces. Actual Unreal physics sampling and installed Win64/Android QA
 remain unverified. [Launch QA](LAUNCH_SPEED_QA.md).
+
+## v0.5.82 source racing mechanics (not installed gameplay)
+
+- **Arcade tire condition:** observed chassis slip and braking heat and wear adjust the bounded existing lateral-grip damping for both physical cars.
+- **Rechargeable human nitro:** forward human demand alone, subject to race authorization, grip-independent finite energy, heat and cooldown, can earn up to +38% additional motor drive.
+- **Real-rival slipstream:** the local human earns up to +6% extra motor drive only behind a valid aligned moving rival for at least 0.18 seconds.
+- **Shared bonus budget:** concurrent nitro and drafting together cannot exceed +40% of baseline motor force. The desktop HUD shows the actual allocated draft share, not its uncapped eligibility.
+
+See [tire QA](ARCADE_TIRE_CONDITION_QA.md), [nitro QA](NITRO_BOOST_QA.md) and [drafting QA](SLIPSTREAM_DRAFT_QA.md). All mechanisms need actual licensed Unreal Engine 5.8/UHT, original cooked map and installed driving tests.
 
 ## Racing
 

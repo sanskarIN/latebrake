@@ -1,11 +1,11 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-30
-**Latest published milestone:** [v0.5.80 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80), qualified at immutable commit `38ca21ccca3ddaaba4002991f9688b4c575a4e3b` (zero compiled game assets).
+**Publication-follow-up:** [v0.5.82 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82), proposed at immutable independently tested commit `1a7754761ff11675439d82c43e27a85269dcdeee` (zero compiled game assets). **This doc update must not be merged until the v0.5.82 release is publicly verified at that commit.**
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Next-cycle arcade nitro boost — source candidate (unreleased)
+## v0.5.82 human nitro — source-only release (not installed gameplay)
 
 - Local human B/gamepad stick-click input requests a bounded burst using real positive chassis speed and validated forward throttle. A finite run-local energy/heat policy includes regeneration, heat cutoff, fresh-press rearming and cooldown. The existing single rigid-body acceleration and target speed cap are adjusted; race authority, credits, records, rival AI and saved progress are unchanged.
 - Release, menu, focus interruption, pause, invalid physics, braking and recovery deny active boost. Compact mobile HUD adds no new control region; real UE 5.8 gameplay, pad feel, speed-cap transitions and native packaging remain unverified. [Nitro QA](NITRO_BOOST_QA.md).
@@ -22,17 +22,17 @@
 - Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
 - Portable C++20 policy regression and Unreal-source binding checks are not licensed UE 5.8 compile or installed Win64/Android driving evidence. [Handbrake QA](HANDBRAKE_QA.md).
 
-## Next-cycle combined acceleration budget — source candidate (unreleased)
+## v0.5.82 combined arcade acceleration budget — source-only
 
 - Concurrent local nitro and verified rival slipstream share a strictly bounded 40% maximum additive motor-force budget. Full nitro priority leaves no more than 2% simultaneous draft acceleration; without nitro, earned drafting can supply up to 6%. Malformed/inconsistent allocations fail closed.
 - A portable C++20 production allocator, stress regressions and Unreal-source binding tests verify the code. The expanded desktop HUD shows only the *actually allocated* draft share. This does not qualify UE compilation or real installed gameplay; see [drafting QA](SLIPSTREAM_DRAFT_QA.md).
 
-## Next-cycle real-rival slipstream drafting — source candidate (unreleased)
+## v0.5.82 real-rival slipstream drafting — source-only
 
 - Human-only sustained geometry and validated signed moving-chassis speeds can provide a bounded 0–6% additional force to existing motor acceleration while trailing a physically ready AI rival. Countdown, reverse, Time Attack, pause, finish, missing/stale targets and invalid Chaos inputs cannot qualify. The original motor, maximum speed clamp, lap/time awards, saves and AI authority stay unchanged.
 - Portable C++20 geometry tests, Python UE source bindings and [slipstream QA](SLIPSTREAM_DRAFT_QA.md) are not Unreal compilation, genuine map cooking or installed gameplay evidence.
 
-## Next-cycle arcade tire wear and temperature — source candidate (unreleased)
+## v0.5.82 arcade tire wear and temperature — source-only
 
 - Both physical human and rival pawns use the same finite, frame-bounded chassis-derived condition policy. Lateral slip and effective braking slowly add simulated heat and wear; the existing lateral damping rate is scaled to at least 68% of its configured value, never made nonfinite or negative.
 - A new race resets both drivers; a recovery/pause cannot repair worn tires. Expanded desktop HUD displays grip and wear, but compact Android UI remains unchanged. This is **not** actual rubber physics, a pit-stop feature or a proved UE gameplay mechanic. [Tire condition QA](ARCADE_TIRE_CONDITION_QA.md).
