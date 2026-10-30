@@ -34,15 +34,19 @@ jobs:
       # macOS recompiles 88 strict C++20 policy binaries per revision.
       # Only reusable compiler objects are cached; no game binary,
       # Unreal output, secrets or QA evidence are cached or published.
-      - name: Prepare macOS compiler cache
+      - name: Prepare optional macOS compiler cache
+        id: macos_ccache
         if: matrix.os == 'macos-latest'
         run: |
-          if ! command -v ccache >/dev/null 2>&1; then
-            brew install ccache
+          if command -v ccache >/dev/null 2>&1 || brew install ccache; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            ccache --version
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ccache unavailable; building the complete source suite without cache."
           fi
-          ccache --version
       - name: Restore macOS compiler object cache
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-latest' && steps.macos_ccache.outputs.available == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/latebrake-ccache
@@ -50,14 +54,14 @@ jobs:
           restore-keys: |
             latebrake-macos-cxx20-
       - name: Configure macOS with reusable C++ objects
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-latest' && steps.macos_ccache.outputs.available == 'true'
         env:
           CCACHE_DIR: ${{ runner.temp }}/latebrake-ccache
           CCACHE_MAXSIZE: 1G
           CCACHE_COMPRESS: 'true'
         run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      - name: Configure Windows and Ubuntu
-        if: matrix.os != 'macos-latest'
+      - name: Configure without optional macOS cache
+        if: matrix.os != 'macos-latest' || steps.macos_ccache.outputs.available != 'true'
         run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
       - name: Build
         env:
@@ -66,7 +70,7 @@ jobs:
           CCACHE_COMPRESS: 'true'
         run: cmake --build Tests/Standalone/build --config Release --parallel
       - name: Report macOS cache statistics
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-latest' && steps.macos_ccache.outputs.available == 'true'
         env:
           CCACHE_DIR: ${{ runner.temp }}/latebrake-ccache
         run: ccache --show-stats
