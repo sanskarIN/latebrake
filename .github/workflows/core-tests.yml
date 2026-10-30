@@ -47,6 +47,7 @@ jobs:
           fi
       - name: Restore macOS compiler object cache
         if: matrix.os == 'macos-latest' && steps.macos_ccache.outputs.available == 'true'
+        continue-on-error: true
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/latebrake-ccache
