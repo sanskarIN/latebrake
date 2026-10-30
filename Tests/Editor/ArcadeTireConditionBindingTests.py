@@ -41,6 +41,8 @@ class ArcadeTireConditionBindingTests(unittest.TestCase):
                         tick.index("TireCondition.Observe({"))
         self.assertLess(tick.index("TireCondition.Observe({"),
                         tick.index("Chassis->AddForce(-Right"))
+        self.assertLess(tick.index("TireCondition.GripMultiplier()"),
+                        tick.index("FrameStableDampingRate(GripRate, DeltaSeconds)"))
         self.assertIn("TireCondition.Suspend();", tick)
 
     def test_per_race_reset_and_both_driver_types(self):
