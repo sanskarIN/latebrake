@@ -22,6 +22,11 @@
 - Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
 - Portable C++20 policy regression and Unreal-source binding checks are not licensed UE 5.8 compile or installed Win64/Android driving evidence. [Handbrake QA](HANDBRAKE_QA.md).
 
+## Next-cycle combined acceleration budget — source candidate (unreleased)
+
+- Concurrent local nitro and verified rival slipstream share a strictly bounded 40% maximum additive motor-force budget. Full nitro priority leaves no more than 2% simultaneous draft acceleration; without nitro, earned drafting can supply up to 6%. Malformed/inconsistent allocations fail closed.
+- A portable C++20 production allocator, stress regressions and Unreal-source binding tests verify the code. The expanded desktop HUD shows only the *actually allocated* draft share. This does not qualify UE compilation or real installed gameplay; see [drafting QA](SLIPSTREAM_DRAFT_QA.md).
+
 ## Next-cycle real-rival slipstream drafting — source candidate (unreleased)
 
 - Human-only sustained geometry and validated signed moving-chassis speeds can provide a bounded 0–6% additional force to existing motor acceleration while trailing a physically ready AI rival. Countdown, reverse, Time Attack, pause, finish, missing/stale targets and invalid Chaos inputs cannot qualify. The original motor, maximum speed clamp, lap/time awards, saves and AI authority stay unchanged.
