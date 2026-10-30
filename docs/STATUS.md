@@ -5,6 +5,13 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Next-cycle paved/off-pavement arcade traction — source candidate (unreleased)
+
+- The actual player and physical rival chassis reuse the authored four-strip pavement footprint and observed real XY actor position after all race/Chaos gates; on-road acceleration and lateral grip are unchanged.
+- Continuous 0.15-second off-pavement confirmation reduces existing baseline/nitro/slipstream motor force to 78% and existing lateral damping to 72%; continuous 0.20-second pavement re-entry restores the baseline. These bounded prototype effects reuse the frame-stable damping rule without a new tire or collision solver.
+- A bad frame, nonfinite/implausible position, menu, pause, lost focus, restart or teleport is unable to preserve a stale surface state or authorize new force. Expanded desktop HUD reports the confirmed traction effect; narrow touch gameplay and official timing, scoring, rewards, records and saves remain unchanged.
+- Strict source-level tests cover 250,000 deterministic samples and C++20/Python source bindings. Actual UE 5.8/UHT compilation, physical off-road/chassis validation, corner recoverability and installed Win64/Android QA are **not verified**. [Road traction QA](ARCADE_SURFACE_TRACTION_QA.md).
+
 ## v0.5.82 human nitro — source-only release (not installed gameplay)
 
 - Local human B/gamepad stick-click input requests a bounded burst using real positive chassis speed and validated forward throttle. A finite run-local energy/heat policy includes regeneration, heat cutoff, fresh-press rearming and cooldown. The existing single rigid-body acceleration and target speed cap are adjusted; race authority, credits, records, rival AI and saved progress are unchanged.

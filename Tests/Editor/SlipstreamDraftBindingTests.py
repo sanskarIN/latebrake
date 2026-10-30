@@ -58,12 +58,13 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
     def test_base_motor_and_brakes_remain_authoritative(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
-        self.assertIn("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);", tick)
+        self.assertIn("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *", tick)
         self.assertIn("if (DraftExtraForce > 0.0)", tick)
         self.assertIn("static_cast<float>(DraftExtraForce)", tick)
-        self.assertLess(tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);"),
+        self.assertLess(tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"),
                         tick.index("if (DraftExtraForce > 0.0)"))
         self.assertIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
+        self.assertEqual(tick.count("static_cast<float>(Surface.MotorMultiplier)"), 3)
 
     def test_interruptions_reset_session_and_expanded_hud_only(self):
         self.assertIn('#include "Racing/SlipstreamDraftBoost.h"', self.pawn_h)

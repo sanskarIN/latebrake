@@ -38,17 +38,18 @@ class ArcadeBoostArbitrationBindingTests(unittest.TestCase):
             "DraftExtraForce, NitroDrive.Active",
             "DraftExtraForce = CombinedBoost.DraftExtra;",
             "CurrentDraftAppliedFraction = static_cast<float>(DraftExtraForce)",
-            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);",
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "static_cast<float>(CombinedBoost.NitroExtra)",
             "static_cast<float>(DraftExtraForce)",
         ):
             self.assertIn(fragment, self.pawn if fragment.startswith("#include") else tick)
+        self.assertEqual(tick.count("static_cast<float>(Surface.MotorMultiplier)"), 3)
         self.assertLess(tick.index("NitroBoost.Step("),
                         tick.index("AllocateArcadeBoost("))
         self.assertLess(tick.index("SlipstreamBoost.Observe({"),
                         tick.index("AllocateArcadeBoost("))
         self.assertLess(tick.index("AllocateArcadeBoost("),
-                        tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle);"))
+                        tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"))
 
     def test_report_only_actual_force_allocation_and_clear_on_reset(self):
         self.assertIn("GetAppliedDraftBoostFraction() const", self.pawn_h)
