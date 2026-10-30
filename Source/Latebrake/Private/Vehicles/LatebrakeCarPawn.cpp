@@ -416,6 +416,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         ApplyWheelVisualPose();
         GForceMeter.Suspend();
         SlipAngleMeter.Suspend();
+        BrakeDistance.Suspend();
         return;
     }
 
