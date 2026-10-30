@@ -10,13 +10,13 @@
 - Local human B/gamepad stick-click input requests a bounded burst using real positive chassis speed and validated forward throttle. A finite run-local energy/heat policy includes regeneration, heat cutoff, fresh-press rearming and cooldown. The existing single rigid-body acceleration and target speed cap are adjusted; race authority, credits, records, rival AI and saved progress are unchanged.
 - Release, menu, focus interruption, pause, invalid physics, braking and recovery deny active boost. Compact mobile HUD adds no new control region; real UE 5.8 gameplay, pad feel, speed-cap transitions and native packaging remain unverified. [Nitro QA](NITRO_BOOST_QA.md).
 
-## Next-cycle observed braking distance — source candidate (unreleased)
+## v0.5.81 observed braking distance — published source-only
 
 - Real Chaos planar/forward speed pairs estimate only the current in-game stopping distance while the player is demonstrably braking; do not infer it from command inputs, fixed friction or rewards. The optional desktop HUD follows current speed-unit settings.
 - Reject single samples, insufficient deceleration duration, nonfinite speeds, reverse/slide, collisions and frame hitches. Reset on brake release, pause, focus loss, recovery or restart. This is a nonauthoritative visual advisory, not a driving safety guarantee.
 - Strict C++20 policy tests, Python source bindings and [braking distance QA](OBSERVED_BRAKE_DISTANCE_QA.md) qualify source behavior only; licensed UE compilation and installed hardware tests remain outstanding.
 
-## Next-cycle human handbrake — source candidate (unreleased)
+## v0.5.81 human handbrake — published source-only
 
 - Separate held Left Shift/right-stick-click prototype handbrake, local human only: suppresses motor request, lowers lateral rigid-body damping to encourage slides, applies bounded forward resistance, and preserves stronger service BRAKE when both are held.
 - Safe pressed/released input ownership and synchronous clearing on pause, restart, recovery, menu and focus loss. Desktop HUD shows transient handbrake state without adding mobile touch buttons.
