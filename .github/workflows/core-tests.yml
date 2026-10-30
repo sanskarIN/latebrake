@@ -31,10 +31,45 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Configure
+      # macOS recompiles 88 strict C++20 policy binaries per revision.
+      # Only reusable compiler objects are cached; no game binary,
+      # Unreal output, secrets or QA evidence are cached or published.
+      - name: Prepare macOS compiler cache
+        if: matrix.os == 'macos-latest'
+        run: |
+          if ! command -v ccache >/dev/null 2>&1; then
+            brew install ccache
+          fi
+          ccache --version
+      - name: Restore macOS compiler object cache
+        if: matrix.os == 'macos-latest'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/latebrake-ccache
+          key: latebrake-macos-cxx20-${{ hashFiles('Tests/Standalone/CMakeLists.txt', 'Tests/Standalone/*.cpp', 'Source/Latebrake/Public/**/*.h', 'Source/Latebrake/Private/**/*.cpp') }}
+          restore-keys: |
+            latebrake-macos-cxx20-
+      - name: Configure macOS with reusable C++ objects
+        if: matrix.os == 'macos-latest'
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/latebrake-ccache
+          CCACHE_MAXSIZE: 1G
+          CCACHE_COMPRESS: 'true'
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Configure Windows and Ubuntu
+        if: matrix.os != 'macos-latest'
         run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
       - name: Build
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/latebrake-ccache
+          CCACHE_MAXSIZE: 1G
+          CCACHE_COMPRESS: 'true'
         run: cmake --build Tests/Standalone/build --config Release --parallel
+      - name: Report macOS cache statistics
+        if: matrix.os == 'macos-latest'
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/latebrake-ccache
+        run: ccache --show-stats
       - name: Test
         run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
 
