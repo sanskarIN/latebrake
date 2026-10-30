@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The independently verified latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.84">v0.5.84</a>, a <strong>source-only pre-release with zero playable attachments</strong>. Shared real vehicle code now samples authored-circuit pavement for bounded arcade off-road traction. Earlier v0.5.83 added grip-aware rival corner pacing; tire heat/wear, nitro and drafting remain source-only. <strong>No verified Windows EXE or Android APK/AAB is available.</strong> Licensed Unreal Engine 5.8/UHT compilation, a real cooked circuit and installed driving/device QA remain mandatory.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The independently verified latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85">v0.5.85</a>, a <strong>source-only pre-release with zero playable attachments</strong>. The shared player/rival chassis code now includes race-local BRAKE HEAT and impact-impulse collision damage in addition to v0.5.84 authored-circuit traction. Earlier tire heat/wear, nitro, drafting and grip-aware rival AI remain source-only. <strong>No verified Windows EXE or Android APK/AAB is available.</strong> Licensed Unreal Engine 5.8/UHT compilation, a real cooked circuit and installed driving/device QA remain mandatory.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
