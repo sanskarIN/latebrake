@@ -3,6 +3,7 @@
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/FrameStableDamping.h"
+#include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/DriveAxisDeadzone.h"
@@ -270,6 +271,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedThrottle = 0.f;
     SmoothedSteering = 0.f;
     bBraking = false;
+    bHandbrakeHeld = false;
     TouchDrive.Clear();
     // Recovery, restart, focus loss and interrupted input must never
     // leave the camera facing backwards after the held key is gone.
@@ -318,6 +320,31 @@ void ALatebrakeCarPawn::BrakePressed()
 void ALatebrakeCarPawn::BrakeReleased()
 {
     bBraking = false;
+}
+
+void ALatebrakeCarPawn::HandbrakePressed()
+{
+    // This input exists only for the actual human driver. A local AI
+    // controller still cannot request handbrake handling on the base pawn.
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    bHandbrakeHeld = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr &&
+        Mode && Mode->IsRaceStartGreen() &&
+        Mode->IsCircuitReadyForGameplay() &&
+        Mode->IsRestartPlacementReady() &&
+        !Mode->IsMenuOpen() &&
+        !UGameplayStatics::IsGamePaused(this) &&
+        !Mode->IsManualRacePauseActive() &&
+        !Mode->IsFocusLossGuardActive() &&
+        !Mode->GetRace().IsFinished() && IsRacePhysicsReady();
+}
+
+void ALatebrakeCarPawn::HandbrakeReleased()
+{
+    // Release works even while the world is paused. No gameplay mutation.
+    bHandbrakeHeld = false;
 }
 
 void ALatebrakeCarPawn::Tick(float DeltaSeconds)
@@ -400,11 +427,21 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     SmoothedSteering = static_cast<float>(latebrake::SmoothSteering(
         SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
         bArcade ? 3.8 : 2.4));
-    const bool bEffectiveBraking = bBraking || TouchDrive.BrakeActive();
+    const bool bServiceBraking = bBraking || TouchDrive.BrakeActive();
+    // A held human handbrake lowers the prototype's lateral damping and
+    // applies bounded forward resistance. It never requests new tire physics.
+    const latebrake::HandbrakeDriveProfile BrakeProfile =
+        latebrake::SelectHandbrakeDriveProfile(
+            bHandbrakeHeld && IsLocallyControlled() &&
+                Cast<APlayerController>(GetController()) != nullptr,
+            bServiceBraking, bArcade,
+            static_cast<double>((bArcade ? 8.5f : 4.25f) * GarageGrip),
+            static_cast<double>(RawThrottle));
+    const bool bEffectiveBraking = BrakeProfile.Braking;
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
-    const float GripRate = (bArcade ? 8.5f : 4.25f) * GarageGrip;
-    const float BrakeRate = bEffectiveBraking ? 7.f : 0.55f;
+    const float GripRate = static_cast<float>(BrakeProfile.LateralGripRate);
+    const float BrakeRate = static_cast<float>(BrakeProfile.ForwardResistanceRate);
 
     const FVector Forward = GetActorForwardVector();
     const FVector Right = GetActorRightVector();
@@ -457,7 +494,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // and rival throttle. Brake/reverse demand is never reduced by it.
     const float EffectiveThrottle = static_cast<float>(
         latebrake::StabilizeCornerThrottle(
-            RawThrottle, LongitudinalSpeed, LateralSpeed, bArcade));
+            BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
     // Advisory metrics only: no scoring, lap records or tire-forces use
     // these values. Invalid long frames are rejected by the policy.
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),
@@ -1255,6 +1292,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAxis(TEXT("Steer"), this, &ALatebrakeCarPawn::SteerInput);
     PlayerInputComponent->BindAction(TEXT("Brake"), IE_Pressed, this, &ALatebrakeCarPawn::BrakePressed);
     PlayerInputComponent->BindAction(TEXT("Brake"), IE_Released, this, &ALatebrakeCarPawn::BrakeReleased);
+    PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Pressed, this, &ALatebrakeCarPawn::HandbrakePressed);
+    FInputActionBinding& HandbrakeRelease = PlayerInputComponent->BindAction(
+        TEXT("Handbrake"), IE_Released, this, &ALatebrakeCarPawn::HandbrakeReleased);
+    HandbrakeRelease.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
