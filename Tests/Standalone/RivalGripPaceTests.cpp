@@ -16,7 +16,7 @@ void Check(bool ok, const char* why)
     }
 }
 latebrake::RivalGripPaceSample Sample(
-    double speed = 2000.0, double lateral = 600.0,
+    double speed = 2400.0, double lateral = 600.0,
     double grip = 0.80)
 {
     return {0.05, speed, lateral, grip, true};
