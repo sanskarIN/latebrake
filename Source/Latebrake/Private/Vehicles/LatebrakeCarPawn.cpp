@@ -819,6 +819,7 @@ void ALatebrakeCarPawn::RecoverTo(
 void ALatebrakeCarPawn::RecoverPressed()
 {
     HandbrakeReleased();
+    NitroReleased();
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->RecoverPlayer(this);
@@ -828,6 +829,7 @@ void ALatebrakeCarPawn::RecoverPressed()
 void ALatebrakeCarPawn::RestartPressed()
 {
     HandbrakeReleased();
+    NitroReleased();
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->RestartRace();
@@ -963,6 +965,7 @@ void ALatebrakeCarPawn::ToggleBestLapGhost()
 
 void ALatebrakeCarPawn::TogglePause()
 {
+    NitroReleased();
     // The world may stop ticking immediately: clear the held brake before
     // GameMode attempts to pause or resume engine time.
     HandbrakeReleased();
