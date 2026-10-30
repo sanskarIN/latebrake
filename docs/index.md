@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.80">v0.5.80</a>, a source-tested <strong>pre-release with zero playable game attachments</strong>. This snapshot adds lag-spike-bounded vehicle resistance, predictive rival braking, Android steering refinements, run-local ghost separation, signed chassis slip feedback and hold-to-look-back camera, alongside its original race progress and career systems. <strong>No verified Windows or Android executable is available.</strong> Licensed UE 5.8/UHT compilation, an actual cooked track and installed gameplay/device tests remain mandatory.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. Following independent publication verification, the latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.82">v0.5.82</a>, a <strong>source-only pre-release with zero playable attachments</strong>. This snapshot introduces bounded race-session tire heat and wear, rechargeable human nitro, measured single-rival slipstream, and a 40% combined motor-boost budget. <strong>No verified Windows EXE or Android APK/AAB is available.</strong> Licensed Unreal Engine 5.8/UHT compilation, an original cooked circuit and installed gameplay/device tests remain mandatory.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
