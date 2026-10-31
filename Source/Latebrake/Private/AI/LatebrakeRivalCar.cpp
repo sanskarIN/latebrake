@@ -20,6 +20,7 @@ void ALatebrakeRivalCar::ResetPilot()
     Route.Reset();
     FollowingBrakeHold.Reset();
     GripPace.Reset();
+    SurfaceDamagePace.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -30,6 +31,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     Route.Configure(CheckpointCount, RequiredLaps);
     FollowingBrakeHold.Reset();
     GripPace.Reset();
+    SurfaceDamagePace.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -50,6 +52,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         FollowingBrakeHold.Reset();
         GripPace.Reset();
+    SurfaceDamagePace.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -71,6 +74,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         FollowingBrakeHold.Reset();
         GripPace.Reset();
+    SurfaceDamagePace.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
@@ -97,6 +101,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         FollowingBrakeHold.Reset();
         GripPace.Reset();
+    SurfaceDamagePace.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -119,6 +124,25 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Velocity, GetActorRightVector())),
         GetTireCondition().GripMultiplier(),
         GetTireCondition().HasValidSample()
+    });
+
+    // The prior qualified chassis tick already measured actual paved
+    // surface hysteresis and accepted collision damage. Use those real,
+    // bounded grip effects to back off corner pace for the physical rival
+    // without changing its route, player traffic or authoritative scores.
+    // There is deliberately no invented terrain or damage prediction.
+    const bool bOffPavement = GetSurfaceTraction().IsOffPavement();
+    Command = SurfaceDamagePace.Apply(Command, {
+        static_cast<double>(DeltaSeconds), FlatSpeed,
+        static_cast<double>(FVector::DotProduct(
+            Velocity, GetActorRightVector())),
+        bOffPavement
+            ? latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier
+            : 1.0,
+        GetCollisionDamage().LateralGripMultiplier(),
+        bOffPavement,
+        GetSurfaceTraction().HasValidSample(),
+        GetCollisionDamage().HasEligibleFrame()
     });
 
     // Plan the control for this physics tick, not one frame after applying
