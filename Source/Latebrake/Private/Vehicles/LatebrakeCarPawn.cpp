@@ -323,6 +323,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedSteering = 0.f;
     bBraking = false;
     bHandbrakeHeld = false;
+    SpinAssist.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
     CollisionDamage.Suspend();
@@ -498,6 +499,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         ResetSpeedCameraFov();
         ApplySignalLights(false, false, 0.0);
+        SpinAssist.Suspend();
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
         GForceMeter.Suspend();
@@ -648,6 +650,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(LateralSpeed),
             static_cast<double>(AngularVelocity.Z),
             bArcade, bHumanDriver, BrakeProfile.HandbrakeActive));
+    // Observational only: classify the reduction ACTUALLY applied to the
+    // shared base/nitro/draft throttle, never the driver's requested axis.
+    // This meter cannot alter physics, race progress or stored rewards.
+    SpinAssist.Observe({static_cast<double>(DeltaSeconds),
+        static_cast<double>(CornerThrottle),
+        static_cast<double>(EffectiveThrottle),
+        bArcade && bHumanDriver && !BrakeProfile.HandbrakeActive &&
+            !bEffectiveBraking});
     // A finite, player-only boost modifies existing acceleration and speed
     // cap; it never modifies checkpoints, rivals, rewards or race records.
     // Steady-speed cap ramps avoid a velocity snap when a held boost ends.
