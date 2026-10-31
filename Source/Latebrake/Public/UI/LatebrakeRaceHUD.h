@@ -7,6 +7,7 @@
 #include "Track/RivalProximityIndicator.h"
 #include "Track/RivalRelativeMotion.h"
 #include "UI/MenuDetailPager.h"
+#include "UI/HudMenuMouseControls.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -19,6 +20,7 @@ class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
 public:
     virtual void DrawHUD() override;
     void ScrollMenuDetails(int direction);
+    latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
     // Advisory only: no race awarding, control input or network telemetry.

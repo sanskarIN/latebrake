@@ -39,6 +39,27 @@ void ALatebrakeRaceHUD::ScrollMenuDetails(int direction)
     }
 }
 
+latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
+    double x, double y) const
+{
+#if PLATFORM_ANDROID
+    return latebrake::DesktopMenuMouseAction::None;
+#else
+    const ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Canvas || !Mode || !Mode->IsMenuOpen())
+    {
+        return latebrake::DesktopMenuMouseAction::None;
+    }
+    const double width = static_cast<double>(Canvas->SizeX);
+    const double height = static_cast<double>(Canvas->SizeY);
+    const auto buttons = latebrake::CalculateDesktopMenuMouseLayout(
+        width, height, latebrake::CalculateHudLayout(width, height),
+        false, true);
+    return latebrake::HitTestDesktopMenuMouse(buttons, x, y);
+#endif
+}
+
 void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
@@ -92,11 +113,22 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetNitroBoost().ChargeFraction(),
             Car->GetEngineHeat().HeatFraction(),
             Car->GetCollisionDamage().DamageFraction());
-    const double SafeTextWidth = Instruments.Visible
+    const latebrake::DesktopMenuMouseLayout MouseMenu =
+        latebrake::CalculateDesktopMenuMouseLayout(
+            static_cast<double>(Canvas->SizeX),
+            static_cast<double>(Canvas->SizeY),
+            Layout, bTouchHUD, Mode->IsMenuOpen());
+    // Both the instruments and the interactive menu dock own distinct
+    // right-hand lanes; truncate measured text before either rectangle.
+    const double InstrumentTextWidth = Instruments.Visible
         ? FMath::Min(HorizontalBounds.MaxWidthPixels,
             Instruments.Panel.X - HorizontalBounds.Left -
                 16.0 * Instruments.Scale)
         : HorizontalBounds.MaxWidthPixels;
+    const double SafeTextWidth = MouseMenu.Valid
+        ? FMath::Min(InstrumentTextWidth,
+            MouseMenu.Left - HorizontalBounds.Left - 12.0 * Layout.Scale)
+        : InstrumentTextWidth;
     const auto FitHudText = [&](const FString& Value, UFont* Font,
                                 float TextScale) -> FString
     {
@@ -514,6 +546,59 @@ void ALatebrakeRaceHUD::DrawHUD()
                     GEngine->GetSmallFont(), UIScale);
             }
         }
+        // Desktop menu dock: the same portable pixel bounds are used by
+        // the click dispatcher in HitTestMenuMouse. No underlying race or
+        // garage methods are invoked here while drawing.
+        if (MouseMenu.Valid)
+        {
+            float CursorX = 0.f;
+            float CursorY = 0.f;
+            const bool HasCursor = PlayerOwner->GetMousePosition(
+                CursorX, CursorY);
+            const latebrake::DesktopMenuMouseAction Hovered = HasCursor
+                ? latebrake::HitTestDesktopMenuMouse(
+                    MouseMenu, CursorX, CursorY)
+                : latebrake::DesktopMenuMouseAction::None;
+            for (const auto& Button : MouseMenu.Buttons)
+            {
+                const float BX = static_cast<float>(Button.Bounds.X);
+                const float BY = static_cast<float>(Button.Bounds.Y);
+                const float BW = static_cast<float>(Button.Bounds.Width);
+                const float BH = static_cast<float>(Button.Bounds.Height);
+                const bool Selected = Button.Action ==
+                    latebrake::DesktopMenuMouseAction::Activate;
+                const bool Hover = Button.Action == Hovered;
+                DrawRect(Hover
+                    ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
+                    : (Selected
+                        ? FLinearColor(0.27f, 0.20f, 0.09f, 0.9f)
+                        : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f)),
+                    BX, BY, BW, BH);
+                DrawRect(Selected ? Gold : White, BX, BY,
+                    3.f * UIScale, BH);
+                const TCHAR* Caption = TEXT("CLOSE");
+                switch (Button.Action)
+                {
+                case latebrake::DesktopMenuMouseAction::PreviousPage:
+                    Caption = TEXT("PREV PAGE"); break;
+                case latebrake::DesktopMenuMouseAction::NextPage:
+                    Caption = TEXT("NEXT PAGE"); break;
+                case latebrake::DesktopMenuMouseAction::DetailsUp:
+                    Caption = TEXT("DETAIL UP"); break;
+                case latebrake::DesktopMenuMouseAction::DetailsDown:
+                    Caption = TEXT("DETAIL DOWN"); break;
+                case latebrake::DesktopMenuMouseAction::Activate:
+                    Caption = TEXT("SELECT"); break;
+                case latebrake::DesktopMenuMouseAction::Close:
+                    Caption = TEXT("CLOSE"); break;
+                default: break;
+                }
+                DrawText(FString(Caption), Selected ? Gold : White,
+                    BX + 10.f * UIScale, BY + 12.f * UIScale,
+                    GEngine->GetSmallFont(), 0.82f * UIScale);
+            }
+        }
+
         // SAVE failures must stay visible even if every optional menu
         // detail row has already been consumed.
         if (MenuPlan.Valid && Mode->HasProgressSaveError())

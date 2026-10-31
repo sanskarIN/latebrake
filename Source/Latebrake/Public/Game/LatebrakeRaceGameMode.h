@@ -132,6 +132,7 @@ private:
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();
+    void SyncDesktopMenuPointerMode();
 #if !UE_BUILD_SHIPPING
     // Event-only, no per-frame telemetry, no effect on scoring or saves.
     void StartRaceAuditAttempt(int32 GridAtBegin);

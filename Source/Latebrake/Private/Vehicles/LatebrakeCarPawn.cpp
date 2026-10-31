@@ -1685,6 +1685,54 @@ void ALatebrakeCarPawn::MenuActivate()
     }
 }
 
+void ALatebrakeCarPawn::MenuMousePressed()
+{
+#if !PLATFORM_ANDROID
+    // Only the paused, open, local-player menu accepts mouse input.
+    // Hits use the HUD's actual Canvas dimensions, not a guessed DPI
+    // scale; no game-world click can drive, teleport or purchase anything.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!Mode || !Mode->IsMenuOpen() || !PC ||
+        !PC->IsLocalController())
+    {
+        return;
+    }
+    ALatebrakeRaceHUD* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD());
+    float MouseX = 0.f;
+    float MouseY = 0.f;
+    if (!Hud || !PC->GetMousePosition(MouseX, MouseY))
+    {
+        return;
+    }
+    const latebrake::DesktopMenuMouseAction Action =
+        Hud->HitTestMenuMouse(MouseX, MouseY);
+    if (Action == latebrake::DesktopMenuMouseAction::None)
+    {
+        return;
+    }
+    // Do not allow a click to inherit any held throttle or steering.
+    ClearDriverInputs();
+    switch (Action)
+    {
+    case latebrake::DesktopMenuMouseAction::PreviousPage:
+        Mode->MenuPrevious(); break;
+    case latebrake::DesktopMenuMouseAction::NextPage:
+        Mode->MenuNext(); break;
+    case latebrake::DesktopMenuMouseAction::DetailsUp:
+        Hud->ScrollMenuDetails(-1); break;
+    case latebrake::DesktopMenuMouseAction::DetailsDown:
+        Hud->ScrollMenuDetails(1); break;
+    case latebrake::DesktopMenuMouseAction::Activate:
+        Mode->MenuActivate(); break;
+    case latebrake::DesktopMenuMouseAction::Close:
+        Mode->ToggleMenu(); break;
+    default: break;
+    }
+#endif
+}
+
 void ALatebrakeCarPawn::CareerNext()
 {
     ClearDriverInputs();
@@ -1813,6 +1861,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& ConfirmMenu = PlayerInputComponent->BindAction(
         TEXT("MenuActivate"), IE_Pressed, this, &ALatebrakeCarPawn::MenuActivate);
     ConfirmMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& MouseMenu = PlayerInputComponent->BindAction(
+        TEXT("MenuMouseClick"), IE_Pressed,
+        this, &ALatebrakeCarPawn::MenuMousePressed);
+    MouseMenu.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
