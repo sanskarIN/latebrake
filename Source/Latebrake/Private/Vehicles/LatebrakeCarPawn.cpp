@@ -5,6 +5,7 @@
 #include "Vehicles/FrameStableDamping.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/ArcadeBoostArbitration.h"
+#include "Vehicles/ArcadeReverseSpeedLimit.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/DriveAxisDeadzone.h"
@@ -778,6 +779,30 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         const FVector Limited = FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap);
         Chassis->SetPhysicsLinearVelocity(FVector(Limited.X, Limited.Y, Velocity.Z));
+    }
+
+    // Real signed chassis motion, not requested reverse throttle, drives
+    // the backward gear limit for player and autonomous rival alike. Leave
+    // lateral slides and Chaos vertical velocity untouched, including after
+    // the existing forward/nitro maximum-speed budget has been enforced.
+    const FVector PostCapVelocity = Chassis->GetPhysicsLinearVelocity();
+    const latebrake::ReverseSpeedLimitOutput ReverseLimit =
+        latebrake::LimitPlanarReverseSpeed(
+            static_cast<double>(PostCapVelocity.X),
+            static_cast<double>(PostCapVelocity.Y),
+            static_cast<double>(Forward.X),
+            static_cast<double>(Forward.Y), bArcade);
+    if (!ReverseLimit.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
+    if (ReverseLimit.Limited)
+    {
+        Chassis->SetPhysicsLinearVelocity(FVector(
+            static_cast<float>(ReverseLimit.VelocityX),
+            static_cast<float>(ReverseLimit.VelocityY),
+            PostCapVelocity.Z));
     }
 }
 
