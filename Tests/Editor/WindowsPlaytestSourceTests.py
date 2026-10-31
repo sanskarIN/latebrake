@@ -70,6 +70,32 @@ class WindowsPlaytestSourceTests(unittest.TestCase):
                 self.assertIn(marker, runtime)
         self.assertIn("rejectedFake", policy)
         self.assertIn("rejectedMalformed", policy)
+        # Post-run seal must be attempted AFTER the real process exits,
+        # BEFORE writing the private receipt, and may not be silently ignored.
+        launch = runtime.index("Start-Process -FilePath $game.FullName")
+        postrun = runtime.index("Test-PostRunWin64CandidateIntegrity.ps1")
+        receipt = runtime.index("$report = [ordered]@{")
+        self.assertLess(launch, postrun)
+        self.assertLess(postrun, receipt)
+        self.assertIn("candidate_integrity_at_exit_pass", runtime)
+        self.assertIn("candidate_integrity_at_exit_error", runtime)
+        self.assertIn("if (-not $archiveIntegrityAtExitPass)", runtime)
+        self.assertLess(receipt, runtime.index("if (-not $archiveIntegrityAtExitPass)"))
+        helper = (ROOT / "scripts/Test-PostRunWin64CandidateIntegrity.ps1").read_text(encoding="utf-8")
+        for required in ("Test-CandidateManifest.ps1",
+                         "ExpectedManifestSha256", "ExpectedExecutableSha256",
+                         "GetRelativePath", "Assert-OriginalIdentity",
+                         "Candidate manifest changed after game launch",
+                         "Packaged Latebrake.exe changed after game launch"):
+            self.assertIn(required, helper)
+        self.assertGreaterEqual(helper.count("Assert-OriginalIdentity"), 3)
+        postrun_policy = (ROOT / "scripts/Test-PostRunWin64CandidateIntegrityPolicy.ps1").read_text(encoding="utf-8")
+        for required in ("same-length executable mutation", "new runtime file inside sealed package",
+                         "rewritten self-consistent manifest", "missing executable after test run",
+                         "post-run linked candidate directory", "EXE outside selected candidate folder"):
+            self.assertIn(required, postrun_policy)
+        self.assertIn("Test-PostRunWin64CandidateIntegrityPolicy.ps1", self.ci)
+        self.assertIn("Test-PostRunWin64CandidateIntegrity.ps1", self.ci)
         self.assertIn("Test-WindowsRuntimePlaytestPolicy.ps1", self.ci)
         self.assertIn("Run-WindowsPlaytest.ps1", self.ci)
         guard = (ROOT / "scripts/Assert-SafeWindowsPlaytestLogDirectory.ps1").read_text(encoding="utf-8")
