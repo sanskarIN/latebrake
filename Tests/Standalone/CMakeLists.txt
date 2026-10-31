@@ -69,6 +69,18 @@ else()
 endif()
 add_test(NAME RivalRacecraftComposition COMMAND latebrake_rival_racecraft_composition_tests)
 
+# Rival physical spin response: only bounded propulsion reduction based on
+# real chassis yaw/lateral slip; no player or Unreal runtime dependencies.
+add_executable(latebrake_rival_spin_throttle_tests RivalSpinThrottleGuardTests.cpp)
+target_include_directories(latebrake_rival_spin_throttle_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_spin_throttle_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_spin_throttle_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_spin_throttle_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalSpinThrottleGuard COMMAND latebrake_rival_spin_throttle_tests)
+
 add_executable(latebrake_pilot_tests RivalPilotTests.cpp)
 target_include_directories(latebrake_pilot_tests PRIVATE ../../Source/Latebrake/Public)
 target_compile_features(latebrake_pilot_tests PRIVATE cxx_std_20)
