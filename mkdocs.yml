@@ -134,6 +134,7 @@ nav:
       - Rival separation motion QA: RIVAL_RELATIVE_MOTION_QA.md
       - Race radar minimap QA: RACE_RADAR_QA.md
       - Rival recovery outcomes QA: RIVAL_RECOVERY_QA.md
+      - Rival moving-stall recovery QA: RIVAL_NO_APPROACH_RECOVERY_QA.md
       - Save migration: SAVE_MIGRATION.md
   - Roadmap & history:
       - Roadmap: ROADMAP.md
