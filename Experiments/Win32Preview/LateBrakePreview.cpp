@@ -5,8 +5,9 @@
 
 extern "C" { int _fltused = 0; } // MSVC floating-point linkage marker.
 #if defined(_MSC_VER) && !defined(__clang__)
-#pragma function(memset)
-#pragma function(memcpy)
+extern "C" void* memset(void*,int,unsigned long long);
+extern "C" void* memcpy(void*,const void*,unsigned long long);
+#pragma function(memset, memcpy)
 #endif
 
 // Freestanding compiler-generated zero initialization support.
