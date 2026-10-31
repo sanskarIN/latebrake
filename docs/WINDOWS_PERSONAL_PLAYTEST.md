@@ -111,6 +111,22 @@ Official Epic documentation:
 https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-command-line-arguments-reference)
 describes `ABSLOG` as an absolute log filename argument.
 
+## Analyze accepted race progression in a real Development log
+
+The source-level GameMode now writes a small non-shipping
+`LATEBRAKE_RACE_AUDIT v=1` event at race start/restart and after each
+**actually accepted** player checkpoint. A local parser can detect
+skipped/duplicated gates, inconsistent lap totals or incomplete finishes:
+
+```powershell
+python ./scripts/AnalyzeRaceAudit.py 'D:\\LateBrakePlaytestLogs\\YourActualSession.log' --require-finish
+```
+
+Use a genuine game log from the private diagnostic runner, not a synthetic
+fixture. The parser never certifies game provenance or hardware gameplay.
+Compare its output with the original hashed receipt and hands-on video;
+read [race audit QA](RACE_AUDIT_QA.md) for limitations and fixtures.
+
 ## Record a private, self-reported Win64 QA review
 
 After closing the real game session, the diagnostic runner prints the path
