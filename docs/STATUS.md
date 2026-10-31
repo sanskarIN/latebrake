@@ -5,6 +5,23 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Post-v0.5.85 rival verified-gate run-through driving (unreleased)
+
+- After directional rival gates replaced mere proximity scoring, the pilot
+  still stopped its motor on the old 440cm waypoint-arrival radius.
+  The real physical rival now aims **550cm through each gate** on the
+  original paved circuit and explicitly disables generic radial arrival.
+  Only a verified forward 3D crossing can advance the rival route.
+- Legacy generic waypoint planners retain their old default arrival
+  behavior. Invalid event gate indexes now fail closed and stop the
+  rival instead of steering toward the origin. Existing corner
+  braking, surface pace, player traffic, recovery and scoring remain.
+- New strict C++20 tests cover **200,000** physical approach samples,
+  all four runway targets, old-radius regressions, actual gate trace,
+  malformed inputs and full source bindings; no licensed UE compile,
+  cooked map, Windows/Android install or real driving qualification.
+  [Rival run-through QA](RIVAL_GATE_RUN_THROUGH_QA.md).
+
 ## Post-v0.5.85 physical rival directional gate crossings (unreleased)
 
 - The autonomous rival now advances its approximate route only after an
