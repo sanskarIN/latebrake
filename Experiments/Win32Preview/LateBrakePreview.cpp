@@ -10,6 +10,7 @@ extern "C" void* memcpy(void*,const void*,unsigned long long);
 #pragma function(memset, memcpy)
 #endif
 
+
 // Freestanding compiler-generated zero initialization support.
 extern "C" void* memset(void* dest,int value,unsigned long long size) {
     unsigned char* p=(unsigned char*)dest;
@@ -80,7 +81,10 @@ static float gameTime=0.0f, gateFlash=0.0f, toastTime=0.0f;
 static int totalLaps=3;
 static int homeFocus=0, mouseX=-1,mouseY=-1;
 static bool showHelp=false, highContrast=false, isHovering=false;
-static float countdown=0, countdownGo=0;
+static float countdown=0, countdownGo=0, fixedFrameCarry=0;
+static bool steeringAssist=true,lastAssist=false,lastRecover=false;
+static int personalTrackBestMs[4]={};
+static int recoveries=0;
 static unsigned int seed=0x6a09e667u;
 
 // Preview progression is intentionally local-only; online lobbies are planned,
@@ -198,6 +202,10 @@ static void saveProgress(){
 // Separate versioned UI preferences keep the existing V2 career.dat
 // format fully compatible with older personal-preview installations.
 struct UISettings { unsigned int magic, version, car, track, event, contrast, checksum; };
+struct UISettingsV4 { unsigned int magic,version,car,track,event,contrast,assist,checksum; };
+static unsigned int uiChecksumV4(UISettingsV4 d){
+    return d.magic ^ d.version ^ d.car ^ d.track ^ d.event ^ d.contrast ^ d.assist ^ 0xA57C8E13u;
+}
 static unsigned int uiChecksum(UISettings d){
     return d.magic ^ d.version ^ d.car ^ d.track ^ d.event ^ d.contrast ^ 0x823A9D5Bu;
 }
@@ -213,24 +221,79 @@ static void loadSettings(){
     char dir[400],file[440],tmp[440];if(!settingsPath(dir,file,tmp))return;
     HANDLE h=CreateFileA(file,0x80000000u,1,0,3,0,0);
     if(h==(HANDLE)-1||!h)return;
-    UISettings d={};DWORD got=0;
+    UISettingsV4 d={};DWORD got=0;
     BOOL ok=ReadFile(h,&d,sizeof(d),&got,0);CloseHandle(h);
-    if(!ok||got!=sizeof(d)||d.magic!=0x33424955u||d.version!=3||d.checksum!=uiChecksum(d))return;
-    if(d.car>=6||d.track>=4||d.event>=4||d.contrast>1)return;
-    selectedCar=(int)d.car;selectedTrack=(int)d.track;selectedChallenge=(int)d.event;
-    highContrast=d.contrast!=0;
+    if(!ok)return;
+    if(got==sizeof(UISettings)){
+        // Exact V3 settings shape: d.assist carries the legacy checksum.
+        UISettings old={d.magic,d.version,d.car,d.track,d.event,d.contrast,d.assist};
+        if(old.magic!=0x33424955u||old.version!=3||old.checksum!=uiChecksum(old)||
+            old.car>=6||old.track>=4||old.event>=4||old.contrast>1)return;
+        selectedCar=(int)old.car;selectedTrack=(int)old.track;
+        selectedChallenge=(int)old.event;highContrast=old.contrast!=0;
+    }else if(got==sizeof(UISettingsV4)){
+        if(d.magic!=0x34424955u||d.version!=4||d.checksum!=uiChecksumV4(d)||
+           d.car>=6||d.track>=4||d.event>=4||d.contrast>1||d.assist>1)return;
+        selectedCar=(int)d.car;selectedTrack=(int)d.track;
+        selectedChallenge=(int)d.event;highContrast=d.contrast!=0;
+        steeringAssist=d.assist!=0;
+    }
 }
 static void saveSettings(){
     if(testing)return;
     char dir[400],file[440],tmp[440];if(!settingsPath(dir,file,tmp))return;
     CreateDirectoryA(dir,0);
-    UISettings d={0x33424955u,3u,(unsigned)selectedCar,(unsigned)selectedTrack,
-        (unsigned)selectedChallenge,highContrast?1u:0u,0};
-    d.checksum=uiChecksum(d);
+    UISettingsV4 d={0x34424955u,4u,(unsigned)selectedCar,(unsigned)selectedTrack,
+        (unsigned)selectedChallenge,highContrast?1u:0u,steeringAssist?1u:0u,0};
+    d.checksum=uiChecksumV4(d);
     HANDLE h=CreateFileA(tmp,0x40000000u,0,0,2,0x80,0);
     if(h==(HANDLE)-1||!h)return;
     DWORD written=0;BOOL ok=WriteFile(h,&d,sizeof(d),&written,0);CloseHandle(h);
     if(ok&&written==sizeof(d))MoveFileExA(tmp,file,0x1u|0x8u);
+}
+// A separate additive V4 lap-record file preserves V2/V3 progress/settings.
+// Milliseconds avoid platform-dependent float representations in the save.
+struct LapRecordFile { unsigned int magic,version,best[4],checksum; };
+static unsigned int lapRecordChecksum(const LapRecordFile& r){
+    unsigned int h=0x74C5A19Bu^r.magic^r.version;
+    for(int i=0;i<4;i++)h=(h*16777619u)^r.best[i];
+    return h;
+}
+static bool lapRecordPaths(char* dir,char* file,char* temp){
+    char home[320]={};DWORD n=GetEnvironmentVariableA("LOCALAPPDATA",home,319);
+    return n>0&&n<319&&joinPath(dir,400,home,"LateBrakePreview")&&
+        joinPath(file,440,dir,"lap-records-v4.dat")&&
+        joinPath(temp,440,dir,"lap-records-v4.tmp");
+}
+static void loadLapRecords(){
+    char dir[400],file[440],tmp[440];if(!lapRecordPaths(dir,file,tmp))return;
+    HANDLE h=CreateFileA(file,0x80000000u,1,0,3,0,0);
+    if(h==(HANDLE)-1||!h)return;
+    LapRecordFile d={};DWORD got=0;BOOL ok=ReadFile(h,&d,sizeof(d),&got,0);CloseHandle(h);
+    if(!ok||got!=sizeof(d)||d.magic!=0x3442524Cu||d.version!=4||
+       d.checksum!=lapRecordChecksum(d))return;
+    for(int i=0;i<4;i++)if(d.best[i]>900000u)return;
+    for(int i=0;i<4;i++)personalTrackBestMs[i]=(int)d.best[i];
+}
+static void saveLapRecords(){
+    if(testing)return;
+    char dir[400],file[440],tmp[440];if(!lapRecordPaths(dir,file,tmp))return;
+    CreateDirectoryA(dir,0);
+    LapRecordFile d={};d.magic=0x3442524Cu;d.version=4;
+    for(int i=0;i<4;i++)d.best[i]=(unsigned)personalTrackBestMs[i];
+    d.checksum=lapRecordChecksum(d);
+    HANDLE h=CreateFileA(tmp,0x40000000u,0,0,2,0x80,0);
+    if(h==(HANDLE)-1||!h)return;
+    DWORD wrote=0;BOOL ok=WriteFile(h,&d,sizeof(d),&wrote,0);CloseHandle(h);
+    if(ok&&wrote==sizeof(d))MoveFileExA(tmp,file,0x1u|0x8u);
+}
+static void observeCompletedLap(float duration){
+    // Do not persist impossible zero-time synthetic teleports as records.
+    if(duration<3.0f||duration>900.0f)return;
+    int ms=(int)(duration*1000.0f+0.5f);
+    if(personalTrackBestMs[selectedTrack]==0||ms<personalTrackBestMs[selectedTrack]){
+        personalTrackBestMs[selectedTrack]=ms;saveLapRecords();
+    }
 }
 static void message(const char* t){int i=0;while(t[i]&&i<70){toast[i]=t[i];++i;}toast[i]=0;toastTime=2.8f;}
 static float trackProfile(float c,float s){
@@ -255,7 +318,7 @@ static void gatePos(int idx,float* x,float* y){
 }
 struct Opponent { float c,s,x,y,speed,stun; int rounds; };
 struct Race {
-    float x,y,fx,fy,speed,nitro,damage,elapsed,lapStart,best;
+    float x,y,fx,fy,speed,nitro,damage,elapsed,lapStart,best,smoothedSteer;
     int lap,nextGate,passes;
     bool finished,readyForGate,awarded,won;
     Opponent ai[3];
@@ -264,6 +327,9 @@ static Race race;
 static int totalLapsForMode(){return selectedChallenge==1?1:selectedChallenge==2||selectedChallenge==3?2:3;}
 static void beginRace(){
     race={};
+    if(!(ownedMask&(1<<selectedCar))){
+        page=GARAGE;message("UNLOCK THIS CAR TO DRIVE IT");return;
+    }
     race.nitro=100.0f;race.lap=1;race.nextGate=0;
     totalLaps=totalLapsForMode();race.readyForGate=true;
     float x,y;shapePos(0.0f,1.0f,&x,&y);
@@ -274,7 +340,7 @@ static void beginRace(){
         shapePos(0.0f,1.0f,&race.ai[i].x,&race.ai[i].y);
         race.ai[i].x-=25.0f+i*22.0f;race.ai[i].y+=i*12.0f;
     }
-    page=RACING;paused=false;showHelp=false;countdown=3.5f;countdownGo=0;gameTime=0;gateFlash=0;
+    page=RACING;paused=false;showHelp=false;countdown=3.5f;countdownGo=0;gameTime=0;gateFlash=0;fixedFrameCarry=0;recoveries=0;
 }
 static void reset(){beginRace();}
 static bool nearGate(int idx,float x,float y){
@@ -290,7 +356,7 @@ static void finishRace(bool winner){
     if(winner){
         int reward=trackReward[selectedTrack]+selectedChallenge*30;
         if(race.damage<30.0f)reward+=25;
-        if(credits<499000)credits+=reward;
+        if(credits<499000)credits=(int)minf(500000.0f,(float)credits+reward);
         if(completed<100000)completed++;
         if(careerStars<100000)careerStars+=(race.damage<30?3:race.damage<65?2:1);
         bonusCredits=reward;saveProgress();
@@ -312,6 +378,7 @@ static void creditGate(){
     if(race.nextGate==0){
         float duration=race.elapsed-race.lapStart;
         if(duration>0&&(race.best==0||duration<race.best))race.best=duration;
+        observeCompletedLap(duration);
         race.lapStart=race.elapsed;
         race.lap++;
         if(race.lap>totalLaps){
@@ -322,6 +389,22 @@ static void creditGate(){
             race.lap=totalLaps;finishRace(ok);
         }
     }
+}
+static void recoverToLastCheckpoint(){
+    if(page!=RACING||race.finished||paused||countdown>0)return;
+    // Five-second penalty; no free checkpoint/credit from a teleport.
+    int last=(race.nextGate+3)%4;
+    if(race.passes==0){float x,y;shapePos(0.0f,1.0f,&x,&y);race.x=x+11;race.y=y-4;race.fx=-1;race.fy=0;}
+    else {
+        float gx,gy;gatePos(last,&gx,&gy);
+        float dx=last==1?1.0f:last==3?-1.0f:0.0f;
+        float dy=last==0?-1.0f:last==2?1.0f:0.0f;
+        race.x=gx-dx*34;race.y=gy-dy*34;race.fx=dx;race.fy=dy;
+    }
+    race.speed=0;race.smoothedSteer=0;race.nitro=maxf(0,race.nitro-15);
+    race.elapsed+=5.0f;race.damage=minf(90,race.damage+5);
+    race.readyForGate=false;recoveries++;
+    message("RECOVERED / +5 SEC PENALTY");
 }
 static void update(float dt,bool forward,bool reverse,bool left,bool right,bool brake,bool boost){
     if(race.finished)return;
@@ -340,9 +423,14 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     if(brake)race.speed*=maxf(0.0f,1.0f-dt*5.8f);
     race.speed*=maxf(0.0f,1.0f-dt*(road?0.57f:2.6f));
     race.speed=clamp(race.speed,-110.0f,road?((nitro?420.0f:325.0f)*carSpeed[selectedCar]):130.0f);
+    // Smooth steering in simulation time, not render time. Assist reduces
+    // extreme high-speed rotation; it never interferes with reverse direction.
     float steer=(right?1.0f:0.0f)-(left?1.0f:0.0f);
+    race.smoothedSteer+=(steer-race.smoothedSteer)*clamp(dt*8.0f,0.0f,1.0f);
     float authority=clamp(absf(race.speed)/160.0f,0,1);
-    float turn=steer*dt*2.85f*authority*(race.speed<0?-1:1)*(road?1.0f:0.5f)*carGrip[selectedCar];
+    float speedSafety=steeringAssist?1.0f-0.38f*clamp(absf(race.speed)/420.0f,0,1):1.0f;
+    float turn=race.smoothedSteer*dt*2.85f*authority*(race.speed<0?-1:1)*
+        (road?1.0f:0.5f)*carGrip[selectedCar]*speedSafety;
     float fx=race.fx,fy=race.fy;
     race.fx=fx-fy*turn;race.fy=fy+fx*turn;
     float length=fsqrt(race.fx*race.fx+race.fy*race.fy);
@@ -504,7 +592,7 @@ static void headerNav(){
     text(24,14,"LATEBRAKE",CREAM(),3);
     text(255,21,"/  PERSONAL RACING LAB",MUTED(),2);
     rect(768,12,170,29,color(45,51,65));
-    text(784,21,"V3  2D PREVIEW",GOLD(),1);
+    text(784,21,"V4  2D PREVIEW",GOLD(),1);
 }
 static void footerNav(){
     rect(0,583,WIDTH,57,NAVY());rect(0,583,WIDTH,1,BORDER());
@@ -647,6 +735,36 @@ static void renderMenuV3(){
     }
     headerNav();footerNav();
 }
+static void renderRaceMiniMap(){
+    // An honest live schematic, calculated from the same road function as the
+    // driving physics. All positions remain in one coordinate system.
+    const int left=748,top=265,w=178,h=154;
+    rect(left-13,top-33,w+26,h+44,NAVY());stroke(left-13,top-33,w+26,h+44,BORDER(),2);
+    hint(left,top-23,"LIVE CIRCUIT MAP");
+    for(int j=0;j<=128;j++){
+        // Freestanding C++ without a math runtime: recurrent angle from a
+        // unit rotation (cos/sin of 2*pi/128).
+        static const float co=0.998795456f,si=0.049067674f;
+        static float c=1,s=0;
+        if(j==0){c=1;s=0;}
+        float x,y;shapePos(c,s,&x,&y);
+        float px=left+w*0.5f+(x-CX)*0.258f;
+        float py=top+h*0.5f+(y-CY)*0.258f;
+        if(j>0)dot((int)px,(int)py,2,CYAN());
+        float nc=c*co-s*si,ns=s*co+c*si;c=nc;s=ns;
+        if((j&31)==0&&j>0){float mag=fsqrt(c*c+s*s);if(mag>0){c/=mag;s/=mag;}}
+    }
+    for(int g=0;g<4;g++){
+        float x,y;gatePos(g,&x,&y);
+        dot((int)(left+w*0.5f+(x-CX)*0.258f),(int)(top+h*0.5f+(y-CY)*0.258f),
+            g==race.nextGate?5:2,g==race.nextGate?GOLD():MUTED());
+    }
+    for(int i=0;i<3;i++)dot((int)(left+w*0.5f+(race.ai[i].x-CX)*0.258f),
+         (int)(top+h*0.5f+(race.ai[i].y-CY)*0.258f),4,color(239,138,135));
+    dot((int)(left+w*0.5f+(race.x-CX)*0.258f),
+        (int)(top+h*0.5f+(race.y-CY)*0.258f),5,GOLD());
+    hint(left,top+h+4,"GOLD YOU / RED RIVALS");
+}
 static void renderRaceHUDV3(){
     // Designed as small peripheral cards; do not hide the next gate or car.
     rect(0,0,WIDTH,52,NAVY());rect(0,49,WIDTH,3,CYAN());
@@ -665,9 +783,13 @@ static void renderRaceHUDV3(){
     hint(744,135,"NITRO");progressBar(806,134,122,13,(int)race.nitro,CYAN());
     hint(744,157,"DAMAGE");progressBar(806,156,122,13,(int)race.damage,color(240,113,89));
     hint(744,188,"BEST LAP");number(837,184,(int)race.best,GOLD(),2);
+    hint(743,212,"TRACK PB");
+    if(personalTrackBestMs[selectedTrack]>0)number(842,209,personalTrackBestMs[selectedTrack]/1000,CYAN(),2);
+    else text(847,214,"--",MUTED(),1);
     tile(18,506,225,62,true);
     hint(34,516,"SPEED / SIMULATED");number(36,537,(int)absf(race.speed),CREAM(),3);
     hint(161,544,"KM/H");
+    renderRaceMiniMap();
     tile(732,500,208,68,false);
     hint(748,509,"GATE PROGRESS");
     for(int i=0;i<4;i++){
@@ -676,7 +798,8 @@ static void renderRaceHUDV3(){
     }
     rect(0,583,WIDTH,57,NAVY());
     hint(20,594,"W/UP ACCELERATE    A/D STEER    SPACE BRAKE    SHIFT NITRO    P PAUSE");
-    hint(20,616,"R RESTART    M HOME    F1 HELP    H CONTRAST    BLUE = NEXT GATE");
+    hint(20,616,"R RESTART    K RECOVER +5S    J STEER ASSIST    F1 HELP    P PAUSE");
+    hint(30,476,steeringAssist?"STEER ASSIST: ON  [J]":"STEER ASSIST: OFF [J]");
     if(!onroad(race.x,race.y)){
         rect(350,74,263,36,color(90,46,34));
         text(369,85,"OFF TRACK / LOW GRIP",GOLD(),2);
@@ -700,8 +823,9 @@ static void overlayHelp(){
     text(205,309,"SHIFT        NITRO BOOST",CREAM(),2);
     text(205,338,"P            PAUSE / RESUME",CREAM(),2);
     text(205,367,"R            RESTART RACE",CREAM(),2);
-    text(205,396,"H            HIGH CONTRAST UI",CREAM(),2);
-    hint(205,448,"FOLLOW GOLD CHECKPOINT MARKERS IN ORDER.");
+    text(205,396,"K            RECOVER / +5 SEC",CREAM(),2);
+    text(205,425,"J            STEERING ASSIST",CREAM(),2);
+    hint(205,457,"H CONTRAST / FOLLOW GOLD GATES IN ORDER.");
     uiButton(206,481,546,39,"F1 / ESC  CLOSE GUIDE",false);
 }
 static void resultsOverlayV3(){
@@ -709,7 +833,8 @@ static void resultsOverlayV3(){
     text(262,186,race.won?"EVENT CLEARED":"TRY AGAIN",race.won?CYAN():GOLD(),3);
     hint(264,231,race.won?"NICE DRIVE. YOUR CAREER WAS SAVED.":"YOU CAN RETRY THE SAME EVENT.");
     hint(264,259,"RACE TIME");number(468,253,(int)race.elapsed,CREAM(),3);
-    hint(264,309,"REWARD CREDITS");number(476,304,bonusCredits,GOLD(),3);
+    hint(264,289,"BEST LAP");number(468,286,(int)race.best,CYAN(),2);
+    hint(264,322,"REWARD CREDITS");number(476,315,bonusCredits,GOLD(),3);
     uiButton(263,359,429,43,"ENTER  RETRY EVENT",true);
     uiButton(263,415,206,43,"M  HOME",false);
     uiButton(486,415,206,43,"G  GARAGE",false);
@@ -803,6 +928,15 @@ static void mouseClick(int x,int y){
         else if(within(x,y,290,369,378,43))setPage(HOME);
     }
 }
+static void advanceRaceFixed(float wallDt,bool gas,bool reverse,bool left,bool right,bool brake,bool boost){
+    const float fixed=1.0f/120.0f;
+    fixedFrameCarry+=clamp(wallDt,0,0.1f);
+    for(int i=0;i<12&&fixedFrameCarry>=fixed&&page==RACING;i++){
+        update(fixed,gas,reverse,left,right,brake,boost);
+        fixedFrameCarry-=fixed;
+    }
+    if(page!=RACING)fixedFrameCarry=0;
+}
 static void step(float dt){
     if(toastTime>0)toastTime-=dt;
     bool enter=pressed(0x0D,lastEnter),back=pressed(0x1B,lastBack);
@@ -814,14 +948,23 @@ static void step(float dt){
     bool unlock=pressed('U',lastUnlock);
     bool rp=pressed('R',lastRestart),pause=pressed('P',lastPause);
     bool help=pressed(0x70,lastHelp),contrast=pressed('H',lastContrast);
+    bool assist=pressed('J',lastAssist),recover=pressed('K',lastRecover);
     if(contrast){highContrast=!highContrast;saveSettings();}
+    if(assist){steeringAssist=!steeringAssist;saveSettings();
+        message(steeringAssist?"STEERING ASSIST ON":"STEERING ASSIST OFF");}
     if(help){showHelp=!showHelp;return;}
     if(showHelp){if(back||enter)showHelp=false;return;}
     if(page==RACING){
         if(back||home||g||t||ch){setPage((back||home)?HOME:g?GARAGE:t?TRACKS:CHALLENGES);return;}
         if(pause)paused=!paused;
         if(rp){beginRace();return;}
-        if(!paused)update(dt,key('W')||key(0x26),key('S')||key(0x28),key('A')||key(0x25),key('D')||key(0x27),key(0x20),key(0x10));
+        if(recover)recoverToLastCheckpoint();
+        if(!paused){
+            // Physics runs at 120Hz independent of render-loop wall timing.
+            // Bounded catch-up protects against catastrophic window hitches.
+            advanceRaceFixed(dt,key('W')||key(0x26),key('S')||key(0x28),
+                key('A')||key(0x25),key('D')||key(0x27),key(0x20),key(0x10));
+        }else fixedFrameCarry=0;
     }else if(page==RESULTS){
         if(enter||rp){beginRace();return;}
         if(back||home||g){setPage((back||home)?HOME:GARAGE);return;}
@@ -932,18 +1075,44 @@ static bool selftest(){
     prefs.checksum=uiChecksum(prefs);
     if(prefs.checksum!=uiChecksum(prefs))return false;
     prefs.track=7; if(prefs.checksum==uiChecksum(prefs))return false;
-    beginRace();if(countdown<3.0f)return false;
+    // Direct quick-race paths must not bypass the local garage economy.
+    selectedCar=5;ownedMask=1;setPage(HOME);beginRace();
+    if(page!=GARAGE)return false;
+    selectedCar=0;selectedTrack=0;drawTrack();setPage(HOME);beginRace();if(countdown<3.0f)return false;
     float before=race.elapsed;update(0.020f,true,false,false,false,false,false);
     if(race.elapsed!=before)return false;
+    // 120Hz stepping must be independent of render frame subdivision.
+    beginRace();countdown=0;
+    advanceRaceFixed(1.0f/60.0f,true,false,false,false,false,false);
+    float twoTicks=race.elapsed;
+    float twoTicksSpeed=race.speed;
+    beginRace();countdown=0;
+    advanceRaceFixed(1.0f/120.0f,true,false,false,false,false,false);
+    advanceRaceFixed(1.0f/120.0f,true,false,false,false,false,false);
+    if(absf(race.elapsed-twoTicks)>0.0001f||absf(race.speed-twoTicksSpeed)>0.0001f)return false;
+    float oldElapsed=race.elapsed;int oldGate=race.nextGate;
+    recoverToLastCheckpoint();
+    if(race.elapsed<oldElapsed+4.99f||race.nextGate!=oldGate||
+       race.readyForGate||recoveries!=1||race.speed!=0)return false;
+    int oldMs=personalTrackBestMs[0];observeCompletedLap(0.0f);
+    if(personalTrackBestMs[0]!=oldMs)return false;
+    observeCompletedLap(42.5f);
+    if(personalTrackBestMs[0]!=42500)return false;
+    LapRecordFile record={};record.magic=0x3442524Cu;record.version=4;
+    record.best[0]=42500;record.checksum=lapRecordChecksum(record);
+    record.best[0]=42501;if(record.checksum==lapRecordChecksum(record))return false;
+    UISettingsV4 newer={0x34424955u,4u,0u,1u,2u,1u,0u,0u};
+    newer.checksum=uiChecksumV4(newer);newer.assist=1;
+    if(newer.checksum==uiChecksumV4(newer))return false;
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }
 extern "C" void mainCRTStartup(){
     if(hasSelfTestFlag(GetCommandLineA()))ExitProcess(selftest()?0:3);
-    loadProgress();loadSettings();drawTrack();
+    loadProgress();loadSettings();loadLapRecords();drawTrack();
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSA wc={};wc.style=0x0003;wc.proc=WindowProc;wc.instance=instance;wc.name="LateBrakePreviewNative";
     if(!RegisterClassA(&wc))ExitProcess(5);
-    HWND wnd=CreateWindowExA(0,wc.name,"LateBrake V3 - Racing Lab (2D Standalone Preview, Not Unreal)",0x00CF0000,70,70,980,710,0,0,instance,0);
+    HWND wnd=CreateWindowExA(0,wc.name,"LateBrake V4 - Racing Lab (2D Standalone Preview, Not Unreal)",0x00CF0000,70,70,980,710,0,0,instance,0);
     if(!wnd)ExitProcess(6);
     windowHandle=wnd;ShowWindow(wnd,5);UpdateWindow(wnd);
     BITMAPINFO bi={};bi.header.size=40;bi.header.width=WIDTH;bi.header.height=-HEIGHT;bi.header.planes=1;bi.header.bits=32;
