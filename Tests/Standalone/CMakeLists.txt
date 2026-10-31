@@ -1327,3 +1327,19 @@ else()
 endif()
 add_test(NAME RivalGateRunThrough COMMAND
     latebrake_rival_gate_run_through_tests)
+
+# Arcade-only local human traction assist when real Chaos yaw and lateral
+# velocity jointly identify a high-speed spin; no Unreal/device build here.
+add_executable(latebrake_human_spin_traction_tests
+    HumanSpinTractionControlTests.cpp)
+target_include_directories(latebrake_human_spin_traction_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_human_spin_traction_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_human_spin_traction_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_human_spin_traction_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HumanSpinTractionControl COMMAND
+    latebrake_human_spin_traction_tests)
