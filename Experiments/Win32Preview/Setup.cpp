@@ -1,4 +1,4 @@
-// LateBrake V4 per-user setup/bootstrapper. Native Win32; NO Unreal engine.
+// LateBrake V5 per-user setup/bootstrapper. Native Win32; NO Unreal engine.
 // Embeds exact standalone game executable at build time; no network installer.
 // Installs only under current user's LOCALAPPDATA. Apps & Features uninstall.
 extern "C" { int _fltused=0; }
@@ -56,9 +56,9 @@ static bool eq(const char* a,const char* b){while(*a&&*b&&*a==*b){a++;b++;}retur
 static bool has(const char* cmd,const char* marker){for(;*cmd;cmd++){const char*a=cmd,*b=marker;while(*a&&*b&&*a==*b){a++;b++;}if(!*b)return true;}return false;}
 static bool paths(char* folder,char* game,char* setup){char home[380]={};
  DWORD got=GetEnvironmentVariableA("LOCALAPPDATA",home,379);if(!got||got>=379)return false;
- return join(folder,460,home,"LateBrakePreviewV4") &&
-        join(game,540,folder,"LateBrakePreviewV4.exe")&&
-        join(setup,540,folder,"LateBrakeSetupV4.exe");
+ return join(folder,460,home,"LateBrakePreviewV5") &&
+        join(game,540,folder,"LateBrakePreviewV5.exe")&&
+        join(setup,540,folder,"LateBrakeSetupV5.exe");
 }
 static bool writeData(const char* name,const unsigned char* data,DWORD len){
  HANDLE h=CreateFileA(name,0x40000000u,0,0,2,0x80,0);
@@ -66,14 +66,14 @@ static bool writeData(const char* name,const unsigned char* data,DWORD len){
  DWORD written=0;BOOL ok=WriteFile(h,data,len,&written,0);CloseHandle(h);
  return ok&&written==len;
 }
-static const char* uninstallKey="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LateBrakePreviewV4";
+static const char* uninstallKey="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LateBrakePreviewV5";
 static void regString(HKEY key,const char* name,const char* value){
  RegSetValueExA(key,name,0,1,(const unsigned char*)value,(DWORD)slen(value)+1);
 }
 static void registration(const char* folder,const char* setup){
  HKEY k=0;DWORD state=0;
  if(RegCreateKeyExA((HKEY)(unsigned long long)0x80000001u,uninstallKey,0,0,0,0x20006,0,&k,&state)==0){
-  regString(k,"DisplayName","LateBrake Standalone Racing Preview V4");
+  regString(k,"DisplayName","LateBrake Standalone Racing Preview V5");
   regString(k,"DisplayVersion","4.0.0-preview");
   regString(k,"Publisher","LateBrake open-source project");
   regString(k,"InstallLocation",folder);
@@ -92,13 +92,13 @@ static void doneRemove(){
  // The temporary remover is never executed from the installed directory.
  // Windows may disallow self-removal; request deletion at next reboot.
  char self[560]={};if(GetModuleFileNameA(0,self,560))MoveFileExA(self,0,4);
- MessageBoxA(0,"LateBrake Preview V4 files and uninstall registration were removed. Your local career save is preserved.","LateBrake Preview Uninstall",0x40);
+ MessageBoxA(0,"LateBrake Preview V5 files and uninstall registration were removed. Your local career save is preserved.","LateBrake Preview Uninstall",0x40);
 }
 static void uninstall(){
- int response=MessageBoxA(0,"Uninstall LateBrake Preview V4? Your career data will be preserved in LOCALAPPDATA\\LateBrakePreview.","LateBrake Preview Uninstall",0x24);
+ int response=MessageBoxA(0,"Uninstall LateBrake Preview V5? Your career data will be preserved in LOCALAPPDATA\\LateBrakePreview.","LateBrake Preview Uninstall",0x24);
  if(response!=6)return;
  char temp[420]={};DWORD n=GetTempPathA(419,temp);
- char target[540]={};if(!n||n>=419||!join(target,540,temp,"LateBrakeV4TempUninstall.exe"))return;
+ char target[540]={};if(!n||n>=419||!join(target,540,temp,"LateBrakeV5TempUninstall.exe"))return;
  char self[540]={};if(!GetModuleFileNameA(0,self,539)||!CopyFileA(self,target,0)){
  MessageBoxA(0,"Could not prepare safe temporary uninstaller.","LateBrake Setup",0x10);return;
  }
@@ -110,7 +110,7 @@ static void uninstall(){
  else MessageBoxA(0,"Unable to launch temporary uninstaller.","LateBrake Setup",0x10);
 }
 static void install(){
- if(MessageBoxA(0,"Install the 64-bit LateBrake V4 standalone racing preview for this Windows user? The installer does not download any files or require administrator access. This is NOT the Unreal Engine game.","LateBrake Preview V4 Setup",0x24)!=6)return;
+ if(MessageBoxA(0,"Install the 64-bit LateBrake V5 standalone racing preview for this Windows user? The installer does not download any files or require administrator access. This is NOT the Unreal Engine game.","LateBrake Preview V5 Setup",0x24)!=6)return;
  char folder[460],game[540],setup[540];
  if(!paths(folder,game,setup)){
   MessageBoxA(0,"LOCALAPPDATA environment path is missing or too long.","LateBrake Setup",0x10);return;
@@ -124,11 +124,11 @@ static void install(){
   MessageBoxA(0,"Game was installed, but could not add its uninstaller. Install from a writable directory.","LateBrake Setup - Partial",0x30);return;
  }
  registration(folder,setup);
- if(MessageBoxA(0,"Installed to %LOCALAPPDATA%\\LateBrakePreviewV4. Launch the racing preview now? You can remove it through Windows Installed Apps.","LateBrake Preview V4 Installed",0x24)==6){
+ if(MessageBoxA(0,"Installed to %LOCALAPPDATA%\\LateBrakePreviewV5. Launch the racing preview now? You can remove it through Windows Installed Apps.","LateBrake Preview V5 Installed",0x24)==6){
   char launch[640]={};int n=0;launch[n++]='"';for(const char* c=game;*c&&n<580;c++)launch[n++]=*c;launch[n++]='"';launch[n]=0;
   STARTUPINFOA si={};si.cb=sizeof(si);PROCESS_INFORMATION pi={};
   if(CreateProcessA(game,launch,0,0,0,0,0,folder,&si,&pi)){CloseHandle(pi.thread);CloseHandle(pi.process);}
-  else MessageBoxA(0,"Installed, but launching the preview failed. Open LateBrakePreviewV4.exe from the installation directory.","LateBrake Preview V4",0x30);
+  else MessageBoxA(0,"Installed, but launching the preview failed. Open LateBrakePreviewV5.exe from the installation directory.","LateBrake Preview V5",0x30);
  }
 }
 extern "C" void mainCRTStartup(){

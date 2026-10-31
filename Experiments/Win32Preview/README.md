@@ -1,45 +1,42 @@
-# LateBrake V4 — Windows 2D racing preview
+# LateBrake V5 — optional controller support in the standalone Win64 preview
 
-**Experimental native Win32/GDI prototype. Not the Unreal Engine LateBrake game.** This is not a qualifying 3D racing release and not a verified Windows install. No network, accounts, or real multiplayer exist in this preview.
+**Development preview of an original Win32/GDI 2D racing experiment. NOT the Unreal Engine game.** No verified UE Editor compile, cooked levels, 3D assets, online multiplayer or Windows hardware testing is claimed.
 
-## Improvements over V3
+## V5 development changes
 
-- Fixed 120 Hz simulation steps with bounded catch-up after frame delays. Simulated controls no longer vary directly with display refresh rate.
-- Smooth analog-style steering filter; high-speed directional assistance (toggle with **J**) for fewer abrupt turns. Preference is saved to the versioned `settings.dat` file and legacy V3 settings are read compatibly.
-- **K** to recover a stranded car near its previous validated checkpoint, costing five seconds, damage, and nitro. Does not credit gates. Restart (**R**) resets the event instead.
-- Six cars still differ by acceleration, top speed and grip. Locked cars are viewable but cannot drive until bought with local credits; even Home quick-start enforces ownership.
-- Persistent best lap times per track, held separately from the existing V2/V3 career file, with a format marker, checksum, bounds checks and atomic-style replace.
-- Live minimap with player position, local scripted rivals and next directional checkpoint; improved race HUD and help overlay.
-- Improved finish breakdown, assisted/standard driving mode display, race goals, settings continuity and strict local-only progression.
-- Synthetic tests of two-vs-one fixed simulation frames, invalid garage ownership, penalty recovery, wrong-way checkpoint rejection, lap file integrity, saved preference integrity and race progression.
+- Optional Windows **XInput controller** support without hard-requiring the DLL: tries `xinput1_4.dll`, `xinput1_3.dll`, then `xinput9_1_0.dll`; keyboard and mouse remain available when none loads.
+- Left analog stick steering with ±18% deadzone/remapped full travel; RT proportional acceleration and LT proportional braking; LB reverses; A triggers nitro; X performs penalized recovery.
+- D-pad or left stick menu navigation; A selects, B returns, Start pauses/resumes. Analog menu navigation has a latch: no repeated selection changes from a held stick.
+- Focus loss pauses racing, ignores background keyboard/controller input, and requires a *neutral controller* after focus regain or reconnect before allowing inputs. Holding A/Start/RT across a disconnect cannot unintentionally act when the controller returns.
+- Controller status and control mappings appear in HUD/footer when connected.
+- Added synthetic input-level tests for axis extremes/deadzones, trigger scaling, button edges/held buttons, unplug/reconnect and focus re-entry. These do not constitute real controller hardware QA.
+- Keeps V2 career saves and V3/V4 settings compatibility, six vehicle tuning profiles, four procedural tracks/events, rivals, 120Hz fixed-step simulation, checkpoint direction, race records and the personal installer.
 
-### Controls
+## Controls
 
-| Key | Function |
-|---|---|
-| W / Up | Accelerate |
-| S / Down | Reverse |
-| A / D or Left / Right | Steer |
-| Space | Brake |
-| Shift | Nitro |
-| J | Steering assistance on/off (saved) |
-| K | Recover with +5-second penalty |
-| P | Pause/resume |
-| R | Restart current event |
-| F1 | Controls/help |
-| H | High-contrast mode |
-| Enter / arrows / mouse | Navigate menus and select |
-| M / Escape | Home or back |
+| Action | Keyboard | Xbox-compatible controller |
+|---|---|---|
+| Accelerate | W / Up | RT (analog) |
+| Brake | Space | LT (analog) |
+| Reverse | S / Down | LB |
+| Steer | A / D, Left / Right | Left stick (analog) |
+| Nitro | Shift | A (during race) |
+| Recover (+5 sec) | K | X |
+| Pause/resume | P | Start |
+| Menu selection | Arrows / Enter / mouse | D-pad/stick / A |
+| Back | Escape / M | B |
+| Driver guide | F1 | F1 |
+| Steering assist | J | J |
+| High contrast | H | H |
 
-## Win64 installation and privacy
+The input fallback is designed for optional XInput devices; compatibility with specific gamepads, adapters, Bluetooth setups, trigger ranges, and Windows graphics/drivers **requires hands-on Windows testing**.
 
-- Portable: run `LateBrakePreviewV4.exe`. No installer required.
-- Setup: run `LateBrakeSetupV4.exe`. It asks permission to install for **your Windows account** under `%LOCALAPPDATA%\LateBrakePreviewV4`, creates an uninstall registration, and can launch the game. No admin elevation or downloads are required. Setup is unsigned; review the source and checksums first.
-- Save data under `%LOCALAPPDATA%\LateBrakePreview\` uses `career.dat` (preserves older V2/V3 progression), `settings.dat` (V4 adds the steering-assist preference while reading valid V3 settings), and `lap-records-v4.dat` (new track PB file). Uninstall preserves career and records.
-- No network, online multiplayer, advertising, tracking or background services. Your local files are not uploaded.
+## Windows install and saved progress
 
-## Verification scope
+- `LateBrakePreviewV5.exe` is the portable game.
+- `LateBrakeSetupV5.exe` is the unsigned per-user installer: it embeds the same EXE bytes, installs to `%LOCALAPPDATA%\LateBrakePreviewV5`, registers an uninstaller and does not require admin elevation or network access.
+- Saves stay under `%LOCALAPPDATA%\LateBrakePreview` and are intentionally preserved on uninstall. Source-level self-tests do not write to saves.
+- Run `Build-Windows.ps1` in a VS x64 Native Tools PowerShell 7 shell to build from source on Windows, then `VerifyPayload.py` to compare the installer's embedded payload.
+- Ordinary GitHub Actions MSVC checks test the self-test and package integrity only. They cannot verify graphics, controller hardware or human playability.
 
-`python VerifyPayload.py LateBrakePreviewV4.exe LateBrakeSetupV4.exe payload.inc` checks that both built binaries are real PE32+ AMD64 and that the *installer source* embeds exactly the game EXE. The game `--self-test` checks deterministic game-policy transitions with no save writes. Linux-native render tests use stubs to render screenshots from the **actual preview source**; they are NOT proof that an installed Win64 EXE draws or plays correctly.
-
-Actual Windows gameplay, install/uninstall, performance, virus scanning and signing have **not** been independently qualified. The production UE 5.8 race project separately needs UHT/Editor compilation, original cooked level and installed Win64/Android QA ([#148](https://github.com/sanskarIN/latebrake/issues/148)). Multiplayer is future planned, tracked at [#233](https://github.com/sanskarIN/latebrake/issues/233).
+**Production goal:** An authenticated UE 5.8 Windows Editor/UHT build, original cooked circuit, inspected Win64 package and actual installed hardware tests remain required by issue #148. Xbox support in this 2D experiment is *not* an Unreal Engine Input Mapping integration; that requires separate production work.

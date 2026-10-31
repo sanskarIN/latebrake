@@ -20,9 +20,9 @@ $root = (Resolve-Path -LiteralPath $PSScriptRoot).Path
 $output = (Resolve-Path -LiteralPath $OutputDirectory).Path
 $source = Join-Path $root 'LateBrakePreview.cpp'
 $gameObj = Join-Path $output 'LateBrakePreview.obj'
-$gameExe = Join-Path $output 'LateBrakePreviewV4.exe'
+$gameExe = Join-Path $output 'LateBrakePreviewV5.exe'
 $setupObj = Join-Path $output 'Setup.obj'
-$setupExe = Join-Path $output 'LateBrakeSetupV4.exe'
+$setupExe = Join-Path $output 'LateBrakeSetupV5.exe'
 $gameOptions = @('/nologo','/O2','/GS-','/Zl','/GR-','/std:c++20','/c',"/Fo$gameObj",$source)
 & cl.exe @gameOptions
 if ($LASTEXITCODE -ne 0) { throw 'Windows preview C++ compilation failed.' }
