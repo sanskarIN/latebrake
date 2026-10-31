@@ -99,7 +99,7 @@ def verify_candidate_archive(root: Path, manifest_path: Path) -> tuple[int, int]
             not isinstance(metadata.get("source_commit"), str) or
             not re.fullmatch(r"[a-fA-F0-9]{40}", metadata["source_commit"]) or
             not isinstance(metadata.get("unreal_engine_version"), str) or
-            not re.fullmatch(r"5\\.8(?:\\..*)?", metadata["unreal_engine_version"]) or
+            not re.fullmatch(r"5\.8(?:\..*)?", metadata["unreal_engine_version"]) or
             not _hash(metadata.get("starter_map_sha256")) or
             not _hash(metadata.get("unreal_engine_build_sha256"))):
         reject("Candidate schema, platform, provenance or engine metadata is invalid.")
