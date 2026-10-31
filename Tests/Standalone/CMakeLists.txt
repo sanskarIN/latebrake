@@ -1283,3 +1283,19 @@ else()
 endif()
 add_test(NAME RivalYawRateSteering COMMAND
     latebrake_rival_yaw_rate_steering_tests)
+
+# Real rival waypoint advancement shares the player's 3D directional
+# checkpoint geometry rather than awarding a proximity-only sphere visit.
+add_executable(latebrake_rival_directional_gate_tests
+    RivalDirectionalGateTests.cpp)
+target_include_directories(latebrake_rival_directional_gate_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_directional_gate_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_directional_gate_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_directional_gate_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalDirectionalGate COMMAND
+    latebrake_rival_directional_gate_tests)
