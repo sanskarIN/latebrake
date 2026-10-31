@@ -103,6 +103,14 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     SpoilerWing->SetupAttachment(Chassis);
     SpoilerSupportLeft->SetupAttachment(Chassis);
     SpoilerSupportRight->SetupAttachment(Chassis);
+    // Explicitly stay non-colliding even if the built-in mesh is missing.
+    for (UStaticMeshComponent* Cosmetic : {
+             Hood.Get(), RearDeck.Get(), SpoilerWing.Get(),
+             SpoilerSupportLeft.Get(), SpoilerSupportRight.Get()})
+    {
+        Cosmetic->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Cosmetic->SetSimulatePhysics(false);
+    }
     if (Cube.Succeeded())
     {
         ConfigureDecorativeMesh(Hood, Cube.Object,
