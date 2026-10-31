@@ -122,6 +122,7 @@ nav:
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
       - Arcade tire condition QA: ARCADE_TIRE_CONDITION_QA.md
       - Off-pavement arcade traction QA: ARCADE_SURFACE_TRACTION_QA.md
+      - Combined arcade driving forces QA: ARCADE_DRIVE_COMPOSITION_QA.md
       - Rival player-traffic awareness QA: RIVAL_TRAFFIC_QA.md
       - Rival tire/grip corner-pace QA: RIVAL_GRIP_PACE_QA.md
       - Single-rival slipstream QA: SLIPSTREAM_DRAFT_QA.md

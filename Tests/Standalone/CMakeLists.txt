@@ -1191,3 +1191,19 @@ else()
     target_compile_options(latebrake_observed_brake_distance_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ObservedBrakeDistance COMMAND latebrake_observed_brake_distance_tests)
+
+# Combined production arcade force policies: on-road/off-road,
+# impact, tires, thermal braking, corner assist, nitro and drafting.
+# Real UHT/Chaos and installed game QA are separate mandatory gates.
+add_executable(latebrake_arcade_drive_composition_tests
+    ArcadeDriveCompositionTests.cpp)
+target_include_directories(latebrake_arcade_drive_composition_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_arcade_drive_composition_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_arcade_drive_composition_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_arcade_drive_composition_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ArcadeDriveComposition COMMAND latebrake_arcade_drive_composition_tests)
