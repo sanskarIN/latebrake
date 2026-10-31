@@ -37,8 +37,11 @@ jobs:
       - name: Run synthetic C++ navigation/progression smoke test
         shell: pwsh
         run: |
-          & ./Experiments/Win32Preview/out/LateBrakePreviewV3.exe --self-test
-          if ($LASTEXITCODE -ne 0) { throw "Preview self-test failed: $LASTEXITCODE" }
+          # GUI-subsystem EXEs do not reliably populate LASTEXITCODE.
+          # Wait for the actual process and inspect its exit status.
+          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV3.exe').Path
+          $run = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
+          if ($run.ExitCode -ne 0) { throw "Preview self-test failed: $($run.ExitCode)" }
       - name: Verify PE architecture and embedded payload identity
         shell: pwsh
         run: |
