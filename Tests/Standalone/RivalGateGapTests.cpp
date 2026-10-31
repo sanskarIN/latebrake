@@ -1,4 +1,5 @@
 #include "Racing/RivalGateGap.h"
+#include "AI/RivalRouteProgress.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -74,6 +75,38 @@ int main()
                     "comparison stays antisymmetric for both drivers");
         }
     }
+
+    // Exercise the actual engine-independent rival route state machine:
+    // mere proximity must not advance the runtime rival's verified cursor.
+    // Explicit accepted forward crossings each advance exactly one gate.
+    RivalRouteProgress actualRivalRoute(4, 3);
+    for (int gates = 0; gates < 12; ++gates)
+    {
+        const auto nearOnly = actualRivalRoute.ObserveVerifiedGate(
+            120.0, 1600.0, 0.016, false);
+        Require(!nearOnly.Advanced && !nearOnly.Completed,
+                "mere rival radius arrival cannot gain a verified gate");
+        const auto accepted = actualRivalRoute.ObserveVerifiedGate(
+            120.0, 1600.0, 0.016, true);
+        Require(accepted.Advanced &&
+                actualRivalRoute.GetCompletedLaps() == (gates + 1) / 4 &&
+                actualRivalRoute.GetNextWaypoint() == (gates + 1) % 4,
+                "only accepted directional rival crossings alter gate totals");
+        const auto compared = CompareRivalCreditedGates({
+            4, 3, 1, 1,
+            actualRivalRoute.GetCompletedLaps(),
+            actualRivalRoute.GetNextWaypoint(),
+            true, true, true});
+        Require(compared.Valid && compared.CreditedGateDelta == 5 - (gates + 1),
+                "physical rival route counter feeds the same bounded comparison");
+    }
+    Require(actualRivalRoute.IsFinished() &&
+            actualRivalRoute.GetCompletedLaps() == 3 &&
+            actualRivalRoute.GetNextWaypoint() == 0,
+            "the complete rival route has exactly twelve accepted gates");
+    Require(!actualRivalRoute.ObserveVerifiedGate(
+                120.0, 1600.0, 0.016, true).Advanced,
+            "a finished rival cannot earn extra gate credit");
 
     RivalGateGapSample sample{4, 3, 1, 2, 0, 1, true, true, true};
     Require(CompareRivalCreditedGates(sample).Valid,
