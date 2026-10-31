@@ -1372,3 +1372,16 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalGateGap COMMAND latebrake_rival_gate_gap_tests)
+
+# Shared player/rival engine thermal state: strict portable C++20 QA.
+add_executable(latebrake_arcade_engine_heat_tests ArcadeEngineHeatTests.cpp)
+target_include_directories(latebrake_arcade_engine_heat_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_arcade_engine_heat_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_arcade_engine_heat_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_arcade_engine_heat_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ArcadeEngineHeat COMMAND latebrake_arcade_engine_heat_tests)

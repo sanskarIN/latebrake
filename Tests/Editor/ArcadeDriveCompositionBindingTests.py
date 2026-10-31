@@ -34,6 +34,7 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
             "BrakeHeat.Observe({",
             "StabilizeCornerThrottle(",
             "NitroBoost.Step(",
+            "EngineHeat.Observe({",
             "SlipstreamBoost.Observe({",
             "AllocateArcadeBoost(",
             "CollisionDamage.MotorMultiplier()",
@@ -51,6 +52,7 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertEqual(tick.count(
             "static_cast<float>(Surface.MotorMultiplier)"), 3)
         self.assertEqual(tick.count("* ImpactMotorScale"), 3)
+        self.assertEqual(tick.count("* EngineMotorScale"), 3)
         self.assertIn("CombinedBoost.NitroExtra", tick)
         self.assertIn("DraftExtraForce = CombinedBoost.DraftExtra;", tick)
         self.assertIn("CollisionDamage.LateralGripMultiplier()", tick)
@@ -62,9 +64,9 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
 
     def test_lifecycle_cannot_grant_free_repair_or_corrupt_running(self):
         self.assertIn("TireCondition.Reset(); BrakeHeat.Reset(); "
-                      "CollisionDamage.Reset(); SurfaceTraction.Reset();",
-                      self.header)
-        for member in ("TireCondition", "BrakeHeat",
+                      "EngineHeat.Reset(); CollisionDamage.Reset(); "
+                      "SurfaceTraction.Reset();", self.header)
+        for member in ("TireCondition", "BrakeHeat", "EngineHeat",
                        "CollisionDamage", "SurfaceTraction"):
             self.assertIn(f"{member}.Suspend();", self.car)
         self.assertIn("ClearDriverInputs();", self.car)

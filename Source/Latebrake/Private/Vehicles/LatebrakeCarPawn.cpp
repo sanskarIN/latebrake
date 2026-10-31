@@ -326,6 +326,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SpinAssist.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
+    EngineHeat.Suspend();
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
@@ -508,6 +509,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SlipstreamBoost.Suspend();
         TireCondition.Suspend();
         BrakeHeat.Suspend();
+        EngineHeat.Suspend();
         CollisionDamage.Suspend();
         LastQualifiedPlanarSpeedCmPerSecond = 0.0;
         SurfaceTraction.Suspend();
@@ -669,6 +671,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         CurrentNitroSpeedCapScale,
         static_cast<float>(NitroDrive.SpeedCapMultiplier),
         FMath::Min(DeltaSeconds, 0.1f), 0.24f);
+    // Race-local heat uses real signed chassis speed, effective propulsion
+    // after spin moderation, and qualified nitro; service braking does not
+    // generate motor heat. Player and rival share the same policy.
+    const latebrake::EngineHeatOutput EngineThermal = EngineHeat.Observe({
+        static_cast<double>(DeltaSeconds),
+        static_cast<double>(LongitudinalSpeed),
+        bEffectiveBraking ? 0.0 : static_cast<double>(EffectiveThrottle),
+        NitroDrive.Active, true});
     // Drafting must observe an actual ahead, aligned, moving rival and a
     // locally possessed human driver after all race/Chaos readiness gates.
     // Time Attack, missing/finished rival and failed physics give zero help.
@@ -733,6 +743,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // path may bypass it or exceed the existing final boost budget.
     const float ImpactMotorScale = static_cast<float>(
         CollisionDamage.MotorMultiplier());
+    const float EngineMotorScale = static_cast<float>(
+        EngineThermal.MotorMultiplier);
     // Ease positive propulsion into the currently qualified forward (nitro)
     // or reverse gear ceiling. Baseline, nitro and drafting share this
     // single factor; opposing-throttle engine braking is not weakened.
@@ -746,14 +758,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-            static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * GearPowerFactor);
+            static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
         // Preserve the baseline motor path; an active, human-only nitro
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(CombinedBoost.NitroExtra) *
-                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * GearPowerFactor);
+                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
@@ -761,7 +773,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(DraftExtraForce) *
-                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * GearPowerFactor);
+                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
         }
     }
     else if (!bEffectiveBraking)
@@ -995,6 +1007,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     SlipAngleMeter.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
+    EngineHeat.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
     ApplySignalLights(false, false, 0.0);

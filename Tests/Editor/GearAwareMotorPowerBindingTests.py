@@ -28,6 +28,7 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
             "const FVector Velocity = Chassis->GetPhysicsLinearVelocity()",
             "if (!Surface.Valid)",
             "NitroBoost.Step(",
+            "EngineHeat.Observe({",
             "SlipstreamBoost.Observe({",
             "AllocateArcadeBoost(",
             "CollisionDamage.MotorMultiplier()",
@@ -43,7 +44,9 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
     def test_all_three_boost_and_base_motor_terms_share_taper(self):
         tick = self.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
-        self.assertEqual(tick.count("* ImpactMotorScale * GearPowerFactor);"), 3)
+        self.assertEqual(tick.count(
+            "* ImpactMotorScale * EngineMotorScale * GearPowerFactor);"), 3)
+        self.assertIn("EngineThermal.MotorMultiplier", tick)
         self.assertEqual(tick.count(
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"), 3)
         self.assertIn("CombinedBoost.NitroExtra", tick)
