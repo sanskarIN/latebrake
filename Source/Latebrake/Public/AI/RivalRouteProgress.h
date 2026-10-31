@@ -58,8 +58,28 @@ public:
         RecoveryPending = false;
     }
 
+    // Legacy distance-only route telemetry is retained for portable
+    // consumers. The real physical rival must use ObserveVerifiedGate
+    // below: mere proximity is never proof of a forward checkpoint pass.
     RouteObservation Observe(double distanceCm, double speedCmPerSecond,
                              double deltaSeconds) noexcept
+    {
+        return ObserveCore(distanceCm, speedCmPerSecond, deltaSeconds,
+                           false, false);
+    }
+
+    RouteObservation ObserveVerifiedGate(
+        double distanceCm, double speedCmPerSecond,
+        double deltaSeconds, bool forwardPlaneCrossed) noexcept
+    {
+        return ObserveCore(distanceCm, speedCmPerSecond, deltaSeconds,
+                           true, forwardPlaneCrossed);
+    }
+
+private:
+    RouteObservation ObserveCore(
+        double distanceCm, double speedCmPerSecond, double deltaSeconds,
+        bool requiresPlaneCrossing, bool forwardPlaneCrossed) noexcept
     {
         // Until the engine has reported the outcome, a pending recovery
         // cannot silently advance a waypoint or trigger another attempt.
@@ -72,7 +92,8 @@ public:
             return {};
         }
 
-        if (distanceCm <= 440.0)
+        if ((requiresPlaneCrossing && forwardPlaneCrossed) ||
+            (!requiresPlaneCrossing && distanceCm <= 440.0))
         {
             StationarySeconds = 0.0;
             ResetApproachWindow();
@@ -155,6 +176,7 @@ public:
         return {};
     }
 
+public:
     // Caller must synchronously report the actual verified Unreal teleport
     // outcome; repeated or unsolicited results cannot modify telemetry.
     // Every issued request consumes one finite budget slot regardless of
