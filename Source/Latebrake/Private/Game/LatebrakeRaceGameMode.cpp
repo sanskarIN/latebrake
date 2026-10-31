@@ -1474,6 +1474,7 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
+        GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before upgrading engine.");
         return;
     }
@@ -1524,6 +1525,7 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
+        GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before upgrading grip.");
         return;
     }
