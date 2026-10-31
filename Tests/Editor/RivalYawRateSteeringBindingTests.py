@@ -26,8 +26,8 @@ class RivalYawRateSteeringBindingTests(unittest.TestCase):
         markers = (
             "Mode->IsRaceStartGreen()",
             "IsRacePhysicsReady()",
-            "latebrake::PlanRivalTurn(",
             "latebrake::AnticipateRivalCorner(",
+            "latebrake::PlanRivalTurn(",
             "GripPace.Apply(Command, {",
             "SurfaceDamagePace.Apply(Command, {",
             "latebrake::YieldRivalToPlayer(Command, {",
@@ -35,13 +35,18 @@ class RivalYawRateSteeringBindingTests(unittest.TestCase):
             "Chassis->GetPhysicsAngularVelocityInRadians()",
             "latebrake::ModerateRivalYawRate(FollowingCommand, {",
             "SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)",
-            "Super::Tick(DeltaSeconds);",
         )
         self.assertEqual(
             [tick.index(marker) for marker in markers],
             sorted(tick.index(marker) for marker in markers),
         )
         self.assertEqual(tick.count("ModerateRivalYawRate("), 1)
+        # An earlier guarded branch also invokes Super::Tick; assert the
+        # final, applied command precedes the final physical chassis tick.
+        self.assertLess(
+            tick.index("SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)"),
+            tick.rindex("Super::Tick(DeltaSeconds);"),
+        )
         self.assertIn('#include "AI/RivalYawRateSteering.h"', self.rival)
         self.assertIn('#include "Components/StaticMeshComponent.h"', self.rival)
         self.assertIn("static_cast<double>(ActualAngularVelocity.Z)", tick)
