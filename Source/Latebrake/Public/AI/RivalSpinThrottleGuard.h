@@ -66,7 +66,9 @@ public:
         }
         if (command.Brake)
         {
-            // Never replace stronger corner, traffic or emergency braking.
+            // The existing brake wins. Do not freeze a previous throttle
+            // hold while ordinary corner/traffic braking continues.
+            Reset();
             return command;
         }
 
