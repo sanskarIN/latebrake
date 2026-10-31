@@ -1,9 +1,24 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-30
+**Updated:** 2026-10-31
 **Latest published milestone:** [v0.5.85 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85), independently verified at immutable commit `d162802425de7953d8156eb74a4893b9c7e5d033`: exact tag target, published pre-release, non-draft status, source notes and **zero binary assets** confirmed. The v0.5.84 predecessor remains independently verified at `fa884831fbddfd7ef30500da0fdf321a5c9a6278`.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## Post-v0.5.85 reverse-gear physics control (unreleased)
+
+- Both player and real rigid-body rival now use a source-level reverse-speed
+  limiter after the existing Chaos total-speed clamp. Backwards velocity
+  measured along the **actual planar chassis heading** is bounded at
+  1,350 cm/s (Arcade) or 1,000 cm/s (Simulation Inspired), independent of
+  garage top-speed upgrades. Lateral slide velocity and vertical motion
+  are preserved; forward cruising, nitro, drafting, timing, scoring and saves
+  are unchanged.
+- Strict C++20 tests cover 200,000 direction/speed combinations, invalid
+  geometry and bounded outputs; Unreal-source bindings protect placement
+  after the usual gate checks and existing forward speed cap.
+- Gameplay, AI driving behavior and real installed hardware performance are
+  **not** validated by source tests. [Reverse speed QA](ARCADE_REVERSE_SPEED_QA.md).
 
 ## Post-v0.5.85 source integration regression (unreleased)
 
