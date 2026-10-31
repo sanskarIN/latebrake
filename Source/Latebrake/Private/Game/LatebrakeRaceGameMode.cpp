@@ -23,6 +23,7 @@
 #include "Career/CareerLaunchSelection.h"
 #include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
+#include "HAL/PlatformTime.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
 #include "Racing/FinishTimingEligibility.h"
@@ -896,6 +897,7 @@ void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()
 
 void ALatebrakeRaceGameMode::CloseMenuForRace()
 {
+    GaragePurchaseConfirm.Reset();
     if (!Menu.IsOpen())
     {
         return;
@@ -918,6 +920,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
+    GaragePurchaseConfirm.Reset();
     SuspendBestLapGhost();
     Menu.Toggle();
     if (!Menu.IsOpen())
@@ -1021,17 +1024,20 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
 
 void ALatebrakeRaceGameMode::MenuNext()
 {
+    GaragePurchaseConfirm.Reset();
     Menu.Next();
 }
 
 void ALatebrakeRaceGameMode::MenuPrevious()
 {
+    GaragePurchaseConfirm.Reset();
     Menu.Previous();
 }
 
 void ALatebrakeRaceGameMode::MenuActivate()
 {
     if (!Menu.IsOpen()) return;
+    GaragePurchaseConfirm.Reset();
     const latebrake::MenuPage Page = Menu.Current();
     if (Page == latebrake::MenuPage::Main)
     {
@@ -1378,6 +1384,7 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
+    GaragePurchaseConfirm.Reset();
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GarageFeedback = TEXT("Finish or exit this career race before changing vehicles.");
@@ -1415,20 +1422,32 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
+        GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before buying vehicles.");
         return;
     }
     const int32 Next = Garage.NextLockedVehicle();
     if (Next < 0)
     {
+        GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Every prototype profile is already unlocked.");
         return;
     }
     const int32 Cost = latebrake::GarageState::Definition(Next).UnlockCost;
     if (!Garage.CanUnlock(Next))
     {
+        GaragePurchaseConfirm.Reset();
         GarageFeedback = FString::Printf(TEXT("Need %d credits; currently %d."), Cost, Garage.Credits());
         return;
+    }
+    if (!GaragePurchaseConfirm.ConfirmOrStage(
+        latebrake::GaragePurchaseKind::UnlockVehicle,
+        Garage.Snapshot(), Next, Cost, FPlatformTime::Seconds()))
+    {
+        GarageFeedback = FString::Printf(
+            TEXT("UNLOCK %s: %d credits. Press Q again within 8s to confirm."),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Next).Name), Cost);
+        return; // Preview has not mutated credits or ownership.
     }
     latebrake::ProfileWriteCheckpoint SavedProfile(
         Garage, Career, CompletedRaceCount, PersonalBestSeconds,
@@ -1459,6 +1478,22 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
         return;
     }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
+    if (Cost <= 0 || Garage.Credits() < Cost)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = Cost <= 0 ? TEXT("Engine is already fully upgraded.")
+            : FString::Printf(TEXT("Engine needs %d credits; have %d."), Cost, Garage.Credits());
+        return;
+    }
+    if (!GaragePurchaseConfirm.ConfirmOrStage(
+        latebrake::GaragePurchaseKind::UpgradeEngine,
+        Garage.Snapshot(), Garage.EngineLevel(), Cost, FPlatformTime::Seconds()))
+    {
+        GarageFeedback = FString::Printf(
+            TEXT("ENGINE LEVEL %d: %d credits. Press U again within 8s to confirm."),
+            Garage.EngineLevel() + 1, Cost);
+        return;
+    }
     latebrake::ProfileWriteCheckpoint SavedProfile(
         Garage, Career, CompletedRaceCount, PersonalBestSeconds,
         PersonalBestLapSeconds, BestTimeAttackSeconds);
@@ -1493,6 +1528,22 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
         return;
     }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);
+    if (Cost <= 0 || Garage.Credits() < Cost)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = Cost <= 0 ? TEXT("Grip is already fully upgraded.")
+            : FString::Printf(TEXT("Grip needs %d credits; have %d."), Cost, Garage.Credits());
+        return;
+    }
+    if (!GaragePurchaseConfirm.ConfirmOrStage(
+        latebrake::GaragePurchaseKind::UpgradeGrip,
+        Garage.Snapshot(), Garage.GripLevel(), Cost, FPlatformTime::Seconds()))
+    {
+        GarageFeedback = FString::Printf(
+            TEXT("GRIP LEVEL %d: %d credits. Press I again within 8s to confirm."),
+            Garage.GripLevel() + 1, Cost);
+        return;
+    }
     latebrake::ProfileWriteCheckpoint SavedProfile(
         Garage, Career, CompletedRaceCount, PersonalBestSeconds,
         PersonalBestLapSeconds, BestTimeAttackSeconds);
