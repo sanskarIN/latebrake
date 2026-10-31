@@ -180,7 +180,7 @@ private:
     latebrake::GarageTuningKey LastAppliedTuning;
     TWeakObjectPtr<ALatebrakeCarPawn> LastTunedPawn;
     bool bProgressSaveFailed = false;
-    FString GarageFeedback = TEXT("Q unlock | E select | U engine | I grip");
+    FString GarageFeedback = TEXT("E select | Q/U/I twice to confirm spending");
     int32 LastRaceCredits = 0;
     int32 RecoveriesThisRace = 0;
 
