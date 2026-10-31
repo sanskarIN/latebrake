@@ -1418,3 +1418,15 @@ else()
 endif()
 add_test(NAME RivalEngineHeatPace COMMAND
     latebrake_rival_engine_heat_pace_tests)
+
+# Desktop visual race instruments: pure viewport and meter policy.
+# This test does not claim rendered Unreal/Android QA.
+add_executable(latebrake_hud_instrument_tests HudInstrumentClusterTests.cpp)
+target_include_directories(latebrake_hud_instrument_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_instrument_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_instrument_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_instrument_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudInstrumentCluster COMMAND latebrake_hud_instrument_tests)

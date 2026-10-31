@@ -1,6 +1,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "UI/HudInstrumentCluster.h"
 #include "UI/HudVerticalPlan.h"
 #include "UI/HudTextBounds.h"
 #include "UI/HudMenuVerticalPlan.h"
@@ -80,6 +81,22 @@ void ALatebrakeRaceHUD::DrawHUD()
         latebrake::CalculateHudTextBounds(
             static_cast<double>(Canvas->SizeX),
             static_cast<double>(Canvas->SizeY), Layout, bTouchHUD);
+    // A distinct desktop-only dashboard reserves a right-side text lane.
+    // Its values are observational: they never affect physics or awards.
+    const latebrake::HudInstrumentCluster Instruments =
+        latebrake::CalculateHudInstrumentCluster(
+            static_cast<double>(Canvas->SizeX),
+            static_cast<double>(Canvas->SizeY),
+            Layout, bTouchHUD, Mode->IsMenuOpen(), Mode->GetRace().IsFinished(),
+            static_cast<double>(Car->GetSpeedKmH()),
+            Car->GetNitroBoost().ChargeFraction(),
+            Car->GetEngineHeat().HeatFraction(),
+            Car->GetCollisionDamage().DamageFraction());
+    const double SafeTextWidth = Instruments.Visible
+        ? FMath::Min(HorizontalBounds.MaxWidthPixels,
+            Instruments.Panel.X - HorizontalBounds.Left -
+                16.0 * Instruments.Scale)
+        : HorizontalBounds.MaxWidthPixels;
     const auto FitHudText = [&](const FString& Value, UFont* Font,
                                 float TextScale) -> FString
     {
@@ -97,7 +114,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         };
         const FString Suffix(TEXT("..."));
         const int32 Prefix = latebrake::ChooseHudTextPrefix(
-            Value.Len(), HorizontalBounds.MaxWidthPixels,
+            Value.Len(), SafeTextWidth,
             Measure(Value), Measure(Suffix),
             [&](int32 Units) -> double
             {
@@ -1358,6 +1375,65 @@ void ALatebrakeRaceHUD::DrawHUD()
                     GEngine->GetSmallFont(), Scale);
             }
         }
+    }
+
+    // Read-only instrument panel. Avoid the touch UI, menu, results and
+    // compact windows entirely, and reserve a text lane rather than allowing
+    // optional diagnostic strings to paint over the gauges.
+    if (Instruments.Visible)
+    {
+        const float Gx = static_cast<float>(Instruments.Panel.X);
+        const float Gy = static_cast<float>(Instruments.Panel.Y);
+        const float S = static_cast<float>(Instruments.Scale);
+        const float Gw = static_cast<float>(Instruments.Panel.Width);
+        const float Gh = static_cast<float>(Instruments.Panel.Height);
+        const FLinearColor Panel(0.018f, 0.034f, 0.062f, 0.82f);
+        const FLinearColor Track(0.14f, 0.19f, 0.24f, 0.93f);
+        const FLinearColor Gold(1.f, 0.73f, 0.17f, 1.f);
+        const FLinearColor Mint(0.42f, 0.89f, 0.80f, 1.f);
+        const FLinearColor Coral(1.f, 0.52f, 0.38f, 1.f);
+        const FLinearColor Ink(0.95f, 0.96f, 1.f, 1.f);
+        DrawRect(Panel, Gx, Gy, Gw, Gh);
+        DrawRect(Gold, Gx, Gy, 4.f * S, Gh);
+        DrawText(FString(TEXT("RACE / INSTRUMENTS")), Gold,
+            Gx + 16.f * S, Gy + 8.f * S,
+            GEngine->GetSmallFont(), 0.86f * S);
+        const double DisplaySpeed = Mode->UsesMilesPerHour()
+            ? Instruments.SpeedKmH * 0.621371
+            : Instruments.SpeedKmH;
+        DrawText(FString::Printf(
+                Mode->UsesMilesPerHour()
+                    ? TEXT("%.0f mph") : TEXT("%.0f km/h"),
+                DisplaySpeed),
+            Ink, Gx + 16.f * S, Gy + 30.f * S,
+            GEngine->GetMediumFont(), 1.10f * S);
+
+        // Labeled percentage bars remain usable without color distinction.
+        // Heat is an arcade estimate; chassis condition is derived solely
+        // from current-session collision damage, not a safety rating.
+        const auto DrawMeter = [&](const TCHAR* Label, double Fraction,
+                                   float Row, const FLinearColor& Fill)
+        {
+            const float PosY = Gy + Row * S;
+            DrawText(FString::Printf(TEXT("%s  %.0f%%"),
+                Label, Fraction * 100.0), Ink,
+                Gx + 16.f * S, PosY,
+                GEngine->GetSmallFont(), 0.83f * S);
+            const float BarX = Gx + 16.f * S;
+            const float BarWidth = Gw - 32.f * S;
+            const float BarY = PosY + 18.f * S;
+            DrawRect(Track, BarX, BarY, BarWidth, 7.f * S);
+            if (Fraction > 0.0)
+            {
+                DrawRect(Fill, BarX, BarY,
+                    BarWidth * static_cast<float>(Fraction), 7.f * S);
+            }
+        };
+        DrawMeter(TEXT("NITRO"), Instruments.NitroFraction, 64.f, Mint);
+        DrawMeter(TEXT("ENGINE HEAT (ARCADE)"),
+            Instruments.EngineHeatFraction, 98.f, Coral);
+        DrawMeter(TEXT("CHASSIS CONDITION"),
+            Instruments.ChassisConditionFraction, 132.f, Gold);
     }
 
     // A deterministic footer no longer follows an unbounded telemetry Y.
