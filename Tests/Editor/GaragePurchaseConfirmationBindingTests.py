@@ -40,6 +40,7 @@ class GaragePurchaseConfirmationBindingTests(unittest.TestCase):
                     f"void ALatebrakeRaceGameMode::{start}()", 1)[1].split(
                     f"void ALatebrakeRaceGameMode::{end}()", 1)[0]
                 for marker in ("CanEditGarageDuringRace(",
+                               "Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage",
                                "GaragePurchaseConfirm.ConfirmOrStage(",
                                "Garage.Snapshot()", "FPlatformTime::Seconds()",
                                "ProfileWriteCheckpoint SavedProfile(",
