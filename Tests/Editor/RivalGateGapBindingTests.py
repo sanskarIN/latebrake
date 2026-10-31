@@ -101,6 +101,9 @@ class RivalGateGapBindingTests(unittest.TestCase):
         self.assertIn("latebrake_rival_gate_gap_tests PRIVATE /W4 /WX",
                       self.cmake)
         self.assertIn("200000", self.tests)
+        self.assertIn("RivalRouteProgress actualRivalRoute(4, 3)", self.tests)
+        self.assertIn("actualRivalRoute.ObserveVerifiedGate(", self.tests)
+        self.assertIn("mere rival radius arrival cannot gain", self.tests)
         self.assertIn("Unreal Engine 5.8", self.docs)
         self.assertIn("not a playable", self.docs.lower())
 
