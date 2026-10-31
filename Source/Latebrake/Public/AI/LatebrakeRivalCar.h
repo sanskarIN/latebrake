@@ -29,6 +29,10 @@ public:
     void ConfigurePilot(int32 CheckpointCount, int32 RequiredLaps);
     int32 GetExpectedLaps() const { return Route.GetRequiredLaps(); }
     int32 GetApproximateLaps() const { return Route.GetCompletedLaps(); }
+    // The live rival's next forward verified gate; no physical placement
+    // or timing authority is inferred from this index.
+    int32 GetNextVerifiedGate() const { return Route.GetNextWaypoint(); }
+    int32 GetVerifiedGateCount() const { return Route.GetWaypointCount(); }
     int32 GetPilotRecoveries() const { return Route.GetRecoveryCount(); }
     int32 GetPilotSuccessfulRecoveries() const { return Route.GetSuccessfulRecoveryCount(); }
     int32 GetPilotFailedRecoveries() const { return Route.GetFailedRecoveryCount(); }

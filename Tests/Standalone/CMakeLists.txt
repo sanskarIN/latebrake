@@ -1358,3 +1358,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME HumanSpinAssistMeter COMMAND latebrake_human_spin_assist_meter_tests)
+
+# Advisory only: compare player and rival accepted directional checkpoint
+# totals, never direct distance/ranking/finish timing or career rewards.
+add_executable(latebrake_rival_gate_gap_tests RivalGateGapTests.cpp)
+target_include_directories(latebrake_rival_gate_gap_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_gate_gap_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_gate_gap_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_gate_gap_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalGateGap COMMAND latebrake_rival_gate_gap_tests)

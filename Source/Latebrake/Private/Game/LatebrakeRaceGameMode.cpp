@@ -1285,6 +1285,35 @@ bool ALatebrakeRaceGameMode::HasRivalFinishedRoute() const
     return IsValid(RivalCar) && RivalCar->HasCompletedRoute();
 }
 
+bool ALatebrakeRaceGameMode::TryGetRivalCreditedGateGap(
+    latebrake::RivalGateGap& OutGap) const
+{
+    OutGap = {};
+    // Do not describe a rival during Time Attack, a missing/corrupt race,
+    // blocked start, menu, focus loss or failed player grid placement.
+    // Rival progress is independently advanced only by its true forward
+    // directional gate trace; this API never grants an actual placement.
+    if (!latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
+        !bCircuitReady || !StartLights.IsGreen() ||
+        Race.IsFinished() || !IsRestartPlacementReady() ||
+        !HasLocalPlayerDriver() || Menu.IsOpen() ||
+        UGameplayStatics::IsGamePaused(this) ||
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended() ||
+        !IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady() ||
+        RivalCar->GetExpectedLaps() != Race.GetRequiredLaps() ||
+        RivalCar->GetVerifiedGateCount() != Race.GetCheckpointCount())
+    {
+        return false;
+    }
+
+    OutGap = latebrake::CompareRivalCreditedGates({
+        Race.GetCheckpointCount(), Race.GetRequiredLaps(),
+        Race.GetCompletedLaps(), Race.GetNextCheckpoint(),
+        RivalCar->GetApproximateLaps(), RivalCar->GetNextVerifiedGate(),
+        true, true, true});
+    return OutGap.Valid;
+}
+
 FString ALatebrakeRaceGameMode::GetSelectedVehicleName() const
 {
     return FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Garage.SelectedVehicle()).Name));

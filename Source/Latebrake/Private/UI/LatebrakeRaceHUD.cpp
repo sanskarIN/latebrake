@@ -861,6 +861,41 @@ void ALatebrakeRaceHUD::DrawHUD()
             bRivalRace,
             {RivalWorldPosition.X, RivalWorldPosition.Y},
             bRivalPositionVerified);
+    // Read-only discrete comparison of already accepted directional gate
+    // events. Direct radar distance NEVER determines who is ahead; two
+    // vehicles at the same gate count could still be far apart on the road.
+    // Skip tight mobile/low-height views and never display an unsupported
+    // official race position or award.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        bRivalPositionVerified)
+    {
+        latebrake::RivalGateGap GateGap;
+        if (Mode->TryGetRivalCreditedGateGap(GateGap) &&
+            (GateGap.PlayerCreditedGates > 0 ||
+             GateGap.RivalCreditedGates > 0))
+        {
+            if (GateGap.Kind ==
+                latebrake::RivalGateGapKind::PlayerMoreCreditedGates)
+            {
+                Line(FString::Printf(
+                    TEXT("GATE GAP: YOU +%d VERIFIED (NOT RACE PLACE)"),
+                    GateGap.CreditedGateDelta), Primary);
+            }
+            else if (GateGap.Kind ==
+                     latebrake::RivalGateGapKind::RivalMoreCreditedGates)
+            {
+                Line(FString::Printf(
+                    TEXT("GATE GAP: RIVAL +%d VERIFIED (NOT RACE PLACE)"),
+                    -GateGap.CreditedGateDelta), Accent);
+            }
+            else if (GateGap.Kind ==
+                     latebrake::RivalGateGapKind::SameCreditedGateCount)
+            {
+                Line(TEXT("GATE GAP: SAME VERIFIED COUNT (NOT RACE PLACE)"),
+                     Primary);
+            }
+        }
+    }
     if (RivalProximityHint.Update(
             Radar, GetWorld()->GetDeltaSeconds(),
             bWayfindingEligible && bRivalRace))
