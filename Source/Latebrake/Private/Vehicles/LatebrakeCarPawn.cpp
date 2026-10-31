@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
+#include "Vehicles/HumanSpinTractionControl.h"
 #include "Vehicles/FrameStableDamping.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/ArcadeBoostArbitration.h"
@@ -631,14 +632,25 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     // Apply the same bounded corner-assist policy to controller, touch
     // and rival throttle. Brake/reverse demand is never reduced by it.
-    const float EffectiveThrottle = static_cast<float>(
+    const float CornerThrottle = static_cast<float>(
         latebrake::StabilizeCornerThrottle(
             BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
+    // This is a *second* Arcade-only human safeguard. It observes actual
+    // Chaos yaw rate and signed chassis slip after the existing lateral
+    // traction policy. The rival keeps its independent AI spin guard;
+    // Simulation Inspired and an intentional handbrake drift are unchanged.
+    const bool bHumanDriver = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr;
+    const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();
+    const float EffectiveThrottle = static_cast<float>(
+        latebrake::ModerateHumanSpinThrottle(
+            CornerThrottle, static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(LateralSpeed),
+            static_cast<double>(AngularVelocity.Z),
+            bArcade, bHumanDriver, BrakeProfile.HandbrakeActive));
     // A finite, player-only boost modifies existing acceleration and speed
     // cap; it never modifies checkpoints, rivals, rewards or race records.
     // Steady-speed cap ramps avoid a velocity snap when a held boost ends.
-    const bool bHumanDriver = IsLocallyControlled() &&
-        Cast<APlayerController>(GetController()) != nullptr;
     const latebrake::NitroDriveOutput NitroDrive = NitroBoost.Step(
         static_cast<double>(DeltaSeconds), bHumanDriver,
         bEffectiveBraking, static_cast<double>(EffectiveThrottle),
