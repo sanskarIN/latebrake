@@ -17,6 +17,7 @@ import re
 import sys
 
 from candidate_file_integrity import require_unlinked_path, verify_candidate_archive
+from AnalyzeRaceAudit import MAX_LOG_BYTES, RaceAuditError, analyze_race_audit
 
 SCHEMA = 1
 CHECKS = (
@@ -252,18 +253,94 @@ def evaluate(args: argparse.Namespace) -> None:
     print("This never certifies a playable game or enables a release.")
 
 
+def audit_race(args: argparse.Namespace) -> None:
+    """Parse only the exact schema-2 runtime log sealed by this receipt.
+
+    A successful hash comparison proves consistency between local files and
+    user-editable metadata, not the origin or authenticity of any Unreal
+    runtime, screenshot, player race or Win64 executable.
+    """
+    receipt, root, _, manifest, receipt_hash = candidate_context(args.receipt)
+    if receipt["schema_version"] != 2 or receipt["unreal_log_present"] is not True:
+        fail("Race audit requires a schema-2 receipt with a present, hashed runtime log.")
+    raw_log = Path(receipt["unreal_log_path"])
+    require_unlinked_path(raw_log)
+    if raw_log.stat().st_size > MAX_LOG_BYTES:
+        fail("Race audit log exceeds 32 MiB parser safety limit.")
+    try:
+        events = analyze_race_audit(
+            raw_log.read_text(encoding="utf-8-sig"),
+            require_finish=args.require_finish,
+        )
+    except RaceAuditError as error:
+        fail(f"Race audit rejected: {error}")
+    # candidate_context() has already independently rehashed the complete
+    # closed-world UAT archive. The manifest is also pinned to this receipt
+    # and its schema/provenance fields were validated by that same call.
+    metadata = json.loads(
+        manifest.read_text(encoding="utf-8-sig"),
+        object_pairs_hook=unique_pairs,
+    )
+    report = {
+        "schema_version": 1,
+        "status": "HASH_BOUND_SOURCE_RACE_AUDIT_UNVERIFIED",
+        "source_authenticity_verified": False,
+        "gameplay_verified": False,
+        "ready_for_release": False,
+        "receipt_sha256": receipt_hash,
+        "executable_sha256": require_hash(receipt["executable_sha256"], "EXE hash"),
+        "candidate_manifest_sha256": require_hash(
+            receipt["candidate_manifest_sha256"], "Manifest hash"
+        ),
+        "runtime_log_sha256": require_hash(
+            receipt["unreal_log_sha256"], "Runtime log hash"
+        ),
+        "source_commit": metadata["source_commit"].lower(),
+        "unreal_engine_build_sha256": require_hash(
+            metadata["unreal_engine_build_sha256"], "Engine build hash"
+        ),
+        "starter_map_sha256": require_hash(
+            metadata["starter_map_sha256"], "Circuit map hash"
+        ),
+        "candidate_file_count": len(metadata["files"]),
+        "runtime_log_integrity_verified": True,
+        "runtime_exit_ok": receipt["process_exit_code"] == 0,
+        "startup_log_markers_pass": receipt["startup_log_markers_pass"],
+        "race_audit": events,
+        "warning": WARN,
+        "next_gate": (
+            "Compare against observed gameplay and original Windows runtime logs; "
+            "qualify installed Unreal 5.8, cooked track, physical gates, "
+            "controls, saves and hardware under issue #148."
+        ),
+    }
+    write_new(args.output, report, root)
+    print(f"Unverified hash-bound race audit created: {args.output}")
+    print(
+        f"Attempt records={events['attempt_count']}, accepted gates="
+        f"{events['accepted_gate_events']}, "
+        f"reported finishes={events['reported_finished_attempts']}."
+    )
+    print("A hash-consistent, editable runtime log never certifies actual gameplay.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("init", "evaluate"):
+    for command in ("init", "evaluate", "audit"):
         step = commands.add_parser(command)
         step.add_argument("--receipt", type=Path, required=True, help="Private JSON receipt from Run-WindowsPlaytest.ps1")
         step.add_argument("--output", type=Path, required=True, help="New JSON path outside the candidate game")
         if command == "evaluate":
             step.add_argument("--checklist", type=Path, required=True, help="Edited private manual test checklist")
+        if command == "audit":
+            step.add_argument(
+                "--require-finish", action="store_true",
+                help="Reject records without a complete reported ordered race finish",
+            )
     args = parser.parse_args()
     try:
-        (new_template if args.command == "init" else evaluate)(args)
+        {"init": new_template, "evaluate": evaluate, "audit": audit_race}[args.command](args)
         return 0
     except (ValueError, OSError, TypeError, KeyError) as error:
         print(f"Private Win64 QA review rejected: {error}", file=sys.stderr)
