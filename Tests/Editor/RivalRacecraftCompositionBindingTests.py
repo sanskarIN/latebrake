@@ -26,7 +26,7 @@ class RivalRacecraftCompositionBindingTests(unittest.TestCase):
             "Command = GripPace.Apply(",
             "YieldRivalToPlayer(Command, {",
             "FollowingBrakeHold.Apply(",
-            "SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)",
+            "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
             "Super::Tick(DeltaSeconds);",
         )
         positions = [RIVAL.find(value, RIVAL.index("const latebrake::CircuitPoint NextTarget")) for value in markers]
@@ -40,7 +40,7 @@ class RivalRacecraftCompositionBindingTests(unittest.TestCase):
             "Velocity, GetActorRightVector()",
             "Player->GetVelocity()",
             "TrafficCommand.Brake && !Command.Brake",
-            "SafeTrafficCommand.Steering",
+            "SafeSpinCommand.Steering",
         ):
             self.assertIn(statement, RIVAL)
 
