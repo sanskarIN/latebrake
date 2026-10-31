@@ -70,7 +70,7 @@ python -m unittest discover -s Tests/Editor -p RivalGateGapBindingTests.py -v
 Portable strict Windows/MSVC, Ubuntu/GCC and macOS/Clang checks cover
 lap rollover, reversal, finished races, same-count ambiguity, 256-gate
 and 100-lap bounds, invalid physics/event flags, invalid gate
-counters, and 200,000 deterministic comparisons. Source binding
+counters, and 200,000 deterministic comparisons. A portable integration loop\nalso drives the actual `RivalRouteProgress::ObserveVerifiedGate` state\nmachine through twelve directional accepts and rejects proximity-only\nvisits before comparing its real accepted counter. Source binding
 checks confirm that the rival progress comes from accepted directional
 gate samples, the GameMode uses its existing player gate authority,
 and the HUD shows no fabricated race ranking.
