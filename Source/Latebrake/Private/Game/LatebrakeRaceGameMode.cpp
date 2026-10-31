@@ -45,6 +45,9 @@
 #include "AI/LatebrakeRivalCar.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
+#if !UE_BUILD_SHIPPING
+DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeRaceAudit, Log, All);
+#endif
 
 namespace
 {
@@ -115,8 +118,30 @@ void ALatebrakeRaceGameMode::BeginPlay()
     StartLights.Reset();
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
+#if !UE_BUILD_SHIPPING
+    StartRaceAuditAttempt(-1); // initial pawn placement not yet observed
+#endif
     RefreshRival();
 }
+
+#if !UE_BUILD_SHIPPING
+void ALatebrakeRaceGameMode::StartRaceAuditAttempt(int32 GridAtBegin)
+{
+    // Instrument only distinct attempts, never individual frame ticks.
+    // Saturating means an extremely long session cannot wrap identifiers
+    // and make independent attempts appear to share one log stream.
+    if (RaceAuditAttempt >= std::numeric_limits<int32>::max())
+    {
+        return;
+    }
+    ++RaceAuditAttempt;
+    UE_LOG(LogLatebrakeRaceAudit, Display,
+        TEXT("LATEBRAKE_RACE_AUDIT v=1 action=begin attempt=%d gates=%d "
+             "laps=%d track=%d grid=%d"),
+        RaceAuditAttempt, Race.GetCheckpointCount(), Race.GetRequiredLaps(),
+        bCircuitReady ? 1 : 0, GridAtBegin);
+}
+#endif
 
 void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
 {
@@ -715,6 +740,19 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     {
         return;
     }
+#if !UE_BUILD_SHIPPING
+    // Only genuinely accepted, ordered, player-authoritative checkpoints
+    // produce this low-volume diagnostic. The audit cannot award a lap.
+    if (RaceAuditAttempt > 0 && FMath::IsFinite(Race.GetElapsedSeconds()))
+    {
+        UE_LOG(LogLatebrakeRaceAudit, Display,
+            TEXT("LATEBRAKE_RACE_AUDIT v=1 action=gate attempt=%d gate=%d "
+                 "lap=%d next=%d elapsed=%.6f active=%d finished=%d"),
+            RaceAuditAttempt, CheckpointIndex, Race.GetCompletedLaps(),
+            Race.GetNextCheckpoint(), Race.GetElapsedSeconds(),
+            Race.GetActiveTimedLapCount(), Race.IsFinished() ? 1 : 0);
+    }
+#endif
     if (Race.GetCompletedLaps() > LapsBeforeGate)
     {
         // Observe the authoritative, ordered-gate boundary. Never use a
@@ -1553,6 +1591,9 @@ void ALatebrakeRaceGameMode::RestartRace()
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: RESTART_GRID_UNVERIFIED - race clock, gates and driving blocked"));
     }
+#if !UE_BUILD_SHIPPING
+    StartRaceAuditAttempt(bPlacedOnGrid ? 1 : 0);
+#endif
     if (IsValid(RivalCar))
     {
         RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
