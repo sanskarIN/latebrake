@@ -25,6 +25,7 @@ void ALatebrakeRivalCar::ResetPilot()
     FollowingBrakeHold.Reset();
     GripPace.Reset();
     SurfaceDamagePace.Reset();
+    SpinThrottleGuard.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -37,6 +38,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     FollowingBrakeHold.Reset();
     GripPace.Reset();
     SurfaceDamagePace.Reset();
+    SpinThrottleGuard.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -59,6 +61,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
+    SpinThrottleGuard.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -77,6 +80,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
+    SpinThrottleGuard.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -109,6 +113,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
+    SpinThrottleGuard.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
@@ -137,6 +142,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
+    SpinThrottleGuard.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -224,8 +230,18 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             static_cast<double>(ActualAngularVelocity.Z),
             true
         });
-    SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle),
-                          static_cast<float>(SafeTrafficCommand.Steering),
-                          SafeTrafficCommand.Brake);
+    // Apply a final, bounded propulsion-only spin guard using actual
+    // Chaos angular velocity and chassis lateral motion. Never steer,
+    // brake, award laps or bypass existing route/traffic authority.
+    const latebrake::PilotCommand SafeSpinCommand =
+        SpinThrottleGuard.Apply(SafeTrafficCommand, {
+            static_cast<double>(DeltaSeconds), FlatSpeed,
+            static_cast<double>(FVector::DotProduct(
+                Velocity, GetActorRightVector())),
+            static_cast<double>(ActualAngularVelocity.Z), true
+        });
+    SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle),
+                          static_cast<float>(SafeSpinCommand.Steering),
+                          SafeSpinCommand.Brake);
     Super::Tick(DeltaSeconds);
 }
