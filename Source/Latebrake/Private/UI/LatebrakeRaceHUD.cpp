@@ -755,6 +755,17 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetTireCondition().GripMultiplier() * 100.0,
             Car->GetTireCondition().WearFraction() * 100.0), Primary);
     }
+    // Optional human Arcade stability hint reports the actual bounded
+    // throttle reduction from the last accepted live physical frame.
+    // Keep compact and low-height HUDs reserved for lap/time/touch controls.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        Car->GetSpinAssist().IsActive())
+    {
+        Line(FString::Printf(
+            TEXT("SPIN ASSIST  %.0f%% POSITIVE THROTTLE TRIM"),
+            Car->GetSpinAssist().CurrentReductionFraction() * 100.0),
+            Accent);
+    }
     // Optional arcade brake-temperature feedback uses measured service
     // brake demand and actual chassis velocity, not decorative wheel heat.
     // Keep compact mobile HUD space reserved for lap and input controls.
