@@ -107,7 +107,7 @@ int main()
                 Near(output(1.0, value, 1800, 3.0), 0.0) &&
                 Near(output(1.0, 3000, value, 3.0), 0.0) &&
                 Near(output(1.0, 3000, 1800, value), 0.0),
-                "corrupt throttle or angular/linear physics fails closed");
+                "nonfinite throttle or angular/linear physics fails closed");
     }
 
     // Adversarial large-finite speed arithmetic must never emit NAN/INF
