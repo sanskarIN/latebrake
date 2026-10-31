@@ -549,6 +549,25 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.assertEqual(attempt_overwrite.returncode, 2)
         self.assertIn("Refusing to overwrite", attempt_overwrite.stderr)
 
+    def test_report_parses_same_bytes_it_rehashes(self):
+        """Catch a future regression where audit checks one file, reads another."""
+        source = SCRIPT.read_text(encoding="utf-8")
+        audit = source.split("def audit_race(", 1)[1].split("def main()", 1)[0]
+        for marker in (
+            "log_bytes = raw_log.read_bytes()",
+            "hashlib.sha256(log_bytes).hexdigest()",
+            "log_bytes.decode(\"utf-8-sig\")",
+            "manifest_bytes = manifest.read_bytes()",
+            "hashlib.sha256(manifest_bytes).hexdigest()",
+            "manifest_bytes.decode(\"utf-8-sig\")",
+            "sha256(args.receipt) != receipt_hash",
+        ):
+            self.assertIn(marker, audit)
+        self.assertLess(audit.index("hashlib.sha256(log_bytes).hexdigest()"),
+                        audit.index("log_bytes.decode(\"utf-8-sig\")"))
+        self.assertLess(audit.index("hashlib.sha256(manifest_bytes).hexdigest()"),
+                        audit.index("manifest_bytes.decode(\"utf-8-sig\")"))
+
     def test_oversized_log_is_rejected_before_decode(self):
         log = self.set_schema2_log(self.synthetic_race_log())
         # sparse synthetic test fixture; never a real engine log.
