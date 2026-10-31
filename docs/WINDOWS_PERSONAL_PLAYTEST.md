@@ -101,10 +101,28 @@ the existing `Verify-RuntimeStartupLog.ps1` check for track
 geometry/gate/scenery markers when the log exists; the receipt records
 whether this **text-only** audit passed and why it failed. No network upload occurs. A zero exit code
 **does not** qualify rendering, user input, racing, saves or hardware
-performance. Even with `-ABSLOG`, other engine runtime files may be
-created under the package: re-run manifest validation before reusing
-the exact archive. If the process crashes too early, an Unreal log
-might not exist; retain the real UAT/Windows crash information.
+performance.
+
+The launcher **now checks the complete archive again after the process
+exits**, independently rehashing every cooked file and rejecting extra
+files, changed EXE bytes or a rewritten manifest. The schema-2 receipt
+contains `candidate_integrity_at_exit_pass` and
+`candidate_integrity_at_exit_error`. It writes the receipt **even if
+this final archive check fails**, then exits with an error rather than
+printing a misleading success. A game that creates `Saved/`, cache,
+configuration files or other output *inside the sealed package* will
+trigger this failure even with `-ABSLOG` directed outside; keep the
+original log/receipt and inspect the new files. Do not delete or
+re-fingerprint changed evidence to make the same session appear clean.
+
+Earlier schema-1 and schema-2 receipts lacked a post-run seal and
+remain reviewable as historical, **unverified** observations; the QA
+review records `candidate_integrity_at_exit_verified: false`.
+New receipts with a negative/contradictory seal are rejected from
+further QA review, even if the game archive is later restored.
+
+If the process crashes too early, an Unreal log might not exist;
+retain the real UAT/Windows crash information.
 
 Official Epic documentation:
 [Unreal Engine command-line argument reference](
