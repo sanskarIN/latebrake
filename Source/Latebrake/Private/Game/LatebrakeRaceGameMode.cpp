@@ -1613,6 +1613,7 @@ void ALatebrakeRaceGameMode::RefreshRival()
 
 void ALatebrakeRaceGameMode::RestartRace()
 {
+    GaragePurchaseConfirm.Reset(); // Race transitions invalidate pending spend approvals.
     if (bCareerRace && Race.IsFinished())
     {
         // After a career finish the garage is editable. A new attempt
