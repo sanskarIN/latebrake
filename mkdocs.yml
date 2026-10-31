@@ -134,6 +134,7 @@ nav:
       - Rival yaw-rate steering QA: RIVAL_YAW_RATE_STEERING_QA.md
       - Rival physical spin throttle QA: RIVAL_SPIN_THROTTLE_QA.md
       - Rival surface and impact-aware pace QA: RIVAL_SURFACE_DAMAGE_PACE_QA.md
+      - Rival engine-heat cooldown pace QA: RIVAL_ENGINE_HEAT_PACE_QA.md
       - Single-rival slipstream QA: SLIPSTREAM_DRAFT_QA.md
       - Off-track and AI approach QA: OFF_TRACK_AND_RIVAL_APPROACH_QA.md
       - Rival proximity HUD QA: RIVAL_PROXIMITY_QA.md
