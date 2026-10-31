@@ -434,7 +434,7 @@ class Win64ReviewSourceTests(unittest.TestCase):
                 f"action=gate attempt=1 gate={i} lap={lap} next={(i + 1) % 4} "
                 f"elapsed={i + 1}.000000 active={lap} finished={lap}"
             )
-        return ("\\n".join(lines) + "\\n").encode("utf-8")
+        return ("\n".join(lines) + "\n").encode("utf-8")
 
     def audit(self, *extra):
         return self.invoke("audit", "--receipt", self.receipt,
@@ -495,7 +495,7 @@ class Win64ReviewSourceTests(unittest.TestCase):
 
     def test_changed_runtime_log_blocks_report_even_if_events_remain_valid(self):
         log = self.set_schema2_log(self.synthetic_race_log())
-        log.write_bytes(log.read_bytes() + b"\\nLogTemp: unrelated change")
+        log.write_bytes(log.read_bytes() + b"\nLogTemp: unrelated change")
         result = self.audit("--require-finish")
         self.assertEqual(result.returncode, 2)
         self.assertIn("Runtime log changed", result.stderr)
