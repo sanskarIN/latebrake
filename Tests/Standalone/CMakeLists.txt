@@ -1235,3 +1235,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GearAwareMotorPower COMMAND latebrake_gear_aware_motor_power_tests)
+
+# Rival reacts to measured, confirmed dirt and previous accepted chassis
+# damage without steering changes, free acceleration or race authority.
+add_executable(latebrake_rival_surface_damage_pace_tests
+    RivalSurfaceDamagePaceTests.cpp)
+target_include_directories(latebrake_rival_surface_damage_pace_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_surface_damage_pace_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_surface_damage_pace_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_surface_damage_pace_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalSurfaceDamagePace COMMAND
+    latebrake_rival_surface_damage_pace_tests)
