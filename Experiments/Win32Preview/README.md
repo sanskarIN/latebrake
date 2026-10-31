@@ -56,7 +56,8 @@ From a Visual Studio 2022 x64 Native Tools terminal with Python 3:
 
 ```powershell
 pwsh ./Experiments/Win32Preview/Build-Windows.ps1
-& ./Experiments/Win32Preview/out/LateBrakePreviewV3.exe --self-test
+$testRun = Start-Process -FilePath (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV3.exe').Path -ArgumentList '--self-test' -Wait -PassThru
+if ($testRun.ExitCode -ne 0) { throw "Preview policy self-test failed" }
 ```
 
 This command uses MSVC C++20 and the Windows SDK to build the freestanding
@@ -66,11 +67,14 @@ third-party runtime in this experimental build. Ordinary Windows CI can
 compile and run the deterministic `--self-test` mode without claiming that
 a person drove the game. `--self-test` is isolated from local saved progress.
 
-**Observed testing so far:** portable source policy tests and native PE builds
-passed in a non-Windows compiler environment. Frames were rendered through a
-Linux test harness using the exact C++ canvas renderer. A true Windows MSVC
-CI compile/logic check and real physical Windows GUI + install/uninstall QA
-must be performed separately. Never call these source tests verified driving.
+**Observed testing so far:** original portable policy tests and PE32+ builds
+passed in a non-Windows cross-compiler environment, and frames were generated
+by a Linux test harness using the exact native C++ renderer. GitHub Actions
+Windows hosted CI also successfully compiled **both** binaries using MSVC,
+ran the offline deterministic --self-test as a real Windows process, and
+verified the exact installer payload. **No human has yet qualified actual
+Windows GUI driving or installation/uninstallation.** Never call any CI
+source/logic test independently verified driving.
 
 ## Boundaries / future work
 
