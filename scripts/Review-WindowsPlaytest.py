@@ -111,9 +111,9 @@ def verify_runtime_log(receipt_file: Path, receipt: dict, candidate_root: Path) 
         fail("Runtime log SHA256 missing.")
     if type(size) is not int or size < 0:
         fail("Runtime log byte length is invalid.")
-    require_unlinked_path(raw_log)
     if not log.is_file():
         fail("Recorded runtime log is missing.")
+    require_unlinked_path(raw_log)
     if log.stat().st_size != size or sha256(log) != require_hash(digest, "Runtime log SHA256"):
         fail("Runtime log changed after the recorded game session (size/SHA256 mismatch).")
     return True
