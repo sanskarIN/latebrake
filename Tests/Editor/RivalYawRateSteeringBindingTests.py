@@ -34,7 +34,7 @@ class RivalYawRateSteeringBindingTests(unittest.TestCase):
             "FollowingBrakeHold.Apply(",
             "Chassis->GetPhysicsAngularVelocityInRadians()",
             "latebrake::ModerateRivalYawRate(FollowingCommand, {",
-            "SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)",
+            "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         )
         self.assertEqual(
             [tick.index(marker) for marker in markers],
@@ -44,7 +44,7 @@ class RivalYawRateSteeringBindingTests(unittest.TestCase):
         # An earlier guarded branch also invokes Super::Tick; assert the
         # final, applied command precedes the final physical chassis tick.
         self.assertLess(
-            tick.index("SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)"),
+            tick.index("SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)"),
             tick.rindex("Super::Tick(DeltaSeconds);"),
         )
         self.assertIn('#include "AI/RivalYawRateSteering.h"', self.rival)
