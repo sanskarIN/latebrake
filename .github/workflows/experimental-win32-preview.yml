@@ -1,4 +1,4 @@
-name: Experimental LateBrake V3 Win64 preview (NOT Unreal)
+name: Experimental LateBrake V4 Win64 preview (NOT Unreal)
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   standalone-win32-preview:
-    name: Build native V3 Win64 / run synthetic self-test (NO UE)
+    name: Build native V4 Win64 / run synthetic self-test (NO UE)
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -37,25 +37,36 @@ jobs:
       - name: Run synthetic C++ navigation/progression smoke test
         shell: pwsh
         run: |
-          # GUI-subsystem EXEs do not reliably populate LASTEXITCODE.
-          # Wait for the actual process and inspect its exit status.
-          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV3.exe').Path
+          # GUI-subsystem EXEs can return control to PowerShell without
+          # populating LASTEXITCODE; wait for the actual process handle.
+          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV4.exe').Path
           $run = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
           if ($run.ExitCode -ne 0) { throw "Preview self-test failed: $($run.ExitCode)" }
+      - name: Prove synthetic self-test does not modify user career data
+        shell: pwsh
+        run: |
+          $isolated = Join-Path $env:RUNNER_TEMP 'latebrake-v4-isolated-profile'
+          New-Item -ItemType Directory -Path $isolated -Force | Out-Null
+          $env:LOCALAPPDATA = $isolated
+          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV4.exe').Path
+          $run = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
+          if ($run.ExitCode -ne 0) { throw 'Isolated progression test failed.' }
+          $files = @(Get-ChildItem -LiteralPath $isolated -Recurse -File)
+          if ($files.Count -ne 0) { throw 'A self-test wrote to an isolated player profile.' }
       - name: Verify PE architecture and embedded payload identity
         shell: pwsh
         run: |
           python ./Experiments/Win32Preview/VerifyPayload.py `
-            ./Experiments/Win32Preview/out/LateBrakePreviewV3.exe `
-            ./Experiments/Win32Preview/out/LateBrakeSetupV3.exe `
+            ./Experiments/Win32Preview/out/LateBrakePreviewV4.exe `
+            ./Experiments/Win32Preview/out/LateBrakeSetupV4.exe `
             ./Experiments/Win32Preview/out/payload.inc
       - name: Archive experimental UNVERIFIED installer for private GUI QA
         uses: actions/upload-artifact@v4
         with:
-          name: UNVERIFIED-LateBrake-V3-2D-Win64-${{ github.sha }}
+          name: UNVERIFIED-LateBrake-V4-2D-Win64-${{ github.sha }}
           path: |
-            Experiments/Win32Preview/out/LateBrakePreviewV3.exe
-            Experiments/Win32Preview/out/LateBrakeSetupV3.exe
+            Experiments/Win32Preview/out/LateBrakePreviewV4.exe
+            Experiments/Win32Preview/out/LateBrakeSetupV4.exe
           retention-days: 3
           if-no-files-found: error
           compression-level: 0
