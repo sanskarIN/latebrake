@@ -127,6 +127,32 @@ fixture. The parser never certifies game provenance or hardware gameplay.
 Compare its output with the original hashed receipt and hands-on video;
 read [race audit QA](RACE_AUDIT_QA.md) for limitations and fixtures.
 
+For a **hash-bound private audit report**, use the same recorded runtime
+receipt (schema 2) produced by `Run-WindowsPlaytest.ps1`:
+
+```powershell
+python ./scripts/Review-WindowsPlaytest.py audit `
+  --receipt 'D:\\LateBrakePlaytestLogs\\LateBrake-your-session.json' `
+  --output 'D:\\LateBrakeQA\\race-audit-review.json' `
+  --require-finish
+```
+
+This newer mode rehashes the EXE, complete cooked archive, manifest and
+session's original runtime log **before** interpreting gate events. The
+result links source SHA, engine Build.version hash, circuit-map hash,
+receipt and log SHA256 to reported accepted checkpoints. It rejects
+tampered/swapped/missing logs, impossible gate sequences and an absent
+reported finish when requested. Both the JSON receipt and log text remain
+editable: matching hashes are **not proof of authentic engine compilation,
+physical driving or independently observed gameplay**. This command
+never launches the EXE, uploads logs, modifies the game archive or
+qualifies a release.
+
+The bare `AnalyzeRaceAudit.py` command remains useful for exploratory
+parsing of other local log text, but **does not check any receipt or
+candidate hashes**. Use the hash-bound review when investigating an
+actual personal Windows candidate.
+
 ## Record a private, self-reported Win64 QA review
 
 After closing the real game session, the diagnostic runner prints the path
