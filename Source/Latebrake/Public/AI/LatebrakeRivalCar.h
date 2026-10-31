@@ -6,6 +6,7 @@
 #include "AI/RivalFollowingBrakeHold.h"
 #include "AI/RivalGripPace.h"
 #include "AI/RivalSurfaceDamagePace.h"
+#include "AI/RivalSpinThrottleGuard.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -39,4 +40,5 @@ private:
     latebrake::RivalFollowingBrakeHold FollowingBrakeHold;
     latebrake::RivalGripPace GripPace;
     latebrake::RivalSurfaceDamagePace SurfaceDamagePace;
+    latebrake::RivalSpinThrottleGuard SpinThrottleGuard;
 };
