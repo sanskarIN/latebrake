@@ -71,8 +71,9 @@ int main()
     const PilotCommand priorBrake{0.0, -0.25, true, false};
     result = guard.Apply(priorBrake, stable);
     Check(result.Brake && result.Throttle == 0.0 &&
-          result.Steering == priorBrake.Steering,
-          "existing traffic or corner brakes remain authoritative");
+          result.Steering == priorBrake.Steering &&
+          guard.RemainingHoldSeconds() == 0.0,
+          "existing traffic or corner brakes clear the old spin hold");
     result = guard.Apply({0.0, -0.4, false, true}, stable);
     Check(result.Arrived && result.Steering == -0.4 &&
           guard.RemainingHoldSeconds() == 0.0,
