@@ -40,7 +40,7 @@ class RivalGateRunThroughBindingTests(unittest.TestCase):
             "latebrake::AnticipateRivalCorner(",
             "GripPace.Apply(",
             "latebrake::YieldRivalToPlayer(",
-            "SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)",
+            "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         )
         # The anticipation wrapper is syntactically outside the nested
         # planner invocation, but remains the returned command's authority.
