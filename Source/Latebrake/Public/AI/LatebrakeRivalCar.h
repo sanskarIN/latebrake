@@ -4,6 +4,7 @@
 #include "AI/RivalRouteProgress.h"
 #include "AI/RivalFollowingBrakeHold.h"
 #include "AI/RivalGripPace.h"
+#include "AI/RivalSurfaceDamagePace.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -35,4 +36,5 @@ private:
     latebrake::RivalRouteProgress Route{4, 3};
     latebrake::RivalFollowingBrakeHold FollowingBrakeHold;
     latebrake::RivalGripPace GripPace;
+    latebrake::RivalSurfaceDamagePace SurfaceDamagePace;
 };
