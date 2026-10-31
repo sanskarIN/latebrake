@@ -43,6 +43,7 @@ class RivalYawRateSteeringBindingTests(unittest.TestCase):
         )
         self.assertEqual(tick.count("ModerateRivalYawRate("), 1)
         self.assertIn('#include "AI/RivalYawRateSteering.h"', self.rival)
+        self.assertIn('#include "Components/StaticMeshComponent.h"', self.rival)
         self.assertIn("static_cast<double>(ActualAngularVelocity.Z)", tick)
         self.assertIn("FlatSpeed,", tick)
         self.assertIn("TObjectPtr<UStaticMeshComponent> Chassis;", self.pawn)
