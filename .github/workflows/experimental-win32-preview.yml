@@ -1,0 +1,58 @@
+name: Experimental LateBrake V3 Win64 preview (NOT Unreal)
+
+on:
+  pull_request:
+    paths:
+      - 'Experiments/Win32Preview/**'
+      - '.github/workflows/experimental-win32-preview.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Experiments/Win32Preview/**'
+      - '.github/workflows/experimental-win32-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  standalone-win32-preview:
+    name: Build native V3 Win64 / run synthetic self-test (NO UE)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Build true PE32+ game and embedded setup, not Unreal
+        shell: pwsh
+        run: |
+          ./Experiments/Win32Preview/Build-Windows.ps1
+      - name: Run synthetic C++ navigation/progression smoke test
+        shell: pwsh
+        run: |
+          & ./Experiments/Win32Preview/out/LateBrakePreviewV3.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw "Preview self-test failed: $LASTEXITCODE" }
+      - name: Verify PE architecture and embedded payload identity
+        shell: pwsh
+        run: |
+          python ./Experiments/Win32Preview/VerifyPayload.py `
+            ./Experiments/Win32Preview/out/LateBrakePreviewV3.exe `
+            ./Experiments/Win32Preview/out/LateBrakeSetupV3.exe `
+            ./Experiments/Win32Preview/out/payload.inc
+      - name: Archive experimental UNVERIFIED installer for private GUI QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNVERIFIED-LateBrake-V3-2D-Win64-${{ github.sha }}
+          path: |
+            Experiments/Win32Preview/out/LateBrakePreviewV3.exe
+            Experiments/Win32Preview/out/LateBrakeSetupV3.exe
+          retention-days: 3
+          if-no-files-found: error
+          compression-level: 0
