@@ -1,6 +1,7 @@
 #include "AI/LatebrakeRivalCar.h"
 
 #include "AI/RivalPilot.h"
+#include "AI/RivalGateRunThrough.h"
 #include "AI/RivalCornerAnticipation.h"
 #include "AI/RivalTrafficAwareness.h"
 #include "AI/RivalYawRateSteering.h"
@@ -68,6 +69,18 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const double FlatSpeed = FVector(Velocity.X, Velocity.Y, 0.f).Size();
     const double Heading = FMath::DegreesToRadians(static_cast<double>(GetActorRotation().Yaw));
     const int32 Next = Route.GetNextWaypoint();
+    if (!latebrake::IsCircuitGate(Next))
+    {
+        // An event configured with more gates than the original four-point
+        // circuit must not steer the rival toward the invalid {0,0} fallback.
+        RivalGateTrace.Reset();
+        FollowingBrakeHold.Reset();
+        GripPace.Reset();
+        SurfaceDamagePace.Reset();
+        SetAutonomousControls(0.f, 0.f, true);
+        Super::Tick(DeltaSeconds);
+        return;
+    }
     const latebrake::CircuitPoint Waypoint = latebrake::CircuitGate(Next);
     const FVector Target(Waypoint.X, Waypoint.Y, 0.0);
     const double Distance = FVector::Dist2D(Position, Target);
@@ -129,12 +142,16 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         return;
     }
 
+    // The route only advances after a verified forward gate-plane crossing,
+    // not when we approach its 440cm radius. Aim 550cm THROUGH that plane
+    // and disable the generic proximity-arrival stop. Otherwise the rival
+    // can halt before crossing and never complete the real gated lap.
     const latebrake::CircuitPoint NextTarget =
-        latebrake::CircuitGate(Route.GetNextWaypoint());
+        latebrake::RivalGateRunThroughPoint(Route.GetNextWaypoint());
     latebrake::PilotCommand Command = latebrake::AnticipateRivalCorner(
         latebrake::PlanRivalTurn(
             Position.X, Position.Y, Heading, FlatSpeed,
-            NextTarget.X, NextTarget.Y),
+            NextTarget.X, NextTarget.Y, 440.0, false),
         Route.GetNextWaypoint(), {Position.X, Position.Y}, FlatSpeed);
 
     // Rival pace adapts to previous-tick real chassis slip, last valid

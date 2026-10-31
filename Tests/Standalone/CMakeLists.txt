@@ -1299,3 +1299,19 @@ else()
 endif()
 add_test(NAME RivalDirectionalGate COMMAND
     latebrake_rival_directional_gate_tests)
+
+# The rival may only finish a checkpoint after a forward plane crossing,
+# never when its generic waypoint planner reaches a radial stop distance.
+add_executable(latebrake_rival_gate_run_through_tests
+    RivalGateRunThroughTests.cpp)
+target_include_directories(latebrake_rival_gate_run_through_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_gate_run_through_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_gate_run_through_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_gate_run_through_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalGateRunThrough COMMAND
+    latebrake_rival_gate_run_through_tests)
