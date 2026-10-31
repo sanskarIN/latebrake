@@ -14,6 +14,7 @@
 #include "Racing/ManualRacePauseGuard.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
+#include "Garage/GaragePurchaseConfirmation.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
 #include "UI/MenuNavigation.h"
@@ -175,6 +176,7 @@ private:
     float PersonalBestLapSeconds = 0.f;
     int32 CompletedRaceCount = 0;
     latebrake::GarageState Garage;
+    latebrake::GaragePurchaseConfirmation GaragePurchaseConfirm;
     latebrake::GarageTuningKey LastAppliedTuning;
     TWeakObjectPtr<ALatebrakeCarPawn> LastTunedPawn;
     bool bProgressSaveFailed = false;
