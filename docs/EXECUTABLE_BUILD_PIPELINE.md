@@ -402,3 +402,19 @@ requires both archives to originate at the exact same Git commit and Unreal
 Engine version. It does not automatically publish a release, prove that QA
 claims are truthful or replace installed gameplay observations. The older
 single `test-evidence.example.json` is not a release-qualification input.
+
+
+## Compile genuine Unreal Editor first (manual, no game package)
+
+Run this on the authorized Windows UE 5.8 workstation:
+
+```powershell
+pwsh ./scripts/Compile-UnrealEditor.ps1 -EngineRoot 'C:\Program Files\Epic Games\UE_5.8'
+```
+
+Or manually dispatch .github/workflows/compile-unreal-editor.yml on main
+using the privately controlled unreal-5-8 Windows runner. This checks the
+actual Editor/UHT C++ build without running UAT, creating/cooking a circuit,
+or publishing any package. Check actual build logs. Passing does not mean
+LateBrake is a verified playable game; continue with original map cook,
+installed Win64/Android candidates, gamepad/touch and driving QA.

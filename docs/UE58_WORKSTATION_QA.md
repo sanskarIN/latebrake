@@ -93,3 +93,27 @@ https://github.com/sanskarIN/latebrake/issues/148).
 
 **As of this document, actual UE 5.8 compilation, owned cooked map,
 Win64 EXE, Android APK/AAB and installed hardware QA are unverified.**
+
+
+## Actual Editor/UHT compile-only workflow
+
+The next real-engine gate is to compile the LatebrakeEditor Win64 Development
+target before the much more expensive circuit cook and Win64/Android package.
+On an authorized Windows PowerShell 7 workstation with installed Unreal 5.8,
+Git, C++ compiler and Windows SDK:
+
+```powershell
+pwsh ./scripts/Compile-UnrealEditor.ps1 -EngineRoot 'C:\Program Files\Epic Games\UE_5.8'
+```
+
+The wrapper verifies a clean Git checkout, pins the exact source commit and
+Unreal Build.version SHA256, invokes the genuine Build.bat through
+Build-Editor.ps1 and checks both identities again afterwards. It does NOT
+cook a map, create a package, upload a game, or qualify installed gameplay.
+Compiler/UHT output is genuine only when run on the licensed workstation.
+
+The manual GitHub Actions workflow compile-unreal-editor.yml uses an isolated
+[self-hosted, Windows, X64, unreal-5-8] runner. Only a manual dispatch of
+the repository's main branch at its exact SHA may execute the real Editor
+compiler. No PR or push starts it, and no release/artifact is generated.
+Ordinary hosted CI uses only synthetic negative fixtures and source contracts.

@@ -1,0 +1,44 @@
+name: Compile real UE 5.8 Editor/UHT (manual authorized runner ONLY)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: latebrake-ue58-editor-compile
+  cancel-in-progress: false
+
+jobs:
+  real-editor:
+    name: Actual licensed Unreal Editor/UHT compilation — NO package
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, Windows, X64, unreal-5-8]
+    timeout-minutes: 120
+    steps:
+      - name: Check out exact trusted source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          lfs: true
+          persist-credentials: false
+      - name: Verify manual commit and runner's engine configuration
+        shell: pwsh
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:LATEBRAKE_UNREAL_ROOT)) {
+            throw 'LATEBRAKE_UNREAL_ROOT must point to authorized Unreal 5.8.'
+          }
+          $actual = @(& git rev-parse --verify HEAD)
+          if ($LASTEXITCODE -ne 0 -or $actual.Count -ne 1 -or
+              [string]$actual[0] -cne $env:EXPECTED_SOURCE_SHA) {
+            throw 'Checked-out revision mismatches exact manual dispatch SHA.'
+          }
+      - name: Invoke real Build.bat via source-provenance-checked wrapper
+        shell: pwsh
+        run: ./scripts/Compile-UnrealEditor.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT
+
+      # Never publish a GitHub game release or artifact from this gate.
+      # An Editor compile does not prove game cooking or physical driving.
