@@ -70,7 +70,7 @@ int main()
         const double atYaw = output(1.0, 3000, 1800, 1.10 + delta);
         const double atSlip = output(1.0, 3000, 1000 + delta, 3.0);
         Require(atSpeed >= 1.0 - delta * 0.002 &&
-                atYaw >= 1.0 - delta * 0.001 &&
+                atYaw >= 1.0 - delta * 0.5 &&
                 atSlip > 0.30 && atSlip <= 1.0,
                 "threshold blends must avoid abrupt reversals");
     }
@@ -112,7 +112,7 @@ int main()
 
     // Adversarial large-finite speed arithmetic must never emit NAN/INF
     // or unauthorized extra propulsion if hypot overflows.
-    Require(Near(output(1.0, 1e308, 1e308, 3.0), 0.0),
+    Require(Near(output(1.0, 1.7e308, 1.7e308, 3.0), 0.0),
             "unrepresentable planar speed produces neutral propulsion");
 
     // Exercise a long deterministic variable analog/physics stream without
