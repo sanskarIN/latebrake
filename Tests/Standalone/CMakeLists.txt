@@ -1182,6 +1182,23 @@ else()
 endif()
 add_test(NAME SpeedReactiveCameraFov COMMAND latebrake_speed_reactive_fov_tests)
 
+# Source-only camera look-ahead: human chase yaw is a bounded visual
+# response to measured signed forward speed and filtered steering.
+# This does not qualify UE camera animation or cooked gameplay.
+add_executable(latebrake_corner_look_ahead_camera_tests
+    CornerLookAheadCameraTests.cpp)
+target_include_directories(latebrake_corner_look_ahead_camera_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_corner_look_ahead_camera_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_corner_look_ahead_camera_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_corner_look_ahead_camera_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CornerLookAheadCamera COMMAND
+    latebrake_corner_look_ahead_camera_tests)
+
 # Source-only human handbrake policy; no claims about tire/suspension simulation.
 add_executable(latebrake_handbrake_drive_tests HandbrakeDrivePolicyTests.cpp)
 target_include_directories(latebrake_handbrake_drive_tests PRIVATE ../../Source/Latebrake/Public)

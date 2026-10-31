@@ -13,6 +13,7 @@
 #include "Vehicles/CameraPresets.h"
 #include "Vehicles/HeldLookBackCamera.h"
 #include "Vehicles/SpeedReactiveCameraFov.h"
+#include "Vehicles/CornerLookAheadCamera.h"
 #include "Vehicles/ArcadeTireCondition.h"
 #include "Vehicles/ArcadeBrakeHeat.h"
 #include "Vehicles/ArcadeEngineHeat.h"
@@ -68,7 +69,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -178,6 +179,9 @@ private:
     void ApplyCameraPreset();
     void ResetSpeedCameraFov();
     void UpdateSpeedCameraFov(double FrameSeconds, double SignedForwardSpeedKmH);
+    void ResetCornerCameraYaw();
+    void UpdateCornerCameraYaw(double FrameSeconds, double ForwardCmPerSecond,
+                               double VisualSteering);
     void TogglePause();
     void TouchPressed(ETouchIndex::Type FingerIndex, FVector Location);
     void TouchMoved(ETouchIndex::Type FingerIndex, FVector Location);
@@ -221,6 +225,7 @@ private:
     latebrake::CameraViewCycle CameraViews;
     latebrake::HeldLookBackCamera LookBackCamera;
     latebrake::SpeedReactiveCameraFov ReactiveFov;
+    latebrake::CornerLookAheadCamera CornerLookAhead;
     latebrake::DrivingSessionStats DrivingStats;
     latebrake::DriftComboMeter DriftMeter;
     latebrake::VehicleGForceMeter GForceMeter;
