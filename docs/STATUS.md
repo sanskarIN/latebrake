@@ -5,6 +5,21 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Post-v0.5.85 rival road and impact-aware corner pace (unreleased)
+
+- The **physical** autonomous rival now reads the prior qualified chassis
+  sample's confirmed paved/off-pavement state and bounded accepted-impact
+  grip multiplier. Its new risk policy can only reduce throttle or request
+  service braking for confirmed dirt or strongly damaged corners; steering,
+  waypoints, player traffic and authoritative timing are unchanged.
+- Low-speed off-road recovery retains full requested launch throttle; a
+  0.12-second brake hold avoids chatter. Session resets, pausing and
+  verified/failed recovery clear temporary state; invalid physics fails
+  closed. Portable C++20/Unreal-source bindings plus **200,000** sample
+  combinations cover the policy, not real installed gameplay.
+- Real licensed UE 5.8 build, circuit cook and physical rival test evidence
+  remain mandatory. [Rival low-grip QA](RIVAL_SURFACE_DAMAGE_PACE_QA.md).
+
 ## Post-v0.5.85 live forward/reverse motor envelope (unreleased)
 
 - The physical player and rival car now fade all three baseline/nitro/draft
