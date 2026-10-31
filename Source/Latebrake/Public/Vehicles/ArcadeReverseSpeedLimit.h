@@ -52,7 +52,9 @@ inline ReverseSpeedLimitOutput LimitPlanarReverseSpeed(
     }
 
     const double maximumReverse = MaximumReverseSpeedCmPerSecond(arcadeHandling);
-    if (longitudinal >= -maximumReverse)
+    // Treat sub-micrometer-per-second dot-product noise at the exact cap
+    // as already limited, avoiding spurious SetPhysicsLinearVelocity calls.
+    if (longitudinal >= -maximumReverse - 1e-7)
     {
         return {true, false, velocityX, velocityY};
     }
