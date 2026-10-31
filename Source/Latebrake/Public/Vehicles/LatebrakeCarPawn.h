@@ -18,6 +18,7 @@
 #include "Vehicles/ArcadeCollisionDamage.h"
 #include "Vehicles/ArcadeSurfaceTraction.h"
 #include "Vehicles/ArcadeNitroBoost.h"
+#include "Vehicles/HumanSpinAssistMeter.h"
 #include "Vehicles/WheelVisualMotion.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
@@ -66,7 +67,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -93,6 +94,7 @@ public:
     bool IsTouchBrakeActive() const { return TouchDrive.BrakeActive(); }
     bool IsHandbrakeHeld() const noexcept { return bHandbrakeHeld; }
     const latebrake::ArcadeNitroBoost& GetNitroBoost() const noexcept { return NitroBoost; }
+    const latebrake::HumanSpinAssistMeter& GetSpinAssist() const noexcept { return SpinAssist; }
 
     // Physical placement must succeed before GameMode can commit its five-
     // second recovery charge. The Blueprint-compatible void API remains
@@ -221,6 +223,7 @@ private:
     latebrake::DriftComboMeter DriftMeter;
     latebrake::VehicleGForceMeter GForceMeter;
     latebrake::ChassisSlipAngleMeter SlipAngleMeter;
+    latebrake::HumanSpinAssistMeter SpinAssist;
     latebrake::ArcadeTireCondition TireCondition;
     latebrake::ArcadeBrakeHeat BrakeHeat;
     latebrake::ArcadeCollisionDamage CollisionDamage;
