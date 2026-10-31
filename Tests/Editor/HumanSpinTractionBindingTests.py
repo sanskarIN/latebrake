@@ -50,7 +50,6 @@ class HumanSpinTractionBindingTests(unittest.TestCase):
     def test_single_final_motor_command_shared_by_all_boosts(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
-        )
         self.assertEqual(
             tick.count("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"),
             3,
