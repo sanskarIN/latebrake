@@ -1,0 +1,86 @@
+name: Verify live public source-release status labels
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-public-source-status.yml'
+      - 'README.md'
+      - 'docs/STATUS.md'
+      - 'docs/index.md'
+      - 'docs/development-status.md'
+      - 'docs/release-history.md'
+      - 'docs/releases/**'
+      - 'Tests/Editor/ReleaseStatusConsistencyTests.py'
+      - 'Tests/Editor/PublicSourceStatusLiveGateTests.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-public-source-status.yml'
+      - 'README.md'
+      - 'docs/STATUS.md'
+      - 'docs/index.md'
+      - 'docs/development-status.md'
+      - 'docs/release-history.md'
+      - 'docs/releases/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-public-source-status:
+    name: Public source tag/release identity matches site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify current public status from real GitHub release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const {owner, repo} = context.repo;
+            const latestText = fs.readFileSync('README.md', 'utf8');
+            const regex = /Latest published: \[v(\d+\.\d+\.\d+)\]/;
+            const m = latestText.match(regex);
+            if (!m) throw new Error('README missing explicit published tag');
+            const tag = 'v' + m[1];
+            const files = [
+              'docs/STATUS.md', 'docs/index.md',
+              'docs/development-status.md', 'docs/release-history.md'
+            ];
+            for (const path of files) {
+              const content = fs.readFileSync(path, 'utf8');
+              if (!content.includes('/releases/tag/' + tag)) {
+                throw new Error(path + ' is missing the claimed release URL');
+              }
+            }
+            const notes = fs.readFileSync('docs/releases/' + tag + '.md', 'utf8');
+            const release = (await github.rest.repos.getReleaseByTag({
+              owner, repo, tag
+            })).data;
+            const ref = (await github.rest.git.getRef({
+              owner, repo, ref: 'tags/' + tag
+            })).data.object;
+            if (release.draft || !release.prerelease ||
+                !release.published_at || release.tag_name !== tag ||
+                release.assets.length !== 0 ||
+                ref.type !== 'commit' ||
+                release.target_commitish !== ref.sha ||
+                release.body !== notes) {
+              throw new Error(
+                'Published status is not verified at immutable source-only tag ' + tag
+              );
+            }
+            for (const required of [
+              'SOURCE-ONLY', 'NOT a playable game build',
+              'No compiled Win64 EXE', 'Android APK/AAB',
+              'not installers', 'zero executable binaries'
+            ]) {
+              if (!notes.includes(required)) {
+                throw new Error('Claimed pre-release lacks warning: ' + required);
+              }
+            }
+            core.notice('Verified real GitHub source-only tag and release: ' +
+              release.html_url + ' @ ' + ref.sha);

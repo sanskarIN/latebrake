@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.85**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The independently verified latest published GitHub tag is **v0.5.86**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current published source release:** [v0.5.85](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85) is a **source-only pre-release** independently verified at `d162802425de7953d8156eb74a4893b9c7e5d033`, following the independently confirmed v0.5.84. It introduces race-local BRAKE HEAT and bounded chassis IMPACT DAMAGE without changing official timing, rewards, saves or records. GitHub confirms the exact tag, published pre-release status, non-draft state, matching notes and zero game assets. Genuine UE 5.8 compilation, map cook, installed Win64/Android packages and physical gameplay QA remain outstanding.
+**Current published source release:** [v0.5.86](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86) is a **source-only pre-release** independently verified at `e2eee30df07191075d07327d3ba7b9e5a446583f` following independently published v0.5.85. It adds shared ENGINE HEAT, RIVAL HEAT PACE, and an honestly labeled VERIFIED GATE GAP counter that is not official placement. GitHub confirms the exact tag, pre-release state, non-draft status, matching source notes, and zero game assets. Genuine UE 5.8 compilation, map cook, installed Win64/Android packages and physical gameplay QA remain outstanding.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 
@@ -13,6 +13,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.86 | [Release notes](releases/v0.5.86.md) |
 | v0.5.85 | [Release notes](releases/v0.5.85.md) |
 | v0.5.84 | [Release notes](releases/v0.5.84.md) |
 | v0.5.83 | [Release notes](releases/v0.5.83.md) |

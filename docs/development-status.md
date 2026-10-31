@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.85](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85), **source only**, zero runnable assets (independently verified tag, published pre-release, non-draft, zero attachments) |
-| Latest source-development milestone | **v0.5.85 published source-only milestone at `d162802425de7953d8156eb74a4893b9c7e5d033`:** shared player/rival bounded service-brake heat, collision-impulse damage and preserved off-pavement traction/nitro/drafting force safeguards. **No UE/UHT compilation, original cooked circuit, installed Win64/Android game or physical driving QA has been verified.** |
+| Latest published GitHub pre-release | [v0.5.86](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86), **source only**, zero runnable assets (independently verified tag at `e2eee30d`, published pre-release, non-draft and zero attachments) |
+| Latest source-development milestone | **v0.5.86 published source-only milestone at `e2eee30df07191075d07327d3ba7b9e5a446583f`:** shared bounded engine heat, rival cooldown throttle adaptation and advisory verified-gate gap, plus retained brake/impact/traction systems. **No UE/UHT compilation, original cooked circuit, installed Win64/Android game or physical driving QA has been verified.** |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.83).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.
