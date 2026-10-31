@@ -24,6 +24,24 @@ closed. It never changes credits, competitive records, saves or vehicle
 forces. Actual Unreal physics sampling and installed Win64/Android QA
 remain unverified. [Launch QA](LAUNCH_SPEED_QA.md).
 
+## Post-v0.5.85 engine heat and AI checkpoint feedback (source development)
+
+- **Engine heat:** both physical driver types share a bounded, race-local
+  synthetic motor-heat state. Valid sustained propulsion raises heat;
+  coasting allows cooling. Above 67% heat, the real vehicle source can
+  modestly reduce normal, nitro and drafting drive forces together,
+  without altering braking, steering, or official race results.
+- **Rival heat adaptation:** a separate autonomous driving layer may
+  reduce high-speed throttle demand based on previous qualified engine
+  heat, while preserving low-speed recovery and existing traffic braking.
+- **Honest gate comparison:** accepted forward checkpoint counts for the
+  human and physical rival can be compared on spacious HUDs without
+  claiming official placement, road position or timing advantage.
+- These are **source-only**, not verified Unreal or installed gameplay.
+  See [engine heat QA](ARCADE_ENGINE_HEAT_QA.md),
+  [rival cooling QA](RIVAL_ENGINE_HEAT_PACE_QA.md), and
+  [accepted gate comparison QA](RIVAL_VERIFIED_GATE_GAP_QA.md).
+
 ## v0.5.85 race-local collision damage (source only, not installed gameplay)
 
 - **Real chassis impact response:** high-speed, wall-like physical collision impulses can progressively reduce shared player/rival arcade motor drive and lateral grip, capped at 60% race-local wear. A 0.4-second contact cooldown guards callback bursts. Road-floor hits, low-speed bumps, invalid data and interrupted frames cannot award damage. Restart repairs the car; neither saved career currency nor official race results change. Source integration and portable tests only, not engine gameplay verification. [Collision QA](ARCADE_COLLISION_DAMAGE_QA.md).
