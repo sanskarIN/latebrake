@@ -97,8 +97,23 @@ if (Test-Path -LiteralPath $log -PathType Leaf) {
     }
 }
 
+# Seal the exact finished Unreal log alongside the executable and
+# manifest. A missing/early-crash log remains a valid *failed* probe,
+# represented explicitly with null metadata; no success is inferred.
+$logPresent = Test-Path -LiteralPath $log -PathType Leaf
+$logSha256 = $null
+$logBytes = $null
+if ($logPresent) {
+    $logItem = Get-Item -LiteralPath $log -Force -ErrorAction Stop
+    if (($logItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw 'Refusing to seal a symlinked or junction-redirected runtime log.'
+    }
+    $logSha256 = (Get-FileHash -LiteralPath $log -Algorithm SHA256).Hash.ToLowerInvariant()
+    $logBytes = [int64]$logItem.Length
+}
+
 $report = [ordered]@{
-    schema_version = 1
+    schema_version = 2
     status = 'UNVERIFIED_PERSONAL_RUNTIME_PROBE'
     gameplay_verified = $false
     source = 'locally_launched_packaged_win64_candidate'
@@ -112,7 +127,9 @@ $report = [ordered]@{
     process_exit_code = $exitCode
     process_start_error = $startFailure
     unreal_log_path = $log
-    unreal_log_present = (Test-Path -LiteralPath $log -PathType Leaf)
+    unreal_log_present = $logPresent
+    unreal_log_sha256 = $logSha256
+    unreal_log_bytes = $logBytes
     startup_log_markers_pass = $startupLogMarkersPass
     startup_log_error = $startupLogError
     note = 'EXE exit status and a log never prove playable gameplay; record hands-on QA separately.'
