@@ -1,11 +1,32 @@
 # Latebrake engineering status
 
 **Updated:** 2026-10-31
-**Latest published milestone:** [v0.5.85 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85), independently verified at immutable commit `d162802425de7953d8156eb74a4893b9c7e5d033`: exact tag target, published pre-release, non-draft status, source notes and **zero binary assets** confirmed. The v0.5.84 predecessor remains independently verified at `fa884831fbddfd7ef30500da0fdf321a5c9a6278`.
+**Latest published milestone:** [v0.5.86 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86), independently verified at immutable commit `e2eee30df07191075d07327d3ba7b9e5a446583f`: exact tag/commit identity, published non-draft pre-release, source-only notes, and **zero executable assets**. Previous [v0.5.85](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85) remains independently published source-only.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
-## Post-v0.5.85 rival verified-gate run-through driving (unreleased)
+## v0.5.86 published source-only milestone (not installed gameplay)
+
+- The shared player/rival physical chassis includes bounded synthetic
+  engine heat and proportional power fade across regular thrust, human
+  nitro and qualified drafting. Coasting cools the state without modifying
+  official race timing, credit awards or save data.
+- The autonomous rival separately moderates high-speed throttle demand
+  from its last valid heat sample while leaving low-speed recovery,
+  traffic braking and verified directional gate progression authoritative.
+- The spacious HUD can show discrete **verified checkpoint count gap**,
+  explicitly not a race placement, physical separation or lap-time margin.
+  Physical rival directional gate run-through and completion behavior
+  still requires installed Unreal driving evidence.
+- Three-platform source-only C++20 qualification, Python source bindings,
+  synthetic packaging policies and docs checks were required by the
+  immutable release workflow. **No Win64 EXE or Android package exists
+  in the source-only pre-release.** See [v0.5.86 notes](releases/v0.5.86.md),
+  [engine-heat QA](ARCADE_ENGINE_HEAT_QA.md) and
+  [rival heat-pace QA](RIVAL_ENGINE_HEAT_PACE_QA.md).
+
+
+## v0.5.86 included source — rival verified-gate run-through driving (source-only)
 
 - After directional rival gates replaced mere proximity scoring, the pilot
   still stopped its motor on the old 440cm waypoint-arrival radius.
@@ -22,7 +43,7 @@
   cooked map, Windows/Android install or real driving qualification.
   [Rival run-through QA](RIVAL_GATE_RUN_THROUGH_QA.md).
 
-## Post-v0.5.85 physical rival directional gate crossings (unreleased)
+## v0.5.86 included source — physical rival directional gate crossings (source-only)
 
 - The autonomous rival now advances its approximate route only after an
   actual **forward 3D checkpoint plane crossing** from the same
@@ -40,7 +61,7 @@
   compile or installed racing QA has occurred. [Directional rival gate QA](
   RIVAL_DIRECTIONAL_GATE_QA.md).
 
-## Post-v0.5.85 real rival yaw-rate steering moderation (unreleased)
+## v0.5.86 included source — real rival yaw-rate steering moderation (source-only)
 
 - The physical rival now reads **actual Chaos world-Z angular velocity** after
   its corner, tire, dirt/damage and player-traffic decisions. A bounded
@@ -56,7 +77,7 @@
   verified vehicle-feel testing has occurred. [Yaw steering QA](
   RIVAL_YAW_RATE_STEERING_QA.md).
 
-## Post-v0.5.85 moving-rival no-approach recovery (unreleased)
+## v0.5.86 included source — moving-rival no-approach recovery (source-only)
 
 - The actual physical rival route tracker now recognizes eight continuous
   seconds of **speed without meaningful waypoint progress**: 450–10,000
@@ -73,7 +94,7 @@
   is not installed Unreal gameplay; see [moving-stall QA](
   RIVAL_NO_APPROACH_RECOVERY_QA.md).
 
-## Post-v0.5.85 rival road and impact-aware corner pace (unreleased)
+## v0.5.86 included source — rival road and impact-aware corner pace (source-only)
 
 - The **physical** autonomous rival now reads the prior qualified chassis
   sample's confirmed paved/off-pavement state and bounded accepted-impact
@@ -88,7 +109,7 @@
 - Real licensed UE 5.8 build, circuit cook and physical rival test evidence
   remain mandatory. [Rival low-grip QA](RIVAL_SURFACE_DAMAGE_PACE_QA.md).
 
-## Post-v0.5.85 live forward/reverse motor envelope (unreleased)
+## v0.5.86 included source — live forward/reverse motor envelope (source-only)
 
 - The physical player and rival car now fade all three baseline/nitro/draft
   motor-force paths toward zero near their real, gear-specific speed limits.
@@ -102,7 +123,7 @@
 - Source tests do not certify motor feel, UE 5.8 compilation or Windows/Android
   installed QA. [Gear-aware motor QA](GEAR_AWARE_MOTOR_POWER_QA.md).
 
-## Post-v0.5.85 reverse-gear physics control (unreleased)
+## v0.5.86 included source — reverse-gear physics control (source-only)
 
 - Both player and real rigid-body rival now use a source-level reverse-speed
   limiter after the existing Chaos total-speed clamp. Backwards velocity
@@ -117,7 +138,7 @@
 - Gameplay, AI driving behavior and real installed hardware performance are
   **not** validated by source tests. [Reverse speed QA](ARCADE_REVERSE_SPEED_QA.md).
 
-## Post-v0.5.85 source integration regression (unreleased)
+## v0.5.86 included source — source integration regression (source-only)
 
 - The real production chassis effect policies are exercised together by a
   new C++20 ArcadeDriveComposition regression across 200,000 deterministic
