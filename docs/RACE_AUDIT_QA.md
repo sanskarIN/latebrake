@@ -58,6 +58,34 @@ retains `source_authenticity_verified: false`,
 A malicious or accidental human edit can reproduce these text lines;
 they are not cryptographic runtime attestation.
 
+## Hash-bound private Windows evidence report
+
+For a genuine diagnostic session already recorded by
+`Run-WindowsPlaytest.ps1`, prefer the review command which checks
+the exact schema-2 runtime receipt and source tree:
+
+```powershell
+python ./scripts/Review-WindowsPlaytest.py audit `
+  --receipt 'D:\\LateBrakePlaytestLogs\\LateBrake-your-session.json' `
+  --output 'D:\\LateBrakeQA\\race-audit-review.json' `
+  --require-finish
+```
+
+It verifies the EXE, *all* manifest-listed cooked files, the manifest,
+the session receipt and the exact sealed log SHA256. Its JSON output
+includes source commit, Unreal Engine Build.version digest, circuit
+map digest and ordered gate/finish counts. A missing hash-bound runtime
+log, malformed audit, missing reported finish (with `--require-finish`),
+or stale archive causes refusal without writing a report. The report
+cannot be written into the candidate or overwrite existing evidence.
+
+The output's flags explicitly remain
+`source_authenticity_verified: false`,
+`gameplay_verified: false`, and `ready_for_release: false`.
+These hashes prove internal file **consistency**, not where the bytes
+came from or whether the driver genuinely played. Supplement with
+real UAT/UHT provenance, observed gameplay and independent QA.
+
 ## Source testing
 
 ```powershell
