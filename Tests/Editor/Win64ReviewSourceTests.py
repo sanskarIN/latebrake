@@ -24,7 +24,8 @@ class Win64ReviewSourceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="latebrake-review-fixture-")
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        # macOS /var is commonly a symlink to /private/var.
+        self.root = Path(self.temp.name).resolve()
         self.candidate = self.root / "candidate"
         self.candidate.mkdir()
         self.private = self.root / "private"
