@@ -67,6 +67,8 @@ class ReleaseStatusConsistencyTests(unittest.TestCase):
         self.assertRegex(version, r"^0\.\d+\.\d+$")
         notes = ROOT / "docs" / "releases" / f"v{version}.md"
         self.assertTrue(notes.is_file(), f"missing notes for published v{version}")
+        live_gate = ROOT / ".github" / "workflows" / "verify-public-source-status.yml"
+        self.assertTrue(live_gate.is_file(), "live GitHub release metadata audit is mandatory")
 
     def test_current_release_notes_disclose_source_only_limitation(self):
         version = require_consistent_release_status(self.documents)
