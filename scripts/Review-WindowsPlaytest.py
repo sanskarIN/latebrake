@@ -267,9 +267,18 @@ def audit_race(args: argparse.Namespace) -> None:
     require_unlinked_path(raw_log)
     if raw_log.stat().st_size > MAX_LOG_BYTES:
         fail("Race audit log exceeds 32 MiB parser safety limit.")
+    # Rehash the exact byte snapshot we actually parse: a diagnostic file
+    # could change between candidate_context() verification and this read.
+    log_bytes = raw_log.read_bytes()
+    if (len(log_bytes) > MAX_LOG_BYTES or
+            len(log_bytes) != receipt["unreal_log_bytes"] or
+            hashlib.sha256(log_bytes).hexdigest() != require_hash(
+                receipt["unreal_log_sha256"], "Runtime log hash"
+            )):
+        fail("Runtime log changed while constructing race audit report.")
     try:
         events = analyze_race_audit(
-            raw_log.read_text(encoding="utf-8-sig"),
+            log_bytes.decode("utf-8-sig"),
             require_finish=args.require_finish,
         )
     except RaceAuditError as error:
@@ -277,8 +286,13 @@ def audit_race(args: argparse.Namespace) -> None:
     # candidate_context() has already independently rehashed the complete
     # closed-world UAT archive. The manifest is also pinned to this receipt
     # and its schema/provenance fields were validated by that same call.
+    manifest_bytes = manifest.read_bytes()
+    if hashlib.sha256(manifest_bytes).hexdigest() != require_hash(
+        receipt["candidate_manifest_sha256"], "Manifest hash"
+    ):
+        fail("Manifest changed while constructing race audit report.")
     metadata = json.loads(
-        manifest.read_text(encoding="utf-8-sig"),
+        manifest_bytes.decode("utf-8-sig"),
         object_pairs_hook=unique_pairs,
     )
     report = {
@@ -314,6 +328,8 @@ def audit_race(args: argparse.Namespace) -> None:
             "controls, saves and hardware under issue #148."
         ),
     }
+    if sha256(args.receipt) != receipt_hash:
+        fail("Runtime receipt changed while constructing race audit report.")
     write_new(args.output, report, root)
     print(f"Unverified hash-bound race audit created: {args.output}")
     print(
