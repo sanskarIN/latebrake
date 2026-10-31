@@ -321,6 +321,83 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.assertFalse(review["ready_for_release"])
         self.assertFalse(review["startup_log_markers_pass"])
 
+    def test_new_schema_two_exit_seal_is_recorded_but_not_playable_qa(self):
+        self.set_schema2_log()
+        self.receipt_data["candidate_integrity_at_exit_pass"] = True
+        self.receipt_data["candidate_integrity_at_exit_error"] = None
+        self.write_receipt()
+        self.make_template()
+        result = self.invoke("evaluate", "--receipt", self.receipt,
+                             "--checklist", self.checklist, "--output", self.evaluation)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertTrue(report["candidate_integrity_at_exit_verified"])
+        self.assertFalse(report["gameplay_verified"])
+        self.assertFalse(report["ready_for_release"])
+
+    def test_schema_two_legacy_receipts_have_no_retroactive_exit_seal(self):
+        self.set_schema2_log()
+        self.make_template()
+        result = self.invoke("evaluate", "--receipt", self.receipt,
+                             "--checklist", self.checklist, "--output", self.evaluation)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertFalse(report["candidate_integrity_at_exit_verified"])
+
+    def test_archive_exit_seal_failure_is_not_silently_requalified(self):
+        self.set_schema2_log()
+        self.receipt_data["candidate_integrity_at_exit_pass"] = False
+        self.receipt_data["candidate_integrity_at_exit_error"] = "Game wrote an unlisted Saved/Config file"
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt,
+                             "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("NOT preserved", result.stderr)
+        self.assertFalse(self.checklist.exists())
+        result = self.audit()
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_malformed_postrun_seal_claims_are_rejected(self):
+        self.set_schema2_log()
+        for bad_pass, bad_error in (
+            ("true", None), (1, None), (False, None),
+            (False, ""), (True, "failure"), (False, "x" * 2001),
+        ):
+            with self.subTest(bad_pass=bad_pass, bad_error=bad_error):
+                self.receipt_data["candidate_integrity_at_exit_pass"] = bad_pass
+                self.receipt_data["candidate_integrity_at_exit_error"] = bad_error
+                self.write_receipt()
+                outcome = self.invoke("init", "--receipt", self.receipt,
+                                      "--output", self.checklist)
+                self.assertEqual(outcome.returncode, 2)
+                self.assertFalse(self.checklist.exists())
+
+    def test_partial_or_retroactive_postrun_fields_cannot_claim_seal(self):
+        self.set_schema2_log()
+        self.receipt_data["candidate_integrity_at_exit_pass"] = True
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Incomplete post-run", result.stderr)
+        self.receipt_data["candidate_integrity_at_exit_error"] = None
+        self.receipt_data["schema_version"] = 1
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("schema-2 receipt", result.stderr)
+
+    def test_audit_includes_postrun_seal_evidence_bit(self):
+        self.set_schema2_log(self.synthetic_race_log())
+        self.receipt_data["candidate_integrity_at_exit_pass"] = True
+        self.receipt_data["candidate_integrity_at_exit_error"] = None
+        self.write_receipt()
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertTrue(report["candidate_integrity_at_exit_verified"])
+        self.assertFalse(report["ready_for_release"])
+
     def test_old_version_one_receipts_remain_usable_but_unbound(self):
         self.make_template()
         result = self.invoke("evaluate", "--receipt", self.receipt,
