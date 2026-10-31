@@ -77,6 +77,24 @@ __declspec(dllimport) int __stdcall StretchDIBits(HDC,int,int,int,int,int,int,in
 
 static const int WIDTH=960, HEIGHT=640;
 static const float CX=480.0f, CY=331.0f;
+struct CanvasViewport { int x,y,w,h; };
+static CanvasViewport fitViewport(int clientW,int clientH){
+    if(clientW<=0||clientH<=0)return {0,0,0,0};
+    long long wide=(long long)clientW*HEIGHT;
+    long long tall=(long long)clientH*WIDTH;
+    int w=clientW,h=clientH;
+    if(wide>tall)w=(int)((long long)clientH*WIDTH/HEIGHT);
+    else h=(int)((long long)clientW*HEIGHT/WIDTH);
+    if(w<1)w=1;if(h<1)h=1;
+    return {(clientW-w)/2,(clientH-h)/2,w,h};
+}
+static bool translateMouse(const CanvasViewport& vp,int clientX,int clientY,int& outX,int& outY){
+    if(vp.w<=0||vp.h<=0||clientX<vp.x||clientY<vp.y||
+       clientX>=vp.x+vp.w||clientY>=vp.y+vp.h)return false;
+    outX=(clientX-vp.x)*WIDTH/vp.w;
+    outY=(clientY-vp.y)*HEIGHT/vp.h;
+    return true;
+}
 static unsigned int backdrop[WIDTH*HEIGHT], frame[WIDTH*HEIGHT];
 static bool running=true, paused=false, lastPause=false, lastRestart=false;
 static HWND windowHandle=0;
@@ -1124,9 +1142,14 @@ static LRESULT __stdcall WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
         int cw=client.right-client.left,ch=client.bottom-client.top;
         if(cw>0&&ch>0){
             // The host window letterboxes/stretch-scales the 960x640 canvas.
-            mouseX=((int)(unsigned short)(l&0xffff))*WIDTH/cw;
-            mouseY=((int)(unsigned short)((l>>16)&0xffff))*HEIGHT/ch;
-            if(msg==0x0201){mouseClick(mouseX,mouseY);return 0;}
+            const int px=(int)(short)(unsigned short)(l&0xffff);
+            const int py=(int)(short)(unsigned short)((l>>16)&0xffff);
+            CanvasViewport vp=fitViewport(cw,ch);
+            if(translateMouse(vp,px,py,mouseX,mouseY)){
+                if(msg==0x0201){mouseClick(mouseX,mouseY);return 0;}
+            } else {
+                mouseX=-1;mouseY=-1;
+            }
         }
     }
     if(msg==0x0008){ // WM_KILLFOCUS: no background gamepad racing.
@@ -1251,6 +1274,16 @@ static bool selftest(){
     if(race.speed>=speedBeforeBrake)return false;
     update(0.02f,false,false,false,false,false,false,0.8f,0.0f,0.0f);
     if(race.smoothedSteer<=0)return false;
+    // Aspect-correct resize mapping, including black borders outside UI.
+    CanvasViewport vp=fitViewport(1920,1080);
+    if(vp.x!=150||vp.y!=0||vp.w!=1620||vp.h!=1080)return false;
+    int mappedX=-1,mappedY=-1;
+    if(translateMouse(vp,80,500,mappedX,mappedY))return false;
+    if(!translateMouse(vp,960,540,mappedX,mappedY)||
+       mappedX!=WIDTH/2||mappedY!=HEIGHT/2)return false;
+    vp=fitViewport(800,800);
+    if(vp.w!=800||vp.h!=533||vp.y!=133)return false;
+    if(fitViewport(0,100).w!=0)return false;
     XInputStateFn originalReader=xinputRead;
     xinputRead=mockXInputState;
     activePadUser=4;hasWindowFocus=true;padRequireNeutral=true;
@@ -1310,7 +1343,20 @@ extern "C" void mainCRTStartup(){
         step(dt);render();
         RECT rc={};GetClientRect(wnd,&rc);
         HDC dc=GetDC(wnd);
-        if(dc){StretchDIBits(dc,0,0,rc.right-rc.left,rc.bottom-rc.top,0,0,WIDTH,HEIGHT,frame,&bi,0,0x00CC0020);ReleaseDC(wnd,dc);}
+        if(dc){
+            CanvasViewport vp=fitViewport(rc.right-rc.left,rc.bottom-rc.top);
+            // Letterbox/pillarbox to retain 3:2 geometry, including after
+            // arbitrary window resizing. This is not a 3D view transformation.
+            BITMAPINFO solid={};solid.header.size=40;
+            solid.header.width=1;solid.header.height=-1;
+            solid.header.planes=1;solid.header.bits=32;
+            const unsigned int black=0x09121Bu;
+            StretchDIBits(dc,0,0,rc.right-rc.left,rc.bottom-rc.top,
+                0,0,1,1,&black,&solid,0,0x00CC0020);
+            if(vp.w>0&&vp.h>0)
+                StretchDIBits(dc,vp.x,vp.y,vp.w,vp.h,0,0,WIDTH,HEIGHT,frame,&bi,0,0x00CC0020);
+            ReleaseDC(wnd,dc);
+        }
         Sleep(7);
     }
     if(xinputModule)FreeLibrary(xinputModule);
