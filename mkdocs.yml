@@ -114,6 +114,7 @@ nav:
       - Desktop race instrument panel QA: HUD_INSTRUMENT_CLUSTER_QA.md
       - Mobile menu vertical overflow QA: HUD_MENU_VERTICAL_QA.md
       - Navigable menu details QA: MENU_DETAIL_PAGING_QA.md
+      - Desktop menu mouse navigation QA: DESKTOP_MENU_MOUSE_QA.md
       - Driving session metrics QA: DRIVING_SESSION_QA.md
       - Decorative wheel movement QA: WHEEL_VISUAL_QA.md
       - Garage vehicle silhouettes QA: GARAGE_CAR_SILHOUETTES_QA.md
