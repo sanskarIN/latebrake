@@ -128,6 +128,11 @@ private:
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();
+#if !UE_BUILD_SHIPPING
+    // Event-only, no per-frame telemetry, no effect on scoring or saves.
+    void StartRaceAuditAttempt(int32 GridAtBegin);
+    int32 RaceAuditAttempt = 0;
+#endif
 
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
     latebrake::CareerProgress Career;
