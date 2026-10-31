@@ -6,6 +6,7 @@
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/ArcadeBoostArbitration.h"
 #include "Vehicles/ArcadeReverseSpeedLimit.h"
+#include "Vehicles/GearAwareMotorPower.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/DriveAxisDeadzone.h"
@@ -710,17 +711,27 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // path may bypass it or exceed the existing final boost budget.
     const float ImpactMotorScale = static_cast<float>(
         CollisionDamage.MotorMultiplier());
+    // Ease positive propulsion into the currently qualified forward (nitro)
+    // or reverse gear ceiling. Baseline, nitro and drafting share this
+    // single factor; opposing-throttle engine braking is not weakened.
+    // Real signed chassis speed drives the policy, not commanded speed.
+    const float GearPowerFactor = static_cast<float>(
+        latebrake::GearAwareMotorPowerFactor(
+            static_cast<double>(EffectiveThrottle),
+            static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
+            bArcade));
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-            static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale);
+            static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * GearPowerFactor);
         // Preserve the baseline motor path; an active, human-only nitro
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(CombinedBoost.NitroExtra) *
-                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale);
+                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * GearPowerFactor);
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
@@ -728,7 +739,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         {
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(DraftExtraForce) *
-                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale);
+                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * GearPowerFactor);
         }
     }
     else if (!bEffectiveBraking)
