@@ -5,6 +5,18 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Post-v0.5.85 source integration regression (unreleased)
+
+- The real production chassis effect policies are exercised together by a
+  new C++20 ArcadeDriveComposition regression across 200,000 deterministic
+  frames: road/dirt transitions, tire and impact grip, finite corner throttle,
+  additive nitro/drafting, and bounded service-brake heat.
+- Source binding checks ensure shared motor-force scaling on all three
+  player/rival motor paths and guard the race/physics/interrupt lifecycle.
+  No gameplay physics, saved state or published version is changed.
+- This test is **not a licensed UE 5.8/UHT build, a cooked map, a Windows
+  game or installed Android test**. [Composition QA](ARCADE_DRIVE_COMPOSITION_QA.md).
+
 ## v0.5.85 brake heat and collision damage — source-only milestone
 
 - Shared player/rival chassis code observes finite signed speed and service braking for a conservative arcade brake-heat response. Sustained high-speed heat can reduce service brake resistance to at least 74% of normal; heat gradually cools and parking brake behavior retains its own floor.
