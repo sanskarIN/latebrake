@@ -74,9 +74,54 @@ def require_hash(value: object, label: str) -> str:
     return value.lower()
 
 
+def verify_runtime_log(receipt_file: Path, receipt: dict, candidate_root: Path) -> bool:
+    """Bind schema-2 receipts to exact log bytes, never to gameplay success.
+
+    Historical schema-1 receipts are accepted for review, but never claim
+    log integrity. A legitimate failed launch may have no log at all.
+    """
+    if receipt["schema_version"] == 1:
+        return False
+    raw_path = receipt.get("unreal_log_path")
+    if not isinstance(raw_path, str) or not raw_path:
+        fail("Schema-2 runtime log path is required.")
+    raw_log = Path(raw_path)
+    if not raw_log.is_absolute():
+        fail("Runtime log path must be absolute.")
+    # The runtime runner places the log and receipt together, with an
+    # identical session basename. Reject swapped unrelated session logs.
+    log = raw_log.resolve(strict=False)
+    current_receipt = receipt_file.resolve()
+    if log.parent != current_receipt.parent or log.stem != current_receipt.stem:
+        fail("Runtime log does not belong to this receipt's session directory/name.")
+    if log == candidate_root or log.is_relative_to(candidate_root):
+        fail("Runtime log must remain OUTSIDE the sealed candidate.")
+
+    present = receipt["unreal_log_present"]
+    digest = receipt.get("unreal_log_sha256")
+    size = receipt.get("unreal_log_bytes")
+    if not present:
+        if digest is not None or size is not None or receipt["startup_log_markers_pass"]:
+            fail("An absent runtime log cannot have a checksum, size or passing markers.")
+        if log.exists() or log.is_symlink():
+            fail("Receipt says runtime log was absent but a log exists now.")
+        return False
+    if not require_hash(digest, "Runtime log SHA256"):
+        # require_hash returns the validated lowercase digest or raises.
+        fail("Runtime log SHA256 missing.")
+    if type(size) is not int or size < 0:
+        fail("Runtime log byte length is invalid.")
+    require_unlinked_path(raw_log)
+    if not log.is_file():
+        fail("Recorded runtime log is missing.")
+    if log.stat().st_size != size or sha256(log) != require_hash(digest, "Runtime log SHA256"):
+        fail("Runtime log changed after the recorded game session (size/SHA256 mismatch).")
+    return True
+
+
 def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
     receipt = read_json(receipt_file)
-    if receipt.get("schema_version") != 1 or receipt.get("status") != "UNVERIFIED_PERSONAL_RUNTIME_PROBE":
+    if type(receipt.get("schema_version")) is not int or receipt["schema_version"] not in (1, 2) or receipt.get("status") != "UNVERIFIED_PERSONAL_RUNTIME_PROBE":
         fail("Only private Win64 runtime-probe receipts are accepted.")
     if receipt.get("gameplay_verified") is not False:
         fail("Runtime receipts must NEVER claim verified gameplay.")
@@ -109,6 +154,7 @@ def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
     # not only the EXE/manifest identity. This still does not authenticate
     # Unreal compilation, game launch or manual gameplay claims.
     verify_candidate_archive(root, manifest)
+    verify_runtime_log(receipt_file, receipt, root)
     return receipt, root, exe, manifest, sha256(receipt_file)
 
 
@@ -185,6 +231,9 @@ def evaluate(args: argparse.Namespace) -> None:
         "candidate_manifest_sha256": receipt["candidate_manifest_sha256"],
         "runtime_exit_ok": receipt["process_exit_code"] == 0,
         "runtime_log_present": receipt["unreal_log_present"],
+        "runtime_log_integrity_verified": (
+            receipt["schema_version"] == 2 and receipt["unreal_log_present"]
+        ),
         "startup_log_markers_pass": receipt["startup_log_markers_pass"],
         "manual_counts": counts,
         "all_checks_self_reported_pass": counts["pass"] == len(CHECKS),
