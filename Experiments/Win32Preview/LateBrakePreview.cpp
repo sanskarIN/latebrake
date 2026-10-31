@@ -56,7 +56,7 @@ __declspec(dllimport) BOOL __stdcall ReadFile(HANDLE,void*,DWORD,DWORD*,void*);
 __declspec(dllimport) BOOL __stdcall WriteFile(HANDLE,const void*,DWORD,DWORD*,void*);
 __declspec(dllimport) BOOL __stdcall CloseHandle(HANDLE);
 __declspec(dllimport) BOOL __stdcall MoveFileExA(const char*,const char*,DWORD);
-__declspec(dllimport) HINSTANCE __stdcall LoadLibraryA(const char*);
+__declspec(dllimport) HINSTANCE __stdcall LoadLibraryExA(const char*,HANDLE,DWORD);
 __declspec(dllimport) void* __stdcall GetProcAddress(HINSTANCE,const char*);
 __declspec(dllimport) BOOL __stdcall FreeLibrary(HINSTANCE);
 __declspec(dllimport) unsigned short __stdcall RegisterClassA(const WNDCLASSA*);
@@ -100,6 +100,7 @@ static XInputStateFn xinputRead=0;
 static bool padConnected=false,hasWindowFocus=true;
 static unsigned short lastPadButtons=0;
 static bool stickMenuLatch=false,padRequireNeutral=true;
+static DWORD activePadUser=4;
 static const unsigned short PAD_UP=0x0001,PAD_DOWN=0x0002,PAD_LEFT=0x0004,
     PAD_RIGHT=0x0008,PAD_START=0x0010,PAD_BACK=0x0020,PAD_LB=0x0100,
     PAD_A=0x1000,PAD_B=0x2000,PAD_X=0x4000,PAD_Y=0x8000;
@@ -152,7 +153,9 @@ static float normalTrigger(unsigned char raw){
 static void initializePad(){
     const char* names[]={"xinput1_4.dll","xinput1_3.dll","xinput9_1_0.dll"};
     for(int i=0;i<3&&!xinputRead;i++){
-        HINSTANCE module=LoadLibraryA(names[i]);
+        // LOAD_LIBRARY_SEARCH_SYSTEM32 avoids loading a replacement DLL
+        // from the game or current directory. Windows 10/11 supported.
+        HINSTANCE module=LoadLibraryExA(names[i],0,0x00000800u);
         if(!module)continue;
         XInputStateFn fn=(XInputStateFn)GetProcAddress(module,"XInputGetState");
         if(fn){xinputModule=module;xinputRead=fn;}
@@ -163,10 +166,19 @@ static PadControls pollPad(){
     PadControls result={};
     // Do not allow background controller button presses to resume a race.
     if(!hasWindowFocus||!xinputRead){padConnected=false;lastPadButtons=0;
-        stickMenuLatch=false;padRequireNeutral=true;return result;}
+        activePadUser=4;stickMenuLatch=false;padRequireNeutral=true;return result;}
     PadPacket raw={};
-    if(xinputRead(0,&raw)!=0){padConnected=false;lastPadButtons=0;
+    DWORD detected=4;
+    for(DWORD index=0;index<4;index++){
+        if(xinputRead(index,&raw)==0){detected=index;break;}
+    }
+    if(detected==4){padConnected=false;lastPadButtons=0;activePadUser=4;
         stickMenuLatch=false;padRequireNeutral=true;return result;}
+    if(activePadUser!=detected){
+        // Device ownership changes require neutral input before driving.
+        padRequireNeutral=true;lastPadButtons=0;stickMenuLatch=false;
+        activePadUser=detected;
+    }
     result.connected=true;padConnected=true;
     unsigned short down=raw.controls.buttons;
     // A freshly connected or refocused pad must first return to neutral:
@@ -1136,9 +1148,9 @@ static bool hasSelfTestFlag(const char* s){
 }
 // Mocked XInput packet path exercises button edges and safe reconnect.
 static PadPacket mockPacket={};
-static DWORD mockStatus=0;
+static DWORD mockStatus=0,mockUser=0;
 static DWORD __stdcall mockXInputState(DWORD user,PadPacket* state){
-    if(user!=0||mockStatus)return 1167u;
+    if(user!=mockUser||mockStatus)return 1167u;
     *state=mockPacket;return 0;
 }
 static bool selftest(){
@@ -1241,8 +1253,8 @@ static bool selftest(){
     if(race.smoothedSteer<=0)return false;
     XInputStateFn originalReader=xinputRead;
     xinputRead=mockXInputState;
-    hasWindowFocus=true;padRequireNeutral=true;
-    mockPacket={};mockStatus=0;
+    activePadUser=4;hasWindowFocus=true;padRequireNeutral=true;
+    mockPacket={};mockStatus=0;mockUser=0;
     if(!pollPad().connected)return false;
     mockPacket.controls.buttons=PAD_A|PAD_START;
     mockPacket.controls.rightTrigger=255;
@@ -1264,6 +1276,13 @@ static bool selftest(){
     hasWindowFocus=true;
     if(pollPad().confirm)return false; // Focus return still requires neutral.
     mockPacket={};pollPad();
+    // Another controller slot is also supported. Switching users cannot
+    // inherit previously held A/RT inputs from the old device.
+    mockUser=2;mockPacket.controls.buttons=PAD_A;
+    if(pollPad().confirm)return false;
+    mockPacket={};pollPad();
+    mockPacket.controls.buttons=PAD_A;
+    if(!pollPad().confirm)return false;
     xinputRead=originalReader;padConnected=false;
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }
