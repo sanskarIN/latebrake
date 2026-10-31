@@ -1,4 +1,4 @@
-name: Experimental LateBrake V4 Win64 preview (NOT Unreal)
+name: Experimental LateBrake V5 Win64 preview (NOT Unreal)
 
 on:
   pull_request:
@@ -17,11 +17,11 @@ permissions:
 
 jobs:
   standalone-win32-preview:
-    name: Build native V4 Win64 / run synthetic self-test (NO UE)
+    name: Build native V5 Win64 / run synthetic self-test (NO UE)
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -39,16 +39,16 @@ jobs:
         run: |
           # GUI-subsystem EXEs can return control to PowerShell without
           # populating LASTEXITCODE; wait for the actual process handle.
-          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV4.exe').Path
+          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV5.exe').Path
           $run = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
           if ($run.ExitCode -ne 0) { throw "Preview self-test failed: $($run.ExitCode)" }
       - name: Prove synthetic self-test does not modify user career data
         shell: pwsh
         run: |
-          $isolated = Join-Path $env:RUNNER_TEMP 'latebrake-v4-isolated-profile'
+          $isolated = Join-Path $env:RUNNER_TEMP 'latebrake-v5-isolated-profile'
           New-Item -ItemType Directory -Path $isolated -Force | Out-Null
           $env:LOCALAPPDATA = $isolated
-          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV4.exe').Path
+          $exe = (Resolve-Path './Experiments/Win32Preview/out/LateBrakePreviewV5.exe').Path
           $run = Start-Process -FilePath $exe -ArgumentList '--self-test' -Wait -PassThru
           if ($run.ExitCode -ne 0) { throw 'Isolated progression test failed.' }
           $files = @(Get-ChildItem -LiteralPath $isolated -Recurse -File)
@@ -57,16 +57,16 @@ jobs:
         shell: pwsh
         run: |
           python ./Experiments/Win32Preview/VerifyPayload.py `
-            ./Experiments/Win32Preview/out/LateBrakePreviewV4.exe `
-            ./Experiments/Win32Preview/out/LateBrakeSetupV4.exe `
+            ./Experiments/Win32Preview/out/LateBrakePreviewV5.exe `
+            ./Experiments/Win32Preview/out/LateBrakeSetupV5.exe `
             ./Experiments/Win32Preview/out/payload.inc
       - name: Archive experimental UNVERIFIED installer for private GUI QA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: UNVERIFIED-LateBrake-V4-2D-Win64-${{ github.sha }}
+          name: UNVERIFIED-LateBrake-V5-2D-Win64-${{ github.sha }}
           path: |
-            Experiments/Win32Preview/out/LateBrakePreviewV4.exe
-            Experiments/Win32Preview/out/LateBrakeSetupV4.exe
+            Experiments/Win32Preview/out/LateBrakePreviewV5.exe
+            Experiments/Win32Preview/out/LateBrakeSetupV5.exe
           retention-days: 3
           if-no-files-found: error
           compression-level: 0

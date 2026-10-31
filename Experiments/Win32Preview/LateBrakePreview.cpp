@@ -56,6 +56,9 @@ __declspec(dllimport) BOOL __stdcall ReadFile(HANDLE,void*,DWORD,DWORD*,void*);
 __declspec(dllimport) BOOL __stdcall WriteFile(HANDLE,const void*,DWORD,DWORD*,void*);
 __declspec(dllimport) BOOL __stdcall CloseHandle(HANDLE);
 __declspec(dllimport) BOOL __stdcall MoveFileExA(const char*,const char*,DWORD);
+__declspec(dllimport) HINSTANCE __stdcall LoadLibraryExA(const char*,HANDLE,DWORD);
+__declspec(dllimport) void* __stdcall GetProcAddress(HINSTANCE,const char*);
+__declspec(dllimport) BOOL __stdcall FreeLibrary(HINSTANCE);
 __declspec(dllimport) unsigned short __stdcall RegisterClassA(const WNDCLASSA*);
 __declspec(dllimport) HWND __stdcall CreateWindowExA(DWORD,const char*,const char*,DWORD,int,int,int,int,HWND,void*,HINSTANCE,void*);
 __declspec(dllimport) BOOL __stdcall ShowWindow(HWND,int);
@@ -74,6 +77,24 @@ __declspec(dllimport) int __stdcall StretchDIBits(HDC,int,int,int,int,int,int,in
 
 static const int WIDTH=960, HEIGHT=640;
 static const float CX=480.0f, CY=331.0f;
+struct CanvasViewport { int x,y,w,h; };
+static CanvasViewport fitViewport(int clientW,int clientH){
+    if(clientW<=0||clientH<=0)return {0,0,0,0};
+    long long wide=(long long)clientW*HEIGHT;
+    long long tall=(long long)clientH*WIDTH;
+    int w=clientW,h=clientH;
+    if(wide>tall)w=(int)((long long)clientH*WIDTH/HEIGHT);
+    else h=(int)((long long)clientW*HEIGHT/WIDTH);
+    if(w<1)w=1;if(h<1)h=1;
+    return {(clientW-w)/2,(clientH-h)/2,w,h};
+}
+static bool translateMouse(const CanvasViewport& vp,int clientX,int clientY,int& outX,int& outY){
+    if(vp.w<=0||vp.h<=0||clientX<vp.x||clientY<vp.y||
+       clientX>=vp.x+vp.w||clientY>=vp.y+vp.h)return false;
+    outX=(clientX-vp.x)*WIDTH/vp.w;
+    outY=(clientY-vp.y)*HEIGHT/vp.h;
+    return true;
+}
 static unsigned int backdrop[WIDTH*HEIGHT], frame[WIDTH*HEIGHT];
 static bool running=true, paused=false, lastPause=false, lastRestart=false;
 static HWND windowHandle=0;
@@ -84,6 +105,28 @@ static bool showHelp=false, highContrast=false, isHovering=false;
 static float countdown=0, countdownGo=0, fixedFrameCarry=0;
 static bool steeringAssist=true,lastAssist=false,lastRecover=false;
 static int personalTrackBestMs[4]={};
+// XInput is loaded dynamically: gamepad support remains optional on PCs
+// without a controller or the XInput DLL. No online/network services.
+struct PadRaw { unsigned short buttons; unsigned char leftTrigger,rightTrigger;
+    short lx,ly,rx,ry; };
+struct PadPacket { unsigned int packet; PadRaw controls; };
+static_assert(sizeof(PadRaw)==12 && sizeof(PadPacket)==16,
+    "XInput ABI must match the Windows controller packet layout");
+typedef DWORD (__stdcall *XInputStateFn)(DWORD,PadPacket*);
+static HINSTANCE xinputModule=0;
+static XInputStateFn xinputRead=0;
+static bool padConnected=false,hasWindowFocus=true;
+static unsigned short lastPadButtons=0;
+static bool stickMenuLatch=false,padRequireNeutral=true;
+static DWORD activePadUser=4;
+static const unsigned short PAD_UP=0x0001,PAD_DOWN=0x0002,PAD_LEFT=0x0004,
+    PAD_RIGHT=0x0008,PAD_START=0x0010,PAD_BACK=0x0020,PAD_LB=0x0100,
+    PAD_A=0x1000,PAD_B=0x2000,PAD_X=0x4000,PAD_Y=0x8000;
+struct PadControls {
+    bool connected,confirm,back,pause,recover,navUp,navDown,navLeft,navRight;
+    bool boost,reverse;
+    float gas,brake,steer;
+};
 static int recoveries=0;
 static unsigned int seed=0x6a09e667u;
 
@@ -115,6 +158,80 @@ static float minf(float a,float b){return a<b?a:b;}
 static float maxf(float a,float b){return a>b?a:b;}
 static float clamp(float a,float lo,float hi){return minf(maxf(a,lo),hi);}
 static float fsqrt(float v){if(v<=0.0f)return 0.0f;float g=v>1.0f?v:1.0f;for(int i=0;i<11;++i)g=(g+v/g)*0.5f;return g;}
+static float normalAxis(short raw){
+    // Symmetric deadzone with full-scale remapping and no -32768 overflow.
+    float f=clamp((float)raw/32767.0f,-1.0f,1.0f);
+    float a=absf(f),dead=0.18f;
+    return a<=dead?0.0f:(f<0?-1.0f:1.0f)*clamp((a-dead)/(1.0f-dead),0.0f,1.0f);
+}
+static float normalTrigger(unsigned char raw){
+    float f=(float)raw/255.0f;
+    return f<=0.09f?0.0f:clamp((f-0.09f)/0.91f,0.0f,1.0f);
+}
+static void initializePad(){
+    const char* names[]={"xinput1_4.dll","xinput1_3.dll","xinput9_1_0.dll"};
+    for(int i=0;i<3&&!xinputRead;i++){
+        // LOAD_LIBRARY_SEARCH_SYSTEM32 avoids loading a replacement DLL
+        // from the game or current directory. Windows 10/11 supported.
+        HINSTANCE module=LoadLibraryExA(names[i],0,0x00000800u);
+        if(!module)continue;
+        XInputStateFn fn=(XInputStateFn)GetProcAddress(module,"XInputGetState");
+        if(fn){xinputModule=module;xinputRead=fn;}
+        else FreeLibrary(module);
+    }
+}
+static PadControls pollPad(){
+    PadControls result={};
+    // Do not allow background controller button presses to resume a race.
+    if(!hasWindowFocus||!xinputRead){padConnected=false;lastPadButtons=0;
+        activePadUser=4;stickMenuLatch=false;padRequireNeutral=true;return result;}
+    PadPacket raw={};
+    DWORD detected=4;
+    for(DWORD index=0;index<4;index++){
+        if(xinputRead(index,&raw)==0){detected=index;break;}
+    }
+    if(detected==4){padConnected=false;lastPadButtons=0;activePadUser=4;
+        stickMenuLatch=false;padRequireNeutral=true;return result;}
+    if(activePadUser!=detected){
+        // Device ownership changes require neutral input before driving.
+        padRequireNeutral=true;lastPadButtons=0;stickMenuLatch=false;
+        activePadUser=detected;
+    }
+    result.connected=true;padConnected=true;
+    unsigned short down=raw.controls.buttons;
+    // A freshly connected or refocused pad must first return to neutral:
+    // a held Start/A/trigger cannot unexpectedly resume or move the car.
+    if(padRequireNeutral){
+        bool neutral=down==0 && raw.controls.leftTrigger<=24 &&
+            raw.controls.rightTrigger<=24 &&
+            absf((float)raw.controls.lx)<11000.0f &&
+            absf((float)raw.controls.ly)<11000.0f;
+        lastPadButtons=down;
+        if(!neutral)return result;
+        padRequireNeutral=false;
+    }
+    unsigned short fresh=(unsigned short)(down&~lastPadButtons);
+    lastPadButtons=down;
+    result.confirm=(fresh&PAD_A)!=0;result.back=(fresh&PAD_B)!=0;
+    result.pause=(fresh&PAD_START)!=0;result.recover=(fresh&PAD_X)!=0;
+    result.boost=(down&PAD_A)!=0;result.reverse=(down&PAD_LB)!=0;
+    result.navUp=(fresh&PAD_UP)!=0;result.navDown=(fresh&PAD_DOWN)!=0;
+    result.navLeft=(fresh&PAD_LEFT)!=0;result.navRight=(fresh&PAD_RIGHT)!=0;
+    result.gas=normalTrigger(raw.controls.rightTrigger);
+    result.brake=normalTrigger(raw.controls.leftTrigger);
+    result.steer=normalAxis(raw.controls.lx);
+    // Analog menu selection fires once per stick excursion; it does not
+    // generate hundreds of highlights per second or activate while racing.
+    float sy=normalAxis(raw.controls.ly),sx=result.steer;
+    if(absf(sx)<0.34f&&absf(sy)<0.34f)stickMenuLatch=false;
+    if(!stickMenuLatch&&(absf(sx)>0.70f||absf(sy)>0.70f)){
+        if(absf(sy)>absf(sx)){result.navUp=sy>0;result.navDown=sy<0;}
+        else {result.navLeft=sx<0;result.navRight=sx>0;}
+        stickMenuLatch=true;
+    }
+    return result;
+}
+
 static unsigned int shade(unsigned int c,float m){int r=(int)(((c>>16)&255)*m),g=(int)(((c>>8)&255)*m),b=(int)((c&255)*m);return (unsigned)(clamp((float)r,0,255))<<16 | (unsigned)(clamp((float)g,0,255))<<8 | (unsigned)clamp((float)b,0,255);}
 static void put(int x,int y,unsigned int color){if((unsigned)x<WIDTH && (unsigned)y<HEIGHT)frame[y*WIDTH+x]=color;}
 static void rect(int x,int y,int w,int h,unsigned int color){int xx=maxf((float)x,0),yy=maxf((float)y,0),ex=minf((float)(x+w),WIDTH),ey=minf((float)(y+h),HEIGHT);for(int row=yy;row<ey;++row)for(int col=xx;col<ex;++col)frame[row*WIDTH+col]=color;}
@@ -406,7 +523,8 @@ static void recoverToLastCheckpoint(){
     race.readyForGate=false;recoveries++;
     message("RECOVERED / +5 SEC PENALTY");
 }
-static void update(float dt,bool forward,bool reverse,bool left,bool right,bool brake,bool boost){
+static void update(float dt,bool forward,bool reverse,bool left,bool right,bool brake,bool boost,
+                   float padSteer=0.0f,float padGas=0.0f,float padBrake=0.0f){
     if(race.finished)return;
     dt=clamp(dt,0.0f,0.045f);
     if(countdown>0){countdown=maxf(0,countdown-dt);return;}
@@ -414,18 +532,21 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     race.elapsed+=dt;gameTime+=dt;
     if(gateFlash>0)gateFlash-=dt;
     bool road=onroad(race.x,race.y);
-    float accel=forward?290.0f*carAccel[selectedCar]:0.0f;
+    float driveDemand=maxf(forward?1.0f:0.0f,clamp(padGas,0,1));
+    float serviceBrake=maxf(brake?1.0f:0.0f,clamp(padBrake,0,1));
+    float accel=driveDemand*290.0f*carAccel[selectedCar];
     if(reverse)accel-=210.0f;
-    bool nitro=boost&&forward&&!reverse&&!brake&&race.nitro>0&&road;
+    bool nitro=boost&&driveDemand>0.05f&&!reverse&&serviceBrake<0.05f&&race.nitro>0&&road;
     if(nitro){accel+=380.0f;race.nitro=maxf(0.0f,race.nitro-dt*29);}
     else race.nitro=minf(100.0f,race.nitro+dt*9.0f);
     race.speed+=accel*dt*(1.0f-race.damage*0.0043f);
-    if(brake)race.speed*=maxf(0.0f,1.0f-dt*5.8f);
+    if(serviceBrake>0.0f)race.speed*=maxf(0.0f,1.0f-dt*5.8f*serviceBrake);
     race.speed*=maxf(0.0f,1.0f-dt*(road?0.57f:2.6f));
     race.speed=clamp(race.speed,-110.0f,road?((nitro?420.0f:325.0f)*carSpeed[selectedCar]):130.0f);
     // Smooth steering in simulation time, not render time. Assist reduces
     // extreme high-speed rotation; it never interferes with reverse direction.
-    float steer=(right?1.0f:0.0f)-(left?1.0f:0.0f);
+    float keyboardSteer=(right?1.0f:0.0f)-(left?1.0f:0.0f);
+    float steer=absf(keyboardSteer)>0.01f?keyboardSteer:clamp(padSteer,-1,1);
     race.smoothedSteer+=(steer-race.smoothedSteer)*clamp(dt*8.0f,0.0f,1.0f);
     float authority=clamp(absf(race.speed)/160.0f,0,1);
     float speedSafety=steeringAssist?1.0f-0.38f*clamp(absf(race.speed)/420.0f,0,1):1.0f;
@@ -592,12 +713,17 @@ static void headerNav(){
     text(24,14,"LATEBRAKE",CREAM(),3);
     text(255,21,"/  PERSONAL RACING LAB",MUTED(),2);
     rect(768,12,170,29,color(45,51,65));
-    text(784,21,"V4  2D PREVIEW",GOLD(),1);
+    text(784,21,"V5  PAD PREVIEW",GOLD(),1);
 }
 static void footerNav(){
     rect(0,583,WIDTH,57,NAVY());rect(0,583,WIDTH,1,BORDER());
-    hint(22,594,"ARROWS NAVIGATE     ENTER SELECT     M HOME     F1 HELP     H CONTRAST");
-    hint(22,615,"WASD DRIVE   SPACE BRAKE   SHIFT NITRO   P PAUSE   ESC BACK/EXIT");
+    if(padConnected){
+        hint(22,594,"CONTROLLER READY  /  D-PAD OR STICK NAVIGATE   A SELECT   B BACK");
+        hint(22,615,"RT GAS   LT BRAKE   LEFT STICK STEER   START PAUSE   F1 HELP");
+    } else {
+        hint(22,594,"ARROWS NAVIGATE     ENTER SELECT     M HOME     F1 HELP     H CONTRAST");
+        hint(22,615,"WASD DRIVE   SPACE BRAKE   SHIFT NITRO   P PAUSE   ESC BACK/EXIT");
+    }
 }
 static void trackThumbnail(int x,int y,int w,int h,int idx){
     float cx=x+w*0.5f,cy=y+h*0.5f,rx=w*0.39f,ry=h*0.37f;
@@ -797,8 +923,13 @@ static void renderRaceHUDV3(){
         number(762+i*44,541,i+1,NAVY(),1);
     }
     rect(0,583,WIDTH,57,NAVY());
-    hint(20,594,"W/UP ACCELERATE    A/D STEER    SPACE BRAKE    SHIFT NITRO    P PAUSE");
-    hint(20,616,"R RESTART    K RECOVER +5S    J STEER ASSIST    F1 HELP    P PAUSE");
+    if(padConnected){
+        hint(20,594,"PAD RT GAS  LT BRAKE  STICK STEER  A NITRO  LB REVERSE  X RECOVER");
+        hint(20,616,"PAD START PAUSE  B BACK  /  KEYBOARD WASD  F1 HELP  J ASSIST");
+    } else {
+        hint(20,594,"W/UP ACCELERATE    A/D STEER    SPACE BRAKE    SHIFT NITRO    P PAUSE");
+        hint(20,616,"R RESTART    K RECOVER +5S    J STEER ASSIST    F1 HELP    P PAUSE");
+    }
     hint(30,476,steeringAssist?"STEER ASSIST: ON  [J]":"STEER ASSIST: OFF [J]");
     if(!onroad(race.x,race.y)){
         rect(350,74,263,36,color(90,46,34));
@@ -825,7 +956,7 @@ static void overlayHelp(){
     text(205,367,"R            RESTART RACE",CREAM(),2);
     text(205,396,"K            RECOVER / +5 SEC",CREAM(),2);
     text(205,425,"J            STEERING ASSIST",CREAM(),2);
-    hint(205,457,"H CONTRAST / FOLLOW GOLD GATES IN ORDER.");
+    hint(205,457,"PAD: RT GAS / LT BRAKE / STICK STEER / A NITRO / START PAUSE");
     uiButton(206,481,546,39,"F1 / ESC  CLOSE GUIDE",false);
 }
 static void resultsOverlayV3(){
@@ -928,17 +1059,22 @@ static void mouseClick(int x,int y){
         else if(within(x,y,290,369,378,43))setPage(HOME);
     }
 }
-static void advanceRaceFixed(float wallDt,bool gas,bool reverse,bool left,bool right,bool brake,bool boost){
+static void advanceRaceFixed(float wallDt,bool gas,bool reverse,bool left,bool right,bool brake,bool boost,
+                             float padSteer=0.0f,float padGas=0.0f,float padBrake=0.0f){
     const float fixed=1.0f/120.0f;
     fixedFrameCarry+=clamp(wallDt,0,0.1f);
     for(int i=0;i<12&&fixedFrameCarry>=fixed&&page==RACING;i++){
-        update(fixed,gas,reverse,left,right,brake,boost);
+        update(fixed,gas,reverse,left,right,brake,boost,padSteer,padGas,padBrake);
         fixedFrameCarry-=fixed;
     }
     if(page!=RACING)fixedFrameCarry=0;
 }
 static void step(float dt){
     if(toastTime>0)toastTime-=dt;
+    PadControls pad=pollPad();
+    // GetAsyncKeyState sees global keyboard state; never drive or navigate
+    // the game behind a different foreground window.
+    if(!hasWindowFocus)return;
     bool enter=pressed(0x0D,lastEnter),back=pressed(0x1B,lastBack);
     bool g=pressed('G',lastGarage),t=pressed('T',lastTracks);
     bool ch=pressed('C',lastChallenge),on=pressed('O',lastOnline);
@@ -949,6 +1085,10 @@ static void step(float dt){
     bool rp=pressed('R',lastRestart),pause=pressed('P',lastPause);
     bool help=pressed(0x70,lastHelp),contrast=pressed('H',lastContrast);
     bool assist=pressed('J',lastAssist),recover=pressed('K',lastRecover);
+    enter=enter||pad.confirm;back=back||pad.back;
+    up=up||pad.navUp;down=down||pad.navDown;
+    l=l||pad.navLeft;rgt=rgt||pad.navRight;
+    pause=pause||pad.pause;recover=recover||pad.recover;
     if(contrast){highContrast=!highContrast;saveSettings();}
     if(assist){steeringAssist=!steeringAssist;saveSettings();
         message(steeringAssist?"STEERING ASSIST ON":"STEERING ASSIST OFF");}
@@ -962,8 +1102,9 @@ static void step(float dt){
         if(!paused){
             // Physics runs at 120Hz independent of render-loop wall timing.
             // Bounded catch-up protects against catastrophic window hitches.
-            advanceRaceFixed(dt,key('W')||key(0x26),key('S')||key(0x28),
-                key('A')||key(0x25),key('D')||key(0x27),key(0x20),key(0x10));
+            advanceRaceFixed(dt,key('W')||key(0x26),key('S')||key(0x28)||pad.reverse,
+                key('A')||key(0x25),key('D')||key(0x27),key(0x20),key(0x10)||pad.boost,
+                pad.steer,pad.gas,pad.brake);
         }else fixedFrameCarry=0;
     }else if(page==RESULTS){
         if(enter||rp){beginRace();return;}
@@ -1001,14 +1142,21 @@ static LRESULT __stdcall WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
         int cw=client.right-client.left,ch=client.bottom-client.top;
         if(cw>0&&ch>0){
             // The host window letterboxes/stretch-scales the 960x640 canvas.
-            mouseX=((int)(unsigned short)(l&0xffff))*WIDTH/cw;
-            mouseY=((int)(unsigned short)((l>>16)&0xffff))*HEIGHT/ch;
-            if(msg==0x0201){mouseClick(mouseX,mouseY);return 0;}
+            const int px=(int)(short)(unsigned short)(l&0xffff);
+            const int py=(int)(short)(unsigned short)((l>>16)&0xffff);
+            CanvasViewport vp=fitViewport(cw,ch);
+            if(translateMouse(vp,px,py,mouseX,mouseY)){
+                if(msg==0x0201){mouseClick(mouseX,mouseY);return 0;}
+            } else {
+                mouseX=-1;mouseY=-1;
+            }
         }
     }
-    if(msg==0x0008){ // WM_KILLFOCUS: held keys must not drive a background race.
+    if(msg==0x0008){ // WM_KILLFOCUS: no background gamepad racing.
+        hasWindowFocus=false;padRequireNeutral=true;
         if(page==RACING)paused=true;
     }
+    if(msg==0x0007)hasWindowFocus=true; // WM_SETFOCUS
     if(msg==0x0010||msg==0x0002){running=false;PostQuitMessage(0);return 0;}
     return DefWindowProcA(hwnd,msg,w,l);
 }
@@ -1020,6 +1168,13 @@ static bool hasSelfTestFlag(const char* s){
         if(!t[j]&&(s[j]==' '||s[j]=='\0'||s[j]=='\"'))return true;
     }
     return false;
+}
+// Mocked XInput packet path exercises button edges and safe reconnect.
+static PadPacket mockPacket={};
+static DWORD mockStatus=0,mockUser=0;
+static DWORD __stdcall mockXInputState(DWORD user,PadPacket* state){
+    if(user!=mockUser||mockStatus)return 1167u;
+    *state=mockPacket;return 0;
 }
 static bool selftest(){
     testing=true;
@@ -1104,15 +1259,73 @@ static bool selftest(){
     UISettingsV4 newer={0x34424955u,4u,0u,1u,2u,1u,0u,0u};
     newer.checksum=uiChecksumV4(newer);newer.assist=1;
     if(newer.checksum==uiChecksumV4(newer))return false;
+    // Tests independent of a connected controller or Windows device.
+    if(normalAxis(0)!=0.0f||normalAxis(1400)!=0.0f||
+       normalAxis(-1400)!=0.0f||normalAxis(32767)<0.99f||
+       normalAxis(-32768)>-0.99f||normalTrigger(0)!=0.0f||
+       normalTrigger(255)<0.99f||normalTrigger(10)!=0.0f)return false;
+    // Analog RT must accelerate; LT brakes; stick turns with deadzone.
+    beginRace();countdown=0;
+    float initialSpeed=race.speed;
+    update(0.02f,false,false,false,false,false,false,0.0f,0.75f,0.0f);
+    if(race.speed<=initialSpeed)return false;
+    float speedBeforeBrake=race.speed;
+    update(0.02f,false,false,false,false,false,false,0.0f,0.0f,1.0f);
+    if(race.speed>=speedBeforeBrake)return false;
+    update(0.02f,false,false,false,false,false,false,0.8f,0.0f,0.0f);
+    if(race.smoothedSteer<=0)return false;
+    // Aspect-correct resize mapping, including black borders outside UI.
+    CanvasViewport vp=fitViewport(1920,1080);
+    if(vp.x!=150||vp.y!=0||vp.w!=1620||vp.h!=1080)return false;
+    int mappedX=-1,mappedY=-1;
+    if(translateMouse(vp,80,500,mappedX,mappedY))return false;
+    if(!translateMouse(vp,960,540,mappedX,mappedY)||
+       mappedX!=WIDTH/2||mappedY!=HEIGHT/2)return false;
+    vp=fitViewport(800,800);
+    if(vp.w!=800||vp.h!=533||vp.y!=133)return false;
+    if(fitViewport(0,100).w!=0)return false;
+    XInputStateFn originalReader=xinputRead;
+    xinputRead=mockXInputState;
+    activePadUser=4;hasWindowFocus=true;padRequireNeutral=true;
+    mockPacket={};mockStatus=0;mockUser=0;
+    if(!pollPad().connected)return false;
+    mockPacket.controls.buttons=PAD_A|PAD_START;
+    mockPacket.controls.rightTrigger=255;
+    mockPacket.controls.lx=32767;
+    PadControls first=pollPad();
+    if(!first.confirm||!first.pause||!first.boost||first.gas<0.99f||first.steer<0.99f)return false;
+    PadControls held=pollPad();
+    if(held.confirm||held.pause||!held.boost)return false;
+    mockStatus=1167;
+    if(pollPad().connected)return false;
+    mockStatus=0;
+    if(pollPad().gas!=0.0f||pollPad().confirm)return false; // Held input is ignored after reconnect.
+    mockPacket={};
+    if(!pollPad().connected)return false;
+    mockPacket.controls.buttons=PAD_A;
+    if(!pollPad().confirm)return false;
+    hasWindowFocus=false;
+    if(pollPad().connected)return false;
+    hasWindowFocus=true;
+    if(pollPad().confirm)return false; // Focus return still requires neutral.
+    mockPacket={};pollPad();
+    // Another controller slot is also supported. Switching users cannot
+    // inherit previously held A/RT inputs from the old device.
+    mockUser=2;mockPacket.controls.buttons=PAD_A;
+    if(pollPad().confirm)return false;
+    mockPacket={};pollPad();
+    mockPacket.controls.buttons=PAD_A;
+    if(!pollPad().confirm)return false;
+    xinputRead=originalReader;padConnected=false;
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }
 extern "C" void mainCRTStartup(){
     if(hasSelfTestFlag(GetCommandLineA()))ExitProcess(selftest()?0:3);
-    loadProgress();loadSettings();loadLapRecords();drawTrack();
+    loadProgress();loadSettings();loadLapRecords();drawTrack();initializePad();
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSA wc={};wc.style=0x0003;wc.proc=WindowProc;wc.instance=instance;wc.name="LateBrakePreviewNative";
     if(!RegisterClassA(&wc))ExitProcess(5);
-    HWND wnd=CreateWindowExA(0,wc.name,"LateBrake V4 - Racing Lab (2D Standalone Preview, Not Unreal)",0x00CF0000,70,70,980,710,0,0,instance,0);
+    HWND wnd=CreateWindowExA(0,wc.name,"LateBrake V5 - Controller Edition (2D Preview, Not Unreal)",0x00CF0000,70,70,980,710,0,0,instance,0);
     if(!wnd)ExitProcess(6);
     windowHandle=wnd;ShowWindow(wnd,5);UpdateWindow(wnd);
     BITMAPINFO bi={};bi.header.size=40;bi.header.width=WIDTH;bi.header.height=-HEIGHT;bi.header.planes=1;bi.header.bits=32;
@@ -1130,8 +1343,22 @@ extern "C" void mainCRTStartup(){
         step(dt);render();
         RECT rc={};GetClientRect(wnd,&rc);
         HDC dc=GetDC(wnd);
-        if(dc){StretchDIBits(dc,0,0,rc.right-rc.left,rc.bottom-rc.top,0,0,WIDTH,HEIGHT,frame,&bi,0,0x00CC0020);ReleaseDC(wnd,dc);}
+        if(dc){
+            CanvasViewport vp=fitViewport(rc.right-rc.left,rc.bottom-rc.top);
+            // Letterbox/pillarbox to retain 3:2 geometry, including after
+            // arbitrary window resizing. This is not a 3D view transformation.
+            BITMAPINFO solid={};solid.header.size=40;
+            solid.header.width=1;solid.header.height=-1;
+            solid.header.planes=1;solid.header.bits=32;
+            const unsigned int black=0x09121Bu;
+            StretchDIBits(dc,0,0,rc.right-rc.left,rc.bottom-rc.top,
+                0,0,1,1,&black,&solid,0,0x00CC0020);
+            if(vp.w>0&&vp.h>0)
+                StretchDIBits(dc,vp.x,vp.y,vp.w,vp.h,0,0,WIDTH,HEIGHT,frame,&bi,0,0x00CC0020);
+            ReleaseDC(wnd,dc);
+        }
         Sleep(7);
     }
+    if(xinputModule)FreeLibrary(xinputModule);
     ExitProcess(0);
 }
