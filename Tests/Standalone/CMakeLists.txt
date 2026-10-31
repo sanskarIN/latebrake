@@ -1251,3 +1251,19 @@ else()
 endif()
 add_test(NAME RivalSurfaceDamagePace COMMAND
     latebrake_rival_surface_damage_pace_tests)
+
+# Recover a fast-sliding or circling physical rival that makes no meaningful
+# progress toward its actual next waypoint, without changing lap authority.
+add_executable(latebrake_rival_no_approach_recovery_tests
+    RivalNoApproachRecoveryTests.cpp)
+target_include_directories(latebrake_rival_no_approach_recovery_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_no_approach_recovery_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_no_approach_recovery_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_no_approach_recovery_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalNoApproachRecovery COMMAND
+    latebrake_rival_no_approach_recovery_tests)

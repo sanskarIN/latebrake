@@ -5,6 +5,23 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Post-v0.5.85 moving-rival no-approach recovery (unreleased)
+
+- The actual physical rival route tracker now recognizes eight continuous
+  seconds of **speed without meaningful waypoint progress**: 450–10,000
+  cm/s physical movement, frame times <=0.10s, and no 260cm decrease in
+  distance to the actual next waypoint. A wall-slide or small orbit can
+  now request the same verified, finite-budget recovery that previously
+  required near-stationary speed under 80cm/s.
+- Real 260cm approach, new waypoints, invalid data, frame hitches, race
+  reset/reconfiguration and a reported recovery all clear or rearm the
+  observation. Synchronous `TryRecoverTo` verification and separated
+  success/failure counts are unchanged, as are racing results and saves.
+- New standalone C++ tests cover 400,000 source-level progress/stall
+  observations with cross-platform CI and Unreal source bindings. This
+  is not installed Unreal gameplay; see [moving-stall QA](
+  RIVAL_NO_APPROACH_RECOVERY_QA.md).
+
 ## Post-v0.5.85 rival road and impact-aware corner pace (unreleased)
 
 - The **physical** autonomous rival now reads the prior qualified chassis

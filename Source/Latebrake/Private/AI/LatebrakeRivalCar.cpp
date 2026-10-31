@@ -52,7 +52,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         FollowingBrakeHold.Reset();
         GripPace.Reset();
-    SurfaceDamagePace.Reset();
+        SurfaceDamagePace.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -67,6 +67,9 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const FVector Target(Waypoint.X, Waypoint.Y, 0.0);
     const double Distance = FVector::Dist2D(Position, Target);
 
+    // The route now detects both a truly stationary rival and one that
+    // keeps moving without making material progress toward this real gate.
+    // Either condition uses the SAME verified, budgeted recovery transaction.
     const latebrake::RouteObservation Observation = Route.Observe(
         Distance, FlatSpeed, static_cast<double>(DeltaSeconds));
 
@@ -74,7 +77,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         FollowingBrakeHold.Reset();
         GripPace.Reset();
-    SurfaceDamagePace.Reset();
+        SurfaceDamagePace.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
@@ -101,7 +104,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         FollowingBrakeHold.Reset();
         GripPace.Reset();
-    SurfaceDamagePace.Reset();
+        SurfaceDamagePace.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
