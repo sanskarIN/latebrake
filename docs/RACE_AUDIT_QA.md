@@ -72,7 +72,11 @@ python ./scripts/Review-WindowsPlaytest.py audit `
 ```
 
 It verifies the EXE, *all* manifest-listed cooked files, the manifest,
-the session receipt and the exact sealed log SHA256. Its JSON output
+the session receipt and the exact sealed log SHA256. On new schema-2
+receipts it also requires the game's **post-exit archive seal** to have
+passed: a game-generated file inside the candidate is an explicit
+failure and can never silently become clean evidence. Legacy receipts
+without that field remain explicitly unverified. Its JSON output
 includes source commit, Unreal Engine Build.version digest, circuit
 map digest and ordered gate/finish counts. A missing hash-bound runtime
 log, malformed audit, missing reported finish (with `--require-finish`),
