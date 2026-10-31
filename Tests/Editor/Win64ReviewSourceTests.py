@@ -87,6 +87,23 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.write_receipt()
         return fake
 
+    def set_schema2_log(self, contents: bytes | None = b"Unreal synthetic log -- not a real game"):
+        # These are inert byte fixtures, never a real Unreal runtime.
+        self.receipt_data["schema_version"] = 2
+        logfile = self.receipt.with_suffix(".log")
+        self.receipt_data["unreal_log_path"] = str(logfile)
+        self.receipt_data["unreal_log_present"] = contents is not None
+        self.receipt_data["startup_log_markers_pass"] = False
+        if contents is None:
+            self.receipt_data["unreal_log_sha256"] = None
+            self.receipt_data["unreal_log_bytes"] = None
+        else:
+            logfile.write_bytes(contents)
+            self.receipt_data["unreal_log_sha256"] = sha(contents)
+            self.receipt_data["unreal_log_bytes"] = len(contents)
+        self.write_receipt()
+        return logfile
+
     def write_receipt(self):
         self.receipt.write_text(json.dumps(self.receipt_data), encoding="utf-8")
 
@@ -289,6 +306,117 @@ class Win64ReviewSourceTests(unittest.TestCase):
         result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
         self.assertEqual(result.returncode, 2)
         self.assertIn("Manifest SHA256", result.stderr)
+
+
+
+    def test_version_two_log_integrity_is_confirmed_not_gameplay(self):
+        self.set_schema2_log()
+        self.make_template()
+        result = self.invoke("evaluate", "--receipt", self.receipt,
+                             "--checklist", self.checklist, "--output", self.evaluation)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        review = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertTrue(review["runtime_log_integrity_verified"])
+        self.assertFalse(review["gameplay_verified"])
+        self.assertFalse(review["ready_for_release"])
+        self.assertFalse(review["startup_log_markers_pass"])
+
+    def test_old_version_one_receipts_remain_usable_but_unbound(self):
+        self.make_template()
+        result = self.invoke("evaluate", "--receipt", self.receipt,
+                             "--checklist", self.checklist, "--output", self.evaluation)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        review = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertFalse(review["runtime_log_integrity_verified"])
+        self.assertFalse(review["ready_for_release"])
+
+    def test_schema_two_crash_without_log_is_not_a_false_success(self):
+        self.set_schema2_log(None)
+        self.receipt_data["process_exit_code"] = 11
+        self.write_receipt()
+        self.make_template()
+        result = self.invoke("evaluate", "--receipt", self.receipt,
+                             "--checklist", self.checklist, "--output", self.evaluation)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        review = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertFalse(review["runtime_exit_ok"])
+        self.assertFalse(review["runtime_log_integrity_verified"])
+        self.assertFalse(review["ready_for_release"])
+
+    def test_changed_runtime_log_rejects_new_review(self):
+        logfile = self.set_schema2_log()
+        logfile.write_bytes(logfile.read_bytes() + b"tamper")
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Runtime log changed", result.stderr)
+        self.assertFalse(self.checklist.exists())
+
+    def test_missing_runtime_log_rejects_new_review(self):
+        logfile = self.set_schema2_log()
+        logfile.unlink()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Recorded runtime log is missing", result.stderr)
+
+    def test_renamed_log_cannot_be_substituted_from_another_session(self):
+        logfile = self.set_schema2_log()
+        renamed = logfile.with_name("different-session.log")
+        logfile.rename(renamed)
+        self.receipt_data["unreal_log_path"] = str(renamed)
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("does not belong to this receipt", result.stderr)
+
+    def test_log_size_cannot_be_boolean_or_malformed(self):
+        logfile = self.set_schema2_log()
+        for invalid in (True, -1, 0, "42"):
+            with self.subTest(invalid=invalid):
+                self.receipt_data["unreal_log_bytes"] = invalid
+                self.write_receipt()
+                result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+                self.assertEqual(result.returncode, 2)
+                self.assertFalse(self.checklist.exists())
+        self.assertTrue(logfile.exists())
+
+    def test_mismatched_runtime_log_hash_rejected(self):
+        self.set_schema2_log()
+        self.receipt_data["unreal_log_sha256"] = "0" * 64
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Runtime log changed", result.stderr)
+
+    def test_log_markers_cannot_pass_when_log_was_absent(self):
+        self.set_schema2_log(None)
+        self.receipt_data["startup_log_markers_pass"] = True
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("absent runtime log", result.stderr)
+
+    def test_unexpected_log_after_absent_log_receipt_is_rejected(self):
+        logfile = self.set_schema2_log(None)
+        logfile.write_bytes(b"unexpected later output")
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("log exists now", result.stderr)
+
+    def test_linked_runtime_log_is_rejected(self):
+        target = self.root / "other-runtime.log"
+        target.write_bytes(b"synthetic")
+        logfile = self.set_schema2_log(None)
+        try:
+            logfile.symlink_to(target)
+        except (OSError, NotImplementedError):
+            self.skipTest("Symlink creation unavailable on this host")
+        self.receipt_data["unreal_log_present"] = True
+        self.receipt_data["unreal_log_sha256"] = sha(target.read_bytes())
+        self.receipt_data["unreal_log_bytes"] = target.stat().st_size
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("does not belong to this receipt", result.stderr)
 
 
 

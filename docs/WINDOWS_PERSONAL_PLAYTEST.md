@@ -94,10 +94,12 @@ For a custom location on another Windows drive, use an ordinary directory
 without reparse-point parents.
 
 After **you close the game**, the helper records an equally private
-JSON receipt with source artifact checksums, UTC times, process exit
-code and log presence. It also runs the existing `Verify-RuntimeStartupLog.ps1`
-check for track geometry/gate/scenery markers when the log exists; the
-receipt records whether this **text-only** audit passed and why it failed. No network upload occurs. A zero exit code
+schema-2 JSON receipt with source artifact checksums, UTC times,
+process exit code, log presence and **the exact runtime log SHA256/byte
+length** (null if the game crashed before writing a log). It also runs
+the existing `Verify-RuntimeStartupLog.ps1` check for track
+geometry/gate/scenery markers when the log exists; the receipt records
+whether this **text-only** audit passed and why it failed. No network upload occurs. A zero exit code
 **does not** qualify rendering, user input, racing, saves or hardware
 performance. Even with `-ABSLOG`, other engine runtime files may be
 created under the package: re-run manifest validation before reusing
@@ -156,12 +158,21 @@ Before treating a candidate as a genuine playable build, also rerun
 `scripts/Test-CandidateManifest.ps1` against the whole archive,
 preserve real UHT/UAT build receipts, inspect actual installed driving
 and satisfy [playable-release gate #148](https://github.com/sanskarIN/latebrake/issues/148).
-The Python reviewer independently verifies the receipt and every
-manifest-listed cooked file in addition to the EXE/manifest hashes.
+The Python reviewer independently verifies the receipt, every
+manifest-listed cooked file and (for schema-2 runtime receipts) the
+**recorded log file bytes**. The log must still exist at the exact session
+path outside the game archive and its SHA256 and length must match;
+renamed, modified, removed, switched or linked logs fail the review.
+An actual crash before Unreal wrote a log is recorded with null log
+metadata and remains unverified, not silently counted as success.
+Older schema-1 runtime receipts remain reviewable but report
+`runtime_log_integrity_verified: false`; they have no retroactive log
+checksum. New schema-2 reviews expose this field when the stored log is
+unchanged, while `ready_for_release` remains **false** regardless.
 This is a **second integrity check**, not a replacement for the native
 PowerShell package verifier, real UAT provenance, Windows installed
-playtesting or independent QA. It cannot identify a convincingly forged
-archive or prove gameplay. Protect your private hardware details and
+playtesting or independent QA. It cannot authenticate a forged receipt
+or prove gameplay. Protect your private hardware details and
 do not upload personal QA logs without reviewing them.
 
 ## What to test personally
