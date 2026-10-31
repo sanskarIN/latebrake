@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
+#include "Racing/RivalGateGap.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
@@ -73,6 +74,9 @@ public:
     int32 GetRivalSuccessfulRecoveryCount() const;
     int32 GetRivalFailedRecoveryCount() const;
     bool HasRivalFinishedRoute() const;
+    // Exact difference in *credited forward gates*, not race position,
+    // finish ranking, physical gap, collision risk or saved career state.
+    bool TryGetRivalCreditedGateGap(latebrake::RivalGateGap& OutGap) const;
 
     void RecoverPlayer(ALatebrakeCarPawn* Car);
 
