@@ -1,5 +1,6 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
+#include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
@@ -90,6 +91,32 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         ConfigureDecorativeMesh(Cabin, Cube.Object, FVector(-20.f, 0.f, 52.f), FVector(1.75f, 1.48f, 0.55f));
     }
 
+    // Original, collision-free procedural body accents. These shapes do not
+    // replace the physically simulated chassis or change its contact body.
+    Hood = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Hood"));
+    RearDeck = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RearDeck"));
+    SpoilerWing = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SpoilerWing"));
+    SpoilerSupportLeft = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SpoilerSupportLeft"));
+    SpoilerSupportRight = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SpoilerSupportRight"));
+    Hood->SetupAttachment(Chassis);
+    RearDeck->SetupAttachment(Chassis);
+    SpoilerWing->SetupAttachment(Chassis);
+    SpoilerSupportLeft->SetupAttachment(Chassis);
+    SpoilerSupportRight->SetupAttachment(Chassis);
+    if (Cube.Succeeded())
+    {
+        ConfigureDecorativeMesh(Hood, Cube.Object,
+            FVector(120.f, 0.f, 39.f), FVector(1.20f, 1.50f, 0.26f));
+        ConfigureDecorativeMesh(RearDeck, Cube.Object,
+            FVector(-125.f, 0.f, 38.f), FVector(1.12f, 1.42f, 0.25f));
+        ConfigureDecorativeMesh(SpoilerWing, Cube.Object,
+            FVector(-158.f, 0.f, 102.f), FVector(0.18f, 1.60f, 0.13f));
+        ConfigureDecorativeMesh(SpoilerSupportLeft, Cube.Object,
+            FVector(-158.f, -58.f, 74.f), FVector(0.12f, 0.12f, 0.50f));
+        ConfigureDecorativeMesh(SpoilerSupportRight, Cube.Object,
+            FVector(-158.f, 58.f, 74.f), FVector(0.12f, 0.12f, 0.50f));
+    }
+
     FrontLeftWheel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FrontLeftWheel"));
     FrontRightWheel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FrontRightWheel"));
     RearLeftWheel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RearLeftWheel"));
@@ -176,6 +203,7 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
     ApplyCameraPreset();
+    ApplyVehicleVisualRecipe(0);
 }
 
 void ALatebrakeCarPawn::BeginPlay()
@@ -293,6 +321,72 @@ void ALatebrakeCarPawn::SetAutonomousControls(float InThrottle, float InSteering
     bBraking = bInBrake;
 }
 
+void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
+{
+    const latebrake::VehicleSpec Spec =
+        latebrake::GarageState::Definition(VehicleId);
+    const latebrake::VehicleVisualRecipe Recipe =
+        latebrake::VisualRecipeForVehicle(VehicleId);
+    // Chassis primitive uses a 3.8 x 1.8 x 0.65 non-uniform scale.
+    // Compensate its parent transform, just like ConfigureDecorativeMesh.
+    const FVector RootScale(3.8f, 1.8f, 0.65f);
+    if (IsValid(Cabin))
+    {
+        Cabin->SetRelativeScale3D(FVector(
+            1.75 * Spec.CabinLength / RootScale.X,
+            1.48 * Recipe.RoofWidthScale / RootScale.Y,
+            0.55 * Spec.CabinHeight / RootScale.Z));
+    }
+    if (IsValid(Hood))
+    {
+        Hood->SetRelativeScale3D(FVector(
+            1.20 * Recipe.HoodLengthScale / RootScale.X,
+            1.50 / RootScale.Y, 0.26 / RootScale.Z));
+    }
+    if (IsValid(RearDeck))
+    {
+        RearDeck->SetRelativeScale3D(FVector(
+            1.12 * Recipe.RearDeckLengthScale / RootScale.X,
+            1.42 / RootScale.Y, 0.25 / RootScale.Z));
+    }
+
+    // The wing and both supports are a single cosmetic on/off group.
+    // Set visibility even when engine primitive loading was unavailable.
+    UStaticMeshComponent* WingParts[] = {
+        SpoilerWing, SpoilerSupportLeft, SpoilerSupportRight};
+    for (UStaticMeshComponent* Part : WingParts)
+    {
+        if (IsValid(Part))
+        {
+            Part->SetVisibility(Recipe.HasRearWing, true);
+            Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        }
+    }
+    if (Recipe.HasRearWing && IsValid(SpoilerWing))
+    {
+        SpoilerWing->SetRelativeLocation(
+            FVector(-158.0, 0.0, Recipe.WingHeightCm) / RootScale);
+        SpoilerWing->SetRelativeScale3D(FVector(
+            0.18 / RootScale.X,
+            1.60 * Recipe.WingSpanScale / RootScale.Y,
+            0.13 / RootScale.Z));
+    }
+    if (Recipe.HasRearWing)
+    {
+        for (UStaticMeshComponent* Part :
+             {SpoilerSupportLeft.Get(), SpoilerSupportRight.Get()})
+        {
+            if (IsValid(Part))
+            {
+                const double Side = Part == SpoilerSupportLeft.Get()
+                    ? -58.0 : 58.0;
+                Part->SetRelativeLocation(FVector(
+                    -158.0, Side, Recipe.WingHeightCm - 28.0) / RootScale);
+            }
+        }
+    }
+}
+
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
                                      int32 VehicleId)
 {
@@ -302,15 +396,11 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageGrip = FMath::IsFinite(Grip) ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
     GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
     const int32 SafeId = FMath::Clamp(VehicleId, 0, 2);
-    if (SafeId != GarageVehicleId && IsValid(Cabin))
+    if (SafeId != GarageVehicleId)
     {
-        // Engine-built-in primitives only; distinguish prototype silhouettes
-        // without introducing third-party vehicle meshes or other assets.
-        const latebrake::VehicleSpec Spec = latebrake::GarageState::Definition(SafeId);
-        Cabin->SetRelativeScale3D(FVector(
-            (1.75f / 3.8f) * Spec.CabinLength,
-            (1.48f / 1.8f),
-            (0.55f / 0.65f) * Spec.CabinHeight));
+        // Garage selection changes visible body proportions only.
+        // Vehicle force multipliers above are unchanged and remain bounded.
+        ApplyVehicleVisualRecipe(SafeId);
     }
     GarageVehicleId = SafeId;
 }
