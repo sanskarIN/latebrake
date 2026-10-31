@@ -141,8 +141,12 @@ python ./scripts/Review-WindowsPlaytest.py evaluate `
 
 The offline evaluator refuses a changed EXE/manifest, another session's
 receipt, missing checks, undocumented pass/fail choices and output paths
-inside the sealed package. It does not overwrite existing evidence,
-upload files or run a game. The report always says
+inside the sealed package. It now also **independently rehashes every cooked
+file** listed in the candidate's schema-2 manifest, rejects any missing
+or extra file, duplicate/case-colliding path, unsafe relative path,
+symlink or junction (including empty linked folders), and rejects a
+modified or malformed file record. The validation is read-only: it does
+not overwrite evidence, upload files or run a game. The report always says
 `SELF_REPORTED_WIN64_QA_UNVERIFIED` and
 `ready_for_release: false`, **even when every test was marked pass**.
 That is intentional: user-authored JSON can be edited and does not prove
@@ -152,10 +156,13 @@ Before treating a candidate as a genuine playable build, also rerun
 `scripts/Test-CandidateManifest.ps1` against the whole archive,
 preserve real UHT/UAT build receipts, inspect actual installed driving
 and satisfy [playable-release gate #148](https://github.com/sanskarIN/latebrake/issues/148).
-The Python reviewer checks the two main file hashes and runtime
-receipt link; **it does not revalidate every cooked asset**. Protect
-your personal hardware details and do not upload private QA files
-without reviewing them.
+The Python reviewer independently verifies the receipt and every
+manifest-listed cooked file in addition to the EXE/manifest hashes.
+This is a **second integrity check**, not a replacement for the native
+PowerShell package verifier, real UAT provenance, Windows installed
+playtesting or independent QA. It cannot identify a convincingly forged
+archive or prove gameplay. Protect your private hardware details and
+do not upload personal QA logs without reviewing them.
 
 ## What to test personally
 

@@ -3,7 +3,8 @@
 
 This tool NEVER launches or qualifies a game. It links user-authored manual
 observations to a previously captured private runtime receipt and recomputes
-candidate EXE/manifest SHA256. It cannot prove genuine Unreal provenance,
+candidate EXE/manifest SHA256 and the entire sealed cooked file tree. It
+cannot prove genuine Unreal provenance,
 rendering, input handling, physical hardware, or release readiness.
 """
 from __future__ import annotations
@@ -14,6 +15,8 @@ import json
 from pathlib import Path
 import re
 import sys
+
+from candidate_file_integrity import require_unlinked_path, verify_candidate_archive
 
 SCHEMA = 1
 CHECKS = (
@@ -86,20 +89,26 @@ def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
     raw_root, raw_exe = receipt.get("candidate_directory"), receipt.get("executable_path")
     if not isinstance(raw_root, str) or not isinstance(raw_exe, str):
         fail("Candidate and EXE paths are required.")
+    # Check raw supplied paths before .resolve() can conceal a junction.
+    require_unlinked_path(Path(raw_root))
+    require_unlinked_path(Path(raw_exe))
     root, exe = Path(raw_root).resolve(), Path(raw_exe).resolve()
     if not root.is_dir() or not exe.is_file() or exe.name.lower() != "latebrake.exe":
         fail("The candidate and its genuine-named EXE must exist locally.")
     if exe == root or not exe.is_relative_to(root):
         fail("EXE escapes the candidate directory.")
-    manifest = (root / "Latebrake-candidate-manifest.json").resolve()
+    manifest = root / "Latebrake-candidate-manifest.json"
+    require_unlinked_path(manifest)
     if not manifest.is_file() or not manifest.is_relative_to(root):
         fail("Candidate manifest must exist within its own directory.")
     if sha256(exe) != require_hash(receipt.get("executable_sha256"), "Receipt EXE hash"):
         fail("EXE SHA256 no longer matches the runtime receipt.")
     if sha256(manifest) != require_hash(receipt.get("candidate_manifest_sha256"), "Receipt manifest hash"):
         fail("Manifest SHA256 no longer matches the runtime receipt.")
-    # Re-run the PowerShell full-manifest guard separately to validate every
-    # packaged file. This reviewer only seals the EXE, manifest and receipt.
+    # Do a second, read-only closed-world inspection of every cooked file,
+    # not only the EXE/manifest identity. This still does not authenticate
+    # Unreal compilation, game launch or manual gameplay claims.
+    verify_candidate_archive(root, manifest)
     return receipt, root, exe, manifest, sha256(receipt_file)
 
 
