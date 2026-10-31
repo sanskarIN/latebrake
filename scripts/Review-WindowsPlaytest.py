@@ -120,6 +120,33 @@ def verify_runtime_log(receipt_file: Path, receipt: dict, candidate_root: Path) 
     return True
 
 
+def check_postrun_archive_receipt(receipt: dict) -> bool:
+    """Schema-2 opt-in seal status; historical receipts remain unproven.
+
+    An unsuccessful exit seal cannot be turned into valid QA evidence by
+    subsequently restoring the archive or editing its stored hashes.
+    """
+    has_pass = "candidate_integrity_at_exit_pass" in receipt
+    has_error = "candidate_integrity_at_exit_error" in receipt
+    if has_pass != has_error:
+        fail("Incomplete post-run archive integrity receipt fields.")
+    if not has_pass:
+        return False  # Legacy schema-1/2 receipts never proved an exit seal.
+    if receipt["schema_version"] != 2:
+        fail("Post-run archive integrity fields require a schema-2 receipt.")
+    passed = receipt["candidate_integrity_at_exit_pass"]
+    detail = receipt["candidate_integrity_at_exit_error"]
+    if type(passed) is not bool:
+        fail("Post-run archive integrity status must be a boolean.")
+    if passed:
+        if detail is not None:
+            fail("Passing post-run archive integrity cannot contain an error.")
+        return True
+    if not isinstance(detail, str) or not 1 <= len(detail) <= 2000:
+        fail("Failed post-run archive integrity must include a bounded error.")
+    fail("Post-run candidate archive integrity was NOT preserved during this session.")
+
+
 def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
     receipt = read_json(receipt_file)
     if type(receipt.get("schema_version")) is not int or receipt["schema_version"] not in (1, 2) or receipt.get("status") != "UNVERIFIED_PERSONAL_RUNTIME_PROBE":
@@ -132,6 +159,7 @@ def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
         fail("Invalid process exit code.")
     if not isinstance(receipt.get("unreal_log_present"), bool) or not isinstance(receipt.get("startup_log_markers_pass"), bool):
         fail("Runtime log status must be explicit booleans.")
+    check_postrun_archive_receipt(receipt)
     raw_root, raw_exe = receipt.get("candidate_directory"), receipt.get("executable_path")
     if not isinstance(raw_root, str) or not isinstance(raw_exe, str):
         fail("Candidate and EXE paths are required.")
@@ -235,6 +263,10 @@ def evaluate(args: argparse.Namespace) -> None:
         "runtime_log_integrity_verified": (
             receipt["schema_version"] == 2 and receipt["unreal_log_present"]
         ),
+        "candidate_integrity_at_exit_verified": (
+            receipt["schema_version"] == 2 and
+            receipt.get("candidate_integrity_at_exit_pass") is True
+        ),
         "startup_log_markers_pass": receipt["startup_log_markers_pass"],
         "manual_counts": counts,
         "all_checks_self_reported_pass": counts["pass"] == len(CHECKS),
@@ -318,6 +350,9 @@ def audit_race(args: argparse.Namespace) -> None:
         ),
         "candidate_file_count": len(metadata["files"]),
         "runtime_log_integrity_verified": True,
+        "candidate_integrity_at_exit_verified": (
+            receipt.get("candidate_integrity_at_exit_pass") is True
+        ),
         "runtime_exit_ok": receipt["process_exit_code"] == 0,
         "startup_log_markers_pass": receipt["startup_log_markers_pass"],
         "race_audit": events,
