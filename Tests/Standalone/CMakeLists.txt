@@ -1267,3 +1267,19 @@ else()
 endif()
 add_test(NAME RivalNoApproachRecovery COMMAND
     latebrake_rival_no_approach_recovery_tests)
+
+# Measured Chaos yaw rate damps same-direction waypoint steering without
+# touching rival throttle, braking, route progress or player handling.
+add_executable(latebrake_rival_yaw_rate_steering_tests
+    RivalYawRateSteeringTests.cpp)
+target_include_directories(latebrake_rival_yaw_rate_steering_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_yaw_rate_steering_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_yaw_rate_steering_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_yaw_rate_steering_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalYawRateSteering COMMAND
+    latebrake_rival_yaw_rate_steering_tests)
