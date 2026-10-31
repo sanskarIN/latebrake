@@ -91,3 +91,7 @@ and wider low spoiler, and Phantom a shorter front with a raised wing.
 These are not finished licensed car meshes, and they do not modify the
 actual Chaos chassis, garage ownership or vehicle physics. See
 [car silhouette QA](GARAGE_CAR_SILHOUETTES_QA.md) for verification limits.
+
+## Purchase confirmation
+
+Unlocking a new car (**Q**) and buying engine (**U**) or grip (**I**) upgrades now use a preview-first confirmation: press the same key a second time within 8 real seconds. The first press only shows the price and does not spend credits. Moving to another menu page, changing selected cars or restarting the race cancels any pending offer. See [garage purchase QA](GARAGE_PURCHASE_CONFIRM_QA.md) for details and limits.

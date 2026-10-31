@@ -270,7 +270,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         case latebrake::MenuPage::Garage:
             MenuLine(FString::Printf(TEXT("%s | Credits: %d"),
                 *Mode->GetSelectedVehicleName(), Mode->GetTotalCredits()));
-            MenuLine(TEXT("Select next owned vehicle; Q/U/I unlock and tune."));
+            MenuLine(TEXT("E select owned car. Q/U/I press twice to confirm spending."));
             MenuLine(Mode->GetGarageFeedback());
             break;
         case latebrake::MenuPage::Results:
