@@ -340,6 +340,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     // leave the camera facing backwards after the held key is gone.
     LookBackReleased();
     ResetSpeedCameraFov();
+    ResetCornerCameraYaw();
 }
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
@@ -499,6 +500,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
         ResetSpeedCameraFov();
+        ResetCornerCameraYaw();
         ApplySignalLights(false, false, 0.0);
         SpinAssist.Suspend();
         WheelMotion.Suspend();
@@ -602,6 +604,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // chassis speed. Rival cameras, reverse motion and rear view stay static.
     UpdateSpeedCameraFov(static_cast<double>(DeltaSeconds),
                          static_cast<double>(LongitudinalSpeed) * 0.036);
+    // The same measured signed-forward speed and player's actual filtered
+    // steering give a small visual-only lead into the turn. Hood and rear
+    // views, invalid frames and AI opponents cannot acquire this effect.
+    UpdateCornerCameraYaw(static_cast<double>(DeltaSeconds),
+        static_cast<double>(LongitudinalSpeed),
+        static_cast<double>(SmoothedSteering));
 
     // Observe the real chassis travel direction, not a requested steering
     // angle or decorative wheel animation. Read-only session telemetry.
@@ -1084,6 +1092,7 @@ void ALatebrakeCarPawn::ApplyCameraPreset()
     // Switching any preset or rear view starts the visual response from
     // that view's unmodified FOV; no acceleration or race state is changed.
     ReactiveFov.Reset();
+    CornerLookAhead.Reset();
     if (!IsValid(CameraBoom))
     {
         return;
@@ -1153,6 +1162,59 @@ void ALatebrakeCarPawn::UpdateSpeedCameraFov(
         View.FieldOfViewDegrees, SignedForwardSpeedKmH, FrameSeconds,
         bHumanPlayer, LookBackCamera.IsHeld());
     FollowCamera->SetFieldOfView(static_cast<float>(Fov));
+}
+
+void ALatebrakeCarPawn::ResetCornerCameraYaw()
+{
+    if (!CornerLookAhead.HasActiveSample())
+    {
+        return;
+    }
+    CornerLookAhead.Reset();
+    if (!IsValid(CameraBoom))
+    {
+        return;
+    }
+    const latebrake::CameraPreset Requested =
+        latebrake::GetCameraPreset(CameraViews.Current());
+    const latebrake::CameraPreset View =
+        latebrake::IsSafeCameraPreset(Requested)
+            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
+    // Restore the preset immediately when the race loses input ownership,
+    // even if Chaos or the paused world never sends another Tick.
+    CameraBoom->SetRelativeRotation(FRotator(
+        static_cast<float>(View.PitchDegrees),
+        static_cast<float>(LookBackCamera.SpringArmYawDegrees()), 0.f));
+}
+
+void ALatebrakeCarPawn::UpdateCornerCameraYaw(
+    double FrameSeconds, double ForwardCmPerSecond, double VisualSteering)
+{
+    if (!IsValid(CameraBoom))
+    {
+        CornerLookAhead.Reset();
+        return;
+    }
+    const bool bHumanPlayer = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr;
+    const latebrake::CameraPreset Requested =
+        latebrake::GetCameraPreset(CameraViews.Current());
+    const latebrake::CameraPreset View =
+        latebrake::IsSafeCameraPreset(Requested)
+            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
+    const double YawLead = CornerLookAhead.Sample(
+        ForwardCmPerSecond, VisualSteering, FrameSeconds,
+        bHumanPlayer, LookBackCamera.IsHeld(), CameraViews.Current());
+    if (!bHumanPlayer)
+    {
+        return;
+    }
+    // Only the spring-arm view changes; no pawn transform, forces, game
+    // controls, AI, checkpoint authorization, saved state or awards.
+    CameraBoom->SetRelativeRotation(FRotator(
+        static_cast<float>(View.PitchDegrees),
+        static_cast<float>(LookBackCamera.SpringArmYawDegrees() + YawLead),
+        0.f));
 }
 
 void ALatebrakeCarPawn::ChangeCamera()
