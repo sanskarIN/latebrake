@@ -5,6 +5,7 @@
 #include "AI/RivalCornerAnticipation.h"
 #include "AI/RivalTrafficAwareness.h"
 #include "AI/RivalYawRateSteering.h"
+#include "AI/RivalEngineHeatPace.h"
 #include "AI/RivalDriveReadiness.h"
 #include "Track/CircuitLayout.h"
 #include "Components/StaticMeshComponent.h"
@@ -189,6 +190,15 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GetSurfaceTraction().HasValidSample(),
         GetCollisionDamage().HasEligibleFrame()
     });
+
+    // The previous qualified physical engine-heat sample can modestly
+    // reduce rival throttle at road speed, letting the real shared motor
+    // policy cool. Low-speed launch and prior braking stay unchanged.
+    Command = latebrake::ModerateRivalEngineHeatPace(Command, {
+        static_cast<double>(DeltaSeconds), FlatSpeed,
+        GetEngineHeat().HeatFraction(),
+        GetEngineHeat().HasValidSample(),
+        IsRacePhysicsReady()});
 
     // Plan the control for this physics tick, not one frame after applying
     // the previous command.

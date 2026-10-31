@@ -1385,3 +1385,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ArcadeEngineHeat COMMAND latebrake_arcade_engine_heat_tests)
+
+# Real rival AI reads the prior qualified engine heat meter and may only
+# ease its throttle, not override route/traffic brakes or steering.
+add_executable(latebrake_rival_engine_heat_pace_tests
+    RivalEngineHeatPaceTests.cpp)
+target_include_directories(latebrake_rival_engine_heat_pace_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_engine_heat_pace_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_engine_heat_pace_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_engine_heat_pace_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalEngineHeatPace COMMAND
+    latebrake_rival_engine_heat_pace_tests)
