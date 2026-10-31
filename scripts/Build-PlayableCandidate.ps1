@@ -22,6 +22,11 @@ if (-not $IsWindows) {
     throw 'This pipeline invokes Unreal Build.bat, RunUAT.bat and UnrealEditor.exe; run on Windows.'
 }
 
+# Read-only, structural workstation preflight. This is not an Unreal build
+# or proof of installed SDK compatibility; Build.bat/UAT remain authoritative.
+& (Join-Path $PSScriptRoot 'Test-UnrealWorkstationPrerequisites.ps1') -EngineRoot $EngineRoot -Platform $Platform
+if (-not $?) { throw 'Unreal workstation prerequisites were not met.' }
+
 # Fail before a long engine compilation if HEAD does not identify the
 # source being compiled. The one untracked map is fingerprinted separately.
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1')

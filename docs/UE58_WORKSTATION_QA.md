@@ -5,6 +5,30 @@ LateBrake has a **manual** GitHub Actions workflow named
 `.github/workflows/build-unreal-candidate.yml`. This is the path
 toward real engine builds, not evidence that one has run or passed.
 
+## Read-only workstation prerequisite preflight
+
+Before spending time on a real Engine Editor/UHT build, inspect the installed
+workstation with PowerShell 7:
+
+```powershell
+pwsh ./scripts/Test-UnrealWorkstationPrerequisites.ps1 -EngineRoot 'C:\Program Files\Epic Games\UE_5.8' -Platform Win64
+```
+
+For an Android candidate substitute `-Platform Android`. This check performs
+no compilation, cooking, map creation, downloads or filesystem writes. It
+checks that the project targets UE 5.8, the specified engine has its
+`Build.version`, `Build.bat`, `RunUAT.bat` and `UnrealEditor.exe`,
+and the checkout has a Git commit. Missing essentials fail early.
+It **does not authenticate engine binaries**, validate Visual Studio/MSVC,
+the Windows SDK, Android NDK/JDK or an Unreal license; actual Build.bat,
+Editor, UAT and installed hardware QA remain mandatory. Android environment
+hints are informational only because SDK settings can live inside Unreal.
+Synthetic negative fixtures are run by CI and never masquerade as an
+actual licensed Unreal build.
+
+Both `Build-PlayableCandidate.ps1` and the private Windows playtest
+launcher invoke this preflight before build or candidate output creation.
+
 ## Requirements
 
 1. A privately controlled Windows machine with a legally authorized
