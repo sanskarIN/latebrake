@@ -1,15 +1,16 @@
 # Arcade driving force composition — source regression and real-engine QA
 
-**Status: development test coverage only.** The latest public release
-remains v0.5.85 SOURCE-ONLY. This regression is **not an installed Unreal 5.8 test**
+**Status: development source-regression coverage only.** The authoritative
+published version must be checked against GitHub Releases. This regression is
+**not an installed Unreal 5.8 test**
 and does not constitute an EXE/APK, cooked circuit or hardware qualification.
 
 ## Why this integration test matters
 
 Several independent engine-neutral policies already influence the same
 Chaos rigid-body car: throttle corner assist, tire heat/wear, asphalt-edge
-traction, service brake fade, physical chassis collision damage, nitro and
-qualified rival drafting. Their individually bounded outputs must compose
+traction, service brake fade, physical chassis collision damage, engine heat,
+gear-aware motor taper, nitro and qualified rival drafting. Their individually bounded outputs must compose
 in a safe order.
 
 The new **ArcadeDriveComposition** standalone C++20 test exercises real
@@ -20,13 +21,20 @@ For a valid, forward-driving frame, the intended shared motor budget is:
 
     applied force / healthy base force
       = qualified throttle × valid surface motor factor
-        × retained impact motor factor × (1 + allocated nitro + draft)
+        × retained impact motor factor × qualified engine heat factor
+        × gear-aware motor taper × (1 + allocated nitro + draft)
 
 Here allocated nitro + draft is at most **0.40**. The existing allocator
 prioritizes finite nitro charge. Confirmed dirt reduces the entire motor
 budget to **78%**; impact damage reduces it to no less than **79%**.
-The original corner assist never increases positive throttle. The real
-pawn must not drive after an invalid/blocked chassis or surface sample.
+The original corner assist never increases positive throttle. Engine heat
+only derates motor power after qualified propulsion samples (down to 82%);
+a legitimate coast can recover it. Gear-aware taper smoothly removes
+additional propulsion near the established forward speed cap. Both
+scales apply equally to baseline, nitro and drafting, and neither adds
+throttle or makes official lap timing dependent on advisory telemetry.
+The real pawn must not drive after an invalid/blocked chassis or
+surface sample.
 Reverse and braking keep their existing separate guards.
 
 The existing lateral resistance scale uses real tire condition, surface
@@ -36,12 +44,13 @@ brake heat only affects service braking and never grants motor power.
 ## Automated checks
 
 - The portable C++20 test covers baseline road power, combined nitro
-  and draft, horizontal collision damage, confirmed dirt, combined grip,
-  invalid physics/surface inputs, pause impact suspension, race reset,
-  and **200,000** deterministic combined policy samples.
+  and draft, horizontal collision damage, confirmed dirt, shared engine
+  heat fade and recovery, gear-aware half-power taper, combined grip,
+  invalid physics/surface/thermal inputs, pause impact suspension,
+  race reset, and **200,000** deterministic combined policy samples.
 - The Python binding suite checks production chassis validation, ordered
-  source observation, all three shared motor scales, brake fade branch,
-  and reset/suspension lifecycle.
+  source observation, all three shared motor scales (including thermal and
+  gear taper), brake fade branch, and reset/suspension lifecycle.
 - No runtime force values or source physics are changed.
 
 From the repository root:
