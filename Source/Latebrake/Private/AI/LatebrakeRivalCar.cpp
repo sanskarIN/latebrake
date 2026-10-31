@@ -61,7 +61,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
-    SpinThrottleGuard.Reset();
+        SpinThrottleGuard.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -80,7 +80,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
-    SpinThrottleGuard.Reset();
+        SpinThrottleGuard.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -113,7 +113,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
-    SpinThrottleGuard.Reset();
+        SpinThrottleGuard.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
@@ -142,7 +142,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
-    SpinThrottleGuard.Reset();
+        SpinThrottleGuard.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
