@@ -149,11 +149,11 @@ int main()
     // Invalid engine samples and interruptions may never be interpreted
     // as an ordinary 1.0 paved-surface multiplier.
     const auto invalid = surface.Observe({0.11, EastX, 0.0, true});
-    Check(!invalid.Valid && DriveFraction(throttle, invalid, impacts, both) == 0.0,
+    Check(!invalid.Valid && DriveFraction(throttle, invalid, impacts, both, healthyEngine, normalGear) == 0.0,
           "long frame cannot authorize driving force");
     const auto nan = std::numeric_limits<double>::quiet_NaN();
     const auto broken = surface.Observe({0.05, nan, 0.0, true});
-    Check(!broken.Valid && DriveFraction(throttle, broken, impacts, both) == 0.0,
+    Check(!broken.Valid && DriveFraction(throttle, broken, impacts, both, healthyEngine, normalGear) == 0.0,
           "nonfinite position fails closed");
     Check(!brakes.Observe({0.05, nan, true, true}).Valid,
           "invalid brake telemetry cannot apply heat fade");
