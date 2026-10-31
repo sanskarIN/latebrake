@@ -4,6 +4,10 @@
 // Build and launch on Windows; --self-test runs an isolated deterministic logic check.
 
 extern "C" { int _fltused = 0; } // MSVC floating-point linkage marker.
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma function(memset)
+#pragma function(memcpy)
+#endif
 
 // Freestanding compiler-generated zero initialization support.
 extern "C" void* memset(void* dest,int value,unsigned long long size) {
