@@ -116,6 +116,7 @@ nav:
       - Navigable menu details QA: MENU_DETAIL_PAGING_QA.md
       - Driving session metrics QA: DRIVING_SESSION_QA.md
       - Decorative wheel movement QA: WHEEL_VISUAL_QA.md
+      - Garage vehicle silhouettes QA: GARAGE_CAR_SILHOUETTES_QA.md
       - Prototype arcade nitro QA: NITRO_BOOST_QA.md
       - Brake and reverse signal QA: VEHICLE_SIGNAL_LIGHTS_QA.md
       - Best-lap ghost beacon QA: BEST_LAP_GHOST_QA.md

@@ -81,3 +81,13 @@ These are code-level behaviors only; real Unreal SaveGame serialization, control
 The garage change key consists of selected vehicle, engine level and grip level. Earning credits or unlocking an unselected car does not cause per-frame physics tuning changes. A car selection, an upgrade, or replacement/respawn of the player pawn triggers a live tuning refresh. This logic is checked by C++20 unit tests, while Unreal lifecycle and rendered HUD behavior require further validation.
 
 The HUD also displays a warning when its local SaveGame write fails. In-memory progress may exist without being persisted across restarts; investigate disk permissions/free space before claiming durability.
+
+
+### Prototype vehicle silhouette differences
+
+The three fictional profiles now use distinct **engine-primitive cosmetic body**
+proportions: Arrow has a wingless balanced shape, Kestrel a longer front
+and wider low spoiler, and Phantom a shorter front with a raised wing.
+These are not finished licensed car meshes, and they do not modify the
+actual Chaos chassis, garage ownership or vehicle physics. See
+[car silhouette QA](GARAGE_CAR_SILHOUETTES_QA.md) for verification limits.

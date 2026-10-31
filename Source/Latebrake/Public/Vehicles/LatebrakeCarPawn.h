@@ -114,6 +114,19 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Cabin;
 
+    // Distinct garage profile silhouettes, engine primitives only.
+    // All parts remain non-colliding, attached, decorative components.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> Hood;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RearDeck;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> SpoilerWing;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> SpoilerSupportLeft;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> SpoilerSupportRight;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -168,6 +181,7 @@ private:
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);
     void ApplyWheelVisualPose();
+    void ApplyVehicleVisualRecipe(int32 VehicleId);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
                            double SignedForwardSpeedCmPerSecond);
     void RecoverPressed();
