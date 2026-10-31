@@ -2,6 +2,9 @@
 // Embeds exact standalone game executable at build time; no network installer.
 // Installs only under current user's LOCALAPPDATA. Apps & Features uninstall.
 extern "C" { int _fltused=0; }
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma function(memset)
+#endif
 extern "C" void* memset(void* dest,int value,unsigned long long len){
  unsigned char* p=(unsigned char*)dest;
  for(unsigned long long i=0;i<len;i++)p[i]=(unsigned char)value;
