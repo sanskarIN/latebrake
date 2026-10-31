@@ -120,18 +120,15 @@ void ALatebrakeRaceHUD::DrawHUD()
             Layout, bTouchHUD, Mode->IsMenuOpen());
     // Both the instruments and the interactive menu dock own distinct
     // right-hand lanes; truncate measured text before either rectangle.
-    double SafeTextWidth = HorizontalBounds.MaxWidthPixels;
-    if (Instruments.Visible)
-    {
-        SafeTextWidth = FMath::Min(SafeTextWidth,
+    const double InstrumentTextWidth = Instruments.Visible
+        ? FMath::Min(HorizontalBounds.MaxWidthPixels,
             Instruments.Panel.X - HorizontalBounds.Left -
-                16.0 * Instruments.Scale);
-    }
-    if (MouseMenu.Valid)
-    {
-        SafeTextWidth = FMath::Min(SafeTextWidth,
-            MouseMenu.Left - HorizontalBounds.Left - 12.0 * Layout.Scale);
-    }
+                16.0 * Instruments.Scale)
+        : HorizontalBounds.MaxWidthPixels;
+    const double SafeTextWidth = MouseMenu.Valid
+        ? FMath::Min(InstrumentTextWidth,
+            MouseMenu.Left - HorizontalBounds.Left - 12.0 * Layout.Scale)
+        : InstrumentTextWidth;
     const auto FitHudText = [&](const FString& Value, UFont* Font,
                                 float TextScale) -> FString
     {
