@@ -122,6 +122,7 @@ nav:
       - Next-gate guidance QA: NEXT_GATE_GUIDANCE_QA.md
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
       - Arcade tire condition QA: ARCADE_TIRE_CONDITION_QA.md
+      - Arcade engine heat and power fade QA: ARCADE_ENGINE_HEAT_QA.md
       - Off-pavement arcade traction QA: ARCADE_SURFACE_TRACTION_QA.md
       - Combined arcade driving forces QA: ARCADE_DRIVE_COMPOSITION_QA.md
       - Human physical spin traction QA: HUMAN_SPIN_TRACTION_QA.md

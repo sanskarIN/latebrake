@@ -15,6 +15,7 @@
 #include "Vehicles/SpeedReactiveCameraFov.h"
 #include "Vehicles/ArcadeTireCondition.h"
 #include "Vehicles/ArcadeBrakeHeat.h"
+#include "Vehicles/ArcadeEngineHeat.h"
 #include "Vehicles/ArcadeCollisionDamage.h"
 #include "Vehicles/ArcadeSurfaceTraction.h"
 #include "Vehicles/ArcadeNitroBoost.h"
@@ -67,12 +68,13 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
     const latebrake::ArcadeTireCondition& GetTireCondition() const noexcept { return TireCondition; }
     const latebrake::ArcadeBrakeHeat& GetBrakeHeat() const noexcept { return BrakeHeat; }
+    const latebrake::ArcadeEngineHeat& GetEngineHeat() const noexcept { return EngineHeat; }
     const latebrake::ArcadeCollisionDamage& GetCollisionDamage() const noexcept { return CollisionDamage; }
     const latebrake::ArcadeSurfaceTraction& GetSurfaceTraction() const noexcept { return SurfaceTraction; }
     const latebrake::ObservedBrakeDistance& GetObservedBrakeDistance() const { return BrakeDistance; }
@@ -226,6 +228,7 @@ private:
     latebrake::HumanSpinAssistMeter SpinAssist;
     latebrake::ArcadeTireCondition TireCondition;
     latebrake::ArcadeBrakeHeat BrakeHeat;
+    latebrake::ArcadeEngineHeat EngineHeat;
     latebrake::ArcadeCollisionDamage CollisionDamage;
     double LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     latebrake::ArcadeSurfaceTraction SurfaceTraction;

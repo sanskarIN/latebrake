@@ -777,6 +777,18 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetBrakeHeat().HeatFraction() * 100.0,
             Car->GetBrakeHeat().ServiceBrakeMultiplier() * 100.0), Accent);
     }
+    // Sustained propulsion heat lowers normal, nitro and drafting motor
+    // output. This is an arcade estimate, not a real engine sensor.
+    // Compact and low-height layouts retain their race timing priority.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        Car->GetEngineHeat().HasValidSample() &&
+        Car->GetEngineHeat().HeatFraction() >= 0.64)
+    {
+        Line(FString::Printf(
+            TEXT("ENGINE HEAT %.0f%% | MOTOR %.0f%%"),
+            Car->GetEngineHeat().HeatFraction() * 100.0,
+            Car->GetEngineHeat().MotorMultiplier() * 100.0), Accent);
+    }
     // Actual high-speed hard chassis collisions can weaken engine and
     // lateral arcade performance until the next race reset. Damage is a
     // bounded race-only prototype; preserve limited mobile HUD space.
