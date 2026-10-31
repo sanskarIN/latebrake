@@ -5,6 +5,24 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Post-v0.5.85 physical rival directional gate crossings (unreleased)
+
+- The autonomous rival now advances its approximate route only after an
+  actual **forward 3D checkpoint plane crossing** from the same
+  `CheckpointMotionTrace` and `EvaluateCircuitGatePlane` geometry as the
+  player. The previous 440cm radius alone is insufficient: reversing
+  through a gate, hovering nearby, off-lane/airborne movement, bad physics
+  and teleport-sized jumps cannot credit the rival lap.
+- A verified crossing ending outside the old radius can still count,
+  avoiding high-speed missed waypoints. Explicit trace resets cover race
+  interruptions, route advancement, teleport recoveries and completed
+  routes. The original distance/speed-based stall recovery still works,
+  and the player race clock/rewards remain unchanged.
+- A 200,000-pair portable C++20 regression and actual Unreal source-binding
+  tests check geometry and ordered route progression; no licensed UE 5.8
+  compile or installed racing QA has occurred. [Directional rival gate QA](
+  RIVAL_DIRECTIONAL_GATE_QA.md).
+
 ## Post-v0.5.85 real rival yaw-rate steering moderation (unreleased)
 
 - The physical rival now reads **actual Chaos world-Z angular velocity** after

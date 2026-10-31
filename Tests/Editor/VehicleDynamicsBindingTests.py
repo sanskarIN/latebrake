@@ -78,7 +78,9 @@ class VehicleDynamicsBindingTests(unittest.TestCase):
                        "\n} // nonexistent after method")
         self.assertIn("!IsRacePhysicsReady()", tick)
         self.assertLess(tick.index("!IsRacePhysicsReady()"),
-                        tick.index("Route.Observe("))
+                        tick.index("RivalGateTrace.Sample("))
+        self.assertLess(tick.index("RivalGateTrace.Sample("),
+                        tick.index("Route.ObserveVerifiedGate("))
 
     def test_clock_and_checkpoints_reuse_shared_car_readiness(self):
         self.assertIn("Car->IsRacePhysicsReady()", self.mode)
