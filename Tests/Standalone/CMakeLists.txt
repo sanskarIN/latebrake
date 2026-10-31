@@ -1221,3 +1221,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ArcadeReverseSpeedLimit COMMAND latebrake_arcade_reverse_speed_tests)
+
+# Actual rigid-body motor power tapers near gear-specific measured speed caps.
+# Shared by normal propulsion, nitro and drafting; no Unreal game runtime.
+add_executable(latebrake_gear_aware_motor_power_tests GearAwareMotorPowerTests.cpp)
+target_include_directories(latebrake_gear_aware_motor_power_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_gear_aware_motor_power_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_gear_aware_motor_power_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_gear_aware_motor_power_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GearAwareMotorPower COMMAND latebrake_gear_aware_motor_power_tests)

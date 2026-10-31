@@ -5,6 +5,20 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Post-v0.5.85 live forward/reverse motor envelope (unreleased)
+
+- The physical player and rival car now fade all three baseline/nitro/draft
+  motor-force paths toward zero near their real, gear-specific speed limits.
+  Forward fade starts at 82% of the *live* garage/nitro forward cap; reverse
+  starts at 74% of the handling-specific reverse gear cap. Smoothstep reduces
+  repeated hard-clamp thrust while preserving low-speed launches and existing
+  engine braking when the driver switches direction.
+- 200,000 portable C++20 samples and Unreal-source bindings protect monotone,
+  finite reductions across the actual shared chassis. Lateral/vertical physics,
+  checkpoints, saves, credits and the existing final speed caps are unchanged.
+- Source tests do not certify motor feel, UE 5.8 compilation or Windows/Android
+  installed QA. [Gear-aware motor QA](GEAR_AWARE_MOTOR_POWER_QA.md).
+
 ## Post-v0.5.85 reverse-gear physics control (unreleased)
 
 - Both player and real rigid-body rival now use a source-level reverse-speed
