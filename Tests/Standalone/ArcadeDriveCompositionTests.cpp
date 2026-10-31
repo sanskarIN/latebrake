@@ -1,7 +1,9 @@
 #include "Vehicles/ArcadeBoostArbitration.h"
 #include "Vehicles/ArcadeBrakeHeat.h"
 #include "Vehicles/ArcadeCollisionDamage.h"
+#include "Vehicles/ArcadeEngineHeat.h"
 #include "Vehicles/ArcadeSurfaceTraction.h"
+#include "Vehicles/GearAwareMotorPower.h"
 #include "Vehicles/ArcadeTireCondition.h"
 #include "Vehicles/CornerTractionAssist.h"
 
@@ -25,13 +27,17 @@ void Check(bool condition, const char* description)
 double DriveFraction(double throttle,
                      latebrake::ArcadeSurfaceOutput road,
                      const latebrake::ArcadeCollisionDamage& damage,
-                     latebrake::ArcadeBoostAllocation boost)
+                     latebrake::ArcadeBoostAllocation boost,
+                     const latebrake::EngineHeatOutput& engine,
+                     double gearFactor)
 {
-    if (!road.Valid)
+    if (!road.Valid || !engine.Valid ||
+        !std::isfinite(gearFactor) || gearFactor < 0.0 || gearFactor > 1.0)
     {
         return 0.0;
     }
-    const double scale = road.MotorMultiplier * damage.MotorMultiplier();
+    const double scale = road.MotorMultiplier * damage.MotorMultiplier() *
+        engine.MotorMultiplier * gearFactor;
     return throttle * scale
         + throttle * scale * boost.NitroExtra
         + throttle * scale * boost.DraftExtra;
@@ -45,6 +51,7 @@ int main()
     ArcadeTireCondition tires;
     ArcadeCollisionDamage impacts;
     ArcadeBrakeHeat brakes;
+    ArcadeEngineHeat engine;
 
     const auto road = surface.Observe({0.05, EastX, 0.0, true});
     Check(road.Valid && !road.OffPavement &&
@@ -58,7 +65,14 @@ int main()
     const double throttle = StabilizeCornerThrottle(1.0, 3000.0, 500.0, true);
     Check(throttle > 0.0 && throttle <= 1.0,
           "corner assist must not invent extra throttle");
-    const double healthyForce = DriveFraction(throttle, road, impacts, both);
+    const auto healthyEngine = engine.Observe({
+        0.05, 3000.0, throttle, false, true});
+    const double normalGear = GearAwareMotorPowerFactor(
+        throttle, 3000.0, 6500.0, true);
+    Check(healthyEngine.Valid && !healthyEngine.Derated && normalGear == 1.0,
+          "ordinary race launch retains full thermal and gear authority");
+    const double healthyForce = DriveFraction(
+        throttle, road, impacts, both, healthyEngine, normalGear);
     Check(healthyForce <= 1.40 + 1e-10,
           "boost budget cannot exceed 140 percent on healthy road");
     Check(std::abs(healthyForce - throttle * 1.4) < 1e-10,
@@ -68,7 +82,7 @@ int main()
     // approved drafting, never simply cap one of the bonus paths.
     Check(impacts.ObserveImpact({1100000.0, 1100.0, 3800.0, 0.1, true}),
           "qualified horizontal chassis contact accepted");
-    const double damagedForce = DriveFraction(throttle, road, impacts, both);
+    const double damagedForce = DriveFraction(throttle, road, impacts, both, healthyEngine, normalGear);
     Check(damagedForce < healthyForce &&
           damagedForce <= throttle * impacts.MotorMultiplier() * 1.4 + 1e-10,
           "real impact scales total allocated motor force");
@@ -84,7 +98,7 @@ int main()
     Check(dirt.Valid && dirt.OffPavement &&
           dirt.MotorMultiplier == ArcadeSurfaceTraction::OffPavementMotorMultiplier,
           "confirmed off-road surface reduces motor authority");
-    Check(DriveFraction(throttle, dirt, impacts, both) < damagedForce,
+    Check(DriveFraction(throttle, dirt, impacts, both, healthyEngine, normalGear) < damagedForce,
           "off-road reduction composes with damage, nitro and draft");
     const double offRoadGrip =
         tires.GripMultiplier() * dirt.LateralGripMultiplier *
@@ -92,17 +106,63 @@ int main()
     Check(offRoadGrip > 0.0 && offRoadGrip < 1.0,
           "off-road, tire and damage grip reductions compose");
 
+    // Sustained real propulsion must fade ALL three additive motor paths,
+    // not only baseline acceleration. Coasting restores power; gear taper
+    // composes independently rather than bypassing the heat or damage.
+    EngineHeatOutput overheatedEngine;
+    for (int i = 0; i < 1200; ++i)
+    {
+        overheatedEngine = engine.Observe({
+            0.05, 3000.0, throttle, true, true});
+    }
+    Check(overheatedEngine.Valid && overheatedEngine.Derated &&
+          overheatedEngine.MotorMultiplier >=
+              ArcadeEngineHeat::MinimumMotorMultiplier &&
+          overheatedEngine.MotorMultiplier < healthyEngine.MotorMultiplier,
+          "sustained qualified engine load reduces shared motor force");
+    const double hotForce = DriveFraction(
+        throttle, dirt, impacts, both, overheatedEngine, normalGear);
+    const double coolForce = DriveFraction(
+        throttle, dirt, impacts, both, healthyEngine, normalGear);
+    Check(hotForce > 0.0 && hotForce < coolForce,
+          "thermal fade composes with verified dirt, impact and boosts");
+
+    EngineHeatOutput recoveredEngine;
+    for (int i = 0; i < 1200; ++i)
+    {
+        recoveredEngine = engine.Observe({0.05, 5000.0, 0.0, false, true});
+    }
+    Check(recoveredEngine.Valid &&
+          recoveredEngine.MotorMultiplier > overheatedEngine.MotorMultiplier,
+          "coasting recovers only the thermal motor multiplier");
+    const double halfGear = GearAwareMotorPowerFactor(
+        throttle, 5915.0, 6500.0, true);
+    Check(std::abs(halfGear - 0.5) < 1e-10,
+          "production forward speed taper reaches half power");
+    const double taperedForce = DriveFraction(
+        throttle, dirt, impacts, both, recoveredEngine, halfGear);
+    const double untaperedForce = DriveFraction(
+        throttle, dirt, impacts, both, recoveredEngine, normalGear);
+    Check(std::abs(taperedForce * 2.0 - untaperedForce) < 1e-10,
+          "gear taper scales baseline nitro and draft together");
+
     // Invalid engine samples and interruptions may never be interpreted
     // as an ordinary 1.0 paved-surface multiplier.
     const auto invalid = surface.Observe({0.11, EastX, 0.0, true});
-    Check(!invalid.Valid && DriveFraction(throttle, invalid, impacts, both) == 0.0,
+    Check(!invalid.Valid && DriveFraction(throttle, invalid, impacts, both, healthyEngine, normalGear) == 0.0,
           "long frame cannot authorize driving force");
     const auto nan = std::numeric_limits<double>::quiet_NaN();
     const auto broken = surface.Observe({0.05, nan, 0.0, true});
-    Check(!broken.Valid && DriveFraction(throttle, broken, impacts, both) == 0.0,
+    Check(!broken.Valid && DriveFraction(throttle, broken, impacts, both, healthyEngine, normalGear) == 0.0,
           "nonfinite position fails closed");
     Check(!brakes.Observe({0.05, nan, true, true}).Valid,
           "invalid brake telemetry cannot apply heat fade");
+    const auto invalidHeat = engine.Observe({0.05, nan, 1.0, true, true});
+    Check(!invalidHeat.Valid && invalidHeat.MotorMultiplier == 1.0 &&
+          !engine.HasValidSample(),
+          "bad engine physics cannot retain a stale active derate");
+    Check(DriveFraction(throttle, dirt, impacts, both, invalidHeat, normalGear) == 0.0,
+          "the composition regression does not treat invalid thermal input as qualified");
     impacts.Suspend();
     Check(!impacts.ObserveImpact({1100000.0, 1100.0, 3800.0, 0.1, true}),
           "paused contact cannot add damage");
@@ -131,15 +191,26 @@ int main()
         }
         const auto brake = brakes.Observe({
             0.05, speed, i % 11 == 0, true});
+        const auto thermal = engine.Observe({
+            0.05, speed, demand, nitro, true});
+        const double gear = GearAwareMotorPowerFactor(
+            demand, speed, 6500.0, true);
         Check(brake.Valid && brake.ServiceBrakeMultiplier >=
               ArcadeBrakeHeat::MinimumBrakeMultiplier &&
               brake.ServiceBrakeMultiplier <= 1.0,
               "brake heat cannot invert service braking");
-        const double force = DriveFraction(demand, location, impacts, allocation);
+        const double force = DriveFraction(
+            demand, location, impacts, allocation, thermal, gear);
         const double limit = demand * location.MotorMultiplier *
-            impacts.MotorMultiplier() * 1.4;
+            impacts.MotorMultiplier() * thermal.MotorMultiplier *
+            gear * 1.4;
         const double grip = tires.GripMultiplier() *
             location.LateralGripMultiplier * impacts.LateralGripMultiplier();
+        Check(thermal.Valid && std::isfinite(thermal.MotorMultiplier) &&
+              thermal.MotorMultiplier >= ArcadeEngineHeat::MinimumMotorMultiplier &&
+              thermal.MotorMultiplier <= 1.0 &&
+              std::isfinite(gear) && gear >= 0.0 && gear <= 1.0,
+              "thermal and gear derates remain finite and bounded");
         Check(location.Valid && std::isfinite(force) &&
               force >= 0.0 && force <= limit + 1e-10,
               "all motor forces share the same bounded composition");
@@ -151,10 +222,13 @@ int main()
     tires.Reset();
     impacts.Reset();
     brakes.Reset();
+    engine.Reset();
     Check(!surface.HasValidSample() &&
           !tires.HasValidSample() &&
           !impacts.HasEligibleFrame() &&
           !brakes.HasValidSample() &&
+          !engine.HasValidSample() &&
+          engine.HeatFraction() == ArcadeEngineHeat::IdleHeat &&
           impacts.DamageFraction() == 0.0 &&
           tires.WearFraction() == 0.0,
           "a new race resets all independently owned arcade condition state");

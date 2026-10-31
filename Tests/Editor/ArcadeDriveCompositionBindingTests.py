@@ -62,6 +62,24 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertIn("Thermal.ServiceBrakeMultiplier", tick)
         self.assertIn("if (!bEffectiveBraking &&", tick)
 
+    def test_portable_budget_covers_heat_and_gear_fade(self):
+        portable = source("Tests/Standalone/ArcadeDriveCompositionTests.cpp")
+        for marker in (
+            '#include "Vehicles/ArcadeEngineHeat.h"',
+            '#include "Vehicles/GearAwareMotorPower.h"',
+            "ArcadeEngineHeat engine;",
+            "GearAwareMotorPowerFactor(",
+            "engine.Observe({",
+            "engine.MotorMultiplier * gearFactor",
+            "thermal.MotorMultiplier *",
+            "overheatedEngine.MotorMultiplier",
+            "engine.Reset();",
+        ):
+            self.assertIn(marker, portable)
+        self.assertIn("EngineThermal.MotorMultiplier", self.car)
+        self.assertEqual(self.car.count(
+            "ImpactMotorScale * EngineMotorScale * GearPowerFactor"), 3)
+
     def test_lifecycle_cannot_grant_free_repair_or_corrupt_running(self):
         self.assertIn("TireCondition.Reset(); BrakeHeat.Reset(); "
                       "EngineHeat.Reset(); CollisionDamage.Reset(); "
