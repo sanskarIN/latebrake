@@ -83,6 +83,25 @@ try {
 }
 $ended = [DateTimeOffset]::UtcNow
 
+# A real Unreal executable may write Saved/, cache or generated files
+# inside its packaged directory even when -ABSLOG points elsewhere.
+# Preserve the launch result in a private receipt, but NEVER claim the
+# cooked candidate is still fingerprint-identical without rechecking
+# ALL archive files, plus original manifest and executable hashes.
+$archiveIntegrityAtExitPass = $false
+$archiveIntegrityAtExitError = $null
+try {
+    & (Join-Path $PSScriptRoot 'Test-PostRunWin64CandidateIntegrity.ps1') `
+        -ManifestJson $manifest -GameExecutable $game.FullName `
+        -ExpectedManifestSha256 $manifestSha256 -ExpectedExecutableSha256 $gameSha256
+    if (-not $?) {
+        throw 'Post-run candidate archive integrity script reported failure.'
+    }
+    $archiveIntegrityAtExitPass = $true
+} catch {
+    $archiveIntegrityAtExitError = $_.Exception.Message
+}
+
 # Analyze original runtime startup markers when a log exists. The source
 # marker grammar can catch missing geometry/track initialization. It cannot
 # prove actual rendering, vehicle physics or installed gameplay.
@@ -121,6 +140,8 @@ $report = [ordered]@{
     executable_path = $game.FullName
     executable_sha256 = $gameSha256
     candidate_manifest_sha256 = $manifestSha256
+    candidate_integrity_at_exit_pass = $archiveIntegrityAtExitPass
+    candidate_integrity_at_exit_error = $archiveIntegrityAtExitError
     started_utc = $started.ToString('o')
     ended_utc = $ended.ToString('o')
     runtime_seconds = [math]::Round(($ended - $started).TotalSeconds, 3)
@@ -143,6 +164,12 @@ if ($report.unreal_log_present) {
 }
 if (-not $startupLogMarkersPass) {
     Write-Warning "Track startup markers are NOT verified. Inspect $receipt and $log."
+}
+if (-not $archiveIntegrityAtExitPass) {
+    # Do not discard crash/log diagnostics if the game wrote into or
+    # otherwise modified the sealed package. The private receipt is
+    # written first and explicitly marks the archive as NOT preserved.
+    throw "Packaged candidate changed or failed integrity after game exit: $archiveIntegrityAtExitError. Private receipt: $receipt"
 }
 if ($null -ne $startFailure) {
     throw "The packaged EXE could not start: $startFailure. Session diagnostics: $receipt"
