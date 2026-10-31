@@ -29,7 +29,7 @@ inline double GearAwareMotorPowerFactor(
     }
 
     const double demand = std::clamp(requestedThrottle, -1.0, 1.0);
-    if (std::abs(demand) < 0.01)
+    if (demand == 0.0)
     {
         return 1.0;
     }
