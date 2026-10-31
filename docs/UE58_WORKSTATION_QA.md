@@ -23,7 +23,7 @@ It **does not authenticate engine binaries**, validate Visual Studio/MSVC,
 the Windows SDK, Android NDK/JDK or an Unreal license; actual Build.bat,
 Editor, UAT and installed hardware QA remain mandatory. Android environment
 hints are informational only because SDK settings can live inside Unreal.
-Synthetic negative fixtures are run by CI and never masquerade as an
+Synthetic source-only negative fixtures are run by CI and never masquerade as an
 actual licensed Unreal build.
 
 Both `Build-PlayableCandidate.ps1` and the private Windows playtest
