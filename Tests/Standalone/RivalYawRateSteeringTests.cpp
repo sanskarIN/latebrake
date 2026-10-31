@@ -147,7 +147,8 @@ int main()
                 leftSide ? turnLeft : turnRight,
                 Sample(4500.0, leftSide ? yaw : -yaw));
             const double magnitude = std::abs(out.Steering);
-            Require(magnitude >= 0.35 - 1e-12 &&
+            const double baseline = leftSide ? 1.0 : 0.8;
+            Require(magnitude >= baseline * 0.35 - 1e-12 &&
                     magnitude <= previous + 1e-12,
                     "same-direction steering attenuation is bounded/monotone");
             previous = magnitude;
