@@ -3,6 +3,7 @@
 // Installs only under current user's LOCALAPPDATA. Apps & Features uninstall.
 extern "C" { int _fltused=0; }
 #if defined(_MSC_VER) && !defined(__clang__)
+extern "C" void* memset(void*,int,unsigned long long);
 #pragma function(memset)
 #endif
 extern "C" void* memset(void* dest,int value,unsigned long long len){
