@@ -420,5 +420,150 @@ class Win64ReviewSourceTests(unittest.TestCase):
 
 
 
+    def synthetic_race_log(self, finish=True):
+        """Artificial text only; cannot qualify a cooked Unreal package."""
+        lines = [
+            "LogInit: synthetic fixture, not an Unreal runtime",
+            "LogLatebrakeRaceAudit: Display: LATEBRAKE_RACE_AUDIT v=1 "
+            "action=begin attempt=1 gates=4 laps=1 track=1 grid=-1",
+        ]
+        for i in range(4 if finish else 2):
+            lap = 1 if i == 3 else 0
+            lines.append(
+                "LogLatebrakeRaceAudit: Display: LATEBRAKE_RACE_AUDIT v=1 "
+                f"action=gate attempt=1 gate={i} lap={lap} next={(i + 1) % 4} "
+                f"elapsed={i + 1}.000000 active={lap} finished={lap}"
+            )
+        return ("\\n".join(lines) + "\\n").encode("utf-8")
+
+    def audit(self, *extra):
+        return self.invoke("audit", "--receipt", self.receipt,
+                           "--output", self.evaluation, *extra)
+
+    def test_hash_bound_race_audit_is_reported_but_never_gameplay(self):
+        log = self.set_schema2_log(self.synthetic_race_log())
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertEqual(report["status"], "HASH_BOUND_SOURCE_RACE_AUDIT_UNVERIFIED")
+        self.assertTrue(report["runtime_log_integrity_verified"])
+        self.assertEqual(report["runtime_log_sha256"], sha(log.read_bytes()))
+        self.assertEqual(report["receipt_sha256"], sha(self.receipt.read_bytes()))
+        self.assertEqual(report["executable_sha256"], sha(self.exe.read_bytes()))
+        self.assertEqual(report["source_commit"], "a" * 40)
+        self.assertEqual(report["unreal_engine_build_sha256"], "b" * 64)
+        self.assertEqual(report["starter_map_sha256"], "c" * 64)
+        self.assertEqual(report["candidate_file_count"], 1)
+        self.assertEqual(report["race_audit"]["reported_finished_attempts"], 1)
+        self.assertEqual(report["race_audit"]["accepted_gate_events"], 4)
+        self.assertFalse(report["gameplay_verified"])
+        self.assertFalse(report["source_authenticity_verified"])
+        self.assertFalse(report["ready_for_release"])
+
+    def test_audit_requires_actual_hashed_schema2_receipt(self):
+        no_schema2 = self.audit()
+        self.assertEqual(no_schema2.returncode, 2)
+        self.assertIn("schema-2 receipt", no_schema2.stderr)
+        self.set_schema2_log(None)
+        missing_log = self.audit()
+        self.assertEqual(missing_log.returncode, 2)
+        self.assertIn("present, hashed runtime log", missing_log.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_unfinished_race_is_never_falsely_completed(self):
+        self.set_schema2_log(self.synthetic_race_log(finish=False))
+        refused = self.audit("--require-finish")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("no complete ordered race finish", refused.stderr)
+        self.assertFalse(self.evaluation.exists())
+        allowed = self.audit()
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+        report = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertEqual(report["race_audit"]["accepted_gate_events"], 2)
+        self.assertEqual(report["race_audit"]["reported_finished_attempts"], 0)
+        self.assertFalse(report["ready_for_release"])
+
+    def test_corrupt_ordered_race_event_rejected(self):
+        bad = self.synthetic_race_log().replace(
+            b"gate=1 lap=0 next=2", b"gate=3 lap=0 next=0")
+        self.set_schema2_log(bad)
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Race audit rejected", result.stderr)
+        self.assertIn("out-of-order", result.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_changed_runtime_log_blocks_report_even_if_events_remain_valid(self):
+        log = self.set_schema2_log(self.synthetic_race_log())
+        log.write_bytes(log.read_bytes() + b"\\nLogTemp: unrelated change")
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Runtime log changed", result.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_swapping_another_session_log_blocks_race_report(self):
+        self.set_schema2_log(self.synthetic_race_log())
+        alternative = self.private / "other-session.log"
+        alternative.write_bytes(self.synthetic_race_log())
+        self.receipt_data["unreal_log_path"] = str(alternative)
+        self.write_receipt()
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("does not belong to this receipt", result.stderr)
+
+    def test_executable_and_cooked_file_changes_block_race_report(self):
+        self.add_synthetic_cooked_file()
+        self.set_schema2_log(self.synthetic_race_log())
+        cooked = self.candidate / "Latebrake" / "Content" / "Paks" / "Synthetic.pak"
+        cooked.write_bytes(cooked.read_bytes() + b"TAMPER")
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Candidate file length or SHA256 mismatch", result.stderr)
+        cooked.write_bytes(b"SYNTHETIC-ASSET-CONTENT-NOT-A-GAME")
+        self.exe.write_bytes(self.exe.read_bytes() + b"TAMPER")
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("EXE SHA256", result.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_failed_process_can_be_audited_but_never_claim_success(self):
+        self.set_schema2_log(self.synthetic_race_log())
+        self.receipt_data["process_exit_code"] = 13
+        self.write_receipt()
+        result = self.audit("--require-finish")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertFalse(report["runtime_exit_ok"])
+        self.assertFalse(report["ready_for_release"])
+
+    def test_no_output_inside_archive_or_existing_evidence(self):
+        self.set_schema2_log(self.synthetic_race_log())
+        forbidden = self.candidate / "race-review.json"
+        result = self.invoke("audit", "--receipt", self.receipt,
+                             "--output", forbidden, "--require-finish")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("OUTSIDE", result.stderr)
+        self.assertFalse(forbidden.exists())
+        self.assertEqual(self.audit("--require-finish").returncode, 0)
+        attempt_overwrite = self.audit("--require-finish")
+        self.assertEqual(attempt_overwrite.returncode, 2)
+        self.assertIn("Refusing to overwrite", attempt_overwrite.stderr)
+
+    def test_oversized_log_is_rejected_before_decode(self):
+        log = self.set_schema2_log(self.synthetic_race_log())
+        # sparse synthetic test fixture; never a real engine log.
+        with log.open("ab") as stream:
+            stream.truncate(32 * 1024 * 1024 + 1)
+        payload = log.stat().st_size
+        self.receipt_data["unreal_log_bytes"] = payload
+        self.receipt_data["unreal_log_sha256"] = sha(log.read_bytes())
+        self.write_receipt()
+        result = self.audit()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("32 MiB", result.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+
+
 if __name__ == "__main__":
     unittest.main()
