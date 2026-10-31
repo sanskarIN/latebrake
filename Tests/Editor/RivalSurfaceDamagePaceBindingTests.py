@@ -38,7 +38,7 @@ class RivalSurfaceDamagePaceBindingTests(unittest.TestCase):
             "GetCollisionDamage().HasEligibleFrame()",
             "latebrake::YieldRivalToPlayer(Command, {",
             "FollowingBrakeHold.Apply(",
-            "SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)",
+            "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         )
         offsets = [tick.index(m) for m in markers]
         self.assertEqual(offsets, sorted(offsets))
