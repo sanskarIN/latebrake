@@ -6,6 +6,7 @@
 #include "AI/RivalYawRateSteering.h"
 #include "AI/RivalDriveReadiness.h"
 #include "Track/CircuitLayout.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "Kismet/GameplayStatics.h"
