@@ -55,7 +55,7 @@ void VerifyViewport(int w, int h)
 int main()
 {
     using namespace latebrake;
-    for (const auto [width, height] :
+    for (const auto& [width, height] :
         {std::pair{1280, 720}, std::pair{1920, 1080},
          std::pair{2560, 1440}, std::pair{3440, 1440}})
     {
