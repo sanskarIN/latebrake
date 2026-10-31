@@ -37,16 +37,16 @@ class RivalFollowingBindingTests(unittest.TestCase):
             "YieldRivalToPlayer(Command, {",
             "FollowingBrakeHold.Apply(",
             "bPlayerReady, TrafficCommand.Brake && !Command.Brake",
-            "SafeTrafficCommand.Throttle",
-            "SafeTrafficCommand.Steering",
-            "SafeTrafficCommand.Brake",
+            "SafeSpinCommand.Throttle",
+            "SafeSpinCommand.Steering",
+            "SafeSpinCommand.Brake",
             "Super::Tick(DeltaSeconds);",
         ):
             self.assertIn(marker, tick)
         self.assertLess(tick.index("YieldRivalToPlayer("),
                         tick.index("FollowingBrakeHold.Apply("))
         self.assertLess(tick.index("FollowingBrakeHold.Apply("),
-                        tick.index("SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle)"))
+                        tick.index("SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)"))
 
     def test_time_to_contact_requires_same_lane_forward_closing(self):
         for marker in (
