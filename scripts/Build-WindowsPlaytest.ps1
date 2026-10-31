@@ -54,6 +54,10 @@ $engineMeta = Get-Content -LiteralPath (Join-Path $EngineRoot 'Engine/Build/Buil
 if ($engineMeta.MajorVersion -ne 5 -or $engineMeta.MinorVersion -ne 8) {
     throw 'This personal game candidate requires the actual Unreal Engine 5.8 installation.'
 }
+& (Join-Path $PSScriptRoot 'Test-UnrealWorkstationPrerequisites.ps1') -EngineRoot $EngineRoot -Platform Win64
+if (-not $?) {
+    throw 'Private Win64 playtest prerequisite inspection failed.'
+}
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') -RepoRoot $repo
 if (-not $?) {
     throw 'A clean, committed Git checkout is mandatory for an attributable personal EXE.'
