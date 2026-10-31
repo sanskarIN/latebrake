@@ -5,6 +5,22 @@
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
 
+## Post-v0.5.85 real rival yaw-rate steering moderation (unreleased)
+
+- The physical rival now reads **actual Chaos world-Z angular velocity** after
+  its corner, tire, dirt/damage and player-traffic decisions. A bounded
+  engine-neutral policy reduces requested steering by up to 65% when high
+  measured yaw and high vehicle speed share its turn direction. Opposite-
+  direction correction, neutral/low-speed steering, braking and throttle
+  remain unchanged; invalid measurements fail closed.
+- New C++20 tests exercise 200,000 deterministic chassis motion samples,
+  boundary conditions, malformed physics and monotonic steering authority.
+  Python binding checks verify the real chassis sensor is in the final AI
+  control path before `SetAutonomousControls`.
+- No UE 5.8 UHT compile, cooked circuit, installed Windows/Android race or
+  verified vehicle-feel testing has occurred. [Yaw steering QA](
+  RIVAL_YAW_RATE_STEERING_QA.md).
+
 ## Post-v0.5.85 moving-rival no-approach recovery (unreleased)
 
 - The actual physical rival route tracker now recognizes eight continuous

@@ -3,8 +3,10 @@
 #include "AI/RivalPilot.h"
 #include "AI/RivalCornerAnticipation.h"
 #include "AI/RivalTrafficAwareness.h"
+#include "AI/RivalYawRateSteering.h"
 #include "AI/RivalDriveReadiness.h"
 #include "Track/CircuitLayout.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "Kismet/GameplayStatics.h"
@@ -170,10 +172,24 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         });
     // A short, fail-closed hold prevents brake chatter near the
     // projected contact boundary; it cannot re-route or score a rival.
-    const latebrake::PilotCommand SafeTrafficCommand =
+    const latebrake::PilotCommand FollowingCommand =
         FollowingBrakeHold.Apply(
             TrafficCommand, static_cast<double>(DeltaSeconds),
             bPlayerReady, TrafficCommand.Brake && !Command.Brake);
+
+    // Read real Chaos angular velocity AFTER all route, corner, road,
+    // collision and traffic decisions. Reduce same-direction steering
+    // only when the chassis is already rotating quickly at speed.
+    // This does not change braking, throttle, waypoint or recovery logic.
+    const FVector ActualAngularVelocity =
+        Chassis->GetPhysicsAngularVelocityInRadians();
+    const latebrake::PilotCommand SafeTrafficCommand =
+        latebrake::ModerateRivalYawRate(FollowingCommand, {
+            static_cast<double>(DeltaSeconds),
+            FlatSpeed,
+            static_cast<double>(ActualAngularVelocity.Z),
+            true
+        });
     SetAutonomousControls(static_cast<float>(SafeTrafficCommand.Throttle),
                           static_cast<float>(SafeTrafficCommand.Steering),
                           SafeTrafficCommand.Brake);
