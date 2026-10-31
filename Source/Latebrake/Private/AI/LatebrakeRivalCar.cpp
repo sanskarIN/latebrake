@@ -20,6 +20,7 @@ ALatebrakeRivalCar::ALatebrakeRivalCar()
 void ALatebrakeRivalCar::ResetPilot()
 {
     Route.Reset();
+    RivalGateTrace.Reset();
     FollowingBrakeHold.Reset();
     GripPace.Reset();
     SurfaceDamagePace.Reset();
@@ -31,6 +32,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     // Do not preserve approximation/recovery history from a different
     // event or replay. The RaceProgress clock remains player-authoritative.
     Route.Configure(CheckpointCount, RequiredLaps);
+    RivalGateTrace.Reset();
     FollowingBrakeHold.Reset();
     GripPace.Reset();
     SurfaceDamagePace.Reset();
@@ -52,6 +54,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive(),
             Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
+        RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
@@ -69,14 +72,27 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const FVector Target(Waypoint.X, Waypoint.Y, 0.0);
     const double Distance = FVector::Dist2D(Position, Target);
 
-    // The route now detects both a truly stationary rival and one that
-    // keeps moving without making material progress toward this real gate.
-    // Either condition uses the SAME verified, budgeted recovery transaction.
-    const latebrake::RouteObservation Observation = Route.Observe(
-        Distance, FlatSpeed, static_cast<double>(DeltaSeconds));
+    // Apply the same 3D directional crossing geometry as real player
+    // checkpoint actors. A car merely near a gate, reversed through it,
+    // outside the lane, or teleported across it cannot earn rival laps.
+    // The trace is reset on every race interruption and engine recovery.
+    const bool bVerifiedGateCrossed = RivalGateTrace.Sample(
+        Next, 0, {{Position.X, Position.Y}, Position.Z},
+        Velocity.X, Velocity.Y);
+    // The distance/speed still drive the existing stationary and
+    // moving-without-approach recovery policies when no gate was crossed.
+    const latebrake::RouteObservation Observation = Route.ObserveVerifiedGate(
+        Distance, FlatSpeed, static_cast<double>(DeltaSeconds),
+        bVerifiedGateCrossed);
+    if (Observation.Advanced)
+    {
+        // Never bridge a frame sample across two different gate planes.
+        RivalGateTrace.Reset();
+    }
 
     if (Observation.NeedsRecovery)
     {
+        RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
@@ -104,6 +120,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 
     if (Observation.Completed)
     {
+        RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
