@@ -33,7 +33,25 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.manifest = self.candidate / "Latebrake-candidate-manifest.json"
         # Deliberately NOT an executable: the tool must never run these bytes.
         self.exe.write_bytes(b"MZ--SYNTHETIC-NOT-A-GAME--")
-        self.manifest.write_bytes(b'{"synthetic_only":true}')
+        # A schema-2 manifest with a single synthetic file. It is NOT UAT
+        # output; the reviewer only checks byte identity and archive closure.
+        self.manifest.write_text(json.dumps({
+            "schema_version": 2,
+            "project": "LateBrake",
+            "platform": "Win64",
+            "status": "UNVERIFIED_CANDIDATE_NOT_PLAYTESTED",
+            "source_commit": "a" * 40,
+            "source_tree_tracked_changes": False,
+            "unreal_engine_version": "5.8",
+            "unreal_engine_build_sha256": "b" * 64,
+            "starter_map_sha256": "c" * 64,
+            "created_utc": "2026-10-31T00:00:00Z",
+            "files": [{
+                "path": "Latebrake.exe",
+                "bytes": self.exe.stat().st_size,
+                "sha256": sha(self.exe.read_bytes()),
+            }],
+        }), encoding="utf-8")
         self.receipt = self.private / "session.json"
         self.receipt_data = {
             "schema_version": 1,
@@ -51,6 +69,22 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.write_receipt()
         self.checklist = self.private / "manual.json"
         self.evaluation = self.private / "review.json"
+
+    def add_synthetic_cooked_file(self):
+        # An additional inert byte fixture, never a cooked Unreal asset.
+        fake = self.candidate / "Latebrake" / "Content" / "Paks" / "Synthetic.pak"
+        fake.parent.mkdir(parents=True)
+        fake.write_bytes(b"SYNTHETIC-ASSET-CONTENT-NOT-A-GAME")
+        data = json.loads(self.manifest.read_text(encoding="utf-8"))
+        data["files"].append({
+            "path": fake.relative_to(self.candidate).as_posix(),
+            "bytes": fake.stat().st_size,
+            "sha256": sha(fake.read_bytes()),
+        })
+        self.manifest.write_text(json.dumps(data), encoding="utf-8")
+        self.receipt_data["candidate_manifest_sha256"] = sha(self.manifest.read_bytes())
+        self.write_receipt()
+        return fake
 
     def write_receipt(self):
         self.receipt.write_text(json.dumps(self.receipt_data), encoding="utf-8")
@@ -178,6 +212,83 @@ class Win64ReviewSourceTests(unittest.TestCase):
         result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
         self.assertEqual(result.returncode, 2)
         self.assertIn("Duplicate JSON property", result.stderr)
+
+
+    def test_complete_synthetic_tree_can_be_reviewed_but_not_qualified(self):
+        self.add_synthetic_cooked_file()
+        template = self.make_template()
+        self.assertFalse(template["gameplay_verified"])
+        self.assertFalse(template["warning"].startswith("VERIFIED"))
+
+    def test_tampered_cooked_asset_refuses_review_even_if_exe_unchanged(self):
+        asset = self.add_synthetic_cooked_file()
+        asset.write_bytes(asset.read_bytes() + b"TAMPER")
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("file length or SHA256 mismatch", result.stderr)
+        self.assertFalse(self.checklist.exists())
+
+    def test_missing_cooked_asset_refuses_review(self):
+        asset = self.add_synthetic_cooked_file()
+        asset.unlink()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("missing listed files", result.stderr)
+
+    def test_unlisted_cooked_asset_refuses_review(self):
+        self.add_synthetic_cooked_file()
+        unexpected = self.candidate / "unlisted.ini"
+        unexpected.write_text("not in manifest", encoding="utf-8")
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Unexpected or duplicate candidate file", result.stderr)
+
+    def test_invalid_manifest_file_paths_are_rejected(self):
+        original = json.loads(self.manifest.read_text(encoding="utf-8"))
+        for unsafe in ("../escape.bin", "/absolute.exe", "x\\\\bad", "a//b", "a/./b", "C:/other.exe"):
+            with self.subTest(unsafe=unsafe):
+                manifest = dict(original)
+                manifest["files"] = [dict(original["files"][0], path=unsafe)]
+                self.manifest.write_text(json.dumps(manifest), encoding="utf-8")
+                self.receipt_data["candidate_manifest_sha256"] = sha(self.manifest.read_bytes())
+                self.write_receipt()
+                result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("Invalid file path", result.stderr)
+                self.assertFalse(self.checklist.exists())
+
+    def test_case_colliding_manifest_entries_are_rejected(self):
+        data = json.loads(self.manifest.read_text(encoding="utf-8"))
+        duplicate = dict(data["files"][0])
+        duplicate["path"] = "latebrake.EXE"
+        data["files"].append(duplicate)
+        self.manifest.write_text(json.dumps(data), encoding="utf-8")
+        self.receipt_data["candidate_manifest_sha256"] = sha(self.manifest.read_bytes())
+        self.write_receipt()
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Duplicate or case-colliding", result.stderr)
+
+    def test_even_empty_linked_archive_directory_is_rejected(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        link = self.candidate / "linked-assets"
+        try:
+            link.symlink_to(outside, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("Creating directory links requires permissions on this Windows host")
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Linked archive entry", result.stderr)
+
+    def test_modified_manifest_hash_fails_before_scanning_assets(self):
+        data = json.loads(self.manifest.read_text(encoding="utf-8"))
+        data["files"][0]["bytes"] = 0
+        self.manifest.write_text(json.dumps(data), encoding="utf-8")
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Manifest SHA256", result.stderr)
+
 
 
 if __name__ == "__main__":
