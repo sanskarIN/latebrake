@@ -81,6 +81,7 @@ nav:
       - Championships: CHAMPIONSHIPS.md
       - Challenges: CHALLENGES.md
       - Garage: GARAGE.md
+      - Garage purchase confirmation QA: GARAGE_PURCHASE_CONFIRM_QA.md
       - Track: TRACK.md
       - Touch controls: TOUCH_CONTROLS.md
       - Sector timing: SECTOR_TIMING.md
