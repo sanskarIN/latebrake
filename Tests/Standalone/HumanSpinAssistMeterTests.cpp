@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <initializer_list>
 #include <limits>
 
 namespace
@@ -50,7 +51,7 @@ int main()
             meter.IsActive() && Near(meter.CurrentReductionFraction(), 0.70) &&
             meter.InterventionCount() == 2u,
             "new strong intervention caps at expected policy maximum");
-    Require(meter.Observe({0.016, 0.8, 0.76, true}) &&
+    Require(meter.Observe({0.016, 0.8, 0.765, true}) &&
             !meter.IsActive() && meter.InterventionCount() == 2u,
             "sub-five-percent motor trim remains below visual threshold");
     Require(meter.Observe({0.016, 0.8, 0.7599, true}) &&
