@@ -40,7 +40,7 @@ class UnrealWorkstationPrerequisiteBindingTests(unittest.TestCase):
         self.assertLess(self.pipeline.index(marker),
                         self.pipeline.index("Build-Editor.ps1"))
         self.assertLess(self.win64.index(marker),
-                        self.win64.index("Build-PlayableCandidate.ps1"))
+                        self.win64.index("& (Join-Path $PSScriptRoot 'Build-PlayableCandidate.ps1')"))
         self.assertIn("-Platform $Platform", self.pipeline)
         self.assertIn("-Platform Win64", self.win64)
 
