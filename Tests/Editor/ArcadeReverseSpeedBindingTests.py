@@ -34,12 +34,15 @@ class ReverseSpeedBindingTests(unittest.TestCase):
             "const FVector PostCapVelocity = Chassis->GetPhysicsLinearVelocity();",
             "latebrake::LimitPlanarReverseSpeed(",
             "if (!ReverseLimit.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
             "if (ReverseLimit.Limited)",
         )
         self.assertEqual([tick.index(marker) for marker in markers],
                          sorted(tick.index(marker) for marker in markers))
         self.assertIn('#include "Vehicles/ArcadeReverseSpeedLimit.h"', self.car)
+        self.assertIn(
+            "if (!ReverseLimit.Valid)\n    {\n        NeutralizeMotionWhenDrivingBlocked();",
+            tick,
+        )
 
     def test_reverse_clamp_uses_real_world_yaw_and_preserves_vertical(self):
         tick = self.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
