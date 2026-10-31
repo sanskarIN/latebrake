@@ -1426,6 +1426,14 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
         GarageFeedback = TEXT("Finish or exit this career race before buying vehicles.");
         return;
     }
+    // When a menu owns focus, spending must be accompanied by visible
+    // Garage-page feedback; never stage an invisible approval elsewhere.
+    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
+        return;
+    }
     const int32 Next = Garage.NextLockedVehicle();
     if (Next < 0)
     {
@@ -1478,6 +1486,14 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
         GarageFeedback = TEXT("Finish or exit this career race before upgrading engine.");
         return;
     }
+    // When a menu owns focus, spending must be accompanied by visible
+    // Garage-page feedback; never stage an invisible approval elsewhere.
+    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
+        return;
+    }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
     if (Cost <= 0 || Garage.Credits() < Cost)
     {
@@ -1527,6 +1543,14 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before upgrading grip.");
+        return;
+    }
+    // When a menu owns focus, spending must be accompanied by visible
+    // Garage-page feedback; never stage an invisible approval elsewhere.
+    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
         return;
     }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);
