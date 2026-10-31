@@ -11,7 +11,9 @@ purchase shortcut within 8 real seconds** before spending credits:
 
 **E** still cycles between already-owned vehicles without spending credits.
 Insufficient funds, already-completed upgrades, locked career editing and
-unavailable cars never create a spend offer.
+unavailable cars never create a spend offer. If a menu is open, purchases
+can only be previewed and confirmed on its **Garage** page; shortcut keys
+cannot create invisible offers on a different menu page.
 
 The on-screen garage feedback names the proposed purchase, the exact
 price and the matching key to press again. A different purchase, changed
