@@ -62,7 +62,9 @@ class CornerLookAheadCameraBindingTests(unittest.TestCase):
                      "std::isfinite(steeringAxis)", "std::exp(", "maxYaw",
                      "std::clamp(", "void Reset()", "HasActiveSample()"):
             self.assertIn(term, self.policy)
-        self.assertNotIn("Unreal", self.policy.split("class CornerLookAheadCamera",1)[1])
+        for forbidden in ("AddForce(", "AddTorque(", "SaveRecords(",
+                          "RegisterCheckpoint("):
+            self.assertNotIn(forbidden, self.policy)
         self.assertIn("CornerLookAheadCameraTests.cpp", self.cmake)
         self.assertIn("NAME CornerLookAheadCamera", self.cmake)
         self.assertIn("/W4 /WX", self.cmake)
