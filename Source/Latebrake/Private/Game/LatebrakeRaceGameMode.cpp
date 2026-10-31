@@ -868,6 +868,32 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     }
 }
 
+void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()
+{
+#if !PLATFORM_ANDROID
+    APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+    if (!IsValid(PC) || !PC->IsLocalController())
+    {
+        return;
+    }
+    // The Canvas menu is not a Slate widget; let the existing pawn input
+    // receive unhandled mouse actions and preserve keyboard/gamepad access.
+    // When the menu closes, return focus to game driving with the cursor off.
+    PC->bShowMouseCursor = Menu.IsOpen();
+    if (Menu.IsOpen())
+    {
+        FInputModeGameAndUI MouseMode;
+        MouseMode.SetHideCursorDuringCapture(false);
+        MouseMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+        PC->SetInputMode(MouseMode);
+    }
+    else
+    {
+        PC->SetInputMode(FInputModeGameOnly());
+    }
+#endif
+}
+
 void ALatebrakeRaceGameMode::CloseMenuForRace()
 {
     if (!Menu.IsOpen())
@@ -878,6 +904,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
+    SyncDesktopMenuPointerMode();
     AppFocusGuard.OnExplicitResume();
     ManualPause.OnExplicitResume();
     CheckpointSession.OnMenuReturnToRace();
@@ -907,6 +934,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     {
         Car->ClearDriverInputs();
     }
+    SyncDesktopMenuPointerMode();
     UGameplayStatics::SetGamePaused(this, Menu.IsOpen());
 }
 
