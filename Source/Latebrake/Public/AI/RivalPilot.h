@@ -19,7 +19,8 @@ struct PilotCommand final
 inline PilotCommand PlanRivalTurn(
     double positionX, double positionY, double headingRadians,
     double speedCmPerSecond, double waypointX, double waypointY,
-    double arrivalRadiusCm = 440.0) noexcept
+    double arrivalRadiusCm = 440.0,
+    bool allowProximityArrival = true) noexcept
 {
     const bool valid = std::isfinite(positionX) && std::isfinite(positionY) &&
         std::isfinite(headingRadians) && std::isfinite(speedCmPerSecond) &&
@@ -38,7 +39,10 @@ inline PilotCommand PlanRivalTurn(
     {
         return {};
     }
-    if (distance <= arrivalRadiusCm)
+    // Distance-only arrivals are appropriate for generic waypoint hints,
+    // but the physical racing rival must NOT stop before it crosses the
+    // same directional gate plane as the player's actual checkpoint.
+    if (allowProximityArrival && distance <= arrivalRadiusCm)
     {
         return {0.0, 0.0, false, true};
     }
