@@ -94,6 +94,24 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
     ):
         require(value, name)
     if version == "v0.5.89":
+        # Match the publisher's REAL final JavaScript marker list rather
+        # than re-checking just our smaller source qualification gates.
+        # Missing strings previously failed only after hours of macOS
+        # builds had completed and blocked the v0.5.89 publication.
+        marker_block = re.search(
+            r"for \\(const marker of \\[([\\s\\S]*?)\\]\\) \\{",
+            source,
+        )
+        if not marker_block:
+            raise ValueError("v0.5.89: mandatory publisher marker loop missing")
+        mandatory_markers = re.findall(r"'([^']+)'", marker_block.group(1))
+        if len(mandatory_markers) < 30:
+            raise ValueError("v0.5.89: incomplete source-only publisher marker list")
+        for required_marker in mandatory_markers:
+            if required_marker not in notes:
+                raise ValueError(
+                    f"v0.5.89: source release notes missing publisher marker {required_marker}"
+                )
         for new_gate in (
             "RaceGateProgressGauge|GarageCatalogView|GarageComparisonView|RivalMatchedGateSplits|RivalDifficultyPreset",
             'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RaceGateProgressGauge$" --no-tests=error',
@@ -102,6 +120,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
             'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RivalMatchedGateSplits$" --no-tests=error',
             'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RivalDifficultyPreset$" --no-tests=error',
             "Test-CandidatePairIdentityPolicy.ps1",
+            "cmake --build Tests/Standalone/build --config Release --parallel 4",
             "'GATE PROGRESS', 'GARAGE COMPARISON', 'RIVAL SPLITS'",
             "'RIVAL DIFFICULTY'",
         ):
@@ -395,6 +414,12 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             encoding="utf-8")
         notes = (RELEASE_NOTES / "v0.5.89.md").read_text(encoding="utf-8")
         verify_live_ci_source_release(version, source, notes)
+        for missing in ("RacePitService", "RacePitRadar",
+                        "TouchPitHold", "VehiclePaintRecipe"):
+            with self.subTest(publisher_marker=missing):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(
+                        version, source, notes.replace(missing, "MISSING_" + missing, 1))
         for mutant in (
             source.replace(
                 "RaceGateProgressGauge|GarageCatalogView|GarageComparisonView|RivalMatchedGateSplits|RivalDifficultyPreset",
@@ -409,6 +434,8 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
                            '^RivalMatchedGateSplits$" --output-on-failure', 1),
             source.replace('^RivalDifficultyPreset$" --no-tests=error',
                            '^RivalDifficultyPreset$" --output-on-failure', 1),
+            source.replace("cmake --build Tests/Standalone/build --config Release --parallel 4",
+                           "cmake --build Tests/Standalone/build --config Release --parallel", 1),
             source.replace("tag: 'v0.5.88'", "tag: 'v0.5.87'", 1),
             source.replace("if (main !== sha)", "if (false)", 1),
             source.replace("published.assets.length !== 0", "false", 1),
