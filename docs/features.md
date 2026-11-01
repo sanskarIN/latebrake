@@ -2,6 +2,28 @@
 
 This page distinguishes source-level features from tested game builds. All gameplay below describes code in the repository, **not confirmed functionality of an installed game**.
 
+## Experimental pit service and six car body kits (v0.5.87 source-only)
+
+The physical Unreal player-car pawn can request a **2.5-second** pit
+service stop in the authored inner-south-shoulder bay when the chassis
+is stationary enough, throttle is neutral and the live race authorizes
+service. Successful service repairs a bounded share of collision damage,
+replaces synthetic tire condition and refills some nitro charge.
+**P** (keyboard) or **Y** (gamepad top face) are bound to the held action.
+Service never changes saved credits, official race results or checkpoint
+credit. [Pit mechanics and real-game QA](UNREAL_PIT_SERVICE_QA.md).
+
+The six pre-existing fictional garage vehicles now have separate
+collision-free **STREET / SPRINT / GT / TRACK / TOURING / APEX** trim
+recipes using built-in Unreal mesh primitives. These are not licensed
+realistic vehicle assets, and game-installed appearance is unverified.
+[Original body kits and real-game QA](VEHICLE_BODY_KITS_QA.md).
+
+An optional **PIT** marker was added to the expanded desktop north-up
+race radar **after** v0.5.87 was published; it is newer, unreleased
+source work. It uses the exact pit-service world location and never
+modifies scoring, position, pit eligibility or movement.
+
 ## Start lights (v0.5.75 source-only pre-release)
 
 A single three-second 3→2→1→GO gate controls the real race clock,
