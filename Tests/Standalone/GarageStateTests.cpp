@@ -19,7 +19,7 @@ int main()
     using namespace latebrake;
     GarageState garage;
     Require(garage.Owns(0) && !garage.Owns(1), "original vehicle is free and owned");
-    Require(!garage.Owns(-1) && !garage.Owns(3), "reject unknown vehicle");
+    Require(!garage.Owns(-1) && !garage.Owns(VehicleCount), "reject unknown vehicle");
     Require(!garage.Select(1), "locked vehicle cannot be selected");
     Require(!garage.Unlock(1), "cannot unlock without earned credits");
     Require(garage.Credits() == 0, "initial balance empty");
@@ -64,7 +64,7 @@ int main()
     Require(!maxed.Upgrade(UpgradeKind::Engine), "engine capped at level three");
     Require(!maxed.Upgrade(UpgradeKind::Grip), "grip capped at level three");
     Require(!maxed.Unlock(2), "owned vehicle cannot be repurchased");
-    Require(!maxed.Unlock(3) && !maxed.Select(-1), "invalid id operations rejected");
+    Require(!maxed.Unlock(VehicleCount) && !maxed.Select(-1), "invalid id operations rejected");
 
     GarageState upgrades;
     upgrades.EarnCredits(3000);
@@ -111,12 +111,52 @@ int main()
             "negative ownership mask never grants free unlocks");
     Require(chooser.SelectedVehicle() == 0 && chooser.Credits() == 700,
             "corrupt ownership restores free car while preserving credits");
+    // Backward-compatible 3-car save masks must NOT auto-grant appended cars.
     chooser.Load({10000, 7, 2, 3, 3});
-    Require(chooser.NextLockedVehicle() == -1, "no remaining locked vehicles");
+    Require(chooser.Owns(0) && chooser.Owns(1) && chooser.Owns(2) &&
+            !chooser.Owns(3) && !chooser.Owns(4) && !chooser.Owns(5),
+            "legacy three-car ownership survives without free new unlocks");
+    Require(chooser.NextLockedVehicle() == 3, "legacy mask sees Tempest next");
+    Require(chooser.Unlock(3) && chooser.Credits() == 8200,
+            "Tempest costs 1800 earned credits");
+    Require(chooser.NextLockedVehicle() == 4 && chooser.Unlock(4) &&
+            chooser.Credits() == 5700, "Glider costs 2500 earned credits");
+    Require(chooser.NextLockedVehicle() == 5 && chooser.Unlock(5) &&
+            chooser.Credits() == 2300, "Nova costs 3400 earned credits");
+    Require(chooser.NextLockedVehicle() == -1, "all six vehicles now unlocked");
+    Require(chooser.Select(5) && chooser.NextOwnedVehicle() == 0,
+            "six-car selection wraps from Nova to starter");
+    GarageState allRestored;
+    allRestored.Load(chooser.Snapshot());
+    Require(allRestored.Owns(5) && allRestored.SelectedVehicle() == 5 &&
+            allRestored.Credits() == 2300,
+            "all new owned vehicle bits and selected ID survive restore");
     Require(chooser.NextUpgradeCost(UpgradeKind::Engine) == 0,
             "maxed engine has no upgrade price");
     Require(chooser.NextUpgradeCost(UpgradeKind::Grip) == 0,
             "maxed grip has no upgrade price");
+    GarageState future;
+    future.Load({1500, 0x7FFFFFFF, 99, 0, 0});
+    Require(future.Snapshot().OwnedVehicleMask == KnownVehicleMask &&
+            future.SelectedVehicle() == 0,
+            "future/unknown ownership bits removed and invalid selection rejected");
+    future.Load({1500, -1, 5, 0, 0});
+    Require(future.Snapshot().OwnedVehicleMask == 1 && !future.Owns(5) &&
+            future.SelectedVehicle() == 0,
+            "negative mask never becomes six free purchased cars");
+    for (int id = 0; id < VehicleCount; ++id)
+    {
+        const auto spec = GarageState::Definition(id);
+        Require(spec.Id == id && spec.UnlockCost >= 0 &&
+                std::isfinite(spec.Acceleration) && spec.Acceleration > 0.0 &&
+                std::isfinite(spec.Grip) && spec.Grip > 0.0 &&
+                std::isfinite(spec.TopSpeed) && spec.TopSpeed > 0.0,
+                "all six specs are finite and addressable by stable IDs");
+    }
+    Require(GarageState::Definition(3).UnlockCost == 1800 &&
+            GarageState::Definition(4).UnlockCost == 2500 &&
+            GarageState::Definition(5).UnlockCost == 3400,
+            "new appended unlock costs stable");
     std::cout << "Garage economy and profile tests passed.\n";
     return EXIT_SUCCESS;
 }
