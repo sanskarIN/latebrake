@@ -4,7 +4,6 @@ Reject malformed combined +ActionMappings rows before Windows/Android
 packaging. Unlike substring checks, this parses every mapping record and
 checks that native Pawn input bindings have separate configured mappings.
 """
-from collections import Counter
 from pathlib import Path
 import re
 import unittest
