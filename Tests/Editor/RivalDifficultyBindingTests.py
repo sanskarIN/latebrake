@@ -60,7 +60,7 @@ class RivalDifficultyBindingTests(unittest.TestCase):
             ("ApplyRivalDifficulty(", "YieldRivalToPlayer("),
             ("ApplyRivalDifficulty(", "ModerateRivalEngineHeatPace("),
             ("ApplyRivalDifficulty(", "SpinThrottleGuard.Apply("),
-            ("ApplyRivalDifficulty(", "SetAutonomousControls("),
+            ("ApplyRivalDifficulty(", "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)"),
         ):
             self.assertLess(tick.index(before), tick.index(after))
         for forbidden in (
