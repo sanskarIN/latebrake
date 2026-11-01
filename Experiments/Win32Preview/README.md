@@ -4,6 +4,8 @@
 
 ## V5 development changes
 
+- **Unreleased pit service source feature:** a marked trackside bay on all four 2D circuits now lets a stationary car hold **E** (keyboard) or **Y** (controller) for 2.5 seconds to repair up to 40 damage and replenish up to 50 nitro. Race time and rivals keep advancing. Leave the bay to rearm; service never credits a checkpoint or modifies the career save schema. [Policy, synthetic tests and Windows QA](../../docs/PREVIEW_PIT_SERVICE_QA.md).
+
 - Optional Windows **XInput controller** support without hard-requiring the DLL: tries `xinput1_4.dll`, `xinput1_3.dll`, then `xinput9_1_0.dll` **from Windows System32 only**, searches controller slots 0–3, and keeps keyboard/mouse available when none loads.
 - Left analog stick steering with ±18% deadzone/remapped full travel; RT proportional acceleration and LT proportional braking; LB reverses; A triggers nitro; X performs penalized recovery.
 - D-pad or left stick menu navigation; A selects, B returns, Start pauses/resumes. Analog menu navigation has a latch: no repeated selection changes from a held stick.
@@ -23,6 +25,7 @@
 | Steer | A / D, Left / Right | Left stick (analog) |
 | Nitro | Shift | A (during race) |
 | Recover (+5 sec) | K | X |
+| Pit service (stopped in PIT bay, 2.5s hold) | E | Y |
 | Pause/resume | P | Start |
 | Menu selection | Arrows / Enter / mouse | D-pad/stick / A |
 | Back | Escape / M | B |
