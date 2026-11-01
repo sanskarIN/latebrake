@@ -89,6 +89,12 @@ covered by C++20 and Unreal-source regression tests. Real UE 5.8
 rendering/physics QA remains necessary; see
 [drift combo QA](docs/DRIFT_COMBO_QA.md).
 
+**Unreleased HUD source development:** The expanded desktop Unreal instrument
+panel now includes a read-only **GATES credited / total** bar, updated only from
+accepted authoritative race checkpoint/lap counters. The new portable safety
+tests and source bindings do not constitute Unreal rendering or Windows
+installation QA. [Gate gauge QA](docs/RACE_GATE_PROGRESS_GAUGE_QA.md).
+
 ## What's in source today?
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.
