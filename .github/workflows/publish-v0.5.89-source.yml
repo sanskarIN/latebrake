@@ -30,8 +30,11 @@ jobs:
           ref: ${{ github.sha }}
       - name: Configure portable racing code
         run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      # Bounded compilation avoids oversubscribing macOS/Windows hosted
+      # workers with 126 simultaneous compiler processes. CTest still runs
+      # the ENTIRE source suite and all independent publication gates.
       - name: Compile all C++20 production policy tests
-        run: cmake --build Tests/Standalone/build --config Release --parallel
+        run: cmake --build Tests/Standalone/build --config Release --parallel 4
       - name: Run complete source test suite
         run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
       - name: Explicitly check race pit, vehicle body kits and established racing policies
