@@ -1489,3 +1489,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RacePitService COMMAND latebrake_race_pit_service_tests)
+
+# Cross-system stationary service uses the ACTUAL existing arcade damage,
+# tire-wear and nitro implementations without faking an Unreal runtime.
+add_executable(latebrake_race_pit_vehicle_tests RacePitVehicleServiceTests.cpp)
+target_include_directories(latebrake_race_pit_vehicle_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_pit_vehicle_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_pit_vehicle_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_pit_vehicle_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RacePitVehicleService COMMAND latebrake_race_pit_vehicle_tests)
