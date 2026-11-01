@@ -73,6 +73,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     if (!Mode || !Car)
     {
         WrongWayHint.Reset();
+        StuckHint.Reset();
         OffTrackHint.Reset();
         RivalProximityHint.Reset();
         RivalRelativeMotionHint.Reset();
@@ -639,6 +640,7 @@ void ALatebrakeRaceHUD::DrawHUD()
 #endif
         // Menu navigation must not retain an old driving-direction alert.
         WrongWayHint.Reset();
+        StuckHint.Reset();
         OffTrackHint.Reset();
         RivalProximityHint.Reset();
         RivalRelativeMotionHint.Reset();
@@ -754,6 +756,35 @@ void ALatebrakeRaceHUD::DrawHUD()
             DisplayLap, Race.GetRequiredLaps(),
             Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+    // Help a human recover from a possible obstacle deadlock: four seconds
+    // of qualified forward throttle with almost no physical movement.
+    // A separate read-only observation NEVER recovers or charges the car.
+    // The real R/RECOVER action still enforces its placement/penalty rules.
+    if (LastWayfindingPawn.Get() != Car ||
+        LastWayfindingSession != Mode->GetCheckpointSessionRevision() ||
+        LastWayfindingTeleport != Car->GetTeleportRevision())
+    {
+        StuckHint.Reset();
+    }
+    const FVector RecoveryHintPosition = Car->GetActorLocation();
+    const bool bRecoveryHintEligible =
+        Mode->IsCircuitReadyForGameplay() &&
+        Mode->IsRestartPlacementReady() &&
+        Mode->HasLocalPlayerDriver() && Mode->IsRaceStartGreen() &&
+        Car->IsRacePhysicsReady() && !Race.IsFinished() &&
+        !Mode->IsFocusLossGuardActive() && !Mode->IsManualRacePauseActive() &&
+        !UGameplayStatics::IsGamePaused(this);
+    const bool bPossiblyStuck = StuckHint.Observe({
+        static_cast<double>(GetWorld()->GetDeltaSeconds()),
+        static_cast<double>(RecoveryHintPosition.X),
+        static_cast<double>(RecoveryHintPosition.Y),
+        static_cast<double>(Car->GetSpeedKmH()) / 0.036,
+        Car->IsAttemptingForwardDrive(), bRecoveryHintEligible});
+    if (bPossiblyStuck)
+    {
+        Line(bTouchHUD ? TEXT("NO MOTION? TAP RECOVER (+5s)")
+                       : TEXT("NO MOTION? PRESS R TO RECOVER (+5s)"), Accent);
+    }
     // A genuinely guarded race-start sequence. Countdowns take a bounded
     // priority row only when track, physical player and grid are ready.
     // The authoritative clock / gate / physics / rival policies all use
@@ -936,6 +967,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         LastWayfindingTeleport != CurrentWayfindingTeleport)
     {
         WrongWayHint.Reset();
+        StuckHint.Reset();
         OffTrackHint.Reset();
         RivalProximityHint.Reset();
         RivalRelativeMotionHint.Reset();
