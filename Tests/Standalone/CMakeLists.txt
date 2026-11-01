@@ -1559,3 +1559,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehiclePaintRecipe COMMAND latebrake_vehicle_paint_recipe_tests)
+
+# The optional Unreal PIT bay outline must stay strictly inside the
+# physical service radius, on pavement and outside checkpoint authority.
+add_executable(latebrake_pit_bay_paint_tests PitBayPaintTests.cpp)
+target_include_directories(latebrake_pit_bay_paint_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_pit_bay_paint_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_pit_bay_paint_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_pit_bay_paint_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PitBayPaint COMMAND latebrake_pit_bay_paint_tests)
