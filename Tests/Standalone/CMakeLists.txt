@@ -1463,3 +1463,15 @@ else()
     target_compile_options(latebrake_garage_purchase_confirm_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GaragePurchaseConfirmation COMMAND latebrake_garage_purchase_confirm_tests)
+ 
+# Gameplay UX: a bounded, read-only, human forward-throttle stall hint.
+# No engine SDK, teleport, score or stored career data is touched by this test.
+add_executable(latebrake_stuck_recovery_hint_tests StuckRecoveryHintTests.cpp)
+target_include_directories(latebrake_stuck_recovery_hint_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_stuck_recovery_hint_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_stuck_recovery_hint_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_stuck_recovery_hint_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME StuckRecoveryHint COMMAND latebrake_stuck_recovery_hint_tests)
