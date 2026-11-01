@@ -104,6 +104,8 @@ public:
     float GetPersonalBestLapSeconds() const { return PersonalBestLapSeconds; }
     int32 GetCompletedRaceCount() const { return CompletedRaceCount; }
     int32 GetTotalCredits() const { return Garage.Credits(); }
+    // Read-only copy for the offline catalogue. No ownership or save mutation.
+    latebrake::GarageSnapshot GetGarageSnapshot() const { return Garage.Snapshot(); }
     int32 GetSelectedVehicleId() const { return Garage.SelectedVehicle(); }
     FString GetSelectedVehicleName() const;
     int32 GetEngineUpgradeLevel() const { return Garage.EngineLevel(); }

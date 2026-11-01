@@ -116,3 +116,23 @@ car selection thumbnails, readable stats on installed screens and a real
 3D showroom is still future work.
 
 See [six-car silhouette and migration QA](GARAGE_CAR_SILHOUETTES_QA.md).
+
+## Read-only full catalogue menu (November 2026)
+
+The Garage Canvas page now lists **all six** saved-ID car profiles rather
+than only the equipped car. Every row shows its ownership/lock status,
+in-game-credit unlock price, and whether current credits are sufficient.
+Only the first locked car is flagged as the next **Q** purchase: later
+locked cars cannot be skipped by clicking an informational line.
+Wide screens also show the projected Acceleration, Grip and Top Speed
+multipliers with **current shared upgrades**, while compact screens show
+shorter status rows. These are tuning projections, not measured driving
+performance.
+
+Garage purchase feedback stays near the beginning of the paginated menu
+so the eight-second second-press confirmation is visible without scrolling.
+Existing Up/Down detail pagination makes all rows accessible on shorter
+screens; keyboard E or existing menu SELECT still cycles only owned
+vehicles. This is a source-only UX improvement, **not** a finished
+production UMG showroom. See
+[garage catalogue QA](GARAGE_CATALOG_QA.md).
