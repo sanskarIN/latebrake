@@ -38,6 +38,41 @@ race finish/restart and zero unintended pit-service actions. Capture
 physical on-device footage/logs and actual package hashes. Cross-platform
 C++ tests and Python source checks cannot substitute for that evidence.
 
+## Pit driver guidance (unreleased source improvement)
+
+The real `RacePitService` state machine now reports a read-only
+`PitServiceGuidance` reason for each latest qualified physics observation.
+It explains *why* a held stop cannot advance, without granting repairs or
+changing the existing 2.5-second and 120 cm/s criteria.
+
+| Guidance | What the driver should do |
+| --- | --- |
+| Approach bay | Follow the PIT beacon and radar toward the inner south shoulder |
+| Slow down | Reduce measured planar speed to **at most 120 cm/s (~4.3 km/h)** |
+| Release throttle | Stop applying gas/reverse throttle |
+| Release nitro | Let go of boost while stopping |
+| Hold button | Hold P, gamepad Y, or the Android PIT HOLD pad continuously |
+| Servicing | Keep the qualifying hold until the progress reaches 100% |
+| No maintenance | Continue racing; the car does not need another service |
+| Exit to rearm | Drive completely out of the bay before returning |
+| Unavailable | Resume the race and recover qualified chassis data |
+
+The expanded desktop HUD shows the actual last service-status reason,
+rather than falsely telling a moving or boosting player simply to hold
+the button. Android's shared touch rectangle displays short instructions
+such as **PIT SLOW**, **LIFT GAS**, or **NO NITRO** and true progress.
+Unqualified frame data, menu/focus interruptions and a new race clear
+stale guidance. A completed service is acknowledged exactly once,
+after which the existing exit/re-enter requirement remains unchanged.
+
+The new portable `RacePitGuidance` tests cover blockers and priority
+when speed, throttle and nitro overlap; the original `RacePitService`
+tests still guard completion, single-visit repair restrictions and
+interruption reset. Source-binding tests assert that HUD-only code cannot
+repair the vehicle, teleport, grant credits or alter checkpoints. Licensed
+UE 5.8 compilation and actual Windows/Android gameplay tests remain
+mandatory before calling the updated HUD playable.
+
 ## Visible pit-bay pavement outline (unreleased source development)
 
 The existing overhead pit beacon identifies the general inner shoulder, but
