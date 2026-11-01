@@ -1008,16 +1008,41 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Line(FString::Printf(TEXT("PIT SERVICED %d | EXIT BAY TO REARM"),
                     Pit.StopCount()), Accent);
             }
-            else if (Car->GetCollisionDamage().DamageFraction() > 0.001 ||
-                     Car->GetTireCondition().WearFraction() > 0.03 ||
-                     Car->GetNitroBoost().ChargeFraction() < 0.99)
-            {
-                Line(FString::Printf(TEXT("PIT: HOLD P / Y  %.0f%% | STOP %d"),
-                    Pit.ProgressFraction() * 100.0, Pit.StopCount() + 1), Accent);
-            }
             else
             {
-                Line(TEXT("PIT BAY | NO SERVICE NEEDED"), Primary);
+                // Reflect actual last qualified RacePitService observation,
+                // not HUD-estimated speed or independent scoring rules.
+                switch (Pit.Guidance())
+                {
+                case latebrake::PitServiceGuidance::NoMaintenance:
+                    Line(TEXT("PIT BAY | NO SERVICE NEEDED"), Primary);
+                    break;
+                case latebrake::PitServiceGuidance::SlowDown:
+                    Line(TEXT("PIT: SLOW TO 4.3 KM/H OR LESS"), Accent);
+                    break;
+                case latebrake::PitServiceGuidance::ReleaseThrottle:
+                    Line(TEXT("PIT: RELEASE THROTTLE"), Accent);
+                    break;
+                case latebrake::PitServiceGuidance::ReleaseNitro:
+                    Line(TEXT("PIT: RELEASE NITRO"), Accent);
+                    break;
+                case latebrake::PitServiceGuidance::HoldButton:
+                    Line(TEXT("PIT: HOLD P / Y FOR 2.5 SECONDS"), Accent);
+                    break;
+                case latebrake::PitServiceGuidance::Servicing:
+                    Line(FString::Printf(
+                        TEXT("PIT: SERVICING %.0f%% | STOP %d"),
+                        Pit.ProgressFraction() * 100.0,
+                        Pit.StopCount() + 1), Accent);
+                    break;
+                case latebrake::PitServiceGuidance::Completed:
+                case latebrake::PitServiceGuidance::ExitToRearm:
+                    Line(TEXT("PIT: EXIT THE BAY BEFORE ANOTHER STOP"), Accent);
+                    break;
+                default:
+                    Line(TEXT("PIT: WAIT FOR RACE / PHYSICS READINESS"), Primary);
+                    break;
+                }
             }
         }
         else
@@ -1716,9 +1741,20 @@ void ALatebrakeRaceHUD::DrawHUD()
         // or a one-off repair command; a continuous original hold is
         // required by the portable finger-ownership and pit policies.
         const latebrake::RacePitService& MobilePit = Car->GetPitService();
+        const latebrake::PitServiceGuidance PitGuidance =
+            MobilePit.Guidance();
         const FString PitPadLabel =
-            Car->IsTouchPitHeld() && MobilePit.IsInBay() &&
-            MobilePit.IsArmed()
+            PitGuidance == latebrake::PitServiceGuidance::SlowDown
+                ? FString(TEXT("PIT SLOW"))
+            : PitGuidance == latebrake::PitServiceGuidance::ReleaseThrottle
+                ? FString(TEXT("LIFT GAS"))
+            : PitGuidance == latebrake::PitServiceGuidance::ReleaseNitro
+                ? FString(TEXT("NO NITRO"))
+            : PitGuidance == latebrake::PitServiceGuidance::NoMaintenance
+                ? FString(TEXT("PIT OK"))
+            : Car->IsTouchPitHeld() && MobilePit.IsInBay() &&
+              MobilePit.IsArmed() &&
+              PitGuidance == latebrake::PitServiceGuidance::Servicing
                 ? FString::Printf(TEXT("PIT %.0f%%"),
                     MobilePit.ProgressFraction() * 100.0)
                 : FString(TEXT("PIT HOLD"));
