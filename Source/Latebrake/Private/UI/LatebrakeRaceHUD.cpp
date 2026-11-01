@@ -1206,6 +1206,21 @@ void ALatebrakeRaceHUD::DrawHUD()
             }
         }
     }
+    // Optional SAME-GATE verified split timing on the true local clock.
+    // It never claims official standing or updates race timing.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        bRivalPositionVerified)
+    {
+        latebrake::RivalMatchedGateSplit Matched;
+        if (Mode->TryGetLatestRivalMatchedGateSplit(Matched))
+        {
+            Line(FString::Printf(
+                TEXT("SPLIT L%d G%d: RIVAL %+.2fs (NOT PLACE)"),
+                Matched.LapNumber, Matched.GateNumber,
+                Matched.RivalMinusPlayerSeconds),
+                Matched.RivalMinusPlayerSeconds < 0.0 ? Accent : Primary);
+        }
+    }
     if (RivalProximityHint.Update(
             Radar, GetWorld()->GetDeltaSeconds(),
             bWayfindingEligible && bRivalRace))
