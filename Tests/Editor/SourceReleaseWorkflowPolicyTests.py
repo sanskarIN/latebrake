@@ -99,7 +99,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         # Missing strings previously failed only after hours of macOS
         # builds had completed and blocked the v0.5.89 publication.
         marker_block = re.search(
-            r"for \\(const marker of \\[([\\s\\S]*?)\\]\\) \\{",
+            r"for \(const marker of \[([\s\S]*?)\]\) \{",
             source,
         )
         if not marker_block:
