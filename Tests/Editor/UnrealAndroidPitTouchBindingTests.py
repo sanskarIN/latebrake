@@ -25,8 +25,11 @@ class UnrealAndroidPitTouchBindingTests(unittest.TestCase):
     def test_exact_same_visible_and_hit_tested_pit_area(self):
         self.assertIn("TouchRect PitService;", self.layout)
         self.assertIn("return TouchControl::PitService;", self.layout)
-        self.assertIn("DrawPad(Pads.PitService, TEXT(\"PIT HOLD\"), Car->IsTouchPitHeld());",
+        self.assertIn("DrawPad(Pads.PitService, *PitPadLabel, Car->IsTouchPitHeld());",
                       self.hud)
+        self.assertIn("MobilePit.ProgressFraction() * 100.0", self.hud)
+        self.assertIn("MobilePit.IsInBay()", self.hud)
+        self.assertIn('TEXT("PIT HOLD")', self.hud)
         self.assertIn("IsTouchPitHeld() const noexcept", self.header)
         self.assertIn("TouchPit.IsHeld()", self.header)
 
