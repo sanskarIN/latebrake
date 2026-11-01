@@ -1,9 +1,30 @@
 # Latebrake engineering status
 
-**Updated:** 2026-10-31
-**Latest published milestone:** [v0.5.86 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86), independently verified at immutable commit `e2eee30df07191075d07327d3ba7b9e5a446583f`: exact tag/commit identity, published non-draft pre-release, source-only notes, and **zero executable assets**. Previous [v0.5.85](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.85) remains independently published source-only.
+**Updated:** 2026-11-01
+**Latest published milestone:** [v0.5.87 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87), independently verified at immutable commit `8e640f6ccb6b7000e74dede629d6c164a0901130`: source tag exactly matches a published, non-draft GitHub pre-release with **zero executable assets**. The previous [v0.5.86](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86) source pre-release remains available.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.87 published source-only milestone (not installed gameplay)
+
+- The real Unreal local-driver chassis now supports a race-local,
+  stationary 2.5-second **PIT SERVICE** hold using actual position,
+  measured speed, neutral throttle and pit authorization. Accepted stops
+  restore bounded synthetic collision damage, tire condition and nitro
+  charge; the desktop HUD shows eligibility guidance.
+- The default Unreal input mapping correctly separates Enter and left
+  mouse activation; a closed menu does not consume controller-Y pit
+  holds.
+- Six existing fictional garage cars acquire distinct **STREET, SPRINT,
+  GT, TRACK, TOURING, APEX** collision-free 3D body-kit proportions using
+  built-in engine primitives. No physical car model or realistic asset
+  pack was added.
+- [Public release notes](releases/v0.5.87.md) confirm the exact
+  **asset-free source snapshot**. This is not evidence of working Unreal
+  5.8 compilation, cooked circuit or installed Windows/Android driving.
+- **After the release:** PR #252 merged a small read-only PIT marker in
+  the expanded desktop race radar. The radar change is **unreleased
+  source development**, not part of the tagged v0.5.87 snapshot.
 
 ## v0.5.86 published source-only milestone (not installed gameplay)
 

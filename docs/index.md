@@ -9,14 +9,14 @@
   <div class="lb-hero-grid">
     <div><b>4</b><span>ordered circuit gates</span></div>
     <div><b>12</b><span>career events in source</span></div>
-    <div><b>3</b><span>fictional garage vehicles</span></div>
+    <div><b>6</b><span>fictional garage vehicles</span></div>
     <div><b>C++20</b><span>portable test core</span></div>
   </div>
 </div>
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>Latebrake is <strong>not a verified playable release</strong>. The independently verified latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86">v0.5.86</a>, a <strong>source-only pre-release with zero playable attachments</strong>. The shared player/rival chassis code now includes ENGINE HEAT and power fade, prior BRAKE HEAT and impact-impulse collision damage, and authored-circuit traction. Rival source pacing uses qualified thermal readings, with a separate VERIFIED GATE GAP advisory that never claims official race place. All earlier tire, nitro, drafting and grip systems remain source-only. <strong>No verified Windows EXE or Android APK/AAB is available.</strong> Licensed Unreal Engine 5.8/UHT compilation, a real cooked circuit and installed driving/device QA remain mandatory.</p>
+  <p>Latebrake is <strong>not a verified playable release</strong>. The independently verified latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87">v0.5.87</a>, a <strong>source-only pre-release with zero playable attachments</strong>. Recent C++ source development adds stationary pit service using the real Unreal car's measured state, correct independent keyboard/mouse menu bindings and six garage body-kit silhouettes made from built-in non-colliding primitives. The previous engine-heat, rival pacing, collision-damage, tire and drafting policies remain source-level. An optional desktop PIT radar marker was merged after the release and is not included in that tag. <strong>No verified Windows Unreal EXE or Android APK/AAB is available.</strong> Licensed Unreal Engine 5.8/UHT compilation, a real cooked circuit and installed driving/device QA remain mandatory.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 

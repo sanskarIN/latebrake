@@ -2,9 +2,9 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.86](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** GitHub independently verified the source-only tag at commit `e2eee30df07191075d07327d3ba7b9e5a446583f`, marked as a published pre-release with **zero executable assets**. The new source introduces shared race-local ENGINE HEAT and bounded motor power fade, autonomous RIVAL HEAT PACE and an explicitly non-ranking VERIFIED GATE GAP advisory from independently credited directional checkpoints. All features still require actual Unreal Engine 5.8/UHT compilation and driving qualification. **There is no verified Win64 EXE, Android APK/AAB, cooked map or installed gameplay. GitHub source archives are not installers.** [v0.5.86 release notes](docs/releases/v0.5.86.md) · [Engine-heat QA](docs/ARCADE_ENGINE_HEAT_QA.md) · [Rival pace QA](docs/RIVAL_ENGINE_HEAT_PACE_QA.md).
+> **Latest published: [v0.5.87](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** GitHub independently verified the tag at immutable commit `8e640f6ccb6b7000e74dede629d6c164a0901130`, a published, non-draft pre-release with **zero executable assets**. The source snapshot includes the real Unreal-pawn stationary **PIT SERVICE** code, a separate experimental 2D Windows-preview pit mechanic, corrected independent Enter/left-mouse menu mappings and six visually distinct engine-primitive car body kits. These features still require licensed Unreal Engine 5.8/UHT compilation and installed driving QA. **There is no verified Win64 Unreal EXE, Android APK/AAB, cooked map or installed gameplay. GitHub source archives are not installers.** [v0.5.87 release notes](docs/releases/v0.5.87.md) · [Pit-service QA](docs/UNREAL_PIT_SERVICE_QA.md) · [Body-kit QA](docs/VEHICLE_BODY_KITS_QA.md).
 
-**Unreleased six-car 3D body-kit source work:** the real Unreal car pawn
+**v0.5.87 six-car 3D body-kit source work:** the real Unreal car pawn
 now contains a per-car front splitter, two side skirts, rear diffuser,
 optional hood scoop and optional rear fins, all non-colliding, alongside
 the six existing garage silhouettes. The desktop garage catalogue identifies
