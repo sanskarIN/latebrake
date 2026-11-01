@@ -557,7 +557,8 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
             message("PIT COMPLETE / DRIVE OUT TO REARM");
         }
     }else race.pitHold=0.0f;
-    if(servicing)return; // No vehicle movement or gate credit during a pit hold.
+    // Only player movement is held; rivals and the race clock keep running.
+    if(!servicing){
     bool road=onroad(race.x,race.y);
     float driveDemand=maxf(forward?1.0f:0.0f,clamp(padGas,0,1));
     float serviceBrake=maxf(brake?1.0f:0.0f,clamp(padBrake,0,1));
@@ -588,6 +589,7 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
         race.x=clamp(race.x,12,WIDTH-12);race.y=clamp(race.y,59,HEIGHT-70);
         race.speed*=-0.15f;race.damage=clamp(race.damage+5,0,88);
     }
+    }
     for(int i=0;i<3;i++){
         Opponent& a=race.ai[i];
         float co=a.c,si=a.s;
@@ -607,7 +609,7 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     bool inAny=false;
     for(int g=0;g<4;g++)if(nearGate(g,race.x,race.y)&&onroad(race.x,race.y))inAny=true;
     if(!inAny)race.readyForGate=true;
-    if(race.readyForGate&&nearGate(race.nextGate,race.x,race.y)&&onroad(race.x,race.y)&&correctGateDirection(race.nextGate)){
+    if(!servicing&&race.readyForGate&&nearGate(race.nextGate,race.x,race.y)&&onroad(race.x,race.y)&&correctGateDirection(race.nextGate)){
         race.readyForGate=false;creditGate();
     }
     if((selectedChallenge==1&&race.elapsed>85.0f)||
@@ -1295,7 +1297,9 @@ static bool selftest(){
     race.speed=0.0f;
     update(0.03f,true,false,false,false,false,false,0,0,0,true);
     if(race.pitHold!=0.0f||race.pitStops!=0)return false;
+    float rivalBeforePit=race.ai[0].x;
     for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(absf(race.ai[0].x-rivalBeforePit)<0.1f)return false;
     if(race.pitStops!=1||race.damage>40.01f||race.nitro<59.9f||race.pitHold!=0.0f)return false;
     int pitGate=race.passes;
     for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
