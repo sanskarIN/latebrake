@@ -141,6 +141,9 @@ static bool lastEnter=false,lastBack=false,lastGarage=false,lastTracks=false,las
 static bool lastLeft=false,lastRight=false,lastUp=false,lastDown=false,lastUnlock=false;
 static bool lastHelp=false,lastContrast=false;
 static bool testing=false;
+// Headless self-test reports a coarse failing phase through the process exit
+// code. This makes CI failures actionable without changing GUI output/saves.
+static unsigned int selfTestStage=3;
 static char toast[72]="";
 static const char* carNames[6]={"COMET GT","DUNE BUGGY","NIGHTFALL","VOLT RALLY","APEX V12","PHANTOM R"};
 static const int carPrices[6]={0,140,280,450,750,1100};
@@ -1215,7 +1218,7 @@ static DWORD __stdcall mockXInputState(DWORD user,PadPacket* state){
     *state=mockPacket;return 0;
 }
 static bool selftest(){
-    testing=true;
+    testing=true;selfTestStage=10;
     selectedTrack=0;selectedCar=0;selectedChallenge=0;
     beginRace();
     if(page!=RACING||race.lap!=1||race.nextGate!=0||race.nitro!=100)return false;
@@ -1283,14 +1286,15 @@ static bool selftest(){
     advanceRaceFixed(1.0f/120.0f,true,false,false,false,false,false);
     advanceRaceFixed(1.0f/120.0f,true,false,false,false,false,false);
     if(absf(race.elapsed-twoTicks)>0.0001f||absf(race.speed-twoTicksSpeed)>0.0001f)return false;
+    selfTestStage=40;
     // Deliberate stationary pit servicing: location, held input, valid race
     // clock, single-stop latch, and drive-out rearm are synthetic policies.
-    beginRace();
+    beginRace();selfTestStage=41;
     float pitX,pitY;pitPoint(&pitX,&pitY);
     race.x=pitX;race.y=pitY;race.damage=70.0f;
     update(0.03f,false,false,false,false,false,false,0,0,0,true);
     if(race.pitHold!=0.0f||race.pitStops!=0)return false; // Pre-GO pit lock.
-    countdown=0;
+    countdown=0;selfTestStage=42;
     if(!inPitBay(pitX,pitY))return false;
     race.x=pitX;race.y=pitY;race.damage=80.0f;race.nitro=10.0f;
     update(0.03f,false,false,false,false,false,false,0,0,0,false);
@@ -1301,19 +1305,25 @@ static bool selftest(){
     race.speed=0.0f;
     update(0.03f,true,false,false,false,false,false,0,0,0,true);
     if(race.pitHold!=0.0f||race.pitStops!=0)return false;
+    selfTestStage=43;
     float rivalBeforePit=race.ai[0].x;
     for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
     if(absf(race.ai[0].x-rivalBeforePit)<0.1f)return false;
+    selfTestStage=44;
     if(race.pitStops!=1||race.damage>40.01f||race.nitro<59.9f||race.pitHold!=0.0f)return false;
+    selfTestStage=45;
     int pitGate=race.passes;
     for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
     if(race.pitStops!=1||race.passes!=pitGate)return false;
+    selfTestStage=46;
     race.x=pitX+100.0f;race.y=pitY;
     update(0.03f,false,false,false,false,false,false,0,0,0,true);
     if(!race.pitReady||race.pitHold!=0.0f)return false;
+    selfTestStage=47;
     race.x=pitX;race.y=pitY;race.speed=0;
     for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
     if(race.pitStops!=2||race.damage>0.01f||race.nitro<99.9f)return false;
+    selfTestStage=48;
     beginRace();countdown=0;
     float oldElapsed=race.elapsed;int oldGate=race.nextGate;
     recoverToLastCheckpoint();
@@ -1329,6 +1339,7 @@ static bool selftest(){
     UISettingsV4 newer={0x34424955u,4u,0u,1u,2u,1u,0u,0u};
     newer.checksum=uiChecksumV4(newer);newer.assist=1;
     if(newer.checksum==uiChecksumV4(newer))return false;
+    selfTestStage=60;
     // Tests independent of a connected controller or Windows device.
     if(normalAxis(0)!=0.0f||normalAxis(1400)!=0.0f||
        normalAxis(-1400)!=0.0f||normalAxis(32767)<0.99f||
@@ -1386,11 +1397,12 @@ static bool selftest(){
     mockPacket={};pollPad();
     mockPacket.controls.buttons=PAD_A;
     if(!pollPad().confirm)return false;
+    selfTestStage=70;
     xinputRead=originalReader;padConnected=false;
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }
 extern "C" void mainCRTStartup(){
-    if(hasSelfTestFlag(GetCommandLineA()))ExitProcess(selftest()?0:3);
+    if(hasSelfTestFlag(GetCommandLineA()))ExitProcess(selftest()?0:selfTestStage);
     loadProgress();loadSettings();loadLapRecords();drawTrack();initializePad();
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSA wc={};wc.style=0x0003;wc.proc=WindowProc;wc.instance=instance;wc.name="LateBrakePreviewNative";
