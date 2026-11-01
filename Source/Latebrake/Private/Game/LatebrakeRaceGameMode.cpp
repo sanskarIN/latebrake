@@ -33,6 +33,7 @@
 #include "Racing/BestLapGhost.h"
 #include "Racing/GhostSeparation.h"
 #include "Track/CircuitLayout.h"
+#include "Track/PitBayPaintLayout.h"
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
 #include "Track/CircuitStartupAudit.h"
@@ -691,6 +692,82 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             else
             {
                 PitBeacon->Destroy();
+            }
+        }
+    }
+
+    // Optional visual outline for the ACTUAL physical pit service bay.
+    // One instance holder with eight non-colliding pavement stripes gives
+    // spatial feedback without touching the nine collision-bearing blocks,
+    // the required four checkpoints, or physical service eligibility.
+    if (DecorationMesh)
+    {
+        FActorSpawnParameters MarkParameters;
+        MarkParameters.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        AActor* PaintHolder = GetWorld()->SpawnActor<AActor>(
+            AActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator,
+            MarkParameters);
+        if (PaintHolder)
+        {
+#if WITH_EDITOR
+            PaintHolder->SetActorLabel(TEXT("LatebrakePitBayPaint"));
+#endif
+            USceneComponent* PaintRoot = NewObject<USceneComponent>(
+                PaintHolder, TEXT("PitPaintRoot"));
+            if (PaintRoot)
+            {
+                PaintRoot->SetMobility(EComponentMobility::Static);
+                PaintHolder->SetRootComponent(PaintRoot);
+                PaintHolder->AddInstanceComponent(PaintRoot);
+                PaintRoot->RegisterComponent();
+                UInstancedStaticMeshComponent* Marks =
+                    NewObject<UInstancedStaticMeshComponent>(
+                        PaintHolder, TEXT("PitBayMarks"));
+                if (Marks)
+                {
+                    Marks->SetupAttachment(PaintRoot);
+                    Marks->SetMobility(EComponentMobility::Static);
+                    Marks->SetStaticMesh(DecorationMesh);
+                    Marks->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+                    Marks->SetGenerateOverlapEvents(false);
+                    Marks->SetCanEverAffectNavigation(false);
+                    Marks->SetCastShadow(false);
+                    Marks->PreAllocateInstancesMemory(
+                        latebrake::PitBayPaintMarkCount);
+                    PaintHolder->AddInstanceComponent(Marks);
+                    Marks->RegisterComponent();
+                    if (UMaterialInstanceDynamic* PaintMaterial =
+                            Marks->CreateAndSetMaterialInstanceDynamic(0))
+                    {
+                        PaintMaterial->SetVectorParameterValue(
+                            TEXT("Color"), FLinearColor(0.18f, 0.96f, 0.77f));
+                    }
+                    int32 Added = 0;
+                    for (int32 Index = 0;
+                         Index < latebrake::PitBayPaintMarkCount; ++Index)
+                    {
+                        const latebrake::PitBayPaintMark Mark =
+                            latebrake::PlannedPitBayPaintMark(Index);
+                        if (!Mark.Valid) continue;
+                        const FTransform Transform(
+                            FRotator(0.f,
+                                static_cast<float>(Mark.YawDegrees), 0.f),
+                            FVector(Mark.Center.X, Mark.Center.Y, Mark.Height),
+                            FVector(Mark.ScaleX, Mark.ScaleY, Mark.ScaleZ));
+                        if (Marks->AddInstance(Transform, false) >= 0)
+                        {
+                            ++Added;
+                        }
+                    }
+                    // A marker creation issue must be visible in installed
+                    // logs, but cosmetics never silently authorize physics.
+                    UE_LOG(LogLatebrakeStartup,
+                        Added == latebrake::PitBayPaintMarkCount
+                            ? Display : Warning,
+                        TEXT("LATEBRAKE_PIT_BAY_PAINT marks=%d/%d collision=off"),
+                        Added, latebrake::PitBayPaintMarkCount);
+                }
             }
         }
     }
