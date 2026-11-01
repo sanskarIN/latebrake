@@ -96,6 +96,14 @@ public:
     bool IsTouchThrottleActive() const { return TouchDrive.ThrottleActive(); }
     bool IsTouchBrakeActive() const { return TouchDrive.BrakeActive(); }
     bool IsHandbrakeHeld() const noexcept { return bHandbrakeHeld; }
+    // Read-only HUMAN driver intent for an optional recovery hint.
+    // A held brake/handbrake never means the player is trying to advance.
+    bool IsAttemptingForwardDrive() const noexcept
+    {
+        return ((FMath::IsFinite(Throttle) && Throttle > 0.55f) ||
+                TouchDrive.ThrottleActive()) &&
+            !bBraking && !TouchDrive.BrakeActive() && !bHandbrakeHeld;
+    }
     const latebrake::ArcadeNitroBoost& GetNitroBoost() const noexcept { return NitroBoost; }
     const latebrake::HumanSpinAssistMeter& GetSpinAssist() const noexcept { return SpinAssist; }
 
