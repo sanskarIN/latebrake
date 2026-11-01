@@ -35,9 +35,12 @@ closed-menu input handler from erasing a live pit-service hold.
 
 ## Important limitations
 
-- The visual bay has no authored sign, safety barrier, pit crew animation,
-  sound or custom `.umap` geometry yet. The HUD is initial wayfinding,
-  **not a finished visual pit lane**.
+- The generated circuit includes an **optional, non-colliding colored
+  pit beacon** on the inside edge near the bay and the HUD provides initial
+  wayfinding. There is still no authored text sign, safety barrier, pit
+  crew animation, sound, custom `.umap` geometry or finished visual pit lane.
+  Its absence must never claim track collision/startup readiness or affect
+  lap timing. Real rendering and contrast require live Unreal QA.
 - This cannot repair damage outside the bay, create car ownership, alter
   unlock costs, award checkpoint credits, change record files, teleport
   the driver, or pause the official racing clock. Race-only chassis/
@@ -68,8 +71,9 @@ contracts only.
 
 1. Compile genuine UE 5.8 Editor/Win64 with UHT and launch a real generated
    circuit map; ensure there are no compilation errors or actors missing.
-2. Visually confirm that inner south shoulder is reachable, paved and
-   clear of checkpoint gates and AI centerline. Hold P at less than
+2. Visually confirm that the colored nonblocking pit beacon appears and
+   inner south shoulder is reachable, paved and clear of checkpoint gates
+   and AI centerline. Confirm the beacon cannot stop or damage the car. Hold P at less than
    4.32 km/h without throttle. Run the same sequence on gamepad Y.
 3. Create genuine damage and spent nitro in a race, then verify one 2.5s
    pit completion restores only the bounded amount and race clock
