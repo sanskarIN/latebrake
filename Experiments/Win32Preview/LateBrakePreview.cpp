@@ -124,7 +124,7 @@ static const unsigned short PAD_UP=0x0001,PAD_DOWN=0x0002,PAD_LEFT=0x0004,
     PAD_A=0x1000,PAD_B=0x2000,PAD_X=0x4000,PAD_Y=0x8000;
 struct PadControls {
     bool connected,confirm,back,pause,recover,navUp,navDown,navLeft,navRight;
-    bool boost,reverse;
+    bool boost,reverse,service;
     float gas,brake,steer;
 };
 static int recoveries=0;
@@ -141,6 +141,9 @@ static bool lastEnter=false,lastBack=false,lastGarage=false,lastTracks=false,las
 static bool lastLeft=false,lastRight=false,lastUp=false,lastDown=false,lastUnlock=false;
 static bool lastHelp=false,lastContrast=false;
 static bool testing=false;
+// Headless self-test reports a coarse failing phase through the process exit
+// code. This makes CI failures actionable without changing GUI output/saves.
+static unsigned int selfTestStage=3;
 static char toast[72]="";
 static const char* carNames[6]={"COMET GT","DUNE BUGGY","NIGHTFALL","VOLT RALLY","APEX V12","PHANTOM R"};
 static const int carPrices[6]={0,140,280,450,750,1100};
@@ -215,6 +218,7 @@ static PadControls pollPad(){
     result.confirm=(fresh&PAD_A)!=0;result.back=(fresh&PAD_B)!=0;
     result.pause=(fresh&PAD_START)!=0;result.recover=(fresh&PAD_X)!=0;
     result.boost=(down&PAD_A)!=0;result.reverse=(down&PAD_LB)!=0;
+    result.service=(down&PAD_Y)!=0;
     result.navUp=(fresh&PAD_UP)!=0;result.navDown=(fresh&PAD_DOWN)!=0;
     result.navLeft=(fresh&PAD_LEFT)!=0;result.navRight=(fresh&PAD_RIGHT)!=0;
     result.gas=normalTrigger(raw.controls.rightTrigger);
@@ -433,11 +437,24 @@ static void gatePos(int idx,float* x,float* y){
     static const float c[4]={-1,0,1,0},s[4]={0,-1,0,1};
     shapePos(c[idx],s[idx],x,y);
 }
+// The service bay is anchored to each procedural track, not to the UI viewport.
+static void pitPoint(float* x,float* y){
+    // The marked bay is on the INNER paved shoulder rather than in the
+    // rival center-line driving path (which would cause unavoidable impacts).
+    float cx,cy;shapePos(0.26f,0.965f,&cx,&cy);
+    *x=CX+(cx-CX)*0.81f;*y=CY+(cy-CY)*0.81f;
+}
+static bool inPitBay(float x,float y){
+    float px,py;pitPoint(&px,&py);
+    float dx=x-px,dy=y-py;
+    return dx*dx+dy*dy<30.0f*30.0f &&
+        onroad(x,y) && trackOffset(x,y)<-0.09f;
+}
 struct Opponent { float c,s,x,y,speed,stun; int rounds; };
 struct Race {
-    float x,y,fx,fy,speed,nitro,damage,elapsed,lapStart,best,smoothedSteer;
-    int lap,nextGate,passes;
-    bool finished,readyForGate,awarded,won;
+    float x,y,fx,fy,speed,nitro,damage,elapsed,lapStart,best,smoothedSteer,pitHold;
+    int lap,nextGate,passes,pitStops;
+    bool finished,readyForGate,awarded,won,pitReady;
     Opponent ai[3];
 };
 static Race race;
@@ -448,7 +465,7 @@ static void beginRace(){
         page=GARAGE;message("UNLOCK THIS CAR TO DRIVE IT");return;
     }
     race.nitro=100.0f;race.lap=1;race.nextGate=0;
-    totalLaps=totalLapsForMode();race.readyForGate=true;
+    totalLaps=totalLapsForMode();race.readyForGate=true;race.pitReady=true;
     float x,y;shapePos(0.0f,1.0f,&x,&y);
     race.x=x+11.0f;race.y=y-4.0f;race.fx=-1.0f;race.fy=0.0f;
     for(int i=0;i<3;i++){
@@ -524,13 +541,33 @@ static void recoverToLastCheckpoint(){
     message("RECOVERED / +5 SEC PENALTY");
 }
 static void update(float dt,bool forward,bool reverse,bool left,bool right,bool brake,bool boost,
-                   float padSteer=0.0f,float padGas=0.0f,float padBrake=0.0f){
+                   float padSteer=0.0f,float padGas=0.0f,float padBrake=0.0f,bool pitService=false){
     if(race.finished)return;
     dt=clamp(dt,0.0f,0.045f);
     if(countdown>0){countdown=maxf(0,countdown-dt);return;}
     if(countdownGo>0)countdownGo=maxf(0,countdownGo-dt);
     race.elapsed+=dt;gameTime+=dt;
     if(gateFlash>0)gateFlash-=dt;
+    // A stationary, deliberate hold services the car only inside the marked bay.
+    // A completed stop must leave the bay before it can be repeated. This never
+    // changes checkpoints, race outcome, saves or earned credits directly.
+    const bool insidePit=inPitBay(race.x,race.y);
+    if(!insidePit){race.pitHold=0.0f;race.pitReady=true;}
+    const bool servicing=insidePit && race.pitReady && pitService &&
+        absf(race.speed)<16.0f && !forward && !reverse &&
+        padGas<0.05f && !boost && (race.damage>0.0f || race.nitro<100.0f);
+    if(servicing){
+        race.speed=0.0f;race.smoothedSteer=0.0f;
+        race.pitHold=minf(2.5f,race.pitHold+dt);
+        if(race.pitHold>=2.5f){
+            race.damage=maxf(0.0f,race.damage-40.0f);
+            race.nitro=minf(100.0f,race.nitro+50.0f);
+            race.pitStops++;race.pitReady=false;race.pitHold=0.0f;
+            message("PIT COMPLETE / DRIVE OUT TO REARM");
+        }
+    }else race.pitHold=0.0f;
+    // Only player movement is held; rivals and the race clock keep running.
+    if(!servicing){
     bool road=onroad(race.x,race.y);
     float driveDemand=maxf(forward?1.0f:0.0f,clamp(padGas,0,1));
     float serviceBrake=maxf(brake?1.0f:0.0f,clamp(padBrake,0,1));
@@ -561,6 +598,7 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
         race.x=clamp(race.x,12,WIDTH-12);race.y=clamp(race.y,59,HEIGHT-70);
         race.speed*=-0.15f;race.damage=clamp(race.damage+5,0,88);
     }
+    }
     for(int i=0;i<3;i++){
         Opponent& a=race.ai[i];
         float co=a.c,si=a.s;
@@ -580,7 +618,7 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     bool inAny=false;
     for(int g=0;g<4;g++)if(nearGate(g,race.x,race.y)&&onroad(race.x,race.y))inAny=true;
     if(!inAny)race.readyForGate=true;
-    if(race.readyForGate&&nearGate(race.nextGate,race.x,race.y)&&onroad(race.x,race.y)&&correctGateDirection(race.nextGate)){
+    if(!servicing&&race.readyForGate&&nearGate(race.nextGate,race.x,race.y)&&onroad(race.x,race.y)&&correctGateDirection(race.nextGate)){
         race.readyForGate=false;creditGate();
     }
     if((selectedChallenge==1&&race.elapsed>85.0f)||
@@ -631,6 +669,10 @@ static void drawTrack(){
         }else line((int)x0,(int)y0,(int)x1,(int)y1,3,color(93,175,223));
         (void)gx;(void)gy;
     }
+    float px,py;pitPoint(&px,&py);
+    dot((int)px,(int)py,24,color(15,71,71));
+    dot((int)px,(int)py,19,color(40,119,106));
+    text((int)px-10,(int)py-4,"PIT",color(245,242,215),1);
     for(int i=0;i<WIDTH*HEIGHT;i++)backdrop[i]=frame[i];
 }
 static void drawCar(float x,float y,float fx,float fy,unsigned int body,unsigned int nose){
@@ -903,6 +945,9 @@ static void renderRaceHUDV3(){
     text(164,122,"/",MUTED(),1);number(180,117,totalLaps,GOLD(),2);
     hint(31,154,"NEXT CHECKPOINT");number(202,148,race.nextGate+1,CYAN(),2);
     hint(31,181,"ELAPSED SECONDS");number(181,177,(int)race.elapsed,CREAM(),2);
+    if(race.pitHold>0.0f){
+        hint(31,207,"PIT SERVICE");progressBar(133,203,93,12,(int)(race.pitHold*40.0f),CYAN());
+    }else hint(31,207,"PIT: STOP + HOLD E / Y");
     tile(728,72,216,162,false);
     hint(744,85,"VEHICLE STATUS");
     text(744,108,carNames[selectedCar],CREAM(),1);
@@ -925,10 +970,10 @@ static void renderRaceHUDV3(){
     rect(0,583,WIDTH,57,NAVY());
     if(padConnected){
         hint(20,594,"PAD RT GAS  LT BRAKE  STICK STEER  A NITRO  LB REVERSE  X RECOVER");
-        hint(20,616,"PAD START PAUSE  B BACK  /  KEYBOARD WASD  F1 HELP  J ASSIST");
+        hint(20,616,"PAD Y PIT SERVICE  START PAUSE  B BACK  /  KEYBOARD WASD  F1 HELP");
     } else {
         hint(20,594,"W/UP ACCELERATE    A/D STEER    SPACE BRAKE    SHIFT NITRO    P PAUSE");
-        hint(20,616,"R RESTART    K RECOVER +5S    J STEER ASSIST    F1 HELP    P PAUSE");
+        hint(20,616,"E PIT SERVICE    R RESTART    K RECOVER +5S    J STEER ASSIST    F1 HELP");
     }
     hint(30,476,steeringAssist?"STEER ASSIST: ON  [J]":"STEER ASSIST: OFF [J]");
     if(!onroad(race.x,race.y)){
@@ -956,6 +1001,7 @@ static void overlayHelp(){
     text(205,367,"R            RESTART RACE",CREAM(),2);
     text(205,396,"K            RECOVER / +5 SEC",CREAM(),2);
     text(205,425,"J            STEERING ASSIST",CREAM(),2);
+    hint(205,446,"STOP INSIDE MARKED PIT AND HOLD E / PAD Y FOR 2.5 SEC");
     hint(205,457,"PAD: RT GAS / LT BRAKE / STICK STEER / A NITRO / START PAUSE");
     uiButton(206,481,546,39,"F1 / ESC  CLOSE GUIDE",false);
 }
@@ -966,6 +1012,7 @@ static void resultsOverlayV3(){
     hint(264,259,"RACE TIME");number(468,253,(int)race.elapsed,CREAM(),3);
     hint(264,289,"BEST LAP");number(468,286,(int)race.best,CYAN(),2);
     hint(264,322,"REWARD CREDITS");number(476,315,bonusCredits,GOLD(),3);
+    hint(264,344,"PIT STOPS");number(383,341,race.pitStops,CYAN(),1);
     uiButton(263,359,429,43,"ENTER  RETRY EVENT",true);
     uiButton(263,415,206,43,"M  HOME",false);
     uiButton(486,415,206,43,"G  GARAGE",false);
@@ -1060,11 +1107,11 @@ static void mouseClick(int x,int y){
     }
 }
 static void advanceRaceFixed(float wallDt,bool gas,bool reverse,bool left,bool right,bool brake,bool boost,
-                             float padSteer=0.0f,float padGas=0.0f,float padBrake=0.0f){
+                             float padSteer=0.0f,float padGas=0.0f,float padBrake=0.0f,bool pitService=false){
     const float fixed=1.0f/120.0f;
     fixedFrameCarry+=clamp(wallDt,0,0.1f);
     for(int i=0;i<12&&fixedFrameCarry>=fixed&&page==RACING;i++){
-        update(fixed,gas,reverse,left,right,brake,boost,padSteer,padGas,padBrake);
+        update(fixed,gas,reverse,left,right,brake,boost,padSteer,padGas,padBrake,pitService);
         fixedFrameCarry-=fixed;
     }
     if(page!=RACING)fixedFrameCarry=0;
@@ -1104,7 +1151,7 @@ static void step(float dt){
             // Bounded catch-up protects against catastrophic window hitches.
             advanceRaceFixed(dt,key('W')||key(0x26),key('S')||key(0x28)||pad.reverse,
                 key('A')||key(0x25),key('D')||key(0x27),key(0x20),key(0x10)||pad.boost,
-                pad.steer,pad.gas,pad.brake);
+                pad.steer,pad.gas,pad.brake,key('E')||pad.service);
         }else fixedFrameCarry=0;
     }else if(page==RESULTS){
         if(enter||rp){beginRace();return;}
@@ -1177,7 +1224,7 @@ static DWORD __stdcall mockXInputState(DWORD user,PadPacket* state){
     *state=mockPacket;return 0;
 }
 static bool selftest(){
-    testing=true;
+    testing=true;selfTestStage=10;
     selectedTrack=0;selectedCar=0;selectedChallenge=0;
     beginRace();
     if(page!=RACING||race.lap!=1||race.nextGate!=0||race.nitro!=100)return false;
@@ -1245,6 +1292,49 @@ static bool selftest(){
     advanceRaceFixed(1.0f/120.0f,true,false,false,false,false,false);
     advanceRaceFixed(1.0f/120.0f,true,false,false,false,false,false);
     if(absf(race.elapsed-twoTicks)>0.0001f||absf(race.speed-twoTicksSpeed)>0.0001f)return false;
+    selfTestStage=40;
+    // Deliberate stationary pit servicing: location, held input, valid race
+    // clock, single-stop latch, and drive-out rearm are synthetic policies.
+    beginRace();selfTestStage=41;
+    float pitX,pitY;pitPoint(&pitX,&pitY);
+    race.x=pitX;race.y=pitY;race.damage=70.0f;
+    update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(race.pitHold!=0.0f||race.pitStops!=0)return false; // Pre-GO pit lock.
+    countdown=0;selfTestStage=42;
+    if(!inPitBay(pitX,pitY))return false;
+    float centerX,centerY;shapePos(0.26f,0.965f,&centerX,&centerY);
+    if(inPitBay(centerX,centerY))return false; // Racing line is not a pit bay.
+    race.x=pitX;race.y=pitY;race.damage=80.0f;race.nitro=10.0f;
+    update(0.03f,false,false,false,false,false,false,0,0,0,false);
+    if(race.pitHold!=0.0f||race.pitStops!=0)return false;
+    race.speed=25.0f;
+    update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(race.pitHold!=0.0f||race.pitStops!=0)return false;
+    race.speed=0.0f;
+    update(0.03f,true,false,false,false,false,false,0,0,0,true);
+    if(race.pitHold!=0.0f||race.pitStops!=0)return false;
+    selfTestStage=43;
+    float rivalBeforePit=race.ai[0].x;
+    for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(absf(race.ai[0].x-rivalBeforePit)<0.1f)return false;
+    selfTestStage=44;
+    if(race.pitStops!=1||race.damage>40.01f||race.nitro<59.9f||race.pitHold!=0.0f)return false;
+    selfTestStage=45;
+    int pitGate=race.passes;
+    for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(race.pitStops!=1||race.passes!=pitGate)return false;
+    selfTestStage=46;
+    race.x=pitX+100.0f;race.y=pitY;
+    update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(!race.pitReady||race.pitHold!=0.0f)return false;
+    selfTestStage=47;
+    race.x=pitX;race.y=pitY;race.speed=0;
+    for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(race.pitStops!=2){selfTestStage=90u+(unsigned)race.pitStops;return false;}
+    if(race.damage>0.01f){selfTestStage=101;return false;}
+    if(race.nitro<99.9f){selfTestStage=102;return false;}
+    selfTestStage=50;
+    beginRace();countdown=0;
     float oldElapsed=race.elapsed;int oldGate=race.nextGate;
     recoverToLastCheckpoint();
     if(race.elapsed<oldElapsed+4.99f||race.nextGate!=oldGate||
@@ -1259,6 +1349,7 @@ static bool selftest(){
     UISettingsV4 newer={0x34424955u,4u,0u,1u,2u,1u,0u,0u};
     newer.checksum=uiChecksumV4(newer);newer.assist=1;
     if(newer.checksum==uiChecksumV4(newer))return false;
+    selfTestStage=60;
     // Tests independent of a connected controller or Windows device.
     if(normalAxis(0)!=0.0f||normalAxis(1400)!=0.0f||
        normalAxis(-1400)!=0.0f||normalAxis(32767)<0.99f||
@@ -1289,13 +1380,13 @@ static bool selftest(){
     activePadUser=4;hasWindowFocus=true;padRequireNeutral=true;
     mockPacket={};mockStatus=0;mockUser=0;
     if(!pollPad().connected)return false;
-    mockPacket.controls.buttons=PAD_A|PAD_START;
+    mockPacket.controls.buttons=PAD_A|PAD_START|PAD_Y;
     mockPacket.controls.rightTrigger=255;
     mockPacket.controls.lx=32767;
     PadControls first=pollPad();
-    if(!first.confirm||!first.pause||!first.boost||first.gas<0.99f||first.steer<0.99f)return false;
+    if(!first.confirm||!first.pause||!first.boost||!first.service||first.gas<0.99f||first.steer<0.99f)return false;
     PadControls held=pollPad();
-    if(held.confirm||held.pause||!held.boost)return false;
+    if(held.confirm||held.pause||!held.boost||!held.service)return false;
     mockStatus=1167;
     if(pollPad().connected)return false;
     mockStatus=0;
@@ -1316,11 +1407,12 @@ static bool selftest(){
     mockPacket={};pollPad();
     mockPacket.controls.buttons=PAD_A;
     if(!pollPad().confirm)return false;
+    selfTestStage=70;
     xinputRead=originalReader;padConnected=false;
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }
 extern "C" void mainCRTStartup(){
-    if(hasSelfTestFlag(GetCommandLineA()))ExitProcess(selftest()?0:3);
+    if(hasSelfTestFlag(GetCommandLineA()))ExitProcess(selftest()?0:selfTestStage);
     loadProgress();loadSettings();loadLapRecords();drawTrack();initializePad();
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSA wc={};wc.style=0x0003;wc.proc=WindowProc;wc.instance=instance;wc.name="LateBrakePreviewNative";
