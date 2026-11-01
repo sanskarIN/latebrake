@@ -2,6 +2,27 @@
 
 This page distinguishes source-level features from tested game builds. All gameplay below describes code in the repository, **not confirmed functionality of an installed game**.
 
+## Pit radar, Android PIT HOLD and six paints (v0.5.88 source-only)
+
+The verified [v0.5.88](releases/v0.5.88.md) pre-release
+has the real physical pit-service coordinates projected on the expanded
+north-up desktop race radar, independent of checkpoint and scoring.
+Android gains a dedicated PIT HOLD touch pad, which requires a new
+eligible original finger-down and cancels on release, drag out,
+viewport changes, pause, menu or focus interruption. The existing
+stationary **2.5-second** service rules remain authoritative.
+
+The six original fictional cars also have independent paint identities:
+**Sky Blue, Ember Orange, Electric Violet, Racing Scarlet, Sea Glass
+and Solar Yellow**. Material overrides are wired to the Unreal pawn,
+but **actual colors are not verified in a UE5.8 render** because the
+engine's basic-shape material parameter must be checked on a licensed
+Editor installation. No real-car assets were added.
+
+The race driver's more specific pit eligibility feedback was merged
+**after** the v0.5.88 tag. The physical pit marking PR is additional
+unreleased development. The project is not a playable packaged game.
+
 ## Experimental pit service and six car body kits (v0.5.87 source-only)
 
 The physical Unreal player-car pawn can request a **2.5-second** pit
@@ -19,10 +40,10 @@ recipes using built-in Unreal mesh primitives. These are not licensed
 realistic vehicle assets, and game-installed appearance is unverified.
 [Original body kits and real-game QA](VEHICLE_BODY_KITS_QA.md).
 
-An optional **PIT** marker was added to the expanded desktop north-up
-race radar **after** v0.5.87 was published; it is newer, unreleased
-source work. It uses the exact pit-service world location and never
-modifies scoring, position, pit eligibility or movement.
+The optional **PIT** marker is part of published v0.5.88 source,
+uses the exact pit-service world location and never modifies scoring,
+position, eligibility or movement. It has not been verified inside
+a cooked Unreal map.
 
 ## Start lights (v0.5.75 source-only pre-release)
 
