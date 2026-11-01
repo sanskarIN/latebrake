@@ -762,11 +762,18 @@ void ALatebrakeRaceGameMode::BuildCircuit()
                     }
                     // A marker creation issue must be visible in installed
                     // logs, but cosmetics never silently authorize physics.
-                    UE_LOG(LogLatebrakeStartup,
-                        Added == latebrake::PitBayPaintMarkCount
-                            ? Display : Warning,
-                        TEXT("LATEBRAKE_PIT_BAY_PAINT marks=%d/%d collision=off"),
-                        Added, latebrake::PitBayPaintMarkCount);
+                    if (Added == latebrake::PitBayPaintMarkCount)
+                    {
+                        UE_LOG(LogLatebrakeStartup, Display,
+                            TEXT("LATEBRAKE_PIT_BAY_PAINT_READY marks=%d/%d collision=off"),
+                            Added, latebrake::PitBayPaintMarkCount);
+                    }
+                    else
+                    {
+                        UE_LOG(LogLatebrakeStartup, Warning,
+                            TEXT("LATEBRAKE_PIT_BAY_PAINT_INCOMPLETE marks=%d/%d collision=off"),
+                            Added, latebrake::PitBayPaintMarkCount);
+                    }
                 }
             }
         }
