@@ -4,6 +4,7 @@
 #include "UI/HudInstrumentCluster.h"
 #include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
+#include "Garage/GarageComparisonView.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "UI/HudVerticalPlan.h"
@@ -287,6 +288,32 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(Mode->GetGarageFeedback(), true);
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
                 Catalog.EngineLevel, Catalog.GripLevel));
+            // Prices and relative tuning are read-only summaries of the
+            // authoritative garage. These messages cannot authorize spending.
+            if (!bCompact)
+            {
+                const auto EngineOffer = latebrake::PreviewGarageUpgrade(
+                    Catalog.Credits, Catalog.EngineLevel, latebrake::UpgradeKind::Engine);
+                const auto GripOffer = latebrake::PreviewGarageUpgrade(
+                    Catalog.Credits, Catalog.GripLevel, latebrake::UpgradeKind::Grip);
+                const auto OfferText = [](latebrake::GarageUpgradeOffer offer) -> FString
+                {
+                    switch (offer.Status)
+                    {
+                    case latebrake::GarageUpgradeOfferStatus::Affordable:
+                        return FString::Printf(TEXT("%d CR READY"), offer.Cost);
+                    case latebrake::GarageUpgradeOfferStatus::NeedCredits:
+                        return FString::Printf(TEXT("%d CR | NEED %d"),
+                            offer.Cost, offer.CreditsShort);
+                    case latebrake::GarageUpgradeOfferStatus::Maxed:
+                        return TEXT("MAX");
+                    default:
+                        return TEXT("UNAVAILABLE");
+                    }
+                };
+                MenuLine(FString::Printf(TEXT("NEXT U ENGINE: %s | NEXT I GRIP: %s"),
+                    *OfferText(EngineOffer), *OfferText(GripOffer)));
+            }
             MenuLine(TEXT("E/SELECT: NEXT OWNED | Q: NEXT LOCKED | U/I: UPGRADES"));
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
@@ -329,6 +356,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                             latebrake::PaintForVehicle(Entry.VehicleId).Name),
                         Entry.Effective.Acceleration, Entry.Effective.Grip,
                         Entry.Effective.TopSpeed));
+                    const latebrake::GaragePerformanceComparison Comparison =
+                        latebrake::CompareGaragePerformance(Catalog, Entry.VehicleId);
+                    if (Comparison.Valid)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("   VS EQUIPPED: ACC %+.0f%% | GRIP %+.0f%% | SPEED %+.0f%% (EST)"),
+                            Comparison.AccelerationPercent, Comparison.GripPercent,
+                            Comparison.TopSpeedPercent));
+                    }
                 }
             }
             break;
