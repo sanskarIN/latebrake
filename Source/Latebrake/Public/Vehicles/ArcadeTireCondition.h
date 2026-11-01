@@ -65,6 +65,15 @@ public:
         return true;
     }
 
+    // Prototype tire replacement, affecting only this race's inferred
+    // wear/temperature. No actual Chaos tire components are replaced.
+    void ReplaceAtPit() noexcept
+    {
+        Temperature = 0.42;
+        Wear = 0.0;
+        Valid = false;
+    }
+
     double GripMultiplier() const noexcept
     {
         // Always return a finite, bounded scale (max 32% reduction).
