@@ -45,7 +45,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
 
 void ALatebrakeRivalCar::Tick(float DeltaSeconds)
 {
-    const ALatebrakeRaceGameMode* Mode =
+    ALatebrakeRaceGameMode* Mode =
         GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     // A malformed rival Chaos body must neither accrue approximate route
     // progress nor receive another physics control update. The base pawn
@@ -106,6 +106,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         // Never bridge a frame sample across two different gate planes.
         RivalGateTrace.Reset();
+        // Only the physical directional gate trace can trigger this call.
+        Mode->ObserveRivalVerifiedGate();
     }
 
     if (Observation.NeedsRecovery)

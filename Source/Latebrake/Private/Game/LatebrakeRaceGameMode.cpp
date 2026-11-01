@@ -118,6 +118,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     BuildCircuit();
     Race.Reset();
     StartLights.Reset();
+    RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
 #if !UE_BUILD_SHIPPING
@@ -867,6 +868,17 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     {
         return;
     }
+    // Only a successfully accepted, ordered, player-authoritative gate
+    // may generate an observational split timestamp. Never time a wrong gate.
+    const int64 PlayerGateOrdinal =
+        static_cast<int64>(Race.GetCompletedLaps()) * Race.GetCheckpointCount() +
+        Race.GetNextCheckpoint();
+    if (latebrake::GetRaceEvent(SelectedEvent).SpawnRival &&
+        PlayerGateOrdinal >= 1 && PlayerGateOrdinal <= 25600)
+    {
+        RivalSplits.RecordPlayer(static_cast<int32>(PlayerGateOrdinal),
+            Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds());
+    }
 #if !UE_BUILD_SHIPPING
     // Only genuinely accepted, ordered, player-authoritative checkpoints
     // produce this low-volume diagnostic. The audit cannot award a lap.
@@ -1474,6 +1486,39 @@ bool ALatebrakeRaceGameMode::TryGetRivalCreditedGateGap(
     return OutGap.Valid;
 }
 
+void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
+{
+    // The existing rival has already accepted its OWN forward gate.
+    // Never invent a rival actor, stamp an unqualified clock, or award
+    // player checkpoint credit through this observation-only path.
+    latebrake::RivalGateGap Eligibility;
+    if (!TryGetRivalCreditedGateGap(Eligibility) || !IsValid(RivalCar))
+    {
+        return;
+    }
+    const int64 RivalGateOrdinal =
+        static_cast<int64>(RivalCar->GetApproximateLaps()) * Race.GetCheckpointCount() +
+        RivalCar->GetNextVerifiedGate();
+    if (RivalGateOrdinal >= 1 && RivalGateOrdinal <= 25600)
+    {
+        RivalSplits.RecordRival(static_cast<int32>(RivalGateOrdinal),
+            Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds());
+    }
+}
+
+bool ALatebrakeRaceGameMode::TryGetLatestRivalMatchedGateSplit(
+    latebrake::RivalMatchedGateSplit& OutSplit) const
+{
+    OutSplit = {};
+    latebrake::RivalGateGap Eligibility;
+    if (!TryGetRivalCreditedGateGap(Eligibility))
+    {
+        return false;
+    }
+    OutSplit = RivalSplits.LatestMatched();
+    return OutSplit.Valid;
+}
+
 FString ALatebrakeRaceGameMode::GetSelectedVehicleName() const
 {
     return FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Garage.SelectedVehicle()).Name));
@@ -1824,6 +1869,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     ManualPause.OnExplicitResume();
     Race.Reset();
     StartLights.Reset();
+    RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
     GhostTrackedPawn.Reset();

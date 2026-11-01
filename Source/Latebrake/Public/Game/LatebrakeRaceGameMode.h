@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/RivalGateGap.h"
+#include "Racing/RivalMatchedGateSplits.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
@@ -78,6 +79,10 @@ public:
     // Exact difference in *credited forward gates*, not race position,
     // finish ranking, physical gap, collision risk or saved career state.
     bool TryGetRivalCreditedGateGap(latebrake::RivalGateGap& OutGap) const;
+    // Called only after the physical rival's existing directional gate pass.
+    void ObserveRivalVerifiedGate();
+    bool TryGetLatestRivalMatchedGateSplit(
+        latebrake::RivalMatchedGateSplit& OutSplit) const;
 
     void RecoverPlayer(ALatebrakeCarPawn* Car);
 
@@ -156,6 +161,7 @@ private:
     // Explicit per-attempt start gate: no paid race clock or chassis force
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
+    latebrake::RivalMatchedGateSplits RivalSplits;
     // Session-only advisory forward-speed estimate; never alters RaceProgress.
     latebrake::LaunchSpeedMeter LaunchMeter;
     // Fixed-size in-memory candidate/best traces never become SaveGame data.

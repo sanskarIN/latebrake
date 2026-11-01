@@ -101,6 +101,13 @@ differences for all six fictional cars. This is presentation only: no
 unlocking from comparison rows, altered credits, save-schema migration or
 verified Unreal rendering. [Garage comparison QA](docs/GARAGE_COMPARISON_QA.md).
 
+**New Unreal source candidate — matched-gate rival splits:** desktop race
+telemetry compares the physically accepted forward crossing timestamp
+of the player and local prototype rival at the SAME lap/gate using one
+post-GO clock. It neither ranks cars nor awards results, and remains
+unverified in a real Unreal Engine 5.8 build or packaged Windows game.
+[Matched-gate QA](docs/RIVAL_MATCHED_GATE_SPLITS_QA.md).
+
 ## What's in source today?
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.
