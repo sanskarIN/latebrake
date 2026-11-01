@@ -50,7 +50,7 @@ inline HudInstrumentCluster CalculateHudInstrumentCluster(
 
     const double scale = std::clamp(layout.Scale, 0.6, 1.2);
     const double panelWidth = 278.0 * scale;
-    const double panelHeight = 178.0 * scale;
+    const double panelHeight = 214.0 * scale;
     const double rightMargin = std::max(18.0 * scale, width * 0.018);
     const double x = width - rightMargin - panelWidth;
     const double y = height - (56.0 * scale) - panelHeight;

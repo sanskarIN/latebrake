@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "UI/HudInstrumentCluster.h"
+#include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
@@ -1691,11 +1692,31 @@ void ALatebrakeRaceHUD::DrawHUD()
                     BarWidth * static_cast<float>(Fraction), 7.f * S);
             }
         };
-        DrawMeter(TEXT("NITRO"), Instruments.NitroFraction, 64.f, Mint);
+        // An accepted-checkpoint count is progress, not distance or placement.
+        // Read the SAME authoritative race object that drives LAP/GATE text;
+        // never let a visual fill fraction grant timing, credit or a result.
+        const latebrake::RaceGateProgressGauge GateGauge =
+            latebrake::CalculateRaceGateProgressGauge(
+                Race.GetCompletedLaps(), Race.GetNextCheckpoint(),
+                Race.GetRequiredLaps(), Race.GetCheckpointCount(),
+                Race.IsFinished());
+        if (GateGauge.Valid)
+        {
+            const FString GateLabel = FString::Printf(TEXT("GATES %d/%d"),
+                GateGauge.CreditedGates, GateGauge.TotalGates);
+            DrawMeter(*GateLabel, GateGauge.Fraction, 64.f, Gold);
+        }
+        else
+        {
+            DrawText(TEXT("GATE STATUS UNAVAILABLE"), Ink,
+                Gx + 16.f * S, Gy + 64.f * S,
+                GEngine->GetSmallFont(), 0.83f * S);
+        }
+        DrawMeter(TEXT("NITRO"), Instruments.NitroFraction, 99.f, Mint);
         DrawMeter(TEXT("ENGINE HEAT (ARCADE)"),
-            Instruments.EngineHeatFraction, 98.f, Coral);
+            Instruments.EngineHeatFraction, 133.f, Coral);
         DrawMeter(TEXT("CHASSIS CONDITION"),
-            Instruments.ChassisConditionFraction, 132.f, Gold);
+            Instruments.ChassisConditionFraction, 167.f, Gold);
     }
 
     // A deterministic footer no longer follows an unbounded telemetry Y.
