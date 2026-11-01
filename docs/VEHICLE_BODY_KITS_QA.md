@@ -34,6 +34,46 @@ The existing read-only garage catalogue labels the body kit in its
 expanded desktop detail rows. Locked and saved vehicle ownership is **not**
 modified. Invalid vehicle IDs fall back to the starter visual design.
 
+## Six independent garage paint identities (unreleased source development)
+
+Each existing fixed garage ID also has a separate, engine-neutral and
+immutable original paint recipe. The body / trim / canopy RGB fields
+are bounded [0, 1] and do not add saved paint purchases or customize
+ownership. The expanded garage menu labels each car's recipe:
+
+| Car | Paint name | Visual intent |
+| --- | --- | --- |
+| Arrow | SKY BLUE | Blue body with pale trim and dark canopy |
+| Kestrel | EMBER ORANGE | Orange body with graphite trim |
+| Phantom | ELECTRIC VIOLET | Violet body with cool pale trim |
+| Tempest | RACING SCARLET | Red body with charcoal aero |
+| Glider | SEA GLASS | Teal body with pale highlights |
+| Nova | SOLAR YELLOW | Yellow body with dark accents |
+
+The real Unreal pawn creates dynamic material instances only during
+`BeginPlay` for its built-in mesh components and reuses them when the
+selected garage car changes. It writes the conventional vector parameter
+`Color` on the body, canopy and collision-free kit components. No
+materials are created in the Unreal class-default constructor or
+per-frame driving tick. It retains the mesh's original material parent,
+avoiding intentional edits to physical-material properties.
+
+**Rendering caveat:** this is still an **unverified material integration**
+until an actual UE 5.8 editor session confirms the loaded built-in
+primitive parent material exposes a vector parameter named `Color`.
+A missing parameter may leave one or more parts in their default
+material even while the garage HUD correctly labels the paint. If so,
+author and verify a project-owned material with an exposed `Color`
+parameter before promoting this from source-only to a playable feature.
+Do not claim verified fully colored 3D cars from source tests alone.
+
+`VehiclePaintRecipe` standalone C++ tests validate all six names,
+bounded palettes, contrast between body / accent / canopy, corrupted
+vehicle-ID fallback, and deterministic repeated selection.
+`UnrealVehiclePaintBindingTests` ensures that the pawn's updates are
+bound only to live actor creation / garage switching and do not change
+Chaos forces, SaveGame, unlocks or rewards.
+
 ## Performance and gameplay isolation
 
 Seven new components are allocated **once per car actor construction**.
