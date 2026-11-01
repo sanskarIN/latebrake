@@ -8,6 +8,7 @@
 
 namespace
 {
+struct TouchPoint final { double X; double Y; };
 void Check(bool ok, const char* what)
 {
     if (!ok)
@@ -26,7 +27,7 @@ int main()
     Check(layout.Valid && portrait.Valid, "realistic viewports are valid");
     const auto PitCenter = [](const TouchControlLayout& x)
     {
-        return CircuitPoint{ x.PitService.X + x.PitService.Width * 0.5,
+        return TouchPoint{ x.PitService.X + x.PitService.Width * 0.5,
                              x.PitService.Y + x.PitService.Height * 0.5 };
     };
     const auto p = PitCenter(layout);
