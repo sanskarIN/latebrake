@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.88**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The independently verified latest published GitHub tag is **v0.5.89**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current published source release:** [v0.5.88](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.88) is a **source-only pre-release** verified at immutable commit `ee4c0a95a92535918f974d47887ddfcd87a9c221`, published November 1, 2026 after passing all seven mandatory release jobs with **zero executable assets**. Its source includes exact pit radar wayfinding, Android continuously held PIT controls and six nonphysical garage paint recipes. The Unreal 5.8 material color parameter and actual installed rendering remain **unverified**. v0.5.87 contains the prior physical Unreal pit-service code, input fix and six engine-primitive body kits. The new driver-guidance PR #257 merged *after* v0.5.88 and is not in that tag; pit markings PR #258 remain under review. Original UE compilation, map cook, installed Windows/Android packages and physical gameplay QA remain outstanding.
+**Current published source release:** [v0.5.89](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89) is a **source-only pre-release** at immutable commit `e3a059f4ebc0cd7525586d6aef683361d7189452`, published November 1, 2026 after the full seven-job source qualification with **zero executable assets**. It contains accepted-gate HUD progress, signed six-car garage comparisons and next upgrade costs, matched-directional-gate local rival split timing, and quick-race-only Rookie/Standard/Expert rival pace adjustments. Earlier v0.5.88 pit radar, Android PIT HOLD and six-car paint remain included. None of this demonstrates licensed UE 5.8 UHT/Game compilation, authored circuit cook, installed Windows/Android packages or hardware playtesting. The previously cited PRs #257/#258 were merged before v0.5.89; do not confuse release notes with actual packaged-game verification.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 
@@ -13,6 +13,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.89 | [Release notes](releases/v0.5.89.md) |
 | v0.5.88 | [Release notes](releases/v0.5.88.md) |
 | v0.5.87 | [Release notes](releases/v0.5.87.md) |
 | v0.5.86 | [Release notes](releases/v0.5.86.md) |

@@ -1,9 +1,27 @@
 # Latebrake engineering status
 
 **Updated:** 2026-11-01
-**Latest published milestone:** [v0.5.88 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.88), independently verified at immutable commit `ee4c0a95a92535918f974d47887ddfcd87a9c221`: the published non-draft source tag passed all seven release jobs and has **zero executable assets**. Earlier [v0.5.87](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87) and v0.5.86 source milestones remain available.
+**Latest published milestone:** [v0.5.89 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89), independently confirmed at immutable source commit `e3a059f4ebc0cd7525586d6aef683361d7189452`, a non-draft prerelease with **zero executable assets** after seven source-only publication jobs. The previous [v0.5.88](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.88) pit radar / Android PIT HOLD / six-car paint source remains available.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.89 published source-only milestone (not installed gameplay)
+
+- New optional desktop accepted-gate race progress instrument. **No**
+  continuous car separation, official position or race authority.
+- The existing six-car garage shows signed read-only comparison ratios and
+  authentic next-tier engine/grip purchase prices; spending/save guards
+  remain unchanged.
+- Same-directional-gate, same-lap **local rival split timing** is an
+  observational HUD statistic, explicitly *not* race classification.
+- Quick Race **ROOKIE / STANDARD / EXPERT** modifies only next-race
+  local prototype rival throttle. Career always runs STANDARD; neither
+  checkpoint authority nor rewards can be changed by the menu selection.
+- All portable Windows, Ubuntu and macOS C++20, editor-source and
+  packaging/provenance release checks passed for immutable
+  `e3a059f4ebc0cd7525586d6aef683361d7189452`; no licensed Unreal Engine 5.8 UHT/Game build
+  or installed GPU driving test has occurred.
+- [Exact published source notes](releases/v0.5.89.md).
 
 ## v0.5.88 published source-only milestone (not installed gameplay)
 
