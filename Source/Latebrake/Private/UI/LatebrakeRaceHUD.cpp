@@ -1712,7 +1712,14 @@ void ALatebrakeRaceHUD::DrawHUD()
         // same service authority. A touch is never interpreted as a tap
         // or a one-off repair command; a continuous original hold is
         // required by the portable finger-ownership and pit policies.
-        DrawPad(Pads.PitService, TEXT("PIT HOLD"), Car->IsTouchPitHeld());
+        const latebrake::RacePitService& MobilePit = Car->GetPitService();
+        const FString PitPadLabel =
+            Car->IsTouchPitHeld() && MobilePit.IsInBay() &&
+            MobilePit.IsArmed()
+                ? FString::Printf(TEXT("PIT %.0f%%"),
+                    MobilePit.ProgressFraction() * 100.0)
+                : FString(TEXT("PIT HOLD"));
+        DrawPad(Pads.PitService, *PitPadLabel, Car->IsTouchPitHeld());
         DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
         DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
         // MenuBrowse has a disjoint reserved hit rectangle. Reuse it as
