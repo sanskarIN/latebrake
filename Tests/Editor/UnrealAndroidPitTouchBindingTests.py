@@ -50,6 +50,7 @@ class UnrealAndroidPitTouchBindingTests(unittest.TestCase):
         self.assertIn("IsRacePhysicsReady()", touch)
 
     def test_interruptions_cancel_without_stealing_pedal_owners(self):
+        self.assertIn("PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear();", self.header)
         self.assertIn("TouchPit.FingerOwner() == FingerId", self.car)
         self.assertIn("TouchPit.Move(FingerId, Region,", self.car)
         self.assertIn("TouchPit.Release(FingerId);", self.car)
