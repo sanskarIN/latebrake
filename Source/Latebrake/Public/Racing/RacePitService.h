@@ -40,6 +40,56 @@ inline bool IsInRacePitBay(double x, double y) noexcept
         RacePitBayRadiusCm * RacePitBayRadiusCm;
 }
 
+// The diagnostic is a READ-ONLY explanation of why a real physical
+// service hold can or cannot progress. It never grants service or credits.
+// Ordered priorities are deterministic when several reasons coexist.
+enum class PitServiceGuidance
+{
+    Unavailable,
+    ApproachBay,
+    ExitToRearm,
+    NoMaintenance,
+    SlowDown,
+    ReleaseThrottle,
+    ReleaseNitro,
+    HoldButton,
+    Servicing,
+    Completed
+};
+
+inline PitServiceGuidance DiagnosePitService(
+    const PitServiceObservation& sample, bool armed) noexcept
+{
+    if (!std::isfinite(sample.DeltaSeconds) ||
+        sample.DeltaSeconds <= 0.0 || sample.DeltaSeconds > 0.10 ||
+        !std::isfinite(sample.X) || !std::isfinite(sample.Y) ||
+        !std::isfinite(sample.PlanarSpeedCmPerSecond) ||
+        sample.PlanarSpeedCmPerSecond < 0.0 ||
+        sample.PlanarSpeedCmPerSecond > 10000.0 ||
+        !std::isfinite(sample.RequestedThrottle) ||
+        std::abs(sample.RequestedThrottle) > 1.0 ||
+        !sample.Authorized)
+    {
+        return PitServiceGuidance::Unavailable;
+    }
+    if (!IsInRacePitBay(sample.X, sample.Y))
+    {
+        return PitServiceGuidance::ApproachBay;
+    }
+    if (!armed) return PitServiceGuidance::ExitToRearm;
+    if (!sample.MaintenanceNeeded)
+        return PitServiceGuidance::NoMaintenance;
+    if (sample.PlanarSpeedCmPerSecond > 120.0)
+        return PitServiceGuidance::SlowDown;
+    if (std::abs(sample.RequestedThrottle) > 0.05)
+        return PitServiceGuidance::ReleaseThrottle;
+    if (sample.NitroHeld)
+        return PitServiceGuidance::ReleaseNitro;
+    if (!sample.ButtonHeld)
+        return PitServiceGuidance::HoldButton;
+    return PitServiceGuidance::Servicing;
+}
+
 // A single service is earned by a CONTINUOUS 2.5s valid, nearly stationary
 // hold inside the bay. Exiting the bay is required to arm another stop.
 // This policy changes no score, physics, saved garage, timer, or checkpoint.
@@ -52,14 +102,17 @@ public:
         Stops = 0;
         Armed = true;
         InBay = false;
+        LastGuidance = PitServiceGuidance::Unavailable;
     }
     void Suspend() noexcept
     {
         HeldSeconds = 0.0;
         InBay = false;
+        LastGuidance = PitServiceGuidance::Unavailable;
     }
     bool Observe(PitServiceObservation sample) noexcept
     {
+        LastGuidance = DiagnosePitService(sample, Armed);
         if (!std::isfinite(sample.DeltaSeconds) ||
             sample.DeltaSeconds <= 0.0 || sample.DeltaSeconds > 0.10 ||
             !std::isfinite(sample.X) || !std::isfinite(sample.Y) ||
@@ -96,6 +149,7 @@ public:
         }
         HeldSeconds = 0.0;
         Armed = false;
+        LastGuidance = PitServiceGuidance::Completed;
         if (Stops < 1000) ++Stops;
         return true;
     }
@@ -106,11 +160,13 @@ public:
         return HeldSeconds / RacePitServiceHoldSeconds;
     }
     int StopCount() const noexcept { return Stops; }
+    PitServiceGuidance Guidance() const noexcept { return LastGuidance; }
 
 private:
     double HeldSeconds = 0.0;
     int Stops = 0;
     bool Armed = true;
     bool InBay = false;
+    PitServiceGuidance LastGuidance = PitServiceGuidance::Unavailable;
 };
 } // namespace latebrake
