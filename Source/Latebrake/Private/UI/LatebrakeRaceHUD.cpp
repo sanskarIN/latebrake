@@ -253,12 +253,20 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("Offline racing. Select to open Quick Race."));
             break;
         case latebrake::MenuPage::QuickRace:
-            MenuLine(TEXT("Select to start the original 3-lap circuit."));
-            MenuLine(FString::Printf(TEXT("LOCAL RIVAL: %s (next quick race)"),
-                UTF8_TO_TCHAR(latebrake::RivalDifficultyName(
-                    Mode->GetQuickRaceDifficultySelection()))), true);
-            MenuLine(TEXT("BROWSE/N or gamepad Right selects ROOKIE / STANDARD / EXPERT."));
-            MenuLine(TEXT("Career uses STANDARD. Difficulty is not a saved setting."));
+            if (Mode->GetQuickRaceSoloTimeAttackSelection())
+            {
+                MenuLine(TEXT("MODE: SOLO TIME ATTACK | 1 LAP | NO RIVAL"), true);
+                MenuLine(TEXT("The existing single-lap timed event and PB record."));
+            }
+            else
+            {
+                MenuLine(TEXT("MODE: CIRCUIT RACE | 3 LAPS | LOCAL RIVAL"), true);
+                MenuLine(FString::Printf(TEXT("LOCAL RIVAL: %s (next quick race)"),
+                    UTF8_TO_TCHAR(latebrake::RivalDifficultyName(
+                        Mode->GetQuickRaceDifficultySelection()))));
+            }
+            MenuLine(TEXT("BROWSE/N or gamepad Right: ROOKIE / STANDARD / EXPERT / SOLO TIME ATTACK."));
+            MenuLine(TEXT("Select starts choice. Career uses STANDARD; choices not saved."));
             break;
         case latebrake::MenuPage::Career:
             MenuLine(FString::Printf(TEXT("Event: %s"), *Mode->GetCareerEventName()));

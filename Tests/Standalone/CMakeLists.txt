@@ -1637,6 +1637,17 @@ else()
 endif()
 add_test(NAME RivalMatchedGateSplits COMMAND latebrake_rival_matched_gate_splits_tests)
 
+# Actual Quick Race menu event selection on existing keyboard/controller/touch browse.
+add_executable(latebrake_quick_race_mode_picker_tests QuickRaceModePickerTests.cpp)
+target_include_directories(latebrake_quick_race_mode_picker_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_quick_race_mode_picker_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_quick_race_mode_picker_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_quick_race_mode_picker_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME QuickRaceModePicker COMMAND latebrake_quick_race_mode_picker_tests)
+
 # Session-local quick-race rival pace: never weakens safety or career reward gates.
 add_executable(latebrake_rival_difficulty_preset_tests RivalDifficultyPresetTests.cpp)
 target_include_directories(latebrake_rival_difficulty_preset_tests PRIVATE ../../Source/Latebrake/Public)

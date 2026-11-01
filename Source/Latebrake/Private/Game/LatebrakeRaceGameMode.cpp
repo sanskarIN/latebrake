@@ -1183,13 +1183,15 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::QuickRace)
     {
+        const latebrake::EventKind ChosenEvent =
+            latebrake::QuickRaceMenuEvent({
+                QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection});
         // SelectRaceEvent already restarts when changing event or leaving
         // career mode. Avoid a second immediate reset in that case.
-        const bool bNeedsEventChange =
-            bCareerRace || SelectedEvent != latebrake::EventKind::Circuit;
+        const bool bNeedsEventChange = bCareerRace || SelectedEvent != ChosenEvent;
         if (bNeedsEventChange)
         {
-            SelectRaceEvent(latebrake::EventKind::Circuit);
+            SelectRaceEvent(ChosenEvent);
         }
         else
         {
@@ -1297,8 +1299,11 @@ void ALatebrakeRaceGameMode::CycleCareerEvent()
     // allowing a player to preview choices safely while the menu is open.
     if (Menu.IsOpen() && Menu.Current() == latebrake::MenuPage::QuickRace)
     {
-        QuickRaceDifficultySelection =
-            latebrake::NextRivalDifficulty(QuickRaceDifficultySelection);
+        const latebrake::QuickRaceMenuChoice Next =
+            latebrake::NextQuickRaceMenuChoice({
+                QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection});
+        QuickRaceDifficultySelection = Next.Difficulty;
+        bQuickRaceSoloTimeAttackSelection = Next.SoloTimeAttack;
         return;
     }
     const int32 Original = CareerMenuSelection;
@@ -1881,7 +1886,8 @@ void ALatebrakeRaceGameMode::RestartRace()
     // Only a new, accepted race attempt latches the pending preset.
     // Career medals/challenges always use the existing Standard opponent.
     ActiveRivalDifficulty = latebrake::EffectiveRivalDifficulty(
-        QuickRaceDifficultySelection, bCareerRace);
+        QuickRaceDifficultySelection, bCareerRace ||
+            SelectedEvent == latebrake::EventKind::TimeAttack);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();

@@ -7,7 +7,10 @@ build, installed Windows executable, Android playtest, or published game.
 
 Open **Quick Race** in the existing in-game Canvas menu. Use **BROWSE**
 (`N` on keyboard, `Gamepad D-pad Right`, existing Android menu BROWSE)
-to cycle ROOKIE -> STANDARD -> EXPERT -> ROOKIE. The selection is displayed
+to cycle **STANDARD CIRCUIT -> EXPERT CIRCUIT -> SOLO TIME ATTACK ->
+ROOKIE CIRCUIT -> STANDARD CIRCUIT**. The SOLO option uses the existing
+single-lap Time Attack event and spawns no rival. No new track is invented.
+See [Quick Race mode picker QA](QUICK_RACE_MODE_PICKER_QA.md). The selection is displayed
 in the Quick Race menu. Choose **Select/Enter** to start a NEW race
 with the selected tier. Closing the menu without starting a new race
 does **not** retune an ongoing opponent.

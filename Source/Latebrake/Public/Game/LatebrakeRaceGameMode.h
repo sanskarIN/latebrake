@@ -6,6 +6,7 @@
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
 #include "AI/RivalDifficultyPreset.h"
+#include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
@@ -50,6 +51,10 @@ public:
     latebrake::RivalDifficultyPreset GetQuickRaceDifficultySelection() const
     {
         return QuickRaceDifficultySelection;
+    }
+    bool GetQuickRaceSoloTimeAttackSelection() const
+    {
+        return bQuickRaceSoloTimeAttackSelection;
     }
     latebrake::RivalDifficultyPreset GetActiveRivalDifficulty() const
     {
@@ -168,6 +173,8 @@ private:
     // Not persisted. Changes in Quick Race menu affect NEXT race only.
     latebrake::RivalDifficultyPreset QuickRaceDifficultySelection =
         latebrake::RivalDifficultyPreset::Standard;
+    // Pending option only. Real event selection occurs on MenuActivate.
+    bool bQuickRaceSoloTimeAttackSelection = false;
     latebrake::RivalDifficultyPreset ActiveRivalDifficulty =
         latebrake::RivalDifficultyPreset::Standard;
     int32 CareerStartedVehicleId = 0;
