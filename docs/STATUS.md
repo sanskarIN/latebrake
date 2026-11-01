@@ -1,9 +1,32 @@
 # Latebrake engineering status
 
 **Updated:** 2026-11-01
-**Latest published milestone:** [v0.5.87 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87), independently verified at immutable commit `8e640f6ccb6b7000e74dede629d6c164a0901130`: source tag exactly matches a published, non-draft GitHub pre-release with **zero executable assets**. The previous [v0.5.86](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.86) source pre-release remains available.
+**Latest published milestone:** [v0.5.88 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.88), independently verified at immutable commit `ee4c0a95a92535918f974d47887ddfcd87a9c221`: the published non-draft source tag passed all seven release jobs and has **zero executable assets**. Earlier [v0.5.87](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87) and v0.5.86 source milestones remain available.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.88 published source-only milestone (not installed gameplay)
+
+- Read-only north-up desktop PIT radar marker projects the actual
+  physical `RacePitBay` position; it changes no checkpoint or reward.
+- **Android PIT HOLD** uses an original-finger-press ownership policy
+  to avoid accidental repair commands from steering or throttle fingers,
+  with focus/rotation/release cancellation and genuine service progress.
+- Six existing fictional garage cars now have source-defined **SKY BLUE,
+  EMBER ORANGE, ELECTRIC VIOLET, RACING SCARLET, SEA GLASS, SOLAR YELLOW**
+  body, aero-trim and canopy palettes. Actual rendering remains unverified
+  because the engine-provided primitive material's `Color` parameter
+  has not been tested in a UE 5.8 Editor session.
+- The exact **`ee4c0a95a92535918f974d47887ddfcd87a9c221`** release tag has **zero compiled binaries**.
+  Windows/Linux/macOS portable C++ tests passed; they cannot substitute
+  for licensed Unreal UHT compilation and installed gameplay QA.
+- **After the release:** [PR #257](https://github.com/sanskarIN/latebrake/pull/257)
+  added more actionable blocked-pit service guidance to `main`. This is
+  **unreleased source development**, not included in the immutable
+  v0.5.88 tag. The cosmetic pit bay outline is under separate
+  review in [PR #258](https://github.com/sanskarIN/latebrake/pull/258).
+- [Published v0.5.88 source notes](releases/v0.5.88.md) retain the
+  source-only and not-playable warnings.
 
 ## v0.5.87 published source-only milestone (not installed gameplay)
 
