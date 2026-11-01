@@ -424,6 +424,8 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SmoothedSteering = 0.f;
     bBraking = false;
     bHandbrakeHeld = false;
+    bPitServiceHeld = false;
+    PitService.Suspend();
     SpinAssist.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
@@ -537,6 +539,19 @@ void ALatebrakeCarPawn::NitroReleased()
 {
     // Released callbacks execute during pause so input cannot stay stuck.
     NitroBoost.Release();
+}
+
+void ALatebrakeCarPawn::PitServicePressed()
+{
+    // Button state alone cannot repair: the physical human chassis, actual
+    // position, clock and scene readiness are rechecked in the next Tick.
+    bPitServiceHeld = true;
+}
+
+void ALatebrakeCarPawn::PitServiceReleased()
+{
+    bPitServiceHeld = false;
+    PitService.Suspend();
 }
 
 void ALatebrakeCarPawn::Tick(float DeltaSeconds)
@@ -700,6 +715,32 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     CollisionDamage.Advance(static_cast<double>(DeltaSeconds), true);
     LastQualifiedPlanarSpeedCmPerSecond = CollisionDamage.HasEligibleFrame()
         ? static_cast<double>(Speed) : 0.0;
+
+    // Source-authorized arcade pit: only a real possessed human chassis
+    // almost stopped on the inside south shoulder with neutral throttle.
+    // The official race clock/rivals continue while servicing; no teleport,
+    // lap credit, garage purchase or saved profile changes are made here.
+    const bool bPitNeedsService =
+        CollisionDamage.DamageFraction() > 0.001 ||
+        TireCondition.WearFraction() > 0.03 ||
+        NitroBoost.ChargeFraction() < 0.99;
+    if (PitService.Observe({
+        static_cast<double>(DeltaSeconds),
+        static_cast<double>(SurfacePosition.X),
+        static_cast<double>(SurfacePosition.Y),
+        static_cast<double>(Speed),
+        static_cast<double>(TouchDrive.ThrottleActive() ? 1.f : Throttle),
+        bPitServiceHeld, NitroBoost.IsHeld(),
+        IsLocallyControlled() &&
+            Cast<APlayerController>(GetController()) != nullptr &&
+            Mode->HasLocalPlayerDriver(),
+        bPitNeedsService}))
+    {
+        CollisionDamage.RepairAtPit();
+        TireCondition.ReplaceAtPit();
+        NitroBoost.RefillAtPit();
+        CurrentNitroSpeedCapScale = 1.f;
+    }
 
     // Purely visual: gently widen the human camera with measured forward
     // chassis speed. Rival cameras, reverse motion and rear view stay static.
@@ -1681,11 +1722,14 @@ void ALatebrakeCarPawn::MenuDetailsPrevious()
 
 void ALatebrakeCarPawn::MenuActivate()
 {
+    // Controller Y is contextual: do not clear live driving or a held pit
+    // service request when no menu owns the input. Confirming an open menu
+    // still cancels all previous human drive commands before navigation.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !Mode->IsMenuOpen()) return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-    {
-        Mode->MenuActivate();
-    }
+    Mode->MenuActivate();
 }
 
 void ALatebrakeCarPawn::MenuMousePressed()
@@ -1812,6 +1856,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& HandbrakeRelease = PlayerInputComponent->BindAction(
         TEXT("Handbrake"), IE_Released, this, &ALatebrakeCarPawn::HandbrakeReleased);
     HandbrakeRelease.bExecuteWhenPaused = true;
+    PlayerInputComponent->BindAction(TEXT("PitService"), IE_Pressed, this, &ALatebrakeCarPawn::PitServicePressed);
+    FInputActionBinding& PitRelease = PlayerInputComponent->BindAction(
+        TEXT("PitService"), IE_Released, this, &ALatebrakeCarPawn::PitServiceReleased);
+    PitRelease.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("Nitro"), IE_Pressed, this, &ALatebrakeCarPawn::NitroPressed);
     FInputActionBinding& NitroRelease = PlayerInputComponent->BindAction(
         TEXT("Nitro"), IE_Released, this, &ALatebrakeCarPawn::NitroReleased);

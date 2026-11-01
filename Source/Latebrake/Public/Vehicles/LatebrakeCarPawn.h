@@ -5,6 +5,7 @@
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
 #include "Racing/DrivingSessionStats.h"
+#include "Racing/RacePitService.h"
 #include "Racing/DriftComboMeter.h"
 #include "Racing/VehicleGForceMeter.h"
 #include "Racing/ChassisSlipAngleMeter.h"
@@ -69,7 +70,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -105,6 +106,7 @@ public:
             !bBraking && !TouchDrive.BrakeActive() && !bHandbrakeHeld;
     }
     const latebrake::ArcadeNitroBoost& GetNitroBoost() const noexcept { return NitroBoost; }
+    const latebrake::RacePitService& GetPitService() const noexcept { return PitService; }
     const latebrake::HumanSpinAssistMeter& GetSpinAssist() const noexcept { return SpinAssist; }
 
     // Physical placement must succeed before GameMode can commit its five-
@@ -185,6 +187,8 @@ private:
     void HandbrakeReleased();
     void NitroPressed();
     void NitroReleased();
+    void PitServicePressed();
+    void PitServiceReleased();
     void NeutralizeMotionWhenDrivingBlocked();
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);
@@ -243,6 +247,7 @@ private:
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bHandbrakeHeld = false;
+    bool bPitServiceHeld = false;
     float CurrentNitroSpeedCapScale = 1.f;
     float CurrentDraftAppliedFraction = 0.f;
     latebrake::CameraViewCycle CameraViews;
@@ -262,6 +267,7 @@ private:
     latebrake::ArcadeSurfaceTraction SurfaceTraction;
     latebrake::ObservedBrakeDistance BrakeDistance;
     latebrake::ArcadeNitroBoost NitroBoost;
+    latebrake::RacePitService PitService;
     latebrake::SlipstreamDraftBoost SlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
     latebrake::TouchDriveState TouchDrive;
