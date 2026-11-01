@@ -5,6 +5,7 @@
 #include "Racing/RaceProgress.h"
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
+#include "AI/RivalDifficultyPreset.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
@@ -45,6 +46,15 @@ public:
     bool StartCareerEvent(int32 Id);
     void StartNextAvailableCareerEvent();
     void CycleCareerEvent();
+    // Quick Race pending tier only. Career keeps the original Standard AI.
+    latebrake::RivalDifficultyPreset GetQuickRaceDifficultySelection() const
+    {
+        return QuickRaceDifficultySelection;
+    }
+    latebrake::RivalDifficultyPreset GetActiveRivalDifficulty() const
+    {
+        return ActiveRivalDifficulty;
+    }
     void ToggleMenu();
     void ToggleRacePause();
     void PauseForAppInterruption();
@@ -155,6 +165,11 @@ private:
     bool bCareerRace = false;
     bool bFutureSaveSchema = false;
     int32 CareerMenuSelection = 0;
+    // Not persisted. Changes in Quick Race menu affect NEXT race only.
+    latebrake::RivalDifficultyPreset QuickRaceDifficultySelection =
+        latebrake::RivalDifficultyPreset::Standard;
+    latebrake::RivalDifficultyPreset ActiveRivalDifficulty =
+        latebrake::RivalDifficultyPreset::Standard;
     int32 CareerStartedVehicleId = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};

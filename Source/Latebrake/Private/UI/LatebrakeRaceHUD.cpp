@@ -254,6 +254,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             break;
         case latebrake::MenuPage::QuickRace:
             MenuLine(TEXT("Select to start the original 3-lap circuit."));
+            MenuLine(FString::Printf(TEXT("LOCAL RIVAL: %s (next quick race)"),
+                UTF8_TO_TCHAR(latebrake::RivalDifficultyName(
+                    Mode->GetQuickRaceDifficultySelection()))), true);
+            MenuLine(TEXT("BROWSE/N or gamepad Right selects ROOKIE / STANDARD / EXPERT."));
+            MenuLine(TEXT("Career uses STANDARD. Difficulty is not a saved setting."));
             break;
         case latebrake::MenuPage::Career:
             MenuLine(FString::Printf(TEXT("Event: %s"), *Mode->GetCareerEventName()));
