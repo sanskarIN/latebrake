@@ -73,6 +73,40 @@ repair the vehicle, teleport, grant credits or alter checkpoints. Licensed
 UE 5.8 compilation and actual Windows/Android gameplay tests remain
 mandatory before calling the updated HUD playable.
 
+## Visible pit-bay pavement outline (unreleased source development)
+
+The existing overhead pit beacon identifies the general inner shoulder, but
+alone does not tell a driver where the **250 cm radius service zone**
+actually starts and ends. A new source-level visual ring contains
+**eight separated mint-colored pavement dashes**, arranged around the same
+`RacePitBay` coordinate used by the physical service state machine.
+Each short dash is centered approximately 190 cm from the pit center and
+its full length stays inside the **actual 250 cm service radius**.
+
+The Unreal `BuildCircuit` source attempts to render these as **one actor
+with one instanced cube-mesh component**, not eight independent collision
+actors. Physics collision is `NoCollision`, overlap events and navigation
+effects are disabled, and dynamic shadows are off. The existing nine
+audited collision blocks, four gate/checkpoint actors, timed service
+eligibility, lap rewards and saved games are untouched. Marker failure
+is logged as an optional visual failure and cannot change track
+readiness or create false official race results.
+
+`PitBayPaint` standalone C++ tests verify all dashes are finite,
+distinct, actually on paved serviceable road, wholly within the
+physical service zone, and deterministic across repeated planning.
+`UnrealPitBayPaintBindingTests` checks the production Unreal source
+for no collision, no navigation and absence of gate/race mutation.
+
+**Actual UE 5.8 visual QA is still required**: inspect whether the
+built-in engine cube's parent material supports the requested `Color`
+vector parameter, ensure the short ground stripes visibly sit above
+the existing south asphalt, drive through them with no impulse or
+surface-grip changes, and confirm performance on Windows/Android.
+If the material lacks this parameter, author an original material before
+describing them as colorful in a finished game. No installed executable
+or authentic Unreal render has been produced by these source tests.
+
 ## Existing flat circuit and in-game controls
 
 - The prototype pit is a stationary bay on the **inner south paved
