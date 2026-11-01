@@ -6,8 +6,9 @@
 
 namespace latebrake
 {
-// Original fictional starter vehicles. The v0.3.0 milestone supplies tuning
-// profiles only: original car meshes, wheel rigs and art are not yet shipped.
+// Six original fictional garage profiles, not licensed production car meshes.
+// Historic IDs 0-2 and their original values are immutable for saved games.
+// New cars append IDs 3-5 without changing the existing SaveGame field types.
 struct VehicleSpec final
 {
     int Id;
@@ -22,10 +23,20 @@ struct VehicleSpec final
 
 inline constexpr VehicleSpec Vehicles[] =
 {
-    {0, "Arrow", 0,    1.00, 1.00, 1.00, 1.00, 1.00},
-    {1, "Kestrel", 600, 1.12, 0.94, 0.98, 1.20, 0.88},
-    {2, "Phantom", 1200, 0.96, 1.12, 1.08, 0.88, 1.18}
+    {0, "Arrow",   0,    1.00, 1.00, 1.00, 1.00, 1.00},
+    {1, "Kestrel", 600,  1.12, 0.94, 0.98, 1.20, 0.88},
+    {2, "Phantom", 1200, 0.96, 1.12, 1.08, 0.88, 1.18},
+    {3, "Tempest", 1800, 1.18, 0.89, 1.14, 1.12, 0.80},
+    {4, "Glider",  2500, 1.00, 1.23, 1.04, 0.94, 1.10},
+    {5, "Nova",    3400, 1.08, 1.08, 1.20, 1.05, 0.97}
 };
+
+// Ownership bit index equals immutable vehicle ID. Remain inside signed
+// 32-bit SaveGame mask storage. The six prototypes use only six low bits.
+inline constexpr int VehicleCount =
+    static_cast<int>(sizeof(Vehicles) / sizeof(Vehicles[0]));
+static_assert(VehicleCount == 6, "Review mask migration if vehicle IDs change");
+inline constexpr int KnownVehicleMask = (1 << VehicleCount) - 1;
 
 enum class UpgradeKind { Engine, Grip };
 
@@ -54,7 +65,7 @@ public:
         // Reject negative/corrupt masks: a negative value must not unlock
         // every car through sign bits. Preserve known valid positive bits.
         Data.OwnedVehicleMask = (saved.OwnedVehicleMask < 0)
-            ? 1 : ((saved.OwnedVehicleMask & 7) | 1);
+            ? 1 : ((saved.OwnedVehicleMask & KnownVehicleMask) | 1);
         Data.SelectedVehicle = Owns(saved.SelectedVehicle) ? saved.SelectedVehicle : 0;
         Data.EngineLevel = std::clamp(saved.EngineLevel, 0, 3);
         Data.GripLevel = std::clamp(saved.GripLevel, 0, 3);
@@ -66,7 +77,10 @@ public:
     int EngineLevel() const noexcept { return Data.EngineLevel; }
     int GripLevel() const noexcept { return Data.GripLevel; }
 
-    static bool IsVehicle(int id) noexcept { return id >= 0 && id < 3; }
+    static constexpr bool IsVehicle(int id) noexcept
+    {
+        return id >= 0 && id < VehicleCount;
+    }
     bool Owns(int id) const noexcept
     {
         return IsVehicle(id) && (Data.OwnedVehicleMask & (1 << id)) != 0;
@@ -74,7 +88,7 @@ public:
 
     int NextLockedVehicle() const noexcept
     {
-        for (int id = 1; id < 3; ++id)
+        for (int id = 1; id < VehicleCount; ++id)
         {
             if (!Owns(id)) return id;
         }
@@ -83,9 +97,9 @@ public:
 
     int NextOwnedVehicle() const noexcept
     {
-        for (int offset = 1; offset < 3; ++offset)
+        for (int offset = 1; offset < VehicleCount; ++offset)
         {
-            const int id = (Data.SelectedVehicle + offset) % 3;
+            const int id = (Data.SelectedVehicle + offset) % VehicleCount;
             if (Owns(id)) return id;
         }
         return Data.SelectedVehicle;

@@ -20,6 +20,8 @@ class GarageVehicleVisualBindingTests(unittest.TestCase):
         cls.header = source("Source/Latebrake/Public/Vehicles/LatebrakeCarPawn.h")
         cls.recipe = source("Source/Latebrake/Public/Vehicles/VehicleVisualRecipe.h")
         cls.cmake = source("Tests/Standalone/CMakeLists.txt")
+        cls.hud = source("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
+        cls.garage = source("Source/Latebrake/Public/Garage/GarageState.h")
 
     def test_real_pawn_uses_original_primitive_meshes(self):
         for name in ("Hood", "RearDeck", "SpoilerWing",
@@ -52,14 +54,21 @@ class GarageVehicleVisualBindingTests(unittest.TestCase):
         self.assertIn("ApplyVehicleVisualRecipe(SafeId);", self.pawn)
         self.assertIn("if (SafeId != GarageVehicleId)", self.pawn)
 
-    def test_three_fictional_variants_and_portable_suite(self):
-        for part in ("case 1:", "case 2:", "default:",
+    def test_six_fictional_variants_and_portable_suite(self):
+        for part in ("case 1:", "case 2:", "case 3:", "case 4:", "case 5:", "default:",
                      "HasRearWing", "HoodLengthScale",
                      "RearDeckLengthScale"):
             self.assertIn(part, self.recipe)
         self.assertIn("VehicleVisualRecipeTests.cpp", self.cmake)
         self.assertIn("NAME VehicleVisualRecipe", self.cmake)
         self.assertIn("/W4 /WX", self.cmake)
+        self.assertIn("VehicleCount == 6", self.garage)
+        self.assertIn("KnownVehicleMask", self.garage)
+        self.assertIn("latebrake::GarageState::IsVehicle(VehicleId)", self.pawn)
+        self.assertIn("Recipe.WingSpanScale", self.pawn)
+        self.assertIn("CAR %d/%d", self.hud)
+        self.assertIn("BASE ACCEL %.2fx | GRIP %.2fx | TOP %.2fx", self.hud)
+        self.assertIn("Mode->GetNextLockedVehicleCost()", self.hud)
 
 
 if __name__ == "__main__":

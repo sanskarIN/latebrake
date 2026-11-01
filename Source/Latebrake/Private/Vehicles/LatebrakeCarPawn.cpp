@@ -386,8 +386,8 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         {
             if (IsValid(Part))
             {
-                const double Side = Part == SpoilerSupportLeft.Get()
-                    ? -58.0 : 58.0;
+                const double Side = (Part == SpoilerSupportLeft.Get()
+                    ? -58.0 : 58.0) * Recipe.WingSpanScale;
                 Part->SetRelativeLocation(FVector(
                     -158.0, Side, Recipe.WingHeightCm - 28.0) / RootScale);
             }
@@ -403,7 +403,10 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
     GarageGrip = FMath::IsFinite(Grip) ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
     GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
-    const int32 SafeId = FMath::Clamp(VehicleId, 0, 2);
+    // New garage IDs are append-only. A corrupt/future ID falls back to the
+    // free starter instead of silently showing another purchased car.
+    const int32 SafeId = latebrake::GarageState::IsVehicle(VehicleId)
+        ? VehicleId : 0;
     if (SafeId != GarageVehicleId)
     {
         // Garage selection changes visible body proportions only.

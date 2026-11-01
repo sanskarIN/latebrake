@@ -32,7 +32,7 @@ int main()
     Require(kestrel.WingSpanScale > phantom.WingSpanScale &&
             phantom.WingHeightCm > kestrel.WingHeightCm,
             "rear wings are visibly differentiated");
-    for (int id = 0; id < 3; ++id)
+    for (int id = 0; id < VehicleCount; ++id)
     {
         const auto spec = GarageState::Definition(id);
         const auto visual = VisualRecipeForVehicle(id);
@@ -46,6 +46,18 @@ int main()
                 visual.RoofWidthScale <= 1.2,
                 "bounded engine primitive mesh dimensions");
     }
+    const auto tempest = VisualRecipeForVehicle(3);
+    const auto glider = VisualRecipeForVehicle(4);
+    const auto nova = VisualRecipeForVehicle(5);
+    Require(tempest.HoodLengthScale > kestrel.HoodLengthScale &&
+            tempest.WingHeightCm < kestrel.WingHeightCm &&
+            tempest.HasRearWing, "Tempest has distinct low wing and long nose");
+    Require(glider.RearDeckLengthScale > phantom.RearDeckLengthScale &&
+            glider.RoofWidthScale > phantom.RoofWidthScale &&
+            glider.HasRearWing, "Glider has tall broad cockpit and long tail");
+    Require(nova.WingSpanScale > kestrel.WingSpanScale &&
+            nova.HoodLengthScale != glider.HoodLengthScale &&
+            nova.HasRearWing, "Nova owns its own wide-wing silhouette");
     const auto corrupt = VisualRecipeForVehicle(-11);
     const auto outOfRange = VisualRecipeForVehicle(500);
     Require(!corrupt.HasRearWing && !outOfRange.HasRearWing &&

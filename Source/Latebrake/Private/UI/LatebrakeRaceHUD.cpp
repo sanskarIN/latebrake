@@ -269,11 +269,29 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("BROWSE/N selects an eligible challenge; select starts."));
             break;
         case latebrake::MenuPage::Garage:
-            MenuLine(FString::Printf(TEXT("%s | Credits: %d"),
-                *Mode->GetSelectedVehicleName(), Mode->GetTotalCredits()));
+        {
+            const latebrake::VehicleSpec Vehicle =
+                latebrake::GarageState::Definition(Mode->GetSelectedVehicleId());
+            MenuLine(FString::Printf(TEXT("CAR %d/%d: %s | Credits: %d"),
+                Mode->GetSelectedVehicleId() + 1,
+                latebrake::VehicleCount, *Mode->GetSelectedVehicleName(),
+                Mode->GetTotalCredits()), true);
+            // Baseline garage profile comparisons; current engine/grip
+            // upgrades are separate, not represented as new unlockable cars.
+            MenuLine(FString::Printf(
+                TEXT("BASE ACCEL %.2fx | GRIP %.2fx | TOP %.2fx"),
+                Vehicle.Acceleration, Vehicle.Grip, Vehicle.TopSpeed));
+            const int32 NextCost = Mode->GetNextLockedVehicleCost();
+            MenuLine(NextCost > 0
+                ? FString::Printf(TEXT("NEXT UNLOCK %d credits | Q preview"), NextCost)
+                : FString(TEXT("ALL SIX PROFILES UNLOCKED")));
+            MenuLine(FString::Printf(
+                TEXT("UPGRADES: ENGINE %d/3 | GRIP %d/3"),
+                Mode->GetEngineUpgradeLevel(), Mode->GetGripUpgradeLevel()));
             MenuLine(TEXT("E select owned car. Q/U/I press twice to confirm spending."));
             MenuLine(Mode->GetGarageFeedback());
             break;
+        }
         case latebrake::MenuPage::Results:
         {
             if (!latebrake::CanAwardFinishedRace(Mode->GetRace()))
