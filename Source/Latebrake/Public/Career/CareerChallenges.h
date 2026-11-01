@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Career/CareerCatalog.h"
+#include "Garage/GarageState.h"
 #include "Progression/RecordValidation.h"
 #include <cmath>
 
@@ -28,7 +29,7 @@ inline bool IsValidCareerFinish(const CareerEvent& event,
         result.SlowestLapSeconds < result.BestLapSeconds ||
         result.SlowestLapSeconds > result.ElapsedSeconds ||
         result.CompletedLaps != event.Laps ||
-        result.Recoveries < 0 || result.VehicleId < 0 || result.VehicleId > 2 ||
+        result.Recoveries < 0 || !GarageState::IsVehicle(result.VehicleId) ||
         !result.OrderedCheckpoints)
     {
         return false;
