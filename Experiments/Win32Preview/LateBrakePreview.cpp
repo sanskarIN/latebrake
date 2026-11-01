@@ -1285,8 +1285,12 @@ static bool selftest(){
     if(absf(race.elapsed-twoTicks)>0.0001f||absf(race.speed-twoTicksSpeed)>0.0001f)return false;
     // Deliberate stationary pit servicing: location, held input, valid race
     // clock, single-stop latch, and drive-out rearm are synthetic policies.
-    beginRace();countdown=0;
+    beginRace();
     float pitX,pitY;pitPoint(&pitX,&pitY);
+    race.x=pitX;race.y=pitY;race.damage=70.0f;
+    update(0.03f,false,false,false,false,false,false,0,0,0,true);
+    if(race.pitHold!=0.0f||race.pitStops!=0)return false; // Pre-GO pit lock.
+    countdown=0;
     if(!inPitBay(pitX,pitY))return false;
     race.x=pitX;race.y=pitY;race.damage=80.0f;race.nitro=10.0f;
     update(0.03f,false,false,false,false,false,false,0,0,0,false);
@@ -1355,13 +1359,13 @@ static bool selftest(){
     activePadUser=4;hasWindowFocus=true;padRequireNeutral=true;
     mockPacket={};mockStatus=0;mockUser=0;
     if(!pollPad().connected)return false;
-    mockPacket.controls.buttons=PAD_A|PAD_START;
+    mockPacket.controls.buttons=PAD_A|PAD_START|PAD_Y;
     mockPacket.controls.rightTrigger=255;
     mockPacket.controls.lx=32767;
     PadControls first=pollPad();
-    if(!first.confirm||!first.pause||!first.boost||first.gas<0.99f||first.steer<0.99f)return false;
+    if(!first.confirm||!first.pause||!first.boost||!first.service||first.gas<0.99f||first.steer<0.99f)return false;
     PadControls held=pollPad();
-    if(held.confirm||held.pause||!held.boost)return false;
+    if(held.confirm||held.pause||!held.boost||!held.service)return false;
     mockStatus=1167;
     if(pollPad().connected)return false;
     mockStatus=0;
