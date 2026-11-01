@@ -1531,3 +1531,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RacePitRadar COMMAND latebrake_race_pit_radar_tests)
+
+# A held Android PIT action has its own original finger owner, separate
+# from steering, throttle and all press-only menu controls.
+add_executable(latebrake_touch_pit_hold_tests TouchPitHoldTests.cpp)
+target_include_directories(latebrake_touch_pit_hold_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_touch_pit_hold_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_touch_pit_hold_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_touch_pit_hold_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TouchPitHold COMMAND latebrake_touch_pit_hold_tests)

@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
+#include "UI/TouchPitHold.h"
 #include "Racing/DrivingSessionStats.h"
 #include "Racing/RacePitService.h"
 #include "Racing/DriftComboMeter.h"
@@ -70,7 +71,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -107,6 +108,7 @@ public:
     }
     const latebrake::ArcadeNitroBoost& GetNitroBoost() const noexcept { return NitroBoost; }
     const latebrake::RacePitService& GetPitService() const noexcept { return PitService; }
+    bool IsTouchPitHeld() const noexcept { return TouchPit.IsHeld(); }
     const latebrake::HumanSpinAssistMeter& GetSpinAssist() const noexcept { return SpinAssist; }
 
     // Physical placement must succeed before GameMode can commit its five-
@@ -288,6 +290,7 @@ private:
     latebrake::SlipstreamDraftBoost SlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
     latebrake::TouchDriveState TouchDrive;
+    latebrake::TouchPitHold TouchPit;
     latebrake::TouchPressTracker TouchPresses;
     latebrake::TouchViewportGuard TouchViewport;
 

@@ -37,6 +37,12 @@ int main()
           "ghost toggle is below recover with no overlap");
     Check(layout.GhostView.Y + layout.GhostView.Height < layout.Throttle.Y,
           "ghost toggle is above throttle with no overlap");
+    Check(layout.PitService.X + layout.PitService.Width < layout.GhostView.X,
+          "held PIT touch has a gap to the ghost pad");
+    Check(layout.MenuBrowse.Y + layout.MenuBrowse.Height < layout.PitService.Y,
+          "held PIT cannot trigger menu browse or CAM");
+    Check(layout.PitService.Y + layout.PitService.Height < layout.Throttle.Y,
+          "held PIT touch does not overlap GAS");
     Check(layout.CareerNext.X + layout.CareerNext.Width < layout.Pause.X,
           "career pads do not intersect pause");
     Check(layout.CareerNext.Y + layout.CareerNext.Height < layout.CareerStart.Y,
@@ -64,6 +70,9 @@ int main()
           layout.Recover.Y + 10.0) == TouchControl::Recover, "recovery button");
     Check(HitTestTouchControl(layout, layout.GhostView.X + 10.0,
           layout.GhostView.Y + 10.0) == TouchControl::GhostView, "ghost pad");
+    Check(HitTestTouchControl(layout, layout.PitService.X + 10.0,
+          layout.PitService.Y + 10.0) == TouchControl::PitService,
+          "PIT HOLD uses a distinct reserved hit rectangle");
     Check(HitTestTouchControl(layout, layout.CareerNext.X + 10.0,
           layout.CareerNext.Y + 10.0) == TouchControl::CareerNext, "career browse");
     Check(HitTestTouchControl(layout, layout.CareerStart.X + 10.0,
@@ -115,6 +124,9 @@ int main()
     Check(portrait.Valid && portrait.Steering.Y > 320.0, "portrait zones avoid top");
     Check(HitTestTouchControl(portrait, portrait.Brake.X + 1.0,
           portrait.Brake.Y + 1.0) == TouchControl::Brake, "portrait brake");
+    Check(HitTestTouchControl(portrait, portrait.PitService.X + 1.0,
+          portrait.PitService.Y + 1.0) == TouchControl::PitService,
+          "portrait PIT pad uses the same dedicated hit test");
 
     const double nan = std::numeric_limits<double>::quiet_NaN();
     const double inf = std::numeric_limits<double>::infinity();

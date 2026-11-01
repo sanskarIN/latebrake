@@ -1708,6 +1708,18 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.GhostView,
             Mode->IsBestLapGhostDisplayEnabled()
                 ? TEXT("GHOST ON") : TEXT("GHOST OFF"), false);
+        // The physical chassis PIT hold and this Android pad share the
+        // same service authority. A touch is never interpreted as a tap
+        // or a one-off repair command; a continuous original hold is
+        // required by the portable finger-ownership and pit policies.
+        const latebrake::RacePitService& MobilePit = Car->GetPitService();
+        const FString PitPadLabel =
+            Car->IsTouchPitHeld() && MobilePit.IsInBay() &&
+            MobilePit.IsArmed()
+                ? FString::Printf(TEXT("PIT %.0f%%"),
+                    MobilePit.ProgressFraction() * 100.0)
+                : FString(TEXT("PIT HOLD"));
+        DrawPad(Pads.PitService, *PitPadLabel, Car->IsTouchPitHeld());
         DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
         DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
         // MenuBrowse has a disjoint reserved hit rectangle. Reuse it as
