@@ -94,6 +94,16 @@ public:
         return {};
     }
 
+    // One completed pit visit restores at most 40% charge and cools
+    // boost hardware. Held input cannot remain armed after service.
+    void RefillAtPit() noexcept
+    {
+        Suspend();
+        Charge = std::min(1.0, Charge + 0.40);
+        Heat = std::max(0.0, Heat - 0.40);
+        Cooldown = 0.0;
+    }
+
     double ChargeFraction() const noexcept { return Charge; }
     double HeatFraction() const noexcept { return Heat; }
     double CooldownRemainingSeconds() const noexcept { return Cooldown; }
