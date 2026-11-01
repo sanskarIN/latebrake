@@ -4,6 +4,7 @@
 #include "UI/HudInstrumentCluster.h"
 #include "Garage/GarageCatalogView.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
+#include "Vehicles/VehiclePaintRecipe.h"
 #include "UI/HudVerticalPlan.h"
 #include "UI/HudTextBounds.h"
 #include "UI/HudMenuVerticalPlan.h"
@@ -320,9 +321,11 @@ void ALatebrakeRaceHUD::DrawHUD()
                 if (!bCompact)
                 {
                     MenuLine(FString::Printf(
-                        TEXT("   KIT %s | ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
+                        TEXT("   KIT %s | PAINT %s | ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
                         UTF8_TO_TCHAR(
                             latebrake::BodyKitForVehicle(Entry.VehicleId).Name),
+                        UTF8_TO_TCHAR(
+                            latebrake::PaintForVehicle(Entry.VehicleId).Name),
                         Entry.Effective.Acceleration, Entry.Effective.Grip,
                         Entry.Effective.TopSpeed));
                 }

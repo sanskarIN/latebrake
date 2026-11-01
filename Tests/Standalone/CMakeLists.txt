@@ -1545,3 +1545,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TouchPitHold COMMAND latebrake_touch_pit_hold_tests)
+
+# Six original body/accent/canopy color schemes are deterministic,
+# engine-neutral data. No new materials or binaries enter Git history.
+add_executable(latebrake_vehicle_paint_recipe_tests VehiclePaintRecipeTests.cpp)
+target_include_directories(latebrake_vehicle_paint_recipe_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_vehicle_paint_recipe_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_vehicle_paint_recipe_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_vehicle_paint_recipe_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VehiclePaintRecipe COMMAND latebrake_vehicle_paint_recipe_tests)

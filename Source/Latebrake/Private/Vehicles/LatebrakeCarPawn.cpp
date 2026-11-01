@@ -2,6 +2,7 @@
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
+#include "Vehicles/VehiclePaintRecipe.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
@@ -31,6 +32,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Engine/StaticMesh.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -247,6 +249,9 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
 void ALatebrakeCarPawn::BeginPlay()
 {
     Super::BeginPlay();
+    // Dynamic material instances belong to these mesh components, and are
+    // initialized only when the actor is live (not in the CDO constructor).
+    ApplyVehiclePaintRecipe(GarageVehicleId);
     Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
@@ -462,6 +467,54 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         Kit.HasRearFins);
 }
 
+void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
+{
+    // These are cosmetic colors only. Retain each built-in mesh's original
+    // material as the parent: its physical-material/contact settings and
+    // Chaos collision body are not changed. Material parameter availability
+    // must still be visually verified in the licensed Unreal Editor.
+    const latebrake::VehiclePaintRecipe Paint =
+        latebrake::PaintForVehicle(VehicleId);
+    const auto Tint = [&](UStaticMeshComponent* Part,
+                          latebrake::VehiclePaintRgb Rgb)
+    {
+        if (!IsValid(Part) || !Part->GetStaticMesh())
+        {
+            return;
+        }
+        UMaterialInstanceDynamic* Instance =
+            Cast<UMaterialInstanceDynamic>(Part->GetMaterial(0));
+        if (!Instance)
+        {
+            // Create once on first live use; switching garage vehicles
+            // reuses the component-owned dynamic material, not new actors.
+            Instance = Part->CreateDynamicMaterialInstance(0);
+        }
+        if (Instance)
+        {
+            Instance->SetVectorParameterValue(
+                TEXT("Color"),
+                FLinearColor(static_cast<float>(Rgb.R),
+                             static_cast<float>(Rgb.G),
+                             static_cast<float>(Rgb.B), 1.f));
+        }
+    };
+    Tint(Chassis, Paint.Body);
+    Tint(Cabin, Paint.Canopy);
+    Tint(Hood, Paint.Body);
+    Tint(RearDeck, Paint.Body);
+    Tint(FrontSplitter, Paint.Accent);
+    Tint(LeftSideSkirt, Paint.Accent);
+    Tint(RightSideSkirt, Paint.Accent);
+    Tint(RearDiffuser, Paint.Accent);
+    Tint(HoodScoop, Paint.Accent);
+    Tint(LeftRearFin, Paint.Accent);
+    Tint(RightRearFin, Paint.Accent);
+    Tint(SpoilerWing, Paint.Accent);
+    Tint(SpoilerSupportLeft, Paint.Accent);
+    Tint(SpoilerSupportRight, Paint.Accent);
+}
+
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
                                      int32 VehicleId)
 {
@@ -479,6 +532,9 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
         // Garage selection changes visible body proportions only.
         // Vehicle force multipliers above are unchanged and remain bounded.
         ApplyVehicleVisualRecipe(SafeId);
+        // Reuse existing component material instances on car switching;
+        // never construct meshes or update paint on the per-frame Tick.
+        if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId);
     }
     GarageVehicleId = SafeId;
 }

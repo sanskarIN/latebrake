@@ -213,6 +213,7 @@ private:
                             double VisualSteering);
     void ApplyWheelVisualPose();
     void ApplyVehicleVisualRecipe(int32 VehicleId);
+    void ApplyVehiclePaintRecipe(int32 VehicleId);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
                            double SignedForwardSpeedCmPerSecond);
     void RecoverPressed();
