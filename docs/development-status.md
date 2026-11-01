@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.87](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87), **source only**, zero runnable assets (independently verified tag at `8e640f6c`, non-draft published pre-release with no attachments) |
-| Latest source-development milestone | **Post-v0.5.87 source-only development:** pit wayfinding marker on the optional desktop radar, following the v0.5.87 tagged Unreal pit service, input fix and six geometric body kits. The released source commit is `8e640f6ccb6b7000e74dede629d6c164a0901130`; the subsequent radar update is not in that tag. **No UE/UHT compilation, original cooked circuit, installed Win64/Android game or physical driving QA has been verified.** |
+| Latest published GitHub pre-release | [v0.5.88](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.88), **source only**, zero runnable assets (verified tag at `ee4c0a95`; seven release jobs successful; non-draft published pre-release) |
+| Latest source-development milestone | **Post-v0.5.88 source-only work:** PR #257's actionable physical pit-service feedback is merged into `main` after the tagged release; PR #258's optional cosmetic pit bay marking is under review. v0.5.88 already contains the desktop pit radar, Android PIT HOLD and six cosmetic paint recipes. **No verified UE 5.8/UHT compilation, cooked track, installed Win64 game or Android hardware driving QA exists.** |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.87).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.88).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.
