@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
+#include "UI/TouchPitHold.h"
 #include "Racing/DrivingSessionStats.h"
 #include "Racing/RacePitService.h"
 #include "Racing/DriftComboMeter.h"
@@ -107,6 +108,7 @@ public:
     }
     const latebrake::ArcadeNitroBoost& GetNitroBoost() const noexcept { return NitroBoost; }
     const latebrake::RacePitService& GetPitService() const noexcept { return PitService; }
+    bool IsTouchPitHeld() const noexcept { return TouchPit.IsHeld(); }
     const latebrake::HumanSpinAssistMeter& GetSpinAssist() const noexcept { return SpinAssist; }
 
     // Physical placement must succeed before GameMode can commit its five-
@@ -288,6 +290,7 @@ private:
     latebrake::SlipstreamDraftBoost SlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
     latebrake::TouchDriveState TouchDrive;
+    latebrake::TouchPitHold TouchPit;
     latebrake::TouchPressTracker TouchPresses;
     latebrake::TouchViewportGuard TouchViewport;
 
