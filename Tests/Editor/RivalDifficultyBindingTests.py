@@ -29,7 +29,8 @@ class RivalDifficultyBindingTests(unittest.TestCase):
         cycle = self.mode.split("void ALatebrakeRaceGameMode::CycleCareerEvent()", 1)[1].split(
             "void ALatebrakeRaceGameMode::StartNextAvailableCareerEvent()", 1)[0]
         self.assertIn("Menu.Current() == latebrake::MenuPage::QuickRace", cycle)
-        self.assertIn("NextRivalDifficulty(QuickRaceDifficultySelection)", cycle)
+        self.assertIn("NextQuickRaceMenuChoice(", cycle)
+        self.assertIn("QuickRaceDifficultySelection = Next.Difficulty;", cycle)
         self.assertIn("return;", cycle)
         self.assertIn("const int32 Original = CareerMenuSelection;", cycle)
         quick_menu = self.hud.split("case latebrake::MenuPage::QuickRace:", 1)[1].split(

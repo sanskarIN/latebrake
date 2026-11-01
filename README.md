@@ -116,6 +116,13 @@ previous STANDARD AI behavior. The current prototype physical AI remains
 unverified on a licensed Unreal 5.8 gameplay workstation.
 [Difficulty QA](docs/QUICK_RACE_RIVAL_DIFFICULTY_QA.md).
 
+**New source-only Quick Race mode:** the existing BROWSE/N / gamepad /
+mobile menu now cycles three full-circuit AI levels and the **existing
+one-lap SOLO TIME ATTACK** event. Selecting the solo option actually
+switches the normal event/race-clock/rival lifecycle rather than merely
+changing a visual menu label. Career, saved records and official race
+qualifications are preserved. [QA and limitations](docs/QUICK_RACE_MODE_PICKER_QA.md).
+
 ## What's in source today?
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.

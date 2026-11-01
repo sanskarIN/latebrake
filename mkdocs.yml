@@ -143,6 +143,7 @@ nav:
       - Off-track and AI approach QA: OFF_TRACK_AND_RIVAL_APPROACH_QA.md
       - Rival proximity HUD QA: RIVAL_PROXIMITY_QA.md
       - Rival accepted gate-gap QA: RIVAL_VERIFIED_GATE_GAP_QA.md
+      - Quick Race mode selector QA: QUICK_RACE_MODE_PICKER_QA.md
       - Matched directional-gate split QA: RIVAL_MATCHED_GATE_SPLITS_QA.md
       - Quick-race rival difficulty QA: QUICK_RACE_RIVAL_DIFFICULTY_QA.md
       - Six-car relative tuning preview QA: GARAGE_COMPARISON_QA.md
