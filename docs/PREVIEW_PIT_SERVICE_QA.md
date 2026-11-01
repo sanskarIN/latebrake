@@ -6,8 +6,10 @@ hardware-qualified controller support, or a verified Windows installer.
 
 ## Gameplay contract
 
-- A labelled **PIT** marker is projected from the same procedural circuit
-  geometry as the four checkpoint gates on each selected track.
+- A labelled **PIT** marker is projected onto the **inner paved shoulder**
+  from the same procedural circuit geometry as the four checkpoint gates.
+  Service admission is restricted to the inner shoulder, not the rival
+  center-line path. Cars remain subject to ordinary collision rules.
 - Stop inside the marked circle, release gas/reverse/nitro, and hold **E**
   (keyboard) or **Y** (Xbox-compatible XInput controller) for **2.5 seconds**
   of active, unpaused 120 Hz simulation time.
@@ -52,9 +54,10 @@ continuing their simulation.
 ## Required manual Windows QA
 
 1. Drive each of the four tracks and confirm the PIT marker is visible,
-   reachable and not mistaken for a directional checkpoint.
-2. Try E/Y near the bay at high speed, with full throttle and while paused;
-   none should service the car.
+   reachable from the track, safely offset from the rival racing line, and
+   not mistaken for a directional checkpoint.
+2. Try E/Y on the center-line racing path, near the bay at high speed,
+   with full throttle and while paused; none should service the car.
 3. Take collision damage or use nitro; park in the bay, hold E or Y for
    2.5 seconds, then confirm damage/nitro gauges change by bounded amounts.
 4. Confirm that leaving the bay permits a second visit, but holding the key
