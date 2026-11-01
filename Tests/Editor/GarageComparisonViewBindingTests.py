@@ -26,8 +26,10 @@ class GarageComparisonViewBindingTests(unittest.TestCase):
         )[1].split("case latebrake::MenuPage::Results:", 1)[0]
         for marker in (
             "BuildGarageCatalogView(Mode->GetGarageSnapshot())",
-            "PreviewGarageUpgrade(Catalog.Credits, Catalog.EngineLevel,",
-            "PreviewGarageUpgrade(Catalog.Credits, Catalog.GripLevel,",
+            "const auto EngineOffer = latebrake::PreviewGarageUpgrade(",
+            "Catalog.Credits, Catalog.EngineLevel, latebrake::UpgradeKind::Engine)",
+            "const auto GripOffer = latebrake::PreviewGarageUpgrade(",
+            "Catalog.Credits, Catalog.GripLevel, latebrake::UpgradeKind::Grip)",
             "CompareGaragePerformance(Catalog, Entry.VehicleId)",
             "Comparison.AccelerationPercent", "Comparison.GripPercent",
             "Comparison.TopSpeedPercent", "if (!bCompact)",
