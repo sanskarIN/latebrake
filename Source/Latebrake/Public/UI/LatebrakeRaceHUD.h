@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
 #include "Racing/WrongWayIndicator.h"
+#include "Racing/StuckRecoveryHint.h"
 #include "Track/OffTrackAdvisor.h"
 #include "Track/RivalProximityIndicator.h"
 #include "Track/RivalRelativeMotion.h"
@@ -25,6 +26,7 @@ public:
 private:
     // Advisory only: no race awarding, control input or network telemetry.
     latebrake::WrongWayIndicator WrongWayHint;
+    latebrake::StuckRecoveryHint StuckHint;
     latebrake::OffTrackIndicator OffTrackHint;
     latebrake::RivalProximityIndicator RivalProximityHint;
     latebrake::RivalRelativeMotionTracker RivalRelativeMotionHint;
