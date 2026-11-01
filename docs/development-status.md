@@ -9,7 +9,7 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.89](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89), **source only**, zero runnable assets (immutable verified tag at `def0b136`; seven release qualification jobs successful; non-draft GitHub prerelease) |
+| Latest published GitHub pre-release | [v0.5.89](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89), **source only**, zero runnable assets (immutable verified tag at `e3a059f4`; seven release qualification jobs successful; non-draft GitHub prerelease) |
 | Latest source-development milestone | **v0.5.89 source-only:** accepted checkpoint gate-progress HUD, six-car equipped comparisons/upgrade prices, same-gate local rival splits, and Rookie/Standard/Expert next Quick Race throttle policy. Prior v0.5.88 pit radar, Android PIT HOLD and paint code retained. **Actual UE 5.8/UHT compilation, cooked circuit, installed Win64 game and Android hardware QA remain unverified.** |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
