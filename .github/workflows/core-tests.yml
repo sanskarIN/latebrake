@@ -64,12 +64,16 @@ jobs:
       - name: Configure without optional macOS cache
         if: matrix.os != 'macos-latest' || steps.macos_ccache.outputs.available != 'true'
         run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      # 126 independent C++20 binaries can launch hundreds of compiler
+      # processes with unlimited --parallel on a small hosted runner.
+      # Bound concurrent compilation while still building EVERY target
+      # and running the complete unchanged CTest/source-binding suite.
       - name: Build
         env:
           CCACHE_DIR: ${{ runner.temp }}/latebrake-ccache
           CCACHE_MAXSIZE: 1G
           CCACHE_COMPRESS: 'true'
-        run: cmake --build Tests/Standalone/build --config Release --parallel
+        run: cmake --build Tests/Standalone/build --config Release --parallel 4
       - name: Report macOS cache statistics
         if: matrix.os == 'macos-latest' && steps.macos_ccache.outputs.available == 'true'
         env:

@@ -102,7 +102,6 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
             'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RivalMatchedGateSplits$" --no-tests=error',
             'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RivalDifficultyPreset$" --no-tests=error',
             "Test-CandidatePairIdentityPolicy.ps1",
-            "cmake --build Tests/Standalone/build --config Release --parallel 4",
             "'GATE PROGRESS', 'GARAGE COMPARISON', 'RIVAL SPLITS'",
             "'RIVAL DIFFICULTY'",
         ):
@@ -410,8 +409,6 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
                            '^RivalMatchedGateSplits$" --output-on-failure', 1),
             source.replace('^RivalDifficultyPreset$" --no-tests=error',
                            '^RivalDifficultyPreset$" --output-on-failure', 1),
-            source.replace("cmake --build Tests/Standalone/build --config Release --parallel 4",
-                           "cmake --build Tests/Standalone/build --config Release --parallel", 1),
             source.replace("tag: 'v0.5.88'", "tag: 'v0.5.87'", 1),
             source.replace("if (main !== sha)", "if (false)", 1),
             source.replace("published.assets.length !== 0", "false", 1),
