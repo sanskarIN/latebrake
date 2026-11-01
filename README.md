@@ -95,6 +95,12 @@ accepted authoritative race checkpoint/lap counters. The new portable safety
 tests and source bindings do not constitute Unreal rendering or Windows
 installation QA. [Gate gauge QA](docs/RACE_GATE_PROGRESS_GAUGE_QA.md).
 
+**Unreleased Garage UX source development:** the actual Unreal garage
+now previews next-tier upgrade costs and signed **versus-equipped** tuning
+differences for all six fictional cars. This is presentation only: no
+unlocking from comparison rows, altered credits, save-schema migration or
+verified Unreal rendering. [Garage comparison QA](docs/GARAGE_COMPARISON_QA.md).
+
 ## What's in source today?
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.
