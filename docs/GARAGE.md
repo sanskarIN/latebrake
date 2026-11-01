@@ -1,6 +1,6 @@
 # Garage and tuning — v0.3.0 experimental foundation
 
-The garage is an **offline, in-game-credits-only** prototype. All vehicles are fictional: no third-party branded models, assets, audio, or manufacturer marks are shipped. These are handling and basic geometric silhouette presets on the same engine-primitive starter chassis, **not three fully modeled production cars**.
+The garage is an **offline, in-game-credits-only** prototype. All vehicles are fictional: no third-party branded models, assets, audio, or manufacturer marks are shipped. These are handling and basic geometric silhouette presets on the same engine-primitive starter chassis, **not six fully modeled production cars**.
 
 ## Vehicle presets
 
@@ -9,6 +9,9 @@ The garage is an **offline, in-game-credits-only** prototype. All vehicles are f
 | Arrow | Free | 1.00× | 1.00× | 1.00× | Baseline canopy |
 | Kestrel | 600 | 1.12× | 0.94× | 0.98× | Longer, lower canopy |
 | Phantom | 1,200 | 0.96× | 1.12× | 1.08× | Shorter, taller canopy |
+| Tempest | 1,800 | 1.18× | 0.89× | 1.14× | Long nose, low wing |
+| Glider | 2,500 | 1.00× | 1.23× | 1.04× | Short front, extended rear |
+| Nova | 3,400 | 1.08× | 1.08× | 1.20× | Wider wing, balanced canopy |
 
 These multipliers are applied to the starter force-based rigid-body controller. Physics tuning is **not** a calibrated Chaos Vehicles tire/suspension simulation.
 
@@ -83,9 +86,9 @@ The garage change key consists of selected vehicle, engine level and grip level.
 The HUD also displays a warning when its local SaveGame write fails. In-memory progress may exist without being persisted across restarts; investigate disk permissions/free space before claiming durability.
 
 
-### Prototype vehicle silhouette differences
+### Prototype vehicle silhouette differences (original three-car milestone)
 
-The three fictional profiles now use distinct **engine-primitive cosmetic body**
+The initial three fictional profiles use distinct **engine-primitive cosmetic body**
 proportions: Arrow has a wingless balanced shape, Kestrel a longer front
 and wider low spoiler, and Phantom a shorter front with a raised wing.
 These are not finished licensed car meshes, and they do not modify the
@@ -95,3 +98,21 @@ actual Chaos chassis, garage ownership or vehicle physics. See
 ## Purchase confirmation
 
 Unlocking a new car (**Q**) and buying engine (**U**) or grip (**I**) upgrades now use a preview-first confirmation: press the same key a second time within 8 real seconds. The first press only shows the price and does not spend credits. Moving to another menu page, changing selected cars or restarting the race cancels any pending offer. See [garage purchase QA](GARAGE_PURCHASE_CONFIRM_QA.md) for details and limits.
+
+## Six-car production garage source extension (November 2026)
+
+Three additional fictional profiles—Tempest, Glider and Nova—now append
+permanent IDs 3–5 to the original Arrow/Kestrel/Phantom catalog. An existing
+three-car save keeps its bank, equipment, progress, and already owned car bits,
+but does not automatically receive new cars. The original two-step purchase
+confirmation, failed-save rollback, career garage edit lock and no-negative
+bank rules continue to apply.
+
+The production Unreal garage Canvas menu now shows the equipped car's
+position in a six-car catalog, its **base** acceleration/grip/speed values,
+next locked car's credit cost, upgrade tiers and existing purchase feedback.
+This is a source-only interaction improvement; a complete UMG garage with
+car selection thumbnails, readable stats on installed screens and a real
+3D showroom is still future work.
+
+See [six-car silhouette and migration QA](GARAGE_CAR_SILHOUETTES_QA.md).
