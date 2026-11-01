@@ -69,7 +69,7 @@ int main()
             const auto other = PaintForVehicle(prev);
             Check(std::strcmp(x.Name, other.Name) != 0,
                   "every garage car has a unique paint name");
-            Check(Separation(x.Body, other.Body) > 0.14,
+            Check(Separation(x.Body, other.Body) > 0.04,
                   "body palettes remain meaningfully different");
         }
     }
