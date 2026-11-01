@@ -667,9 +667,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         int32 Width = 0;
         int32 Height = 0;
         PC->GetViewportSize(Width, Height);
-        latebrake::NeutralizeTouchOnViewportChange(
-            TouchViewport, TouchDrive, SmoothedThrottle, SmoothedSteering,
-            Width, Height);
+        if (latebrake::NeutralizeTouchOnViewportChange(
+                TouchViewport, TouchDrive, SmoothedThrottle, SmoothedSteering,
+                Width, Height))
+        {
+            // A rotate/resize may arrive without any further finger event.
+            // Never allow a stale PIT hold to finish on the new viewport.
+            TouchPit.Clear();
+            PitService.Suspend();
+        }
     }
     else
     {
