@@ -1559,3 +1559,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehiclePaintRecipe COMMAND latebrake_vehicle_paint_recipe_tests)
+
+# Real physical pit status diagnostics are observational; they cannot award
+# a repair or mutate the racing chassis. Run on Win/Linux/macOS portable CI.
+add_executable(latebrake_race_pit_guidance_tests RacePitGuidanceTests.cpp)
+target_include_directories(latebrake_race_pit_guidance_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_pit_guidance_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_pit_guidance_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_pit_guidance_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RacePitGuidance COMMAND latebrake_race_pit_guidance_tests)
