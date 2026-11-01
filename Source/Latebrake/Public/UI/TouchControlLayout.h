@@ -31,6 +31,7 @@ enum class TouchControl
     Restart,
     Recover,
     GhostView,
+    PitService,
     CareerNext,
     CareerStart,
     MenuBrowse
@@ -45,6 +46,7 @@ struct TouchControlLayout final
     TouchRect Restart;
     TouchRect Recover;
     TouchRect GhostView;
+    TouchRect PitService;
     TouchRect CareerNext;
     TouchRect CareerStart;
     TouchRect MenuBrowse;
@@ -78,6 +80,10 @@ inline TouchControlLayout CalculateTouchControlLayout(
         // Press-only visual ghost toggle: below RECOVER, above GAS.
         {viewportWidth * 0.69, viewportHeight * 0.40,
          viewportWidth * 0.27, viewportHeight * 0.10},
+        // Held PIT request fits the unused middle gap. No overlap with
+        // GHOST, CAREER, CAM, GAS, steering, braking or menu controls.
+        {viewportWidth * 0.43, viewportHeight * 0.40,
+         viewportWidth * 0.23, viewportHeight * 0.10},
         {viewportWidth * 0.43, viewportHeight * 0.04,
          viewportWidth * 0.23, viewportHeight * 0.10},
         {viewportWidth * 0.43, viewportHeight * 0.16,
@@ -122,6 +128,10 @@ inline TouchControl HitTestTouchControl(const TouchControlLayout& layout,
     if (layout.GhostView.Contains(x, y))
     {
         return TouchControl::GhostView;
+    }
+    if (layout.PitService.Contains(x, y))
+    {
+        return TouchControl::PitService;
     }
     if (layout.CareerNext.Contains(x, y))
     {
