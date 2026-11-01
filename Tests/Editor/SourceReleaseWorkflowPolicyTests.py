@@ -47,6 +47,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.84": "v0.5.83",  # Measured paved/off-pavement chassis traction.
         "v0.5.85": "v0.5.84",  # Source-only brake thermal and real chassis collision wiring.
         "v0.5.86": "v0.5.85",  # Shared engine heat, rival cooldown and credited gate gap.
+        "v0.5.87": "v0.5.86",  # Pit service, menu input and six visual body kits.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -90,6 +91,17 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
+    if version == "v0.5.87":
+        for new_gate in (
+            "RacePitService|RacePitVehicleService|VehicleBodyKit",
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RacePitService$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^RacePitVehicleService$" --no-tests=error',
+            'run: ctest --test-dir Tests/Standalone/build -C Release -R "^VehicleBodyKit$" --no-tests=error',
+            "Test-CandidatePairIdentityPolicy.ps1",
+            "'UNREAL PIT SERVICE', 'MENU INPUT', 'SIX-CAR BODY KITS'",
+        ):
+            require(new_gate, "v0.5.87 pit/menu/body-kit source qualification gates")
+
     if version == "v0.5.86":
         for new_gate in (
             "ArcadeEngineHeat|RivalEngineHeatPace|RivalGateGap|RivalDirectionalGate|RivalGateRunThrough",
@@ -221,7 +233,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82", "v0.5.83", "v0.5.84", "v0.5.85", "v0.5.86"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82", "v0.5.83", "v0.5.84", "v0.5.85", "v0.5.86", "v0.5.87"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -348,6 +360,35 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(mutation=mutation[-80:]):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release("v0.5.78", mutation, notes)
+
+    def test_v0587_pit_and_body_kit_source_publisher_requires_all_gates(self):
+        version = "v0.5.87"
+        source = (WORKFLOWS / "publish-v0.5.87-source.yml").read_text(
+            encoding="utf-8")
+        notes = (RELEASE_NOTES / "v0.5.87.md").read_text(encoding="utf-8")
+        verify_live_ci_source_release(version, source, notes)
+        for mutant in (
+            source.replace("RacePitService|RacePitVehicleService|VehicleBodyKit",
+                           "RacePitService|VehicleBodyKit", 1),
+            source.replace('^RacePitService$" --no-tests=error',
+                           '^RacePitService$" --output-on-failure', 1),
+            source.replace('^RacePitVehicleService$" --no-tests=error',
+                           '^RacePitVehicleService$" --output-on-failure', 1),
+            source.replace('^VehicleBodyKit$" --no-tests=error',
+                           '^VehicleBodyKit$" --output-on-failure', 1),
+            source.replace("tag: 'v0.5.86'", "tag: 'v0.5.85'", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("published.assets.length !== 0",
+                           "false /* incomplete asset check */", 1),
+            source.replace("needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                           "needs: [source-tests]", 1),
+            source.replace("'UNREAL PIT SERVICE', 'MENU INPUT', 'SIX-CAR BODY KITS'",
+                           "'MISSING PIT CHECKS'", 1),
+        ):
+            self.assertNotEqual(mutant, source)
+            with self.subTest(mutant=mutant[:85]):
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(version, mutant, notes)
 
     def test_v0586_shared_engine_heat_and_rival_verification_release_gate(self):
         version = "v0.5.86"
