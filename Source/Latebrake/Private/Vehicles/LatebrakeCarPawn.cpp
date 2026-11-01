@@ -151,7 +151,7 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         if (Cube.Succeeded())
         {
             ConfigureDecorativeMesh(Trim, Cube.Object,
-                FVector::ZeroVector, FVector(0.10f));
+                FVector::ZeroVector, FVector(0.10f, 0.10f, 0.10f));
         }
     }
 
