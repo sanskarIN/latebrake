@@ -987,6 +987,50 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetCollisionDamage().LateralGripMultiplier() * 100.0),
             Accent);
     }
+    // An optional desktop pit notice is derived from the ACTUAL player
+    // vehicle and the shared deterministic service policy. The HUD may
+    // offer wayfinding but cannot repair a car or advance race state.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28 &&
+        Mode->IsRaceStartGreen() && !Race.IsFinished() &&
+        !Mode->IsMenuOpen())
+    {
+        const latebrake::RacePitService& Pit = Car->GetPitService();
+        if (Pit.IsInBay())
+        {
+            if (!Pit.IsArmed())
+            {
+                Line(FString::Printf(TEXT("PIT SERVICED %d | EXIT BAY TO REARM"),
+                    Pit.StopCount()), Accent);
+            }
+            else if (Car->GetCollisionDamage().DamageFraction() > 0.001 ||
+                     Car->GetTireCondition().WearFraction() > 0.03 ||
+                     Car->GetNitroBoost().ChargeFraction() < 0.99)
+            {
+                Line(FString::Printf(TEXT("PIT: HOLD P / Y  %.0f%% | STOP %d"),
+                    Pit.ProgressFraction() * 100.0, Pit.StopCount() + 1), Accent);
+            }
+            else
+            {
+                Line(TEXT("PIT BAY | NO SERVICE NEEDED"), Primary);
+            }
+        }
+        else
+        {
+            const FVector Position = Car->GetActorLocation();
+            const double DX = static_cast<double>(Position.X) -
+                latebrake::RacePitBay.X;
+            const double DY = static_cast<double>(Position.Y) -
+                latebrake::RacePitBay.Y;
+            const double DistanceCm = FMath::Sqrt(DX * DX + DY * DY);
+            if (FMath::IsFinite(DistanceCm) && DistanceCm < 1500.0)
+            {
+                Line(FString::Printf(
+                    TEXT("PIT: INNER SOUTH SHOULDER | %.0f m"),
+                    DistanceCm / 100.0), Primary);
+            }
+        }
+    }
+
     // The independent off-track direction hint may appear immediately;
     // this readout reports only CONFIRMED road-surface motor/grip effects.
     // Do not consume limited compact or low-height HUD timing lines.
