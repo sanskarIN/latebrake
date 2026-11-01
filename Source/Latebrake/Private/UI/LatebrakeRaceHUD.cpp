@@ -1708,6 +1708,11 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawPad(Pads.GhostView,
             Mode->IsBestLapGhostDisplayEnabled()
                 ? TEXT("GHOST ON") : TEXT("GHOST OFF"), false);
+        // The physical chassis PIT hold and this Android pad share the
+        // same service authority. A touch is never interpreted as a tap
+        // or a one-off repair command; a continuous original hold is
+        // required by the portable finger-ownership and pit policies.
+        DrawPad(Pads.PitService, TEXT("PIT HOLD"), Car->IsTouchPitHeld());
         DrawPad(Pads.CareerNext, TEXT("NEXT"), false);
         DrawPad(Pads.CareerStart, TEXT("CAREER"), false);
         // MenuBrowse has a disjoint reserved hit rectangle. Reuse it as
