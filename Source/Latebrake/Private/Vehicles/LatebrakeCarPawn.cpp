@@ -1605,6 +1605,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         // driving fingers or recovery/career/restart commands. A NEW PAUSE
         // tap is an explicit player action allowed to resume the race.
         NeutralizeMotionWhenDrivingBlocked();
+        TouchPit.Clear();
+        PitService.Suspend();
         if (latebrake::CanResumeFocusSuspendedRaceFromTouch(
                 bAllowAcquire, Region))
         {
@@ -1617,6 +1619,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         // Menus own focus: never acquire or move driving fingers while paused.
         // Only a distinct new press can activate the visible navigation pads.
         TouchDrive.Clear();
+        TouchPit.Clear();
+        PitService.Suspend();
         if (bAllowAcquire)
         {
             if (Region == latebrake::TouchControl::Restart) MenuDetailsPrevious();
@@ -1635,6 +1639,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         // gas, brake and steering presses until explicit unpause; otherwise
         // a finger pressed while paused could unexpectedly accelerate later.
         TouchDrive.Clear();
+        TouchPit.Clear();
+        PitService.Suspend();
         if (bAllowAcquire && Region == latebrake::TouchControl::Pause)
         {
             TogglePause();
@@ -1644,6 +1650,15 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
 
     if (!bAllowAcquire)
     {
+        // A PIT finger stays owned only while it remains in the PIT pad.
+        // Dragging out cancels the hold with no re-acquisition on move.
+        const bool bWasPitOwner = TouchPit.FingerOwner() == FingerId;
+        TouchPit.Move(FingerId, Region, !bViewportInvalidated);
+        if (bWasPitOwner)
+        {
+            if (!TouchPit.IsHeld()) PitService.Suspend();
+            return;
+        }
         // A move can update only a finger captured on its original press.
         latebrake::MoveTouchWithResidualSafety(
             TouchDrive, Layout, FingerId, Location.X, Location.Y,
@@ -1663,6 +1678,18 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     // over them cannot restart, recover, open menus or collect rewards.
     switch (Region)
     {
+    case latebrake::TouchControl::PitService:
+        // Only a new physical press can start this held action.
+        // The real pit state machine verifies all chassis, speed,
+        // throttle, nitro and race conditions every physics tick.
+        if (!bViewportInvalidated && Mode &&
+            Mode->IsCircuitReadyForGameplay() &&
+            Mode->HasLocalPlayerDriver() && Mode->IsRaceStartGreen() &&
+            !Mode->GetRace().IsFinished() && IsRacePhysicsReady())
+        {
+            TouchPit.Begin(FingerId, Region, true);
+        }
+        return;
     case latebrake::TouchControl::Pause:
         TogglePause();
         return;
@@ -1725,10 +1752,15 @@ void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Loc
     // An OS finger-up is stronger than an ordinary throttle/steering
     // smoothing update: clear the released owner's residual command now.
     // Other fingers (and their smoothed output) remain untouched.
+    const int32 FingerId = static_cast<int32>(FingerIndex);
     latebrake::CancelTouchOwnerAndOutput(
-        TouchDrive, static_cast<int32>(FingerIndex),
-        SmoothedThrottle, SmoothedSteering);
-    TouchPresses.Release(static_cast<int>(FingerIndex));
+        TouchDrive, FingerId, SmoothedThrottle, SmoothedSteering);
+    if (TouchPit.FingerOwner() == FingerId)
+    {
+        TouchPit.Release(FingerId);
+        PitService.Suspend();
+    }
+    TouchPresses.Release(FingerId);
 }
 
 void ALatebrakeCarPawn::SelectCircuit()
