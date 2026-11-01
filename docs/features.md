@@ -151,8 +151,8 @@ Android source also contains drawn touch pads for steering, GAS, BRAKE, PAUSE, R
 
 ## Career and garage
 
-- Three fictional vehicle profiles: **Arrow, Kestrel and Phantom**.
-- Offline earned credits and vehicle upgrade rules.
+- Six fictional garage profiles: **Arrow, Kestrel, Phantom, Tempest, Glider and Nova**. The latter three are earned unlocks and use distinct decorative primitive silhouettes; these are not separate finished vehicle meshes.
+- Offline earned credits, six-bit backward-compatible garage ownership, preview-before-spend confirmation and shared vehicle upgrade rules.
 - **12 source-defined career events**: two three-round championships and six standalone challenges.
 - Award validation and one-time completion rewards; better medals do not repeat the original completion payment.
 - Local profile persistence with validation and rollback on reported save failures.
