@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "UI/HudInstrumentCluster.h"
+#include "Garage/GarageCatalogView.h"
 #include "UI/HudVerticalPlan.h"
 #include "UI/HudTextBounds.h"
 #include "UI/HudMenuVerticalPlan.h"
@@ -270,26 +271,58 @@ void ALatebrakeRaceHUD::DrawHUD()
             break;
         case latebrake::MenuPage::Garage:
         {
-            const latebrake::VehicleSpec Vehicle =
-                latebrake::GarageState::Definition(Mode->GetSelectedVehicleId());
-            MenuLine(FString::Printf(TEXT("CAR %d/%d: %s | Credits: %d"),
-                Mode->GetSelectedVehicleId() + 1,
-                latebrake::VehicleCount, *Mode->GetSelectedVehicleName(),
-                Mode->GetTotalCredits()), true);
-            // Baseline garage profile comparisons; current engine/grip
-            // upgrades are separate, not represented as new unlockable cars.
-            MenuLine(FString::Printf(
-                TEXT("BASE ACCEL %.2fx | GRIP %.2fx | TOP %.2fx"),
-                Vehicle.Acceleration, Vehicle.Grip, Vehicle.TopSpeed));
-            const int32 NextCost = Mode->GetNextLockedVehicleCost();
-            MenuLine(NextCost > 0
-                ? FString::Printf(TEXT("NEXT UNLOCK %d credits | Q preview"), NextCost)
-                : FString(TEXT("ALL SIX PROFILES UNLOCKED")));
-            MenuLine(FString::Printf(
-                TEXT("UPGRADES: ENGINE %d/3 | GRIP %d/3"),
-                Mode->GetEngineUpgradeLevel(), Mode->GetGripUpgradeLevel()));
-            MenuLine(TEXT("E select owned car. Q/U/I press twice to confirm spending."));
-            MenuLine(Mode->GetGarageFeedback());
+            // A complete read-only catalogue of EVERY saved car ID, not
+            // just the equipped one. The existing detail pager ensures
+            // every row stays accessible on short desktop/Android screens.
+            const latebrake::GarageCatalogView Catalog =
+                latebrake::BuildGarageCatalogView(Mode->GetGarageSnapshot());
+            MenuLine(FString::Printf(TEXT("GARAGE %d/%d | %d EARNED CREDITS"),
+                Catalog.SelectedVehicle + 1, latebrake::VehicleCount,
+                Catalog.Credits), true);
+            // Keep transaction confirmation near the top, even when the
+            // catalogue spans multiple paginated detail windows.
+            MenuLine(Mode->GetGarageFeedback(), true);
+            MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
+                Catalog.EngineLevel, Catalog.GripLevel));
+            MenuLine(TEXT("E/SELECT: NEXT OWNED | Q: NEXT LOCKED | U/I: UPGRADES"));
+            MenuLine(TEXT("Q/U/I TWICE IN 8s TO CONFIRM | UP/DOWN: DETAILS"));
+            MenuLine(TEXT("SIX FICTIONAL CARS (NOT FULL 3D VEHICLE MODELS)"), true);
+            for (const latebrake::GarageCatalogEntry& Entry : Catalog.Cars)
+            {
+                FString State;
+                switch (Entry.Ownership)
+                {
+                case latebrake::GarageCatalogOwnership::Equipped:
+                    State = TEXT("EQUIPPED");
+                    break;
+                case latebrake::GarageCatalogOwnership::Owned:
+                    State = TEXT("OWNED");
+                    break;
+                case latebrake::GarageCatalogOwnership::LockedAffordable:
+                    State = FString::Printf(TEXT("LOCKED %d CR | AFFORDABLE"),
+                        Entry.UnlockCost);
+                    break;
+                case latebrake::GarageCatalogOwnership::LockedInsufficientCredits:
+                    State = FString::Printf(TEXT("LOCKED %d CR | NEED %d"),
+                        Entry.UnlockCost, Entry.CreditsShort);
+                    break;
+                }
+                // Q buys the *first* locked ID only. Do not suggest that
+                // later affordable cars can be bought directly from rows.
+                const TCHAR* NextFlag = Entry.VehicleId == Catalog.NextUnlockId
+                    ? TEXT(" | Q NEXT") : TEXT("");
+                MenuLine(FString::Printf(TEXT("%d. %s | %s%s"),
+                    Entry.VehicleId + 1, UTF8_TO_TCHAR(Entry.Name),
+                    *State, NextFlag),
+                    Entry.Ownership == latebrake::GarageCatalogOwnership::Equipped);
+                if (!bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("   ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx (TUNED)"),
+                        Entry.Effective.Acceleration, Entry.Effective.Grip,
+                        Entry.Effective.TopSpeed));
+                }
+            }
             break;
         }
         case latebrake::MenuPage::Results:
