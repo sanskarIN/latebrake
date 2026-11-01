@@ -41,13 +41,22 @@ cmake --build build/test --parallel
 ctest --test-dir build/test --output-on-failure
 ```
 
-Relevant tests: `HudMenuMouseControls` and
-`DesktopMenuMouseBindingTests`. They cover 720p, 1080p and ultrawide
-layouts, resize sweeps, invalid coordinates and disabled states.
+Relevant tests: `HudMenuMouseControls`,
+`DesktopMenuMouseBindingTests`, and `UnrealInputMappingIntegrityTests`.
+They cover 720p, 1080p and ultrawide layouts, resize sweeps, invalid
+coordinates and disabled states. The dedicated input-mapping integrity
+check parses each individual `+ActionMappings` / `+AxisMappings` entry,
+rejects concatenated config lines, and checks the real pawn's input action
+names against the configured keys. In particular, **Enter** and
+**LeftMouseButton** must be separate records; a plain text substring
+search was insufficient to detect this config regression.
 
 ## Required genuine Unreal/Windows checks
 
 - Compile UHT and the actual UE 5.8 LatebrakeEditor/Game targets.
+- Verify Enter selects menu entries and the left mouse button independently
+  activates all six menu targets. These previously shared a malformed INI
+  line, and source parsing cannot prove actual engine input registration.
 - Open TAB menu, test all six buttons with real desktop mouse, trackpad
   and DPI/scaling settings at 1280x720, 1920x1080 and ultrawide.
 - Test open-close after starting/restarting an event; confirm the cursor
