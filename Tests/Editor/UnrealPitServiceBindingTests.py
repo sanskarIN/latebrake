@@ -15,6 +15,7 @@ class UnrealPitServiceBindingTests(unittest.TestCase):
         cls.header = read("Source/Latebrake/Public/Vehicles/LatebrakeCarPawn.h")
         cls.pawn = read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
         cls.hud = read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
+        cls.mode = read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
         cls.ini = read("Config/DefaultInput.ini")
         cls.policy = read("Source/Latebrake/Public/Racing/RacePitService.h")
         cls.cmake = read("Tests/Standalone/CMakeLists.txt")
@@ -73,6 +74,18 @@ class UnrealPitServiceBindingTests(unittest.TestCase):
         self.assertIn("!bCompact && VerticalPlan.MaxTelemetryLines >= 28", self.hud)
         self.assertIn("RacePitServiceTests.cpp", self.cmake)
         self.assertIn("NAME RacePitService", self.cmake)
+
+    def test_visual_beacon_does_not_modify_physical_circuit_authority(self):
+        marker = self.mode.split(
+            "// Visual-only pit beacon", 1)[1].split(
+            "int32 SpawnedCheckpoints", 1)[0]
+        self.assertIn("latebrake::RacePitBay.X", marker)
+        self.assertIn("latebrake::RacePitBay.Y + 265.0", marker)
+        self.assertIn("ECollisionEnabled::NoCollision", marker)
+        self.assertIn("SetGenerateOverlapEvents(false)", marker)
+        self.assertNotIn("Audit.RecordCollisionBlock(", marker)
+        self.assertNotIn("SpawnBlock(", marker)
+        self.assertIn("LATEBRAKE_GEOMETRY_READY", self.mode)
 
     def test_pit_remains_inside_existing_circuit_not_rival_centerline(self):
         self.assertIn("RacePitBay{0.0, -1300.0}", self.policy)
