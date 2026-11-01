@@ -285,7 +285,8 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
                 Catalog.EngineLevel, Catalog.GripLevel));
             MenuLine(TEXT("E/SELECT: NEXT OWNED | Q: NEXT LOCKED | U/I: UPGRADES"));
-            MenuLine(TEXT("Q/U/I TWICE IN 8s TO CONFIRM | UP/DOWN: DETAILS"));
+            MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
+            MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("SIX FICTIONAL CARS (NOT FULL 3D VEHICLE MODELS)"), true);
             for (const latebrake::GarageCatalogEntry& Entry : Catalog.Cars)
             {
