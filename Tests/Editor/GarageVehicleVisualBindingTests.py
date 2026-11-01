@@ -66,9 +66,11 @@ class GarageVehicleVisualBindingTests(unittest.TestCase):
         self.assertIn("KnownVehicleMask", self.garage)
         self.assertIn("latebrake::GarageState::IsVehicle(VehicleId)", self.pawn)
         self.assertIn("Recipe.WingSpanScale", self.pawn)
-        self.assertIn("CAR %d/%d", self.hud)
-        self.assertIn("BASE ACCEL %.2fx | GRIP %.2fx | TOP %.2fx", self.hud)
-        self.assertIn("Mode->GetNextLockedVehicleCost()", self.hud)
+        self.assertIn("GARAGE %d/%d | %d EARNED CREDITS", self.hud)
+        self.assertIn("BuildGarageCatalogView(Mode->GetGarageSnapshot())", self.hud)
+        self.assertIn("Entry.Effective.Acceleration", self.hud)
+        self.assertIn("Entry.Effective.Grip", self.hud)
+        self.assertIn("Entry.Effective.TopSpeed", self.hud)
 
 
 if __name__ == "__main__":
