@@ -29,6 +29,13 @@ regulations, or a tested Windows/Android release.
   intentionally omitted from compact mobile HUD layouts pending a
   proper touch-native pit control and real device QA.
 
+The non-compact **RACE RADAR / NORTH UP** also displays a small `PIT`
+symbol projected from the **same `RacePitBay` XY coordinates** used by
+the physical service eligibility policy, so there is no separately
+estimated wayfinding location. It remains a static decorative marker
+and does not change eligibility, time, rewards or checkpoints. Radar
+is intentionally hidden on compact windows and mobile HUDs.
+
 The Y/top face button is contextual: the menu already uses it for
 confirmation when open. An extra guard in `MenuActivate` prevents the
 closed-menu input handler from erasing a live pit-service hold.
@@ -72,8 +79,9 @@ contracts only.
 1. Compile genuine UE 5.8 Editor/Win64 with UHT and launch a real generated
    circuit map; ensure there are no compilation errors or actors missing.
 2. Visually confirm that the colored nonblocking pit beacon appears and
-   inner south shoulder is reachable, paved and clear of checkpoint gates
-   and AI centerline. Confirm the beacon cannot stop or damage the car. Hold P at less than
+   the north-up desktop radar displays a PIT marker inside the south
+   circuit line. Confirm the point remains aligned with the physically
+   serviceable inner shoulder, clear of checkpoint gates and AI centerline. Confirm the beacon cannot stop or damage the car. Hold P at less than
    4.32 km/h without throttle. Run the same sequence on gamepad Y.
 3. Create genuine damage and spent nitro in a race, then verify one 2.5s
    pit completion restores only the bounded amount and race clock
