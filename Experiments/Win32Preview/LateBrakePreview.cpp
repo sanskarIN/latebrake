@@ -438,11 +438,17 @@ static void gatePos(int idx,float* x,float* y){
     shapePos(c[idx],s[idx],x,y);
 }
 // The service bay is anchored to each procedural track, not to the UI viewport.
-static void pitPoint(float* x,float* y){shapePos(0.26f,0.965f,x,y);}
+static void pitPoint(float* x,float* y){
+    // The marked bay is on the INNER paved shoulder rather than in the
+    // rival center-line driving path (which would cause unavoidable impacts).
+    float cx,cy;shapePos(0.26f,0.965f,&cx,&cy);
+    *x=CX+(cx-CX)*0.81f;*y=CY+(cy-CY)*0.81f;
+}
 static bool inPitBay(float x,float y){
     float px,py;pitPoint(&px,&py);
     float dx=x-px,dy=y-py;
-    return dx*dx+dy*dy<39.0f*39.0f && onroad(x,y);
+    return dx*dx+dy*dy<30.0f*30.0f &&
+        onroad(x,y) && trackOffset(x,y)<-0.09f;
 }
 struct Opponent { float c,s,x,y,speed,stun; int rounds; };
 struct Race {
@@ -1296,6 +1302,8 @@ static bool selftest(){
     if(race.pitHold!=0.0f||race.pitStops!=0)return false; // Pre-GO pit lock.
     countdown=0;selfTestStage=42;
     if(!inPitBay(pitX,pitY))return false;
+    float centerX,centerY;shapePos(0.26f,0.965f,&centerX,&centerY);
+    if(inPitBay(centerX,centerY))return false; // Racing line is not a pit bay.
     race.x=pitX;race.y=pitY;race.damage=80.0f;race.nitro=10.0f;
     update(0.03f,false,false,false,false,false,false,0,0,0,false);
     if(race.pitHold!=0.0f||race.pitStops!=0)return false;
