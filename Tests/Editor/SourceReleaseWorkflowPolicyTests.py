@@ -419,7 +419,7 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(publisher_marker=missing):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release(
-                        version, source, notes.replace(missing, "MISSING_" + missing))
+                        version, source, notes.replace(missing, "UNRECOGNIZED_MARKER"))
         for mutant in (
             source.replace(
                 "RaceGateProgressGauge|GarageCatalogView|GarageComparisonView|RivalMatchedGateSplits|RivalDifficultyPreset",
