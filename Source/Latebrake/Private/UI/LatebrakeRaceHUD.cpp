@@ -1427,6 +1427,24 @@ void ALatebrakeRaceHUD::DrawHUD()
             DrawLine(From.X, From.Y, To.X, To.Y,
                 FLinearColor(0.75f, 0.78f, 0.85f), 2.f * Scale);
         }
+        // Optional source-defined pit map marker: same world point
+        // and north-up transform as the real chassis-service policy.
+        // Do not infer leaderboard position, reward, pit eligibility or
+        // modify checkpoint state from this decorative radar symbol.
+        if (Mode->IsCircuitReadyForGameplay() &&
+            latebrake::IsOnPavedSurface(latebrake::RacePitBay))
+        {
+            const FVector2D Pit = ToScreen(
+                latebrake::NormalizeCircuitMap(latebrake::RacePitBay));
+            const FLinearColor PitColor(0.23f, 0.96f, 0.70f);
+            DrawRect(PitColor,
+                Pit.X - 4.f * Scale, Pit.Y - 4.f * Scale,
+                8.f * Scale, 8.f * Scale);
+            DrawText(TEXT("PIT"), PitColor,
+                Pit.X + 6.f * Scale, Pit.Y - 11.f * Scale,
+                GEngine->GetSmallFont(), 0.73f * Scale);
+        }
+
         if (Radar.NextGate.Valid)
         {
             const FVector2D Next = ScreenMarker(Radar.NextGate);

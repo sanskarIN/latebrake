@@ -1517,3 +1517,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehicleBodyKit COMMAND latebrake_vehicle_body_kit_tests)
+
+# Read-only Unreal race radar pit symbol: the geometry comes from the same
+# shared circuit point used by the actual player chassis service policy.
+add_executable(latebrake_race_pit_radar_tests RacePitRadarTests.cpp)
+target_include_directories(latebrake_race_pit_radar_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_pit_radar_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_pit_radar_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_pit_radar_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RacePitRadar COMMAND latebrake_race_pit_radar_tests)
