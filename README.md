@@ -108,6 +108,14 @@ post-GO clock. It neither ranks cars nor awards results, and remains
 unverified in a real Unreal Engine 5.8 build or packaged Windows game.
 [Matched-gate QA](docs/RIVAL_MATCHED_GATE_SPLITS_QA.md).
 
+**New source-only Quick Race option:** use existing **BROWSE/N** (keyboard,
+gamepad or mobile menu) while on the Quick Race page to select **ROOKIE,
+STANDARD or EXPERT** for the next local AI rival race. The menu selection
+never changes a currently running race, and career always stays at the
+previous STANDARD AI behavior. The current prototype physical AI remains
+unverified on a licensed Unreal 5.8 gameplay workstation.
+[Difficulty QA](docs/QUICK_RACE_RIVAL_DIFFICULTY_QA.md).
+
 ## What's in source today?
 
 - Unreal Engine 5.8 game/editor targets and a C++20 runtime module.

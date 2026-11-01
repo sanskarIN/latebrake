@@ -1292,6 +1292,15 @@ FString ALatebrakeRaceGameMode::GetCareerEventName() const
 
 void ALatebrakeRaceGameMode::CycleCareerEvent()
 {
+    // Reuse the existing Browse control across keyboard, gamepad and touch.
+    // Changing a pending tier never touches the AI in the *active* race,
+    // allowing a player to preview choices safely while the menu is open.
+    if (Menu.IsOpen() && Menu.Current() == latebrake::MenuPage::QuickRace)
+    {
+        QuickRaceDifficultySelection =
+            latebrake::NextRivalDifficulty(QuickRaceDifficultySelection);
+        return;
+    }
     const int32 Original = CareerMenuSelection;
     for (int32 Delta = 1; Delta <= latebrake::CareerEventCount; ++Delta)
     {
@@ -1869,6 +1878,10 @@ void ALatebrakeRaceGameMode::RestartRace()
     ManualPause.OnExplicitResume();
     Race.Reset();
     StartLights.Reset();
+    // Only a new, accepted race attempt latches the pending preset.
+    // Career medals/challenges always use the existing Standard opponent.
+    ActiveRivalDifficulty = latebrake::EffectiveRivalDifficulty(
+        QuickRaceDifficultySelection, bCareerRace);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();

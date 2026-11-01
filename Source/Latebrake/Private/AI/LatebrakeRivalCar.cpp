@@ -163,6 +163,13 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             NextTarget.X, NextTarget.Y, 440.0, false),
         Route.GetNextWaypoint(), {Position.X, Position.Y}, FlatSpeed);
 
+    // Apply selected Quick Race difficulty only to this already-valid
+    // planner command. Existing grip/traffic/heat/spin safety limits run
+    // afterward and can always reduce the requested motor demand.
+    Command = latebrake::ApplyRivalDifficulty(
+        Command, Mode->GetActiveRivalDifficulty(), FlatSpeed,
+        IsRacePhysicsReady());
+
     // Rival pace adapts to previous-tick real chassis slip, last valid
     // grip condition and current steering demand. It may only throttle
     // down or request braking; it cannot invent route or traffic state.
