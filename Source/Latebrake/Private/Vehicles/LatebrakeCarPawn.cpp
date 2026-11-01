@@ -492,6 +492,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     bBraking = false;
     bHandbrakeHeld = false;
     bPitServiceHeld = false;
+    TouchPit.Clear();
     PitService.Suspend();
     SpinAssist.Suspend();
     TireCondition.Suspend();
@@ -797,7 +798,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(SurfacePosition.Y),
         static_cast<double>(Speed),
         static_cast<double>(TouchDrive.ThrottleActive() ? 1.f : Throttle),
-        bPitServiceHeld, NitroBoost.IsHeld(),
+        (bPitServiceHeld || TouchPit.IsHeld()), NitroBoost.IsHeld(),
         IsLocallyControlled() &&
             Cast<APlayerController>(GetController()) != nullptr &&
             Mode->HasLocalPlayerDriver(),
@@ -1515,6 +1516,11 @@ void ALatebrakeCarPawn::TouchPressed(ETouchIndex::Type FingerIndex, FVector Loca
     {
         if (Admission == latebrake::TouchPressAdmission::MalformedDuplicate)
         {
+            if (TouchPit.FingerOwner() == FingerId)
+            {
+                TouchPit.Clear();
+                PitService.Suspend();
+            }
             // Removing ownership must also zero any still-smoothed output
             // from the canceled finger before the next physics frame.
             if (bWasPedalOwner) SmoothedThrottle = 0.f;
@@ -1542,6 +1548,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     {
         TouchViewport.Reset();
         TouchDrive.Clear();
+        TouchPit.Clear();
+        PitService.Suspend();
         SmoothedThrottle = 0.f;
         SmoothedSteering = 0.f;
         return;
@@ -1551,9 +1559,15 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
     PC->GetViewportSize(Width, Height);
     // The press tracker is deliberately NOT reset: a finger held before an
     // orientation change must not generate a second RECOVER/PAUSE/RESTART.
-    latebrake::NeutralizeTouchOnViewportChange(
-        TouchViewport, TouchDrive, SmoothedThrottle, SmoothedSteering,
-        Width, Height);
+    const bool bViewportInvalidated =
+        latebrake::NeutralizeTouchOnViewportChange(
+            TouchViewport, TouchDrive, SmoothedThrottle, SmoothedSteering,
+            Width, Height);
+    if (bViewportInvalidated)
+    {
+        TouchPit.Clear();
+        PitService.Suspend();
+    }
     const latebrake::TouchControlLayout Layout =
         latebrake::CalculateTouchControlLayout(Width, Height);
     if (!Layout.Valid)
@@ -1561,6 +1575,8 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         // Orientation or resize invalidates the geometry of every held
         // finger, not just the one that happened to move first.
         TouchDrive.Clear();
+        TouchPit.Clear();
+        PitService.Suspend();
         SmoothedThrottle = 0.f;
         SmoothedSteering = 0.f;
         return;
@@ -1571,6 +1587,11 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         // steering command active for further physics frames.
         latebrake::CancelTouchOwnerAndOutput(
             TouchDrive, FingerId, SmoothedThrottle, SmoothedSteering);
+        if (TouchPit.FingerOwner() == FingerId)
+        {
+            TouchPit.Clear();
+            PitService.Suspend();
+        }
         return;
     }
 
