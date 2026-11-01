@@ -1722,11 +1722,14 @@ void ALatebrakeCarPawn::MenuDetailsPrevious()
 
 void ALatebrakeCarPawn::MenuActivate()
 {
+    // Controller Y is contextual: do not clear live driving or a held pit
+    // service request when no menu owns the input. Confirming an open menu
+    // still cancels all previous human drive commands before navigation.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !Mode->IsMenuOpen()) return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-    {
-        Mode->MenuActivate();
-    }
+    Mode->MenuActivate();
 }
 
 void ALatebrakeCarPawn::MenuMousePressed()
