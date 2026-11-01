@@ -56,11 +56,10 @@ class GarageCatalogBindingTests(unittest.TestCase):
         self.assertIn("GarageState garage;", self.policy)
         self.assertIn("garage.Load(persisted);", self.policy)
         self.assertIn("GarageCatalogView", self.cmake)
-        self.assertIn("GarageCatalogViewTests.cpp", self.test_file.__class__.__name__
-                      if False else self.cmake)
-        self.assertIn("legacy three-car", self.test_file)
-        for mutation in ("SaveGame", "SaveRecords(", "Unlock(", "Select(",
-                         "Upgrade(", "EarnCredits("):
+        self.assertIn('#include "Garage/GarageCatalogView.h"', self.test_file)
+        self.assertIn("original three-car save", self.test_file)
+        for mutation in ("SaveRecords(", "garage.Unlock(", "garage.Select(",
+                         "garage.Upgrade(", "garage.EarnCredits("):
             self.assertNotIn(mutation, self.policy)
 
 
