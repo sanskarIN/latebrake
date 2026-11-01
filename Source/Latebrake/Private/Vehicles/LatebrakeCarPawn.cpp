@@ -1,6 +1,7 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/VehicleVisualRecipe.h"
+#include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
@@ -123,6 +124,35 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
             FVector(-158.f, -58.f, 74.f), FVector(0.12f, 0.12f, 0.50f));
         ConfigureDecorativeMesh(SpoilerSupportRight, Cube.Object,
             FVector(-158.f, 58.f, 74.f), FVector(0.12f, 0.12f, 0.50f));
+    }
+
+    // Seven additional original geometric details distinguish the six
+    // garage silhouettes. They use only engine-provided primitive meshes,
+    // never own contact physics, and cannot affect race timing or rewards.
+    FrontSplitter = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FrontSplitter"));
+    LeftSideSkirt = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("LeftSideSkirt"));
+    RightSideSkirt = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RightSideSkirt"));
+    RearDiffuser = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RearDiffuser"));
+    HoodScoop = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HoodScoop"));
+    LeftRearFin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("LeftRearFin"));
+    RightRearFin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RightRearFin"));
+    for (UStaticMeshComponent* Trim : {
+             FrontSplitter.Get(), LeftSideSkirt.Get(),
+             RightSideSkirt.Get(), RearDiffuser.Get(), HoodScoop.Get(),
+             LeftRearFin.Get(), RightRearFin.Get()})
+    {
+        Trim->SetupAttachment(Chassis);
+        Trim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Trim->SetGenerateOverlapEvents(false);
+        Trim->SetSimulatePhysics(false);
+        // Dynamic shadow cost for a seven-piece decorative kit is not
+        // justified by this prototype's visual fidelity.
+        Trim->SetCastShadow(false);
+        if (Cube.Succeeded())
+        {
+            ConfigureDecorativeMesh(Trim, Cube.Object,
+                FVector::ZeroVector, FVector(0.10f, 0.10f, 0.10f));
+        }
     }
 
     FrontLeftWheel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FrontLeftWheel"));
@@ -335,6 +365,8 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         latebrake::GarageState::Definition(VehicleId);
     const latebrake::VehicleVisualRecipe Recipe =
         latebrake::VisualRecipeForVehicle(VehicleId);
+    const latebrake::VehicleBodyKitRecipe Kit =
+        latebrake::BodyKitForVehicle(VehicleId);
     // Chassis primitive uses a 3.8 x 1.8 x 0.65 non-uniform scale.
     // Compensate its parent transform, just like ConfigureDecorativeMesh.
     const FVector RootScale(3.8f, 1.8f, 0.65f);
@@ -393,6 +425,41 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
             }
         }
     }
+
+    // Apply a complete deterministic visual recipe whenever the selected
+    // owned car changes, including switching FROM a fin/scoop-equipped car
+    // back to Arrow. Every primitive stays attached and non-colliding.
+    const auto SetTrim = [&RootScale](UStaticMeshComponent* Part,
+        const FVector& CenterCm, const FVector& Scale, bool bVisible)
+    {
+        if (!IsValid(Part)) return;
+        Part->SetRelativeLocation(CenterCm / RootScale);
+        Part->SetRelativeScale3D(Scale / RootScale);
+        Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Part->SetGenerateOverlapEvents(false);
+        Part->SetVisibility(bVisible, true);
+    };
+    SetTrim(FrontSplitter, FVector(183.f, 0.f, -27.f),
+        FVector(0.42, 1.48 * Kit.SplitterWidthScale, 0.09), true);
+    SetTrim(LeftSideSkirt, FVector(0.f, -89.f, -27.f),
+        FVector(1.90 * Kit.SideSkirtLengthScale, 0.10, 0.13), true);
+    SetTrim(RightSideSkirt, FVector(0.f, 89.f, -27.f),
+        FVector(1.90 * Kit.SideSkirtLengthScale, 0.10, 0.13), true);
+    SetTrim(RearDiffuser, FVector(-183.f, 0.f, -27.f),
+        FVector(0.37, 1.41 * Kit.DiffuserWidthScale, 0.11), true);
+    SetTrim(HoodScoop, FVector(90.f, 0.f, 55.f + Kit.ScoopHeightCm * 0.5),
+        FVector(0.52, 0.48, FMath::Max(1.0, Kit.ScoopHeightCm) / 100.0),
+        Kit.HasHoodScoop);
+    SetTrim(LeftRearFin, FVector(-166.f, -66.f,
+            55.f + Kit.RearFinHeightCm * 0.5),
+        FVector(0.20, 0.11,
+            FMath::Max(1.0, Kit.RearFinHeightCm) / 100.0),
+        Kit.HasRearFins);
+    SetTrim(RightRearFin, FVector(-166.f, 66.f,
+            55.f + Kit.RearFinHeightCm * 0.5),
+        FVector(0.20, 0.11,
+            FMath::Max(1.0, Kit.RearFinHeightCm) / 100.0),
+        Kit.HasRearFins);
 }
 
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,

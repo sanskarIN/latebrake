@@ -137,6 +137,23 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
     TObjectPtr<UStaticMeshComponent> SpoilerSupportRight;
 
+    // Optional six-car front/side/rear body kits: distinct geometric
+    // silhouettes without modifying Chaos chassis collision or wheel force.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> FrontSplitter;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> LeftSideSkirt;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RightSideSkirt;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RearDiffuser;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> HoodScoop;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> LeftRearFin;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RightRearFin;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<USpringArmComponent> CameraBoom;
 

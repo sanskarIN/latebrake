@@ -1503,3 +1503,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RacePitVehicleService COMMAND latebrake_race_pit_vehicle_tests)
+
+# Six original, fixed-identity cosmetic body-kit shapes; no Unreal SDK,
+# Chaos contact, purchased assets, or gameplay progression in this policy.
+add_executable(latebrake_vehicle_body_kit_tests VehicleBodyKitRecipeTests.cpp)
+target_include_directories(latebrake_vehicle_body_kit_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_vehicle_body_kit_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_vehicle_body_kit_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_vehicle_body_kit_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VehicleBodyKit COMMAND latebrake_vehicle_body_kit_tests)
