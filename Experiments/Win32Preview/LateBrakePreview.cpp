@@ -1322,8 +1322,10 @@ static bool selftest(){
     selfTestStage=47;
     race.x=pitX;race.y=pitY;race.speed=0;
     for(int n=0;n<90;n++)update(0.03f,false,false,false,false,false,false,0,0,0,true);
-    if(race.pitStops!=2||race.damage>0.01f||race.nitro<99.9f)return false;
-    selfTestStage=48;
+    if(race.pitStops!=2){selfTestStage=90u+(unsigned)race.pitStops;return false;}
+    if(race.damage>0.01f){selfTestStage=101;return false;}
+    if(race.nitro<99.9f){selfTestStage=102;return false;}
+    selfTestStage=50;
     beginRace();countdown=0;
     float oldElapsed=race.elapsed;int oldGate=race.nextGate;
     recoverToLastCheckpoint();
