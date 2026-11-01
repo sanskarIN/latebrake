@@ -1656,19 +1656,18 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
 
     if (!bAllowAcquire)
     {
-        // A PIT finger stays owned only while it remains in the PIT pad.
-        // Dragging out cancels the hold with no re-acquisition on move.
-        const bool bWasPitOwner = TouchPit.FingerOwner() == FingerId;
-        TouchPit.Move(FingerId, Region, !bViewportInvalidated);
-        if (bWasPitOwner)
-        {
-            if (!TouchPit.IsHeld()) PitService.Suspend();
-            return;
-        }
         // A move can update only a finger captured on its original press.
         latebrake::MoveTouchWithResidualSafety(
             TouchDrive, Layout, FingerId, Location.X, Location.Y,
             SmoothedThrottle, SmoothedSteering);
+        // The independent PIT finger must stay inside the original pad.
+        // A movement outside cancels, without re-acquiring on drag back.
+        const bool bWasPitOwner = TouchPit.FingerOwner() == FingerId;
+        TouchPit.Move(FingerId, Region, !bViewportInvalidated);
+        if (bWasPitOwner && !TouchPit.IsHeld())
+        {
+            PitService.Suspend();
+        }
         return;
     }
 
@@ -1760,7 +1759,8 @@ void ALatebrakeCarPawn::TouchReleased(ETouchIndex::Type FingerIndex, FVector Loc
     // Other fingers (and their smoothed output) remain untouched.
     const int32 FingerId = static_cast<int32>(FingerIndex);
     latebrake::CancelTouchOwnerAndOutput(
-        TouchDrive, FingerId, SmoothedThrottle, SmoothedSteering);
+        TouchDrive, static_cast<int32>(FingerIndex),
+        SmoothedThrottle, SmoothedSteering);
     if (TouchPit.FingerOwner() == FingerId)
     {
         TouchPit.Release(FingerId);
