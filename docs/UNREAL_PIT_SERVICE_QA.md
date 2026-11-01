@@ -5,6 +5,39 @@ preview experiment. It is still a source milestone, **not** a qualified
 Unreal Engine 5.8 build, polished animated service garage, official racing
 regulations, or a tested Windows/Android release.
 
+## Unreleased Android PIT HOLD touch input (source development)
+
+A new dedicated on-screen **PIT HOLD** rectangle occupies the previously
+unused middle row, at relative viewport coordinates X=43%–66% and
+Y=40%–50%. It does **not** overlap GAS, BRAKE, STEER, GHOST, CAM,
+menu/navigation or recovery pads. The HUD draws the same shared
+`TouchControlLayout` rectangle used for input hit testing.
+
+Only an original physical finger-down in that rectangle during a live
+ready post-GO local-player race can acquire the pit touch owner. That
+same finger must remain held inside the pad. A release, movement out,
+malformed input, viewport rotation/resize, pause, menu, lost focus,
+restart or physics-blocked driver state cancels ownership. Moving back
+into the pad never reacquires without a new finger-up/down. The
+independent `TouchPressTracker` retains original physical-down latches,
+so duplicated events and unrelated steering/pedal fingers cannot
+trigger extra service. Keyboard P and gamepad Y retain their bindings.
+
+An active PIT touch only supplies the **held request** to the
+existing physical `RacePitService` state machine. It does not
+silently bypass actual speed (at most 120 cm/s), measured position,
+neutral throttle, unheld nitro, service-need or 2.5-second continuous
+hold requirements; race and reward rules are unchanged. The visible
+pad remains advisory if the chassis/race is not eligible. All features
+are **source-only until genuine Android on-device multi-touch tests**.
+
+Manual Android QA must cover 360×640 portrait and landscape, safe-area
+cutouts, rotation during a hold, two simultaneous steering/pedal
+fingers plus PIT, release outside pad, focus loss, system dialogs,
+race finish/restart and zero unintended pit-service actions. Capture
+physical on-device footage/logs and actual package hashes. Cross-platform
+C++ tests and Python source checks cannot substitute for that evidence.
+
 ## Existing flat circuit and in-game controls
 
 - The prototype pit is a stationary bay on the **inner south paved
