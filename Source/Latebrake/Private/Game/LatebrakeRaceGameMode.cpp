@@ -653,6 +653,48 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             CreatedDecorationGroups, CreatedDecorationInstances);
     }
 
+    // Visual-only pit beacon near the inside edge of the southern road.
+    // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is
+    // for the nine mandatory audited collision-bearing road/wall actors.
+    // This optional beacon is never a collision, checkpoint, or race gate.
+    if (DecorationMesh)
+    {
+        FActorSpawnParameters PitParameters;
+        PitParameters.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        AStaticMeshActor* PitBeacon = GetWorld()->SpawnActor<AStaticMeshActor>(
+            AStaticMeshActor::StaticClass(),
+            FVector(latebrake::RacePitBay.X,
+                    latebrake::RacePitBay.Y + 265.0, 145.0),
+            FRotator::ZeroRotator, PitParameters);
+        if (PitBeacon)
+        {
+#if WITH_EDITOR
+            PitBeacon->SetActorLabel(TEXT("PIT SERVICE - inner shoulder marker"));
+#endif
+            UStaticMeshComponent* MarkerMesh = PitBeacon->GetStaticMeshComponent();
+            if (MarkerMesh)
+            {
+                MarkerMesh->SetMobility(EComponentMobility::Movable);
+                MarkerMesh->SetStaticMesh(DecorationMesh);
+                MarkerMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+                MarkerMesh->SetGenerateOverlapEvents(false);
+                MarkerMesh->SetCastShadow(false);
+                PitBeacon->SetActorScale3D(FVector(3.8, 0.15, 2.4));
+                if (UMaterialInstanceDynamic* PitMaterial =
+                        MarkerMesh->CreateAndSetMaterialInstanceDynamic(0))
+                {
+                    PitMaterial->SetVectorParameterValue(TEXT("Color"),
+                        FLinearColor(0.15f, 0.92f, 0.74f));
+                }
+            }
+            else
+            {
+                PitBeacon->Destroy();
+            }
+        }
+    }
+
     int32 SpawnedCheckpoints = 0;
     for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)
     {
