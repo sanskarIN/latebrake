@@ -110,6 +110,15 @@ public:
         return true;
     }
 
+    // Race-local service: repair a bounded fraction of chassis damage.
+    // Never resets impacts recorded this attempt or advances official time.
+    void RepairAtPit() noexcept
+    {
+        Damage = std::max(0.0, Damage - 0.25);
+        Cooldown = 0.0;
+        FrameEligible = false;
+    }
+
     double DamageFraction() const noexcept { return Damage; }
     unsigned ImpactEventCount() const noexcept { return ImpactCount; }
     bool CanRecordImpact() const noexcept
