@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.89**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The independently verified latest published GitHub tag is **v0.5.90**. It contains source-only changes; it has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current published source release:** [v0.5.89](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89) is a **source-only pre-release** at immutable commit `e3a059f4ebc0cd7525586d6aef683361d7189452`, published November 1, 2026 after the full seven-job source qualification with **zero executable assets**. It contains accepted-gate HUD progress, signed six-car garage comparisons and next upgrade costs, matched-directional-gate local rival split timing, and quick-race-only Rookie/Standard/Expert rival pace adjustments. Earlier v0.5.88 pit radar, Android PIT HOLD and six-car paint remain included. None of this demonstrates licensed UE 5.8 UHT/Game compilation, authored circuit cook, installed Windows/Android packages or hardware playtesting. The previously cited PRs #257/#258 were merged before v0.5.89; do not confuse release notes with actual packaged-game verification.
+**Current published source release:** [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90) is a **source-only pre-release** at immutable commit `a85e564a4856a2d0915df5287b3fdc8079e7b72d`, published November 2, 2026 after seven release jobs passed, with **zero executable assets**. The source includes progressive chassis road load, speed-aware yaw, automatic transmission, shared grip-limited longitudinal/lateral control, dynamic rival corner braking, conservative straight-line passing and a fix that cancels passing steering if independent traffic emergency braking activates. v0.5.89 racing instruments and garage source is retained. This is **not** a UE 5.8/UHT game build, verified wheel suspension, original circuit cook, installed Windows/Android package or proof of hands-on gameplay.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 
@@ -13,6 +13,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.90 | [Release notes](releases/v0.5.90.md) |
 | v0.5.89 | [Release notes](releases/v0.5.89.md) |
 | v0.5.88 | [Release notes](releases/v0.5.88.md) |
 | v0.5.87 | [Release notes](releases/v0.5.87.md) |
