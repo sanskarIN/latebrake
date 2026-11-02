@@ -75,7 +75,7 @@ class UnrealProgressiveRoadLoadBindingTests(unittest.TestCase):
         application = self.car.split(
             "// Real planar resistance: low-speed coasting", 1
         )[1].split(
-            "// Anti-slide assistance is stronger in Arcade", 1
+            "// Contact-grip-limited correction of actual sideways momentum.", 1
         )[0]
         self.assertIn("Chassis->AddForce(", application)
         for forbidden in (
