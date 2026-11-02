@@ -58,7 +58,13 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertIn("CollisionDamage.LateralGripMultiplier()", tick)
         self.assertIn("TireCondition.GripMultiplier() * Surface.LateralGripMultiplier", tick)
         self.assertIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
-        self.assertIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
+        # The old speed-proportional hard-stop is intentionally replaced
+        # by a physically capped service/handbrake force. Neutral throttle
+        # now uses existing progressive road load instead of a false brake.
+        self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
+        self.assertIn("PhysicalBraking.ForwardForce", tick)
+        self.assertIn("RoadLoad.ForceX", tick)
+        self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
         self.assertIn("Thermal.ServiceBrakeMultiplier", tick)
         self.assertIn("if (!bEffectiveBraking &&", tick)
 
