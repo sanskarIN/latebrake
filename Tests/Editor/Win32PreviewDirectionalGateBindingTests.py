@@ -29,7 +29,7 @@ class Win32PreviewDirectionalGateBindingTests(unittest.TestCase):
                        "Already beyond gate cannot earn it",
                        "Forward swept crossing accepted",
                        "No stationary duplicate award",
-                       "if(race.passes!=12"):
+                       "race.passes!=12||page!=RESULTS"):
             self.assertIn(phrase, test)
         self.assertIn("'--self-test'", self.workflow)
         self.assertIn("LateBrakePreviewV5.exe", self.workflow)
