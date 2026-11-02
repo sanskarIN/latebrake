@@ -7,6 +7,7 @@
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
 #include "Vehicles/FrameStableDamping.h"
+#include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/ArcadeBoostArbitration.h"
 #include "Vehicles/ArcadeReverseSpeedLimit.h"
@@ -71,7 +72,10 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     // policy; decorative meshes cannot report collision damage.
     Chassis->SetNotifyRigidBodyCollision(true);
     Chassis->SetEnableGravity(true);
-    Chassis->SetLinearDamping(0.5f);
+    // Low baseline damping preserves coasting; progressive speed-squared
+    // drag/rolling load is applied during qualified driving frames below.
+    Chassis->SetLinearDamping(
+        static_cast<float>(latebrake::RoadLoadChassisLinearDamping));
     Chassis->SetAngularDamping(7.f);
     Chassis->SetMassOverrideInKg(NAME_None, 1100.f);
     // Pitch/roll constraints keep this early driving prototype accessible.
@@ -840,6 +844,21 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+    // Resist actual planar motion, including reverse/sliding, rather than
+    // permanently damping all speeds by the same strong Chaos constant.
+    // Validate the proposed load BEFORE any motor/nitro/AI force this tick.
+    const latebrake::ProgressiveRoadLoadOutput RoadLoad =
+        latebrake::CalculateProgressiveRoadLoad({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y),
+            static_cast<double>(Mass),
+            bArcade, Surface.OffPavement});
+    if (!RoadLoad.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
     // Only a finite, source-authorized live chassis tick can arm actual
     // component-hit callbacks; a hitch or pause cannot claim new damage.
     CollisionDamage.Advance(static_cast<double>(DeltaSeconds), true);
@@ -1062,6 +1081,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *
             static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)));
     }
+
+    // Real planar resistance: low-speed coasting, increasing aero drag
+    // toward top speed, and additional grass/shoulder rolling loss. Applied
+    // as a mass-scaled world-space force so it never alters Chaos vertical
+    // gravity or directly overwrites actual chassis velocity.
+    Chassis->AddForce(FVector(
+        static_cast<float>(RoadLoad.ForceX),
+        static_cast<float>(RoadLoad.ForceY), 0.f));
 
     // Anti-slide assistance is stronger in Arcade; both presets remain tunable.
     // The shared base pawn serves human and rival drivers. On a lagging
