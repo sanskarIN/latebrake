@@ -31,7 +31,7 @@ class RivalEngineHeatPaceBindingTests(unittest.TestCase):
             "ModerateRivalEngineHeatPace(Command, {",
             "GetEngineHeat().HeatFraction()",
             "GetEngineHeat().HasValidSample()",
-            "latebrake::YieldRivalToPlayer(Command, {",
+            "latebrake::YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
             "SpinThrottleGuard.Apply(",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)"
