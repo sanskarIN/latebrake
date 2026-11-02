@@ -56,8 +56,11 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertIn("CombinedBoost.NitroExtra", tick)
         self.assertIn("DraftExtraForce = CombinedBoost.DraftExtra;", tick)
         self.assertIn("CollisionDamage.LateralGripMultiplier()", tick)
-        self.assertIn("TireCondition.GripMultiplier() * Surface.LateralGripMultiplier", tick)
-        self.assertIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
+        self.assertIn("TireCondition.GripMultiplier() *", tick)
+        self.assertIn("latebrake::CalculateLateralGripForce({", tick)
+        self.assertIn("LateralForce.RightForce", tick)
+        self.assertIn("PhysicalBraking.DecelerationCmPerSecondSquared", tick)
+        self.assertNotIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
         # The old speed-proportional hard-stop is intentionally replaced
         # by a physically capped service/handbrake force. Neutral throttle
         # now uses existing progressive road load instead of a false brake.
