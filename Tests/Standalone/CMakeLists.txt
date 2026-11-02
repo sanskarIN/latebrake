@@ -1819,3 +1819,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME AutomaticTransmission COMMAND latebrake_automatic_transmission_tests)
+
+# Measured longitudinal rigid-body service and handbrake forces; preserves
+# existing Chaos brake heat / tire / off-pavement state without a false ABS.
+add_executable(latebrake_grip_limited_braking_tests GripLimitedBrakingTests.cpp)
+target_include_directories(latebrake_grip_limited_braking_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_grip_limited_braking_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_grip_limited_braking_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_grip_limited_braking_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GripLimitedBraking COMMAND latebrake_grip_limited_braking_tests)
