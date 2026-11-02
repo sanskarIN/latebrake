@@ -43,8 +43,15 @@ class RivalStraightPassAssist final
 public:
     static constexpr double LaneOffsetCm = 440.0;
     static constexpr double MinimumCornerClearanceCm = 2150.0;
-    static constexpr double StartAheadMinimumCm = 900.0;
-    static constexpr double StartAheadMaximumCm = 1600.0;
+    // Only long original straights give a physical car enough runway
+    // to move sideways before the original courtesy-brake envelope.
+    static constexpr double StartAheadMinimumCm = 1600.0;
+    static constexpr double StartAheadMaximumCm = 2400.0;
+    static constexpr double MinimumPassingStraightLengthCm = 5000.0;
+    static constexpr double MinimumEntryCornerRunwayCm = 4200.0;
+    static constexpr double MinimumEntryContactTimeSeconds = 1.8;
+    static constexpr double MaximumEntryClosingSpeedCmPerSecond = 900.0;
+    static constexpr double SafetySeparationCm = 380.0;
     static constexpr double FinishBehindClearanceCm = 550.0;
     static constexpr double MaximumPassDurationSeconds = 6.0;
 
@@ -142,7 +149,8 @@ public:
         {
             Reset();
         }
-        if (toGate < MinimumCornerClearanceCm ||
+        if (length < MinimumPassingStraightLengthCm ||
+            toGate < MinimumCornerClearanceCm ||
             toGate > length + 200.0 ||
             !IsOnPavedSurface(s.Rival) ||
             !IsOnPavedSurface(s.Player) ||
@@ -160,11 +168,22 @@ public:
 
         if (!IsActive())
         {
+            const double closingSpeed = rivalForward - playerForward;
+            const double emergencyRunway = std::max(
+                0.0, playerAhead - SafetySeparationCm);
+            // A heading change cannot be instantaneous on the actual
+            // rigid-body chassis. Reject the old 900-1600cm start band:
+            // it could activate the pass only to hit the downstream
+            // emergency traffic brake before moving out of the lane.
             if (std::abs(rivalSide) > 175.0 ||
                 std::abs(playerSide) > 330.0 ||
                 playerAhead < StartAheadMinimumCm ||
                 playerAhead > StartAheadMaximumCm ||
-                rivalForward - playerForward < 300.0)
+                toGate < MinimumEntryCornerRunwayCm ||
+                closingSpeed < 300.0 ||
+                closingSpeed > MaximumEntryClosingSpeedCmPerSecond ||
+                emergencyRunway / closingSpeed <
+                    MinimumEntryContactTimeSeconds)
             {
                 return {command, false, 0.0};
             }
