@@ -39,6 +39,7 @@
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
 #include "Track/BrakingReferenceBoards.h"
+#include "Track/CornerApproachChevrons.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/CollisionBlockSetup.h"
@@ -740,6 +741,110 @@ void ALatebrakeRaceGameMode::BuildBrakingReferenceBoards(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
+{
+    // Optional painted arrows on the left-hand approach shoulder.
+    // No physics, checkpoint, track-start readiness, navigation or SaveGame
+    // effects; a failed cosmetic actor must not block actual racing.
+    if (!Mesh || !GetWorld())
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_CORNER_CHEVRONS_INCOMPLETE reason=missing_mesh_or_world"));
+        return;
+    }
+
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AActor* Holder = GetWorld()->SpawnActor<AActor>(
+        AActor::StaticClass(), FVector::ZeroVector,
+        FRotator::ZeroRotator, Params);
+    if (!IsValid(Holder))
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_CORNER_CHEVRONS_INCOMPLETE reason=actor_spawn"));
+        return;
+    }
+#if WITH_EDITOR
+    Holder->SetActorLabel(TEXT("LatebrakeCornerApproachChevrons_NoCollision"));
+#endif
+    Holder->SetActorEnableCollision(false);
+    USceneComponent* Root = NewObject<USceneComponent>(
+        Holder, TEXT("CornerChevronRoot"));
+    if (!Root)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_CORNER_CHEVRONS_INCOMPLETE reason=scene_root"));
+        Holder->Destroy();
+        return;
+    }
+    Root->SetMobility(EComponentMobility::Static);
+    Holder->SetRootComponent(Root);
+    Holder->AddInstanceComponent(Root);
+    Root->RegisterComponent();
+
+    UInstancedStaticMeshComponent* Marks =
+        NewObject<UInstancedStaticMeshComponent>(
+            Holder, TEXT("CornerChevronInstances"));
+    if (!Marks)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_CORNER_CHEVRONS_INCOMPLETE reason=instancer"));
+        Holder->Destroy();
+        return;
+    }
+    Marks->SetupAttachment(Root);
+    Marks->SetMobility(EComponentMobility::Static);
+    Marks->SetStaticMesh(Mesh);
+    Marks->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Marks->SetGenerateOverlapEvents(false);
+    Marks->SetCanEverAffectNavigation(false);
+    Marks->SetCastShadow(false);
+    Marks->PreAllocateInstancesMemory(
+        latebrake::CornerChevronPieceCount);
+    Holder->AddInstanceComponent(Marks);
+    Marks->RegisterComponent();
+
+    // Stock cube material stays visible even without a Color parameter.
+    if (UMaterialInstanceDynamic* Mat =
+            Marks->CreateAndSetMaterialInstanceDynamic(0))
+    {
+        Mat->SetVectorParameterValue(
+            TEXT("Color"), FLinearColor(0.22f, 0.91f, 0.88f));
+    }
+
+    int32 Added = 0;
+    for (int32 Index = 0;
+         Index < latebrake::CornerChevronPieceCount; ++Index)
+    {
+        const latebrake::CornerApproachChevron Mark =
+            latebrake::PlannedCornerApproachChevron(Index);
+        if (!Mark.Valid) continue;
+        const FTransform Pose(
+            FRotator(0.0, Mark.YawDegrees, 0.0),
+            FVector(Mark.Center.X, Mark.Center.Y, Mark.HeightCm),
+            FVector(Mark.ScaleX, Mark.ScaleY, Mark.ScaleZ));
+        if (Marks->AddInstance(Pose, false) >= 0)
+        {
+            ++Added;
+        }
+    }
+
+    if (Added == latebrake::CornerChevronPieceCount)
+    {
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_CORNER_CHEVRONS_READY marks=%d/%d collision=off"),
+            Added, latebrake::CornerChevronPieceCount);
+    }
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_CORNER_CHEVRONS_INCOMPLETE marks=%d/%d collision=off"),
+            Added, latebrake::CornerChevronPieceCount);
+        Holder->Destroy();
+    }
+}
+
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
@@ -925,6 +1030,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     // Extra driver wayfinding furniture is optional, never part of the
     // nine-block/four-checkpoint collision and startup readiness audit.
     BuildBrakingReferenceBoards(DecorationMesh);
+    BuildCornerApproachChevrons(DecorationMesh);
 
     // Visual-only pit beacon near the inside edge of the southern road.
     // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is
