@@ -1805,3 +1805,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SpeedAwareYawTorque COMMAND latebrake_speed_aware_yaw_tests)
+
+# Four forward gears, reverse safety and an actual per-car shift impulse
+# applied to existing shared Unreal motor force; no licensed UE dependency.
+add_executable(latebrake_automatic_transmission_tests AutomaticTransmissionTests.cpp)
+target_include_directories(latebrake_automatic_transmission_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_automatic_transmission_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_automatic_transmission_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_automatic_transmission_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AutomaticTransmission COMMAND latebrake_automatic_transmission_tests)
