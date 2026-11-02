@@ -16,9 +16,9 @@ void Check(bool ok, const char* message)
     }
 }
 latebrake::RivalPassSample Observe(
-    double rivalAlong = 1700.0, double playerAhead = 1150.0,
+    double rivalAlong = 550.0, double playerAhead = 1900.0,
     double rivalLateral = 0.0, double playerLateral = 0.0,
-    double rivalSpeed = 2500.0, double playerSpeed = 1550.0,
+    double rivalSpeed = 2200.0, double playerSpeed = 1800.0,
     int gate = 0)
 {
     using namespace latebrake;
@@ -48,42 +48,64 @@ int main()
     const PilotCommand driving{0.72, 0.0, false, false};
     RivalStraightPassAssist controller;
 
-    // All four REAL incoming road segments and gate orientations.
+    // Only the long east/west straights have enough paved runway for
+    // a real single-chassis lane change. On the two short north/south
+    // straights, the old source-only pass was an unsafe late dive.
     for (int gate = 0; gate < CircuitGateCount; ++gate)
     {
         controller.Reset();
-        const auto approach = Observe(550.0, 1050.0, 0.0, 0.0,
-                                      2400.0, 1200.0, gate);
+        const auto approach = Observe(550.0, 1900.0, 0.0, 0.0,
+                                      2200.0, 1800.0, gate);
         const auto pass = controller.Apply(driving, approach);
+        if (gate % 2 != 0)
+        {
+            Check(!pass.Passing && !controller.IsActive() &&
+                  pass.Command.Steering == driving.Steering,
+                  "short original straights cannot support safe passing runway");
+            continue;
+        }
         Check(pass.Passing && controller.IsActive() &&
               pass.Command.Steering < 0.0 &&
               pass.Command.Steering >= -0.65 &&
               pass.Command.Throttle == driving.Throttle &&
               !pass.Command.Brake &&
               pass.TargetLaneOffsetCm == -440.0,
-              "all four straights choose a bounded RIGHT passing lane");
+              "long paved straights choose a bounded RIGHT passing lane");
         const auto shifted = controller.Apply(
-            driving, Observe(640.0, 970.0, -395.0, 0.0,
-                             2400.0, 1200.0, gate));
+            driving, Observe(640.0, 1800.0, -395.0, 0.0,
+                             2200.0, 1800.0, gate));
         Check(shifted.Passing &&
               std::abs(shifted.Command.Steering) <
                   std::abs(pass.Command.Steering),
               "holding lane is smoother once actually shifted");
         const auto ahead = controller.Apply(
             driving, Observe(850.0, -600.0, -420.0, 0.0,
-                             2400.0, 1200.0, gate));
+                             2200.0, 1800.0, gate));
         Check(!ahead.Passing && !controller.IsActive() &&
               ahead.Command.Steering == driving.Steering,
               "finished pass returns original gate steering after clearance");
 
         controller.Reset();
         const auto leftPass = controller.Apply(
-            driving, Observe(550.0, 1050.0, 0.0, -120.0,
-                             2400.0, 1200.0, gate));
+            driving, Observe(550.0, 1900.0, 0.0, -120.0,
+                             2200.0, 1800.0, gate));
         Check(leftPass.Passing && leftPass.Command.Steering > 0.0 &&
               leftPass.TargetLaneOffsetCm == 440.0,
               "player on right chooses left opposite passing lane");
     }
+
+    controller.Reset();
+    Check(!controller.Apply(driving, Observe(
+        550.0, 1150.0, 0.0, 0.0, 2500.0, 1500.0)).Passing,
+        "old close/high-relative-speed pass cannot activate into emergency brake");
+    controller.Reset();
+    Check(!controller.Apply(driving, Observe(
+        550.0, 1750.0, 0.0, 0.0, 2600.0, 1500.0)).Passing,
+        "large closing speed cannot finish lane shift before contact");
+    controller.Reset();
+    Check(controller.Apply(driving, Observe(
+        550.0, 1900.0, 0.0, 0.0, 2200.0, 1800.0)).Passing,
+        "well-separated lower-relative-speed start is still allowed");
 
     // No attempt around a turn, or when there is no safe track clearance.
     controller.Reset();
@@ -92,13 +114,13 @@ int main()
     Check(!corner.Passing && corner.Command.Steering == 0.0,
           "no lane changing near original circuit turn");
     controller.Reset();
-    Check(!controller.Apply(driving, Observe(1700.0, 500.0)).Passing,
+    Check(!controller.Apply(driving, Observe(550.0, 500.0)).Passing,
           "no dive into a nearby player before there is room to pass");
     controller.Reset();
-    Check(!controller.Apply(driving, Observe(1700.0, 1750.0)).Passing,
+    Check(!controller.Apply(driving, Observe(550.0, 2500.0)).Passing,
           "no invented long-range passing target");
     controller.Reset();
-    Check(!controller.Apply(driving, Observe(1700.0, 1100.0,
+    Check(!controller.Apply(driving, Observe(550.0, 1900.0,
                                            0.0, 0.0, 1800.0, 1700.0)).Passing,
           "matched speeds never cause pointless lane weaving");
     controller.Reset();
@@ -115,7 +137,7 @@ int main()
     const auto begun = controller.Apply(driving, Observe());
     Check(begun.Passing, "valid normal pass begins");
     const auto occupied = controller.Apply(
-        driving, Observe(1770.0, 950.0, -280.0, -450.0));
+        driving, Observe(650.0, 950.0, -280.0, -450.0));
     Check(!occupied.Passing && occupied.Command.Brake &&
           occupied.Command.Throttle == 0.0 && !controller.IsActive(),
           "player moves into passing lane: yield instead of collide");
@@ -131,7 +153,7 @@ int main()
     controller.Reset();
     Check(controller.Apply(driving, Observe()).Passing, "pass starts again");
     const auto changedGate = controller.Apply(
-        driving, Observe(550.0, 1050.0, 0.0, 0.0, 2400.0, 1200.0, 1));
+        driving, Observe(550.0, 1900.0, 0.0, 0.0, 2200.0, 1800.0, 1));
     Check(changedGate.Command.Throttle <= driving.Throttle,
           "new gate cannot preserve stale direction/extra propulsion");
     controller.Reset();
@@ -161,12 +183,12 @@ int main()
         controller.Reset();
         const int gate = i % CircuitGateCount;
         const double playerOffset = static_cast<double>(i % 240) - 120.0;
-        const double aheadDistance = 650.0 + static_cast<double>(i % 1200);
+        const double aheadDistance = 1200.0 + static_cast<double>(i % 1200);
         const auto o = controller.Apply(
-            driving, Observe(500.0 + static_cast<double>(i % 700),
+            driving, Observe(250.0 + static_cast<double>(i % 850),
                              aheadDistance, 0.0, playerOffset,
                              2200.0 + (i % 100),
-                             1000.0 + (i % 200), gate));
+                             1700.0 + (i % 100), gate));
         Check(std::isfinite(o.Command.Steering) &&
               std::abs(o.Command.Steering) <= 0.65 + 1.0e-9 &&
               o.Command.Throttle >= 0.0 &&
