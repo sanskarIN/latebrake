@@ -1861,3 +1861,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalCornerBrakeEnvelope COMMAND latebrake_rival_corner_brake_envelope_tests)
+
+# Actual existing one-rival same-straight human overtaking lane policy.
+# Physically observed world XY geometry only; Unreal drive still gated.
+add_executable(latebrake_rival_straight_pass_assist_tests RivalStraightPassAssistTests.cpp)
+target_include_directories(latebrake_rival_straight_pass_assist_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_straight_pass_assist_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_straight_pass_assist_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_straight_pass_assist_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalStraightPassAssist COMMAND latebrake_rival_straight_pass_assist_tests)
