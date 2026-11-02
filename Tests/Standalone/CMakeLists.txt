@@ -1658,3 +1658,18 @@ else()
     target_compile_options(latebrake_rival_difficulty_preset_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalDifficultyPreset COMMAND latebrake_rival_difficulty_preset_tests)
+
+# Read-only solo Time Attack PB clock budget from valid persisted race records.
+add_executable(latebrake_time_attack_pb_target_tests
+    TimeAttackPersonalBestTargetTests.cpp)
+target_include_directories(latebrake_time_attack_pb_target_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_time_attack_pb_target_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_time_attack_pb_target_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_time_attack_pb_target_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TimeAttackPersonalBestTarget
+    COMMAND latebrake_time_attack_pb_target_tests)
