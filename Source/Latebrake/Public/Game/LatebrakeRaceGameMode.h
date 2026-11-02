@@ -28,6 +28,8 @@ class APlayerStart;
 class AStaticMeshActor;
 class ALatebrakeCarPawn;
 class ALatebrakeRivalCar;
+class UPointLightComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class LATEBRAKE_API ALatebrakeRaceGameMode : public AGameModeBase
@@ -147,6 +149,8 @@ public:
 
 private:
     void BuildCircuit();
+    void BuildStartGantry();
+    void UpdateStartGantryVisual();
     AStaticMeshActor* SpawnBlock(const TCHAR* Label, const FVector& Position,
         const FVector& Scale, const FLinearColor& Color);
     void LoadRecords();
@@ -222,6 +226,17 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<ALatebrakeRivalCar> RivalCar;
+
+    // Decorative asset-free fixture. Components belong to its Actor and
+    // never participate in gate overlap or physics. No replicated state.
+    UPROPERTY(Transient)
+    TObjectPtr<AActor> StartGantryActor;
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UPointLightComponent>> StartGantryLamps;
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UStaticMeshComponent>> StartGantryBulbs;
 
     // One non-colliding prototype beacon follows a valid best-lap trace.
     UPROPERTY(Transient)
