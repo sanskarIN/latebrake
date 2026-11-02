@@ -197,7 +197,7 @@ public:
         Elapsed += s.DeltaSeconds;
         if (playerAhead <= -FinishBehindClearanceCm ||
             Elapsed >= MaximumPassDurationSeconds ||
-            playerAhead > 1900.0)
+            playerAhead > StartAheadMaximumCm + 400.0)
         {
             Reset();
             return {command, false, 0.0};
