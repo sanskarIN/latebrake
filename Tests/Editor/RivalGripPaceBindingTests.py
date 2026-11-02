@@ -31,7 +31,7 @@ class RivalGripPaceBindingTests(unittest.TestCase):
             "GetTireCondition().HasValidSample()",
             "Velocity, GetActorRightVector()",
             "GripPace.Apply(Command, {",
-            "latebrake::YieldRivalToPlayer(Command, {",
+            "latebrake::YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
             "Super::Tick(DeltaSeconds);",
