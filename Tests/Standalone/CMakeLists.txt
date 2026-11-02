@@ -1847,3 +1847,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME LateralGripBudget COMMAND latebrake_lateral_grip_budget_tests)
+
+# Real single-rival inbound turn brake distances share actual service-
+# brake, surface/tire/damage and heat policy. Not an Unreal runtime test.
+add_executable(latebrake_rival_corner_brake_envelope_tests RivalCornerBrakeEnvelopeTests.cpp)
+target_include_directories(latebrake_rival_corner_brake_envelope_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_corner_brake_envelope_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_corner_brake_envelope_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_corner_brake_envelope_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalCornerBrakeEnvelope COMMAND latebrake_rival_corner_brake_envelope_tests)
