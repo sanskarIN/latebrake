@@ -1791,3 +1791,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ProgressiveRoadLoad COMMAND latebrake_progressive_road_load_tests)
+
+# A bounded speed/rotation-aware yaw controller used by the actual shared
+# player/rival Unreal chassis, verified independently of licensed UE runtime.
+add_executable(latebrake_speed_aware_yaw_tests SpeedAwareYawTorqueTests.cpp)
+target_include_directories(latebrake_speed_aware_yaw_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_speed_aware_yaw_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_speed_aware_yaw_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_speed_aware_yaw_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SpeedAwareYawTorque COMMAND latebrake_speed_aware_yaw_tests)
