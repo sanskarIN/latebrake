@@ -13,6 +13,7 @@
 #include "Vehicles/ArcadeBoostArbitration.h"
 #include "Vehicles/ArcadeReverseSpeedLimit.h"
 #include "Vehicles/GearAwareMotorPower.h"
+#include "Vehicles/AutomaticTransmission.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
 #include "Vehicles/DriveAxisDeadzone.h"
@@ -560,6 +561,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     TireCondition.Suspend();
     BrakeHeat.Suspend();
     EngineHeat.Suspend();
+    Transmission.Suspend();
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
@@ -1069,12 +1071,28 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // or reverse gear ceiling. Baseline, nitro and drafting share this
     // single factor; opposing-throttle engine braking is not weakened.
     // Real signed chassis speed drives the policy, not commanded speed.
+    // A real per-car automatic gear state is updated from measured,
+    // signed forward movement, not a decorative speedometer animation.
+    // An active shift briefly reduces physical motor thrust, but NEVER
+    // rewrites reverse braking, physical velocity, checkpoint or scoring.
+    const latebrake::AutomaticTransmissionState TransmissionFrame =
+        Transmission.Advance({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(EffectiveThrottle),
+            static_cast<double>(MaxSpeed),
+            bArcade, true});
+    if (!TransmissionFrame.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
     const float GearPowerFactor = static_cast<float>(
         latebrake::GearAwareMotorPowerFactor(
             static_cast<double>(EffectiveThrottle),
             static_cast<double>(LongitudinalSpeed),
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
-            bArcade));
+            bArcade) * TransmissionFrame.PropulsionFactor);
     if (!bEffectiveBraking && (FMath::Abs(EffectiveThrottle) < 0.01f || FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) || Speed < 100.f))
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
