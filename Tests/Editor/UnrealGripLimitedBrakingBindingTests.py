@@ -58,7 +58,8 @@ class UnrealGripLimitedBrakingBindingTests(unittest.TestCase):
         self.assertIn("PhysicalBraking.ForwardForce", braking)
         self.assertNotIn("FrameStableDampingRate(", braking)
         self.assertNotIn("SetPhysicsLinearVelocity(", braking)
-        self.assertIn("if (bEffectiveBraking)", tick)
+        self.assertIn("if (bEffectiveBraking && GroundContact.HasDriveContact)", tick)
+        self.assertIn("ContactTractionScale", tick)
         self.assertNotIn(
             "if (bEffectiveBraking || FMath::Abs(EffectiveThrottle)",
             tick
