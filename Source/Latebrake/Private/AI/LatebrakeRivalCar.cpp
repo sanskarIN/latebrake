@@ -6,6 +6,7 @@
 #include "AI/RivalCornerBrakeEnvelope.h"
 #include "AI/RivalTrafficAwareness.h"
 #include "AI/RivalYawRateSteering.h"
+#include "AI/RivalPassTrafficResolution.h"
 #include "AI/RivalEngineHeatPace.h"
 #include "AI/RivalDriveReadiness.h"
 #include "Track/CircuitLayout.h"
@@ -280,10 +281,23 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         });
     // A short, fail-closed hold prevents brake chatter near the
     // projected contact boundary; it cannot re-route or score a rival.
-    const latebrake::PilotCommand FollowingCommand =
+    const latebrake::PilotCommand HeldTrafficCommand =
         FollowingBrakeHold.Apply(
             TrafficCommand, static_cast<double>(DeltaSeconds),
             bPlayerReady, TrafficCommand.Brake && !SafePassCommand.Brake);
+    // An emergency following-brake decision may legitimately arrive
+    // before the rival has physically completed its passing lane shift.
+    // Braking with the passing steer still active can direct the car
+    // into the player. Abort, restore original route steering, and keep
+    // the real traffic brake and 0.18-second hold authoritative.
+    const latebrake::RivalPassTrafficResolution PassResolution =
+        latebrake::ResolveRivalPassTraffic(
+            Command, Passing, HeldTrafficCommand);
+    if (PassResolution.AbortPassing)
+    {
+        StraightPassAssist.Reset();
+    }
+    const latebrake::PilotCommand FollowingCommand = PassResolution.Command;
 
     // Read real Chaos angular velocity AFTER all route, corner, road,
     // collision and traffic decisions. Reduce same-direction steering
