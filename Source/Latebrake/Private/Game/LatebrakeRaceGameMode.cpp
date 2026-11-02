@@ -115,6 +115,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
 {
     Super::BeginPlay();
     LoadRecords();
+    AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
     Race.Reset();
     StartLights.Reset();
@@ -1882,6 +1883,8 @@ void ALatebrakeRaceGameMode::RestartRace()
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     ManualPause.OnExplicitResume();
     Race.Reset();
+    // A saved PB may change at finish; Results needs the previous record.
+    AttemptPreviousBestSeconds = GetEventBestSeconds();
     StartLights.Reset();
     // Only a new, accepted race attempt latches the pending preset.
     // Career medals/challenges always use the existing Standard opponent.

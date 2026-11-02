@@ -17,6 +17,7 @@
 #include "Racing/SampledDrivingReview.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/TimeAttackPersonalBestTarget.h"
+#include "Racing/QuickRaceRecordReview.h"
 #include "Racing/CurrentLapPotential.h"
 #include "Racing/LiveSectorTarget.h"
 #include "UI/TouchControlLayout.h"
@@ -385,6 +386,36 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
         case latebrake::MenuPage::Results:
         {
+            const latebrake::QuickRaceRecordReview PB =
+                latebrake::ReviewQuickRaceRecord(
+                    Mode->GetSelectedEvent(), Mode->IsCareerRace(),
+                    latebrake::CanAwardFinishedRace(Race),
+                    Mode->HasProgressSaveError(), Race.GetElapsedSeconds(),
+                    Mode->GetAttemptPreviousBestSeconds(),
+                    Mode->GetEventBestSeconds());
+            switch (PB.State)
+            {
+            case latebrake::QuickRaceRecordState::SaveFailed:
+                MenuLine(TEXT("SAVE FAILED: best time and rewards NOT persisted"), true);
+                break;
+            case latebrake::QuickRaceRecordState::FirstRecord:
+                MenuLine(FString::Printf(TEXT("FIRST SAVED PB: %.2fs"),
+                    PB.SavedBestSeconds), true);
+                break;
+            case latebrake::QuickRaceRecordState::Improved:
+                MenuLine(FString::Printf(TEXT("NEW SAVED PB: %.2fs | FASTER %.2fs"),
+                    PB.SavedBestSeconds, PB.DeltaSeconds), true);
+                break;
+            case latebrake::QuickRaceRecordState::Matched:
+                MenuLine(FString::Printf(TEXT("MATCHED SAVED PB: %.2fs"),
+                    PB.SavedBestSeconds));
+                break;
+            case latebrake::QuickRaceRecordState::Slower:
+                MenuLine(FString::Printf(TEXT("SAVED PB: %.2fs | BEHIND +%.2fs"),
+                    PB.SavedBestSeconds, PB.DeltaSeconds));
+                break;
+            default: break; // No fake records for career or invalid results.
+            }
             if (!latebrake::CanAwardFinishedRace(Mode->GetRace()))
             {
                 MenuLine(TEXT("FINISH NOT RECORDABLE - missing active timing or invalid clock"), true);
