@@ -104,6 +104,7 @@ nav:
       - Accepted race event audit QA: RACE_AUDIT_QA.md
       - Player race clock QA: PLAYER_RACE_CLOCK_QA.md
       - Race clock readiness QA: RACE_CLOCK_READINESS_QA.md
+      - Physical start-light gantry QA: UNREAL_START_GANTRY_QA.md
       - Launch-speed feedback QA: LAUNCH_SPEED_QA.md
       - Vehicle dynamics readiness QA: VEHICLE_DYNAMICS_QA.md
       - Steering and handling stability QA: DRIVING_STABILITY_QA.md

@@ -15,6 +15,8 @@
 #include "GameFramework/Actor.h"
 #include "Components/SceneComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Racing/StartGantryVisual.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
@@ -119,6 +121,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     BuildCircuit();
     Race.Reset();
     StartLights.Reset();
+    BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
@@ -165,6 +168,9 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // Keep authoritative timing and checkpoint-scoring on one light gate.
     const double LiveDelta = StartLights.Advance(
         static_cast<double>(DeltaSeconds), bStartQualified);
+    // A 3D cosmetic reflection of this SAME authoritative light phase.
+    // It is not another timer and cannot authorize GO, brakes or gates.
+    UpdateStartGantryVisual();
     latebrake::AdvancePlayerRaceClockIfReady(
         Race, bCircuitReady, bInactive || !StartLights.IsGreen(),
         bLocalPlayerReady, LiveDelta);
@@ -472,6 +478,160 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label,
     // Still only validates component configuration in the Unreal source;
     // real ground contact and barrier physics require installed playtests.
     return Block;
+}
+
+void ALatebrakeRaceGameMode::BuildStartGantry()
+{
+    // One original asset-free, non-blocking fixture above the south grid.
+    // A cosmetic failure must not invalidate the nine mandatory collision
+    // actors or the four real checkpoint actors constructed by BuildCircuit.
+    StartGantryLamps.Reset();
+    StartGantryBulbs.Reset();
+    LastStartGantryLampMask = -1;
+    if (!GetWorld()) return;
+
+    UStaticMesh* Cube = LoadObject<UStaticMesh>(
+        nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+    UStaticMesh* Sphere = LoadObject<UStaticMesh>(
+        nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+    if (!Cube || !Sphere)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_START_GANTRY_UNAVAILABLE missing engine shape assets"));
+        return;
+    }
+
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AActor* Gantry = GetWorld()->SpawnActor<AActor>(
+        AActor::StaticClass(), FVector(-1700.0, latebrake::SouthY, 0.0),
+        FRotator::ZeroRotator, Params);
+    if (!IsValid(Gantry)) return;
+    StartGantryActor = Gantry;
+#if WITH_EDITOR
+    Gantry->SetActorLabel(TEXT("LatebrakeNonCollidingStartLights"));
+#endif
+    Gantry->SetActorEnableCollision(false);
+    USceneComponent* Root = NewObject<USceneComponent>(
+        Gantry, TEXT("StartGantryRoot"));
+    if (!Root)
+    {
+        Gantry->Destroy();
+        StartGantryActor = nullptr;
+        return;
+    }
+    Root->SetMobility(EComponentMobility::Movable);
+    Gantry->SetRootComponent(Root);
+    Gantry->AddInstanceComponent(Root);
+    Root->RegisterComponent();
+
+    const auto AddMesh = [Gantry, Root](
+        const FName& Name, UStaticMesh* Shape, const FVector& Position,
+        const FVector& Scale) -> UStaticMeshComponent*
+    {
+        UStaticMeshComponent* Mesh =
+            NewObject<UStaticMeshComponent>(Gantry, Name);
+        if (!Mesh) return nullptr;
+        Mesh->SetupAttachment(Root);
+        Mesh->SetMobility(EComponentMobility::Movable);
+        Mesh->SetStaticMesh(Shape);
+        Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Mesh->SetGenerateOverlapEvents(false);
+        Mesh->SetCastShadow(false);
+        Mesh->SetRelativeLocation(Position);
+        Mesh->SetRelativeScale3D(Scale);
+        Gantry->AddInstanceComponent(Mesh);
+        Mesh->RegisterComponent();
+        return Mesh;
+    };
+
+    // Two side posts and a high crossbar have zero collision: they cannot
+    // obstruct a starting/recovering car even in a failed asset load.
+    AddMesh(TEXT("StartGantryLeftPost"), Cube,
+        FVector(0.0, -925.0, 225.0), FVector(0.7, 0.7, 4.5));
+    AddMesh(TEXT("StartGantryRightPost"), Cube,
+        FVector(0.0, 925.0, 225.0), FVector(0.7, 0.7, 4.5));
+    AddMesh(TEXT("StartGantryCrossbar"), Cube,
+        FVector(0.0, 0.0, 450.0), FVector(0.8, 19.0, 0.45));
+
+    // Three red countdown bulbs and one green GO bulb, all on the
+    // driver-facing west side of the non-blocking gantry.
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const FVector BulbPosition(
+            -65.0, -285.0 + static_cast<double>(Index) * 190.0, 470.0);
+        UStaticMeshComponent* Bulb = AddMesh(
+            FName(*FString::Printf(TEXT("StartGantryBulb%d"), Index)),
+            Sphere, BulbPosition, FVector(0.55, 0.55, 0.55));
+        if (Bulb)
+        {
+            Bulb->SetVisibility(false);
+        }
+        StartGantryBulbs.Add(Bulb);
+
+        UPointLightComponent* Light = NewObject<UPointLightComponent>(
+            Gantry, FName(*FString::Printf(
+                TEXT("StartGantryPointLight%d"), Index)));
+        if (Light)
+        {
+            Light->SetupAttachment(Root);
+            Light->SetMobility(EComponentMobility::Movable);
+            Light->SetRelativeLocation(BulbPosition + FVector(-55.0, 0.0, 0.0));
+            Light->SetIntensity(3900.0f);
+            Light->SetAttenuationRadius(1050.0f);
+            Light->SetLightColor(Index == 3
+                ? FLinearColor(0.12f, 1.0f, 0.28f)
+                : FLinearColor(1.0f, 0.12f, 0.07f));
+            Light->SetCastShadows(false);
+            Light->SetVisibility(false);
+            Gantry->AddInstanceComponent(Light);
+            Light->RegisterComponent();
+        }
+        StartGantryLamps.Add(Light);
+    }
+    UE_LOG(LogLatebrakeStartup, Display,
+        TEXT("LATEBRAKE_START_GANTRY_CREATED noncolliding=1 lamps=%d"),
+        StartGantryLamps.Num());
+    UpdateStartGantryVisual();
+}
+
+void ALatebrakeRaceGameMode::UpdateStartGantryVisual()
+{
+    if (!IsValid(StartGantryActor)) return;
+    const bool bSuspended =
+        UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
+    const latebrake::StartGantryVisual Plan =
+        latebrake::PlanStartGantryVisual(
+            StartLights.Phase(), bCircuitReady, HasLocalPlayerDriver() &&
+                IsRestartPlacementReady(), bSuspended, Race.IsFinished());
+
+    int32 NewMask = 0;
+    if (Plan.Active)
+    {
+        for (int32 Index = 0; Index < Plan.RedBulbs; ++Index)
+        {
+            NewMask |= 1 << Index;
+        }
+        if (Plan.GreenBulb) NewMask |= 1 << 3;
+    }
+    if (NewMask == LastStartGantryLampMask) return;
+    LastStartGantryLampMask = NewMask;
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const bool bOn = (NewMask & (1 << Index)) != 0;
+        if (StartGantryLamps.IsValidIndex(Index) &&
+            IsValid(StartGantryLamps[Index]))
+        {
+            StartGantryLamps[Index]->SetVisibility(bOn);
+        }
+        if (StartGantryBulbs.IsValidIndex(Index) &&
+            IsValid(StartGantryBulbs[Index]))
+        {
+            StartGantryBulbs[Index]->SetVisibility(bOn);
+        }
+    }
 }
 
 void ALatebrakeRaceGameMode::BuildCircuit()
@@ -1055,6 +1215,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
         Car->ClearDriverInputs();
     }
     UGameplayStatics::SetGamePaused(this, false);
+    UpdateStartGantryVisual();
 }
 
 void ALatebrakeRaceGameMode::ToggleMenu()
@@ -1078,6 +1239,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     }
     SyncDesktopMenuPointerMode();
     UGameplayStatics::SetGamePaused(this, Menu.IsOpen());
+    UpdateStartGantryVisual();
 }
 
 void ALatebrakeRaceGameMode::ToggleRacePause()
@@ -1088,7 +1250,7 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
     // must independently freeze racing, checkpoints and driving.
     if (Menu.IsOpen())
     {
-        ToggleMenu();
+        ToggleMenu(); // Also synchronously hides/resets the gantry signal.
         return;
     }
     if (ALatebrakeCarPawn* Car =
@@ -1105,6 +1267,7 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
         AppFocusGuard.OnExplicitResume();
         ManualPause.OnExplicitResume();
         CheckpointSession.OnPauseTransition();
+        UpdateStartGantryVisual();
         return;
     }
 
@@ -1132,6 +1295,7 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: manual world pause failed; manual race pause guard remains suspended"));
     }
+    UpdateStartGantryVisual();
 }
 
 void ALatebrakeRaceGameMode::PauseForAppInterruption()
@@ -1159,6 +1323,7 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: focus-loss world pause failed; race gate remains suspended"));
     }
+    UpdateStartGantryVisual();
 }
 
 void ALatebrakeRaceGameMode::MenuNext()
@@ -1886,6 +2051,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     // A saved PB may change at finish; Results needs the previous record.
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     StartLights.Reset();
+    UpdateStartGantryVisual();
     // Only a new, accepted race attempt latches the pending preset.
     // Career medals/challenges always use the existing Standard opponent.
     ActiveRivalDifficulty = latebrake::EffectiveRivalDifficulty(
@@ -1920,6 +2086,7 @@ void ALatebrakeRaceGameMode::RestartRace()
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: RESTART_GRID_UNVERIFIED - race clock, gates and driving blocked"));
     }
+    UpdateStartGantryVisual();
 #if !UE_BUILD_SHIPPING
     StartRaceAuditAttempt(bPlacedOnGrid ? 1 : 0);
 #endif
