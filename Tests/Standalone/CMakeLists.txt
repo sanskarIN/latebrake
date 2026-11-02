@@ -1777,3 +1777,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalFinishClockReview COMMAND latebrake_rival_finish_clock_review_tests)
+
+# Real player/rival chassis road-load policy. Pure C++20 input and forces:
+# verified arithmetic is not a packaged Unreal physics benchmark.
+add_executable(latebrake_progressive_road_load_tests ProgressiveRoadLoadTests.cpp)
+target_include_directories(latebrake_progressive_road_load_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_progressive_road_load_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_progressive_road_load_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_progressive_road_load_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ProgressiveRoadLoad COMMAND latebrake_progressive_road_load_tests)
