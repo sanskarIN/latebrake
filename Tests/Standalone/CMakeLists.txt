@@ -1903,3 +1903,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ChassisGroundContactTraction COMMAND latebrake_chassis_ground_contact_traction_tests)
+
+# Show accepted real-Chaos-ground contact states only; no UE headers or
+# authority over the real physical chassis, race clock or score.
+add_executable(latebrake_chassis_contact_readout_tests ChassisContactReadoutTests.cpp)
+target_include_directories(latebrake_chassis_contact_readout_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_chassis_contact_readout_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_chassis_contact_readout_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_chassis_contact_readout_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ChassisContactReadout COMMAND latebrake_chassis_contact_readout_tests)
