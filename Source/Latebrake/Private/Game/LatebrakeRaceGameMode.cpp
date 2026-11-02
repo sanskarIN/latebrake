@@ -125,6 +125,8 @@ void ALatebrakeRaceGameMode::BeginPlay()
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    LastRivalFinishClockComparison = {};
     LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
@@ -1296,6 +1298,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     if (FinishTiming != latebrake::FinishTimingEligibility::Eligible)
     {
         LastRivalFinishObservation = {};
+        LastRivalFinishClockComparison = {};
         LastCareerAward = {};
         LastRaceCredits = 0;
         CareerFeedback = TEXT("Finish rejected: missing per-lap active timing or unrecordable clock. Restart to retry.");
@@ -1320,6 +1323,15 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         bRivalPresent ? RivalCar->GetApproximateLaps() : 0,
         bRivalPresent ? RivalCar->GetNextVerifiedGate() : -1
     });
+    // One session's previously accepted final rival crossing may be sampled
+    // against the player's validated finish on the same active post-GO clock.
+    // Reject tight frame-order ambiguity; never award or save a race ranking.
+    LastRivalFinishClockComparison = RivalFinishClocks.CompareAtPlayerFinish(
+        static_cast<int32>(PlayerGateOrdinal),
+        Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds(),
+        !bCareerRace && SelectedEvent == latebrake::EventKind::Circuit,
+        LastRivalFinishObservation.State ==
+            latebrake::RivalFinishObservationState::RivalRouteAlreadyComplete);
 
     // Only the SaveGame write decides if a finish becomes a durable reward.
     // In-memory first-completion medals, credits and best times must not
@@ -1914,8 +1926,17 @@ void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
         RivalCar->GetNextVerifiedGate();
     if (RivalGateOrdinal >= 1 && RivalGateOrdinal <= 25600)
     {
-        RivalSplits.RecordRival(static_cast<int32>(RivalGateOrdinal),
-            Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds());
+        const double ActiveSeconds =
+            Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds();
+        const bool bAcceptedSplit = RivalSplits.RecordRival(
+            static_cast<int32>(RivalGateOrdinal), ActiveSeconds);
+        if (bAcceptedSplit && !bCareerRace &&
+            SelectedEvent == latebrake::EventKind::Circuit &&
+            RivalCar->HasCompletedRoute())
+        {
+            RivalFinishClocks.RecordRivalAcceptedGate(
+                static_cast<int32>(RivalGateOrdinal), ActiveSeconds, true);
+        }
     }
 }
 
@@ -2291,6 +2312,8 @@ void ALatebrakeRaceGameMode::RestartRace()
         QuickRaceDifficultySelection, bCareerRace ||
             SelectedEvent == latebrake::EventKind::TimeAttack);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    LastRivalFinishClockComparison = {};
     LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
