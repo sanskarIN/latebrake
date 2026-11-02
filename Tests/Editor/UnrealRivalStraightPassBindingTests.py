@@ -78,8 +78,8 @@ class UnrealRivalStraightPassBindingTests(unittest.TestCase):
         for marker in (
             "LaneOffsetCm = 440.0",
             "MinimumCornerClearanceCm = 2150.0",
-            "StartAheadMinimumCm = 900.0",
-            "StartAheadMaximumCm = 1600.0",
+            "StartAheadMinimumCm = 1600.0",
+            "StartAheadMaximumCm = 2400.0",
             "FinishBehindClearanceCm = 550.0",
             "MaximumPassDurationSeconds = 6.0",
             "IsOnPavedSurface(s.Rival)",
