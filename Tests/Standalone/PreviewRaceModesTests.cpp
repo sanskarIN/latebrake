@@ -1,3 +1,4 @@
+#include <initializer_list>
 #include "PreviewRaceModes.h"
 
 using latebrake_preview::GetRaceModePolicy;
