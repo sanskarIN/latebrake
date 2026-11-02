@@ -8,6 +8,7 @@
 #include "Vehicles/HumanSpinTractionControl.h"
 #include "Vehicles/FrameStableDamping.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
+#include "Vehicles/SpeedAwareYawTorque.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/ArcadeBoostArbitration.h"
 #include "Vehicles/ArcadeReverseSpeedLimit.h"
@@ -76,7 +77,8 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     // drag/rolling load is applied during qualified driving frames below.
     Chassis->SetLinearDamping(
         static_cast<float>(latebrake::RoadLoadChassisLinearDamping));
-    Chassis->SetAngularDamping(7.f);
+    Chassis->SetAngularDamping(
+        static_cast<float>(latebrake::SteeringChassisAngularDamping));
     Chassis->SetMassOverrideInKg(NAME_None, 1100.f);
     // Pitch/roll constraints keep this early driving prototype accessible.
     Chassis->BodyInstance.bLockXRotation = true;
@@ -945,6 +947,25 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const bool bHumanDriver = IsLocallyControlled() &&
         Cast<APlayerController>(GetController()) != nullptr;
     const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();
+    const float AssistedSteering = static_cast<float>(
+        latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
+    // Replace the rigid fixed steering impulse with a measured-yaw
+    // target. Both player and AI use exactly the same bounded controller.
+    // Handbrake slides retain their original, intentionally loose torque.
+    const latebrake::SpeedAwareYawOutput PlannedYaw =
+        latebrake::CalculateSpeedAwareYawTorque({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(Speed),
+            static_cast<double>(AngularVelocity.Z),
+            static_cast<double>(AssistedSteering),
+            static_cast<double>(Mass),
+            bArcade, Surface.OffPavement});
+    if (!PlannedYaw.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
     const float EffectiveThrottle = static_cast<float>(
         latebrake::ModerateHumanSpinThrottle(
             CornerThrottle, static_cast<double>(LongitudinalSpeed),
@@ -1112,13 +1133,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
     const float SteerDirection = LongitudinalSpeed < -75.f ? -1.f : 1.f;
-    // The same actual vehicle speed governs keyboard, gamepad, touch and
-    // rival steering. Preserve low-speed agility while tempering high-speed
-    // torque (Arcade stays more responsive than Simulation Inspired).
-    const float AssistedSteering = static_cast<float>(
-        latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
-    const float TurnTorque = (bArcade ? 21000000.f : 14000000.f) *
-        AssistedSteering * SteeringAuthority * SteerDirection;
+    // Speed-sensitive steering is already evaluated before the motor
+    // forces. Prefer a real measured yaw-rate response with lateral
+    // acceleration limits; preserve the original yaw authority only
+    // during deliberate human handbrake slides.
+    const float TurnTorque = BrakeProfile.HandbrakeActive
+        ? (bArcade ? 21000000.f : 14000000.f) *
+              AssistedSteering * SteeringAuthority * SteerDirection
+        : static_cast<float>(PlannedYaw.TorqueZ);
     // Decorative wheels track real forward chassis motion, including
     // reverse, using the same bounded speed-sensitive visual steering.
     UpdateWheelVisuals(static_cast<double>(DeltaSeconds),
