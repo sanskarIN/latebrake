@@ -65,8 +65,10 @@ class UnrealGripLimitedBrakingBindingTests(unittest.TestCase):
         )
         self.assertIn("RoadLoad.ForceX", tick)
         self.assertIn("RoadLoad.ForceY", tick)
-        self.assertIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
-        self.assertIn("Chassis->AddForce(-Right * LateralSpeed", tick)
+        self.assertIn("latebrake::CalculateLateralGripForce({", tick)
+        self.assertIn("PhysicalBraking.DecelerationCmPerSecondSquared", tick)
+        self.assertIn("Chassis->AddForce(Right *", tick)
+        self.assertNotIn("Chassis->AddForce(-Right * LateralSpeed", tick)
         self.assertIn("HandbrakeDriveProfile BrakeProfile", tick)
 
     def test_physics_values_finite_and_non_award_authoritative(self):
