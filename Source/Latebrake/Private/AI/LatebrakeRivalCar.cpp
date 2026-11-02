@@ -28,6 +28,7 @@ void ALatebrakeRivalCar::ResetPilot()
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -41,6 +42,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -64,6 +66,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -83,6 +86,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -118,6 +122,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
         // Record a recovery outcome only after the same verified engine
@@ -147,6 +152,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -235,11 +241,10 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         IsRacePhysicsReady()});
 
     // Plan the control for this physics tick, not one frame after applying
-    // the previous command.
-    // A real possessed player can be driving just ahead of the rival on
-    // the same circuit lane. Do not change route steering or invent an
-    // overtaking path: only reduce throttle or request ordinary braking
-    // when the rival is actually closing on an observed in-lane car.
+    // the previous command. A fully qualified, same-straight slow player
+    // permits a limited passing lane steering target; otherwise preserve
+    // the real route's steering and use the existing emergency following
+    // and corner-brake systems. No passing command can award a checkpoint.
     const ALatebrakeCarPawn* Player = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
     const bool bPlayerReady = IsValid(Player) && Player->IsRacePhysicsReady();
@@ -247,8 +252,27 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         ? Player->GetActorLocation() : FVector::ZeroVector;
     const FVector PlayerVelocity = bPlayerReady
         ? Player->GetVelocity() : FVector::ZeroVector;
+    // A genuine physical single-rival passing decision uses the actual
+    // licensed-engine positions/speeds, not a scripted opponent phantom.
+    // Passing only changes bounded STEERING on a paved, away-from-corners
+    // straight. The independent traffic-brake guard still runs afterward.
+    const latebrake::RivalPassOutput Passing =
+        StraightPassAssist.Apply(Command, {
+            static_cast<double>(DeltaSeconds),
+            Route.GetNextWaypoint(),
+            {Position.X, Position.Y},
+            {PlayerPosition.X, PlayerPosition.Y},
+            Heading, Velocity.X, Velocity.Y,
+            PlayerVelocity.X, PlayerVelocity.Y,
+            bPlayerReady && IsRacePhysicsReady() &&
+                GetSurfaceTraction().HasValidSample() &&
+                GetTireCondition().HasValidSample() &&
+                GetCollisionDamage().HasEligibleFrame(),
+            GetSurfaceTraction().HasValidSample() &&
+                !GetSurfaceTraction().IsOffPavement()});
+    const latebrake::PilotCommand SafePassCommand = Passing.Command;
     const latebrake::PilotCommand TrafficCommand =
-        latebrake::YieldRivalToPlayer(Command, {
+        latebrake::YieldRivalToPlayer(SafePassCommand, {
             Position.X, Position.Y, Heading, FlatSpeed,
             PlayerPosition.X, PlayerPosition.Y,
             PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady,
@@ -259,7 +283,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const latebrake::PilotCommand FollowingCommand =
         FollowingBrakeHold.Apply(
             TrafficCommand, static_cast<double>(DeltaSeconds),
-            bPlayerReady, TrafficCommand.Brake && !Command.Brake);
+            bPlayerReady, TrafficCommand.Brake && !SafePassCommand.Brake);
 
     // Read real Chaos angular velocity AFTER all route, corner, road,
     // collision and traffic decisions. Reduce same-direction steering
