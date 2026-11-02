@@ -926,6 +926,25 @@ void ALatebrakeRaceHUD::DrawHUD()
             DisplayLap, Race.GetRequiredLaps(),
             Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+    // Optional, clearly ESTIMATED automatic gearbox telemetry on desktop.
+    // Preserve gate/time rows and mobile touch controls as first priority.
+    if (!bCompact && !bTouchHUD &&
+        VerticalPlan.MaxTelemetryLines >= 24)
+    {
+        const latebrake::AutomaticTransmissionState Gear =
+            Car->GetTransmissionReadout();
+        if (Gear.Valid)
+        {
+            const FString GearLabel = Gear.Gear < 0
+                ? FString(TEXT("R"))
+                : FString::Printf(TEXT("%d"), Gear.Gear);
+            Line(FString::Printf(
+                TEXT("AUTO GEAR %s | RPM EST %d%s"),
+                *GearLabel, Gear.EstimatedRpm,
+                Gear.Shifting ? TEXT(" | SHIFT") : TEXT("")),
+                Gear.Shifting ? Accent : Primary);
+        }
+    }
     // Saved solo PB is a deadline for official elapsed clock, not predicted
     // finish. No new touch HUD row may compete with steering/gate controls.
     if (!bCompact && !bTouchHUD)
