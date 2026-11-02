@@ -1,8 +1,10 @@
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/CircuitGateCrossing.h"
+#include "Racing/GateObjectiveVisual.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Game/LatebrakeRaceGameMode.h"
@@ -51,11 +53,53 @@ ALatebrakeCheckpoint::ALatebrakeCheckpoint()
     {
         Marker->SetStaticMesh(Cylinder.Object);
     }
+
+    ObjectiveBeacon = CreateDefaultSubobject<UPointLightComponent>(
+        TEXT("NextGateObjectiveLight"));
+    ObjectiveBeacon->SetupAttachment(Trigger);
+    ObjectiveBeacon->SetRelativeLocation(FVector(0.f, 0.f, 300.f));
+    ObjectiveBeacon->SetLightColor(FLinearColor(0.15f, 0.88f, 1.0f));
+    ObjectiveBeacon->SetIntensity(4500.0f);
+    ObjectiveBeacon->SetAttenuationRadius(1000.0f);
+    ObjectiveBeacon->SetVisibility(false);
+    ObjectiveBeacon->SetCastShadows(false);
+}
+
+void ALatebrakeCheckpoint::RefreshObjectiveMarker()
+{
+    const ALatebrakeRaceGameMode* Mode =
+        GetWorld() ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    const latebrake::GateObjectiveVisual Plan =
+        latebrake::PlanGateObjectiveVisual(
+            CheckpointIndex,
+            IsValid(Mode) ? Mode->GetRace().GetNextCheckpoint() : -1,
+            IsValid(Mode) ? Mode->GetRace().GetCheckpointCount() : 0,
+            IsValid(Mode) && Mode->IsCircuitReadyForGameplay(),
+            !IsValid(Mode) || Mode->GetRace().IsFinished());
+    if (bObjectiveMarkerInitialized &&
+        Plan.Visible == bObjectiveMarkerVisible &&
+        Plan.Highlighted == bObjectiveMarkerHighlighted)
+    {
+        return; // Avoid redundant component writes on every racing tick.
+    }
+    bObjectiveMarkerInitialized = true;
+    bObjectiveMarkerVisible = Plan.Visible;
+    bObjectiveMarkerHighlighted = Plan.Highlighted;
+
+    // Cosmetic-only 3D cues: the trigger is NoCollision and the light
+    // does not participate in race scoring, overlap or car physics.
+    Marker->SetVisibility(Plan.Visible);
+    Marker->SetRelativeScale3D(FVector(
+        static_cast<float>(Plan.RadiusScale),
+        static_cast<float>(Plan.RadiusScale),
+        static_cast<float>(Plan.HeightScale)));
+    ObjectiveBeacon->SetVisibility(Plan.Visible && Plan.Highlighted);
 }
 
 void ALatebrakeCheckpoint::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+    RefreshObjectiveMarker();
 
     ALatebrakeCarPawn* Car =
         Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0));

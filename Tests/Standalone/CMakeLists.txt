@@ -1673,3 +1673,16 @@ else()
 endif()
 add_test(NAME TimeAttackPersonalBestTarget
     COMMAND latebrake_time_attack_pb_target_tests)
+
+# Real UE actor cosmetic next-gate objective; scoring and checkpoint tracing unchanged.
+add_executable(latebrake_gate_objective_visual_tests GateObjectiveVisualTests.cpp)
+target_include_directories(latebrake_gate_objective_visual_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_gate_objective_visual_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_gate_objective_visual_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_gate_objective_visual_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GateObjectiveVisual COMMAND latebrake_gate_objective_visual_tests)
