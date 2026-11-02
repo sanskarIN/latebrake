@@ -30,7 +30,7 @@ class RivalYawRateSteeringBindingTests(unittest.TestCase):
             "latebrake::PlanRivalTurn(",
             "GripPace.Apply(Command, {",
             "SurfaceDamagePace.Apply(Command, {",
-            "latebrake::YieldRivalToPlayer(Command, {",
+            "latebrake::YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
             "Chassis->GetPhysicsAngularVelocityInRadians()",
             "latebrake::ModerateRivalYawRate(FollowingCommand, {",
