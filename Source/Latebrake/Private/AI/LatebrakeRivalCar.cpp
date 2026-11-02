@@ -3,6 +3,7 @@
 #include "AI/RivalPilot.h"
 #include "AI/RivalGateRunThrough.h"
 #include "AI/RivalCornerAnticipation.h"
+#include "AI/RivalCornerBrakeEnvelope.h"
 #include "AI/RivalTrafficAwareness.h"
 #include "AI/RivalYawRateSteering.h"
 #include "AI/RivalEngineHeatPace.h"
@@ -162,6 +163,30 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Position.X, Position.Y, Heading, FlatSpeed,
             NextTarget.X, NextTarget.Y, 440.0, false),
         Route.GetNextWaypoint(), {Position.X, Position.Y}, FlatSpeed);
+
+    // The original anticipator uses a fixed approach window; the newly
+    // bounded physical brake forces need an earlier, distance-based forecast.
+    // Measure the previous QUALIFIED pawn tick's actual brake heat, tire
+    // condition and contact-surface state. Do not predict imaginary grip
+    // after focus loss, a recovery teleport or malformed Chaos physics.
+    const bool bCornerPhysicsQualified =
+        GetSurfaceTraction().HasValidSample() &&
+        GetTireCondition().HasValidSample() &&
+        GetCollisionDamage().HasEligibleFrame() &&
+        GetBrakeHeat().HasValidSample();
+    const latebrake::RivalCornerBrakeResult BrakeForecast =
+        latebrake::ApplyRivalCornerBrakeEnvelope(Command, {
+            Route.GetNextWaypoint(),
+            {Position.X, Position.Y}, FlatSpeed,
+            GetSurfaceTraction().IsOffPavement()
+                ? latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier
+                : 1.0,
+            GetTireCondition().GripMultiplier(),
+            GetCollisionDamage().LateralGripMultiplier(),
+            GetBrakeHeat().ServiceBrakeMultiplier(),
+            GetHandlingMode() == ELatebrakeHandlingMode::Arcade,
+            bCornerPhysicsQualified});
+    Command = BrakeForecast.Command;
 
     // Apply selected Quick Race difficulty only to this already-valid
     // planner command. Existing grip/traffic/heat/spin safety limits run
