@@ -8,6 +8,7 @@
 #include "Vehicles/HumanSpinTractionControl.h"
 #include "Vehicles/FrameStableDamping.h"
 #include "Vehicles/GripLimitedBraking.h"
+#include "Vehicles/LateralGripBudget.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/SpeedAwareYawTorque.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
@@ -786,19 +787,18 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SmoothedSteering, EffectiveSteering, static_cast<double>(DeltaSeconds),
         bArcade ? 3.8 : 2.4));
     const bool bServiceBraking = bBraking || TouchDrive.BrakeActive();
-    // A held human handbrake lowers the prototype's lateral damping and
-    // applies bounded forward resistance. It never requests new tire physics.
+    // A held human handbrake reduces bounded lateral grip, preserving
+    // a controllable physical slide instead of snapping velocity sideways.
     const latebrake::HandbrakeDriveProfile BrakeProfile =
         latebrake::SelectHandbrakeDriveProfile(
             bHandbrakeHeld && IsLocallyControlled() &&
                 Cast<APlayerController>(GetController()) != nullptr,
             bServiceBraking, bArcade,
-            static_cast<double>((bArcade ? 8.5f : 4.25f) * GarageGrip),
+            static_cast<double>(bArcade ? 8.5f : 4.25f),
             static_cast<double>(RawThrottle));
     const bool bEffectiveBraking = BrakeProfile.Braking;
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
-    float GripRate = static_cast<float>(BrakeProfile.LateralGripRate);
 
     const FVector Forward = GetActorForwardVector();
     const FVector Right = GetActorRightVector();
@@ -921,11 +921,6 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const latebrake::BrakeHeatOutput Thermal = BrakeHeat.Observe({
         static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed), bServiceBraking, true});
-    // Scale the normal grip policy before frame-stable resistance, so
-    // the established force-bound contract stays the final authority.
-    GripRate *= static_cast<float>(
-        TireCondition.GripMultiplier() * Surface.LateralGripMultiplier *
-        CollisionDamage.LateralGripMultiplier());
     // Ordinary service/handbrake braking now uses an explicit finite
     // longitudinal deceleration budget, not a huge speed-proportional
     // resistance that stops a racing car almost instantaneously.
@@ -941,6 +936,27 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             CollisionDamage.LateralGripMultiplier(),
             Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0});
     if (!PhysicalBraking.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
+    // A shared friction-circle budget prevents arbitrary 20g+ lateral
+    // corrections. True physics chassis slip and the SAME-FRAME braking
+    // request compete for finite road/tire grip. Garage upgrades modify
+    // this budget once, without multiplying a tuned rate twice.
+    const latebrake::LateralGripOutput LateralForce =
+        latebrake::CalculateLateralGripForce({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(LateralSpeed),
+            static_cast<double>(Mass),
+            BrakeProfile.LateralGripRate,
+            static_cast<double>(GarageGrip) *
+                TireCondition.GripMultiplier() *
+                Surface.LateralGripMultiplier *
+                CollisionDamage.LateralGripMultiplier(),
+            PhysicalBraking.DecelerationCmPerSecondSquared,
+            bArcade, BrakeProfile.HandbrakeActive});
+    if (!LateralForce.Valid)
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
@@ -1148,13 +1164,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<float>(RoadLoad.ForceX),
         static_cast<float>(RoadLoad.ForceY), 0.f));
 
-    // Anti-slide assistance is stronger in Arcade; both presets remain tunable.
-    // The shared base pawn serves human and rival drivers. On a lagging
-    // frame, constrain purely resistive impulses to avoid a synthetic
-    // one-frame reversal of the measured velocity component.
-    const float StableGripRate = static_cast<float>(
-        latebrake::FrameStableDampingRate(GripRate, DeltaSeconds));
-    Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate);
+    // Contact-grip-limited correction of actual sideways momentum.
+    // This preserves a sustained skid when grip is exhausted, while
+    // remaining opposite measured slip and never rewriting Chaos velocity.
+    Chassis->AddForce(Right *
+        static_cast<float>(LateralForce.RightForce));
     if (bEffectiveBraking)
     {
         // Physically sampled brake force, bounded to a credible approximate
