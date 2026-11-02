@@ -1875,3 +1875,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalStraightPassAssist COMMAND latebrake_rival_straight_pass_assist_tests)
+
+# Real Unreal rival pass/traffic arbitration: restoring original route
+# steering under observed collision braking, portable arithmetic only.
+add_executable(latebrake_rival_pass_traffic_resolution_tests RivalPassTrafficResolutionTests.cpp)
+target_include_directories(latebrake_rival_pass_traffic_resolution_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_pass_traffic_resolution_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_pass_traffic_resolution_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_pass_traffic_resolution_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalPassTrafficResolution COMMAND latebrake_rival_pass_traffic_resolution_tests)
