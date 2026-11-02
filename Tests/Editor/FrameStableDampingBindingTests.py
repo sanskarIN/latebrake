@@ -25,15 +25,16 @@ class FrameStableDampingBindingTests(unittest.TestCase):
                         tick.index("FrameStableDampingRate("))
         for expression in (
             "FrameStableDampingRate(3.0, DeltaSeconds)",
-            "FrameStableDampingRate(GripRate, DeltaSeconds)",
         ):
             with self.subTest(expression=expression):
                 self.assertIn(expression, tick)
-        # Dedicated physical brake forces have their own impulse ceiling;
-        # this limiter remains mandatory for opposite-pedal engine braking
-        # and lateral anti-slide resistance.
+        # Opposite-pedal engine braking still uses frame-stable damping.
+        # Service braking and sideways slip each have independent finite
+        # force/impulse ceilings, sharing a bounded contact-grip allowance.
         self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
         self.assertIn("PhysicalBraking.ForwardForce", tick)
+        self.assertIn("latebrake::CalculateLateralGripForce({", tick)
+        self.assertIn("LateralForce.RightForce", tick)
         self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
         for forbidden in (
             "LongitudinalSpeed * Mass * 3.f",
@@ -51,12 +52,15 @@ class FrameStableDampingBindingTests(unittest.TestCase):
         self.assertIn("cxx_std_20", self.cmake)
 
     def test_unbound_damping_is_detectable(self):
-        required = "FrameStableDampingRate(GripRate, DeltaSeconds)"
+        required = "FrameStableDampingRate(3.0, DeltaSeconds)"
         self.assertIn(required, self.pawn)
-        bad = self.pawn.replace(required, "GripRate")
+        bad = self.pawn.replace(required, "3.0")
         self.assertNotIn(required, bad)
         self.assertIn("CalculateGripLimitedBraking({", self.pawn)
         self.assertIn("if (!PhysicalBraking.Valid)", self.pawn)
+        self.assertIn("CalculateLateralGripForce({", self.pawn)
+        self.assertIn("if (!LateralForce.Valid)", self.pawn)
+        self.assertNotIn("FrameStableDampingRate(GripRate, DeltaSeconds)", self.pawn)
 
 
 if __name__ == "__main__":
