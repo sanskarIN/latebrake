@@ -1889,3 +1889,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalPassTrafficResolution COMMAND latebrake_rival_pass_traffic_resolution_tests)
+
+# The actual rigid-body motor/grip/yaw contact multiplier is fed by real
+# WorldStatic traces in the UE pawn. Pure numerical policy stays portable.
+add_executable(latebrake_chassis_ground_contact_traction_tests ChassisGroundContactTractionTests.cpp)
+target_include_directories(latebrake_chassis_ground_contact_traction_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_chassis_ground_contact_traction_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_chassis_ground_contact_traction_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_chassis_ground_contact_traction_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ChassisGroundContactTraction COMMAND latebrake_chassis_ground_contact_traction_tests)
