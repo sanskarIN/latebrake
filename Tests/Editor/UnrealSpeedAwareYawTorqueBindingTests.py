@@ -37,7 +37,8 @@ class UnrealSpeedAwareYawTorqueBindingTests(unittest.TestCase):
             "if (!PlannedYaw.Valid)",
             "NeutralizeMotionWhenDrivingBlocked();",
             "static_cast<float>(PlannedYaw.TorqueZ)",
-            "Chassis->AddTorqueInRadians(FVector(0.f, 0.f, TurnTorque));",
+            "Chassis->AddTorqueInRadians(FVector(",
+            "TurnTorque * ContactTractionScale",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, tick)
