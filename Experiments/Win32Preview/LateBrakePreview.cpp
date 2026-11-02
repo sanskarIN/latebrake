@@ -2,6 +2,7 @@
 // This is deliberately NOT the Unreal Engine Latebrake target or cooked content.
 // Self-contained Win32/GDI progression prototype: no network, CRT, plugins, or Unreal assets.
 // Build and launch on Windows; --self-test runs an isolated deterministic logic check.
+#include "PreviewRaceModes.h"
 
 extern "C" { int _fltused = 0; } // MSVC floating-point linkage marker.
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -470,23 +471,35 @@ static bool inPitBay(float x,float y){
 struct Opponent { float c,s,x,y,speed,stun; int rounds; };
 struct Race {
     float x,y,fx,fy,speed,nitro,damage,elapsed,lapStart,best,smoothedSteer,pitHold;
-    int lap,nextGate,passes,pitStops;
+    int lap,nextGate,passes,pitStops,rivalCount;
     bool finished,readyForGate,awarded,won,pitReady;
     Opponent ai[3];
 };
 static Race race;
-static int totalLapsForMode(){return selectedChallenge==1?1:selectedChallenge==2||selectedChallenge==3?2:3;}
+static latebrake_preview::RaceModePolicy selectedModePolicy(){
+    return latebrake_preview::GetRaceModePolicy(selectedChallenge);
+}
+static int totalLapsForMode(){return selectedModePolicy().RequiredLaps;}
+static bool rivalDuelAlreadyLost(){
+    if(selectedChallenge!=2)return false;
+    for(int i=0;i<race.rivalCount;i++)if(race.ai[i].rounds>=totalLaps)return true;
+    return false;
+}
 static void beginRace(){
     race={};
     progressSaveFailed=false;
+    const latebrake_preview::RaceModePolicy mode=selectedModePolicy();
+    if(!mode.Valid){page=HOME;message("INVALID RACE EVENT");return;}
     if(!(ownedMask&(1<<selectedCar))){
         page=GARAGE;message("UNLOCK THIS CAR TO DRIVE IT");return;
     }
     race.nitro=100.0f;race.lap=1;race.nextGate=0;
-    totalLaps=totalLapsForMode();race.readyForGate=true;race.pitReady=true;
+    totalLaps=totalLapsForMode();race.rivalCount=mode.RivalCount;
+    race.readyForGate=true;race.pitReady=true;
     float x,y;shapePos(0.0f,1.0f,&x,&y);
     race.x=x+11.0f;race.y=y-4.0f;race.fx=-1.0f;race.fy=0.0f;
-    for(int i=0;i<3;i++){
+    // Solo challenges do not spawn, simulate or collide with invisible rivals.
+    for(int i=0;i<race.rivalCount;i++){
         race.ai[i].c=0.0f;race.ai[i].s=1.0f;
         race.ai[i].speed=0.70f+0.085f*i+selectedTrack*0.035f;
         shapePos(0.0f,1.0f,&race.ai[i].x,&race.ai[i].y);
@@ -565,7 +578,7 @@ static void creditGate(){
             bool ok=true;
             if(selectedChallenge==1)ok=(race.elapsed<65.0f);
             if(selectedChallenge==3)ok=(race.elapsed<95.0f);
-            if(selectedChallenge==2){for(int i=0;i<3;i++)if(race.ai[i].rounds>=totalLaps)ok=false;}
+            if(selectedChallenge==2&&rivalDuelAlreadyLost())ok=false;
             race.lap=totalLaps;finishRace(ok);
         }
     }
@@ -648,7 +661,7 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
         race.speed*=-0.15f;race.damage=clamp(race.damage+5,0,88);
     }
     }
-    for(int i=0;i<3;i++){
+    for(int i=0;i<race.rivalCount;i++){
         Opponent& a=race.ai[i];
         float co=a.c,si=a.s;
         float angle=dt*(a.speed+(selectedChallenge==2?0.07f:0));
@@ -674,7 +687,7 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     }
     if((selectedChallenge==1&&race.elapsed>85.0f)||
        (selectedChallenge==3&&race.elapsed>95.0f)||
-       (selectedChallenge==2&&race.ai[2].rounds>=totalLaps))finishRace(false);
+       rivalDuelAlreadyLost())finishRace(false);
 }
 static void drawTrack(){
     trackRx=selectedTrack==1?290.0f:selectedTrack==2?280.0f:selectedTrack==3?285.0f:295.0f;
@@ -978,11 +991,11 @@ static void renderRaceMiniMap(){
         dot((int)(left+w*0.5f+(x-CX)*0.258f),(int)(top+h*0.5f+(y-CY)*0.258f),
             g==race.nextGate?5:2,g==race.nextGate?GOLD():MUTED());
     }
-    for(int i=0;i<3;i++)dot((int)(left+w*0.5f+(race.ai[i].x-CX)*0.258f),
+    for(int i=0;i<race.rivalCount;i++)dot((int)(left+w*0.5f+(race.ai[i].x-CX)*0.258f),
          (int)(top+h*0.5f+(race.ai[i].y-CY)*0.258f),4,color(239,138,135));
     dot((int)(left+w*0.5f+(race.x-CX)*0.258f),
         (int)(top+h*0.5f+(race.y-CY)*0.258f),5,GOLD());
-    hint(left,top+h+4,"GOLD YOU / RED RIVALS");
+    hint(left,top+h+4,race.rivalCount==0?"GOLD YOU / SOLO EVENT":"GOLD YOU / RED RIVALS");
 }
 static void renderRaceHUDV3(){
     // Designed as small peripheral cards; do not hide the next gate or car.
@@ -991,7 +1004,7 @@ static void renderRaceHUDV3(){
     text(270,20,challengeNames[selectedChallenge],MUTED(),2);
     text(730,20,trackNames[selectedTrack],GOLD(),1);
     tile(16,72,228,155,false);
-    hint(32,84,"RACE PROGRESS");
+    hint(32,84,race.rivalCount==0?"SOLO CLOCK CHALLENGE":"RACE PROGRESS / RIVALS");
     text(31,115,"LAP",MUTED(),2);number(118,109,race.lap,CREAM(),3);
     text(164,122,"/",MUTED(),1);number(180,117,totalLaps,GOLD(),2);
     hint(31,154,"NEXT CHECKPOINT");number(202,148,race.nextGate+1,CYAN(),2);
@@ -1083,7 +1096,7 @@ static void render(){
     if(page==RACING||page==RESULTS){
         float gx,gy;gatePos(race.nextGate,&gx,&gy);
         if(!race.finished){dot((int)gx,(int)gy,13,color(255,203,81));dot((int)gx,(int)gy,8,color(55,45,31));dot((int)gx,(int)gy,4,color(255,228,145));}
-        for(int i=0;i<3;i++){
+        for(int i=0;i<race.rivalCount;i++){
             Opponent& a=race.ai[i];
             // Tangent to the underlying oriented racetrack; decorative AI pose.
             float fx=-a.s,fy=a.c,mag=fsqrt(fx*fx+fy*fy);fx/=mag;fy/=mag;
@@ -1288,6 +1301,28 @@ static bool selftest(){
     if(page!=RACING||race.lap!=1||race.nextGate!=0||race.nitro!=100)return false;
     countdown=0;update(0.015f,true,false,false,false,false,true);
     if(race.nitro>=100||race.speed<=0)return false;
+    selfTestStage=12;
+    // All four event policies must govern actual AI initialization AND
+    // simulated rival motion, not merely draw visibility or menu labels.
+    for(int event=0;event<4;event++){
+        selectedChallenge=event;beginRace();
+        const auto policy=selectedModePolicy();
+        if(page!=RACING||!policy.Valid||race.rivalCount!=policy.RivalCount||
+           totalLaps!=policy.RequiredLaps||race.lap!=1)return false;
+        if(policy.RivalCount==0){
+            for(int i=0;i<3;i++)if(race.ai[i].x!=0.0f||race.ai[i].y!=0.0f)return false;
+            countdown=0;race.damage=0.0f;
+            update(0.03f,false,false,false,false,false,false);
+            if(race.damage!=0.0f)return false;
+            for(int i=0;i<3;i++)if(race.ai[i].x!=0.0f||race.ai[i].y!=0.0f||
+                                    race.ai[i].rounds!=0)return false;
+        }else{
+            for(int i=0;i<race.rivalCount;i++)if(race.ai[i].x==0.0f||
+                                                   race.ai[i].y==0.0f)return false;
+        }
+    }
+    selectedChallenge=0;beginRace();countdown=0;
+    selfTestStage=13;
     for(int tr=0;tr<4;tr++){
         selectedTrack=tr;drawTrack();
         for(int g=0;g<4;g++){
