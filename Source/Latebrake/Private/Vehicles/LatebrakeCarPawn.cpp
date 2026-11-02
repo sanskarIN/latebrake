@@ -758,6 +758,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
+        // A rejected physics frame must not leave last tick's full road
+        // contact displayed after simulation stops or frame validity fails.
+        LastGroundContact = {};
         ResetSpeedCameraFov();
         ResetCornerCameraYaw();
         ApplySignalLights(false, false, 0.0);
