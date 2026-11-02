@@ -2,6 +2,7 @@
 
 #include "AI/RivalPilot.h"
 #include "Track/CircuitLayout.h"
+#include "Vehicles/GripLimitedBraking.h"
 
 #include <algorithm>
 #include <cmath>
@@ -80,7 +81,8 @@ inline RivalCornerBrakeResult ApplyRivalCornerBrakeEnvelope(
         sample.SurfaceGrip * sample.TireGrip * sample.ImpactGrip,
         0.10, 2.0);
     const double safeBrakeDeceleration =
-        (sample.ArcadeHandling ? 900.0 : 1050.0) *
+        (sample.ArcadeHandling ? ArcadeServiceBrakeDeceleration
+                               : SimulationServiceBrakeDeceleration) *
         effectiveGrip * sample.BrakeHeatMultiplier *
         RivalBrakeForecastSafetyScale;
     if (!std::isfinite(safeBrakeDeceleration))
