@@ -30,18 +30,29 @@ class RivalSurfaceDamagePaceBindingTests(unittest.TestCase):
             "latebrake::CanDriveRival(",
             "const FVector Position = GetActorLocation();",
             "latebrake::AnticipateRivalCorner(",
+            "latebrake::ApplyRivalCornerBrakeEnvelope(Command, {",
             "GripPace.Apply(Command, {",
-            "GetSurfaceTraction().IsOffPavement()",
+            "const bool bOffPavement = GetSurfaceTraction().IsOffPavement();",
             "SurfaceDamagePace.Apply(Command, {",
-            "GetCollisionDamage().LateralGripMultiplier()",
-            "GetSurfaceTraction().HasValidSample()",
-            "GetCollisionDamage().HasEligibleFrame()",
             "latebrake::YieldRivalToPlayer(Command, {",
             "FollowingBrakeHold.Apply(",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         )
         offsets = [tick.index(m) for m in markers]
         self.assertEqual(offsets, sorted(offsets))
+        # The preceding new physical brake forecast also reads actual
+        # road/damage snapshots. Inspect the ORIGINAL surface/damage
+        # limiter's own sample, not the first use elsewhere in Tick.
+        surface_pace = tick.split("SurfaceDamagePace.Apply(Command, {", 1)[1].split(
+            "// The previous qualified physical engine-heat sample", 1
+        )[0]
+        for field in (
+            "GetCollisionDamage().LateralGripMultiplier()",
+            "GetSurfaceTraction().HasValidSample()",
+            "GetCollisionDamage().HasEligibleFrame()",
+            "bOffPavement",
+        ):
+            self.assertIn(field, surface_pace)
         self.assertIn("Velocity, GetActorRightVector()", tick)
         self.assertIn("ArcadeSurfaceTraction::OffPavementGripMultiplier", tick)
 
