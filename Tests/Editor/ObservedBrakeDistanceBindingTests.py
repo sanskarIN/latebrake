@@ -30,8 +30,7 @@ class ObservedBrakeDistanceBindingTests(unittest.TestCase):
             "if (!FMath::IsFinite(Speed)",
             "BrakeDistance.Observe({",
             "static_cast<double>(Speed)",
-            "static_cast<double>(LongitudinalSpeed),
-        bEffectiveBraking && GroundContact.HasDriveContact",
+            "bEffectiveBraking && GroundContact.HasDriveContact",
         ):
             self.assertIn(key, tick)
         self.assertLess(tick.index("!IsRacePhysicsReady()"),
