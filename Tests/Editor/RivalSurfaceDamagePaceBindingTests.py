@@ -34,7 +34,7 @@ class RivalSurfaceDamagePaceBindingTests(unittest.TestCase):
             "GripPace.Apply(Command, {",
             "const bool bOffPavement = GetSurfaceTraction().IsOffPavement();",
             "SurfaceDamagePace.Apply(Command, {",
-            "latebrake::YieldRivalToPlayer(Command, {",
+            "latebrake::YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         )
