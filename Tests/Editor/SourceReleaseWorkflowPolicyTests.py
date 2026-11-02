@@ -50,6 +50,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         "v0.5.87": "v0.5.86",  # Pit service, menu input and six visual body kits.
         "v0.5.88": "v0.5.87",  # Radar waypoint, Android held PIT, six-car paint.
         "v0.5.89": "v0.5.88",  # Verified gate, garage, rival splits, AI difficulty.
+        "v0.5.90": "v0.5.89",  # Source-only actual chassis/braking and AI passing safety.
     }
     if version not in previous_by_version:
         raise ValueError("unsupported dynamic source publisher")
@@ -93,7 +94,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
         (f"docs/releases/{version}.md", "matching release notes"),
     ):
         require(value, name)
-    if version == "v0.5.89":
+    if version in ("v0.5.89", "v0.5.90"):
         # Match the publisher's REAL final JavaScript marker list rather
         # than re-checking just our smaller source qualification gates.
         # Missing strings previously failed only after hours of macOS
@@ -103,14 +104,14 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
             source,
         )
         if not marker_block:
-            raise ValueError("v0.5.89: mandatory publisher marker loop missing")
+            raise ValueError(f"{version}: mandatory publisher marker loop missing")
         mandatory_markers = re.findall(r"'([^']+)'", marker_block.group(1))
         if len(mandatory_markers) < 30:
-            raise ValueError("v0.5.89: incomplete source-only publisher marker list")
+            raise ValueError(f"{version}: incomplete source-only publisher marker list")
         for required_marker in mandatory_markers:
             if required_marker not in notes:
                 raise ValueError(
-                    f"v0.5.89: source release notes missing publisher marker {required_marker}"
+                    f"{version}: source release notes missing publisher marker {required_marker}"
                 )
         for new_gate in (
             "RaceGateProgressGauge|GarageCatalogView|GarageComparisonView|RivalMatchedGateSplits|RivalDifficultyPreset",
@@ -125,6 +126,31 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
             "'RIVAL DIFFICULTY'",
         ):
             require(new_gate, "v0.5.89 post-v0.5.88 racing UI/AI qualification")
+
+    if version == "v0.5.90":
+        new_targets = (
+            "ProgressiveRoadLoad", "SpeedAwareYawTorque",
+            "AutomaticTransmission", "GripLimitedBraking",
+            "LateralGripBudget", "RivalCornerBrakeEnvelope",
+            "RivalStraightPassAssist", "RivalPassTrafficResolution",
+        )
+        # These tests execute actual physical-control production policies;
+        # each named target must exist and independently pass, not simply
+        # occur in a broad regex or in a release description.
+        for target in new_targets:
+            require(
+                f'run: ctest --test-dir Tests/Standalone/build -C Release -R "^{target}$" --no-tests=error',
+                f"individually qualified v0.5.90 {target} target",
+            )
+            if target not in notes:
+                raise ValueError(f"v0.5.90: source notes omit {target}")
+        for marker in ("'PHYSICAL CHASSIS DRIVING'",
+                       "'RIVAL CORNER AND TRAFFIC DRIVING'",
+                       "'RivalPassTrafficResolution'"):
+            require(marker, "new release safety marker")
+        require("cmake --build Tests/Standalone/build --config Release --parallel 4",
+                "unabridged production test compilation")
+        require("tag: 'v0.5.89'", "exact published predecessor")
 
     if version == "v0.5.88":
         for new_gate in (
@@ -280,7 +306,7 @@ def verify_live_ci_source_release(version: str, source: str, notes: str) -> None
 
 def verify_modern_source_release(version: str, source: str, notes: str) -> None:
     """Refuse obvious duplicate jobs, broken CTest quoting or drifting tags."""
-    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82", "v0.5.83", "v0.5.84", "v0.5.85", "v0.5.86", "v0.5.87", "v0.5.88", "v0.5.89"}:
+    if version in {"v0.5.60", "v0.5.65", "v0.5.70", "v0.5.71", "v0.5.72", "v0.5.73", "v0.5.74", "v0.5.75", "v0.5.76", "v0.5.77", "v0.5.78", "v0.5.79", "v0.5.80", "v0.5.81", "v0.5.82", "v0.5.83", "v0.5.84", "v0.5.85", "v0.5.86", "v0.5.87", "v0.5.88", "v0.5.89", "v0.5.90"}:
         verify_live_ci_source_release(version, source, notes)
         return
     found_version = re.fullmatch(r"v0\.5\.(\d+)", version)
@@ -407,6 +433,42 @@ class SourceReleaseWorkflowPolicyTests(unittest.TestCase):
             with self.subTest(mutation=mutation[-80:]):
                 with self.assertRaises(ValueError):
                     verify_live_ci_source_release("v0.5.78", mutation, notes)
+
+    def test_v0590_race_car_and_actual_ai_publisher_rejects_missing_tests(self):
+        version = "v0.5.90"
+        source = (WORKFLOWS / "publish-v0.5.90-source.yml").read_text(
+            encoding="utf-8")
+        notes = (RELEASE_NOTES / "v0.5.90.md").read_text(encoding="utf-8")
+        verify_live_ci_source_release(version, source, notes)
+        for target in (
+            "ProgressiveRoadLoad", "SpeedAwareYawTorque",
+            "AutomaticTransmission", "GripLimitedBraking",
+            "LateralGripBudget", "RivalCornerBrakeEnvelope",
+            "RivalStraightPassAssist", "RivalPassTrafficResolution",
+        ):
+            with self.subTest(missing_ctest=target):
+                bad = source.replace(
+                    f'^' + target + '$" --no-tests=error',
+                    '^OLD_SOURCE_ONLY$" --no-tests=error', 1)
+                self.assertNotEqual(bad, source)
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(version, bad, notes)
+            with self.subTest(missing_notes=target):
+                bad_notes = notes.replace(target, "UNVERIFIED_SOURCE_NAME")
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(version, source, bad_notes)
+        for broken in (
+            source.replace("tag: 'v0.5.89'", "tag: 'v0.5.88'", 1),
+            source.replace("if (main !== sha)", "if (false)", 1),
+            source.replace("published.assets.length !== 0", "false", 1),
+            source.replace(
+                "needs: [source-tests, editor-tests, packaging-policy, documentation]",
+                "needs: [source-tests]", 1),
+        ):
+            with self.subTest(publisher_regression=broken[-100:]):
+                self.assertNotEqual(broken, source)
+                with self.assertRaises(ValueError):
+                    verify_live_ci_source_release(version, broken, notes)
 
     def test_v0589_racing_garage_and_rival_ai_publisher_has_exact_gates(self):
         version = "v0.5.89"
