@@ -1763,3 +1763,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME CornerApproachChevrons COMMAND latebrake_corner_chevron_tests)
+
+# Run-local observed rival finishing clock, not official race placement or
+# hardware-verified timing. No Unreal dependency is needed for this policy.
+add_executable(latebrake_rival_finish_clock_review_tests RivalFinishClockReviewTests.cpp)
+target_include_directories(latebrake_rival_finish_clock_review_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_finish_clock_review_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_finish_clock_review_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_finish_clock_review_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalFinishClockReview COMMAND latebrake_rival_finish_clock_review_tests)
