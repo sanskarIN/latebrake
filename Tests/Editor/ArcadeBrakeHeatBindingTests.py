@@ -20,9 +20,11 @@ class ArcadeBrakeHeatBindingTests(unittest.TestCase):
         self.assertIn("const bool bServiceBraking = bBraking || TouchDrive.BrakeActive();", CAR_CPP)
         self.assertIn("BrakeHeat.Observe({", CAR_CPP)
         self.assertIn("static_cast<double>(LongitudinalSpeed), bServiceBraking, true", CAR_CPP)
-        self.assertIn("BrakeProfile.HandbrakeActive ? 4.2 : 0.0", CAR_CPP)
-        self.assertIn("BrakeRate * Thermal.ServiceBrakeMultiplier", CAR_CPP)
-        self.assertIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", CAR_CPP)
+        self.assertIn("latebrake::CalculateGripLimitedBraking({", CAR_CPP)
+        self.assertIn("bServiceBraking, BrakeProfile.HandbrakeActive, bArcade", CAR_CPP)
+        self.assertIn("Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0", CAR_CPP)
+        self.assertIn("PhysicalBraking.ForwardForce", CAR_CPP)
+        self.assertNotIn("BrakeRate * Thermal.ServiceBrakeMultiplier", CAR_CPP)
 
     def test_only_expanded_hud_shows_advisory_heat(self):
         self.assertIn("Car->GetBrakeHeat().HasValidSample()", HUD)
