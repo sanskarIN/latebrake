@@ -63,9 +63,9 @@ int main()
               moderate.Command.Throttle == driving.Throttle,
               "an already slow car must not brake prematurely");
         const auto worn = ApplyRivalCornerBrakeEnvelope(
-            driving, Sample(gate, 3650.0, 2900.0, 0.50, 0.75));
+            driving, Sample(gate, 3650.0, 2400.0, 0.50, 0.75));
         const auto clean = ApplyRivalCornerBrakeEnvelope(
-            driving, Sample(gate, 3650.0, 2900.0));
+            driving, Sample(gate, 3650.0, 2400.0));
         Check(worn.Valid && clean.Valid &&
               worn.BrakeEnvelopeSpeedCmPerSecond <
                   clean.BrakeEnvelopeSpeedCmPerSecond &&
