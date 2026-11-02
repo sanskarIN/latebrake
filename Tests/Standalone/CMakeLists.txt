@@ -1749,3 +1749,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PreviewRaceModes COMMAND latebrake_preview_race_modes_tests)
+
+# Optional forward-pointing painted arrows on all four original corners;
+# pure geometry policies independent of actual Unreal editor/rendering.
+add_executable(latebrake_corner_chevron_tests CornerApproachChevronsTests.cpp)
+target_include_directories(latebrake_corner_chevron_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_corner_chevron_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_corner_chevron_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_corner_chevron_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CornerApproachChevrons COMMAND latebrake_corner_chevron_tests)
