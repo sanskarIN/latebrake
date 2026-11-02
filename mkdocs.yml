@@ -144,6 +144,7 @@ nav:
       - Automatic transmission and RPM QA: AUTOMATIC_TRANSMISSION_QA.md
       - Rival player-traffic awareness QA: RIVAL_TRAFFIC_QA.md
       - Rival straight-line passing QA: RIVAL_STRAIGHT_PASS_QA.md
+      - Rival passing and emergency braking QA: RIVAL_PASS_TRAFFIC_QA.md
       - Rival tire/grip corner-pace QA: RIVAL_GRIP_PACE_QA.md
       - Rival yaw-rate steering QA: RIVAL_YAW_RATE_STEERING_QA.md
       - Rival physical spin throttle QA: RIVAL_SPIN_THROTTLE_QA.md
