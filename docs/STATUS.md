@@ -1,9 +1,33 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-01
-**Latest published milestone:** [v0.5.89 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89), independently confirmed at immutable source commit `e3a059f4ebc0cd7525586d6aef683361d7189452`, a non-draft prerelease with **zero executable assets** after seven source-only publication jobs. The previous [v0.5.88](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.88) pit radar / Android PIT HOLD / six-car paint source remains available.
+**Updated:** 2026-11-02
+**Latest published milestone:** [v0.5.90 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90), independently verified at immutable source commit `a85e564a4856a2d0915df5287b3fdc8079e7b72d`, published November 2, 2026 with **zero executable assets** after seven successful release jobs: three portable C++20 OS targets, Python source integration, Windows packaging policy, docs and the final immutable publish gate. Earlier [v0.5.89](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89) racing HUD, garage and rival timing source remains available.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.90 published source-only milestone (not installed gameplay)
+
+- **ProgressiveRoadLoad:** bounded road load and coast-down for shared
+  real player/rival Chaos rigid-body chassis (not physical wheel contact).
+- **SpeedAwareYawTorque:** speed-sensitive yaw force rather than
+  instantaneous rotation; **AutomaticTransmission:** four forward gears,
+  reverse, brief shift torque drops and estimated engine RPM.
+- **GripLimitedBraking** and **LateralGripBudget:** limited service
+  deceleration with approximate shared forward/lateral traction and
+  handbrake effects, not suspension or measured real-world tire data.
+- **RivalCornerBrakeEnvelope:** earlier braking decisions from current
+  speed and qualified road/tire/damage/brake-heat observations.
+- **RivalStraightPassAssist** / **RivalPassTrafficResolution:** one rival
+  may request limited passing steering on only the longer original
+  paved straights, aborting and restoring normal route steering whenever
+  the independent same-lane traffic safety brake takes priority.
+- Release at `a85e564a4856a2d0915df5287b3fdc8079e7b72d` passed all seven qualified publication jobs,
+  including full portable C++ tests on **Windows, Ubuntu and macOS**
+  and each of eight independently required new production-source CTests.
+- **No new Windows EXE, Windows installer, Android APK/AAB, licensed
+  UE 5.8/UHT compilation, cooked original map or hardware playtest.**
+  The source preview has **zero binary assets**.
+- [Exact publicly published release notes](releases/v0.5.90.md).
 
 ## v0.5.89 published source-only milestone (not installed gameplay)
 
