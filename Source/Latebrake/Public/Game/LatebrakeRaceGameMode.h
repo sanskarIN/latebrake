@@ -5,6 +5,7 @@
 #include "Racing/RaceProgress.h"
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
+#include "Racing/RivalFinishObservation.h"
 #include "AI/RivalDifficultyPreset.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
@@ -94,6 +95,10 @@ public:
     int32 GetRivalSuccessfulRecoveryCount() const;
     int32 GetRivalFailedRecoveryCount() const;
     bool HasRivalFinishedRoute() const;
+    latebrake::RivalFinishObservation GetLastRivalFinishObservation() const
+    {
+        return LastRivalFinishObservation;
+    }
     // Exact difference in *credited forward gates*, not race position,
     // finish ranking, physical gap, collision risk or saved career state.
     bool TryGetRivalCreditedGateGap(latebrake::RivalGateGap& OutGap) const;
@@ -189,6 +194,9 @@ private:
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
     latebrake::RivalMatchedGateSplits RivalSplits;
+    // Only set at a player's timing-eligible final gate. Not a race rank,
+    // reward, finish time or saved career score.
+    latebrake::RivalFinishObservation LastRivalFinishObservation;
     // Session-only advisory forward-speed estimate; never alters RaceProgress.
     latebrake::LaunchSpeedMeter LaunchMeter;
     // Fixed-size in-memory candidate/best traces never become SaveGame data.

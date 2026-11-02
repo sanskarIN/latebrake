@@ -1710,3 +1710,15 @@ else()
     target_compile_options(latebrake_start_gantry_visual_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME StartGantryVisual COMMAND latebrake_start_gantry_visual_tests)
+
+# Read-only result of independent rival final gate progress (not official rank).
+add_executable(latebrake_rival_finish_observation_tests RivalFinishObservationTests.cpp)
+target_include_directories(latebrake_rival_finish_observation_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_finish_observation_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_finish_observation_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_finish_observation_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalFinishObservation COMMAND latebrake_rival_finish_observation_tests)

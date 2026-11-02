@@ -18,6 +18,7 @@
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/TimeAttackPersonalBestTarget.h"
 #include "Racing/QuickRaceRecordReview.h"
+#include "Racing/RivalFinishObservation.h"
 #include "Racing/CurrentLapPotential.h"
 #include "Racing/LiveSectorTarget.h"
 #include "UI/TouchControlLayout.h"
@@ -424,6 +425,19 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 MenuLine(FString::Printf(TEXT("Last event reward: +%d credits"),
                     Mode->GetLastRaceCredits()));
+            }
+            // Only the final, timing-eligible Quick Race Circuit checkpoint
+            // may snapshot an independently accepted rival route. Never
+            // present this as an official rank, winner or credit result.
+            switch (Mode->GetLastRivalFinishObservation().State)
+            {
+            case latebrake::RivalFinishObservationState::RivalRouteAlreadyComplete:
+                MenuLine(TEXT("UNOFFICIAL: RIVAL ALREADY CLEARED FINAL GATE"), true);
+                break;
+            case latebrake::RivalFinishObservationState::RivalStillOnRoute:
+                MenuLine(TEXT("UNOFFICIAL: RIVAL ROUTE INCOMPLETE AT FINISH"), true);
+                break;
+            default: break;
             }
             if (Mode->GetLaunchSpeedMeter().HasSample())
             {

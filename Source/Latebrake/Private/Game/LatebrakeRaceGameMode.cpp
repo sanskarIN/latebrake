@@ -123,6 +123,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
 #if !UE_BUILD_SHIPPING
@@ -1079,6 +1080,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         latebrake::ValidateFinishTiming(Race);
     if (FinishTiming != latebrake::FinishTimingEligibility::Eligible)
     {
+        LastRivalFinishObservation = {};
         LastCareerAward = {};
         LastRaceCredits = 0;
         CareerFeedback = TEXT("Finish rejected: missing per-lap active timing or unrecordable clock. Restart to retry.");
@@ -1087,6 +1089,22 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
             static_cast<int32>(FinishTiming));
         return;
     }
+
+    // Read the live rival exactly when the player physically finishes. This
+    // gate-order observation cannot classify winners, set medals or award
+    // credits: Unreal may tick two physically crossing cars in either order.
+    const bool bRivalPresent = IsValid(RivalCar);
+    LastRivalFinishObservation = latebrake::ObserveRivalFinish({
+        SelectedEvent, bCareerRace,
+        Race.IsFinished(), true, // Validated timing above.
+        Race.GetCheckpointCount(), Race.GetRequiredLaps(),
+        bRivalPresent,
+        bRivalPresent && RivalCar->IsRacePhysicsReady(),
+        bRivalPresent ? RivalCar->GetVerifiedGateCount() : 0,
+        bRivalPresent ? RivalCar->GetExpectedLaps() : 0,
+        bRivalPresent ? RivalCar->GetApproximateLaps() : 0,
+        bRivalPresent ? RivalCar->GetNextVerifiedGate() : -1
+    });
 
     // Only the SaveGame write decides if a finish becomes a durable reward.
     // In-memory first-completion medals, credits and best times must not
@@ -2058,6 +2076,7 @@ void ALatebrakeRaceGameMode::RestartRace()
         QuickRaceDifficultySelection, bCareerRace ||
             SelectedEvent == latebrake::EventKind::TimeAttack);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
     GhostTrackedPawn.Reset();
