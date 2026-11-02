@@ -498,14 +498,29 @@ static void finishRace(bool winner){
     page=RESULTS;
 }
 static bool correctGateDirection(int gate){
-    // Progress only while actually driving the ordered circuit direction.
-    // This remains prototype point-sampling; Unreal's full swept gates are
-    // verified separately in the production project.
+    // The real car must be moving forward with the correct gate heading.
     if(race.speed<25.0f)return false;
     if(gate==0)return race.fy < -0.45f;
     if(gate==1)return race.fx > 0.45f;
     if(gate==2)return race.fy > 0.45f;
     return race.fx < -0.45f;
+}
+// A gate must be CROSSED in the physical direction of the course during
+// this update, not simply overlapped while the car points forward. Capture
+// both endpoints from the same simulation tick; restarts, recover teleports
+// and paused frames can never supply fabricated crossing history.
+// This is still a 2D point-sampled segment, not an Unreal swept collision.
+static bool crossedGatePlane(int gate,float beforeX,float beforeY,
+                             float afterX,float afterY){
+    if(gate<0||gate>=4)return false;
+    float gx,gy;gatePos(gate,&gx,&gy);
+    float dx=gate==1?1.0f:gate==3?-1.0f:0.0f;
+    float dy=gate==0?-1.0f:gate==2?1.0f:0.0f;
+    float before=(beforeX-gx)*dx+(beforeY-gy)*dy;
+    float after=(afterX-gx)*dx+(afterY-gy)*dy;
+    return before<0.0f && after>=0.0f && after>before &&
+        onroad(beforeX,beforeY) && onroad(afterX,afterY) &&
+        nearGate(gate,afterX,afterY);
 }
 static void creditGate(){
     race.nextGate=(race.nextGate+1)%4;race.passes++;gateFlash=0.8f;
@@ -546,6 +561,9 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     dt=clamp(dt,0.0f,0.045f);
     if(countdown>0){countdown=maxf(0,countdown-dt);return;}
     if(countdownGo>0)countdownGo=maxf(0,countdownGo-dt);
+    // Pre-physics position belongs to this exact tick, never to a previous
+    // race or before recovery. Directional gate scoring uses both endpoints.
+    const float beforePlayerX=race.x,beforePlayerY=race.y;
     race.elapsed+=dt;gameTime+=dt;
     if(gateFlash>0)gateFlash-=dt;
     // A stationary, deliberate hold services the car only inside the marked bay.
@@ -618,7 +636,9 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     bool inAny=false;
     for(int g=0;g<4;g++)if(nearGate(g,race.x,race.y)&&onroad(race.x,race.y))inAny=true;
     if(!inAny)race.readyForGate=true;
-    if(!servicing&&race.readyForGate&&nearGate(race.nextGate,race.x,race.y)&&onroad(race.x,race.y)&&correctGateDirection(race.nextGate)){
+    if(!servicing&&race.readyForGate&&
+       crossedGatePlane(race.nextGate,beforePlayerX,beforePlayerY,race.x,race.y)&&
+       correctGateDirection(race.nextGate)){
         race.readyForGate=false;creditGate();
     }
     if((selectedChallenge==1&&race.elapsed>85.0f)||
@@ -1238,27 +1258,35 @@ static bool selftest(){
         }
     }
     selectedTrack=0;selectedChallenge=0;drawTrack();beginRace();countdown=0;
-    for(int i=0;i<3;i++)race.ai[i].stun=1000.0f; // Isolate checkpoint test from rival contacts.
+    for(int i=0;i<3;i++)race.ai[i].stun=1000.0f; // Isolate gate test from rival contacts.
+    selfTestStage=20;
+    if(crossedGatePlane(-1,0,0,1,1)||crossedGatePlane(4,0,0,1,1))return false;
     for(int lap=0;lap<3;lap++)for(int g=0;g<4;g++){
-        // Synthetic ordered-gate state, not proof of actual player driving.
+        // All four physically forward gate planes in ordered three-lap
+        // progression. Synthetic segments do not prove real human play.
         float x,y;gatePos(g,&x,&y);
-        race.x=x;race.y=y;race.readyForGate=true;
-        race.speed=50.0f;
-        if(g==0){race.fx=0.0f;race.fy=1.0f;}
-        if(g==1){race.fx=-1.0f;race.fy=0.0f;}
-        if(g==2){race.fx=0.0f;race.fy=-1.0f;}
-        if(g==3){race.fx=1.0f;race.fy=0.0f;}
+        float dx=g==1?1.0f:g==3?-1.0f:0.0f;
+        float dy=g==0?-1.0f:g==2?1.0f:0.0f;
         int prev=race.passes;
+        race.readyForGate=true;race.speed=90.0f;
+        race.x=x-dx*1.1f;race.y=y-dy*1.1f;
+        race.fx=-dx;race.fy=-dy;
+        update(0.02f,false,false,false,false,false,false);
+        if(race.passes!=prev)return false; // Wrong-way motion rejected.
+        race.readyForGate=true;race.speed=90.0f;
+        race.x=x;race.y=y;race.fx=dx;race.fy=dy;
         update(0.0f,false,false,false,false,false,false);
-        if(race.passes!=prev)return false; // Wrong-way orientation rejected.
-        if(g==0)race.fy=-1.0f;
-        if(g==1)race.fx=1.0f;
-        if(g==2)race.fy=1.0f;
-        if(g==3)race.fx=-1.0f;
+        if(race.passes!=prev)return false; // On-gate orientation is not crossing.
+        race.readyForGate=true;race.speed=90.0f;
+        race.x=x+dx*1.1f;race.y=y+dy*1.1f;
+        update(0.02f,false,false,false,false,false,false);
+        if(race.passes!=prev)return false; // Already beyond gate cannot earn it.
+        race.readyForGate=true;race.speed=90.0f;
+        race.x=x-dx*1.1f;race.y=y-dy*1.1f;
+        update(0.02f,false,false,false,false,false,false);
+        if(race.passes!=prev+1)return false; // Forward swept crossing accepted.
         update(0.0f,false,false,false,false,false,false);
-        if(race.passes!=prev+1)return false;
-        update(0.0f,false,false,false,false,false,false);
-        if(race.passes!=prev+1)return false;
+        if(race.passes!=prev+1)return false; // No stationary duplicate award.
     }
     if(!race.finished||!race.won||race.passes!=12||page!=RESULTS)return false;
     if(credits<=0||completed<=0||careerStars<=0)return false;
