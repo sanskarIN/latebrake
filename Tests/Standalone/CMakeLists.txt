@@ -1833,3 +1833,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GripLimitedBraking COMMAND latebrake_grip_limited_braking_tests)
+
+# Real shared player/rival Chaos body-right lateral force, bounded by
+# observed grip and SAME-FRAME service/handbrake deceleration allowance.
+add_executable(latebrake_lateral_grip_budget_tests LateralGripBudgetTests.cpp)
+target_include_directories(latebrake_lateral_grip_budget_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_lateral_grip_budget_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_lateral_grip_budget_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_lateral_grip_budget_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME LateralGripBudget COMMAND latebrake_lateral_grip_budget_tests)
