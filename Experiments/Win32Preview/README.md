@@ -4,6 +4,8 @@
 
 ## V5 development changes
 
+- **Directional checkpoint integrity:** the preview now requires the human car's actual forward movement segment to cross each ordered checkpoint plane from its upstream side, with both endpoints on the paved road. Merely sitting within a checkpoint radius, arriving on its far side, facing the right direction while stationary, or recovering to a checkpoint cannot grant a lap. A Windows headless self-test exercises all four gates over three laps, wrong-way attempts and non-crossings. This remains a 2D synthetic test, not a real driving/hardware qualification. [Gate crossing QA](../../docs/WIN32_PREVIEW_GATE_CROSSING_QA.md).
+
 - **Unreleased pit service source feature:** a marked trackside bay on all four 2D circuits now lets a stationary car hold **E** (keyboard) or **Y** (controller) for 2.5 seconds to repair up to 40 damage and replenish up to 50 nitro. Race time and rivals keep advancing. Leave the bay to rearm; service never credits a checkpoint or modifies the career save schema. [Policy, synthetic tests and Windows QA](../../docs/PREVIEW_PIT_SERVICE_QA.md).
 
 - Optional Windows **XInput controller** support without hard-requiring the DLL: tries `xinput1_4.dll`, `xinput1_3.dll`, then `xinput9_1_0.dll` **from Windows System32 only**, searches controller slots 0–3, and keeps keyboard/mouse available when none loads.
