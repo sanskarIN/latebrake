@@ -87,3 +87,26 @@ of them uses licensed Unreal SDK compilation.
 
 The authentic installed-game release gate is still
 [issue #148](https://github.com/sanskarIN/latebrake/issues/148).
+
+## Observational live ground-contact readout (PR #292)
+
+The expanded desktop in-race HUD now includes a **ground-contact readout**:
+`GROUND ROAD  4/4 | TRACTION 100%` when four real traces accept
+WorldStatic support, `GROUND PARTIAL  2/4 | TRACTION 45%` or
+`3/4 | TRACTION 75%` for partial contact, and
+`GROUND AIRBORNE  0/4 | TRACTION 0%` (or 1/4) with insufficient
+road support. The percentages exactly match the current accepted
+traction multiplier, not a new estimate of wheel load, tire friction
+or gravitational normal force. The trace count is *not* an actual
+physical wheel-support count.
+
+This readout is available only during an accepted live pawn physics
+frame on a sufficiently large expanded HUD. Invalid frames, focus
+loss, player restart, unpossession and resets clear cached values.
+It is hidden on compact/touch layouts and does not claim race position,
+apply forces, adjust a lap, persist user data or bypass the previous
+authoritative clock. Its HUD formatting is verified by static Unreal
+bindings and the pure `ChassisContactReadoutTests.cpp` target (25,000
+consistent accepted states plus malformed input rejection). Running
+those tests is **not** proof of displayed on-screen pixels in a
+licensed UE5.8 editor or installed Windows game.
