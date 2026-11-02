@@ -47,9 +47,10 @@ class HandbrakeBindingTests(unittest.TestCase):
             'void ALatebrakeCarPawn::ApplySignalLights(', 1)[0]
         for required in ('SelectHandbrakeDriveProfile(', 'BrakeProfile.Throttle',
                          'BrakeProfile.Braking', 'BrakeProfile.LateralGripRate',
-                         'BrakeProfile.ForwardResistanceRate',
-                         'FrameStableDampingRate(GripRate, DeltaSeconds)',
-                         'FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)'):
+                         'BrakeProfile.HandbrakeActive, bArcade',
+                         'latebrake::CalculateGripLimitedBraking({',
+                         'PhysicalBraking.ForwardForce',
+                         'FrameStableDampingRate(GripRate, DeltaSeconds)'):
             self.assertIn(required, tick)
         self.assertLess(tick.index('SelectHandbrakeDriveProfile('),
                         tick.index('latebrake::StabilizeCornerThrottle('))
