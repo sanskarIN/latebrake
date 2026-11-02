@@ -34,7 +34,7 @@ struct SpeedAwareYawOutput final
 // Limits are provisional tuning knobs, not certified tire physics.
 inline constexpr double SteeringChassisAngularDamping = 7.0;
 inline constexpr double SteeringEffectiveWheelbaseCm = 260.0;
-inline constexpr double SteeringYawResponsePerSecond = 4.0;
+inline constexpr double SteeringYawResponsePerSecond = 8.0;
 inline constexpr double SteeringArcadeLateralAcceleration = 1176.0;
 inline constexpr double SteeringSimulationLateralAcceleration = 784.0;
 inline constexpr double SteeringTorqueLimitPerMass = 105000.0;
