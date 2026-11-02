@@ -132,6 +132,7 @@ nav:
       - Chassis G-force telemetry QA: VEHICLE_G_FORCE_QA.md
       - Next-gate guidance QA: NEXT_GATE_GUIDANCE_QA.md
       - Rival corner anticipation QA: RIVAL_CORNER_QA.md
+      - Real brake-distance rival corner QA: RIVAL_BRAKE_ENVELOPE_QA.md
       - Arcade tire condition QA: ARCADE_TIRE_CONDITION_QA.md
       - Arcade engine heat and power fade QA: ARCADE_ENGINE_HEAT_QA.md
       - Off-pavement arcade traction QA: ARCADE_SURFACE_TRACTION_QA.md
