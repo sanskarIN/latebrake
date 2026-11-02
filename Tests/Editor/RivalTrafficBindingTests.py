@@ -27,7 +27,7 @@ class RivalTrafficBindingTests(unittest.TestCase):
             "IsValid(Player) && Player->IsRacePhysicsReady()",
             "Player->GetActorLocation()",
             "Player->GetVelocity()",
-            "YieldRivalToPlayer(Command, {",
+            "YieldRivalToPlayer(SafePassCommand, {",
             "Position.X, Position.Y, Heading, FlatSpeed",
             "PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady",
             "TrafficCommand.Brake",
