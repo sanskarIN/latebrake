@@ -19,8 +19,7 @@ class ArcadeBrakeHeatBindingTests(unittest.TestCase):
     def test_physically_observed_braking_affects_service_resistance(self):
         self.assertIn("const bool bServiceBraking = bBraking || TouchDrive.BrakeActive();", CAR_CPP)
         self.assertIn("BrakeHeat.Observe({", CAR_CPP)
-        self.assertIn("static_cast<double>(LongitudinalSpeed),
-        bServiceBraking && GroundContact.HasDriveContact, true", CAR_CPP)
+        self.assertIn("bServiceBraking && GroundContact.HasDriveContact, true", CAR_CPP)
         self.assertIn("latebrake::CalculateGripLimitedBraking({", CAR_CPP)
         self.assertIn("bServiceBraking, BrakeProfile.HandbrakeActive, bArcade", CAR_CPP)
         self.assertIn("Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0", CAR_CPP)
