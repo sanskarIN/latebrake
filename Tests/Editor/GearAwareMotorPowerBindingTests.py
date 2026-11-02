@@ -56,12 +56,15 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
         self.assertIn("static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale)", tick)
         self.assertIn("bArcade));", tick)
 
-    def test_braking_still_uses_original_driver_demand_and_damping(self):
+    def test_braking_and_reversing_are_not_modified_by_gear_taper(self):
         tick = self.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
-        self.assertIn("if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)", tick)
+        self.assertIn("if (bEffectiveBraking)", tick)
+        self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
+        self.assertIn("PhysicalBraking.ForwardForce", tick)
+        self.assertNotIn("if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)", tick)
         self.assertIn("Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *", tick)
-        self.assertIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
+        self.assertIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
         self.assertIn("if (!bEffectiveBraking &&", tick)
         self.assertIn("if (NitroDrive.Active)", tick)
 
