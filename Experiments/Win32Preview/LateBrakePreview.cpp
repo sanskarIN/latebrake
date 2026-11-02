@@ -1475,6 +1475,42 @@ static bool selftest(){
     if(!pollPad().confirm)return false;
     selfTestStage=70;
     xinputRead=originalReader;padConnected=false;
+    // Deterministic storage-failure injection. These calls must do ZERO
+    // LOCALAPPDATA I/O under testing=true, even if the OS profile exists.
+    selfTestStage=80;
+    selectedCar=0;selectedTrack=0;selectedChallenge=0;ownedMask=1;
+    credits=300;completed=7;careerStars=15;beginRace();
+    simulateProgressSaveFailure=true;
+    finishRace(true);
+    if(page!=RESULTS||!race.finished||!race.won||race.awarded||
+       !progressSaveFailed||bonusCredits!=0||credits!=300||
+       completed!=7||careerStars!=15)return false;
+    finishRace(true);
+    if(credits!=300||completed!=7||careerStars!=15)return false;
+    simulateProgressSaveFailure=false;
+    beginRace();
+    if(progressSaveFailed||race.awarded)return false;
+    finishRace(true);
+    if(!race.awarded||progressSaveFailed||bonusCredits!=100||
+       credits!=400||completed!=8||careerStars!=18)return false;
+    selfTestStage=81;
+    credits=1000;ownedMask=1;selectedCar=1;
+    simulateProgressSaveFailure=true;
+    unlockSelectedCar();
+    if(credits!=1000||ownedMask!=1)return false;
+    simulateProgressSaveFailure=false;
+    unlockSelectedCar();
+    if(credits!=860||ownedMask!=3)return false;
+    unlockSelectedCar();
+    if(credits!=860||ownedMask!=3)return false;
+    selfTestStage=82;
+    // At the V2 maximum, only 5 credits can still be awarded. Stars and
+    // wins must never exceed what loadProgress will accept on next launch.
+    selectedCar=0;selectedChallenge=0;
+    credits=499995;completed=100000;careerStars=99999;
+    beginRace();finishRace(true);
+    if(!race.awarded||bonusCredits!=5||credits!=500000||
+       completed!=100000||careerStars!=100000)return false;
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }
 extern "C" void mainCRTStartup(){
