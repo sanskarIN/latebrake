@@ -38,6 +38,7 @@
 #include "Track/PitBayPaintLayout.h"
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
+#include "Track/BrakingReferenceBoards.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/CollisionBlockSetup.h"
@@ -635,6 +636,110 @@ void ALatebrakeRaceGameMode::UpdateStartGantryVisual()
     }
 }
 
+void ALatebrakeRaceGameMode::BuildBrakingReferenceBoards(UStaticMesh* Mesh)
+{
+    // One optional scene actor, one ISM component, 24 world-space signs.
+    // Never call SpawnBlock (BlockAll): road and checkpoint collisions are
+    // audited separately and must not depend on decorative marker geometry.
+    if (!Mesh || !GetWorld())
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_BRAKING_BOARDS_INCOMPLETE reason=missing_mesh_or_world"));
+        return;
+    }
+
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AActor* Holder = GetWorld()->SpawnActor<AActor>(
+        AActor::StaticClass(), FVector::ZeroVector,
+        FRotator::ZeroRotator, Params);
+    if (!IsValid(Holder))
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_BRAKING_BOARDS_INCOMPLETE reason=actor_spawn"));
+        return;
+    }
+#if WITH_EDITOR
+    Holder->SetActorLabel(TEXT("LatebrakeBrakingReferenceBoards_NoCollision"));
+#endif
+    Holder->SetActorEnableCollision(false);
+    USceneComponent* Root = NewObject<USceneComponent>(
+        Holder, TEXT("BrakingReferenceRoot"));
+    if (!Root)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_BRAKING_BOARDS_INCOMPLETE reason=scene_root"));
+        Holder->Destroy();
+        return;
+    }
+    Root->SetMobility(EComponentMobility::Static);
+    Holder->SetRootComponent(Root);
+    Holder->AddInstanceComponent(Root);
+    Root->RegisterComponent();
+
+    UInstancedStaticMeshComponent* Boards =
+        NewObject<UInstancedStaticMeshComponent>(
+            Holder, TEXT("BrakingReferenceBoardInstances"));
+    if (!Boards)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_BRAKING_BOARDS_INCOMPLETE reason=instancer"));
+        Holder->Destroy();
+        return;
+    }
+    Boards->SetupAttachment(Root);
+    Boards->SetMobility(EComponentMobility::Static);
+    Boards->SetStaticMesh(Mesh);
+    Boards->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Boards->SetGenerateOverlapEvents(false);
+    Boards->SetCanEverAffectNavigation(false);
+    Boards->SetCastShadow(false);
+    Boards->PreAllocateInstancesMemory(
+        latebrake::BrakingBoardMarkCount);
+    Holder->AddInstanceComponent(Boards);
+    Boards->RegisterComponent();
+    // The stock cube is a readable white fallback when the default
+    // engine material does not expose the optional "Color" parameter.
+    if (UMaterialInstanceDynamic* Mat =
+            Boards->CreateAndSetMaterialInstanceDynamic(0))
+    {
+        Mat->SetVectorParameterValue(
+            TEXT("Color"), FLinearColor(0.95f, 0.81f, 0.16f));
+    }
+
+    int32 Added = 0;
+    for (int32 Index = 0;
+         Index < latebrake::BrakingBoardMarkCount; ++Index)
+    {
+        const latebrake::BrakingReferenceBoard Board =
+            latebrake::PlannedBrakingReferenceBoard(Index);
+        if (!Board.Valid) continue;
+        const FTransform Pose(
+            FRotator(0.0, Board.YawDegrees, 0.0),
+            FVector(Board.Center.X, Board.Center.Y, Board.HeightCm),
+            FVector(Board.ScaleX, Board.ScaleY, Board.ScaleZ));
+        if (Boards->AddInstance(Pose, false) >= 0)
+        {
+            ++Added;
+        }
+    }
+
+    if (Added == latebrake::BrakingBoardMarkCount)
+    {
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_BRAKING_BOARDS_READY boards=%d/%d collision=off"),
+            Added, latebrake::BrakingBoardMarkCount);
+    }
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_BRAKING_BOARDS_INCOMPLETE boards=%d/%d collision=off"),
+            Added, latebrake::BrakingBoardMarkCount);
+        Holder->Destroy();
+    }
+}
+
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
@@ -816,6 +921,10 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             TEXT("LATEBRAKE_SCENERY_READY groups=%d instances=%d collision=off"),
             CreatedDecorationGroups, CreatedDecorationInstances);
     }
+
+    // Extra driver wayfinding furniture is optional, never part of the
+    // nine-block/four-checkpoint collision and startup readiness audit.
+    BuildBrakingReferenceBoards(DecorationMesh);
 
     // Visual-only pit beacon near the inside edge of the southern road.
     // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is

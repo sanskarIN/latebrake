@@ -31,6 +31,7 @@ class ALatebrakeCarPawn;
 class ALatebrakeRivalCar;
 class UPointLightComponent;
 class UStaticMeshComponent;
+class UStaticMesh;
 
 UCLASS()
 class LATEBRAKE_API ALatebrakeRaceGameMode : public AGameModeBase
@@ -154,6 +155,7 @@ public:
 
 private:
     void BuildCircuit();
+    void BuildBrakingReferenceBoards(UStaticMesh* Mesh);
     void BuildStartGantry();
     void UpdateStartGantryVisual();
     AStaticMeshActor* SpawnBlock(const TCHAR* Label, const FVector& Position,

@@ -1722,3 +1722,16 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalFinishObservation COMMAND latebrake_rival_finish_observation_tests)
+
+# Cosmetic 3/2/1 braking reference bars on the original Unreal circuit.
+add_executable(latebrake_braking_reference_boards_tests BrakingReferenceBoardsTests.cpp)
+target_include_directories(latebrake_braking_reference_boards_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_braking_reference_boards_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_braking_reference_boards_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_braking_reference_boards_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BrakingReferenceBoards COMMAND latebrake_braking_reference_boards_tests)
