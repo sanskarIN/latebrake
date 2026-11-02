@@ -1026,7 +1026,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // while braking. A single speed or pressed BRAKE command is insufficient.
     BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
         static_cast<double>(Speed),
-        static_cast<double>(LongitudinalSpeed), bEffectiveBraking});
+        static_cast<double>(LongitudinalSpeed),
+        bEffectiveBraking && GroundContact.HasDriveContact});
 
     // Read real valid signed chassis velocity and effective brake input,
     // never motor demand alone. Advisory decorative light intensities only.
@@ -1190,7 +1191,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(EffectiveThrottle),
             static_cast<double>(LongitudinalSpeed),
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
-            bArcade) * TransmissionFrame.PropulsionFactor);
+            bArcade) * TransmissionFrame.PropulsionFactor *
+            ContactTractionScale);
     if (GroundContact.HasDriveContact &&
         !bEffectiveBraking &&
         (FMath::Abs(EffectiveThrottle) < 0.01f ||
@@ -1220,7 +1222,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         // Opposite throttle acts as engine braking until the car slows.
         Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *
-            static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)));
+            static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)) *
+            ContactTractionScale);
     }
 
     // Real planar resistance: low-speed coasting, increasing aero drag
