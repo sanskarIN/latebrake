@@ -147,7 +147,7 @@ public:
             !IsOnPavedSurface(s.Rival) ||
             !IsOnPavedSurface(s.Player) ||
             std::abs(rivalSide) > 540.0 ||
-            std::abs(playerSide) > 330.0 ||
+            std::abs(playerSide) > 660.0 ||
             headingAlignment < 0.94 ||
             rivalForward < 850.0 ||
             playerForward < 250.0 ||
@@ -161,6 +161,7 @@ public:
         if (!IsActive())
         {
             if (std::abs(rivalSide) > 175.0 ||
+                std::abs(playerSide) > 330.0 ||
                 playerAhead < StartAheadMinimumCm ||
                 playerAhead > StartAheadMaximumCm ||
                 rivalForward - playerForward < 300.0)
