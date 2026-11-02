@@ -39,7 +39,7 @@ class UnrealRivalCornerBrakeEnvelopeBindingTests(unittest.TestCase):
             "Command = BrakeForecast.Command;",
             "Command = latebrake::ApplyRivalDifficulty(",
             "Command = GripPace.Apply(",
-            "latebrake::YieldRivalToPlayer(Command, {",
+            "latebrake::YieldRivalToPlayer(SafePassCommand, {",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         ):
             self.assertIn(marker, self.rival)
@@ -52,7 +52,7 @@ class UnrealRivalCornerBrakeEnvelopeBindingTests(unittest.TestCase):
         self.assertLess(segment.index("Command = BrakeForecast.Command;"),
                         segment.index("Command = GripPace.Apply("))
         self.assertLess(segment.index("Command = GripPace.Apply("),
-                        segment.index("latebrake::YieldRivalToPlayer(Command, {"))
+                        segment.index("latebrake::YieldRivalToPlayer(SafePassCommand, {"))
 
     def test_actual_braking_coefficients_shared_not_invented(self):
         self.assertIn('#include "Vehicles/GripLimitedBraking.h"', self.policy)
