@@ -152,6 +152,7 @@ nav:
       - Accepted gate progress gauge QA: RACE_GATE_PROGRESS_GAUGE_QA.md
       - Rival separation motion QA: RIVAL_RELATIVE_MOTION_QA.md
       - Race radar minimap QA: RACE_RADAR_QA.md
+      - Standalone preview solo-event QA: PREVIEW_SOLO_EVENT_ISOLATION_QA.md
       - Rival recovery outcomes QA: RIVAL_RECOVERY_QA.md
       - Rival directional gate crossing QA: RIVAL_DIRECTIONAL_GATE_QA.md
       - Unofficial rival finish observation QA: RIVAL_FINISH_OBSERVATION_QA.md
