@@ -16,6 +16,7 @@
 #include "Racing/BestSectorReview.h"
 #include "Racing/SampledDrivingReview.h"
 #include "Racing/LiveRacePaceProjection.h"
+#include "Racing/TimeAttackPersonalBestTarget.h"
 #include "Racing/CurrentLapPotential.h"
 #include "Racing/LiveSectorTarget.h"
 #include "UI/TouchControlLayout.h"
@@ -864,6 +865,32 @@ void ALatebrakeRaceHUD::DrawHUD()
             DisplayLap, Race.GetRequiredLaps(),
             Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
     Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+    // Saved solo PB is a deadline for official elapsed clock, not predicted
+    // finish. No new touch HUD row may compete with steering/gate controls.
+    if (!bCompact && !bTouchHUD)
+    {
+        const bool bRunning =
+            Mode->IsCircuitReadyForGameplay() &&
+            Mode->IsRestartPlacementReady() &&
+            Mode->HasLocalPlayerDriver() && Mode->IsRaceStartGreen() &&
+            !Mode->IsMenuOpen() && !Mode->IsFocusLossGuardActive() &&
+            !Mode->IsManualRacePauseActive() &&
+            !UGameplayStatics::IsGamePaused(this);
+        const latebrake::TimeAttackPersonalBestTarget PbTarget =
+            latebrake::MeasureTimeAttackPersonalBestTarget(
+                Mode->GetSelectedEvent(), Mode->IsCareerRace(), bRunning,
+                Race.IsFinished(), Race.GetElapsedSeconds(),
+                Mode->GetEventBestSeconds());
+        if (PbTarget.Valid)
+        {
+            Line(PbTarget.DeadlineReached
+                ? FString::Printf(TEXT("PB CLOCK OVER  +%.2fs  |  TARGET %.2fs"),
+                    PbTarget.SecondsOver, PbTarget.SavedBestSeconds)
+                : FString::Printf(TEXT("PB CLOCK  %.2fs LEFT  |  TARGET %.2fs"),
+                    PbTarget.SecondsRemaining, PbTarget.SavedBestSeconds),
+                Accent);
+        }
+    }
     // Help a human recover from a possible obstacle deadlock: four seconds
     // of qualified forward throttle with almost no physical movement.
     // A separate read-only observation NEVER recovers or charges the car.
