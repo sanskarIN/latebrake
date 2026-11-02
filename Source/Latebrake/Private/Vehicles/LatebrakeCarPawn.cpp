@@ -7,6 +7,7 @@
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
 #include "Vehicles/FrameStableDamping.h"
+#include "Vehicles/GripLimitedBraking.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/SpeedAwareYawTorque.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
@@ -798,7 +799,6 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
     float GripRate = static_cast<float>(BrakeProfile.LateralGripRate);
-    const float BrakeRate = static_cast<float>(BrakeProfile.ForwardResistanceRate);
 
     const FVector Forward = GetActorForwardVector();
     const FVector Right = GetActorRightVector();
@@ -926,6 +926,25 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     GripRate *= static_cast<float>(
         TireCondition.GripMultiplier() * Surface.LateralGripMultiplier *
         CollisionDamage.LateralGripMultiplier());
+    // Ordinary service/handbrake braking now uses an explicit finite
+    // longitudinal deceleration budget, not a huge speed-proportional
+    // resistance that stops a racing car almost instantaneously.
+    // Reuse previously qualified live tire/surface/damage/heat samples.
+    const latebrake::GripLimitedBrakingOutput PhysicalBraking =
+        latebrake::CalculateGripLimitedBraking({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(Mass),
+            bServiceBraking, BrakeProfile.HandbrakeActive, bArcade,
+            Surface.LateralGripMultiplier,
+            TireCondition.GripMultiplier() * GarageGrip,
+            CollisionDamage.LateralGripMultiplier(),
+            Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0});
+    if (!PhysicalBraking.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
     // Advisory, from actual consecutive signed-forward chassis motion
     // while braking. A single speed or pressed BRAKE command is insufficient.
     BrakeDistance.Observe({static_cast<double>(DeltaSeconds),
@@ -1136,18 +1155,16 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float StableGripRate = static_cast<float>(
         latebrake::FrameStableDampingRate(GripRate, DeltaSeconds));
     Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate);
-    if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)
+    if (bEffectiveBraking)
     {
-        // Respect a separate minimum parking-brake resistance when both
-        // brakes are pressed; thermal fade only modifies service braking.
-        const double EffectiveBrakeRate = bServiceBraking && Thermal.Valid
-            ? FMath::Max(BrakeProfile.HandbrakeActive ? 4.2 : 0.0,
-                         BrakeRate * Thermal.ServiceBrakeMultiplier)
-            : BrakeRate;
-        const float StableBrakeRate = static_cast<float>(
-            latebrake::FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds));
-        Chassis->AddForce(-Forward * LongitudinalSpeed * Mass * StableBrakeRate);
+        // Physically sampled brake force, bounded to a credible approximate
+        // contact-grip budget. This retains reverse braking and handbrake
+        // slide handling but does not apply a speed-proportional hard stop.
+        Chassis->AddForce(Forward *
+            static_cast<float>(PhysicalBraking.ForwardForce));
     }
+    // Neutral throttle COASTS under the progressive road load and Chaos
+    // baseline damping. It is not an implicit service-brake command.
 
     const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
     const float SteerDirection = LongitudinalSpeed < -75.f ? -1.f : 1.f;
