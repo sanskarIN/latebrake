@@ -1095,6 +1095,29 @@ void ALatebrakeRaceHUD::DrawHUD()
                 BrakeMeters), Primary);
     }
 
+    // Read-only chassis traction diagnostic uses ACTUAL accepted WorldStatic
+    // traces, not the XY road mask or assumed decorative wheel contacts.
+    // Keep compact mobile and short screens focused on race/lap timing.
+    if (!bCompact && VerticalPlan.MaxTelemetryLines >= 28)
+    {
+        const latebrake::ChassisContactReadout Contact =
+            Car->GetGroundContactReadout();
+        if (Contact.Live)
+        {
+            const TCHAR* GroundName =
+                Contact.Status == latebrake::ChassisContactStatus::Full
+                    ? TEXT("ROAD")
+                    : Contact.Status == latebrake::ChassisContactStatus::Partial
+                    ? TEXT("PARTIAL") : TEXT("AIRBORNE");
+            Line(FString::Printf(
+                TEXT("GROUND %s  %d/4 | TRACTION %d%%"),
+                GroundName, Contact.QualifiedProbes,
+                Contact.DriveTractionPercent),
+                Contact.Status == latebrake::ChassisContactStatus::Full
+                    ? Primary : Accent);
+        }
+    }
+
     // Prototype chassis-based tire condition: no tire sensor or certified
     // physical compound model. Preserve compact mobile gate/time priority.
     if (!bCompact && Car->GetTireCondition().HasValidSample())
