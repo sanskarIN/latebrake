@@ -26,10 +26,15 @@ class FrameStableDampingBindingTests(unittest.TestCase):
         for expression in (
             "FrameStableDampingRate(3.0, DeltaSeconds)",
             "FrameStableDampingRate(GripRate, DeltaSeconds)",
-            "FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)",
         ):
             with self.subTest(expression=expression):
                 self.assertIn(expression, tick)
+        # Dedicated physical brake forces have their own impulse ceiling;
+        # this limiter remains mandatory for opposite-pedal engine braking
+        # and lateral anti-slide resistance.
+        self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
+        self.assertIn("PhysicalBraking.ForwardForce", tick)
+        self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
         for forbidden in (
             "LongitudinalSpeed * Mass * 3.f",
             "LateralSpeed * Mass * GripRate",
@@ -46,9 +51,12 @@ class FrameStableDampingBindingTests(unittest.TestCase):
         self.assertIn("cxx_std_20", self.cmake)
 
     def test_unbound_damping_is_detectable(self):
-        bad = self.pawn.replace(
-            "FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", "BrakeRate")
-        self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", bad)
+        required = "FrameStableDampingRate(GripRate, DeltaSeconds)"
+        self.assertIn(required, self.pawn)
+        bad = self.pawn.replace(required, "GripRate")
+        self.assertNotIn(required, bad)
+        self.assertIn("CalculateGripLimitedBraking({", self.pawn)
+        self.assertIn("if (!PhysicalBraking.Valid)", self.pawn)
 
 
 if __name__ == "__main__":
