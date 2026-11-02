@@ -81,6 +81,7 @@ public:
     FString GetCareerSelectionFeedback() const { return CareerFeedback; }
     latebrake::EventKind GetSelectedEvent() const { return SelectedEvent; }
     float GetEventBestSeconds() const;
+    float GetAttemptPreviousBestSeconds() const { return AttemptPreviousBestSeconds; }
     bool HasRival() const;
     bool TryGetRivalRadarPosition(FVector& OutPosition) const;
     bool TryGetRivalDraftingState(FVector& OutPosition,
@@ -204,6 +205,8 @@ private:
     float PersonalBestSeconds = 0.f;
     float BestTimeAttackSeconds = 0.f;
     float PersonalBestLapSeconds = 0.f;
+    // Snapshot of the stored quick-race record before this attempt.
+    float AttemptPreviousBestSeconds = 0.f;
     int32 CompletedRaceCount = 0;
     latebrake::GarageState Garage;
     latebrake::GaragePurchaseConfirmation GaragePurchaseConfirm;

@@ -1686,3 +1686,16 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GateObjectiveVisual COMMAND latebrake_gate_objective_visual_tests)
+
+# Quick Race Results compares a saved post-finish PB with the pre-run snapshot.
+add_executable(latebrake_quick_race_record_review_tests QuickRaceRecordReviewTests.cpp)
+target_include_directories(latebrake_quick_race_record_review_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_quick_race_record_review_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_quick_race_record_review_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_quick_race_record_review_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME QuickRaceRecordReview COMMAND latebrake_quick_race_record_review_tests)
