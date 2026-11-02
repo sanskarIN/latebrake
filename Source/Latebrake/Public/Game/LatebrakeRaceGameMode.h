@@ -6,6 +6,7 @@
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
 #include "Racing/RivalFinishObservation.h"
+#include "Racing/RivalFinishClockReview.h"
 #include "AI/RivalDifficultyPreset.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
@@ -99,6 +100,11 @@ public:
     latebrake::RivalFinishObservation GetLastRivalFinishObservation() const
     {
         return LastRivalFinishObservation;
+    }
+    // Qualified Quick Race timing observation only. Not official placement.
+    latebrake::RivalFinishClockComparison GetLastRivalFinishClockComparison() const
+    {
+        return LastRivalFinishClockComparison;
     }
     // Exact difference in *credited forward gates*, not race position,
     // finish ranking, physical gap, collision risk or saved career state.
@@ -197,6 +203,8 @@ private:
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
     latebrake::RivalMatchedGateSplits RivalSplits;
+    latebrake::RivalFinishClockReview RivalFinishClocks;
+    latebrake::RivalFinishClockComparison LastRivalFinishClockComparison;
     // Only set at a player's timing-eligible final gate. Not a race rank,
     // reward, finish time or saved career score.
     latebrake::RivalFinishObservation LastRivalFinishObservation;
