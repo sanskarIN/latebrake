@@ -439,6 +439,22 @@ void ALatebrakeRaceHUD::DrawHUD()
                 break;
             default: break;
             }
+            // This additional result is a sampled post-GO clock margin,
+            // not official race placement. Same-frame callbacks are uncertain.
+            const latebrake::RivalFinishClockComparison RivalClock =
+                Mode->GetLastRivalFinishClockComparison();
+            switch (RivalClock.State)
+            {
+            case latebrake::RivalFinishClockState::RivalEarlierObserved:
+                MenuLine(FString::Printf(
+                    TEXT("UNOFFICIAL: RIVAL FINAL GATE OBSERVED %.2fs EARLIER"),
+                    RivalClock.RivalEarlierSeconds), true);
+                break;
+            case latebrake::RivalFinishClockState::NearSimultaneousUncertain:
+                MenuLine(TEXT("UNOFFICIAL: FINAL GATES TOO CLOSE TO TIME"), true);
+                break;
+            default: break;
+            }
             if (Mode->GetLaunchSpeedMeter().HasSample())
             {
                 MenuLine(FString::Printf(
