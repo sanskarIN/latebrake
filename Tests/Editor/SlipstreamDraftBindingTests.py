@@ -63,7 +63,9 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("static_cast<float>(DraftExtraForce)", tick)
         self.assertLess(tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"),
                         tick.index("if (DraftExtraForce > 0.0)"))
-        self.assertIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
+        self.assertIn("latebrake::CalculateLateralGripForce({", tick)
+        self.assertIn("LateralForce.RightForce", tick)
+        self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
         self.assertEqual(tick.count("static_cast<float>(Surface.MotorMultiplier)"), 3)
 
     def test_interruptions_reset_session_and_expanded_hud_only(self):
