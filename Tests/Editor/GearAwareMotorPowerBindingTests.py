@@ -59,13 +59,13 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
     def test_braking_and_reversing_are_not_modified_by_gear_taper(self):
         tick = self.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
-        self.assertIn("if (bEffectiveBraking)", tick)
+        self.assertIn("if (bEffectiveBraking && GroundContact.HasDriveContact)", tick)
         self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
         self.assertIn("PhysicalBraking.ForwardForce", tick)
         self.assertNotIn("if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)", tick)
         self.assertIn("Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *", tick)
         self.assertIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
-        self.assertIn("if (!bEffectiveBraking &&", tick)
+        self.assertIn("if (GroundContact.HasDriveContact &&", tick)
         self.assertIn("if (NitroDrive.Active)", tick)
 
     def test_production_curve_is_finite_and_registered_as_strict_cxx(self):
