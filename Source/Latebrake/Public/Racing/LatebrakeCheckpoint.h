@@ -8,6 +8,7 @@
 
 class USphereComponent;
 class UStaticMeshComponent;
+class UPointLightComponent;
 
 UCLASS()
 class LATEBRAKE_API ALatebrakeCheckpoint : public AActor
@@ -27,6 +28,16 @@ private:
 
     UPROPERTY(VisibleAnywhere)
     TObjectPtr<UStaticMeshComponent> Marker;
+
+    // Purely cosmetic non-colliding light, enabled only for the next
+    // authoritative checkpoint during an active, ready session.
+    UPROPERTY(VisibleAnywhere)
+    TObjectPtr<UPointLightComponent> ObjectiveBeacon;
+
+    void RefreshObjectiveMarker();
+    bool bObjectiveMarkerInitialized = false;
+    bool bObjectiveMarkerVisible = false;
+    bool bObjectiveMarkerHighlighted = false;
 
     int32 CheckpointIndex = INDEX_NONE;
 
