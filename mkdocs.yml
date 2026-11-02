@@ -110,6 +110,7 @@ nav:
       - Launch-speed feedback QA: LAUNCH_SPEED_QA.md
       - Vehicle dynamics readiness QA: VEHICLE_DYNAMICS_QA.md
       - Steering and handling stability QA: DRIVING_STABILITY_QA.md
+      - Progressive road load and coast-down QA: PROGRESSIVE_ROAD_LOAD_QA.md
       - Verified recovery teleport QA: VERIFIED_RECOVERY_QA.md
       - Restart-grid placement QA: RESTART_PLACEMENT_QA.md
       - Handling and wrong-way QA: HANDLING_WAYFINDING_QA.md
