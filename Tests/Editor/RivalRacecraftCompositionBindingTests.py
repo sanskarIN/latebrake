@@ -24,7 +24,8 @@ class RivalRacecraftCompositionBindingTests(unittest.TestCase):
         markers = (
             "AnticipateRivalCorner(",
             "Command = GripPace.Apply(",
-            "YieldRivalToPlayer(Command, {",
+            "StraightPassAssist.Apply(Command, {",
+            "YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
             "Super::Tick(DeltaSeconds);",
