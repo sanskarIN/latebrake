@@ -33,16 +33,17 @@ class ArcadeTireConditionBindingTests(unittest.TestCase):
             "static_cast<double>(Speed)",
             "static_cast<double>(LateralSpeed), bEffectiveBraking, true",
             "TireCondition.GripMultiplier()",
-            "latebrake::FrameStableDampingRate(",
-            "Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate)",
+            "latebrake::CalculateLateralGripForce({",
+            "Chassis->AddForce(Right *",
+            "static_cast<float>(LateralForce.RightForce)",
         ):
             self.assertIn(term, tick)
         self.assertLess(tick.index("!IsRacePhysicsReady()"),
                         tick.index("TireCondition.Observe({"))
         self.assertLess(tick.index("TireCondition.Observe({"),
-                        tick.index("Chassis->AddForce(-Right"))
+                        tick.index("Chassis->AddForce(Right *"))
         self.assertLess(tick.index("TireCondition.GripMultiplier()"),
-                        tick.index("FrameStableDampingRate(GripRate, DeltaSeconds)"))
+                        tick.index("Chassis->AddForce(Right *"))
         self.assertIn("TireCondition.Suspend();", tick)
 
     def test_per_race_reset_and_both_driver_types(self):
