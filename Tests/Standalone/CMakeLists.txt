@@ -1735,3 +1735,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME BrakingReferenceBoards COMMAND latebrake_braking_reference_boards_tests)
+
+# Standalone Win32 prototype event selection: solo challenges must have no
+# AI rivals, while the two competitive races still configure three.
+add_executable(latebrake_preview_race_modes_tests PreviewRaceModesTests.cpp)
+target_include_directories(latebrake_preview_race_modes_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_race_modes_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_race_modes_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_race_modes_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewRaceModes COMMAND latebrake_preview_race_modes_tests)
