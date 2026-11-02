@@ -55,6 +55,8 @@ __declspec(dllimport) HANDLE __stdcall CreateFileA(const char*,DWORD,DWORD,void*
 __declspec(dllimport) BOOL __stdcall ReadFile(HANDLE,void*,DWORD,DWORD*,void*);
 __declspec(dllimport) BOOL __stdcall WriteFile(HANDLE,const void*,DWORD,DWORD*,void*);
 __declspec(dllimport) BOOL __stdcall CloseHandle(HANDLE);
+__declspec(dllimport) BOOL __stdcall FlushFileBuffers(HANDLE);
+__declspec(dllimport) BOOL __stdcall DeleteFileA(const char*);
 __declspec(dllimport) BOOL __stdcall MoveFileExA(const char*,const char*,DWORD);
 __declspec(dllimport) HINSTANCE __stdcall LoadLibraryExA(const char*,HANDLE,DWORD);
 __declspec(dllimport) void* __stdcall GetProcAddress(HINSTANCE,const char*);
@@ -136,11 +138,14 @@ enum Page { HOME, GARAGE, TRACKS, CHALLENGES, RACING, RESULTS, ONLINE_INFO };
 static Page page=HOME;
 static int selectedCar=0,selectedTrack=0,selectedChallenge=0,credits=0,completed=0;
 static int ownedMask=1,careerStars=0,bonusCredits=0;
+static bool progressSaveFailed=false; // Never advertise unsaved career awards.
 static float trackRx=291.0f,trackRy=161.0f,trackWidth=0.235f;
 static bool lastEnter=false,lastBack=false,lastGarage=false,lastTracks=false,lastChallenge=false,lastOnline=false,lastMenu=false;
 static bool lastLeft=false,lastRight=false,lastUp=false,lastDown=false,lastUnlock=false;
 static bool lastHelp=false,lastContrast=false;
 static bool testing=false;
+// Used exclusively by headless tests. A production process cannot enable this.
+static bool simulateProgressSaveFailure=false;
 // Headless self-test reports a coarse failing phase through the process exit
 // code. This makes CI failures actionable without changing GUI output/saves.
 static unsigned int selfTestStage=3;
@@ -309,16 +314,28 @@ static void loadProgress(){
     if((d.unlocked&1u)==0||d.unlocked>63||d.money>500000||d.wins>100000||d.stars>100000)return;
     ownedMask=(int)d.unlocked;credits=(int)d.money;completed=(int)d.wins;careerStars=(int)d.stars;
 }
-static void saveProgress(){
-    if(testing)return; // Synthetic --self-test must not mutate real local career.
-    char dir[400],file[440],tmp[440];if(!savePath(dir,file,tmp))return;
+static bool saveProgress(){
+    // Headless CI has no permission to touch any user's profile. Simulate
+    // both successful commits and storage failure without file I/O.
+    if(testing)return !simulateProgressSaveFailure;
+    char dir[400],file[440],tmp[440];if(!savePath(dir,file,tmp))return false;
     CreateDirectoryA(dir,0);
     ProgressFile d={0x32424C4Cu,2u,(unsigned)ownedMask,(unsigned)credits,(unsigned)completed,(unsigned)careerStars,0};
     d.checksum=saveChecksum(d);
     HANDLE h=CreateFileA(tmp,0x40000000u,0,0,2,0,0);
-    if(h==(HANDLE)-1||!h)return;
-    DWORD got=0;BOOL ok=WriteFile(h,&d,sizeof(d),&got,0);CloseHandle(h);
-    if(ok&&got==sizeof(d))MoveFileExA(tmp,file,0x1u|0x8u);
+    if(h==(HANDLE)-1||!h)return false;
+    DWORD written=0;
+    const bool complete=WriteFile(h,&d,sizeof(d),&written,0)!=0 &&
+        written==sizeof(d);
+    // A partial write, unflushed data, failed close or failed atomic
+    // replacement is NOT an acknowledged save. Preserve the old file.
+    const bool flushed=complete && FlushFileBuffers(h)!=0;
+    const bool closed=CloseHandle(h)!=0;
+    if(!flushed||!closed){DeleteFileA(tmp);return false;}
+    if(!MoveFileExA(tmp,file,0x1u|0x8u)){
+        DeleteFileA(tmp);return false;
+    }
+    return true;
 }
 // Separate versioned UI preferences keep the existing V2 career.dat
 // format fully compatible with older personal-preview installations.
@@ -461,6 +478,7 @@ static Race race;
 static int totalLapsForMode(){return selectedChallenge==1?1:selectedChallenge==2||selectedChallenge==3?2:3;}
 static void beginRace(){
     race={};
+    progressSaveFailed=false;
     if(!(ownedMask&(1<<selectedCar))){
         page=GARAGE;message("UNLOCK THIS CAR TO DRIVE IT");return;
     }
@@ -487,14 +505,27 @@ static bool nearGate(int idx,float x,float y){
 static void finishRace(bool winner){
     if(race.finished)return;
     race.finished=true;race.won=winner;
+    race.awarded=false;bonusCredits=0;progressSaveFailed=false;
     if(winner){
+        const int oldCredits=credits,oldCompleted=completed,oldStars=careerStars;
         int reward=trackReward[selectedTrack]+selectedChallenge*30;
         if(race.damage<30.0f)reward+=25;
-        if(credits<499000)credits=(int)minf(500000.0f,(float)credits+reward);
+        // Respect the existing V2 file bounds even near the maximum.
+        credits=(int)minf(500000.0f,(float)credits+reward);
         if(completed<100000)completed++;
-        if(careerStars<100000)careerStars+=(race.damage<30?3:race.damage<65?2:1);
-        bonusCredits=reward;saveProgress();
-    } else bonusCredits=0;
+        careerStars=(int)minf(100000.0f,(float)careerStars+
+            (race.damage<30?3:race.damage<65?2:1));
+        if(saveProgress()){
+            bonusCredits=credits-oldCredits; // Actual credited amount at cap.
+            race.awarded=true;
+        }else{
+            // A complete drive is not a durable career win when storage
+            // fails. Roll back all mutable rewards and show a visible error.
+            credits=oldCredits;completed=oldCompleted;careerStars=oldStars;
+            progressSaveFailed=true;
+            message("CAREER SAVE FAILED - REWARD NOT APPLIED");
+        }
+    }
     page=RESULTS;
 }
 static bool correctGateDirection(int gate){
@@ -1027,8 +1058,10 @@ static void overlayHelp(){
 }
 static void resultsOverlayV3(){
     rect(238,162,484,332,NAVY());stroke(238,162,484,332,race.won?CYAN():color(236,137,101),3);
-    text(262,186,race.won?"EVENT CLEARED":"TRY AGAIN",race.won?CYAN():GOLD(),3);
-    hint(264,231,race.won?"NICE DRIVE. YOUR CAREER WAS SAVED.":"YOU CAN RETRY THE SAME EVENT.");
+    text(262,186,progressSaveFailed?"SAVE FAILED":race.won?"EVENT CLEARED":"TRY AGAIN",
+        race.won&&!progressSaveFailed?CYAN():GOLD(),3);
+    hint(264,231,progressSaveFailed?"REWARD NOT SAVED. CHECK LOCAL STORAGE.":
+        race.won?"CAREER WIN SAVED ON THIS PC.":"YOU CAN RETRY THE SAME EVENT.");
     hint(264,259,"RACE TIME");number(468,253,(int)race.elapsed,CREAM(),3);
     hint(264,289,"BEST LAP");number(468,286,(int)race.best,CYAN(),2);
     hint(264,322,"REWARD CREDITS");number(476,315,bonusCredits,GOLD(),3);
@@ -1083,8 +1116,13 @@ static void chooseHome(int id){
 static void unlockSelectedCar(){
     if(ownedMask&(1<<selectedCar))message("ALREADY IN YOUR GARAGE");
     else if(credits>=carPrices[selectedCar]){
+        const int oldCredits=credits,oldMask=ownedMask;
         credits-=carPrices[selectedCar];ownedMask|=1<<selectedCar;
-        saveProgress();message("CAR UNLOCKED - ENTER TO DRIVE");
+        if(saveProgress())message("CAR UNLOCKED - ENTER TO DRIVE");
+        else{
+            credits=oldCredits;ownedMask=oldMask;
+            message("SAVE FAILED - UNLOCK AND CREDITS RESTORED");
+        }
     }else message("WIN RACES TO EARN MORE CREDITS");
 }
 static void activateSelection(){
