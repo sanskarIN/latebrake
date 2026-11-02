@@ -113,6 +113,7 @@ nav:
       - Progressive road load and coast-down QA: PROGRESSIVE_ROAD_LOAD_QA.md
       - Grip-limited service and handbrake QA: GRIP_LIMITED_BRAKING_QA.md
       - Lateral grip and shared brake budget QA: LATERAL_GRIP_BUDGET_QA.md
+      - Chassis ground-contact traction QA: CHASSIS_GROUND_CONTACT_QA.md
       - Speed-aware real chassis yaw steering QA: SPEED_AWARE_YAW_STEERING_QA.md
       - Verified recovery teleport QA: VERIFIED_RECOVERY_QA.md
       - Restart-grid placement QA: RESTART_PLACEMENT_QA.md
