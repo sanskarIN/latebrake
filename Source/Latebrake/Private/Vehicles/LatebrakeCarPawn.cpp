@@ -566,6 +566,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     BrakeHeat.Suspend();
     EngineHeat.Suspend();
     Transmission.Suspend();
+    LastGroundContact = {};
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
@@ -880,6 +881,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+    // One accepted physics frame only: the HUD never repeats a stale
+    // ground observation after pause, lost input or failed recovery.
+    LastGroundContact = GroundContact;
     const float ContactTractionScale =
         static_cast<float>(GroundContact.ContactTractionScale);
     // Finite velocity components alone do not ensure that derived speed
