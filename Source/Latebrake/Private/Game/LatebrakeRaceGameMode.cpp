@@ -487,6 +487,7 @@ void ALatebrakeRaceGameMode::BuildStartGantry()
     // actors or the four real checkpoint actors constructed by BuildCircuit.
     StartGantryLamps.Reset();
     StartGantryBulbs.Reset();
+    LastStartGantryLampMask = -1;
     if (!GetWorld()) return;
 
     UStaticMesh* Cube = LoadObject<UStaticMesh>(
@@ -606,10 +607,20 @@ void ALatebrakeRaceGameMode::UpdateStartGantryVisual()
             StartLights.Phase(), bCircuitReady, HasLocalPlayerDriver() &&
                 IsRestartPlacementReady(), bSuspended, Race.IsFinished());
 
+    int32 NewMask = 0;
+    if (Plan.Active)
+    {
+        for (int32 Index = 0; Index < Plan.RedBulbs; ++Index)
+        {
+            NewMask |= 1 << Index;
+        }
+        if (Plan.GreenBulb) NewMask |= 1 << 3;
+    }
+    if (NewMask == LastStartGantryLampMask) return;
+    LastStartGantryLampMask = NewMask;
     for (int32 Index = 0; Index < 4; ++Index)
     {
-        const bool bOn = Plan.Active &&
-            (Index == 3 ? Plan.GreenBulb : Index < Plan.RedBulbs);
+        const bool bOn = (NewMask & (1 << Index)) != 0;
         if (StartGantryLamps.IsValidIndex(Index) &&
             IsValid(StartGantryLamps[Index]))
         {

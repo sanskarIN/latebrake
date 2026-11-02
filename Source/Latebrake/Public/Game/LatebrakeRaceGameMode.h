@@ -238,6 +238,9 @@ private:
     UPROPERTY(Transient)
     TArray<TObjectPtr<UStaticMeshComponent>> StartGantryBulbs;
 
+    // Avoid eight redundant render-component writes per regular game tick.
+    int32 LastStartGantryLampMask = -1;
+
     // One non-colliding prototype beacon follows a valid best-lap trace.
     UPROPERTY(Transient)
     TObjectPtr<AStaticMeshActor> BestLapGhostMarker;
