@@ -50,7 +50,9 @@ class HandbrakeBindingTests(unittest.TestCase):
                          'BrakeProfile.HandbrakeActive, bArcade',
                          'latebrake::CalculateGripLimitedBraking({',
                          'PhysicalBraking.ForwardForce',
-                         'FrameStableDampingRate(GripRate, DeltaSeconds)'):
+                         'latebrake::CalculateLateralGripForce({',
+                         'BrakeProfile.LateralGripRate',
+                         'LateralForce.RightForce'):
             self.assertIn(required, tick)
         self.assertLess(tick.index('SelectHandbrakeDriveProfile('),
                         tick.index('latebrake::StabilizeCornerThrottle('))
