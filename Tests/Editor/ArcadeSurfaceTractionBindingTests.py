@@ -32,9 +32,12 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
             "if (!Surface.Valid)",
             "NeutralizeMotionWhenDrivingBlocked();",
             "TireCondition.Observe({",
-            "TireCondition.GripMultiplier() * Surface.LateralGripMultiplier",
-            "FrameStableDampingRate(GripRate, DeltaSeconds)",
-            "Chassis->AddForce(-Right * LateralSpeed * Mass * StableGripRate)",
+            "latebrake::CalculateLateralGripForce({",
+            "TireCondition.GripMultiplier() *",
+            "Surface.LateralGripMultiplier *",
+            "if (!LateralForce.Valid)",
+            "Chassis->AddForce(Right *",
+            "static_cast<float>(LateralForce.RightForce)",
         )
         self.assertTrue(all(marker in tick for marker in markers))
         positions = [tick.index(x) if x != "NeutralizeMotionWhenDrivingBlocked();"
