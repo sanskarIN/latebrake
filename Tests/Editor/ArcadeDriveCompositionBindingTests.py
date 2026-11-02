@@ -69,7 +69,8 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertIn("RoadLoad.ForceX", tick)
         self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
         self.assertIn("Thermal.ServiceBrakeMultiplier", tick)
-        self.assertIn("if (!bEffectiveBraking &&", tick)
+        self.assertIn("if (GroundContact.HasDriveContact &&", tick)
+        self.assertIn("ContactTractionScale", tick)
 
     def test_portable_budget_covers_heat_and_gear_fade(self):
         portable = source("Tests/Standalone/ArcadeDriveCompositionTests.cpp")
