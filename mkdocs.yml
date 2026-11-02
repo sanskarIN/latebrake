@@ -83,6 +83,7 @@ nav:
       - Garage: GARAGE.md
       - Garage purchase confirmation QA: GARAGE_PURCHASE_CONFIRM_QA.md
       - Track: TRACK.md
+      - Braking-reference board QA: UNREAL_BRAKING_REFERENCE_BOARDS_QA.md
       - Touch controls: TOUCH_CONTROLS.md
       - Sector timing: SECTOR_TIMING.md
       - Finish insights: FINISH_INSIGHTS.md
