@@ -7,6 +7,7 @@
 #include "AI/RivalGripPace.h"
 #include "AI/RivalSurfaceDamagePace.h"
 #include "AI/RivalSpinThrottleGuard.h"
+#include "AI/RivalStraightPassAssist.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -45,4 +46,5 @@ private:
     latebrake::RivalGripPace GripPace;
     latebrake::RivalSurfaceDamagePace SurfaceDamagePace;
     latebrake::RivalSpinThrottleGuard SpinThrottleGuard;
+    latebrake::RivalStraightPassAssist StraightPassAssist;
 };
