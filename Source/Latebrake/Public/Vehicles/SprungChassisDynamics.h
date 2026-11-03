@@ -18,7 +18,11 @@ inline constexpr double SuspensionRestDistanceCm = 82.0;
 inline constexpr double SuspensionTargetRideDistanceCm = 59.0;
 inline constexpr double SuspensionMinNormalZ = 0.68;
 inline constexpr double SuspensionMaxTraceDistanceCm = 280.0;
-inline constexpr double SuspensionMaxPerCornerWeightFactor = 0.70;
+// Bounded bump/landing peak. The 0.70 budget bottomed the 65 cm tall
+// rigid chassis in a deterministic 180 cm grid-height drop at 60/120 FPS.
+// 0.85 retains a finite ceiling, while leaving clearance in the isolated
+// vertical-heave model. Real Chaos contact/handling remains unverified.
+inline constexpr double SuspensionMaxPerCornerWeightFactor = 0.85;
 inline constexpr double SuspensionDampingRatio = 0.78;
 inline constexpr double SuspensionVisualMinTravelCm = -23.0;
 inline constexpr double SuspensionVisualMaxTravelCm = 25.0;
