@@ -60,6 +60,19 @@ jobs:
             ./Experiments/Win32Preview/out/LateBrakePreviewV5.exe `
             ./Experiments/Win32Preview/out/LateBrakeSetupV5.exe `
             ./Experiments/Win32Preview/out/payload.inc
+      - name: Test setup argument parsing without installing anything
+        shell: pwsh
+        run: |
+          # The actual Win64 setup runs its own headless argument fixtures.
+          # A test must never touch a real player's LOCALAPPDATA.
+          $isolated = Join-Path $env:RUNNER_TEMP 'latebrake-v5-setup-parser-test'
+          New-Item -ItemType Directory -Path $isolated -Force | Out-Null
+          $env:LOCALAPPDATA = $isolated
+          $setup = (Resolve-Path './Experiments/Win32Preview/out/LateBrakeSetupV5.exe').Path
+          $run = Start-Process -FilePath $setup -ArgumentList '--self-test' -Wait -PassThru
+          if ($run.ExitCode -ne 0) { throw "Setup command parser self-test failed: $($run.ExitCode)" }
+          $files = @(Get-ChildItem -LiteralPath $isolated -Recurse -File)
+          if ($files.Count -ne 0) { throw 'A setup self-test wrote to player storage.' }
       - name: Archive experimental UNVERIFIED installer for private GUI QA
         uses: actions/upload-artifact@v5
         with:
@@ -67,6 +80,6 @@ jobs:
           path: |
             Experiments/Win32Preview/out/LateBrakePreviewV5.exe
             Experiments/Win32Preview/out/LateBrakeSetupV5.exe
-          retention-days: 3
+          retention-days: 14
           if-no-files-found: error
           compression-level: 0
