@@ -23,7 +23,7 @@ class ChassisSlipAngleBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::ApplySignalLights(", 1
         )[0]
         for marker in (
-            "if (!Mode || !Mode->IsRaceStartGreen()",
+            "const bool bPreGreen = Mode && !Mode->IsRaceStartGreen();",
             "if (!IsRacePhysicsReady())",
             "const FVector Velocity = Chassis->GetPhysicsLinearVelocity()",
             "const float LongitudinalSpeed = FVector::DotProduct(FlatVelocity, Forward)",
