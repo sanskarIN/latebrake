@@ -219,6 +219,10 @@ private:
     void PitServicePressed();
     void PitServiceReleased();
     void NeutralizeMotionWhenDrivingBlocked();
+    // Actual contact springs: four vertical forces at measured Chaos anchors.
+    // The pre-GO grid can settle under gravity with NO motor/steering input.
+    void ApplySprungForces(const latebrake::SuspensionResponse& Response,
+                           const FVector (&WorldAnchors)[4]);
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);
     void ApplyWheelVisualPose();
