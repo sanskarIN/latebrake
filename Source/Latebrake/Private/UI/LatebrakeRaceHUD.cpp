@@ -19,6 +19,7 @@
 #include "Racing/TimeAttackPersonalBestTarget.h"
 #include "Racing/QuickRaceRecordReview.h"
 #include "Racing/RivalFinishObservation.h"
+#include "Racing/RivalSameSegmentOrder.h"
 #include "Racing/CurrentLapPotential.h"
 #include "Racing/LiveSectorTarget.h"
 #include "UI/TouchControlLayout.h"
@@ -1344,8 +1345,36 @@ void ALatebrakeRaceHUD::DrawHUD()
             else if (GateGap.Kind ==
                      latebrake::RivalGateGapKind::SameCreditedGateCount)
             {
-                Line(TEXT("GATE GAP: SAME VERIFIED COUNT (NOT RACE PLACE)"),
-                     Primary);
+                // Equal credited gates alone cannot resolve the order.
+                // Use measured chassis progress only on the SAME straight;
+                // no inferred race rank, scoring authority or corner shortcut.
+                const latebrake::RivalSameSegmentOrder Straight =
+                    latebrake::CompareRivalSameSegment({
+                        GateGap, Race.GetNextCheckpoint(),
+                        {static_cast<double>(WayfindingPosition.X),
+                         static_cast<double>(WayfindingPosition.Y)},
+                        {static_cast<double>(RivalWorldPosition.X),
+                         static_cast<double>(RivalWorldPosition.Y)},
+                        bWayfindingEligible && Mode->IsRaceStartGreen()});
+                if (Straight.Valid &&
+                    Straight.Leader == latebrake::RivalSegmentLeader::Player)
+                {
+                    Line(FString::Printf(
+                        TEXT("SAME GATES | YOU +%.1fm STRAIGHT (NOT RACE PLACE)"),
+                        Straight.AlongRoadSeparationMeters), Primary);
+                }
+                else if (Straight.Valid &&
+                         Straight.Leader == latebrake::RivalSegmentLeader::Rival)
+                {
+                    Line(FString::Printf(
+                        TEXT("SAME GATES | RIVAL +%.1fm STRAIGHT (NOT RACE PLACE)"),
+                        Straight.AlongRoadSeparationMeters), Accent);
+                }
+                else
+                {
+                    Line(TEXT("GATE GAP: SAME VERIFIED COUNT (NOT RACE PLACE)"),
+                         Primary);
+                }
             }
         }
     }
