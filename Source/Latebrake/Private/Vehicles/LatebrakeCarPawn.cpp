@@ -850,6 +850,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     latebrake::SuspensionFrame SpringSample{};
     SpringSample.DeltaSeconds = static_cast<double>(DeltaSeconds);
     SpringSample.MassKg = static_cast<double>(Mass);
+    SpringSample.GravityCmPerSecondSquared =
+        -static_cast<double>(World->GetGravityZ());
     SpringSample.PhysicsReady = GroundSample.PhysicsReady;
     const FVector GroundOrigin = Chassis->GetComponentLocation();
     FCollisionQueryParams GroundQuery(
