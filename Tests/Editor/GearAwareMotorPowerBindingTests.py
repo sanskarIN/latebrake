@@ -65,7 +65,8 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
         self.assertNotIn("if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)", tick)
         self.assertIn("Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *", tick)
         self.assertIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
-        self.assertIn("if (GroundContact.HasDriveContact &&", tick)
+        self.assertIn("if (AxleBudget.RearDriveReady &&", tick)
+        self.assertIn("RearDriveTractionScale", tick)
         self.assertIn("if (NitroDrive.Active)", tick)
 
     def test_production_curve_is_finite_and_registered_as_strict_cxx(self):
