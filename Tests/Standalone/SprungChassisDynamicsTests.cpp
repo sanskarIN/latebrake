@@ -55,6 +55,13 @@ int main()
         }
     }
 
+    auto alternateGravity = Resting(1320.0);
+    alternateGravity.GravityCmPerSecondSquared = 490.0;
+    const auto lowGravity = CalculateSprungChassis(alternateGravity);
+    Require(lowGravity.Valid &&
+            Near(lowGravity.TotalUpForce, 1320.0 * 490.0, 0.001),
+            "real nondefault gravity changes spring equilibrium load once");
+
     auto s = Resting();
     s.Corners[0].DistanceCm = 45.0;
     const auto loaded = CalculateSprungChassis(s);
@@ -123,6 +130,18 @@ int main()
     s.MassKg = 99;
     Require(!CalculateSprungChassis(s).Valid,
             "nonsensical light car mass is rejected");
+    s = Resting();
+    s.GravityCmPerSecondSquared = -1.0;
+    Require(!CalculateSprungChassis(s).Valid,
+            "inverted or missing downward gravity does not grant lift");
+    s = Resting();
+    s.GravityCmPerSecondSquared = 3000.0;
+    Require(!CalculateSprungChassis(s).Valid,
+            "implausible gravity cannot inject unbounded vertical impulses");
+    s = Resting();
+    s.GravityCmPerSecondSquared = std::numeric_limits<double>::infinity();
+    Require(!CalculateSprungChassis(s).Valid,
+            "nonfinite actual world gravity fails closed");
 
     const double nan = std::numeric_limits<double>::quiet_NaN();
     const double inf = std::numeric_limits<double>::infinity();
