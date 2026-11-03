@@ -58,7 +58,9 @@ class HumanSpinTractionBindingTests(unittest.TestCase):
         self.assertIn("SlipstreamBoost.Observe({", tick)
         self.assertIn("CombinedBoost.NitroExtra", tick)
         self.assertIn("DraftExtraForce = CombinedBoost.DraftExtra;", tick)
-        self.assertIn("if (GroundContact.HasDriveContact &&", tick)
+        self.assertIn("if (AxleBudget.RearDriveReady &&", tick)
+        self.assertIn("bHumanDriver && AxleBudget.RearDriveReady", tick)
+        self.assertIn("RearDriveTractionScale", tick)
         self.assertIn("ContactTractionScale", tick)
         # No rival-specific RPM or route mutations; base shared motor path.
         self.assertNotIn("ModerateHumanSpinThrottle(", get(
