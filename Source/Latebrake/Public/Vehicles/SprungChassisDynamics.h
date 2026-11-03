@@ -68,6 +68,10 @@ struct SuspensionResponse final
     // Authoritative weight for this *sampled* mass/gravity pair. Used only
     // to cap arcade traction by actual spring loading, never to add force.
     double WeightForce = 0.0;
+    // Signed additional support shifted toward left (positive) or right
+    // (negative) wheel on each axle. QA observation only; the four output
+    // corner forces already include these balanced transfers.
+    std::array<double, 2> AntiRollTransfer{};
     std::array<SuspensionCornerResponse, 4> Corners{};
 };
 
@@ -183,6 +187,7 @@ inline SuspensionResponse CalculateSprungChassis(
                 maxCornerForce - l.UpForce});
             l.UpForce += transfer;
             r.UpForce -= transfer;
+            result.AntiRollTransfer[left / 2] = transfer;
         }
         else if (requested < 0.0)
         {
@@ -191,6 +196,7 @@ inline SuspensionResponse CalculateSprungChassis(
                 maxCornerForce - r.UpForce});
             r.UpForce += transfer;
             l.UpForce -= transfer;
+            result.AntiRollTransfer[left / 2] = -transfer;
         }
     }
     return result;
