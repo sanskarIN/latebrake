@@ -97,6 +97,8 @@ class UnrealDraftPrValidationWorkflowTests(unittest.TestCase):
             "UNVERIFIED-UE58-Win64-PR",
             "if: inputs.validation == 'Editor'",
             "if: inputs.validation == 'Win64'",
+            "$env:VALIDATION -cnotin @('Editor', 'Win64')",
+            "Only Editor or Win64 manual UE validation is allowed.",
             "if: inputs.validation == 'Win64' && success()",
             "if: always() && inputs.validation == 'Win64'",
         ):
