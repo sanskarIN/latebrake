@@ -115,7 +115,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
                       early)
         self.assertIn("return;", early)
         self.assertLess(tick.index("LastSuspension = SpringResponse;"),
-                        tick.index("if (GroundContact.HasDriveContact &&"))
+                        tick.index("if (AxleBudget.RearDriveReady &&"))
         self.assertLess(tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"),
                         tick.index("Chassis->AddForce("))
 
