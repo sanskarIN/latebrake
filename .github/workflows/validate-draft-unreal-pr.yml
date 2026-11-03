@@ -1,0 +1,202 @@
+name: Manual trusted Unreal 5.8 PR validation (NO release)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Open same-repository PR number (no forks)'
+        type: number
+        required: true
+      expected_head_sha:
+        description: 'Exact 40-character PR head SHA reviewed before dispatch'
+        type: string
+        required: true
+      validation:
+        description: 'Run licensed UE Editor/UHT compile, or Editor + cooked Win64 candidate'
+        type: choice
+        required: true
+        default: Editor
+        options:
+          - Editor
+          - Win64
+
+# Never execute arbitrary pull_request code on a self-hosted runner. Only an
+# explicit human workflow_dispatch on protected main may select a CURRENT,
+# SAME-REPOSITORY, OWNER-CREATED PR SHA. No release publication or secrets
+# are supplied to checked-out feature source.
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: latebrake-ue58-manual-pr-validation
+  cancel-in-progress: false
+
+jobs:
+  trusted-draft-candidate:
+    name: Real UE 5.8 ${{ inputs.validation }} validation of PR #${{ inputs.pr_number }} (UNVERIFIED)
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, Windows, X64, unreal-5-8]
+    timeout-minutes: 180
+    steps:
+      # The workflow comes from main. Do not checkout, run actions, load
+      # artifacts or execute any code from a PR before authenticating it.
+      - name: Checkout protected main for preflight only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Authenticate open owner PR and exact reviewed SHA BEFORE checkout
+        id: authorize
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          API_URL: ${{ github.api_url }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          EXPECTED_SHA: ${{ inputs.expected_head_sha }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          if ($env:PR_NUMBER -cnotmatch '^[1-9][0-9]{0,5}$' -or
+              $env:EXPECTED_SHA -cnotmatch '^[0-9a-fA-F]{40}$') {
+            throw 'Provide an integer PR number and an exact reviewed 40-hex SHA.'
+          }
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $url = "$($env:API_URL)/repos/$($env:REPO)/pulls/$($env:PR_NUMBER)"
+          $pr = Invoke-RestMethod -Uri $url -Method Get -Headers $headers -TimeoutSec 20
+          if ($pr.state -cne 'open' -or $pr.base.ref -cne 'main' -or
+              $pr.head.repo.full_name -cne $env:REPO -or
+              $pr.head.user.login -cne 'sanskarIN') {
+            throw 'Only open, main-targeted, owner-created same-repository PRs are eligible. Fork PRs are forbidden.'
+          }
+          if ([string]$pr.head.sha -cne $env:EXPECTED_SHA.ToLowerInvariant()) {
+            throw 'The reviewed SHA is stale or does not match the current PR head.'
+          }
+          "verified_sha=$($pr.head.sha)" |
+            Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host 'PR head authenticated. No code from untrusted forks will be checked out.'
+
+      - name: Checkout exactly the authenticated SAME-repository commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.authorize.outputs.verified_sha }}
+          lfs: true
+          persist-credentials: false
+
+      - name: Confirm source stayed current and licensed Unreal 5.8 is present
+        id: verify_host
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          API_URL: ${{ github.api_url }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          VERIFIED_SHA: ${{ steps.authorize.outputs.verified_sha }}
+          VALIDATION: ${{ inputs.validation }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $sha = @(& git rev-parse --verify HEAD)
+          if ($LASTEXITCODE -ne 0 -or $sha.Count -ne 1 -or
+              [string]$sha[0] -cne $env:VERIFIED_SHA) {
+            throw 'Checked out source does not match approved PR commit.'
+          }
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+          }
+          $url = "$($env:API_URL)/repos/$($env:REPO)/pulls/$($env:PR_NUMBER)"
+          $pr = Invoke-RestMethod -Uri $url -Method Get -Headers $headers -TimeoutSec 20
+          if ($pr.state -cne 'open' -or $pr.base.ref -cne 'main' -or
+              $pr.head.repo.full_name -cne $env:REPO -or
+              $pr.head.user.login -cne 'sanskarIN' -or
+              [string]$pr.head.sha -cne $env:VERIFIED_SHA) {
+            throw 'PR changed or became ineligible after checkout. Abort.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:LATEBRAKE_UNREAL_ROOT)) {
+            throw 'LATEBRAKE_UNREAL_ROOT must point to the authorized UE 5.8 installation.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+            throw 'A genuine self-hosted Windows runner temporary root is required.'
+          }
+          ./scripts/Test-UnrealWorkstationPrerequisites.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT -Platform Win64
+          if (-not $?) { throw 'Licensed Unreal workstation prerequisites failed.' }
+          ./scripts/Test-SourceProvenance.ps1 -RepoRoot (Get-Location).Path -ExpectedCommit $env:VERIFIED_SHA
+          if (-not $?) { throw 'Exact source provenance check failed.' }
+          if ($env:VALIDATION -ceq 'Win64') {
+            $candidate = Join-Path $env:RUNNER_TEMP (
+              'LateBrake-PR' + $env:PR_NUMBER + '-' +
+              $env:GITHUB_RUN_ID + '-' + $env:GITHUB_RUN_ATTEMPT)
+            if (Test-Path -LiteralPath $candidate) {
+              throw 'Refusing to reuse stale candidate output.'
+            }
+            "candidate_output=$candidate" |
+              Out-File -LiteralPath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          Write-Host "Trusted PR #$($env:PR_NUMBER) at SHA $($env:VERIFIED_SHA)"
+          Write-Host 'No Unreal rendering/gameplay or release qualification is implied by this preflight.'
+
+      - name: Compile genuine UE 5.8 Editor and UHT for reviewed PR commit
+        if: inputs.validation == 'Editor'
+        shell: pwsh
+        run: |
+          ./scripts/Compile-UnrealEditor.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT
+
+      - name: Compile Editor, author map, cook and hash Win64 candidate
+        if: inputs.validation == 'Win64'
+        shell: pwsh
+        env:
+          CANDIDATE_OUTPUT: ${{ steps.verify_host.outputs.candidate_output }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CANDIDATE_OUTPUT)) {
+            throw 'Verified output directory missing.'
+          }
+          ./scripts/Build-PlayableCandidate.ps1 -EngineRoot $env:LATEBRAKE_UNREAL_ROOT -Platform Win64 -OutputDirectory $env:CANDIDATE_OUTPUT
+
+      - name: Upload UNVERIFIED real Win64 candidate for manual installed QA
+        if: inputs.validation == 'Win64' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNVERIFIED-UE58-Win64-PR${{ inputs.pr_number }}-${{ github.run_id }}
+          path: ${{ steps.verify_host.outputs.candidate_output }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+
+      # The package is not a release. Only delete an owned RUNNER_TEMP child
+      # after checking nested junctions/symlinks; never follow unknown links.
+      - name: Remove temporary candidate after artifact handoff
+        if: always() && inputs.validation == 'Win64'
+        shell: pwsh
+        env:
+          CANDIDATE_OUTPUT: ${{ steps.verify_host.outputs.candidate_output }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CANDIDATE_OUTPUT) -or
+              [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+            return
+          }
+          $root = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\','/') +
+            [IO.Path]::DirectorySeparatorChar
+          $target = [IO.Path]::GetFullPath($env:CANDIDATE_OUTPUT)
+          if (-not $target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) -or
+              -not (Test-Path -LiteralPath $target -PathType Container)) {
+            return
+          }
+          $pending = [System.Collections.Generic.Stack[string]]::new()
+          $pending.Push($target)
+          while ($pending.Count -gt 0) {
+            $directory = $pending.Pop()
+            foreach ($child in @(Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop)) {
+              if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing to delete a candidate containing a junction/symlink: $($child.FullName)"
+              }
+              if ($child.PSIsContainer) { $pending.Push($child.FullName) }
+            }
+          }
+          Remove-Item -LiteralPath $target -Recurse -Force
