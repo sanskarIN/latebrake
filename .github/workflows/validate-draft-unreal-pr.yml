@@ -89,8 +89,9 @@ jobs:
           lfs: true
           persist-credentials: false
 
-      - name: Confirm source stayed current and licensed Unreal 5.8 is present
-        id: verify_host
+      # The GH token is scoped to this metadata-only step. Do not execute
+      # PR-controlled scripts until the next step (which has NO API token).
+      - name: Reauthenticate PR SHA after checkout without running PR code
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -98,7 +99,6 @@ jobs:
           API_URL: ${{ github.api_url }}
           PR_NUMBER: ${{ inputs.pr_number }}
           VERIFIED_SHA: ${{ steps.authorize.outputs.verified_sha }}
-          VALIDATION: ${{ inputs.validation }}
         run: |
           Set-StrictMode -Version Latest
           $ErrorActionPreference = 'Stop'
@@ -118,6 +118,24 @@ jobs:
               $pr.head.user.login -cne 'sanskarIN' -or
               [string]$pr.head.sha -cne $env:VERIFIED_SHA) {
             throw 'PR changed or became ineligible after checkout. Abort.'
+          }
+
+      - name: Verify genuine UE host and prepare a fresh candidate destination
+        id: verify_host
+        shell: pwsh
+        # Deliberately no GH_TOKEN, API endpoint or publishing credentials
+        # in this PR-source-controlled script execution step.
+        env:
+          VERIFIED_SHA: ${{ steps.authorize.outputs.verified_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          VALIDATION: ${{ inputs.validation }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $sha = @(& git rev-parse --verify HEAD)
+          if ($LASTEXITCODE -ne 0 -or $sha.Count -ne 1 -or
+              [string]$sha[0] -cne $env:VERIFIED_SHA) {
+            throw 'Source changed before invoking local Unreal build scripts.'
           }
           if ([string]::IsNullOrWhiteSpace($env:LATEBRAKE_UNREAL_ROOT)) {
             throw 'LATEBRAKE_UNREAL_ROOT must point to the authorized UE 5.8 installation.'
@@ -187,6 +205,10 @@ jobs:
           if (-not $target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) -or
               -not (Test-Path -LiteralPath $target -PathType Container)) {
             return
+          }
+          $rootItem = Get-Item -LiteralPath $target -Force
+          if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw 'Refusing to delete a candidate root that is a junction/symlink.'
           }
           $pending = [System.Collections.Generic.Stack[string]]::new()
           $pending.Push($target)
