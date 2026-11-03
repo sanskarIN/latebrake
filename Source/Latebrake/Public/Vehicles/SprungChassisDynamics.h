@@ -1,0 +1,126 @@
+#pragma once
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+
+namespace latebrake
+{
+// Engine-independent contact-to-force policy for the REAL Chaos rigid body.
+// The four observations are blocking WorldStatic ray hits. They are not
+// virtual tires, road-mask guesses, or authoritative race checkpoints.
+// Unreal applies the returned vertical forces AT the four probe positions.
+inline constexpr double SuspensionGravityCmPerSecondSquared = 980.0;
+inline constexpr double SuspensionMaximumFrameSeconds = 0.10;
+inline constexpr double SuspensionRestDistanceCm = 82.0;
+inline constexpr double SuspensionTargetRideDistanceCm = 59.0;
+inline constexpr double SuspensionMinNormalZ = 0.68;
+inline constexpr double SuspensionMaxTraceDistanceCm = 280.0;
+inline constexpr double SuspensionMaxPerCornerWeightFactor = 0.70;
+inline constexpr double SuspensionDampingRatio = 0.78;
+inline constexpr double SuspensionVisualMinTravelCm = -23.0;
+inline constexpr double SuspensionVisualMaxTravelCm = 25.0;
+
+struct SuspensionCornerObservation final
+{
+    bool Hit = false;
+    double DistanceCm = 0.0; // Origin (at chassis wheel anchor) to WorldStatic
+    double NormalZ = 0.0;
+    double PointVerticalSpeedCmPerSecond = 0.0; // true Chaos velocity AT corner
+};
+
+struct SuspensionFrame final
+{
+    double DeltaSeconds = 0.0;
+    double MassKg = 0.0;
+    bool PhysicsReady = false;
+    std::array<SuspensionCornerObservation, 4> Corners{};
+};
+
+struct SuspensionCornerResponse final
+{
+    bool Contact = false;
+    double UpForce = 0.0; // kg*cm/s^2, world +Z at the same measured corner
+    // Visual-only spindle position; zero at the designated static ride height.
+    double WheelTravelCm = SuspensionVisualMinTravelCm;
+};
+
+struct SuspensionResponse final
+{
+    bool Valid = false;
+    int ContactCount = 0;
+    double TotalUpForce = 0.0;
+    std::array<SuspensionCornerResponse, 4> Corners{};
+};
+
+// Fail closed before any per-corner force is submitted. Forces scale with the
+// genuine Chaos mass so changing car mass will not change equilibrium height.
+// A one-sided road edge still has independent wheel forces, causing natural
+// pitch/roll in the now-unlocked rigid body without invented contact.
+inline SuspensionResponse CalculateSprungChassis(
+    const SuspensionFrame& frame) noexcept
+{
+    if (!frame.PhysicsReady ||
+        !std::isfinite(frame.DeltaSeconds) ||
+        frame.DeltaSeconds <= 0.0 ||
+        frame.DeltaSeconds > SuspensionMaximumFrameSeconds ||
+        !std::isfinite(frame.MassKg) ||
+        frame.MassKg < 100.0 || frame.MassKg > 15000.0)
+    {
+        return {};
+    }
+
+    for (const auto& c : frame.Corners)
+    {
+        if (!c.Hit) continue;
+        if (!std::isfinite(c.DistanceCm) ||
+            !std::isfinite(c.NormalZ) ||
+            !std::isfinite(c.PointVerticalSpeedCmPerSecond) ||
+            c.DistanceCm < 0.0 ||
+            c.DistanceCm > SuspensionMaxTraceDistanceCm ||
+            c.NormalZ < -1.0 || c.NormalZ > 1.0 ||
+            std::abs(c.PointVerticalSpeedCmPerSecond) > 15000.0)
+        {
+            return {};
+        }
+    }
+
+    const double quarterMass = frame.MassKg * 0.25;
+    const double spring = quarterMass * SuspensionGravityCmPerSecondSquared /
+        (SuspensionRestDistanceCm - SuspensionTargetRideDistanceCm);
+    const double damping = 2.0 * SuspensionDampingRatio *
+        std::sqrt(spring * quarterMass);
+    const double maxCornerForce = frame.MassKg *
+        SuspensionGravityCmPerSecondSquared *
+        SuspensionMaxPerCornerWeightFactor;
+
+    SuspensionResponse result;
+    result.Valid = true;
+    for (unsigned i = 0; i < result.Corners.size(); ++i)
+    {
+        const auto& observed = frame.Corners[i];
+        auto& output = result.Corners[i];
+        // Missing/steep/far contact is not a wheel ground support. Visually,
+        // wheels droop to their bounded extension until the ray sees road.
+        if (!observed.Hit || observed.NormalZ < SuspensionMinNormalZ ||
+            observed.DistanceCm > SuspensionRestDistanceCm)
+        {
+            continue;
+        }
+        output.Contact = true;
+        ++result.ContactCount;
+        const double penetration =
+            SuspensionRestDistanceCm - observed.DistanceCm;
+        // Damping acts against actual point motion, not only COM velocity:
+        // compression on one side can calm roll without braking yaw.
+        const double requested = spring * penetration -
+            damping * observed.PointVerticalSpeedCmPerSecond;
+        output.UpForce = std::clamp(requested, 0.0, maxCornerForce);
+        output.WheelTravelCm = std::clamp(
+            SuspensionTargetRideDistanceCm - observed.DistanceCm,
+            SuspensionVisualMinTravelCm, SuspensionVisualMaxTravelCm);
+        result.TotalUpForce += output.UpForce;
+    }
+    return result;
+}
+} // namespace latebrake
