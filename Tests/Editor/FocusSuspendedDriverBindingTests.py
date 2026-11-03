@@ -52,7 +52,7 @@ class FocusSuspendedDriverBindingTests(unittest.TestCase):
         self.assertIn("!latebrake::CanApplyPlayerDrive({", tick)
         self.assertIn("!Mode->IsRaceStartGreen()", tick)
         blocked = tick.split(
-            "if (!Mode || !Mode->IsRaceStartGreen() ||", 1)[1]
+            "if (!Mode ||\n        !latebrake::CanApplyPlayerDrive({", 1)[1]
         self.assertIn("!latebrake::CanApplyPlayerDrive({", blocked)
         blocked = blocked.split("#if PLATFORM_ANDROID", 1)[0]
         self.assertIn("return;", blocked)
