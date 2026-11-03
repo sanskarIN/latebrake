@@ -132,6 +132,38 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertIn("LastSuspension = {}; BrakeDistance.Reset();", self.pawn_h)
         self.assertIn("LastSuspension = {};", self.pawn)
 
+    def test_real_nonshipping_telemetry_has_no_race_or_physics_side_effects(self):
+        tick = self.pawn.split(
+            "void ALatebrakeCarPawn::Tick(", 1
+        )[1].split("void ALatebrakeCarPawn::ApplySprungForces(", 1)[0]
+        debug = tick.split(
+            "LastSuspension = SpringResponse;", 1
+        )[1].split("if (bPreGreen)", 1)[0]
+        for required in (
+            "#if !UE_BUILD_SHIPPING",
+            "SuspensionQaElapsedSeconds += static_cast<double>(DeltaSeconds);",
+            "if (SuspensionQaElapsedSeconds >= 2.0)",
+            "SuspensionQaElapsedSeconds = 0.0;",
+            "LATEBRAKE_SUSPENSION v=1",
+            "contacts=%d", "weight_ratio=%.3f",
+            "traction=%.3f", "pitch_deg=%.1f",
+            "roll_deg=%.1f", "fl_cm=%.1f", "rr_cm=%.1f",
+            "SpringSample.Corners[", "SpringResponse.TotalUpForce",
+        ):
+            self.assertIn(required, debug)
+        for forbidden in (
+            "AddForce(", "AddTorque", "SetPhysics", "SaveGame",
+            "PassCheckpoint", "AwardCredits", "LineTraceSingleByChannel(",
+            "WriteFile(", "Http", "SetActorLocation",
+        ):
+            self.assertNotIn(forbidden, debug)
+        self.assertIn("#if !UE_BUILD_SHIPPING", self.pawn_h)
+        self.assertIn("double SuspensionQaElapsedSeconds = 0.0;", self.pawn_h)
+        neutral = self.pawn.split(
+            "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1
+        )[1].split("void ALatebrakeCarPawn::ThrottleInput(", 1)[0]
+        self.assertIn("SuspensionQaElapsedSeconds = 0.0;", neutral)
+
     def test_policy_is_bounded_and_portable(self):
         for required in (
             "std::array<SuspensionCornerObservation, 4>", "PhysicsReady",
