@@ -24,7 +24,7 @@ class UnrealLateralGripBindingTests(unittest.TestCase):
     def test_actual_shared_chaos_chassis_uses_measured_side_slip(self):
         for token in (
             '#include "Vehicles/LateralGripBudget.h"',
-            "const FVector Right = GetActorRightVector()",
+            "const FVector Right(-Forward.Y, Forward.X, 0.f);",
             "const float LateralSpeed = FVector::DotProduct(FlatVelocity, Right)",
             "latebrake::CalculateGripLimitedBraking({",
             "latebrake::CalculateLateralGripForce({",
