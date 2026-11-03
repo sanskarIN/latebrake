@@ -33,6 +33,20 @@ This change is the start of **one production-quality car-driving foundation**:
 - The four cosmetic spindle meshes now move up/down **independently**
   with sampled vertical travel (between -23 and +25 cm), while their
   existing real-velocity roll and steer animation remains intact.
+- Spring anchors use the **same front/rear 122 cm and lateral 94 cm**
+  offsets as the visual wheels. The earlier inboard 68 cm sensor was
+  inappropriate for physical load transfer; contact forces now act at the
+  actual spindle track width.
+- **Tire-grip load cap:** just seeing asphalt within spring reach is not
+  enough. The existing 0/45/75/100% contact-count grip budget is capped
+  by `sum(actual positive spring forces) / (mass × gravity)`. At a
+  stationary flat ride height, existing handling stays unchanged; at
+  full droop and during upward rebound, an unloaded spring provides no
+  tyre force even with a nearby WorldStatic ray hit.
+- The Unreal spring arm follows chassis **yaw** but explicitly ignores
+  chassis pitch/roll, retaining the chosen chase-camera pitch and
+  preventing body roll from tilting the player's horizon. This still
+  requires visual-camera and clipping checks inside the actual engine.
 - **3D wheel-geometry basis stays independent of the drivetrain:** real
   probe anchors rotate with the physical chassis pitch/roll, but all
   engine/brake/lateral/yaw-driving thrust uses a normalized **flat XY
