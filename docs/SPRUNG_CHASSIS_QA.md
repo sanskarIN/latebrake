@@ -40,6 +40,13 @@ This change is the start of **one production-quality car-driving foundation**:
   offsets as the visual wheels. The earlier inboard 68 cm sensor was
   inappropriate for physical load transfer; contact forces now act at the
   actual spindle track width.
+- **Axle-local anti-roll support:** a front/rear pair whose wheels both
+  carry positive measured spring load redistributes a small portion to
+  the more-compressed (or descending) wheel. Left-to-right transfers
+  conserve the total vertical force; each pair is independently limited
+  to 8% of measured vehicle weight and cannot pull an airborne wheel
+  toward the road. This is a **candidate** torsion-bar approximation,
+  not independently modeled tire/suspension or verified Chaos behavior.
 - **Tire-grip load cap:** just seeing asphalt within spring reach is not
   enough. The existing 0/45/75/100% contact-count grip budget is capped
   by `sum(actual positive spring forces) / (mass × gravity)`. At a
@@ -79,6 +86,10 @@ header under strict C++20 warnings-as-errors and verifies:
    force budgets and numerical consistency.
 8. Full-extension and upward-rebound observations never grant invented
    traction; unloaded springs cannot authorize nitro or steering.
+9. Per-axle anti-roll transfer balances positive force on both loaded
+   wheels, conserves vehicle lift, rejects airborne sides, remains
+   bounded across all 120,000 varied frames, and never creates net
+   downforce or breaks the other axle.
 
 `Tests/Standalone/SprungChassisRideHeightTests.cpp` adds a minimal
 **one-dimensional vertical heave model** using the same production spring
@@ -111,6 +122,10 @@ Each real log line reports:
   contact corners;
 - `weight_ratio` (measured summed spring lift / actual mass × gravity)
   and the load-limited `traction` fraction;
+- `arb_front_pct` and `arb_rear_pct` — signed, mass-normalized
+  left/right anti-roll force transfers on front and rear axles (positive
+  means additional support on the left wheel). These are *calculated
+  commanded spring forces*, not measured physical tire loads;
 - `body_z_cm` as **world height** (not ground clearance), real vertical
   chassis speed, physical pitch and roll;
 - `fl_cm/fr_cm/rl_cm/rr_cm` — actual WorldStatic ray distances at each
