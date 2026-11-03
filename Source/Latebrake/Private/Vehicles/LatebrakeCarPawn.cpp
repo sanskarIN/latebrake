@@ -992,6 +992,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         UE_LOG(LogTemp, Display,
             TEXT("LATEBRAKE_SUSPENSION v=1 driver=%s phase=%s "
                  "contacts=%d weight_ratio=%.3f traction=%.3f "
+                 "arb_front_pct=%.2f arb_rear_pct=%.2f "
                  "body_z_cm=%.1f vz_cmps=%.1f pitch_deg=%.1f roll_deg=%.1f "
                  "fl_cm=%.1f fr_cm=%.1f rl_cm=%.1f rr_cm=%.1f"),
             bLocalHuman ? TEXT("player") : TEXT("autonomous"),
@@ -999,6 +1000,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             SpringResponse.ContactCount,
             SpringResponse.TotalUpForce / SpringResponse.WeightForce,
             GroundContact.ContactTractionScale,
+            100.0 * SpringResponse.AntiRollTransfer[0] /
+                SpringResponse.WeightForce,
+            100.0 * SpringResponse.AntiRollTransfer[1] /
+                SpringResponse.WeightForce,
             Chassis->GetComponentLocation().Z,
             Velocity.Z, BodyAttitude.Pitch, BodyAttitude.Roll,
             MeasuredRay(0), MeasuredRay(1),
