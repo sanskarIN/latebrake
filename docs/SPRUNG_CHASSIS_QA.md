@@ -28,8 +28,11 @@ This change is the start of **one production-quality car-driving foundation**:
 - Travel is bounded: uncompressed spring reach 82 cm, target 59 cm,
   vertical normal threshold **Z >= 0.68**, no downward spring suction,
   no force from absent/too-far/steep surfaces. The maximum force at
-  *each* corner is 70% of the mass's total weight, including heavy
-  landings; no speculative 10g forces can escape the policy.
+  *each* corner is 85% of the mass's total weight, including heavy
+  landings; no speculative 10g forces can escape the policy. This
+  revised ceiling avoids a simulated bottom-out when falling from the
+  existing 180 cm start grid in an idealized 1D vertical model; it is
+  **not** evidence of collision clearance on a real Unreal map.
 - The four cosmetic spindle meshes now move up/down **independently**
   with sampled vertical travel (between -23 and +25 cm), while their
   existing real-velocity roll and steer animation remains intact.
@@ -74,6 +77,19 @@ header under strict C++20 warnings-as-errors and verifies:
 6. Reject NaN, infinity, malformed trace distance, normal and gravity.
 7. **120,000 independent frame fixtures**, verifying per-corner and total
    force budgets and numerical consistency.
+8. Full-extension and upward-rebound observations never grant invented
+   traction; unloaded springs cannot authorize nitro or steering.
+
+`Tests/Standalone/SprungChassisRideHeightTests.cpp` adds a minimal
+**one-dimensional vertical heave model** using the same production spring
+function at fixed **30/60/120 FPS**, 800–1,800 kg, a gentle initial
+height and the actual **180 cm grid drop**. It asserts equilibrium near
+59 cm with no sustained bounce, spring impulse ceilings, and physical
+box chassis bottom clearance in that *simplified* model. A separate
+low-impact test uses three gravity magnitudes. This is a valuable
+numerical regression, but does **not** simulate rigid-body pitch/roll,
+Chaos physics substepping, WorldStatic collision, wheel normal loading
+or road geometry. A genuinely packaged engine test remains mandatory.
 
 `Tests/Editor/UnrealSprungChassisBindingTests.py` inspects the actual
 Unreal pawn for four WorldStatic traces, genuine corner velocity, world
