@@ -900,7 +900,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         latebrake::EvaluateChassisGroundContact(GroundSample);
     const latebrake::SuspensionResponse SpringResponse =
         latebrake::CalculateSprungChassis(SpringSample);
-    if (!GroundContact.Valid || !SpringResponse.Valid)
+    if (!GroundContact.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
+    if (!SpringResponse.Valid)
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
