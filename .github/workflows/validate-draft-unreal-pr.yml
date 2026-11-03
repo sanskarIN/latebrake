@@ -35,7 +35,7 @@ concurrency:
 jobs:
   trusted-draft-candidate:
     name: Real UE 5.8 ${{ inputs.validation }} validation of PR #${{ inputs.pr_number }} (UNVERIFIED)
-    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.repository == 'sanskarIN/latebrake' && github.actor == 'sanskarIN' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, Windows, X64, unreal-5-8]
     timeout-minutes: 180
     steps:
