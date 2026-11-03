@@ -110,3 +110,17 @@ bindings and the pure `ChassisContactReadoutTests.cpp` target (25,000
 consistent accepted states plus malformed input rejection). Running
 those tests is **not** proof of displayed on-screen pixels in a
 licensed UE5.8 editor or installed Windows game.
+
+## Follow-up development candidate — real four-corner springs
+
+This page documents the **previous contact-traction stage**, when the
+prototype still locked pitch/roll and did not apply suspension force.
+A newer **unqualified source candidate** adds actual vertical forces at
+each of the four measured corner locations, unlocks pitch/roll, adds wheel
+travel, and keeps real WorldStatic contact, damping and drive authority
+on one validated per-frame observation.
+
+See [the sprung chassis QA plan](SPRUNG_CHASSIS_QA.md). Until genuine
+Unreal 5.8 compilation and installed Win64 driving evidence is available,
+the numerical tests do not establish stable or physically convincing
+suspension behavior.
