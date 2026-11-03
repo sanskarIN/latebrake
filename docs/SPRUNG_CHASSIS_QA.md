@@ -155,6 +155,32 @@ Each real log line reports:
 - `fl_cm/fr_cm/rl_cm/rr_cm` — actual WorldStatic ray distances at each
   corner, or `-1` when a ray missed.
 
+### Inspecting a real Development-session suspension log
+
+After the authorized real Win64 test run has written its private Unreal
+log **outside** the cooked game archive, the tester can run:
+
+```powershell
+python scripts/AnalyzeSuspensionTelemetry.py --log "C:\\LateBrakeQA\\my-session.log"
+```
+
+This read-only, offline parser accepts the explicit
+`LATEBRAKE_SUSPENSION v=1` telemetry schema and prints a JSON summary.
+It validates finite spring/load values, confirms rear-drive and front
+steering never exceed the supported overall contact fraction, flags
+unpowered rear-only / unsteerable front-only conditions, counts airborne
+sampling, and highlights potentially unstable grid motion, large body
+angles and unusually fast vertical contact events.
+
+The output says `UNVERIFIED_OFFLINE_SUSPENSION_DIAGNOSTIC`,
+`gameplay_verified=false`, `ready_for_release=false` **always**.
+Diagnostics are sampled only once per two seconds, so this is not a
+frame-by-frame physical replay and cannot measure FPS, verify real
+collision, prove source authenticity or certify a complete race. Use
+the existing hashed runtime receipt, candidate integrity checks and
+observed video/hardware QA alongside it. The unit tests for this parser
+use explicitly **synthetic** text lines and never claim actual gameplay.
+
 The QA reviewer must compare multiple log lines to the real rendered
 car, a captured video and collision debugger. A log line cannot prove
 wheel penetration, tyre model quality, actual substep stability or
