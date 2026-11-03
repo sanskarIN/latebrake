@@ -920,7 +920,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             };
         }
     }
-    const latebrake::ChassisGroundContactOutput GroundContact =
+    latebrake::ChassisGroundContactOutput GroundContact =
         latebrake::EvaluateChassisGroundContact(GroundSample);
     const latebrake::SuspensionResponse SpringResponse =
         latebrake::CalculateSprungChassis(SpringSample);
@@ -930,6 +930,16 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         return;
     }
     if (!SpringResponse.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
+    // No 115 cm coarse trace may still claim drive grip while its physical
+    // spring is out of reach (82 cm). HUD and motor use the SAME accepted
+    // set of four engaged road corners, including partial support.
+    GroundContact = latebrake::ConstrainGroundContactToSuspension(
+        GroundContact, SpringResponse);
+    if (!GroundContact.Valid)
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
