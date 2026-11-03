@@ -59,7 +59,7 @@ class UnrealDraftPrValidationWorkflowTests(unittest.TestCase):
         )
         self.assertLess(
             source.index("Checkout exactly the authenticated SAME-repository commit"),
-            source.index("Confirm source stayed current and licensed Unreal 5.8"),
+            source.index("Reauthenticate PR SHA after checkout without running PR code"),
         )
         self.assertLess(
             source.index("Reauthenticate PR SHA after checkout without running PR code"),
@@ -108,7 +108,7 @@ class UnrealDraftPrValidationWorkflowTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, source)
         self.assertIn("Only the GitHub owner may dispatch", self.docs)
-        self.assertIn("not a release", self.docs.lower())
+        self.assertIn("never published as a github release", self.docs.lower())
         self.assertIn("PR #295", self.docs)
         core_ci = (ROOT / ".github/workflows/core-tests.yml").read_text(
             encoding="utf-8"
