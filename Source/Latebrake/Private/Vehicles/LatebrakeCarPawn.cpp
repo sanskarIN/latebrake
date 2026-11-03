@@ -251,6 +251,12 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     CameraBoom->TargetArmLength = 560.f;
     CameraBoom->SocketOffset = FVector(0.f, 0.f, 120.f);
     CameraBoom->bUsePawnControlRotation = false;
+    // The new sprung chassis pitches and rolls independently over bumps.
+    // Keep yaw follow, but do not inherit violent body pitch/roll into
+    // the driver's chase horizon. CameraPresets still own the pitch angle.
+    CameraBoom->bInheritPitch = false;
+    CameraBoom->bInheritRoll = false;
+    CameraBoom->bInheritYaw = true;
     CameraBoom->bEnableCameraLag = true;
     CameraBoom->CameraLagSpeed = 7.f;
 
@@ -891,7 +897,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SCENE_QUERY_STAT(LatebrakeChassisGroundContact), false);
     GroundQuery.AddIgnoredActor(this);
     constexpr float ProbeForwardCm = 122.f;
-    constexpr float ProbeSideCm = 68.f;
+    // These anchors must match the 94 cm Y offset of the decorative
+    // wheel spindles, rather than the old inboard traction-only sensors.
+    constexpr float ProbeSideCm = 94.f;
     const float ProbeX[] = {
         ProbeForwardCm, ProbeForwardCm,
         -ProbeForwardCm, -ProbeForwardCm
