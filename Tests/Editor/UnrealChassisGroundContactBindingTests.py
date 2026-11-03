@@ -66,7 +66,19 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
             "TurnTorque * FrontSteeringTractionScale",
         ):
             self.assertIn(marker, tick)
-        self.assertGreaterEqual(tick.count("ContactTractionScale"), 6)
+        self.assertGreaterEqual(tick.count("ContactTractionScale"), 5)
+        self.assertIn(
+            "static_cast<float>(PhysicalBraking.ForwardForce) *\n            ContactTractionScale);",
+            tick,
+        )
+        self.assertIn(
+            "0.f, 0.f, TurnTorque * FrontSteeringTractionScale));",
+            tick,
+        )
+        self.assertIn(
+            "bArcade) * TransmissionFrame.PropulsionFactor *\n            RearDriveTractionScale);",
+            tick,
+        )
 
     def test_physics_geometry_avoids_fake_wheel_rig_and_ground_invention(self):
         for marker in (
