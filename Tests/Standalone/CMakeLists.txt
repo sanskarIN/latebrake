@@ -1944,6 +1944,20 @@ else()
 endif()
 add_test(NAME SprungChassisRideHeight COMMAND latebrake_sprung_chassis_ride_height_tests)
 
+# Real front/rear axle force eligibility from the current four sprung corners.
+# This also guards nitro/draft eligibility and the source-only yaw gate.
+add_executable(latebrake_axle_traction_budget_tests AxleTractionBudgetTests.cpp)
+target_include_directories(latebrake_axle_traction_budget_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_axle_traction_budget_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_axle_traction_budget_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_axle_traction_budget_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AxleTractionBudget COMMAND latebrake_axle_traction_budget_tests)
+
 # Show accepted real-Chaos-ground contact states only; no UE headers or
 # authority over the real physical chassis, race clock or score.
 add_executable(latebrake_chassis_contact_readout_tests ChassisContactReadoutTests.cpp)
