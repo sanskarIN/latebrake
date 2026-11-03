@@ -24,7 +24,7 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
             "Chassis->GetComponentLocation()",
             "GroundQuery.AddIgnoredActor(this);",
             "constexpr float ProbeForwardCm = 122.f;",
-            "constexpr float ProbeSideCm = 68.f;",
+            "constexpr float ProbeSideCm = 94.f;",
             "for (int32 Index = 0; Index < 4; ++Index)",
             "World->LineTraceSingleByChannel(",
             "Hit, Origin, End, ECC_WorldStatic, GroundQuery",
