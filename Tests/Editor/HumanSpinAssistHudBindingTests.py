@@ -32,7 +32,7 @@ class HumanSpinAssistHudBindingTests(unittest.TestCase):
             "!IsRacePhysicsReady()",
             "const FVector Velocity = Chassis->GetPhysicsLinearVelocity();",
             "StabilizeCornerThrottle(",
-            "GetPhysicsAngularVelocityInRadians()",
+            "const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();",
             "ModerateHumanSpinThrottle(",
             "SpinAssist.Observe({",
             "NitroBoost.Step(",
