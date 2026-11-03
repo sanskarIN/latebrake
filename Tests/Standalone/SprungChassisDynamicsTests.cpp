@@ -55,6 +55,51 @@ int main()
         }
     }
 
+    // Live drivetrain policy must match spring contact, not the older
+    // larger 115 cm trace radius that can include unsupported wheels.
+    ChassisGroundContactSample coarseFrame{};
+    coarseFrame.PhysicsReady = true;
+    coarseFrame.DeltaSeconds = 1.0 / 60.0;
+    for (auto& probe : coarseFrame.Probes)
+    {
+        probe = {true, 59.0, 1.0};
+    }
+    const auto coarse = EvaluateChassisGroundContact(coarseFrame);
+    auto fullSprings = CalculateSprungChassis(Resting());
+    const auto matchedFull =
+        ConstrainGroundContactToSuspension(coarse, fullSprings);
+    Require(matchedFull.Valid && matchedFull.SupportingProbes == 4 &&
+            matchedFull.HasDriveContact &&
+            matchedFull.ContactTractionScale == 1.0,
+            "four real spring contacts retain full drivetrain authority");
+    auto splitFrame = Resting();
+    splitFrame.Corners[0].Hit = false;
+    splitFrame.Corners[1].Hit = false;
+    const auto halfSprings = CalculateSprungChassis(splitFrame);
+    const auto matchedHalf =
+        ConstrainGroundContactToSuspension(coarse, halfSprings);
+    Require(matchedHalf.Valid && matchedHalf.SupportingProbes == 2 &&
+            matchedHalf.HasDriveContact &&
+            matchedHalf.ContactTractionScale == 0.45,
+            "two sprung corners reduce all drive and grip to the same fraction");
+    splitFrame.Corners[2].Hit = false;
+    const auto almostAirborne =
+        ConstrainGroundContactToSuspension(coarse,
+            CalculateSprungChassis(splitFrame));
+    Require(almostAirborne.Valid && !almostAirborne.HasDriveContact &&
+            almostAirborne.SupportingProbes == 1 &&
+            almostAirborne.ContactTractionScale == 0.0,
+            "one remaining real spring cannot produce phantom tire drive");
+    auto fabricated = fullSprings;
+    auto coarseTwo = coarse;
+    coarseTwo.SupportingProbes = 2;
+    Require(!ConstrainGroundContactToSuspension(coarseTwo, fabricated).Valid,
+            "higher sprung count than trusted ground observations fails closed");
+    auto invalidCoarse = coarse;
+    invalidCoarse.Valid = false;
+    Require(!ConstrainGroundContactToSuspension(invalidCoarse, fullSprings).Valid,
+            "invalid WorldStatic contact never becomes trusted suspension");
+
     auto alternateGravity = Resting(1320.0);
     alternateGravity.GravityCmPerSecondSquared = 490.0;
     const auto lowGravity = CalculateSprungChassis(alternateGravity);
