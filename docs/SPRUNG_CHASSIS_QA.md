@@ -129,6 +129,19 @@ numerical regression, but does **not** simulate rigid-body pitch/roll,
 Chaos physics substepping, WorldStatic collision, wheel normal loading
 or road geometry. A genuinely packaged engine test remains mandatory.
 
+`Tests/Standalone/SprungChassisAttitudeRecoveryTests.cpp` adds a
+**separate approximate small-angle heave/pitch/roll reference** driven by
+the same production four-corner spring and anti-roll output. It uses a
+simplified 380 × 180 × 65 cm rectangular-solid inertia model rather than
+the actual Chaos body tensor and semi-implicit 30/60/120 FPS integration.
+Tests cover signed 4-degree pitch and 6-degree roll, 59/80 cm starting
+heights, 800/1,100/1,800 kg chassis, and a temporary 10 cm front-left
+road-height excursion. The checks require bounded forces, non-invented
+net vertical lift, resisting initial moments, temporary dual-axis
+response and eventual return near the reference ride height. This
+**is not proof of tire contact, authentic real-world stability, engine
+substepping, a real curb, collision clearance or playable driving**.
+
 `Tests/Editor/UnrealSprungChassisBindingTests.py` inspects the actual
 Unreal pawn for four WorldStatic traces, genuine corner velocity, world
 gravity, validated spring output, calls to `AddForceAtLocation`, pre-GO
