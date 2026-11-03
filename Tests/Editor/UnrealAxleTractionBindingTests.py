@@ -131,8 +131,8 @@ class UnrealAxleTractionBindingTests(unittest.TestCase):
         self.assertIn("NAME AxleTractionBudget", self.cmake)
         self.assertIn("latebrake_axle_traction_budget_tests PRIVATE /W4 /WX", self.cmake)
         self.assertIn("100000", self.test)
-        self.assertIn("front-only", self.test)
-        self.assertIn("rear-only", self.test)
+        self.assertIn("only front axle loaded", self.test)
+        self.assertIn("rear-only support", self.test)
 
 
 if __name__ == "__main__":
