@@ -87,19 +87,29 @@ class RaceStartLightsBindingTests(unittest.TestCase):
             gate_tick.index("!Mode->IsRaceStartGreen()"),
             gate_tick.index("Mode->RegisterCheckpoint("))
 
-    def test_pawn_and_rival_both_refuse_pregreen_forces(self):
+    def test_pawn_grid_support_does_not_authorize_pregreen_driving(self):
         player_tick = self.pawn.split(
             "void ALatebrakeCarPawn::Tick(", 1)[1].split(
-                "bool ALatebrakeCarPawn::IsRacePhysicsReady()", 1)[0]
+                "void ALatebrakeCarPawn::ApplySprungForces(", 1)[0]
         rival_tick = self.rival.split(
             "void ALatebrakeRivalCar::Tick(", 1)[1].split(
                 "const FVector Position", 1)[0]
-        self.assertIn("!Mode->IsRaceStartGreen()", player_tick)
+        self.assertIn("const bool bPreGreen = Mode && !Mode->IsRaceStartGreen();",
+                      player_tick)
         self.assertIn("!Mode->IsRaceStartGreen()", rival_tick)
         self.assertLess(player_tick.index("!Mode->IsRaceStartGreen()"),
                         player_tick.index("CanApplyPlayerDrive({"))
         self.assertLess(rival_tick.index("!Mode->IsRaceStartGreen()"),
                         rival_tick.index("CanDriveRival("))
+        self.assertIn("ClearDriverInputs();", player_tick)
+        self.assertIn("if (bPreGreen)", player_tick)
+        self.assertIn("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
+                      player_tick)
+        gate = player_tick.index("if (bPreGreen)\n    {", player_tick.index("LastSuspension = SpringResponse;"))
+        self.assertLess(player_tick.index("return;", gate),
+                        player_tick.index("Chassis->AddForce("))
+        self.assertLess(player_tick.index("return;", gate),
+                        player_tick.index("Chassis->AddTorqueInRadians("))
         self.assertIn("NeutralizeMotionWhenDrivingBlocked();", player_tick)
         self.assertIn("SetAutonomousControls(0.f, 0.f, true);", rival_tick)
 
