@@ -33,6 +33,11 @@ This change is the start of **one production-quality car-driving foundation**:
 - The four cosmetic spindle meshes now move up/down **independently**
   with sampled vertical travel (between -23 and +25 cm), while their
   existing real-velocity roll and steer animation remains intact.
+- **3D wheel-geometry basis stays independent of the drivetrain:** real
+  probe anchors rotate with the physical chassis pitch/roll, but all
+  engine/brake/lateral/yaw-driving thrust uses a normalized **flat XY
+  heading**. Tilting the car cannot inject unintended vertical engine
+  acceleration. An almost vertical/invalid forward projection fails closed.
 - During the race's existing countdown, the actual body may settle
   vertically on real springs. Horizontal and yaw input are neutralized;
   no engine/nitro, tire wear, race clock or checkpoint grants are allowed
