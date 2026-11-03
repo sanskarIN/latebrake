@@ -708,7 +708,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     UWorld* World = GetWorld();
     const ALatebrakeRaceGameMode* Mode =
         World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
-    if (!Mode || !Mode->IsRaceStartGreen() ||
+    const bool bPreGreen = Mode && !Mode->IsRaceStartGreen();
+    if (!Mode ||
         !latebrake::CanApplyPlayerDrive({
             true,
             Mode->IsCircuitReadyForGameplay(),
@@ -760,6 +761,27 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         ClearDriverInputs();
     }
 #endif
+
+    // Before GO, let only the real four-corner suspension settle under
+    // gravity. Never run throttle, braking, AI, nitro, tire wear or timed
+    // checkpoint logic during the countdown.
+    if (bPreGreen)
+    {
+        ClearDriverInputs();
+        const FVector GridVelocity = Chassis->GetPhysicsLinearVelocity();
+        const FVector GridAngular = Chassis->GetPhysicsAngularVelocityInRadians();
+        if (!FMath::IsFinite(GridVelocity.Z) ||
+            !FMath::IsFinite(GridAngular.X) ||
+            !FMath::IsFinite(GridAngular.Y))
+        {
+            NeutralizeMotionWhenDrivingBlocked();
+            return;
+        }
+        Chassis->SetPhysicsLinearVelocity(
+            FVector(0.f, 0.f, GridVelocity.Z));
+        Chassis->SetPhysicsAngularVelocityInRadians(
+            FVector(GridAngular.X, GridAngular.Y, 0.f));
+    }
 
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
@@ -915,6 +937,17 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // A valid spring observation is useful even while a wheel hangs in air.
     // Keep this run-local visual sample only after both policies accepted it.
     LastSuspension = SpringResponse;
+    if (bPreGreen)
+    {
+        // Keep the grid still in XY/yaw while genuine spring/gravity
+        // forces bring the body to its supported ride height before GO.
+        // This branch never reaches motor, grip, race telemetry or awards.
+        LastGroundContact = GroundContact;
+        ApplySprungForces(SpringResponse, WheelWorldAnchors);
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
+        return;
+    }
     // One accepted physics frame only: the HUD never repeats a stale
     // ground observation after pause, lost input or failed recovery.
     LastGroundContact = GroundContact;
@@ -1231,21 +1264,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
             bArcade) * TransmissionFrame.PropulsionFactor *
             ContactTractionScale);
-    // Apply four genuine, independent upward spring/damper forces at their
-    // world-space wheel anchors. This moves the actual Chaos rigid body;
-    // it is not a HUD-only or decorative physics simulation.
-    // All other forces have passed their validation gates at this point.
-    for (int32 Index = 0; Index < 4; ++Index)
-    {
-        const double Lift = SpringResponse.Corners[
-            static_cast<unsigned>(Index)].UpForce;
-        if (Lift > 0.0)
-        {
-            Chassis->AddForceAtLocation(
-                FVector(0.f, 0.f, static_cast<float>(Lift)),
-                WheelWorldAnchors[Index]);
-        }
-    }
+    // Actual world-space spring support, shared with the pre-GO grid
+    // settling path. Motor and lateral handling still have their own gates.
+    ApplySprungForces(SpringResponse, WheelWorldAnchors);
     if (GroundContact.HasDriveContact &&
         !bEffectiveBraking &&
         (FMath::Abs(EffectiveThrottle) < 0.01f ||
@@ -1380,6 +1401,28 @@ void ALatebrakeCarPawn::ApplySignalLights(
     {
         ReverseSignal->SetIntensity(
             static_cast<float>(Signals.WhiteReverseIntensity));
+    }
+}
+
+void ALatebrakeCarPawn::ApplySprungForces(
+    const latebrake::SuspensionResponse& Response,
+    const FVector (&WorldAnchors)[4])
+{
+    if (!Response.Valid || !IsValid(Chassis) ||
+        !Chassis->IsSimulatingPhysics())
+    {
+        return;
+    }
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const double Lift =
+            Response.Corners[static_cast<unsigned>(Index)].UpForce;
+        if (Lift > 0.0 && FMath::IsFinite(Lift))
+        {
+            Chassis->AddForceAtLocation(
+                FVector(0.f, 0.f, static_cast<float>(Lift)),
+                WorldAnchors[Index]);
+        }
     }
 }
 
