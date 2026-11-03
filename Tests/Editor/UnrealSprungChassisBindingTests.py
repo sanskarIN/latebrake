@@ -32,6 +32,10 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertIn("Chassis->SetEnableGravity(true);", ctor)
         self.assertIn("Chassis->SetMassOverrideInKg(NAME_None, 1100.f);", ctor)
         self.assertIn("FVector(122.f, -94.f, -29.f)", ctor)
+        self.assertIn("CameraBoom->bInheritPitch = false;", ctor)
+        self.assertIn("CameraBoom->bInheritRoll = false;", ctor)
+        self.assertIn("CameraBoom->bInheritYaw = true;", ctor)
+        self.assertIn("CameraBoom->bUsePawnControlRotation = false;", ctor)
 
     def test_real_world_gravity_and_corner_point_speed_sample(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
@@ -41,6 +45,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "SpringSample.MassKg = static_cast<double>(Mass);",
             "World->GetGravityZ()", "GetPhysicsLinearVelocityAtPoint(Origin)",
             "WheelWorldAnchors[Index] = Origin;",
+            "constexpr float ProbeSideCm = 94.f;",
             "ChassisForward * ProbeX[Index] + ChassisRight * ProbeY[Index]",
             "World->LineTraceSingleByChannel(",
             "ECC_WorldStatic, GroundQuery", "GroundQuery.AddIgnoredActor(this);",
@@ -140,6 +145,10 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "PointVerticalSpeedCmPerSecond",
             "ConstrainGroundContactToSuspension(",
             "sprung.ContactCount > coarse.SupportingProbes",
+            "sprung.TotalUpForce / sprung.WeightForce",
+            "coarse.ContactTractionScale =",
+            "std::min(countBasedGrip, supportedLoadFraction)",
+            "coarse.HasDriveContact = sprung.ContactCount >= 2",
             "std::clamp(requested, 0.0, maxCornerForce)",
         ):
             self.assertIn(required, self.policy)
