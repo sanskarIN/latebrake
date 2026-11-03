@@ -46,7 +46,9 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "Hit.GetComponent()->GetCollisionObjectType() == ECC_WorldStatic",
             "latebrake::EvaluateChassisGroundContact(GroundSample)",
             "latebrake::CalculateSprungChassis(SpringSample)",
-            "if (!SpringResponse.Valid)", "LastSuspension = SpringResponse;",
+            "if (!SpringResponse.Valid)",
+            "latebrake::ConstrainGroundContactToSuspension(",
+            "LastSuspension = SpringResponse;",
             "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
         ):
             with self.subTest(marker=marker):
@@ -116,6 +118,8 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "SuspensionMaxPerCornerWeightFactor = 0.70",
             "SuspensionMinNormalZ = 0.68",
             "PointVerticalSpeedCmPerSecond",
+            "ConstrainGroundContactToSuspension(",
+            "sprung.ContactCount > coarse.SupportingProbes",
             "std::clamp(requested, 0.0, maxCornerForce)",
         ):
             self.assertIn(required, self.policy)
