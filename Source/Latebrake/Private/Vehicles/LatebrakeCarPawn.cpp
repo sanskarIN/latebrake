@@ -11,6 +11,7 @@
 #include "Vehicles/LateralGripBudget.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
 #include "Vehicles/SprungChassisDynamics.h"
+#include "Vehicles/AxleTractionBudget.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/SpeedAwareYawTorque.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
@@ -966,6 +967,17 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+    // A production racer must not power the rear axle from a front-only
+    // contact or apply front steering torque while only the rear wheels
+    // are physically loaded. Reuse this exact accepted spring sample,
+    // never a second fictitious wheel ray or a HUD-only road mask.
+    const latebrake::AxleTractionBudget AxleBudget =
+        latebrake::CalculateAxleTractionBudget(GroundContact, SpringResponse);
+    if (!AxleBudget.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
     // A valid spring observation is useful even while a wheel hangs in air.
     // Keep this run-local visual sample only after both policies accepted it.
     LastSuspension = SpringResponse;
@@ -992,6 +1004,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         UE_LOG(LogTemp, Display,
             TEXT("LATEBRAKE_SUSPENSION v=1 driver=%s phase=%s "
                  "contacts=%d weight_ratio=%.3f traction=%.3f "
+                 "drive_rear=%.3f steer_front=%.3f "
+                 "front_load=%.3f rear_load=%.3f "
                  "arb_front_pct=%.2f arb_rear_pct=%.2f "
                  "body_z_cm=%.1f vz_cmps=%.1f pitch_deg=%.1f roll_deg=%.1f "
                  "fl_cm=%.1f fr_cm=%.1f rl_cm=%.1f rr_cm=%.1f"),
@@ -1000,6 +1014,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             SpringResponse.ContactCount,
             SpringResponse.TotalUpForce / SpringResponse.WeightForce,
             GroundContact.ContactTractionScale,
+            AxleBudget.RearDriveTractionScale,
+            AxleBudget.FrontSteeringTractionScale,
+            AxleBudget.FrontAxleLoadRatio,
+            AxleBudget.RearAxleLoadRatio,
             100.0 * SpringResponse.AntiRollTransfer[0] /
                 SpringResponse.WeightForce,
             100.0 * SpringResponse.AntiRollTransfer[1] /
@@ -1026,6 +1044,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     LastGroundContact = GroundContact;
     const float ContactTractionScale =
         static_cast<float>(GroundContact.ContactTractionScale);
+    const float RearDriveTractionScale =
+        static_cast<float>(AxleBudget.RearDriveTractionScale);
+    const float FrontSteeringTractionScale =
+        static_cast<float>(AxleBudget.FrontSteeringTractionScale);
     // Finite velocity components alone do not ensure that derived speed
     // and directional projections stay representable in float precision.
     if (!FMath::IsFinite(Speed) || !FMath::IsFinite(LongitudinalSpeed) ||
@@ -1228,7 +1250,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Steady-speed cap ramps avoid a velocity snap when a held boost ends.
     const latebrake::NitroDriveOutput NitroDrive = NitroBoost.Step(
         static_cast<double>(DeltaSeconds),
-        bHumanDriver && GroundContact.HasDriveContact,
+        bHumanDriver && AxleBudget.RearDriveReady,
         bEffectiveBraking, static_cast<double>(EffectiveThrottle),
         static_cast<double>(LongitudinalSpeed));
     CurrentNitroSpeedCapScale = FMath::FInterpConstantTo(
@@ -1241,7 +1263,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const latebrake::EngineHeatOutput EngineThermal = EngineHeat.Observe({
         static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
-        bEffectiveBraking || !GroundContact.HasDriveContact
+        bEffectiveBraking || !AxleBudget.RearDriveReady
             ? 0.0 : static_cast<double>(EffectiveThrottle),
         NitroDrive.Active, true});
     // Drafting must observe an actual ahead, aligned, moving rival and a
@@ -1257,7 +1279,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         Mode->TryGetRivalDraftingState(
             RivalPosition, RivalForward, RivalVelocity);
     double DraftExtraForce = 0.0;
-    if (bDraftTargetReady && GroundContact.HasDriveContact)
+    if (bDraftTargetReady && AxleBudget.RearDriveReady)
     {
         const FVector Position = GetActorLocation();
         const FVector Offset = RivalPosition - Position;
@@ -1336,11 +1358,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(LongitudinalSpeed),
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
             bArcade) * TransmissionFrame.PropulsionFactor *
-            ContactTractionScale);
+            RearDriveTractionScale);
     // Actual world-space spring support, shared with the pre-GO grid
     // settling path. Motor and lateral handling still have their own gates.
     ApplySprungForces(SpringResponse, WheelWorldAnchors);
-    if (GroundContact.HasDriveContact &&
+    if (AxleBudget.RearDriveReady &&
         !bEffectiveBraking &&
         (FMath::Abs(EffectiveThrottle) < 0.01f ||
          FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) ||
@@ -1365,12 +1387,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
         }
     }
-    else if (GroundContact.HasDriveContact && !bEffectiveBraking)
+    else if (AxleBudget.RearDriveReady && !bEffectiveBraking)
     {
         // Opposite throttle acts as engine braking until the car slows.
         Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *
             static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)) *
-            ContactTractionScale);
+            RearDriveTractionScale);
     }
 
     // Real planar resistance: low-speed coasting, increasing aero drag
@@ -1415,7 +1437,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(LongitudinalSpeed),
         static_cast<double>(AssistedSteering));
     Chassis->AddTorqueInRadians(FVector(
-        0.f, 0.f, TurnTorque * ContactTractionScale));
+        0.f, 0.f, TurnTorque * FrontSteeringTractionScale));
 
     const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
     if (Speed > ActiveSpeedCap)
