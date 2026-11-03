@@ -172,7 +172,9 @@ static void install(){
  if(folderFlags==0xffffffffu || !(folderFlags&0x10u) || (folderFlags&0x400u)){
   MessageBoxA(0,"Install folder is missing, unsafe, or redirected. Remove any folder link and retry.","LateBrake Setup - Failed",0x10);return;
  }
- char gameStage[570]={},setupStage[570]={};
+ // Keep the two staging paths in static storage: this CRT-free GUI setup
+ // must not need MSVC's dynamic stack probing helper (__chkstk).
+ static char gameStage[570]={},setupStage[570]={};
  if(!join(gameStage,570,folder,"LateBrakePreviewV5.exe.new") ||
     !join(setupStage,570,folder,"LateBrakeSetupV5.exe.new")){
   MessageBoxA(0,"Install path is too long.","LateBrake Setup - Failed",0x10);return;
