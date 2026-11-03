@@ -53,7 +53,49 @@ static bool join(char* out,int cap,const char* a,const char* b){int i=0;
 }
 static void copystr(char* dst,const char* s,int cap){int i=0;while(s[i]&&i<cap-1){dst[i]=s[i];i++;}dst[i]=0;}
 static bool eq(const char* a,const char* b){while(*a&&*b&&*a==*b){a++;b++;}return !*a&&!*b;}
-static bool has(const char* cmd,const char* marker){for(;*cmd;cmd++){const char*a=cmd,*b=marker;while(*a&&*b&&*a==*b){a++;b++;}if(!*b)return true;}return false;}
+// Parse only a complete first argument AFTER the executable path. A folder
+// named "--uninstall" or "--final-remove" must never trigger deletion.
+static const char* firstArgument(const char* command){
+ if(!command)return 0;
+ while(*command==' '||*command=='\t')command++;
+ if(*command=='"'){
+  command++;
+  while(*command&&*command!='"')command++;
+  if(*command!='"')return 0; // Reject unterminated executable quotes.
+  command++;
+ }else{
+  while(*command&&*command!=' '&&*command!='\t')command++;
+ }
+ while(*command==' '||*command=='\t')command++;
+ return command;
+}
+static bool hasExactArgument(const char* command,const char* name){
+ const char* arg=firstArgument(command);if(!arg||!*arg)return false;
+ while(*arg&&*name&&*arg==*name){arg++;name++;}
+ if(*name)return false;
+ while(*arg==' '||*arg=='\t')arg++;
+ return *arg==0;
+}
+static bool hasNoArgument(const char* command){
+ const char* arg=firstArgument(command);
+ return arg&&!*arg;
+}
+// A headless test must not read or modify any real installer data or profile.
+static bool installerSelfTest(){
+ const char* quoted="\"C:\\Games\\--uninstall\\LateBrakeSetupV5.exe\"";
+ return hasNoArgument(quoted) &&
+  !hasExactArgument(quoted,"--uninstall") &&
+  !hasExactArgument(quoted,"--final-remove") &&
+  hasExactArgument("\"C:\\Games\\--uninstall\\LateBrakeSetupV5.exe\" --uninstall","--uninstall") &&
+  hasExactArgument("LateBrakeSetupV5.exe --final-remove","--final-remove") &&
+  hasExactArgument("LateBrakeSetupV5.exe --self-test","--self-test") &&
+  !hasExactArgument("LateBrakeSetupV5.exe --uninstall-now","--uninstall") &&
+  !hasExactArgument("LateBrakeSetupV5.exe --uninstall --other","--uninstall") &&
+  !hasExactArgument("LateBrakeSetupV5.exe --UNINSTALL","--uninstall") &&
+  !hasNoArgument("LateBrakeSetupV5.exe --uninstall") &&
+  !hasNoArgument("\"C:\\Games\\LateBrakeSetupV5.exe\" --other") &&
+  !hasNoArgument("\"C:\\Games\\LateBrakeSetupV5.exe");
+}
 static bool paths(char* folder,char* game,char* setup){char home[380]={};
  DWORD got=GetEnvironmentVariableA("LOCALAPPDATA",home,379);if(!got||got>=379)return false;
  return join(folder,460,home,"LateBrakePreviewV5") &&
@@ -74,7 +116,7 @@ static void registration(const char* folder,const char* setup){
  HKEY k=0;DWORD state=0;
  if(RegCreateKeyExA((HKEY)(unsigned long long)0x80000001u,uninstallKey,0,0,0,0x20006,0,&k,&state)==0){
   regString(k,"DisplayName","LateBrake Standalone Racing Preview V5");
-  regString(k,"DisplayVersion","4.0.0-preview");
+  regString(k,"DisplayVersion","5.0.0-preview");
   regString(k,"Publisher","LateBrake open-source project");
   regString(k,"InstallLocation",folder);
   char cmd[700]={};int i=0;cmd[i++]='"';
@@ -133,8 +175,14 @@ static void install(){
 }
 extern "C" void mainCRTStartup(){
  const char* cmd=GetCommandLineA();
- if(has(cmd,"--final-remove"))doneRemove();
- else if(has(cmd,"--uninstall"))uninstall();
- else install();
+ if(hasExactArgument(cmd,"--self-test"))
+  ExitProcess(installerSelfTest()?0u:5u);
+ if(hasExactArgument(cmd,"--final-remove"))doneRemove();
+ else if(hasExactArgument(cmd,"--uninstall"))uninstall();
+ else if(hasNoArgument(cmd))install();
+ else {
+  MessageBoxA(0,"Unknown setup argument. Launch setup normally, or use the registered uninstaller.","LateBrake Preview V5 Setup",0x10);
+  ExitProcess(2);
+ }
  ExitProcess(0);
 }
