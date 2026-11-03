@@ -1931,6 +1931,18 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SprungChassisDynamics COMMAND latebrake_sprung_chassis_dynamics_tests)
+# Deterministic vertical-only vehicle settling (NO Unreal collision model).
+add_executable(latebrake_sprung_chassis_ride_height_tests SprungChassisRideHeightTests.cpp)
+target_include_directories(latebrake_sprung_chassis_ride_height_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_chassis_ride_height_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_chassis_ride_height_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_chassis_ride_height_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungChassisRideHeight COMMAND latebrake_sprung_chassis_ride_height_tests)
 
 # Show accepted real-Chaos-ground contact states only; no UE headers or
 # authority over the real physical chassis, race clock or score.
