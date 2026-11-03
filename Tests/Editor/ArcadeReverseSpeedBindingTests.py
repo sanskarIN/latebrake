@@ -48,7 +48,7 @@ class ReverseSpeedBindingTests(unittest.TestCase):
         tick = self.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
         for marker in (
-            "const FVector Forward = GetActorForwardVector();",
+            "FVector(ChassisForward.X, ChassisForward.Y, 0.f).GetSafeNormal();",
             "static_cast<double>(PostCapVelocity.X)",
             "static_cast<double>(PostCapVelocity.Y)",
             "static_cast<double>(Forward.X)",
