@@ -74,14 +74,14 @@ def parse_record(source: str) -> dict[str, object]:
     if (numbers["drive_rear"] > numbers["traction"] + 0.002 or
             numbers["steer_front"] > numbers["traction"] + 0.002):
         raise SuspensionAuditError("axle grip exceeds verified whole-car limit")
-    if (numbers["rear_load"] < 0.001 and numbers["drive_rear"] > 0.002):
+    if (numbers["rear_load"] < 0.001 and numbers["drive_rear"] > 0.0005):
         raise SuspensionAuditError("unloaded rear axle reported active drive grip")
-    if (numbers["front_load"] < 0.001 and numbers["steer_front"] > 0.002):
+    if (numbers["front_load"] < 0.001 and numbers["steer_front"] > 0.0005):
         raise SuspensionAuditError("unloaded front axle reported active steering")
     if contacts < 2 and (
-        numbers["traction"] > 0.002 or
-        numbers["drive_rear"] > 0.002 or
-        numbers["steer_front"] > 0.002
+        numbers["traction"] > 0.0005 or
+        numbers["drive_rear"] > 0.0005 or
+        numbers["steer_front"] > 0.0005
     ):
         raise SuspensionAuditError("single wheel granted playable traction")
     if contacts == 0 and numbers["weight_ratio"] > 0.002:
