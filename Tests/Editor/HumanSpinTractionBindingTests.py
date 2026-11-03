@@ -32,7 +32,7 @@ class HumanSpinTractionBindingTests(unittest.TestCase):
             "SurfaceTraction.Observe({",
             "StabilizeCornerThrottle(",
             "const bool bHumanDriver = IsLocallyControlled()",
-            "GetPhysicsAngularVelocityInRadians()",
+            "const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();",
             "ModerateHumanSpinThrottle(",
             "NitroBoost.Step(",
             "AllocateArcadeBoost(",
