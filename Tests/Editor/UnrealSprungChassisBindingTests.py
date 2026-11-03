@@ -140,7 +140,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "SuspensionMaximumFrameSeconds = 0.10",
             "SuspensionRestDistanceCm = 82.0",
             "SuspensionTargetRideDistanceCm = 59.0",
-            "SuspensionMaxPerCornerWeightFactor = 0.70",
+            "SuspensionMaxPerCornerWeightFactor = 0.85",
             "SuspensionMinNormalZ = 0.68",
             "PointVerticalSpeedCmPerSecond",
             "ConstrainGroundContactToSuspension(",
@@ -161,6 +161,17 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertIn("NAME SprungChassisDynamics", self.cmake)
         self.assertIn("latebrake_sprung_chassis_dynamics_tests PRIVATE /W4 /WX", self.cmake)
         self.assertIn("120000", self.tests)
+        self.assertIn("SprungChassisRideHeightTests.cpp", self.cmake)
+        self.assertIn("NAME SprungChassisRideHeight", self.cmake)
+        heave = read("Tests/Standalone/SprungChassisRideHeightTests.cpp")
+        for token in (
+            "for (const int fps : {30, 60, 120})",
+            "for (const double height : {80.0, 180.0})",
+            "SprungChassisRideHeight", "chassisHalfHeightCm",
+            "spring equilibrium scales with actual Unreal world gravity",
+            "run.MinimumHeight > chassisHalfHeightCm + 2.0",
+        ):
+            self.assertIn(token, heave)
 
 
 if __name__ == "__main__":
