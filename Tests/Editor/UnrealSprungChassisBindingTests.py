@@ -41,6 +41,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "SpringSample.MassKg = static_cast<double>(Mass);",
             "World->GetGravityZ()", "GetPhysicsLinearVelocityAtPoint(Origin)",
             "WheelWorldAnchors[Index] = Origin;",
+            "ChassisForward * ProbeX[Index] + ChassisRight * ProbeY[Index]",
             "World->LineTraceSingleByChannel(",
             "ECC_WorldStatic, GroundQuery", "GroundQuery.AddIgnoredActor(this);",
             "Hit.GetComponent()->GetCollisionObjectType() == ECC_WorldStatic",
@@ -57,6 +58,25 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
                         tick.index("CalculateSprungChassis(SpringSample)"))
         self.assertLess(tick.index("CalculateSprungChassis(SpringSample)"),
                         tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"))
+
+    def test_planar_drivetrain_cannot_lift_tilted_body(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySprungForces(", 1)[0]
+        for required in (
+            "const FVector ChassisForward = GetActorForwardVector();",
+            "const FVector ChassisRight = GetActorRightVector();",
+            "FVector(ChassisForward.X, ChassisForward.Y, 0.f).GetSafeNormal()",
+            "const FVector Right(-Forward.Y, Forward.X, 0.f);",
+            "if (Forward.IsNearlyZero())",
+            "ChassisForward * ProbeX[Index] + ChassisRight * ProbeY[Index]",
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
+            "Chassis->AddForce(Right *",
+        ):
+            self.assertIn(required, tick)
+        self.assertLess(tick.index("if (Forward.IsNearlyZero())"),
+                        tick.index("Chassis->AddForce(Forward * DriveForce"))
+        self.assertLess(tick.index("ChassisForward * ProbeX[Index]"),
+                        tick.index("CalculateSprungChassis(SpringSample)"))
 
     def test_point_forces_are_applied_to_the_real_physics_body_only(self):
         segment = self.pawn.split("void ALatebrakeCarPawn::ApplySprungForces(", 1)[1].split(
