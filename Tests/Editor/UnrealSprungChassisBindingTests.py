@@ -148,6 +148,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "contacts=%d", "weight_ratio=%.3f",
             "traction=%.3f", "pitch_deg=%.1f",
             "roll_deg=%.1f", "fl_cm=%.1f", "rr_cm=%.1f",
+            "arb_front_pct=%.2f arb_rear_pct=%.2f",
             "SpringSample.Corners[", "SpringResponse.TotalUpForce",
         ):
             self.assertIn(required, debug)
@@ -173,6 +174,15 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "SuspensionRestDistanceCm = 82.0",
             "SuspensionTargetRideDistanceCm = 59.0",
             "SuspensionMaxPerCornerWeightFactor = 0.85",
+            "SuspensionAntiRollSpringFraction = 0.20",
+            "SuspensionAntiRollDamperFraction = 0.08",
+            "SuspensionAntiRollMaxWeightFractionPerAxle = 0.08",
+            "std::array<double, 2> AntiRollTransfer{}",
+            "if (!l.Contact || !r.Contact",
+            "l.UpForce += transfer;",
+            "r.UpForce -= transfer;",
+            "r.UpForce += transfer;",
+            "l.UpForce -= transfer;",
             "SuspensionMinNormalZ = 0.68",
             "PointVerticalSpeedCmPerSecond",
             "ConstrainGroundContactToSuspension(",
@@ -193,6 +203,9 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertIn("NAME SprungChassisDynamics", self.cmake)
         self.assertIn("latebrake_sprung_chassis_dynamics_tests PRIVATE /W4 /WX", self.cmake)
         self.assertIn("120000", self.tests)
+        self.assertIn("anti-roll cannot create net gravity-compensating", self.tests)
+        self.assertIn("anti-roll cannot lever an airborne wheel", self.tests)
+        self.assertIn("front bar conserves sum of existing spring loads", self.tests)
         self.assertIn("SprungChassisRideHeightTests.cpp", self.cmake)
         self.assertIn("NAME SprungChassisRideHeight", self.cmake)
         heave = read("Tests/Standalone/SprungChassisRideHeightTests.cpp")
