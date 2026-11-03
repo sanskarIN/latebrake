@@ -301,6 +301,11 @@ private:
     // Actual world-contact spring force response for this Chaos frame.
     // Only the visual child wheels read this; saves and race authority do not.
     latebrake::SuspensionResponse LastSuspension{};
+#if !UE_BUILD_SHIPPING
+    // At most one non-shipping diagnostic record per 2 seconds; no disk IO,
+    // remote telemetry, profile state, race scoring or cosmetic allocation.
+    double SuspensionQaElapsedSeconds = 0.0;
+#endif
     latebrake::ArcadeCollisionDamage CollisionDamage;
     double LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     latebrake::ArcadeSurfaceTraction SurfaceTraction;
