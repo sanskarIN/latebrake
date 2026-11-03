@@ -22,6 +22,14 @@ This change is the start of **one production-quality car-driving foundation**:
   The spring pushes upward at the physical corner using
   `AddForceAtLocation`, allowing body pitch and roll. It does not
   teleport the body or set invented wheel contact positions.
+- **Independent suspension dispatch:** after road, spring and axle
+  samples pass the common physical validity gates, the four vertical
+  forces are submitted before optional surface, heat, transmission,
+  braking or HUD policies can reject that driving frame. During the
+  pre-green countdown, a mutually exclusive grid path submits them
+  once. This avoids dropping physical support when a later gameplay
+  policy intentionally blocks motor/steering; it neither bypasses
+  ground-contact validation nor adds extra tire force.
 - All forces are scaled to **actual chassis mass and UWorld gravity**.
   At default 1,100 kg and 980 cm/s², four corners at the target 59 cm
   ride distance together counteract the current vehicle's weight.
