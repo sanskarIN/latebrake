@@ -26,6 +26,8 @@ __declspec(dllimport) DWORD __stdcall GetModuleFileNameA(void*,char*,DWORD);
 __declspec(dllimport) BOOL __stdcall CreateDirectoryA(const char*,void*);
 __declspec(dllimport) HANDLE __stdcall CreateFileA(const char*,DWORD,DWORD,void*,DWORD,DWORD,HANDLE);
 __declspec(dllimport) BOOL __stdcall WriteFile(HANDLE,const void*,DWORD,DWORD*,void*);
+__declspec(dllimport) BOOL __stdcall FlushFileBuffers(HANDLE);
+__declspec(dllimport) DWORD __stdcall GetFileAttributesA(const char*);
 __declspec(dllimport) BOOL __stdcall CloseHandle(HANDLE);
 __declspec(dllimport) BOOL __stdcall CopyFileA(const char*,const char*,BOOL);
 __declspec(dllimport) BOOL __stdcall DeleteFileA(const char*);
@@ -53,7 +55,49 @@ static bool join(char* out,int cap,const char* a,const char* b){int i=0;
 }
 static void copystr(char* dst,const char* s,int cap){int i=0;while(s[i]&&i<cap-1){dst[i]=s[i];i++;}dst[i]=0;}
 static bool eq(const char* a,const char* b){while(*a&&*b&&*a==*b){a++;b++;}return !*a&&!*b;}
-static bool has(const char* cmd,const char* marker){for(;*cmd;cmd++){const char*a=cmd,*b=marker;while(*a&&*b&&*a==*b){a++;b++;}if(!*b)return true;}return false;}
+// Parse only a complete first argument AFTER the executable path. A folder
+// named "--uninstall" or "--final-remove" must never trigger deletion.
+static const char* firstArgument(const char* command){
+ if(!command)return 0;
+ while(*command==' '||*command=='\t')command++;
+ if(*command=='"'){
+  command++;
+  while(*command&&*command!='"')command++;
+  if(*command!='"')return 0; // Reject unterminated executable quotes.
+  command++;
+ }else{
+  while(*command&&*command!=' '&&*command!='\t')command++;
+ }
+ while(*command==' '||*command=='\t')command++;
+ return command;
+}
+static bool hasExactArgument(const char* command,const char* name){
+ const char* arg=firstArgument(command);if(!arg||!*arg)return false;
+ while(*arg&&*name&&*arg==*name){arg++;name++;}
+ if(*name)return false;
+ while(*arg==' '||*arg=='\t')arg++;
+ return *arg==0;
+}
+static bool hasNoArgument(const char* command){
+ const char* arg=firstArgument(command);
+ return arg&&!*arg;
+}
+// A headless test must not read or modify any real installer data or profile.
+static bool installerSelfTest(){
+ const char* quoted="\"C:\\Games\\--uninstall\\LateBrakeSetupV5.exe\"";
+ return hasNoArgument(quoted) &&
+  !hasExactArgument(quoted,"--uninstall") &&
+  !hasExactArgument(quoted,"--final-remove") &&
+  hasExactArgument("\"C:\\Games\\--uninstall\\LateBrakeSetupV5.exe\" --uninstall","--uninstall") &&
+  hasExactArgument("LateBrakeSetupV5.exe --final-remove","--final-remove") &&
+  hasExactArgument("LateBrakeSetupV5.exe --self-test","--self-test") &&
+  !hasExactArgument("LateBrakeSetupV5.exe --uninstall-now","--uninstall") &&
+  !hasExactArgument("LateBrakeSetupV5.exe --uninstall --other","--uninstall") &&
+  !hasExactArgument("LateBrakeSetupV5.exe --UNINSTALL","--uninstall") &&
+  !hasNoArgument("LateBrakeSetupV5.exe --uninstall") &&
+  !hasNoArgument("\"C:\\Games\\LateBrakeSetupV5.exe\" --other") &&
+  !hasNoArgument("\"C:\\Games\\LateBrakeSetupV5.exe");
+}
 static bool paths(char* folder,char* game,char* setup){char home[380]={};
  DWORD got=GetEnvironmentVariableA("LOCALAPPDATA",home,379);if(!got||got>=379)return false;
  return join(folder,460,home,"LateBrakePreviewV5") &&
@@ -61,10 +105,16 @@ static bool paths(char* folder,char* game,char* setup){char home[380]={};
         join(setup,540,folder,"LateBrakeSetupV5.exe");
 }
 static bool writeData(const char* name,const unsigned char* data,DWORD len){
- HANDLE h=CreateFileA(name,0x40000000u,0,0,2,0x80,0);
+ // CREATE_NEW refuses an existing staged file instead of following and
+ // truncating a pre-planted path. Only a fresh file may become an installer.
+ HANDLE h=CreateFileA(name,0x40000000u,0,0,1,0x80,0);
  if(h==(HANDLE)-1||!h)return false;
- DWORD written=0;BOOL ok=WriteFile(h,data,len,&written,0);CloseHandle(h);
- return ok&&written==len;
+ DWORD written=0;
+ BOOL ok=WriteFile(h,data,len,&written,0);
+ BOOL flushed=ok&&written==len&&FlushFileBuffers(h);
+ CloseHandle(h);
+ if(!flushed)DeleteFileA(name);
+ return flushed!=0;
 }
 static const char* uninstallKey="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LateBrakePreviewV5";
 static void regString(HKEY key,const char* name,const char* value){
@@ -74,7 +124,7 @@ static void registration(const char* folder,const char* setup){
  HKEY k=0;DWORD state=0;
  if(RegCreateKeyExA((HKEY)(unsigned long long)0x80000001u,uninstallKey,0,0,0,0x20006,0,&k,&state)==0){
   regString(k,"DisplayName","LateBrake Standalone Racing Preview V5");
-  regString(k,"DisplayVersion","4.0.0-preview");
+  regString(k,"DisplayVersion","5.0.0-preview");
   regString(k,"Publisher","LateBrake open-source project");
   regString(k,"InstallLocation",folder);
   char cmd[700]={};int i=0;cmd[i++]='"';
@@ -115,13 +165,40 @@ static void install(){
  if(!paths(folder,game,setup)){
   MessageBoxA(0,"LOCALAPPDATA environment path is missing or too long.","LateBrake Setup",0x10);return;
  }
- CreateDirectoryA(folder,0); // Already installed is allowed; WriteFile checks permissions.
- if(!writeData(game,embeddedGame,(DWORD)sizeof(embeddedGame))){
-  MessageBoxA(0,"Could not write the game under LOCALAPPDATA. Check user folder permissions.","LateBrake Setup - Failed",0x10);return;
+ CreateDirectoryA(folder,0);
+ const DWORD folderFlags=GetFileAttributesA(folder);
+ // Reject missing destinations, regular files and junction/reparse paths.
+ // The trusted current-user install must stay within its own app directory.
+ if(folderFlags==0xffffffffu || !(folderFlags&0x10u) || (folderFlags&0x400u)){
+  MessageBoxA(0,"Install folder is missing, unsafe, or redirected. Remove any folder link and retry.","LateBrake Setup - Failed",0x10);return;
+ }
+ // Keep the two staging paths in static storage: this CRT-free GUI setup
+ // must not need MSVC's dynamic stack probing helper (__chkstk).
+ static char gameStage[570]={},setupStage[570]={};
+ if(!join(gameStage,570,folder,"LateBrakePreviewV5.exe.new") ||
+    !join(setupStage,570,folder,"LateBrakeSetupV5.exe.new")){
+  MessageBoxA(0,"Install path is too long.","LateBrake Setup - Failed",0x10);return;
+ }
+ // Stage complete files in the SAME directory/volume before changing the
+ // existing working game. No CREATE_ALWAYS truncation of the installed EXE.
+ if(!writeData(gameStage,embeddedGame,(DWORD)sizeof(embeddedGame))){
+  MessageBoxA(0,"Could not safely stage the game. Check permissions and remove any leftover .new file.","LateBrake Setup - Failed",0x10);return;
  }
  char self[540]={};
- if(!GetModuleFileNameA(0,self,539)||(!eq(self,setup)&&!CopyFileA(self,setup,0))){
-  MessageBoxA(0,"Game was installed, but could not add its uninstaller. Install from a writable directory.","LateBrake Setup - Partial",0x30);return;
+ if(!GetModuleFileNameA(0,self,539)||!CopyFileA(self,setupStage,1)){
+  DeleteFileA(gameStage);
+  MessageBoxA(0,"Could not stage the uninstaller; existing installed game remains unchanged.","LateBrake Setup - Failed",0x10);return;
+ }
+ // Replace the setup helper first. If that fails, the old game is intact;
+ // if the game replace fails, its original bytes are never truncated.
+ // MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH.
+ if(!MoveFileExA(setupStage,setup,0x1u|0x8u)){
+  DeleteFileA(setupStage);DeleteFileA(gameStage);
+  MessageBoxA(0,"Could not replace the installer. Close the existing setup and retry; the game was not replaced.","LateBrake Setup - Failed",0x10);return;
+ }
+ if(!MoveFileExA(gameStage,game,0x1u|0x8u)){
+  DeleteFileA(gameStage);
+  MessageBoxA(0,"Could not replace the running game. Close LateBrake and retry; the previous game was preserved.","LateBrake Setup - Failed",0x10);return;
  }
  registration(folder,setup);
  if(MessageBoxA(0,"Installed to %LOCALAPPDATA%\\LateBrakePreviewV5. Launch the racing preview now? You can remove it through Windows Installed Apps.","LateBrake Preview V5 Installed",0x24)==6){
@@ -133,8 +210,14 @@ static void install(){
 }
 extern "C" void mainCRTStartup(){
  const char* cmd=GetCommandLineA();
- if(has(cmd,"--final-remove"))doneRemove();
- else if(has(cmd,"--uninstall"))uninstall();
- else install();
+ if(hasExactArgument(cmd,"--self-test"))
+  ExitProcess(installerSelfTest()?0u:5u);
+ if(hasExactArgument(cmd,"--final-remove"))doneRemove();
+ else if(hasExactArgument(cmd,"--uninstall"))uninstall();
+ else if(hasNoArgument(cmd))install();
+ else {
+  MessageBoxA(0,"Unknown setup argument. Launch setup normally, or use the registered uninstaller.","LateBrake Preview V5 Setup",0x10);
+  ExitProcess(2);
+ }
  ExitProcess(0);
 }
