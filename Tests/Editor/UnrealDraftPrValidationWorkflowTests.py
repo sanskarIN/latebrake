@@ -29,6 +29,7 @@ class UnrealDraftPrValidationWorkflowTests(unittest.TestCase):
         self.assertNotIn("\n  push:", before_jobs)
         self.assertNotIn("\n  schedule:", before_jobs)
         self.assertIn("github.repository == 'sanskarIN/latebrake'", source)
+        self.assertIn("github.actor == 'sanskarIN'", source)
         self.assertIn("github.ref == 'refs/heads/main'", source)
         self.assertIn("github.event_name == 'workflow_dispatch'", source)
         self.assertIn("runs-on: [self-hosted, Windows, X64, unreal-5-8]", source)
@@ -61,9 +62,24 @@ class UnrealDraftPrValidationWorkflowTests(unittest.TestCase):
             source.index("Confirm source stayed current and licensed Unreal 5.8"),
         )
         self.assertLess(
-            source.index("Confirm source stayed current and licensed Unreal 5.8"),
+            source.index("Reauthenticate PR SHA after checkout without running PR code"),
+            source.index("Verify genuine UE host and prepare a fresh candidate destination"),
+        )
+        self.assertLess(
+            source.index("Verify genuine UE host and prepare a fresh candidate destination"),
             source.index("Compile genuine UE 5.8 Editor and UHT"),
         )
+        tokened = source.split("Reauthenticate PR SHA after checkout without running PR code", 1)[1].split(
+            "- name: Verify genuine UE host", 1
+        )[0]
+        source_scripts = source.split("- name: Verify genuine UE host", 1)[1].split(
+            "- name: Upload UNVERIFIED", 1
+        )[0]
+        self.assertIn("GH_TOKEN:", tokened)
+        self.assertNotIn("./scripts/", tokened)
+        self.assertNotIn("GH_TOKEN:", source_scripts)
+        self.assertNotIn("API_URL:", source_scripts)
+        self.assertNotIn("github.token", source_scripts)
         self.assertGreaterEqual(source.count("persist-credentials: false"), 2)
 
     def test_genuine_builds_never_fake_unreal_or_publish_release(self):
@@ -102,6 +118,7 @@ class UnrealDraftPrValidationWorkflowTests(unittest.TestCase):
             "$env:RUNNER_TEMP", "Path]::GetFullPath",
             "OrdinalIgnoreCase", "[IO.FileAttributes]::ReparsePoint",
             "Refusing to delete a candidate containing a junction/symlink",
+            "Refusing to delete a candidate root that is a junction/symlink",
             "Get-ChildItem -LiteralPath $directory -Force",
             "Remove-Item -LiteralPath $target -Recurse -Force",
         ):
