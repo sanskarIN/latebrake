@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Vehicles/ChassisGroundContactTraction.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -128,4 +130,26 @@ inline SuspensionResponse CalculateSprungChassis(
     }
     return result;
 }
+// The legacy road query allowed center heights up to 115 cm for coarse
+// advisory traction. A sprung body has REAL road support only when its
+// individual 82 cm spring contacts engage. Keep drive, brake, yaw, wear,
+// pit service and the HUD on the identical constrained support estimate.
+inline ChassisGroundContactOutput ConstrainGroundContactToSuspension(
+    ChassisGroundContactOutput coarse,
+    const SuspensionResponse& sprung) noexcept
+{
+    if (!coarse.Valid || !sprung.Valid ||
+        sprung.ContactCount < 0 || sprung.ContactCount > 4 ||
+        sprung.ContactCount > coarse.SupportingProbes)
+    {
+        return {};
+    }
+    coarse.SupportingProbes = sprung.ContactCount;
+    coarse.HasDriveContact = sprung.ContactCount >= 2;
+    coarse.ContactTractionScale = sprung.ContactCount == 4 ? 1.0 :
+        sprung.ContactCount == 3 ? 0.75 :
+        sprung.ContactCount == 2 ? 0.45 : 0.0;
+    return coarse;
+}
+
 } // namespace latebrake
