@@ -55,6 +55,63 @@ int main()
         }
     }
 
+    // A front-only anti-roll bar must transfer EXISTING vertical load,
+    // not add ground force or apply a pull to a hanging wheel.
+    {
+        auto s = Resting();
+        s.Corners[0].DistanceCm = 54.0; // compressed front-left
+        s.Corners[1].DistanceCm = 64.0; // extended front-right
+        const auto out = CalculateSprungChassis(s);
+        const double k = (s.MassKg * 0.25) *
+            s.GravityCmPerSecondSquared /
+            (SuspensionRestDistanceCm - SuspensionTargetRideDistanceCm);
+        const double frontLeftBaseline = k * (SuspensionRestDistanceCm - 54.0);
+        const double frontRightBaseline = k * (SuspensionRestDistanceCm - 64.0);
+        const double transfer =
+            SuspensionAntiRollSpringFraction * k * (64.0 - 54.0);
+        Require(out.Valid && out.ContactCount == 4 &&
+                Near(out.Corners[0].UpForce, frontLeftBaseline + transfer, 0.001) &&
+                Near(out.Corners[1].UpForce, frontRightBaseline - transfer, 0.001),
+                "front bar shifts positive load to compressed wheel");
+        Require(Near(out.Corners[2].UpForce, out.Corners[3].UpForce, 0.001),
+                "rear axle cannot inherit front-only compression");
+        Require(Near(out.TotalUpForce,
+                     out.Corners[0].UpForce + out.Corners[1].UpForce +
+                     out.Corners[2].UpForce + out.Corners[3].UpForce, 0.001),
+                "anti-roll cannot create net gravity-compensating vertical force");
+        const auto referenceFrontTotal = frontLeftBaseline + frontRightBaseline;
+        Require(Near(out.Corners[0].UpForce + out.Corners[1].UpForce,
+                     referenceFrontTotal, 0.001),
+                "front bar conserves sum of existing spring loads");
+        s.Corners[0].Hit = false;
+        const auto unloadedAxle = CalculateSprungChassis(s);
+        Require(unloadedAxle.Valid && !unloadedAxle.Corners[0].Contact &&
+                unloadedAxle.Corners[0].UpForce == 0.0 &&
+                Near(unloadedAxle.Corners[1].UpForce,
+                     frontRightBaseline, 0.001),
+                "anti-roll cannot lever an airborne wheel into false contact");
+        s = Resting();
+        s.Corners[2].DistanceCm = 64.0;
+        s.Corners[3].DistanceCm = 54.0;
+        const auto rearOnly = CalculateSprungChassis(s);
+        Require(rearOnly.Valid &&
+                Near(rearOnly.Corners[0].UpForce,
+                     s.MassKg * 0.25 * s.GravityCmPerSecondSquared, 0.001) &&
+                rearOnly.Corners[3].UpForce > rearOnly.Corners[2].UpForce,
+                "rear bar acts independently of unaffected front axle");
+        s = Resting();
+        // Equal ride height but opposite wheel point speeds load the
+        // compression side: the anti-roll damper responds to genuine
+        // asymmetric chassis pitch/roll, not decorative visual tilt.
+        s.Corners[0].PointVerticalSpeedCmPerSecond = -60.0;
+        s.Corners[1].PointVerticalSpeedCmPerSecond = 60.0;
+        const auto rateDamping = CalculateSprungChassis(s);
+        Require(rateDamping.Valid &&
+                rateDamping.Corners[0].UpForce >
+                    rateDamping.Corners[1].UpForce,
+                "anti-roll damper resists opposing corner vertical speeds");
+    }
+
     // Live drivetrain policy must match spring contact, not the older
     // larger 115 cm trace radius that can include unsupported wheels.
     ChassisGroundContactSample coarseFrame{};
@@ -315,6 +372,9 @@ int main()
                 Near(out.TotalUpForce, sum, 0.02),
                 "published contacts and total never drift from wheel force outputs");
     }
+    // The random stress fixture also exercises the axle transfer path.
+    // Every output remains positive and bounded even for opposite extreme
+    // corner speed signs and strong left/right road height differences.
     std::cout << "Four-corner sprung chassis policy passed (120k frames).\n";
     return EXIT_SUCCESS;
 }
