@@ -47,6 +47,8 @@ inline AxleTractionBudget CalculateAxleTractionBudget(
         !std::isfinite(ground.ContactTractionScale) ||
         ground.ContactTractionScale < 0.0 ||
         ground.ContactTractionScale > 1.0 ||
+        ground.HasDriveContact != (ground.SupportingProbes >= 2 &&
+            ground.ContactTractionScale > AxleGripLoadEpsilon) ||
         !std::isfinite(springs.WeightForce) ||
         springs.WeightForce <= 0.0 ||
         !std::isfinite(springs.TotalUpForce) ||
