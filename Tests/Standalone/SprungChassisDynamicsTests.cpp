@@ -100,6 +100,62 @@ int main()
     Require(!ConstrainGroundContactToSuspension(invalidCoarse, fullSprings).Valid,
             "invalid WorldStatic contact never becomes trusted suspension");
 
+    // A nearly-extended spring is geometrically near the asphalt but
+    // carries zero load. It must NOT authorize throttle, nitro or tyre grip.
+    auto noLoadSample = Resting();
+    for (auto& corner : noLoadSample.Corners)
+    {
+        corner.DistanceCm = SuspensionRestDistanceCm;
+    }
+    const auto noLoadResponse = CalculateSprungChassis(noLoadSample);
+    const auto noLoadTraction =
+        ConstrainGroundContactToSuspension(coarse, noLoadResponse);
+    Require(noLoadResponse.Valid && noLoadResponse.ContactCount == 4 &&
+            noLoadResponse.TotalUpForce == 0.0 &&
+            noLoadTraction.Valid && !noLoadTraction.HasDriveContact &&
+            noLoadTraction.ContactTractionScale == 0.0,
+            "all nearby but unloaded springs cannot produce fictitious grip");
+
+    auto reboundSample = Resting();
+    for (auto& corner : reboundSample.Corners)
+    {
+        corner.PointVerticalSpeedCmPerSecond = 700.0;
+    }
+    const auto reboundResponse = CalculateSprungChassis(reboundSample);
+    const auto reboundGrip =
+        ConstrainGroundContactToSuspension(coarse, reboundResponse);
+    Require(reboundResponse.Valid && reboundResponse.ContactCount == 4 &&
+            reboundResponse.TotalUpForce == 0.0 &&
+            reboundGrip.Valid && reboundGrip.ContactTractionScale == 0.0 &&
+            !reboundGrip.HasDriveContact,
+            "a rising chassis must lose fictitious tyre grip when dampers unload");
+
+    auto softSpring = Resting();
+    for (auto& corner : softSpring.Corners)
+    {
+        corner.DistanceCm = 65.0;
+    }
+    const auto softened =
+        ConstrainGroundContactToSuspension(coarse,
+            CalculateSprungChassis(softSpring));
+    Require(softened.Valid && softened.HasDriveContact &&
+            softened.ContactTractionScale > 0.7 &&
+            softened.ContactTractionScale < 1.0,
+            "partially loaded four-corner car has physically reduced grip");
+
+    auto zeroWeight = fullSprings;
+    zeroWeight.WeightForce = 0.0;
+    Require(!ConstrainGroundContactToSuspension(coarse, zeroWeight).Valid,
+            "missing mass-gravity weight cannot award traction");
+    auto unboundedImpulse = fullSprings;
+    unboundedImpulse.TotalUpForce = fullSprings.WeightForce * 4.0;
+    Require(!ConstrainGroundContactToSuspension(coarse, unboundedImpulse).Valid,
+            "fabricated spring impulse cannot produce grip beyond 4-wheel cap");
+    auto badForce = fullSprings;
+    badForce.TotalUpForce = std::numeric_limits<double>::quiet_NaN();
+    Require(!ConstrainGroundContactToSuspension(coarse, badForce).Valid,
+            "nonfinite summed spring force never authorizes grip");
+
     auto alternateGravity = Resting(1320.0);
     alternateGravity.GravityCmPerSecondSquared = 490.0;
     const auto lowGravity = CalculateSprungChassis(alternateGravity);
@@ -232,6 +288,15 @@ int main()
                     SuspensionGravityCmPerSecondSquared *
                     SuspensionMaxPerCornerWeightFactor * 4.0 + 0.01,
                 "120k randomized frames respect strict overall impulse budget");
+        const auto matchingTyres =
+            ConstrainGroundContactToSuspension(coarse, out);
+        Require(matchingTyres.Valid &&
+                std::isfinite(matchingTyres.ContactTractionScale) &&
+                matchingTyres.ContactTractionScale >= 0.0 &&
+                matchingTyres.ContactTractionScale <= 1.0 &&
+                (!matchingTyres.HasDriveContact ||
+                    matchingTyres.ContactTractionScale > 0.0),
+                "120k loading frames never fabricate traction from empty spring forces");
         int counted = 0;
         double sum = 0.0;
         for (const auto& c : out.Corners)
