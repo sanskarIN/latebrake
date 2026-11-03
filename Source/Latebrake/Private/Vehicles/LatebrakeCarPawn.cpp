@@ -1039,6 +1039,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         ApplyWheelVisualPose();
         return;
     }
+    // Physical spring support must not depend on optional drivetrain,
+    // surface, heat, HUD or transmission calculations later in this tick.
+    // A later rejected drive frame still needs gravity-balanced wheel
+    // loading; this call is exclusive with the pre-green settling branch.
+    ApplySprungForces(SpringResponse, WheelWorldAnchors);
     // One accepted physics frame only: the HUD never repeats a stale
     // ground observation after pause, lost input or failed recovery.
     LastGroundContact = GroundContact;
@@ -1359,9 +1364,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
             bArcade) * TransmissionFrame.PropulsionFactor *
             RearDriveTractionScale);
-    // Actual world-space spring support, shared with the pre-GO grid
-    // settling path. Motor and lateral handling still have their own gates.
-    ApplySprungForces(SpringResponse, WheelWorldAnchors);
+    // Spring support was already submitted after valid axle/contact
+    // sampling; never double-apply it along the motor path.
     if (AxleBudget.RearDriveReady &&
         !bEffectiveBraking &&
         (FMath::Abs(EffectiveThrottle) < 0.01f ||
