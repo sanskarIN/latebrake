@@ -97,6 +97,31 @@ gravity, validated spring output, calls to `AddForceAtLocation`, pre-GO
 drive isolation and visual spindle travel. This is **source inspection,
 not UHT, a physics trace execution or a real road-driving replay**.
 
+## Observational evidence in a real non-shipping Unreal session
+
+Once an **actual** Unreal Development/Editor build is available, the car
+emits the structured `LATEBRAKE_SUSPENSION v=1` log at most once every
+**two seconds per live physical car**. These logs are intentionally
+compiled out of Shipping builds. They do not save player data, award
+credits or run any extra physics traces.
+
+Each real log line reports:
+
+- `driver=player/autonomous`, `phase=grid/go`, and number of sprung
+  contact corners;
+- `weight_ratio` (measured summed spring lift / actual mass × gravity)
+  and the load-limited `traction` fraction;
+- `body_z_cm` as **world height** (not ground clearance), real vertical
+  chassis speed, physical pitch and roll;
+- `fl_cm/fr_cm/rl_cm/rr_cm` — actual WorldStatic ray distances at each
+  corner, or `-1` when a ray missed.
+
+The QA reviewer must compare multiple log lines to the real rendered
+car, a captured video and collision debugger. A log line cannot prove
+wheel penetration, tyre model quality, actual substep stability or
+whether a player can complete a lap. Never report this as live evidence
+unless it was emitted by an actual licensed Unreal Engine session.
+
 ## Mandatory real engine acceptance gate
 
 **Do not merge a candidate as production-ready solely because source CI
@@ -109,6 +134,8 @@ is green.** On an authorized Windows Unreal Engine 5.8 workstation:
       version in build logs.
 - [ ] Drive at 30/60/120 FPS with physics substepping and inspect ride height,
       stability and oscillation over 10 minutes; measure actual frame-times.
+      Capture `LATEBRAKE_SUSPENSION v=1` logs with all four measured
+      ray distances, body pitch/roll, load ratio and contact count.
 - [ ] Check stationary startup and 3/2/1/GO grid. The car should settle
       before the start with **no planar pre-start motion** or jump at GO.
 - [ ] Test all four straight/corner approaches and raised/road-edge fixtures,
