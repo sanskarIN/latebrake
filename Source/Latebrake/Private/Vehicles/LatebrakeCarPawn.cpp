@@ -596,6 +596,9 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
+#if !UE_BUILD_SHIPPING
+    SuspensionQaElapsedSeconds = 0.0;
+#endif
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Suspend();
     ApplyWheelVisualPose();
@@ -966,6 +969,42 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // A valid spring observation is useful even while a wheel hangs in air.
     // Keep this run-local visual sample only after both policies accepted it.
     LastSuspension = SpringResponse;
+#if !UE_BUILD_SHIPPING
+    // Actual UE QA evidence only: once every two seconds per live car,
+    // report the observed spring support and chassis attitude. Do not
+    // infer "suspension verified" from these numbers without driving QA.
+    // Logs have no player data, score mutations, network requests or
+    // additional ground traces. Shipping builds omit them entirely.
+    SuspensionQaElapsedSeconds += static_cast<double>(DeltaSeconds);
+    if (SuspensionQaElapsedSeconds >= 2.0)
+    {
+        SuspensionQaElapsedSeconds = 0.0;
+        const auto MeasuredRay = [&SpringSample](int32 Index) -> double
+        {
+            const auto& Corner =
+                SpringSample.Corners[static_cast<unsigned>(Index)];
+            return Corner.Hit ? Corner.DistanceCm : -1.0;
+        };
+        const FRotator BodyAttitude = Chassis->GetComponentRotation();
+        const bool bLocalHuman =
+            IsLocallyControlled() &&
+            Cast<APlayerController>(GetController()) != nullptr;
+        UE_LOG(LogTemp, Display,
+            TEXT("LATEBRAKE_SUSPENSION v=1 driver=%s phase=%s "
+                 "contacts=%d weight_ratio=%.3f traction=%.3f "
+                 "body_z_cm=%.1f vz_cmps=%.1f pitch_deg=%.1f roll_deg=%.1f "
+                 "fl_cm=%.1f fr_cm=%.1f rl_cm=%.1f rr_cm=%.1f"),
+            bLocalHuman ? TEXT("player") : TEXT("autonomous"),
+            bPreGreen ? TEXT("grid") : TEXT("go"),
+            SpringResponse.ContactCount,
+            SpringResponse.TotalUpForce / SpringResponse.WeightForce,
+            GroundContact.ContactTractionScale,
+            Chassis->GetComponentLocation().Z,
+            Velocity.Z, BodyAttitude.Pitch, BodyAttitude.Roll,
+            MeasuredRay(0), MeasuredRay(1),
+            MeasuredRay(2), MeasuredRay(3));
+    }
+#endif
     if (bPreGreen)
     {
         // Keep the grid still in XY/yaw while genuine spring/gravity
