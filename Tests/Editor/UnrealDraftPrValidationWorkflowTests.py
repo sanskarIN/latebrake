@@ -110,6 +110,17 @@ class UnrealDraftPrValidationWorkflowTests(unittest.TestCase):
         self.assertIn("Only the GitHub owner may dispatch", self.docs)
         self.assertIn("not a release", self.docs.lower())
         self.assertIn("PR #295", self.docs)
+        core_ci = (ROOT / ".github/workflows/core-tests.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "Test-UnrealCandidateWorkflowInlineSyntax.ps1 -WorkflowPath .github/workflows/validate-draft-unreal-pr.yml",
+            core_ci,
+        )
+        self.assertIn(
+            "UNREAL_DRAFT_PR_VALIDATION.md",
+            (ROOT / "mkdocs.yml").read_text(encoding="utf-8"),
+        )
 
     def test_cleanup_cannot_escape_runner_temporary_directory(self):
         source = self.yml
