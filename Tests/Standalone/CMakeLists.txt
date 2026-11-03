@@ -1944,6 +1944,20 @@ else()
 endif()
 add_test(NAME SprungChassisRideHeight COMMAND latebrake_sprung_chassis_ride_height_tests)
 
+# Approximate three-axis response using the ACTUAL production spring policy.
+# This is a portable isolated integrator, not a Chaos / hardware qualification.
+add_executable(latebrake_sprung_chassis_attitude_recovery_tests SprungChassisAttitudeRecoveryTests.cpp)
+target_include_directories(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungChassisAttitudeRecovery COMMAND latebrake_sprung_chassis_attitude_recovery_tests)
+
 # Real front/rear axle force eligibility from the current four sprung corners.
 # This also guards nitro/draft eligibility and the source-only yaw gate.
 add_executable(latebrake_axle_traction_budget_tests AxleTractionBudgetTests.cpp)
