@@ -103,6 +103,9 @@ jobs:
       - name: Parse inline manual Unreal candidate PowerShell without launching UE
         shell: pwsh
         run: ./scripts/Test-UnrealCandidateWorkflowInlineSyntaxPolicy.ps1
+      - name: Parse owner-approved PR UE workflow PowerShell without launching Unreal
+        shell: pwsh
+        run: ./scripts/Test-UnrealCandidateWorkflowInlineSyntax.ps1 -WorkflowPath .github/workflows/validate-draft-unreal-pr.yml
       - name: Reject invalid packaging fixtures without engine
         shell: pwsh
         run: ./scripts/Test-PackagingPolicy.ps1
