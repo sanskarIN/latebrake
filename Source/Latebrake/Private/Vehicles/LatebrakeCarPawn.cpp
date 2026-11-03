@@ -10,6 +10,7 @@
 #include "Vehicles/GripLimitedBraking.h"
 #include "Vehicles/LateralGripBudget.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
+#include "Vehicles/SprungChassisDynamics.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/SpeedAwareYawTorque.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
@@ -85,9 +86,12 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     Chassis->SetAngularDamping(
         static_cast<float>(latebrake::SteeringChassisAngularDamping));
     Chassis->SetMassOverrideInKg(NAME_None, 1100.f);
-    // Pitch/roll constraints keep this early driving prototype accessible.
-    Chassis->BodyInstance.bLockXRotation = true;
-    Chassis->BodyInstance.bLockYRotation = true;
+    // Four genuine road-contact spring forces now act at four separate
+    // chassis corners. Pitch and roll must be free for independent wheel
+    // forces to respond to bumps and asymmetric road contact.
+    // This is a source-only experimental Chaos model pending UE playtesting.
+    Chassis->BodyInstance.bLockXRotation = false;
+    Chassis->BodyInstance.bLockYRotation = false;
 
     static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(TEXT("/Engine/BasicShapes/Cube.Cube"));
     static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
@@ -181,8 +185,8 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     UStaticMeshComponent* Spokes[] = {FrontLeftSpoke, FrontRightSpoke, RearLeftSpoke, RearRightSpoke};
     const FVector Locations[] =
     {
-        FVector(122.f, -94.f, -22.f), FVector(122.f, 94.f, -22.f),
-        FVector(-122.f, -94.f, -22.f), FVector(-122.f, 94.f, -22.f)
+        FVector(122.f, -94.f, -29.f), FVector(122.f, 94.f, -29.f),
+        FVector(-122.f, -94.f, -29.f), FVector(-122.f, 94.f, -29.f)
     };
     for (int32 Index = 0; Index < 4; ++Index)
     {
@@ -567,6 +571,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     EngineHeat.Suspend();
     Transmission.Suspend();
     LastGroundContact = {};
+    LastSuspension = {};
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
@@ -761,6 +766,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // A rejected physics frame must not leave last tick's full road
         // contact displayed after simulation stops or frame validity fails.
         LastGroundContact = {};
+        LastSuspension = {};
         ResetSpeedCameraFov();
         ResetCornerCameraYaw();
         ApplySignalLights(false, false, 0.0);
@@ -830,17 +836,21 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float LongitudinalSpeed = FVector::DotProduct(FlatVelocity, Forward);
     const float LateralSpeed = FVector::DotProduct(FlatVelocity, Right);
     const float Mass = Chassis->GetMass();
-    // REAL Unreal WorldStatic ground queries near the four measured chassis
-    // corners, not the procedural XY road mask alone. The vehicle remains
-    // a single pitch/roll-locked Chaos rigid body: these are limited
-    // contact observations, NOT sprung wheels or suspension physics.
-    // Ignoring this actor prevents a ray from treating its own chassis
-    // as a supporting road surface.
+    // The actual Chaos body has four independent world-space wheel anchors.
+    // Each corner samples blocking WorldStatic road with a true Unreal trace.
+    // Point speed is taken at THAT corner, not inferred from chassis COM:
+    // asymmetric compression can therefore damp pitch/roll naturally.
+    // These are still vertical ray springs on a rigid body, not a licensed
+    // Chaos Vehicles wheel solver or a finished sprung skeletal mesh.
     latebrake::ChassisGroundContactSample GroundSample{};
     GroundSample.DeltaSeconds = static_cast<double>(DeltaSeconds);
     GroundSample.ChassisVerticalSpeedCmPerSecond =
         static_cast<double>(Velocity.Z);
     GroundSample.PhysicsReady = World != nullptr && IsRacePhysicsReady();
+    latebrake::SuspensionFrame SpringSample{};
+    SpringSample.DeltaSeconds = static_cast<double>(DeltaSeconds);
+    SpringSample.MassKg = static_cast<double>(Mass);
+    SpringSample.PhysicsReady = GroundSample.PhysicsReady;
     const FVector GroundOrigin = Chassis->GetComponentLocation();
     FCollisionQueryParams GroundQuery(
         SCENE_QUERY_STAT(LatebrakeChassisGroundContact), false);
@@ -854,10 +864,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float ProbeY[] = {
         -ProbeSideCm, ProbeSideCm, -ProbeSideCm, ProbeSideCm
     };
+    FVector WheelWorldAnchors[4];
     for (int32 Index = 0; Index < 4; ++Index)
     {
         const FVector Origin = GroundOrigin +
             Forward * ProbeX[Index] + Right * ProbeY[Index];
+        WheelWorldAnchors[Index] = Origin;
         const FVector End = Origin -
             FVector(0.f, 0.f,
                 static_cast<float>(
@@ -871,19 +883,31 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             Hit.GetComponent()->GetCollisionObjectType() == ECC_WorldStatic;
         if (bGroundHit)
         {
+            const double Distance = static_cast<double>(Hit.Distance);
+            const double NormalZ = static_cast<double>(Hit.ImpactNormal.Z);
+            const FVector PointVelocity =
+                Chassis->GetPhysicsLinearVelocityAtPoint(Origin);
             GroundSample.Probes[static_cast<unsigned>(Index)] = {
-                true, static_cast<double>(Hit.Distance),
-                static_cast<double>(Hit.ImpactNormal.Z)
+                true, Distance, NormalZ
+            };
+            SpringSample.Corners[static_cast<unsigned>(Index)] = {
+                true, Distance, NormalZ,
+                static_cast<double>(PointVelocity.Z)
             };
         }
     }
     const latebrake::ChassisGroundContactOutput GroundContact =
         latebrake::EvaluateChassisGroundContact(GroundSample);
-    if (!GroundContact.Valid)
+    const latebrake::SuspensionResponse SpringResponse =
+        latebrake::CalculateSprungChassis(SpringSample);
+    if (!GroundContact.Valid || !SpringResponse.Valid)
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+    // A valid spring observation is useful even while a wheel hangs in air.
+    // Keep this run-local visual sample only after both policies accepted it.
+    LastSuspension = SpringResponse;
     // One accepted physics frame only: the HUD never repeats a stale
     // ground observation after pause, lost input or failed recovery.
     LastGroundContact = GroundContact;
@@ -1200,6 +1224,21 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
             bArcade) * TransmissionFrame.PropulsionFactor *
             ContactTractionScale);
+    // Apply four genuine, independent upward spring/damper forces at their
+    // world-space wheel anchors. This moves the actual Chaos rigid body;
+    // it is not a HUD-only or decorative physics simulation.
+    // All other forces have passed their validation gates at this point.
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const double Lift = SpringResponse.Corners[
+            static_cast<unsigned>(Index)].UpForce;
+        if (Lift > 0.0)
+        {
+            Chassis->AddForceAtLocation(
+                FVector(0.f, 0.f, static_cast<float>(Lift)),
+                WheelWorldAnchors[Index]);
+        }
+    }
     if (GroundContact.HasDriveContact &&
         !bEffectiveBraking &&
         (FMath::Abs(EffectiveThrottle) < 0.01f ||
@@ -1357,6 +1396,17 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
             const FQuat Visual = (Index < 2 ? Steering : FQuat::Identity) *
                 Base * Rolling;
             Wheels[Index]->SetRelativeRotation(Visual.Rotator());
+            // The spoke/cylinder remains a non-colliding visual attached to
+            // the simulated chassis. Move its spindle with observed spring
+            // travel so the wheel follows actual road-height changes.
+            const double Travel = LastSuspension.Valid
+                ? LastSuspension.Corners[static_cast<unsigned>(Index)].WheelTravelCm
+                : latebrake::SuspensionVisualMinTravelCm;
+            const double WheelX = Index < 2 ? 122.0 : -122.0;
+            const double WheelY = Index % 2 == 0 ? -94.0 : 94.0;
+            const FVector RootScale(3.8f, 1.8f, 0.65f);
+            Wheels[Index]->SetRelativeLocation(
+                FVector(WheelX, WheelY, -29.0 + Travel) / RootScale);
         }
     }
 }
