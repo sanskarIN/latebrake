@@ -47,6 +47,19 @@ This change is the start of **one production-quality car-driving foundation**:
   to 8% of measured vehicle weight and cannot pull an airborne wheel
   toward the road. This is a **candidate** torsion-bar approximation,
   not independently modeled tire/suspension or verified Chaos behavior.
+- **Axle-specific handling (rear-drive/front-steer prototype):**
+  forward/reverse motor thrust, opposing-throttle engine braking, nitro
+  and player slipstream boost require *positive measured load on a rear
+  wheel*. The existing chassis torque controller requires loaded **front**
+  wheels to steer. Front-only contact cannot power a fictional rear
+  differential; rear-only contact cannot steer unloaded front tires.
+  One-wheel axles receive at most 40% of the measured rear load or 45%
+  of the front load, and both authorities remain below the same global
+  contact-grip ceiling. At four equally loaded wheels the existing drive
+  and yaw values are preserved. This is an honest first rear-wheel-drive
+  approximation, not a real LSD, individual tire slip model or proven
+  Chaos vehicle axle solver. Service braking/lateral traction retain the
+  original **whole-car** limit for physical contact on any qualified tire.
 - **Tire-grip load cap:** just seeing asphalt within spring reach is not
   enough. The existing 0/45/75/100% contact-count grip budget is capped
   by `sum(actual positive spring forces) / (mass × gravity)`. At a
@@ -90,6 +103,12 @@ header under strict C++20 warnings-as-errors and verifies:
    wheels, conserves vehicle lift, rejects airborne sides, remains
    bounded across all 120,000 varied frames, and never creates net
    downforce or breaks the other axle.
+10. `Tests/Standalone/AxleTractionBudgetTests.cpp` checks rear-only,
+    front-only, diagonal and single-wheel contact, loss of loaded
+    suspension while ray-hit remains present, muted throttle/nitro and
+    steering under axle support loss, partial weight transfer and
+    **100,000** deterministic variable-mass/gravity/landing states.
+    The portable test is not an installed Unreal driving benchmark.
 
 `Tests/Standalone/SprungChassisRideHeightTests.cpp` adds a minimal
 **one-dimensional vertical heave model** using the same production spring
@@ -122,6 +141,11 @@ Each real log line reports:
   contact corners;
 - `weight_ratio` (measured summed spring lift / actual mass × gravity)
   and the load-limited `traction` fraction;
+- `drive_rear` and `steer_front` — bounded physical force multipliers
+  calculated from the rear/front qualified spring loads; `front_load`
+  and `rear_load` are each normalized against half the actual vehicle
+  weight. These are commanded force budgets, **not** measured tire slip
+  or wheel torque;
 - `arb_front_pct` and `arb_rear_pct` — signed, mass-normalized
   left/right anti-roll force transfers on front and rear axles (positive
   means additional support on the left wheel). These are *calculated
@@ -159,6 +183,9 @@ is green.** On an authorized Windows Unreal Engine 5.8 workstation:
 - [ ] Drive all six fictional garage cars, both handling presets, AI rival,
       pit stop, hard service braking, collision damage, reverse, spin,
       nitro, recovery, restart, pause and focus loss.
+      Use a real road-edge/one-axle-support scene to check rear-drive
+      throttle vs front-only contact, front yaw vs rear-only contact,
+      and whether one-wheel recovery remains controllable.
 - [ ] Look for wheel intrusion into asphalt or chassis, nonzero thrust
       while unsupported, oscillation at the rest-extension boundary,
       force spikes after hitches, flipped vehicles, steering-torque
