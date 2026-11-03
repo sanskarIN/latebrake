@@ -54,6 +54,9 @@ struct SuspensionResponse final
     bool Valid = false;
     int ContactCount = 0;
     double TotalUpForce = 0.0;
+    // Authoritative weight for this *sampled* mass/gravity pair. Used only
+    // to cap arcade traction by actual spring loading, never to add force.
+    double WeightForce = 0.0;
     std::array<SuspensionCornerResponse, 4> Corners{};
 };
 
@@ -103,6 +106,7 @@ inline SuspensionResponse CalculateSprungChassis(
 
     SuspensionResponse result;
     result.Valid = true;
+    result.WeightForce = frame.MassKg * frame.GravityCmPerSecondSquared;
     for (unsigned i = 0; i < result.Corners.size(); ++i)
     {
         const auto& observed = frame.Corners[i];
@@ -140,15 +144,32 @@ inline ChassisGroundContactOutput ConstrainGroundContactToSuspension(
 {
     if (!coarse.Valid || !sprung.Valid ||
         sprung.ContactCount < 0 || sprung.ContactCount > 4 ||
-        sprung.ContactCount > coarse.SupportingProbes)
+        sprung.ContactCount > coarse.SupportingProbes ||
+        !std::isfinite(sprung.TotalUpForce) ||
+        !std::isfinite(sprung.WeightForce) ||
+        sprung.TotalUpForce < 0.0 ||
+        sprung.WeightForce <= 0.0 ||
+        sprung.TotalUpForce > sprung.WeightForce *
+            SuspensionMaxPerCornerWeightFactor * 4.0)
     {
         return {};
     }
     coarse.SupportingProbes = sprung.ContactCount;
-    coarse.HasDriveContact = sprung.ContactCount >= 2;
-    coarse.ContactTractionScale = sprung.ContactCount == 4 ? 1.0 :
+    const double countBasedGrip = sprung.ContactCount == 4 ? 1.0 :
         sprung.ContactCount == 3 ? 0.75 :
         sprung.ContactCount == 2 ? 0.45 : 0.0;
+    // A ray geometrically within 82 cm is not sufficient for tyre grip:
+    // near full extension, or on upward rebound, the damped spring can
+    // carry no weight. Use its *actual bounded positive load* to cap
+    // the legacy traction budget. At flat equilibrium the old 4/4,
+    // 3/4 and 2/4 behavior is preserved; unsupported wheels cannot
+    // still launch nitro, steer, brake or accumulate fictitious wear.
+    const double supportedLoadFraction = std::clamp(
+        sprung.TotalUpForce / sprung.WeightForce, 0.0, 1.0);
+    coarse.ContactTractionScale =
+        std::min(countBasedGrip, supportedLoadFraction);
+    coarse.HasDriveContact = sprung.ContactCount >= 2 &&
+        coarse.ContactTractionScale > 1.0e-6;
     return coarse;
 }
 
