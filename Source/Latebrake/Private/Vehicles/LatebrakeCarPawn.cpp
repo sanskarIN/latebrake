@@ -834,8 +834,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
 
-    const FVector Forward = GetActorForwardVector();
-    const FVector Right = GetActorRightVector();
+    // With pitch and roll unlocked, the physical wheel anchors follow the
+    // full 3D chassis basis. Engine, brake, grip and yaw-driving directions
+    // must stay PLANAR: acceleration must never lift a pitching/rolling car.
+    const FVector ChassisForward = GetActorForwardVector();
+    const FVector ChassisRight = GetActorRightVector();
+    const FVector Forward =
+        FVector(ChassisForward.X, ChassisForward.Y, 0.f).GetSafeNormal();
+    const FVector Right(-Forward.Y, Forward.X, 0.f);
+    if (Forward.IsNearlyZero())
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
     if (!FMath::IsFinite(Velocity.X) || !FMath::IsFinite(Velocity.Y) ||
         !FMath::IsFinite(Velocity.Z))
@@ -892,7 +903,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     for (int32 Index = 0; Index < 4; ++Index)
     {
         const FVector Origin = GroundOrigin +
-            Forward * ProbeX[Index] + Right * ProbeY[Index];
+            ChassisForward * ProbeX[Index] + ChassisRight * ProbeY[Index];
         WheelWorldAnchors[Index] = Origin;
         const FVector End = Origin -
             FVector(0.f, 0.f,
