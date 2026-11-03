@@ -119,6 +119,43 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertLess(tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"),
                         tick.index("Chassis->AddForce("))
 
+    def test_suspension_support_precedes_optional_drive_rejections(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySprungForces(", 1)[0]
+        force_call = "ApplySprungForces(SpringResponse, WheelWorldAnchors);"
+        # Exactly one call per path: one for the pre-green countdown, one
+        # for accepted live driving. Normal racing never runs both.
+        self.assertEqual(tick.count(force_call), 2)
+        grid_branch = tick.index(
+            "if (bPreGreen)\n    {\n"
+            "        // Keep the grid still in XY/yaw")
+        grid_call = tick.index(force_call, grid_branch)
+        grid_return = tick.index("return;", grid_call)
+        live_call = tick.index(force_call, grid_return)
+        self.assertLess(grid_branch, grid_call)
+        self.assertLess(grid_call, grid_return)
+        self.assertLess(grid_return, live_call)
+        # These independent policy functions can reject a driving tick.
+        # Their early returns must not switch off physical suspension.
+        for later in (
+            "const latebrake::ArcadeSurfaceOutput Surface =",
+            "const latebrake::ProgressiveRoadLoadOutput RoadLoad =",
+            "const latebrake::GripLimitedBrakingOutput PhysicalBraking =",
+            "const latebrake::LateralGripOutput LateralForce =",
+            "const latebrake::SpeedAwareYawOutput PlannedYaw =",
+            "const latebrake::AutomaticTransmissionState TransmissionFrame =",
+            "Chassis->AddForce(Forward * DriveForce",
+            "Chassis->AddTorqueInRadians(",
+        ):
+            with self.subTest(later=later):
+                self.assertLess(live_call, tick.index(later))
+        # No duplicate physical support may be inserted after gearbox
+        # selection, even when the rear axle has valid traction.
+        self.assertNotIn(
+            force_call,
+            tick.split("const float GearPowerFactor =", 1)[1]
+        )
+
     def test_noncolliding_visual_wheels_ride_real_spring_travel(self):
         visual = self.pawn.split(
             "void ALatebrakeCarPawn::ApplyWheelVisualPose()", 1)[1].split(
