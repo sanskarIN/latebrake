@@ -203,8 +203,10 @@ inline SuspensionResponse CalculateSprungChassis(
 }
 // The legacy road query allowed center heights up to 115 cm for coarse
 // advisory traction. A sprung body has REAL road support only when its
-// individual 82 cm spring contacts engage. Keep drive, brake, yaw, wear,
-// pit service and the HUD on the identical constrained support estimate.
+// individual 82 cm spring contacts engage. Keep brake, lateral force,
+// pit service and HUD on a shared, physically qualified whole-body limit.
+// Rear motor/boost and front steering are FURTHER reduced according to the
+// independent axle loads in AxleTractionBudget.h.
 inline ChassisGroundContactOutput ConstrainGroundContactToSuspension(
     ChassisGroundContactOutput coarse,
     const SuspensionResponse& sprung) noexcept
