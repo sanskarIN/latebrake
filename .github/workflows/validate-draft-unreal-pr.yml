@@ -137,6 +137,9 @@ jobs:
               [string]$sha[0] -cne $env:VERIFIED_SHA) {
             throw 'Source changed before invoking local Unreal build scripts.'
           }
+          if ($env:VALIDATION -cnotin @('Editor', 'Win64')) {
+            throw 'Only Editor or Win64 manual UE validation is allowed.'
+          }
           if ([string]::IsNullOrWhiteSpace($env:LATEBRAKE_UNREAL_ROOT)) {
             throw 'LATEBRAKE_UNREAL_ROOT must point to the authorized UE 5.8 installation.'
           }
