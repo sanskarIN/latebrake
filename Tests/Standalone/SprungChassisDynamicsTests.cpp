@@ -70,6 +70,8 @@ int main()
         const double transfer =
             SuspensionAntiRollSpringFraction * k * (64.0 - 54.0);
         Require(out.Valid && out.ContactCount == 4 &&
+                Near(out.AntiRollTransfer[0], transfer, 0.001) &&
+                Near(out.AntiRollTransfer[1], 0.0, 0.001) &&
                 Near(out.Corners[0].UpForce, frontLeftBaseline + transfer, 0.001) &&
                 Near(out.Corners[1].UpForce, frontRightBaseline - transfer, 0.001),
                 "front bar shifts positive load to compressed wheel");
@@ -86,6 +88,7 @@ int main()
         s.Corners[0].Hit = false;
         const auto unloadedAxle = CalculateSprungChassis(s);
         Require(unloadedAxle.Valid && !unloadedAxle.Corners[0].Contact &&
+                unloadedAxle.AntiRollTransfer[0] == 0.0 &&
                 unloadedAxle.Corners[0].UpForce == 0.0 &&
                 Near(unloadedAxle.Corners[1].UpForce,
                      frontRightBaseline, 0.001),
@@ -95,6 +98,8 @@ int main()
         s.Corners[3].DistanceCm = 54.0;
         const auto rearOnly = CalculateSprungChassis(s);
         Require(rearOnly.Valid &&
+                rearOnly.AntiRollTransfer[1] < 0.0 &&
+                rearOnly.AntiRollTransfer[0] == 0.0 &&
                 Near(rearOnly.Corners[0].UpForce,
                      s.MassKg * 0.25 * s.GravityCmPerSecondSquared, 0.001) &&
                 rearOnly.Corners[3].UpForce > rearOnly.Corners[2].UpForce,
@@ -107,6 +112,7 @@ int main()
         s.Corners[1].PointVerticalSpeedCmPerSecond = 60.0;
         const auto rateDamping = CalculateSprungChassis(s);
         Require(rateDamping.Valid &&
+                rateDamping.AntiRollTransfer[0] > 0.0 &&
                 rateDamping.Corners[0].UpForce >
                     rateDamping.Corners[1].UpForce,
                 "anti-roll damper resists opposing corner vertical speeds");
@@ -354,6 +360,15 @@ int main()
                 (!matchingTyres.HasDriveContact ||
                     matchingTyres.ContactTractionScale > 0.0),
                 "120k loading frames never fabricate traction from empty spring forces");
+        Require(std::isfinite(out.AntiRollTransfer[0]) &&
+                std::isfinite(out.AntiRollTransfer[1]) &&
+                std::abs(out.AntiRollTransfer[0]) <=
+                    s.MassKg * s.GravityCmPerSecondSquared *
+                    SuspensionAntiRollMaxWeightFractionPerAxle + 0.001 &&
+                std::abs(out.AntiRollTransfer[1]) <=
+                    s.MassKg * s.GravityCmPerSecondSquared *
+                    SuspensionAntiRollMaxWeightFractionPerAxle + 0.001,
+                "front/rear axle transfers remain independent and bounded");
         int counted = 0;
         double sum = 0.0;
         for (const auto& c : out.Corners)
