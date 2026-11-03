@@ -120,7 +120,7 @@ class SuspensionTelemetryAuditTests(unittest.TestCase):
         with self.assertRaises(SuspensionAuditError):
             summarize_log(line() + " " + MARKER + line())
         with self.assertRaises(SuspensionAuditError):
-            summarize_log("prefix " + line()[:-3])
+            summarize_log("prefix " + line().replace(" rr_cm=59.0", ""))
         with self.assertRaises(SuspensionAuditError):
             summarize_log("\0" + line())
         with self.assertRaises(SuspensionAuditError):
