@@ -33,6 +33,8 @@ struct SuspensionFrame final
 {
     double DeltaSeconds = 0.0;
     double MassKg = 0.0;
+    // Actual UWorld gravity magnitude, not an assumed universal fixed g.
+    double GravityCmPerSecondSquared = SuspensionGravityCmPerSecondSquared;
     bool PhysicsReady = false;
     std::array<SuspensionCornerObservation, 4> Corners{};
 };
@@ -65,7 +67,10 @@ inline SuspensionResponse CalculateSprungChassis(
         frame.DeltaSeconds <= 0.0 ||
         frame.DeltaSeconds > SuspensionMaximumFrameSeconds ||
         !std::isfinite(frame.MassKg) ||
-        frame.MassKg < 100.0 || frame.MassKg > 15000.0)
+        frame.MassKg < 100.0 || frame.MassKg > 15000.0 ||
+        !std::isfinite(frame.GravityCmPerSecondSquared) ||
+        frame.GravityCmPerSecondSquared < 100.0 ||
+        frame.GravityCmPerSecondSquared > 2000.0)
     {
         return {};
     }
@@ -86,12 +91,12 @@ inline SuspensionResponse CalculateSprungChassis(
     }
 
     const double quarterMass = frame.MassKg * 0.25;
-    const double spring = quarterMass * SuspensionGravityCmPerSecondSquared /
+    const double spring = quarterMass * frame.GravityCmPerSecondSquared /
         (SuspensionRestDistanceCm - SuspensionTargetRideDistanceCm);
     const double damping = 2.0 * SuspensionDampingRatio *
         std::sqrt(spring * quarterMass);
     const double maxCornerForce = frame.MassKg *
-        SuspensionGravityCmPerSecondSquared *
+        frame.GravityCmPerSecondSquared *
         SuspensionMaxPerCornerWeightFactor;
 
     SuspensionResponse result;
