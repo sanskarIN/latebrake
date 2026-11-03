@@ -24,6 +24,13 @@ inline constexpr double SuspensionMaxTraceDistanceCm = 280.0;
 // vertical-heave model. Real Chaos contact/handling remains unverified.
 inline constexpr double SuspensionMaxPerCornerWeightFactor = 0.85;
 inline constexpr double SuspensionDampingRatio = 0.78;
+// A modest axle-local anti-roll bar transfers *existing* positive spring
+// support between both loaded corners. It must never create net vertical
+// acceleration, pull at an airborne tire or exceed per-corner force caps.
+// Candidate values require real UE vehicle tuning at 30/60/120 FPS.
+inline constexpr double SuspensionAntiRollSpringFraction = 0.20;
+inline constexpr double SuspensionAntiRollDamperFraction = 0.08;
+inline constexpr double SuspensionAntiRollMaxWeightFractionPerAxle = 0.08;
 inline constexpr double SuspensionVisualMinTravelCm = -23.0;
 inline constexpr double SuspensionVisualMaxTravelCm = 25.0;
 
@@ -135,6 +142,56 @@ inline SuspensionResponse CalculateSprungChassis(
             SuspensionTargetRideDistanceCm - observed.DistanceCm,
             SuspensionVisualMinTravelCm, SuspensionVisualMaxTravelCm);
         result.TotalUpForce += output.UpForce;
+    }
+
+    // The same actual 4-corner sampling provides a modest front/rear
+    // anti-roll response. Pair order is FL/FR and RL/RR. A difference in
+    // measured corner compression/speed induces body-roll resistance by
+    // reallocating existing forces within that axle only.
+    //
+    // IMPORTANT: no synthetic downforce. Transfers are equal-and-opposite
+    // changes in POSITIVE support, bounded by the source's donor load and
+    // the destination corner's pre-existing physical force ceiling. The
+    // sum remains exactly the original suspension total. With one tire
+    // airborne there is no anti-roll force at that axle.
+    const double antiRollMaxTransfer =
+        result.WeightForce * SuspensionAntiRollMaxWeightFractionPerAxle;
+    for (unsigned left = 0; left < 4; left += 2)
+    {
+        const unsigned right = left + 1;
+        auto& l = result.Corners[left];
+        auto& r = result.Corners[right];
+        if (!l.Contact || !r.Contact || l.UpForce <= 0.0 ||
+            r.UpForce <= 0.0)
+        {
+            continue;
+        }
+        const auto& lo = frame.Corners[left];
+        const auto& ro = frame.Corners[right];
+        // More-compressed/dropping side gets more support to resist body
+        // roll. At identical road heights and corner speeds, transfer=0.
+        const double requested =
+            SuspensionAntiRollSpringFraction * spring *
+                (ro.DistanceCm - lo.DistanceCm) +
+            SuspensionAntiRollDamperFraction * damping *
+                (ro.PointVerticalSpeedCmPerSecond -
+                 lo.PointVerticalSpeedCmPerSecond);
+        if (requested > 0.0)
+        {
+            const double transfer = std::min({
+                requested, antiRollMaxTransfer, r.UpForce,
+                maxCornerForce - l.UpForce});
+            l.UpForce += transfer;
+            r.UpForce -= transfer;
+        }
+        else if (requested < 0.0)
+        {
+            const double transfer = std::min({
+                -requested, antiRollMaxTransfer, l.UpForce,
+                maxCornerForce - r.UpForce});
+            r.UpForce += transfer;
+            l.UpForce -= transfer;
+        }
     }
     return result;
 }
