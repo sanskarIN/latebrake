@@ -26,7 +26,7 @@ class VehicleGForceBindingTests(unittest.TestCase):
             "bool ALatebrakeCarPawn::IsRacePhysicsReady()", 1
         )[0]
         for required in (
-            "if (!Mode || !Mode->IsRaceStartGreen()",
+            "const bool bPreGreen = Mode && !Mode->IsRaceStartGreen();",
             "if (!IsRacePhysicsReady())",
             "GetPhysicsLinearVelocity()",
             "FMath::IsFinite(Velocity.X)",
