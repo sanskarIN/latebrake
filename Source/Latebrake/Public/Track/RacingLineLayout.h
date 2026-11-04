@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Track/CircuitLayout.h"
+#include "Track/CircuitCollisionPlan.h"
 
 #include <cmath>
 
@@ -31,6 +32,42 @@ inline constexpr int RacingLineMarkCount =
 inline constexpr double RacingLineInsetCm = 250.0;
 inline constexpr double RacingLineTurnRadiusCm = 650.0;
 inline constexpr double RacingLinePi = 3.14159265358979323846;
+
+// The actual four physical asphalt blocks, not the decorative marker height,
+// are the single source of truth for the guide's vertical placement. Engine
+// Cube geometry is 100 cm on each side. At 0.8 cm thickness and 0.25 cm
+// separation, the bottom face is very close to but ABOVE the road surface.
+inline constexpr double RacingLineCubeSizeCm = 100.0;
+inline constexpr double RacingLinePaintWidthCm = 20.0;
+inline constexpr double RacingLinePaintThicknessCm = 0.8;
+inline constexpr double RacingLinePaintSurfaceGapCm = 0.25;
+inline constexpr double RacingLineAsphaltTopCm =
+    PlannedCollisionBlock(1).Height +
+    0.5 * RacingLineCubeSizeCm * PlannedCollisionBlock(1).ScaleZ;
+inline constexpr double RacingLinePaintCenterZCm =
+    RacingLineAsphaltTopCm + RacingLinePaintSurfaceGapCm +
+    0.5 * RacingLinePaintThicknessCm;
+
+static_assert(PlannedCollisionBlock(1).Style == CollisionBlockStyle::Asphalt);
+static_assert(PlannedCollisionBlock(2).Style == CollisionBlockStyle::Asphalt);
+static_assert(PlannedCollisionBlock(3).Style == CollisionBlockStyle::Asphalt);
+static_assert(PlannedCollisionBlock(4).Style == CollisionBlockStyle::Asphalt);
+static_assert(
+    RacingLineAsphaltTopCm ==
+    PlannedCollisionBlock(2).Height +
+        0.5 * RacingLineCubeSizeCm * PlannedCollisionBlock(2).ScaleZ &&
+    RacingLineAsphaltTopCm ==
+    PlannedCollisionBlock(3).Height +
+        0.5 * RacingLineCubeSizeCm * PlannedCollisionBlock(3).ScaleZ &&
+    RacingLineAsphaltTopCm ==
+    PlannedCollisionBlock(4).Height +
+        0.5 * RacingLineCubeSizeCm * PlannedCollisionBlock(4).ScaleZ,
+    "The visual guide assumes four asphalt surfaces share one top height");
+static_assert(RacingLinePaintWidthCm > 0.0 &&
+              RacingLinePaintThicknessCm > 0.0 &&
+              RacingLinePaintSurfaceGapCm > 0.0 &&
+              RacingLinePaintSurfaceGapCm < 1.0,
+              "Paint must fit the road without z-fighting or large floating gaps");
 
 // Counter-clockwise lap: south eastbound, east northbound, north westbound,
 // west southbound. A turn follows each straight. The line sits 250 cm
