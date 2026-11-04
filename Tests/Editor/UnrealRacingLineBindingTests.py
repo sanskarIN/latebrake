@@ -227,10 +227,11 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn('if not engine.startswith("5.8.")', author)
         self.assertIn('main()', author)
         self.assertIn('+DirectoriesToAlwaysCook=(Path="/Game/Materials")', config)
-        # Source scripts do not produce .uasset bytes outside real UE Editor.
-        self.assertFalse(
-            (ROOT / "Content/Materials/M_RacingLineGuide.uasset").is_file()
-        )
+        # A future genuine UE-authored asset must NOT fail source-only CI.
+        # Only the licensed Editor serializer, not raw Python bytes, may
+        # create the .uasset in the actual project.
+        self.assertNotIn("write_bytes(", author)
+        self.assertNotIn("open(ASSET_FILE, \"wb\")", author)
 
     def test_portable_geometry_and_qa_are_registered(self):
         cmake = CMAKE.read_text(encoding="utf-8")
