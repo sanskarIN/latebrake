@@ -26,8 +26,13 @@ materials, track layouts or car art.
   the real four collision-bearing slabs, not an independent hard-coded Z.
   Their actual in-engine appearance still needs real Win64 evaluation.
 - Optional material tint requests teal on straight marks and amber on turns.
-  Engine-supplied materials may ignore the `Color` parameter and render
-  white. Artwork and legibility must therefore be checked in real Unreal.
+  A **new Editor-only script** can author a genuine `M_RacingLineGuide.uasset`
+  with a real `Color` vector parameter, and the GameMode uses the asset if
+  loaded and verified. Missing or incompatible material is reported as
+  `LATEBRAKE_RACING_LINE_MATERIAL authored=no` and falls back to a neutral
+  stock appearance. The actual binary asset is **not in this source PR yet**,
+  and visual quality still requires genuine Unreal tests. See
+  [material authoring and cook QA](RACING_LINE_MATERIAL.md).
 - This does **not** affect track physics, AI drive path, road traction,
   authoritative checkpoints, lap times, recovery, race credits, save data,
   existing nine collision-bearing blocks, or the four-gate startup audit.
@@ -97,6 +102,13 @@ python ./scripts/Verify-RacingLineRuntimeLog.py 'D:\LateBrakePlaytestLogs\YourAc
 pwsh ./scripts/Run-WindowsPlaytest.ps1 -CandidateDirectory 'D:\LateBrakeCandidates\YourActualCandidate' -RequireRacingLineToggle
 ```
 
+The stricter Windows `-RequireRacingLineToggle` playtest also passes
+`--require-authored-material`: it rejects absent/incompatible material
+and requires a source-observed `authored=yes` marker **before** the READY
+marker. A standalone parser invocation without that flag can still audit
+legacy neutral-white source candidates, but cannot qualify final colors.
+See [licensed Editor material authoring](RACING_LINE_MATERIAL.md).
+
 The parser requires a single exact construction event
 `LATEBRAKE_RACING_LINE_READY marks=88/88 straight=48 corner=40 collision=off`,
 a single genuine `LatebrakeCircuit` 4/4 checkpoint startup marker **after**
@@ -158,7 +170,10 @@ mutation in the optional visual function. **Neither suite compiles Unreal.**
       session-local, no SaveGame write occurs, and the optional HUD row
       does not hide timing or checkpoint information.
 - [ ] Check 720p/1080p/high-DPI visibility, colorblind distinguishability,
-      material fallback, frame times and shadows on tested hardware.
+      material fallback, frame times and shadows on tested hardware. Before
+      claiming final teal/amber colors, author/commit the genuine UE5.8
+      material, verify it is cooked, and observe both colors on screen; the
+      `authored=yes` source marker alone does not prove shader pixels.
 - [ ] Drive in both directions, stop over marks, collide with outer walls,
       recover and restart; cosmetics must not alter road contact, steering,
       rival path, checkpoints or rewards.
