@@ -151,7 +151,10 @@ if (Test-Path -LiteralPath $log -PathType Leaf) {
         } else {
             try {
                 $guideArgs = @($guideAuditor, $log)
-                if ($RequireRacingLineToggle) { $guideArgs += '--require-toggle' }
+                if ($RequireRacingLineToggle) {
+                    $guideArgs += '--require-toggle'
+                    $guideArgs += '--require-authored-material'
+                }
                 & $python.Source @guideArgs
                 if ($LASTEXITCODE -ne 0) {
                     throw "Racing-line parser returned exit code $LASTEXITCODE."
