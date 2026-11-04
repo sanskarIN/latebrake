@@ -62,6 +62,40 @@ ctest --test-dir build/racing-line -R '^RacingLineLayout$' --output-on-failure
 python3 -m unittest discover -s Tests/Editor -p 'UnrealRacingLineBindingTests.py' -v
 ```
 
+## Actual Windows source-log verification
+
+After a real UE 5.8 Development Win64 candidate is cooked and launched, use
+the **real, unmodified diagnostic log**, not a pasted test fixture. Press **L**
+twice while the local race is active: the guide should disappear and reappear.
+Keep the full package, SHA256 manifest, runtime receipt, and visual evidence.
+
+```powershell
+# First run an independently built and launched genuine Windows candidate.
+pwsh ./scripts/Build-WindowsPlaytest.ps1 -EngineRoot 'D:\UE_5.8' -Launch
+# Replace with the actual log filename printed by the launcher.
+python ./scripts/Verify-RacingLineRuntimeLog.py 'D:\LateBrakePlaytestLogs\YourActualSession.log' --require-toggle
+```
+
+The parser requires a single exact construction event
+`LATEBRAKE_RACING_LINE_READY marks=88/88 straight=48 corner=40 collision=off`,
+a single genuine `LatebrakeCircuit` 4/4 checkpoint startup marker **after**
+guide creation, no INCOMPLETE or startup BLOCKED event, and alternating
+observed `visible=off` then `visible=on` input events. Malformed counts,
+duplicate starts, mismatched maps, invalid order or missing toggles fail.
+Run without `--require-toggle` only when checking construction, not control
+behavior. Event logs are emitted by the actual GameMode in non-Shipping builds.
+
+This parser is **not security attestation**: synthetic/editable log text can
+pass, and messages alone cannot prove engine provenance, draw colors, surface
+contact, input responsiveness, a genuine packaged EXE, or FPS. Independently
+run `scripts/Verify-RuntimeStartupLog.ps1` for the existing **9/9 collision,
+7/93 scenery and 4/4 gate** startup audit, and review the hash-bound private
+Windows candidate receipt and actual on-screen behavior.
+
+CI source-parser regression fixtures live in
+`Tests/Editor/RacingLineRuntimeLogTests.py`. They deliberately inject fake
+logs and MUST NOT be presented as hardware/playable evidence.
+
 The portable C++20 regression checks all 88 transforms are finite,
 on-pavement and forwards, rejects invalid indices, verifies the **full rotated
 rectangle** of every stripe lies on a real collision-bearing asphalt slab,
