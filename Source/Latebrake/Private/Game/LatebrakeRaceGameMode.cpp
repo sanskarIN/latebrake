@@ -786,6 +786,28 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
     // material fallback; no source-only test can claim actual color output.
     UMaterialInterface* AuthoredMaterial = LoadObject<UMaterialInterface>(
         nullptr, TEXT("/Game/Materials/M_RacingLineGuide.M_RacingLineGuide"));
+    if (IsValid(AuthoredMaterial))
+    {
+        // An arbitrary asset at the expected path does not prove it has
+        // the Color shader parameter. Reject mismatched artist revisions
+        // instead of reporting a false "authored=yes" visual contract.
+        TArray<FMaterialParameterInfo> ParameterInfos;
+        TArray<FGuid> ParameterIds;
+        AuthoredMaterial->GetAllVectorParameterInfo(ParameterInfos, ParameterIds);
+        bool bHasColor = false;
+        for (const FMaterialParameterInfo& Info : ParameterInfos)
+        {
+            if (Info.Name == FName(TEXT("Color")))
+            {
+                bHasColor = true;
+                break;
+            }
+        }
+        if (!bHasColor)
+        {
+            AuthoredMaterial = nullptr;
+        }
+    }
     UE_LOG(LogLatebrakeStartup, Display,
         TEXT("LATEBRAKE_RACING_LINE_MATERIAL authored=%s"),
         IsValid(AuthoredMaterial) ? TEXT("yes") : TEXT("no"));
