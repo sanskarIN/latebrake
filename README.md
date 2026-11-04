@@ -410,7 +410,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 Latebrake is free to develop and contribute to. Support is **optional** and confers no gameplay or racing advantage.
 
-- Buy Me a Coffee: https://buymeacoffee.com/SanskarCodes
+- Buy Me a Coffee: https://buymeacoffee.com/sanskarIN
 - Razorpay: https://razorpay.me/@SanskarCodes
 - PayPal.me: https://paypal.me/SanskarCodes
 
