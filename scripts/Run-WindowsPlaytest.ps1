@@ -47,6 +47,204 @@ $game = $executables[0]
 $gameSha256 = (Get-FileHash -LiteralPath $game.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 $manifestSha256 = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
 
+if ($RequireRacingLineToggle) {
+    # A source-log string can come from an earlier binary. The strict guide
+    # review only attributes a session to the EXACT current committed source;
+    # no archive can be tested as PR HEAD after its source has moved.
+    $sourceRoot = Split-Path -Parent $PSScriptRoot
+    $checkoutSha = @(& git -C $sourceRoot rev-parse --verify HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $checkoutSha.Count -ne 1 -or
+        $checkoutSha[0] -cnotmatch '^[0-9a-fA-F]{40}
+
+# Runtime logs must remain OUTSIDE the fingerprinted game archive. An extra
+# Saved/Logs file inside the candidate would invalidate its closed-world
+# manifest on subsequent QA checks.
+if ([string]::IsNullOrWhiteSpace($LogDirectory)) {
+    $LogDirectory = Join-Path (Split-Path -Parent $root) 'LateBrakePlaytestLogs'
+}
+# Check the candidate AND all output directory ancestors for junctions.
+# This blocks paths that look external but resolve back into a cooked archive.
+$absoluteLogs = & (Join-Path $PSScriptRoot 'Assert-SafeWindowsPlaytestLogDirectory.ps1') `
+    -CandidateRoot $root -LogDirectory $LogDirectory
+if (-not $?) { throw 'Unsafe Win64 runtime diagnostic directory.' }
+$session = 'LateBrake-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') +
+    '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+$log = Join-Path $absoluteLogs ($session + '.log')
+$receipt = Join-Path $absoluteLogs ($session + '.json')
+if ((Test-Path -LiteralPath $log -PathType Leaf) -or
+    (Test-Path -LiteralPath $receipt -PathType Leaf)) {
+    throw 'Refusing to overwrite an existing game log or session receipt.'
+}
+Write-Host "Launching real candidate: $($game.FullName)"
+Write-Host "Private Unreal log: $log"
+Write-Host 'Play the game yourself; close it to record exit information.'
+Write-Host 'This is a diagnostic run, NOT an automated gameplay qualification.'
+$started = [DateTimeOffset]::UtcNow
+$exitCode = $null
+$startFailure = $null
+try {
+    # -ABSLOG is documented by Epic. Explicitly quote a path with spaces
+    # because PowerShell Start-Process joins ArgumentList elements.
+    $argsForUnreal = @('-log', ('-ABSLOG="' + $log + '"'))
+    $process = Start-Process -FilePath $game.FullName -WorkingDirectory $game.DirectoryName -ArgumentList $argsForUnreal -PassThru -Wait -ErrorAction Stop
+    $exitCode = $process.ExitCode
+} catch {
+    $startFailure = $_.Exception.Message
+}
+$ended = [DateTimeOffset]::UtcNow
+
+# A real Unreal executable may write Saved/, cache or generated files
+# inside its packaged directory even when -ABSLOG points elsewhere.
+# Preserve the launch result in a private receipt, but NEVER claim the
+# cooked candidate is still fingerprint-identical without rechecking
+# ALL archive files, plus original manifest and executable hashes.
+$archiveIntegrityAtExitPass = $false
+$archiveIntegrityAtExitError = $null
+try {
+    & (Join-Path $PSScriptRoot 'Test-PostRunWin64CandidateIntegrity.ps1') `
+        -ManifestJson $manifest -GameExecutable $game.FullName `
+        -ExpectedManifestSha256 $manifestSha256 -ExpectedExecutableSha256 $gameSha256
+    if (-not $?) {
+        throw 'Post-run candidate archive integrity script reported failure.'
+    }
+    $archiveIntegrityAtExitPass = $true
+} catch {
+    $archiveIntegrityAtExitError = $_.Exception.Message
+}
+
+# Analyze original runtime startup markers when a log exists. The source
+# marker grammar can catch missing geometry/track initialization. It cannot
+# prove actual rendering, vehicle physics or installed gameplay.
+$startupLogMarkersPass = $false
+$startupLogError = $null
+if (Test-Path -LiteralPath $log -PathType Leaf) {
+    try {
+        & (Join-Path $PSScriptRoot 'Verify-RuntimeStartupLog.ps1') -LogPath $log
+        $startupLogMarkersPass = $true
+    } catch {
+        $startupLogError = $_.Exception.Message
+    }
+}
+
+# Cosmetic guide audit is separate from the mandatory nine-block/four-gate
+# startup gate. The opt-in switch requires a REAL non-Shipping session in
+# which the driver pressed L to hide AND show the guide. An absent Python
+# interpreter, missing log or invalid markers can never become a false PASS.
+# The default launcher remains usable on main (which lacks this draft guide).
+$racingLineSourceLogPass = $false
+$racingLineSourceLogError = $null
+if (Test-Path -LiteralPath $log -PathType Leaf) {
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        $racingLineSourceLogError = 'Python 3 is required for optional guide log verification.'
+    } else {
+        $guideAuditor = Join-Path $PSScriptRoot 'Verify-RacingLineRuntimeLog.py'
+        if (-not (Test-Path -LiteralPath $guideAuditor -PathType Leaf)) {
+            $racingLineSourceLogError = 'Optional guide log parser is missing from this checkout.'
+        } else {
+            try {
+                $guideArgs = @($guideAuditor, $log)
+                if ($RequireRacingLineToggle) { $guideArgs += '--require-toggle' }
+                & $python.Source @guideArgs
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Racing-line parser returned exit code $LASTEXITCODE."
+                }
+                $racingLineSourceLogPass = $true
+            } catch {
+                $racingLineSourceLogError = $_.Exception.Message
+            }
+        }
+    }
+} else {
+    $racingLineSourceLogError = 'Real Unreal ABSLOG is missing; guide was not observed.'
+}
+
+# Seal the exact finished Unreal log alongside the executable and
+# manifest. A missing/early-crash log remains a valid *failed* probe,
+# represented explicitly with null metadata; no success is inferred.
+$logPresent = Test-Path -LiteralPath $log -PathType Leaf
+$logSha256 = $null
+$logBytes = $null
+if ($logPresent) {
+    $logItem = Get-Item -LiteralPath $log -Force -ErrorAction Stop
+    if (($logItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw 'Refusing to seal a symlinked or junction-redirected runtime log.'
+    }
+    $logSha256 = (Get-FileHash -LiteralPath $log -Algorithm SHA256).Hash.ToLowerInvariant()
+    $logBytes = [int64]$logItem.Length
+}
+
+$report = [ordered]@{
+    schema_version = 2
+    status = 'UNVERIFIED_PERSONAL_RUNTIME_PROBE'
+    gameplay_verified = $false
+    source = 'locally_launched_packaged_win64_candidate'
+    candidate_directory = $root
+    executable_path = $game.FullName
+    executable_sha256 = $gameSha256
+    candidate_manifest_sha256 = $manifestSha256
+    candidate_integrity_at_exit_pass = $archiveIntegrityAtExitPass
+    candidate_integrity_at_exit_error = $archiveIntegrityAtExitError
+    started_utc = $started.ToString('o')
+    ended_utc = $ended.ToString('o')
+    runtime_seconds = [math]::Round(($ended - $started).TotalSeconds, 3)
+    process_exit_code = $exitCode
+    process_start_error = $startFailure
+    unreal_log_path = $log
+    unreal_log_present = $logPresent
+    unreal_log_sha256 = $logSha256
+    unreal_log_bytes = $logBytes
+    startup_log_markers_pass = $startupLogMarkersPass
+    startup_log_error = $startupLogError
+    racing_line_toggle_audit_requested = [bool]$RequireRacingLineToggle
+    racing_line_source_log_markers_pass = $racingLineSourceLogPass
+    racing_line_source_log_error = $racingLineSourceLogError
+    note = 'EXE exit status and a log never prove playable gameplay; record hands-on QA separately.'
+}
+$report | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $receipt -Encoding utf8 -NoNewline
+Write-Host "Private session receipt: $receipt"
+if ($report.unreal_log_present) {
+    Write-Host "Unreal wrote a diagnostic log: $log"
+} else {
+    Write-Warning 'No ABSLOG file was produced; inspect startup/crash and packaged Saved/Logs.'
+}
+if (-not $startupLogMarkersPass) {
+    Write-Warning "Track startup markers are NOT verified. Inspect $receipt and $log."
+}
+if (-not $racingLineSourceLogPass) {
+    Write-Warning "Optional racing-line source markers NOT verified: $racingLineSourceLogError"
+}
+if (-not $archiveIntegrityAtExitPass) {
+    # Do not discard crash/log diagnostics if the game wrote into or
+    # otherwise modified the sealed package. The private receipt is
+    # written first and explicitly marks the archive as NOT preserved.
+    throw "Packaged candidate changed or failed integrity after game exit: $archiveIntegrityAtExitError. Private receipt: $receipt"
+}
+if ($null -ne $startFailure) {
+    throw "The packaged EXE could not start: $startFailure. Session diagnostics: $receipt"
+}
+Write-Host "Packaged game exited with code $exitCode."
+if ($exitCode -ne 0) {
+    throw "The game returned a nonzero process exit code; inspect $receipt and $log."
+}
+if ($RequireRacingLineToggle -and
+    (-not $racingLineSourceLogPass -or -not $startupLogMarkersPass)) {
+    # Failure occurs AFTER the receipt and immutable-log digest are written.
+    # A guide cannot be considered qualified if its physical circuit's
+    # existing 9/9 blocks, 7/93 scenery and four-gate source audit failed.
+    throw "Required Win64 guide/track source-log audit failed. Guide: $racingLineSourceLogError; track: $startupLogError. Session diagnostics: $receipt"
+}
+Write-Host 'Process exited normally. Only hands-on controls, rendering, racing and save tests can confirm gameplay.'
+) {
+        throw 'Strict guide QA requires a real Git checkout pinned to the tested commit.'
+    }
+    $manifestMetadata = Get-Content -LiteralPath $manifest -Raw -ErrorAction Stop |
+        ConvertFrom-Json -ErrorAction Stop
+    if ($manifestMetadata.source_commit -cne $checkoutSha[0]) {
+        throw "Strict guide QA source mismatch: archived game $($manifestMetadata.source_commit) is not the checked-out revision $($checkoutSha[0])."
+    }
+}
+
 # Runtime logs must remain OUTSIDE the fingerprinted game archive. An extra
 # Saved/Logs file inside the candidate would invalidate its closed-world
 # manifest on subsequent QA checks.
