@@ -119,6 +119,8 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "RacingLineActor->SetActorHiddenInGame(!bRacingLineVisible);",
             toggle,
         )
+        self.assertIn("#if !UE_BUILD_SHIPPING", toggle)
+        self.assertIn("LATEBRAKE_RACING_LINE_VISIBILITY visible=%s", toggle)
         for forbidden in (
             "Race.Advance(", "Race.PassCheckpoint(", "SaveRecords(",
             "AddForce(", "EarnCredits(", "RegisterCheckpoint(",
@@ -165,6 +167,12 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn("RacingLinePaintSurfaceGapCm", self.policy)
         self.assertIn("RacingLinePaintCenterZCm", self.policy)
         self.assertIn("RACING_LINE_QA.md", nav)
+        validator = ROOT / "scripts/Verify-RacingLineRuntimeLog.py"
+        tests = ROOT / "Tests/Editor/RacingLineRuntimeLogTests.py"
+        self.assertTrue(validator.is_file())
+        self.assertTrue(tests.is_file())
+        self.assertIn("LATEBRAKE_RACING_LINE_READY", validator.read_text(encoding="utf-8"))
+        self.assertIn("require_toggle", validator.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
