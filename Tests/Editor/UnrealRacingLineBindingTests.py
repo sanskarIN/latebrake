@@ -186,10 +186,11 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn("racing_line_toggle_audit_requested", runner)
         self.assertIn("racing_line_source_log_markers_pass", runner)
         self.assertIn("racing_line_source_log_error", runner)
-        self.assertIn("if ($RequireRacingLineToggle -and -not $racingLineSourceLogPass)", runner)
+        self.assertIn("if ($RequireRacingLineToggle -and", runner)
+        self.assertIn("(-not $racingLineSourceLogPass -or -not $startupLogMarkersPass)", runner)
         self.assertLess(
             runner.index("$report | ConvertTo-Json"),
-            runner.index('throw "Required guide OFF/ON log audit failed:'),
+            runner.index('throw "Required Win64 guide/track source-log audit failed.'),
         )
         self.assertIn("gameplay_verified = $false", runner)
         # Actual hardware evidence is NOT provided by parser exit status.
