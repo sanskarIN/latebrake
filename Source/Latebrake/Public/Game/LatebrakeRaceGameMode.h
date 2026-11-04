@@ -118,6 +118,9 @@ public:
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
+    // Optional 3D circuit assistance only; no race timing or SaveGame state.
+    bool IsRacingLineVisible() const { return IsValid(RacingLineActor) && bRacingLineVisible; }
+    void ToggleRacingLineView();
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
     bool HasBestLapGhost() const { return GhostRecorder.HasBest(); }
@@ -218,6 +221,8 @@ private:
     uint64 GhostTeleportRevision = 0;
     uint64 GhostSessionRevision = 0;
     bool bCircuitReady = false;
+    // Cosmetic guide visibility is local to this world and is never saved.
+    bool bRacingLineVisible = true;
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
     latebrake::RestartPlacementGuard RestartPlacement;
@@ -243,6 +248,10 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<APlayerStart> RuntimePlayerStart;
+
+    // Optional guide holder spawned only after all instances are accepted.
+    UPROPERTY(Transient)
+    TObjectPtr<AActor> RacingLineActor;
 
     UPROPERTY(Transient)
     TObjectPtr<ALatebrakeRivalCar> RivalCar;
