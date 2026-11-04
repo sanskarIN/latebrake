@@ -16,8 +16,10 @@ materials, track layouts or car art.
   `CircuitLayout.h` road coordinates as the actual circuit and gates.
 - The guide is inset 250 cm towards the centre of the circuit to avoid the
   existing central road stripes. Four circular quarter-turns use a 650 cm
-  guide radius. Ground elevation is based on the existing asphalt slabs;
-  actual installed visual alignment has not yet been measured.
+  guide radius. The thin 0.8 cm high marks are placed with their undersides
+  just **0.25 cm above** the physical asphalt top. That top is derived from
+  the real four collision-bearing slabs, not an independent hard-coded Z.
+  Their actual in-engine appearance still needs real Win64 evaluation.
 - Optional material tint requests teal on straight marks and amber on turns.
   Engine-supplied materials may ignore the `Color` parameter and render
   white. Artwork and legibility must therefore be checked in real Unreal.
@@ -35,6 +37,8 @@ overlap generation and dynamic shadows. No game asset downloads are required.
   to toggle the **entire** guide on/off. The expanded desktop HUD shows
   `RACING LINE ON/OFF | L TO TOGGLE`; this label is omitted from the
   compact/mobile HUD to preserve driving and checkpoint readability.
+- If the optional actor fails to create, the non-compact desktop HUD
+  reports `RACING LINE UNAVAILABLE` instead of misleadingly saying OFF.
 - The preference begins **on**, persists only while the current world exists,
   and is never written to career/profile saves. It cannot award a lap,
   change driving inputs or alter any checkpoint, credit or result.
@@ -59,8 +63,10 @@ python3 -m unittest discover -s Tests/Editor -p 'UnrealRacingLineBindingTests.py
 ```
 
 The portable C++20 regression checks all 88 transforms are finite,
-on-pavement and forwards, rejects invalid indices, and verifies straight and
-corner counts and representative heading positions. Python verifies the
+on-pavement and forwards, rejects invalid indices, verifies the **full rotated
+rectangle** of every stripe lies on a real collision-bearing asphalt slab,
+and checks surface offset, exact 48/40 instance budgets, complete-loop
+continuity and representative headings. Python verifies the
 real Unreal C++ source **refers to** the geometry and prohibits gameplay
 mutation in the optional visual function. **Neither suite compiles Unreal.**
 
@@ -72,6 +78,10 @@ mutation in the optional visual function. **Neither suite compiles Unreal.**
 - [ ] Visually inspect all four corners from the default camera and the high
       chase preset; no floating/drowned marks, severe Z fighting or unreadable
       curves. Capture screenshots/video with package SHA and settings.
+- [ ] In the real Unreal Development log confirm
+      `LATEBRAKE_RACING_LINE_READY marks=88/88 straight=48 corner=40 collision=off`.
+      On injected optional failures, expect INCOMPLETE and a running race;
+      neither log string proves that actual materials rendered correctly.
 - [ ] Test the L key before GO, during a valid lap, after pause/resume,
       after a finished race and after restart. Confirm visibility is
       session-local, no SaveGame write occurs, and the optional HUD row
