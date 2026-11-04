@@ -15,6 +15,8 @@ PAWN_H = ROOT / "Source/Latebrake/Public/Vehicles/LatebrakeCarPawn.h"
 PAWN_CPP = ROOT / "Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp"
 INPUT = ROOT / "Config/DefaultInput.ini"
 HUD = ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
+WINDOWS_LAUNCHER = ROOT / "scripts/Run-WindowsPlaytest.ps1"
+WINDOWS_QA = ROOT / "docs/WINDOWS_PERSONAL_PLAYTEST.md"
 
 
 class UnrealRacingLineBindingTests(unittest.TestCase):
@@ -174,6 +176,25 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             hud.index('TEXT("CAMERA %s | C TO CYCLE")'),
             hud.index('TEXT("RACING LINE %s | L TO TOGGLE")'),
         )
+
+    def test_windows_runtime_receipt_observes_guide_without_qualifying_gameplay(self):
+        runner = WINDOWS_LAUNCHER.read_text(encoding="utf-8")
+        self.assertIn("[switch]$RequireRacingLineToggle", runner)
+        self.assertIn("$racingLineSourceLogPass = $false", runner)
+        self.assertIn("Verify-RacingLineRuntimeLog.py", runner)
+        self.assertIn("$guideArgs += '--require-toggle'", runner)
+        self.assertIn("racing_line_toggle_audit_requested", runner)
+        self.assertIn("racing_line_source_log_markers_pass", runner)
+        self.assertIn("racing_line_source_log_error", runner)
+        self.assertIn("if ($RequireRacingLineToggle -and -not $racingLineSourceLogPass)", runner)
+        self.assertLess(
+            runner.index("$report | ConvertTo-Json"),
+            runner.index('throw "Required guide OFF/ON log audit failed:'),
+        )
+        self.assertIn("gameplay_verified = $false", runner)
+        # Actual hardware evidence is NOT provided by parser exit status.
+        self.assertNotIn("gameplay_verified = $racingLineSourceLogPass", runner)
+        self.assertTrue(WINDOWS_QA.is_file())
 
     def test_portable_geometry_and_qa_are_registered(self):
         cmake = CMAKE.read_text(encoding="utf-8")
