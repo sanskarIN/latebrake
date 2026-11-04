@@ -1034,7 +1034,15 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
+    // Re-entry during editor/world reconstruction must not leave the old
+    // cosmetic guide alive or let a previous actor count as this map's
+    // successful optional batch. This never changes race/track authority.
+    if (IsValid(RacingLineActor))
+    {
+        RacingLineActor->Destroy();
+    }
     RacingLineActor = nullptr;
+    bRacingLineVisible = true;
     bCircuitReady = false;
     // Spawning an Actor does not prove rendering or collision on installed
     // devices, but failed block creation must never be hidden by the
