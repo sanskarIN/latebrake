@@ -13,6 +13,8 @@ spec.loader.exec_module(mod)
 
 READY = "LATEBRAKE_RACING_LINE_READY marks=88/88 straight=48 corner=40 collision=off"
 START = "LATEBRAKE_STARTUP_READY map=LatebrakeCircuit checkpoints=4/4"
+MATERIAL = "LATEBRAKE_RACING_LINE_MATERIAL authored=yes"
+FALLBACK = "LATEBRAKE_RACING_LINE_MATERIAL authored=no"
 
 
 def event(message):
@@ -71,6 +73,49 @@ class RacingLineRuntimeLogTests(unittest.TestCase):
             with self.subTest(log=log[-65:]):
                 with self.assertRaises(ValueError):
                     mod.verify(log, require_toggle=True)
+
+    def test_strict_authored_material_rejects_missing_fallback_and_late_status(self):
+        accepted = event(MATERIAL) + "\n" + sample()
+        self.assertEqual(
+            mod.verify(accepted, require_authored_material=True)[0],
+            "LatebrakeCircuit",
+        )
+        for log in (
+            sample(),
+            event(FALLBACK) + "\n" + sample(),
+            sample() + "\n" + event(MATERIAL),
+            event(MATERIAL) + "\n" + event(MATERIAL) + "\n" + sample(),
+            event("LATEBRAKE_RACING_LINE_MATERIAL authored=unknown")
+            + "\n" + sample(),
+            "LogTemp: Display: " + MATERIAL + "\n" + sample(),
+        ):
+            with self.subTest(log=log[:60]):
+                with self.assertRaises(ValueError):
+                    mod.verify(log, require_authored_material=True)
+
+    def test_strict_authored_material_command_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / "synthetic.log"
+            log.write_text(
+                event(MATERIAL) + "\n" + sample(
+                    "LATEBRAKE_RACING_LINE_VISIBILITY visible=off",
+                    "LATEBRAKE_RACING_LINE_VISIBILITY visible=on",
+                ), encoding="utf-8",
+            )
+            command = [
+                sys.executable, str(SCRIPT), str(log),
+                "--require-toggle", "--require-authored-material",
+            ]
+            valid = subprocess.run(command, text=True, capture_output=True)
+            self.assertEqual(valid.returncode, 0, valid.stderr)
+            log.write_text(
+                event(FALLBACK) + "\n" + sample(
+                    "LATEBRAKE_RACING_LINE_VISIBILITY visible=off",
+                    "LATEBRAKE_RACING_LINE_VISIBILITY visible=on",
+                ), encoding="utf-8",
+            )
+            rejected = subprocess.run(command, text=True, capture_output=True)
+            self.assertNotEqual(rejected.returncode, 0)
 
     def test_real_command_line_acceptance_and_rejection(self):
         with tempfile.TemporaryDirectory() as tmp:
