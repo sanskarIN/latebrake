@@ -34,6 +34,16 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::RegisterCheckpoint(", 1
         )[0]
         self.assertIn("BuildRacingLine(DecorationMesh);", build)
+        # A newly constructed map owns exactly one optional guide. Editor
+        # re-entry must discard the previous actor and restore default ON.
+        self.assertIn("if (IsValid(RacingLineActor))", build)
+        self.assertIn("RacingLineActor->Destroy();", build)
+        self.assertIn("RacingLineActor = nullptr;", build)
+        self.assertIn("bRacingLineVisible = true;", build)
+        self.assertLess(
+            build.index("RacingLineActor->Destroy();"),
+            build.index("BuildRacingLine(DecorationMesh);"),
+        )
         self.assertLess(
             build.index("BuildCornerApproachChevrons(DecorationMesh);"),
             build.index("BuildRacingLine(DecorationMesh);"),
