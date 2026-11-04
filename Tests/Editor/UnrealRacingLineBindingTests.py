@@ -180,6 +180,14 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
     def test_windows_runtime_receipt_observes_guide_without_qualifying_gameplay(self):
         runner = WINDOWS_LAUNCHER.read_text(encoding="utf-8")
         self.assertIn("[switch]$RequireRacingLineToggle", runner)
+        self.assertIn("if ($RequireRacingLineToggle) {", runner)
+        self.assertIn("git -C $sourceRoot rev-parse --verify HEAD", runner)
+        self.assertIn("$manifestMetadata.source_commit -cne $checkoutSha[0]", runner)
+        self.assertIn("Strict guide QA source mismatch", runner)
+        self.assertLess(
+            runner.index("Strict guide QA source mismatch"),
+            runner.index("Launching real candidate:"),
+        )
         self.assertIn("$racingLineSourceLogPass = $false", runner)
         self.assertIn("Verify-RacingLineRuntimeLog.py", runner)
         self.assertIn("$guideArgs += '--require-toggle'", runner)
