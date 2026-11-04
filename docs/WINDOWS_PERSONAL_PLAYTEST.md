@@ -148,7 +148,13 @@ cooked archive and writes a source-log receipt **before** rejecting a
 missing/incomplete guide observation. Strict mode requires both the
 existing **9 physical road/collision blocks, 7 scenery groups/93 instances
 and four gate startup** audit and the new **88 racing-line instances
-(48 straight + 40 corner), collision-off, OFF/ON events** audit.
+(48 straight + 40 corner), collision-off, OFF/ON events** audit. It now
+also requires `LATEBRAKE_RACING_LINE_MATERIAL authored=yes`, proving only
+that a project-owned material exposing the `Color` vector parameter was
+loaded. The asset must be created in the genuine Editor and committed
+through LFS first; see [guide material authoring](RACING_LINE_MATERIAL.md).
+The default stock-material fallback deliberately does **not** qualify
+strict visual QA. This does not establish the actual pixel colors.
 
 For this optional audit, Python 3 must be available as `python` on the
 Windows PATH (no Python runtime is shipped with the game). Strict mode also
