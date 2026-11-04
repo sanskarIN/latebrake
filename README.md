@@ -99,8 +99,11 @@ corner marks now have exact batch capacities, a physical asphalt-derived
 elevation, 0.25 cm surface clearance and full-footprint geometric tests.
 This is cosmetic wayfinding only: it does not teach optimal braking, drive
 AI, change road physics, authorize gates, alter rewards or introduce an
-authored track asset. Portable C++20 and Unreal source-wiring tests are added;
-actual UE 5.8 compilation, road-level visuals and installed Windows driving
+authored track asset. Portable C++20 and Unreal source-wiring tests are added.
+A separate `scripts/Verify-RacingLineRuntimeLog.py` checks exact construction
+counts and observed OFF/ON visibility events in a **real Development log**;
+five synthetic regression cases validate the parser, not the game.
+Actual UE 5.8 compilation, road-level visuals and installed Windows driving
 remain unverified. [Racing-line QA](docs/RACING_LINE_QA.md).
 
 **Unreleased HUD source development:** The expanded desktop Unreal instrument
