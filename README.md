@@ -92,7 +92,8 @@ rendering/physics QA remains necessary; see
 **Unreleased Unreal 3D circuit guide (source candidate):** the actual
 GameMode can now spawn 88 short, non-colliding instanced marks forming a
 counter-clockwise inset reference line around the four original circuit corners.
-This is cosmetic wayfinding only: it does not teach optimal braking, drive AI,
+Press L on a qualified desktop race to hide/show the marks without
+saving the preference. This is cosmetic wayfinding only: it does not teach optimal braking, drive AI,
 change road physics, authorize gates, alter rewards or introduce an authored
 track asset. Portable C++20 geometry and Unreal-source wiring tests are added;
 actual UE 5.8 compilation, road-level visuals and installed Windows driving
