@@ -2,7 +2,7 @@
 
 **Status: Unreal source implementation only, NOT an installed or visually
 verified game.** This guide describes a cosmetic reference line for the
-existing single original clockwise circuit. It neither provides a genuine
+existing single original counter-clockwise circuit. It neither provides a genuine
 racing-school driving recommendation nor replaces authored production track
 materials, track layouts or car art.
 
