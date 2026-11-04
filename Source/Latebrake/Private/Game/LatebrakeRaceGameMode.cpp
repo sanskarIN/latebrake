@@ -18,6 +18,7 @@
 #include "Components/PointLightComponent.h"
 #include "Racing/StartGantryVisual.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
@@ -779,6 +780,16 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
         return;
     }
 
+    // A project-authored UE5.8 Material with a real vector parameter
+    // allows deterministic teal/amber batches when an authentic .uasset is
+    // committed and cooked. Old source-only builds retain neutral engine
+    // material fallback; no source-only test can claim actual color output.
+    UMaterialInterface* AuthoredMaterial = LoadObject<UMaterialInterface>(
+        nullptr, TEXT("/Game/Materials/M_RacingLineGuide.M_RacingLineGuide"));
+    UE_LOG(LogLatebrakeStartup, Display,
+        TEXT("LATEBRAKE_RACING_LINE_MATERIAL authored=%s"),
+        IsValid(AuthoredMaterial) ? TEXT("yes") : TEXT("no"));
+
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride =
         ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -855,8 +866,13 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
             Holder->Destroy();
             return;
         }
-        // Some stock engine materials do not expose Color; the fallback is
-        // a visible white mark, never a failed collision or startup gate.
+        // The authored parent exposes Color through its own shader graph.
+        // If the licensed Editor asset has not been saved/committed yet,
+        // preserve the original stock-mesh material as an honest fallback.
+        if (IsValid(AuthoredMaterial))
+        {
+            Instances->SetMaterial(0, AuthoredMaterial);
+        }
         if (UMaterialInstanceDynamic* Mat =
                 Instances->CreateAndSetMaterialInstanceDynamic(0))
         {
