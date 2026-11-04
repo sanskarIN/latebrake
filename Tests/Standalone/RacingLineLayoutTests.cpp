@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <initializer_list>
+#include <limits>
 #include <stdexcept>
 
 namespace
@@ -61,6 +62,36 @@ int main()
         Require(RacingLinePaintThicknessCm <= 1.0 &&
                 RacingLinePaintWidthCm == 20.0,
                 "paint strips must remain thin and readable");
+
+        // The production runtime geometry guard must reject corrupted
+        // placements before Unreal allocates a visible mesh.
+        const RacingLineMark validFirst = PlannedRacingLineMark(0);
+        Require(IsValidRacingLinePaintFootprint(validFirst),
+                "known-good first painted rectangle must be valid");
+        Require(!IsValidRacingLinePaintFootprint({}),
+                "uninitialized optional guide geometry must be invalid");
+        RacingLineMark offRoad = validFirst;
+        offRoad.Center.Y = SouthY + RoadHalfWidth -
+            RacingLinePaintWidthCm * 0.25;
+        Require(IsOnPavedSurface(offRoad.Center) &&
+                !IsValidRacingLinePaintFootprint(offRoad),
+                "a centre on road must not conceal a stripe edge on grass");
+        RacingLineMark invalidSection = validFirst;
+        invalidSection.Section = static_cast<RacingLineSection>(15);
+        Require(!IsValidRacingLinePaintFootprint(invalidSection),
+                "unsupported material section must reject painted geometry");
+        RacingLineMark invalidLength = validFirst;
+        invalidLength.LengthCm = 251.0;
+        Require(!IsValidRacingLinePaintFootprint(invalidLength),
+                "an oversized guide cube must never render");
+        RacingLineMark nonfinite = validFirst;
+        nonfinite.HeadingDegrees =
+            std::numeric_limits<double>::infinity();
+        Require(!IsValidRacingLinePaintFootprint(nonfinite),
+                "nonfinite guide headings must be rejected");
+        Require(!IsOnPhysicalRacingLineAsphalt(
+                    {std::numeric_limits<double>::quiet_NaN(), SouthY}),
+                "nonfinite asphalt sample must fail closed");
         Require(!PlannedRacingLineMark(-1).Valid &&
                 !PlannedRacingLineMark(RacingLineMarkCount).Valid &&
                 !PlannedRacingLineMark(1000000).Valid,
@@ -80,6 +111,8 @@ int main()
                     "segments must be visible but never span the whole road");
             Require(IsOnPavedSurface(mark.Center),
                     "every painted mark must stay on actual pavement");
+            Require(IsValidRacingLinePaintFootprint(mark),
+                    "every planned 3D stripe must pass production road-footprint gate");
             if (mark.Section == RacingLineSection::Straight)
             {
                 ++straight;
