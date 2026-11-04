@@ -6,7 +6,7 @@
 
 namespace latebrake
 {
-// Cosmetic reference line for the ONE original clockwise starter circuit.
+// Cosmetic reference line for the ONE original counter-clockwise starter circuit.
 // Not a vehicle path follower, racing instruction, collision object, speed
 // limit, checkpoint, official racing line, or proof of physical playability.
 // Centimetre coordinates are shared with the actual road and gates.
@@ -32,7 +32,7 @@ inline constexpr double RacingLineInsetCm = 250.0;
 inline constexpr double RacingLineTurnRadiusCm = 650.0;
 inline constexpr double RacingLinePi = 3.14159265358979323846;
 
-// Clockwise lap: south eastbound, east northbound, north westbound,
+// Counter-clockwise lap: south eastbound, east northbound, north westbound,
 // west southbound. A turn follows each straight. The line sits 250 cm
 // towards the infield so it does not cover the existing road-centre dashes.
 inline RacingLineMark PlannedRacingLineMark(int index) noexcept
