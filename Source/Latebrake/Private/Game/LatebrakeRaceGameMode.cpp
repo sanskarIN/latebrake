@@ -828,7 +828,8 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
         Instances->SetCanEverAffectNavigation(false);
         Instances->SetCastShadow(false);
         Instances->PreAllocateInstancesMemory(
-            latebrake::RacingLineMarkCount);
+            Section == 0 ? latebrake::RacingLineStraightPieceCount
+                         : latebrake::RacingLineCornerPieceCount);
         Holder->AddInstanceComponent(Instances);
         Instances->RegisterComponent();
         // Some stock engine materials do not expose Color; the fallback is
@@ -841,7 +842,8 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
         Sections[Section] = Instances;
     }
 
-    int32 Added = 0;
+    int32 AddedStraight = 0;
+    int32 AddedCorner = 0;
     for (int32 Index = 0; Index < latebrake::RacingLineMarkCount; ++Index)
     {
         const latebrake::RacingLineMark Mark =
@@ -863,22 +865,29 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
                     latebrake::RacingLineCubeSizeCm));
         if (Sections[Section]->AddInstance(Pose, false) >= 0)
         {
-            ++Added;
+            if (Section == 0) ++AddedStraight;
+            else ++AddedCorner;
         }
     }
-    if (Added == latebrake::RacingLineMarkCount)
+    const int32 Added = AddedStraight + AddedCorner;
+    // Verify both semantic batches, not merely the aggregate count.
+    if (Added == latebrake::RacingLineMarkCount &&
+        AddedStraight == latebrake::RacingLineStraightPieceCount &&
+        AddedCorner == latebrake::RacingLineCornerPieceCount)
     {
         RacingLineActor = Holder;
         Holder->SetActorHiddenInGame(!bRacingLineVisible);
         UE_LOG(LogLatebrakeStartup, Display,
-            TEXT("LATEBRAKE_RACING_LINE_READY marks=%d/%d collision=off"),
-            Added, latebrake::RacingLineMarkCount);
+            TEXT("LATEBRAKE_RACING_LINE_READY marks=%d/%d straight=%d corner=%d collision=off"),
+            Added, latebrake::RacingLineMarkCount,
+            AddedStraight, AddedCorner);
     }
     else
     {
         UE_LOG(LogLatebrakeStartup, Warning,
-            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE marks=%d/%d collision=off"),
-            Added, latebrake::RacingLineMarkCount);
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE marks=%d/%d straight=%d corner=%d collision=off"),
+            Added, latebrake::RacingLineMarkCount,
+            AddedStraight, AddedCorner);
         Holder->Destroy();
     }
 }
