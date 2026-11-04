@@ -744,6 +744,22 @@ void ALatebrakeRaceGameMode::BuildBrakingReferenceBoards(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::ToggleRacingLineView()
+{
+    // Input is cosmetic and only for a valid local race. A paused/menu
+    // frame cannot toggle state behind the UI; rival actors never call this.
+    if (!IsValid(RacingLineActor) || !bCircuitReady ||
+        !HasLocalPlayerDriver() || Menu.IsOpen() ||
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended() ||
+        Race.IsFinished() || !GetWorld() ||
+        UGameplayStatics::IsGamePaused(this))
+    {
+        return;
+    }
+    bRacingLineVisible = !bRacingLineVisible;
+    RacingLineActor->SetActorHiddenInGame(!bRacingLineVisible);
+}
+
 void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
 {
     // Optional painted, clockwise guide for the original four-turn circuit.
@@ -846,6 +862,8 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
     }
     if (Added == latebrake::RacingLineMarkCount)
     {
+        RacingLineActor = Holder;
+        Holder->SetActorHiddenInGame(!bRacingLineVisible);
         UE_LOG(LogLatebrakeStartup, Display,
             TEXT("LATEBRAKE_RACING_LINE_READY marks=%d/%d collision=off"),
             Added, latebrake::RacingLineMarkCount);
@@ -966,6 +984,7 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
+    RacingLineActor = nullptr;
     bCircuitReady = false;
     // Spawning an Actor does not prove rendering or collision on installed
     // devices, but failed block creation must never be hidden by the
