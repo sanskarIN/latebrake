@@ -77,6 +77,8 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "Instances->SetCastShadow(false);",
             "latebrake::RacingLineMarkCount",
             "latebrake::PlannedRacingLineMark(Index)",
+            "latebrake::IsValidRacingLinePaintFootprint(Mark)",
+            "reason=off_asphalt index=%d",
             "Mark.HeadingDegrees",
             "Mark.LengthCm / latebrake::RacingLineCubeSizeCm",
             "latebrake::RacingLinePaintCenterZCm",
@@ -185,6 +187,11 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn("RacingLineAsphaltTopCm", self.policy)
         self.assertIn("RacingLinePaintSurfaceGapCm", self.policy)
         self.assertIn("RacingLinePaintCenterZCm", self.policy)
+        self.assertIn("IsOnPhysicalRacingLineAsphalt(", self.policy)
+        self.assertIn("IsValidRacingLinePaintFootprint(", self.policy)
+        self.assertIn("PlannedCollisionBlock(index)", self.policy)
+        self.assertIn("longitudinal = -2; longitudinal <= 2", self.policy)
+        self.assertIn("lateral = -2; lateral <= 2", self.policy)
         self.assertIn("RACING_LINE_QA.md", nav)
         validator = ROOT / "scripts/Verify-RacingLineRuntimeLog.py"
         tests = ROOT / "Tests/Editor/RacingLineRuntimeLogTests.py"
