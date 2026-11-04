@@ -1082,9 +1082,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             Primary);
         // Display-only; no extra compact/mobile row is spent on a cosmetic
         // switch and no official race result depends on this preference.
-        Line(FString::Printf(TEXT("RACING LINE %s | L TO TOGGLE"),
-            Mode->IsRacingLineVisible() ? TEXT("ON") : TEXT("OFF")),
-            Primary);
+        const FString RacingLineLabel = Mode->IsRacingLineAvailable()
+            ? FString::Printf(TEXT("RACING LINE %s | L TO TOGGLE"),
+                  Mode->IsRacingLineVisible() ? TEXT("ON") : TEXT("OFF"))
+            : FString(TEXT("RACING LINE UNAVAILABLE"));
+        Line(RacingLineLabel, Primary);
     }
 
     // Measured in-game stopping projection, only while consecutive
