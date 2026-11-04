@@ -17,6 +17,8 @@ INPUT = ROOT / "Config/DefaultInput.ini"
 HUD = ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
 WINDOWS_LAUNCHER = ROOT / "scripts/Run-WindowsPlaytest.ps1"
 WINDOWS_QA = ROOT / "docs/WINDOWS_PERSONAL_PLAYTEST.md"
+MATERIAL_AUTHOR = ROOT / "scripts/Unreal/AuthorRacingLineMaterial.py"
+ENGINE_CONFIG = ROOT / "Config/DefaultEngine.ini"
 
 
 class UnrealRacingLineBindingTests(unittest.TestCase):
@@ -79,6 +81,10 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "Instances->SetCastShadow(false);",
             "latebrake::RacingLineMarkCount",
             "latebrake::PlannedRacingLineMark(Index)",
+            "LoadObject<UMaterialInterface>",
+            "/Game/Materials/M_RacingLineGuide.M_RacingLineGuide",
+            "LATEBRAKE_RACING_LINE_MATERIAL authored=%s",
+            "Instances->SetMaterial(0, AuthoredMaterial)",
             "latebrake::IsValidRacingLinePaintFootprint(Mark)",
             "reason=off_asphalt index=%d",
             "Mark.HeadingDegrees",
@@ -191,6 +197,7 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn("$racingLineSourceLogPass = $false", runner)
         self.assertIn("Verify-RacingLineRuntimeLog.py", runner)
         self.assertIn("$guideArgs += '--require-toggle'", runner)
+        self.assertIn("$guideArgs += '--require-authored-material'", runner)
         self.assertIn("racing_line_toggle_audit_requested", runner)
         self.assertIn("racing_line_source_log_markers_pass", runner)
         self.assertIn("racing_line_source_log_error", runner)
@@ -204,6 +211,26 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         # Actual hardware evidence is NOT provided by parser exit status.
         self.assertNotIn("gameplay_verified = $racingLineSourceLogPass", runner)
         self.assertTrue(WINDOWS_QA.is_file())
+
+    def test_authored_material_is_editor_owned_not_a_fabricated_binary(self):
+        author = MATERIAL_AUTHOR.read_text(encoding="utf-8")
+        config = ENGINE_CONFIG.read_text(encoding="utf-8")
+        self.assertIn('ASSET_PATH = f"{ASSET_DIRECTORY}/{ASSET_NAME}"', author)
+        self.assertIn('MATUSAGE_INSTANCED_STATIC_MESHES', author)
+        self.assertIn('MaterialExpressionVectorParameter', author)
+        self.assertIn('MP_BASE_COLOR', author)
+        self.assertIn('set_base_material_usage(', author)
+        self.assertIn('recompile_material(material)', author)
+        self.assertIn('save_loaded_asset(material, False)', author)
+        self.assertIn('get_vector_parameter_names(material)', author)
+        self.assertIn('asset_subsystem.does_asset_exist(ASSET_PATH)', author)
+        self.assertIn('if not engine.startswith("5.8.")', author)
+        self.assertIn('main()', author)
+        self.assertIn('+DirectoriesToAlwaysCook=(Path="/Game/Materials")', config)
+        # Source scripts do not produce .uasset bytes outside real UE Editor.
+        self.assertFalse(
+            (ROOT / "Content/Materials/M_RacingLineGuide.uasset").is_file()
+        )
 
     def test_portable_geometry_and_qa_are_registered(self):
         cmake = CMAKE.read_text(encoding="utf-8")
