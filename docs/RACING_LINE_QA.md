@@ -14,6 +14,11 @@ materials, track layouts or car art.
 - Exactly **88 planned cube instances** cover four sections, each containing
   12 straight and 10 corner dashes. The layout comes from the same
   `CircuitLayout.h` road coordinates as the actual circuit and gates.
+  Before spawning a mark the real GameMode now rechecks a **5x5 sampled,
+  rotated stripe footprint against the four actual asphalt collision slabs**.
+  An invalid piece logs `reason=off_asphalt`, discards the optional actor,
+  and leaves circuit readiness and scoring unchanged. This is a conservative
+  sampled runtime guard, not mathematically complete polygon coverage.
 - The guide is inset 250 cm towards the centre of the circuit to avoid the
   existing central road stripes. Four circular quarter-turns use a 650 cm
   guide radius. The thin 0.8 cm high marks are placed with their undersides
@@ -137,6 +142,12 @@ mutation in the optional visual function. **Neither suite compiles Unreal.**
 - [ ] Repeat a complete race and time attack with missing optional mesh
       or forced guide allocation failure; no false circuit-ready state,
       missing race clock or startup crash.
+- [ ] Deliberately perturb a guide mark's position in a **disposable local
+      source checkout** so its centre remains on road but an edge leaves
+      the physical slab. Confirm `reason=off_asphalt`, no READY marker,
+      non-crashing startup, HUD UNAVAILABLE, no guide collision, and a
+      fully playable four-gate circuit. Restore the clean PR commit for
+      any final candidate; never ship a source-perturbed build.
 
 Unverified geometry source does not create a new Windows EXE, Android APK,
 multi-GB art pack, professionally authored car model or stable release.
