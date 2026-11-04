@@ -119,7 +119,8 @@ public:
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
     // Optional 3D circuit assistance only; no race timing or SaveGame state.
-    bool IsRacingLineVisible() const { return IsValid(RacingLineActor) && bRacingLineVisible; }
+    bool IsRacingLineAvailable() const { return IsValid(RacingLineActor); }
+    bool IsRacingLineVisible() const { return IsRacingLineAvailable() && bRacingLineVisible; }
     void ToggleRacingLineView();
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
