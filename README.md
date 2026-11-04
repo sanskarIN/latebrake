@@ -104,9 +104,13 @@ The `scripts/Verify-RacingLineRuntimeLog.py` parser checks construction
 counts and observed OFF/ON visibility events in a **real Development log**.
 The private Win64 launcher now records an optional guide source-log result
 in its hash-bound session receipt; `-RequireRacingLineToggle` enforces the
-OFF/ON observation and original circuit startup gate without pretending
-it certifies playable gameplay. Synthetic regression cases test only the
-parser, not the game.
+OFF/ON observation, authored-material source and original circuit startup
+gate without pretending it certifies playable gameplay. A UE5.8 Editor
+script can author `M_RacingLineGuide.uasset` with a genuine `Color`
+parameter, but the binary asset has **not** yet been generated here:
+until it is committed through Git LFS the visual guide honestly uses the
+stock-material fallback. Synthetic regression cases test only the
+parser, not the game. [Material authoring](docs/RACING_LINE_MATERIAL.md).
 Actual UE 5.8 compilation, road-level visuals and installed Windows driving
 remain unverified. [Racing-line QA](docs/RACING_LINE_QA.md).
 
