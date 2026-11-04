@@ -18,6 +18,10 @@ HUD = ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
 WINDOWS_LAUNCHER = ROOT / "scripts/Run-WindowsPlaytest.ps1"
 WINDOWS_QA = ROOT / "docs/WINDOWS_PERSONAL_PLAYTEST.md"
 MATERIAL_AUTHOR = ROOT / "scripts/Unreal/AuthorRacingLineMaterial.py"
+MATERIAL_WRAPPER = ROOT / "scripts/New-RacingLineMaterial.ps1"
+MATERIAL_RECEIPT_GATE = ROOT / "scripts/Test-RacingLineMaterialReceipt.ps1"
+MATERIAL_RECEIPT_POLICY = ROOT / "scripts/Test-RacingLineMaterialReceiptPolicy.ps1"
+MATERIAL_AUTHOR_TEST = ROOT / "Tests/Editor/UnrealRacingLineMaterialAuthoringTests.py"
 ENGINE_CONFIG = ROOT / "Config/DefaultEngine.ini"
 
 
@@ -221,6 +225,11 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn('MP_BASE_COLOR', author)
         self.assertIn('set_base_material_usage(', author)
         self.assertIn('recompile_material(material)', author)
+        self.assertIn('racing-line-material-result.json', author)
+        self.assertIn('"schema_version": 1', author)
+        self.assertIn('"status": "saved_by_unreal_editor"', author)
+        self.assertIn('"sha256": checksum', author)
+        self.assertIn('RESULT_FILE.write_text(', author)
         self.assertIn('save_loaded_asset(material, False)', author)
         self.assertIn('get_vector_parameter_names(material)', author)
         self.assertIn('asset_subsystem.does_asset_exist(ASSET_PATH)', author)
@@ -232,6 +241,16 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         # create the .uasset in the actual project.
         self.assertNotIn("write_bytes(", author)
         self.assertNotIn("open(ASSET_FILE, \"wb\")", author)
+        wrapper = MATERIAL_WRAPPER.read_text(encoding="utf-8")
+        gate = MATERIAL_RECEIPT_GATE.read_text(encoding="utf-8")
+        policy = MATERIAL_RECEIPT_POLICY.read_text(encoding="utf-8")
+        self.assertTrue(MATERIAL_AUTHOR_TEST.is_file())
+        self.assertIn("Remove-Item -LiteralPath $receipt -Force", wrapper)
+        self.assertIn("Test-RacingLineMaterialReceipt.ps1", wrapper)
+        self.assertIn("Test-Path -LiteralPath $receipt", wrapper)
+        self.assertIn("Get-FileHash -LiteralPath $material.FullName -Algorithm SHA256", gate)
+        self.assertIn("record.sha256", gate)
+        self.assertIn("NOT an Unreal asset", policy)
 
     def test_portable_geometry_and_qa_are_registered(self):
         cmake = CMAKE.read_text(encoding="utf-8")
