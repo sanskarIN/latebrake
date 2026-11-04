@@ -12,13 +12,14 @@ import sys
 GUIDE = "LATEBRAKE_RACING_LINE_READY marks=88/88 straight=48 corner=40 collision=off"
 START = re.compile(r"LATEBRAKE_STARTUP_READY map=(\S+) checkpoints=4/4\Z")
 VIS = re.compile(r"LATEBRAKE_RACING_LINE_VISIBILITY visible=(on|off)\Z")
+MATERIAL = re.compile(r"LATEBRAKE_RACING_LINE_MATERIAL authored=(yes|no)\Z")
 # Accept normal Unreal timestamps/bracketed thread IDs, but reject a marker
 # merely quoted by an unrelated LogTemp message or diagnostic text.
 CATEGORY = re.compile(r"^(?:\[[^]\r\n]*\]\s*)*LogLatebrakeStartup:\s*")
 WORLD = re.compile(r"(?:^|[/\\]|_)LatebrakeCircuit\Z")
 
 
-def verify(text, require_toggle=False):
+def verify(text, require_toggle=False, require_authored_material=False):
     events = []
     for n, line in enumerate(text.splitlines(), 1):
         category = CATEGORY.match(line)
@@ -47,6 +48,14 @@ def verify(text, require_toggle=False):
         raise ValueError("Incorrect circuit world or checkpoint count.")
     if ready[0][0] >= start[0][0]:
         raise ValueError("Guide creation must precede startup readiness.")
+    materials = find("LATEBRAKE_RACING_LINE_MATERIAL")
+    if require_authored_material:
+        if len(materials) != 1 or MATERIAL.fullmatch(materials[0][1]) is None:
+            raise ValueError("Expected one recognized guide material source marker.")
+        if materials[0][1] != "LATEBRAKE_RACING_LINE_MATERIAL authored=yes":
+            raise ValueError("Fallback stock material cannot qualify finished guide visuals.")
+        if materials[0][0] >= ready[0][0]:
+            raise ValueError("Material source must be reported before guide creation.")
     toggles = []
     for n, msg in find("LATEBRAKE_RACING_LINE_VISIBILITY"):
         parsed = VIS.fullmatch(msg)
@@ -65,6 +74,8 @@ def main():
     args = argparse.ArgumentParser(description=__doc__)
     args.add_argument("log", type=Path)
     args.add_argument("--require-toggle", action="store_true")
+    args.add_argument("--require-authored-material", action="store_true",
+                      help="Require actual project-owned UE material source marker")
     options = args.parse_args()
     try:
         if not options.log.is_file() or options.log.stat().st_size > 64 * 1024 * 1024:
@@ -72,6 +83,7 @@ def main():
         world, toggles = verify(
             options.log.read_text(encoding="utf-8", errors="replace"),
             require_toggle=options.require_toggle,
+            require_authored_material=options.require_authored_material,
         )
     except (ValueError, OSError) as error:
         print(f"Racing-line source-log FAIL: {error}", file=sys.stderr)
