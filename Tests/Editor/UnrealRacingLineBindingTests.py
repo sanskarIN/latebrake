@@ -59,7 +59,10 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "latebrake::RacingLineMarkCount",
             "latebrake::PlannedRacingLineMark(Index)",
             "Mark.HeadingDegrees",
-            "Mark.LengthCm / 100.0",
+            "Mark.LengthCm / latebrake::RacingLineCubeSizeCm",
+            "latebrake::RacingLinePaintCenterZCm",
+            "latebrake::RacingLinePaintWidthCm",
+            "latebrake::RacingLinePaintThicknessCm",
             "Sections[Section]->AddInstance(Pose, false)",
             "LATEBRAKE_RACING_LINE_READY",
             "LATEBRAKE_RACING_LINE_INCOMPLETE",
@@ -83,6 +86,7 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         hud = HUD.read_text(encoding="utf-8")
         self.assertIn("void ToggleRacingLineView();", self.header)
         self.assertIn("bool IsRacingLineVisible() const", self.header)
+        self.assertIn("bool IsRacingLineAvailable() const", self.header)
         self.assertIn("TObjectPtr<AActor> RacingLineActor;", self.header)
         self.assertIn("bool bRacingLineVisible = true;", self.header)
         self.assertIn("void ToggleRacingLine();", pawn_h)
@@ -128,6 +132,8 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn("RacingLineActor = Holder;", guide)
         self.assertIn("RACING LINE %s | L TO TOGGLE", hud)
         self.assertIn("Mode->IsRacingLineVisible()", hud)
+        self.assertIn("Mode->IsRacingLineAvailable()", hud)
+        self.assertIn("RACING LINE UNAVAILABLE", hud)
         self.assertLess(
             hud.index('TEXT("CAMERA %s | C TO CYCLE")'),
             hud.index('TEXT("RACING LINE %s | L TO TOGGLE")'),
@@ -138,6 +144,13 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         nav = NAV.read_text(encoding="utf-8")
         self.assertIn("RacingLineLayoutTests.cpp", cmake)
         self.assertIn("NAME RacingLineLayout", cmake)
+        # Geometry uses the real physical road slabs, not a cosmetic Z
+        # constant that silently diverges from the road during development.
+        self.assertIn('#include "Track/CircuitCollisionPlan.h"', self.policy)
+        self.assertIn("PlannedCollisionBlock(1).Height", self.policy)
+        self.assertIn("RacingLineAsphaltTopCm", self.policy)
+        self.assertIn("RacingLinePaintSurfaceGapCm", self.policy)
+        self.assertIn("RacingLinePaintCenterZCm", self.policy)
         self.assertIn("RACING_LINE_QA.md", nav)
 
 
