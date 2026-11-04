@@ -27,9 +27,15 @@ materials, track layouts or car art.
   authoritative checkpoints, lap times, recovery, race credits, save data,
   existing nine collision-bearing blocks, or the four-gate startup audit.
 
-If the visual actor cannot be allocated, it is discarded and gameplay
-authorization stays independent. The actor disables collision and navigation,
-overlap generation and dynamic shadows. No game asset downloads are required.
+If the optional visual actor, scene root or either mesh batch fails to
+register, the guide is **destroyed** and race startup remains independent.
+The READY marker is emitted only after verifying the registered components'
+actual 48+40 instance counts, their expected shared mesh and the actor's
+disabled collision state. A missing/invalid source cube or a partly created
+visual is reported INCOMPLETE instead of falsely claiming readiness. These
+checks **cannot certify GPU rendering or a material's actual color**.
+The actor disables collision and navigation, overlap generation and dynamic
+shadows. No game asset downloads are required.
 
 ## Optional player visibility
 
