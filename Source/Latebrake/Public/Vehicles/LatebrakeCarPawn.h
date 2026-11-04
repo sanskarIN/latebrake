@@ -231,6 +231,7 @@ private:
     void LookBackPressed();
     void LookBackReleased();
     void ToggleBestLapGhost();
+    void ToggleRacingLine();
     void ApplyCameraPreset();
     void ResetSpeedCameraFov();
     void UpdateSpeedCameraFov(double FrameSeconds, double SignedForwardSpeedKmH);
