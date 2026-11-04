@@ -32,6 +32,7 @@ class FakeUnrealEditor:
 
     def __init__(self, directory):
         self.asset_path = Path(directory) / "Materials/M_RacingLineGuide.uasset"
+        self.receipt_path = Path(directory) / "Saved/LatebrakeAutomation/racing-line-material-result.json"
         self.existing = None
         self.version = "5.8.0-TEST-STUB"
         self.editor_available = True
@@ -59,7 +60,8 @@ class FakeUnrealEditor:
         fake.MaterialFactoryNew = lambda: object()
         fake.LinearColor = lambda *parts: tuple(parts)
         fake.Paths = types.SimpleNamespace(
-            project_content_dir=lambda: str(self.asset_path.parent.parent)
+            project_content_dir=lambda: str(self.asset_path.parent.parent),
+            project_saved_dir=lambda: str(self.receipt_path.parent.parent),
         )
         fake.SystemLibrary = types.SimpleNamespace(
             get_engine_version=lambda: self.version
@@ -146,6 +148,16 @@ class UnrealRacingLineMaterialAuthoringTests(unittest.TestCase):
         self.assertEqual(self.editor.created_node.properties["default_value"],
                          (1.0, 1.0, 1.0, 1.0))
         self.assertTrue(self.editor.asset_path.is_file())
+        import json
+        receipt = json.loads(self.editor.receipt_path.read_text(encoding="utf-8"))
+        self.assertEqual(receipt["schema_version"], 1)
+        self.assertEqual(receipt["status"], "saved_by_unreal_editor")
+        self.assertEqual(receipt["asset"], "/Game/Materials/M_RacingLineGuide")
+        self.assertEqual(receipt["operation"], "created")
+        self.assertEqual(receipt["color_parameter"], "Color")
+        self.assertIs(receipt["instanced_mesh_usage"], True)
+        self.assertEqual(receipt["bytes"], self.editor.asset_path.stat().st_size)
+        self.assertEqual(len(receipt["sha256"]), 64)
         self.assertTrue(any("status=created" in msg for msg in self.editor.logs))
         self.assertTrue(any("asset_sha256=" in msg for msg in self.editor.logs))
 
@@ -161,6 +173,9 @@ class UnrealRacingLineMaterialAuthoringTests(unittest.TestCase):
         self.assertEqual(self.editor.created_count, 0)
         self.assertEqual(self.editor.saved_count, 0)
         self.assertEqual(self.editor.asset_path.read_bytes(), original)
+        import json
+        receipt = json.loads(self.editor.receipt_path.read_text(encoding="utf-8"))
+        self.assertEqual(receipt["operation"], "validated_existing")
         self.assertTrue(any("status=validated_existing" in msg
                             for msg in self.editor.logs))
 
@@ -203,6 +218,7 @@ class UnrealRacingLineMaterialAuthoringTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, reason):
                     execute_with_stub(editor)
                 self.assertFalse(any("status=created" in msg for msg in editor.logs))
+                self.assertFalse(editor.receipt_path.exists())
 
     def test_missing_or_tiny_existing_file_is_not_authoring_success(self):
         material = FakeMaterial()
@@ -216,6 +232,7 @@ class UnrealRacingLineMaterialAuthoringTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "did not save a plausible"):
             execute_with_stub(self.editor)
         self.assertEqual(self.editor.saved_count, 0)
+        self.assertFalse(self.editor.receipt_path.exists())
 
 
 if __name__ == "__main__":
