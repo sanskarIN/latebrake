@@ -82,12 +82,19 @@ After a real UE 5.8 Development Win64 candidate is cooked and launched, use
 the **real, unmodified diagnostic log**, not a pasted test fixture. Press **L**
 twice while the local race is active: the guide should disappear and reappear.
 Keep the full package, SHA256 manifest, runtime receipt, and visual evidence.
+The private Win64 launcher can now **optionally** audit the guide and record
+the outcome in its sealed runtime receipt; Python 3 on the Windows PATH is
+needed for this parser, not for the original game launcher.
 
 ```powershell
 # First run an independently built and launched genuine Windows candidate.
 pwsh ./scripts/Build-WindowsPlaytest.ps1 -EngineRoot 'D:\UE_5.8' -Launch
 # Replace with the actual log filename printed by the launcher.
 python ./scripts/Verify-RacingLineRuntimeLog.py 'D:\LateBrakePlaytestLogs\YourActualSession.log' --require-toggle
+
+# Better: bind the strict guide audit to an existing genuine Win64
+# candidate launch AND its unmodified receipt/log SHA256:
+pwsh ./scripts/Run-WindowsPlaytest.ps1 -CandidateDirectory 'D:\LateBrakeCandidates\YourActualCandidate' -RequireRacingLineToggle
 ```
 
 The parser requires a single exact construction event
@@ -98,6 +105,16 @@ observed `visible=off` then `visible=on` input events. Malformed counts,
 duplicate starts, mismatched maps, invalid order or missing toggles fail.
 Run without `--require-toggle` only when checking construction, not control
 behavior. Event logs are emitted by the actual GameMode in non-Shipping builds.
+
+The existing launcher never silently marks gameplay complete. Its
+schema-2 private receipt now includes
+`racing_line_toggle_audit_requested`,
+`racing_line_source_log_markers_pass` and
+`racing_line_source_log_error`; strict mode also requires the existing
+9/9 physical block, 7/93 scenery and four-checkpoint startup log audit.
+The strict check fails **after** the exit receipt is saved, preserving
+crash and mismatch evidence. See
+[private Windows playtest instructions](WINDOWS_PERSONAL_PLAYTEST.md).
 
 This parser is **not security attestation**: synthetic/editable log text can
 pass, and messages alone cannot prove engine provenance, draw colors, surface
