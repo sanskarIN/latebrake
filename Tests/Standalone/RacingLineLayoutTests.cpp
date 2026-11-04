@@ -16,6 +16,25 @@ bool Near(double a, double b, double tolerance = 1.0e-8)
 {
     return std::abs(a - b) <= tolerance;
 }
+
+// Unlike the abstract paved-corridor test, this examines the actual top of
+// the four scale-100cm physical asphalt cubes instantiated by GameMode.
+bool LiesOnPhysicalAsphalt(latebrake::CircuitPoint p)
+{
+    for (int i = 1; i <= 4; ++i)
+    {
+        const auto slab = latebrake::PlannedCollisionBlock(i);
+        if (slab.Style != latebrake::CollisionBlockStyle::Asphalt) continue;
+        if (std::abs(p.X - slab.Center.X) <=
+                slab.ScaleX * latebrake::RacingLineCubeSizeCm * 0.5 &&
+            std::abs(p.Y - slab.Center.Y) <=
+                slab.ScaleY * latebrake::RacingLineCubeSizeCm * 0.5)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 }
 
 int main()
@@ -24,6 +43,19 @@ int main()
     try
     {
         Require(RacingLineMarkCount == 88, "expected bounded, fixed-size line");
+        Require(Near(RacingLineAsphaltTopCm, -1.0),
+                "painted guide must be positioned above actual asphalt top");
+        const double markBottom =
+            RacingLinePaintCenterZCm - RacingLinePaintThicknessCm * 0.5;
+        Require(Near(markBottom - RacingLineAsphaltTopCm,
+                     RacingLinePaintSurfaceGapCm),
+                "mesh underside must clear real asphalt by specified gap");
+        Require(RacingLinePaintSurfaceGapCm >= 0.1 &&
+                RacingLinePaintSurfaceGapCm < 0.5,
+                "avoid z-fighting and visibly floating stripes");
+        Require(RacingLinePaintThicknessCm <= 1.0 &&
+                RacingLinePaintWidthCm == 20.0,
+                "paint strips must remain thin and readable");
         Require(!PlannedRacingLineMark(-1).Valid &&
                 !PlannedRacingLineMark(RacingLineMarkCount).Valid &&
                 !PlannedRacingLineMark(1000000).Valid,
@@ -114,6 +146,28 @@ int main()
                 };
                 Require(IsOnPavedSurface(edge),
                         "guide stripe width must fit the paved circuit");
+            }
+
+            // An oriented 100-cm cube is a RECTANGLE, not just a point or
+            // line. Verify every physical painted corner fits an actual
+            // collision-bearing asphalt slab, even at the four junctions.
+            for (int longitudinal : {-1, 1})
+            {
+                for (int lateral : {-1, 1})
+                {
+                    const double halfLength =
+                        longitudinal * 0.5 * mark.LengthCm;
+                    const double halfWidth =
+                        lateral * 0.5 * RacingLinePaintWidthCm;
+                    const CircuitPoint footprint{
+                        mark.Center.X + halfLength * aheadX -
+                            halfWidth * aheadY,
+                        mark.Center.Y + halfLength * aheadY +
+                            halfWidth * aheadX
+                    };
+                    Require(LiesOnPhysicalAsphalt(footprint),
+                            "painted footprint corner is outside actual asphalt");
+                }
             }
         }
         // Golden placement, including the first and last turn. These positions
