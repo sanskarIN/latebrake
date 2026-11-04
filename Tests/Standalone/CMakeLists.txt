@@ -1778,7 +1778,7 @@ else()
 endif()
 add_test(NAME CornerApproachChevrons COMMAND latebrake_corner_chevron_tests)
 
-# Optional 88-piece clockwise driving reference, pure original-circuit
+# Optional 88-piece counter-clockwise driving reference, pure original-circuit
 # geometry with no additional Unreal content or gameplay authorization.
 add_executable(latebrake_racing_line_tests RacingLineLayoutTests.cpp)
 target_include_directories(latebrake_racing_line_tests PRIVATE
