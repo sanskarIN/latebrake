@@ -29,6 +29,12 @@ inline constexpr int RacingLineMarksPerSection =
     RacingLineStraightMarks + RacingLineCornerMarks;
 inline constexpr int RacingLineMarkCount =
     RacingLineSectionCount * RacingLineMarksPerSection;
+inline constexpr int RacingLineStraightPieceCount =
+    RacingLineSectionCount * RacingLineStraightMarks;
+inline constexpr int RacingLineCornerPieceCount =
+    RacingLineSectionCount * RacingLineCornerMarks;
+static_assert(RacingLineStraightPieceCount + RacingLineCornerPieceCount ==
+              RacingLineMarkCount);
 inline constexpr double RacingLineInsetCm = 250.0;
 inline constexpr double RacingLineTurnRadiusCm = 650.0;
 inline constexpr double RacingLinePi = 3.14159265358979323846;
