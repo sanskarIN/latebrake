@@ -27,12 +27,12 @@ class RacingLineRuntimeLogTests(unittest.TestCase):
     def test_ready_and_two_genuine_toggle_marker_shapes(self):
         self.assertEqual(mod.verify(sample()), ("LatebrakeCircuit", []))
         # Real Unreal logs often prepend a timestamp and thread ID.
-        timestamped = "\\n".join(
+        timestamped = "\n".join(
             "[2026.11.04-10.00.00:000][  0]" + line
             for line in sample().splitlines()
         )
         self.assertEqual(
-            mod.verify(timestamped.replace("\\n", "\n"))[0], "LatebrakeCircuit"
+            mod.verify(timestamped)[0], "LatebrakeCircuit"
         )
         log = sample("LATEBRAKE_RACING_LINE_VISIBILITY visible=off",
                      "LATEBRAKE_RACING_LINE_VISIBILITY visible=on")
