@@ -130,6 +130,19 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(", 1
         )[0]
         self.assertIn("RacingLineActor = Holder;", guide)
+        for required in (
+            "RacingLineStraightPieceCount",
+            "RacingLineCornerPieceCount",
+            "int32 AddedStraight = 0;",
+            "int32 AddedCorner = 0;",
+            "straight=%d corner=%d",
+            "Holder->Destroy();",
+        ):
+            self.assertIn(required, guide)
+        self.assertIn(
+            "Section == 0 ? latebrake::RacingLineStraightPieceCount",
+            guide,
+        )
         self.assertIn("RACING LINE %s | L TO TOGGLE", hud)
         self.assertIn("Mode->IsRacingLineVisible()", hud)
         self.assertIn("Mode->IsRacingLineAvailable()", hud)
