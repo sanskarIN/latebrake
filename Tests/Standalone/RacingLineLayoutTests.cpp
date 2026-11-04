@@ -70,6 +70,51 @@ int main()
         }
         Require(straight == 48 && corner == 40,
                 "each of four sections must include its own straight and bend");
+
+        // Validate the full loop, including the often-missed last-to-first
+        // seam. A mark can have a valid centre yet still point backwards,
+        // jump across the road, or place its actual cube tip off pavement.
+        for (int i = 0; i < RacingLineMarkCount; ++i)
+        {
+            const auto mark = PlannedRacingLineMark(i);
+            const auto next = PlannedRacingLineMark(
+                (i + 1) % RacingLineMarkCount);
+            const double radians =
+                mark.HeadingDegrees * RacingLinePi / 180.0;
+            const double aheadX = std::cos(radians);
+            const double aheadY = std::sin(radians);
+            const double dx = next.Center.X - mark.Center.X;
+            const double dy = next.Center.Y - mark.Center.Y;
+            Require(std::hypot(dx, dy) > 1.0 &&
+                    std::hypot(dx, dy) < 350.0,
+                    "guide marks must form a continuous bounded loop");
+            Require(dx * aheadX + dy * aheadY > 1.0,
+                    "successive guide marks must advance along the car heading");
+            double turn = next.HeadingDegrees - mark.HeadingDegrees;
+            while (turn < -180.0) turn += 360.0;
+            while (turn > 180.0) turn -= 360.0;
+            Require(turn >= -1.0 && turn < 10.0,
+                    "guide heading must turn smoothly in circuit direction");
+            // Verify both actual ends of the physical cube as well as centre
+            // and modest lateral width, not just mathematical anchor points.
+            for (int sign : {-1, 1})
+            {
+                CircuitPoint tip{
+                    mark.Center.X +
+                        sign * 0.5 * mark.LengthCm * aheadX,
+                    mark.Center.Y +
+                        sign * 0.5 * mark.LengthCm * aheadY
+                };
+                Require(IsOnPavedSurface(tip),
+                        "entire longitudinal guide segment must be on pavement");
+                CircuitPoint edge{
+                    mark.Center.X - sign * 10.0 * aheadY,
+                    mark.Center.Y + sign * 10.0 * aheadX
+                };
+                Require(IsOnPavedSurface(edge),
+                        "guide stripe width must fit the paved circuit");
+            }
+        }
         // Golden placement, including the first and last turn. These positions
         // and orientations must not silently invert when visual code changes.
         const auto first = PlannedRacingLineMark(0);
