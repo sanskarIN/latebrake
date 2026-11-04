@@ -758,6 +758,13 @@ void ALatebrakeRaceGameMode::ToggleRacingLineView()
     }
     bRacingLineVisible = !bRacingLineVisible;
     RacingLineActor->SetActorHiddenInGame(!bRacingLineVisible);
+#if !UE_BUILD_SHIPPING
+    // A source-backed QA observation of a real accepted L-key toggle.
+    // No location, player identity, telemetry or official score is logged.
+    UE_LOG(LogLatebrakeStartup, Display,
+        TEXT("LATEBRAKE_RACING_LINE_VISIBILITY visible=%s"),
+        bRacingLineVisible ? TEXT("on") : TEXT("off"));
+#endif
 }
 
 void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
