@@ -26,6 +26,14 @@ def sample(*extra):
 class RacingLineRuntimeLogTests(unittest.TestCase):
     def test_ready_and_two_genuine_toggle_marker_shapes(self):
         self.assertEqual(mod.verify(sample()), ("LatebrakeCircuit", []))
+        # Real Unreal logs often prepend a timestamp and thread ID.
+        timestamped = "\\n".join(
+            "[2026.11.04-10.00.00:000][  0]" + line
+            for line in sample().splitlines()
+        )
+        self.assertEqual(
+            mod.verify(timestamped.replace("\\n", "\n"))[0], "LatebrakeCircuit"
+        )
         log = sample("LATEBRAKE_RACING_LINE_VISIBILITY visible=off",
                      "LATEBRAKE_RACING_LINE_VISIBILITY visible=on")
         self.assertEqual(mod.verify(log, require_toggle=True)[1], ["off", "on"])
@@ -37,6 +45,7 @@ class RacingLineRuntimeLogTests(unittest.TestCase):
                    sample().replace("corner=40", "corner=39"),
                    sample().replace("collision=off", "collision=on"),
                    sample().replace("LatebrakeCircuit", "WrongMap"),
+                   sample().replace("LatebrakeCircuit", "BogusLatebrakeCircuit"),
                    sample().replace("checkpoints=4/4", "checkpoints=3/4"))
         for log in invalid:
             with self.subTest(log=log[:65]):
@@ -46,7 +55,9 @@ class RacingLineRuntimeLogTests(unittest.TestCase):
     def test_failure_markers_and_fake_categories_are_not_accepted(self):
         for log in (sample("LATEBRAKE_RACING_LINE_INCOMPLETE reason=mesh"),
                     sample("LATEBRAKE_STARTUP_BLOCKED reason=geometry"),
-                    "LogTemp: Display: " + READY + "\n" + event(START)):
+                    "LogTemp: Display: " + READY + "\n" + event(START),
+                    "LogTemp: Display: quoted " + event(READY) +
+                        "\n" + event(START)):
             with self.subTest(log=log[-65:]):
                 with self.assertRaises(ValueError):
                     mod.verify(log)
