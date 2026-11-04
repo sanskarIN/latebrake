@@ -12,14 +12,19 @@ import sys
 GUIDE = "LATEBRAKE_RACING_LINE_READY marks=88/88 straight=48 corner=40 collision=off"
 START = re.compile(r"LATEBRAKE_STARTUP_READY map=(\S+) checkpoints=4/4\Z")
 VIS = re.compile(r"LATEBRAKE_RACING_LINE_VISIBILITY visible=(on|off)\Z")
+# Accept normal Unreal timestamps/bracketed thread IDs, but reject a marker
+# merely quoted by an unrelated LogTemp message or diagnostic text.
+CATEGORY = re.compile(r"^(?:\[[^]\r\n]*\]\s*)*LogLatebrakeStartup:\s*")
+WORLD = re.compile(r"(?:^|[/\\]|_)LatebrakeCircuit\Z")
 
 
 def verify(text, require_toggle=False):
     events = []
     for n, line in enumerate(text.splitlines(), 1):
-        if "LogLatebrakeStartup:" not in line:
+        category = CATEGORY.match(line)
+        if category is None:
             continue
-        msg = line.split("LogLatebrakeStartup:", 1)[1].strip()
+        msg = line[category.end():].strip()
         for level in ("Display: ", "Warning: ", "Error: ", "Log: "):
             if msg.startswith(level):
                 msg = msg[len(level):].strip()
@@ -38,7 +43,7 @@ def verify(text, require_toggle=False):
     if len(start) != 1:
         raise ValueError("Expected exactly one four-gate circuit startup marker.")
     match = START.fullmatch(start[0][1])
-    if not match or not match.group(1).endswith("LatebrakeCircuit"):
+    if not match or not WORLD.search(match.group(1)):
         raise ValueError("Incorrect circuit world or checkpoint count.")
     if ready[0][0] >= start[0][0]:
         raise ValueError("Guide creation must precede startup readiness.")
