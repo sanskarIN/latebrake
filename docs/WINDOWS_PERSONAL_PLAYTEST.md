@@ -151,8 +151,13 @@ and four gate startup** audit and the new **88 racing-line instances
 (48 straight + 40 corner), collision-off, OFF/ON events** audit.
 
 For this optional audit, Python 3 must be available as `python` on the
-Windows PATH (no Python runtime is shipped with the game). Missing Python,
-missing log, malformed markers or absent toggles fail the opt-in check.
+Windows PATH (no Python runtime is shipped with the game). Strict mode also
+requires the candidate manifest's `source_commit` to match the **exact Git
+HEAD** of the current checkout *before* launching the EXE. If you updated
+the repository after building the candidate, check out its original commit
+for this test or build a new candidate; never relabel an old binary as a
+new PR revision. Missing Python, missing log, mismatched source SHA,
+malformed markers or absent toggles fail the opt-in check.
 Without this switch, the existing launcher still runs a real candidate
 and stores advisory guide status; it does not require the guide to be
 present on older/main-branch builds.
