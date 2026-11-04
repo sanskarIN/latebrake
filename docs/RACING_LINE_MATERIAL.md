@@ -25,23 +25,30 @@ at the intended racing-line PR source revision, run in PowerShell 7:
 
 ```powershell
 git lfs install
-$Editor = 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe'
-$Project = (Resolve-Path ./Latebrake.uproject).Path
-$Script = (Resolve-Path ./scripts/Unreal/AuthorRacingLineMaterial.py).Path
-& $Editor $Project "-ExecutePythonScript=$Script" '-unattended' '-nop4' '-nosplash'
-if ($LASTEXITCODE -ne 0) { throw 'UE Editor script process failed.' }
-if (-not (Test-Path ./Content/Materials/M_RacingLineGuide.uasset)) {
-    throw 'Real UE material asset is missing; inspect Unreal Editor logs.'
-}
-Get-FileHash ./Content/Materials/M_RacingLineGuide.uasset -Algorithm SHA256
+pwsh ./scripts/New-RacingLineMaterial.ps1 -EngineRoot 'C:\Program Files\Epic Games\UE_5.8'
 ```
 
-An Editor Python exception may not always make the Editor process exit
-nonzero; **always inspect Editor logs** for
-`LATEBRAKE_GUIDE_MATERIAL status=created` or `validated_existing`
-and the emitted `asset_sha256`. Compare the printed SHA256 to the
-PowerShell file hash. No offline Python library or fabricated binary can
-replace this real UE5.8 authoring step.
+The wrapper verifies the real Editor executable, UE 5.8 Build.version
+and project EngineAssociation, then removes any **previous authoring receipt**
+before invoking Unreal Editor Python. It requires both a saved material
+and a **new Editor-written receipt**, comparing asset identity, Color
+parameter, instanced-mesh usage, byte length and exact SHA256. A zero
+Editor process exit code alone is never accepted as authoring success.
+
+The receipt is stored at
+`Saved/LatebrakeAutomation/racing-line-material-result.json`.
+It is ignored by Git. This file is not a credential or proof of licensed
+engine provenance, compiled shader correctness or rendered colors.
+Inspect the material in the real Unreal Editor and retain the real log.
+
+To revalidate an existing, freshly generated receipt without relaunching:
+
+```powershell
+pwsh ./scripts/Test-RacingLineMaterialReceipt.ps1 -MaterialPath './Content/Materials/M_RacingLineGuide.uasset' -ReceiptPath './Saved/LatebrakeAutomation/racing-line-material-result.json'
+```
+
+The checker also runs in public CI against synthetic byte fixtures.
+Those files are **not** genuine Unreal material assets.
 
 The automation refuses to overwrite an existing material graph. It
 validates the `Color` parameter and instanced-mesh usage on existing
