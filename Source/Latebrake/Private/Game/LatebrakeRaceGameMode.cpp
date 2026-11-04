@@ -762,7 +762,7 @@ void ALatebrakeRaceGameMode::ToggleRacingLineView()
 
 void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
 {
-    // Optional painted, clockwise guide for the original four-turn circuit.
+    // Optional painted, counter-clockwise guide for the four-turn circuit.
     // This actor is intentionally separate from the nine audited collision
     // blocks and four real gates; no driving force, AI or reward reads it.
     if (!Mesh || !GetWorld())
@@ -849,12 +849,18 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
         if (!Mark.Valid) continue;
         const int32 Section =
             Mark.Section == latebrake::RacingLineSection::Corner ? 1 : 0;
-        // Asphalt upper surface sits at approximately Z = -1 cm. These
-        // 1.6 cm tall marks hover just above it without physics collision.
+        // Derived from the four REAL asphalt collision slabs. A thin paint
+        // cube floats only 0.25 cm above Z=-1 surface, rather than several
+        // centimetres above the pavement. Always collision-free.
         const FTransform Pose(
             FRotator(0.0, Mark.HeadingDegrees, 0.0),
-            FVector(Mark.Center.X, Mark.Center.Y, 2.5),
-            FVector(Mark.LengthCm / 100.0, 0.20, 0.016));
+            FVector(Mark.Center.X, Mark.Center.Y,
+                latebrake::RacingLinePaintCenterZCm),
+            FVector(Mark.LengthCm / latebrake::RacingLineCubeSizeCm,
+                latebrake::RacingLinePaintWidthCm /
+                    latebrake::RacingLineCubeSizeCm,
+                latebrake::RacingLinePaintThicknessCm /
+                    latebrake::RacingLineCubeSizeCm));
         if (Sections[Section]->AddInstance(Pose, false) >= 0)
         {
             ++Added;
