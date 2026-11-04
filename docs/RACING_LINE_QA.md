@@ -35,7 +35,10 @@ disabled collision state. A missing/invalid source cube or a partly created
 visual is reported INCOMPLETE instead of falsely claiming readiness. These
 checks **cannot certify GPU rendering or a material's actual color**.
 The actor disables collision and navigation, overlap generation and dynamic
-shadows. No game asset downloads are required.
+shadows. Circuit reconstruction first destroys a previously owned guide actor,
+clears its pointer, and restores the normal default ON visibility preference
+before creating fresh batches; it cannot silently reuse stale instances.
+No game asset downloads are required.
 
 ## Optional player visibility
 
