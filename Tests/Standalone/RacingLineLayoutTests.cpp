@@ -43,6 +43,11 @@ int main()
     try
     {
         Require(RacingLineMarkCount == 88, "expected bounded, fixed-size line");
+        Require(RacingLineStraightPieceCount == 48 &&
+                RacingLineCornerPieceCount == 40 &&
+                RacingLineStraightPieceCount +
+                    RacingLineCornerPieceCount == RacingLineMarkCount,
+                "guide must have exact planned batches for efficient rendering");
         Require(Near(RacingLineAsphaltTopCm, -1.0),
                 "painted guide must be positioned above actual asphalt top");
         const double markBottom =
