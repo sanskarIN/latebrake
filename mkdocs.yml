@@ -86,6 +86,7 @@ nav:
       - Braking-reference board QA: UNREAL_BRAKING_REFERENCE_BOARDS_QA.md
       - Corner approach chevrons QA: UNREAL_CORNER_APPROACH_CHEVRONS_QA.md
       - Racing line visual QA: RACING_LINE_QA.md
+      - Authored racing-line material: RACING_LINE_MATERIAL.md
       - Touch controls: TOUCH_CONTROLS.md
       - Sector timing: SECTOR_TIMING.md
       - Finish insights: FINISH_INSIGHTS.md
