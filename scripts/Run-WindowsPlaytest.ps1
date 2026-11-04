@@ -218,9 +218,11 @@ Write-Host "Packaged game exited with code $exitCode."
 if ($exitCode -ne 0) {
     throw "The game returned a nonzero process exit code; inspect $receipt and $log."
 }
-if ($RequireRacingLineToggle -and -not $racingLineSourceLogPass) {
+if ($RequireRacingLineToggle -and
+    (-not $racingLineSourceLogPass -or -not $startupLogMarkersPass)) {
     # Failure occurs AFTER the receipt and immutable-log digest are written.
-    # Do not retroactively change a saved session into a passing observation.
-    throw "Required guide OFF/ON log audit failed: $racingLineSourceLogError. Session diagnostics: $receipt"
+    # A guide cannot be considered qualified if its physical circuit's
+    # existing 9/9 blocks, 7/93 scenery and four-gate source audit failed.
+    throw "Required Win64 guide/track source-log audit failed. Guide: $racingLineSourceLogError; track: $startupLogError. Session diagnostics: $receipt"
 }
 Write-Host 'Process exited normally. Only hands-on controls, rendering, racing and save tests can confirm gameplay.'
