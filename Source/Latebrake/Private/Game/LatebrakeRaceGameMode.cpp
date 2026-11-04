@@ -871,7 +871,18 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
     {
         const latebrake::RacingLineMark Mark =
             latebrake::PlannedRacingLineMark(Index);
-        if (!Mark.Valid) continue;
+        // Never render a floating/detached reference just because a centre
+        // is on the abstract course. The exact real asphalt slabs are
+        // inspected at startup, including each rotated stripe's corners.
+        // A failed cosmetic guide must not block legitimate driving.
+        if (!latebrake::IsValidRacingLinePaintFootprint(Mark))
+        {
+            UE_LOG(LogLatebrakeStartup, Warning,
+                TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=off_asphalt index=%d"),
+                Index);
+            Holder->Destroy();
+            return;
+        }
         const int32 Section =
             Mark.Section == latebrake::RacingLineSection::Corner ? 1 : 0;
         // Derived from the four REAL asphalt collision slabs. A thin paint
