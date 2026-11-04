@@ -1080,6 +1080,11 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(TEXT("CAMERA %s | C TO CYCLE"),
             ANSI_TO_TCHAR(latebrake::CameraViewName(Car->GetCameraView()))),
             Primary);
+        // Display-only; no extra compact/mobile row is spent on a cosmetic
+        // switch and no official race result depends on this preference.
+        Line(FString::Printf(TEXT("RACING LINE %s | L TO TOGGLE"),
+            Mode->IsRacingLineVisible() ? TEXT("ON") : TEXT("OFF")),
+            Primary);
     }
 
     // Measured in-game stopping projection, only while consecutive
