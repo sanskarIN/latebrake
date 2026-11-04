@@ -772,7 +772,7 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
     // Optional painted, counter-clockwise guide for the four-turn circuit.
     // This actor is intentionally separate from the nine audited collision
     // blocks and four real gates; no driving force, AI or reward reads it.
-    if (!Mesh || !GetWorld())
+    if (!IsValid(Mesh) || !GetWorld())
     {
         UE_LOG(LogLatebrakeStartup, Warning,
             TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=missing_mesh_or_world"));
@@ -808,6 +808,13 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
     Holder->SetRootComponent(Root);
     Holder->AddInstanceComponent(Root);
     Root->RegisterComponent();
+    if (!Root->IsRegistered())
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=root_registration"));
+        Holder->Destroy();
+        return;
+    }
 
     UInstancedStaticMeshComponent* Sections[2]{};
     const FLinearColor Colors[2] = {
@@ -820,7 +827,7 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
             TEXT("RacingLineSection%d"), Section));
         UInstancedStaticMeshComponent* Instances =
             NewObject<UInstancedStaticMeshComponent>(Holder, Name);
-        if (!Instances)
+        if (!IsValid(Instances))
         {
             UE_LOG(LogLatebrakeStartup, Warning,
                 TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=instancer"));
@@ -839,6 +846,15 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
                          : latebrake::RacingLineCornerPieceCount);
         Holder->AddInstanceComponent(Instances);
         Instances->RegisterComponent();
+        if (!Instances->IsRegistered() ||
+            Instances->GetStaticMesh() != Mesh ||
+            Instances->GetCollisionEnabled() != ECollisionEnabled::NoCollision)
+        {
+            UE_LOG(LogLatebrakeStartup, Warning,
+                TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=component_registration"));
+            Holder->Destroy();
+            return;
+        }
         // Some stock engine materials do not expose Color; the fallback is
         // a visible white mark, never a failed collision or startup gate.
         if (UMaterialInstanceDynamic* Mat =
@@ -877,8 +893,20 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
         }
     }
     const int32 Added = AddedStraight + AddedCorner;
-    // Verify both semantic batches, not merely the aggregate count.
-    if (Added == latebrake::RacingLineMarkCount &&
+    // AddInstance success alone is not enough: the registered rendering
+    // components must contain the expected real per-batch instances.
+    const bool bComponentsReady =
+        IsValid(Sections[0]) && IsValid(Sections[1]) &&
+        Sections[0]->IsRegistered() && Sections[1]->IsRegistered() &&
+        Sections[0]->GetInstanceCount() ==
+            latebrake::RacingLineStraightPieceCount &&
+        Sections[1]->GetInstanceCount() ==
+            latebrake::RacingLineCornerPieceCount &&
+        !Holder->GetActorEnableCollision();
+    // Verify each semantic batch, physical component and disabled actor
+    // collision. Even a failed guide must never block circuit readiness.
+    if (bComponentsReady &&
+        Added == latebrake::RacingLineMarkCount &&
         AddedStraight == latebrake::RacingLineStraightPieceCount &&
         AddedCorner == latebrake::RacingLineCornerPieceCount)
     {
