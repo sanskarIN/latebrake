@@ -8,6 +8,7 @@ This script never handwrites, simulates or redistributes an Unreal asset.
 
 from pathlib import Path
 import hashlib
+import json
 
 import unreal
 
@@ -21,6 +22,11 @@ ASSET_FILE = (
 )
 COLOR_PARAMETER = "Color"
 INSTANCED_USAGE = unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES
+RESULT_FILE = (
+    Path(unreal.Paths.project_saved_dir())
+    / "LatebrakeAutomation"
+    / "racing-line-material-result.json"
+)
 
 
 def ensure_supported_editor() -> None:
@@ -99,6 +105,27 @@ def main() -> None:
     if not ASSET_FILE.is_file() or ASSET_FILE.stat().st_size < 1024:
         raise RuntimeError("Unreal did not save a plausible real .uasset file.")
     checksum = hashlib.sha256(ASSET_FILE.read_bytes()).hexdigest()
+    # Editor-only success receipt. The wrapper deletes the previous one
+    # BEFORE launching Unreal so a swallowed Python exception cannot make
+    # a stale receipt look like successful fresh material authoring.
+    RESULT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    RESULT_FILE.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "status": "saved_by_unreal_editor",
+                "engine_version": "5.8",
+                "asset": ASSET_PATH,
+                "operation": result,
+                "color_parameter": COLOR_PARAMETER,
+                "instanced_mesh_usage": True,
+                "bytes": ASSET_FILE.stat().st_size,
+                "sha256": checksum,
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
     unreal.log(f"LATEBRAKE_GUIDE_MATERIAL status={result} asset={ASSET_PATH}")
     unreal.log(f"LATEBRAKE_GUIDE_MATERIAL asset_sha256={checksum}")
     unreal.log(
