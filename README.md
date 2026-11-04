@@ -89,6 +89,15 @@ covered by C++20 and Unreal-source regression tests. Real UE 5.8
 rendering/physics QA remains necessary; see
 [drift combo QA](docs/DRIFT_COMBO_QA.md).
 
+**Unreleased Unreal 3D circuit guide (source candidate):** the actual
+GameMode can now spawn 88 short, non-colliding instanced marks forming a
+clockwise inset reference line around the four original circuit corners.
+This is cosmetic wayfinding only: it does not teach optimal braking, drive AI,
+change road physics, authorize gates, alter rewards or introduce an authored
+track asset. Portable C++20 geometry and Unreal-source wiring tests are added;
+actual UE 5.8 compilation, road-level visuals and installed Windows driving
+remain unverified. [Racing-line QA](docs/RACING_LINE_QA.md).
+
 **Unreleased HUD source development:** The expanded desktop Unreal instrument
 panel now includes a read-only **GATES credited / total** bar, updated only from
 accepted authoritative race checkpoint/lap counters. The new portable safety
