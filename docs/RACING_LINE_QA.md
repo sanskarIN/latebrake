@@ -106,6 +106,12 @@ duplicate starts, mismatched maps, invalid order or missing toggles fail.
 Run without `--require-toggle` only when checking construction, not control
 behavior. Event logs are emitted by the actual GameMode in non-Shipping builds.
 
+Before strict mode launches the packaged EXE, it additionally verifies
+that the archived candidate manifest's `source_commit` exactly matches
+the current local Git `HEAD`. A stale candidate or newer modified checkout
+is refused; use a clean checkout at the candidate's source SHA. No log
+parser should claim evidence for a different code revision.
+
 The existing launcher never silently marks gameplay complete. Its
 schema-2 private receipt now includes
 `racing_line_toggle_audit_requested`,
