@@ -29,6 +29,24 @@ If the visual actor cannot be allocated, it is discarded and gameplay
 authorization stays independent. The actor disables collision and navigation,
 overlap generation and dynamic shadows. No game asset downloads are required.
 
+## Optional player visibility
+
+- On a normal, qualified local race, press **L** on the desktop keyboard
+  to toggle the **entire** guide on/off. The expanded desktop HUD shows
+  `RACING LINE ON/OFF | L TO TOGGLE`; this label is omitted from the
+  compact/mobile HUD to preserve driving and checkpoint readability.
+- The preference begins **on**, persists only while the current world exists,
+  and is never written to career/profile saves. It cannot award a lap,
+  change driving inputs or alter any checkpoint, credit or result.
+- A missing/incomplete guide actor is reported as absent; toggle input
+  does nothing rather than creating a fictitious guide.
+- Menu, paused game, focus suspension, manual pause, finished race or a
+  missing local driver all reject toggle input. The physical rival cannot
+  change the local player's guide setting.
+- The key and source-level safety conditions are checked by the Python
+  Unreal wiring suite. Real keyboard focus behavior and on-screen text
+  placement must still be tested in Unreal/Win64.
+
 ## Source verification
 
 From the repository root:
@@ -54,6 +72,10 @@ mutation in the optional visual function. **Neither suite compiles Unreal.**
 - [ ] Visually inspect all four corners from the default camera and the high
       chase preset; no floating/drowned marks, severe Z fighting or unreadable
       curves. Capture screenshots/video with package SHA and settings.
+- [ ] Test the L key before GO, during a valid lap, after pause/resume,
+      after a finished race and after restart. Confirm visibility is
+      session-local, no SaveGame write occurs, and the optional HUD row
+      does not hide timing or checkpoint information.
 - [ ] Check 720p/1080p/high-DPI visibility, colorblind distinguishability,
       material fallback, frame times and shadows on tested hardware.
 - [ ] Drive in both directions, stop over marks, collide with outer walls,
