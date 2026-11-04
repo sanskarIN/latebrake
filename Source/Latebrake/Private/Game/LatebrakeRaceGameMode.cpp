@@ -40,6 +40,7 @@
 #include "Track/DecorationBatchPlan.h"
 #include "Track/BrakingReferenceBoards.h"
 #include "Track/CornerApproachChevrons.h"
+#include "Track/RacingLineLayout.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/CollisionBlockSetup.h"
@@ -743,6 +744,121 @@ void ALatebrakeRaceGameMode::BuildBrakingReferenceBoards(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
+{
+    // Optional painted, clockwise guide for the original four-turn circuit.
+    // This actor is intentionally separate from the nine audited collision
+    // blocks and four real gates; no driving force, AI or reward reads it.
+    if (!Mesh || !GetWorld())
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=missing_mesh_or_world"));
+        return;
+    }
+
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AActor* Holder = GetWorld()->SpawnActor<AActor>(
+        AActor::StaticClass(), FVector::ZeroVector,
+        FRotator::ZeroRotator, Params);
+    if (!IsValid(Holder))
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=actor_spawn"));
+        return;
+    }
+#if WITH_EDITOR
+    Holder->SetActorLabel(TEXT("LatebrakeRacingLine_NoCollision"));
+#endif
+    Holder->SetActorEnableCollision(false);
+    USceneComponent* Root =
+        NewObject<USceneComponent>(Holder, TEXT("RacingLineRoot"));
+    if (!Root)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=scene_root"));
+        Holder->Destroy();
+        return;
+    }
+    Root->SetMobility(EComponentMobility::Static);
+    Holder->SetRootComponent(Root);
+    Holder->AddInstanceComponent(Root);
+    Root->RegisterComponent();
+
+    UInstancedStaticMeshComponent* Sections[2]{};
+    const FLinearColor Colors[2] = {
+        FLinearColor(0.20f, 0.87f, 0.65f), // straight advisory
+        FLinearColor(0.97f, 0.65f, 0.15f)  // corner advisory
+    };
+    for (int32 Section = 0; Section < 2; ++Section)
+    {
+        const FName Name(*FString::Printf(
+            TEXT("RacingLineSection%d"), Section));
+        UInstancedStaticMeshComponent* Instances =
+            NewObject<UInstancedStaticMeshComponent>(Holder, Name);
+        if (!Instances)
+        {
+            UE_LOG(LogLatebrakeStartup, Warning,
+                TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=instancer"));
+            Holder->Destroy();
+            return;
+        }
+        Instances->SetupAttachment(Root);
+        Instances->SetMobility(EComponentMobility::Static);
+        Instances->SetStaticMesh(Mesh);
+        Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Instances->SetGenerateOverlapEvents(false);
+        Instances->SetCanEverAffectNavigation(false);
+        Instances->SetCastShadow(false);
+        Instances->PreAllocateInstancesMemory(
+            latebrake::RacingLineMarkCount);
+        Holder->AddInstanceComponent(Instances);
+        Instances->RegisterComponent();
+        // Some stock engine materials do not expose Color; the fallback is
+        // a visible white mark, never a failed collision or startup gate.
+        if (UMaterialInstanceDynamic* Mat =
+                Instances->CreateAndSetMaterialInstanceDynamic(0))
+        {
+            Mat->SetVectorParameterValue(TEXT("Color"), Colors[Section]);
+        }
+        Sections[Section] = Instances;
+    }
+
+    int32 Added = 0;
+    for (int32 Index = 0; Index < latebrake::RacingLineMarkCount; ++Index)
+    {
+        const latebrake::RacingLineMark Mark =
+            latebrake::PlannedRacingLineMark(Index);
+        if (!Mark.Valid) continue;
+        const int32 Section =
+            Mark.Section == latebrake::RacingLineSection::Corner ? 1 : 0;
+        // Asphalt upper surface sits at approximately Z = -1 cm. These
+        // 1.6 cm tall marks hover just above it without physics collision.
+        const FTransform Pose(
+            FRotator(0.0, Mark.HeadingDegrees, 0.0),
+            FVector(Mark.Center.X, Mark.Center.Y, 2.5),
+            FVector(Mark.LengthCm / 100.0, 0.20, 0.016));
+        if (Sections[Section]->AddInstance(Pose, false) >= 0)
+        {
+            ++Added;
+        }
+    }
+    if (Added == latebrake::RacingLineMarkCount)
+    {
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_RACING_LINE_READY marks=%d/%d collision=off"),
+            Added, latebrake::RacingLineMarkCount);
+    }
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE marks=%d/%d collision=off"),
+            Added, latebrake::RacingLineMarkCount);
+        Holder->Destroy();
+    }
+}
+
 void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
 {
     // Optional painted arrows on the left-hand approach shoulder.
@@ -1033,6 +1149,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     // nine-block/four-checkpoint collision and startup readiness audit.
     BuildBrakingReferenceBoards(DecorationMesh);
     BuildCornerApproachChevrons(DecorationMesh);
+    BuildRacingLine(DecorationMesh);
 
     // Visual-only pit beacon near the inside edge of the southern road.
     // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is
