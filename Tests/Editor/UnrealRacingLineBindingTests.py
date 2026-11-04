@@ -11,6 +11,10 @@ SOURCE = ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
 POLICY = ROOT / "Source/Latebrake/Public/Track/RacingLineLayout.h"
 CMAKE = ROOT / "Tests/Standalone/CMakeLists.txt"
 NAV = ROOT / "mkdocs.yml"
+PAWN_H = ROOT / "Source/Latebrake/Public/Vehicles/LatebrakeCarPawn.h"
+PAWN_CPP = ROOT / "Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp"
+INPUT = ROOT / "Config/DefaultInput.ini"
+HUD = ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
 
 
 class UnrealRacingLineBindingTests(unittest.TestCase):
@@ -71,6 +75,63 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, code)
+
+    def test_local_player_controls_optional_guide_without_race_mutation(self):
+        pawn_h = PAWN_H.read_text(encoding="utf-8")
+        pawn_cpp = PAWN_CPP.read_text(encoding="utf-8")
+        mapped = INPUT.read_text(encoding="utf-8")
+        hud = HUD.read_text(encoding="utf-8")
+        self.assertIn("void ToggleRacingLineView();", self.header)
+        self.assertIn("bool IsRacingLineVisible() const", self.header)
+        self.assertIn("TObjectPtr<AActor> RacingLineActor;", self.header)
+        self.assertIn("bool bRacingLineVisible = true;", self.header)
+        self.assertIn("void ToggleRacingLine();", pawn_h)
+        self.assertEqual(
+            mapped.count('+ActionMappings=(ActionName="RacingLineView",Key=L)'),
+            1,
+        )
+        self.assertEqual(
+            pawn_cpp.count(
+                'BindAction(TEXT("RacingLineView"), IE_Pressed, this, '
+                '&ALatebrakeCarPawn::ToggleRacingLine)'
+            ), 1,
+        )
+        input_method = pawn_cpp.split(
+            "void ALatebrakeCarPawn::ToggleRacingLine()", 1
+        )[1].split("void ALatebrakeCarPawn::ToggleBestLapGhost()", 1)[0]
+        self.assertIn("IsLocallyControlled()", input_method)
+        self.assertIn("Mode->ToggleRacingLineView();", input_method)
+        toggle = self.source.split(
+            "void ALatebrakeRaceGameMode::ToggleRacingLineView()", 1
+        )[1].split("void ALatebrakeRaceGameMode::BuildRacingLine(", 1)[0]
+        for guard in (
+            "!IsValid(RacingLineActor)", "!bCircuitReady",
+            "!HasLocalPlayerDriver()", "Menu.IsOpen()",
+            "AppFocusGuard.IsSuspended()", "ManualPause.IsSuspended()",
+            "Race.IsFinished()", "UGameplayStatics::IsGamePaused(this)",
+        ):
+            self.assertIn(guard, toggle)
+        self.assertIn(
+            "RacingLineActor->SetActorHiddenInGame(!bRacingLineVisible);",
+            toggle,
+        )
+        for forbidden in (
+            "Race.Advance(", "Race.PassCheckpoint(", "SaveRecords(",
+            "AddForce(", "EarnCredits(", "RegisterCheckpoint(",
+        ):
+            self.assertNotIn(forbidden, toggle)
+        guide = self.source.split(
+            "void ALatebrakeRaceGameMode::BuildRacingLine(", 1
+        )[1].split(
+            "void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(", 1
+        )[0]
+        self.assertIn("RacingLineActor = Holder;", guide)
+        self.assertIn("RACING LINE %s | L TO TOGGLE", hud)
+        self.assertIn("Mode->IsRacingLineVisible()", hud)
+        self.assertLess(
+            hud.index('TEXT("CAMERA %s | C TO CYCLE")'),
+            hud.index('TEXT("RACING LINE %s | L TO TOGGLE")'),
+        )
 
     def test_portable_geometry_and_qa_are_registered(self):
         cmake = CMAKE.read_text(encoding="utf-8")
