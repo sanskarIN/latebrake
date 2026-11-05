@@ -50,6 +50,26 @@ public:
             !ValidScale(ground.ContactTractionScale) ||
             !ValidScale(axles.RearDriveTractionScale) ||
             !ValidScale(axles.FrontSteeringTractionScale) ||
+            !ValidScale(axles.FrontAxleLoadRatio) ||
+            !ValidScale(axles.RearAxleLoadRatio) ||
+            // Current wheel count limits whole-body grip even when
+            // transient spring compression temporarily exceeds weight.
+            ground.ContactTractionScale >
+                (ground.SupportingProbes == 4 ? 1.0 :
+                 ground.SupportingProbes == 3 ? 0.75 :
+                 ground.SupportingProbes == 2 ? 0.45 : 0.0) + 1.0e-9 ||
+            // An axle can NEVER claim more power/steering than its own
+            // physical spring load and 2/1/0-contact eligibility.
+            axles.RearDriveTractionScale >
+                axles.RearAxleLoadRatio *
+                (axles.RearWheelContacts == 2 ? 1.0 :
+                 axles.RearWheelContacts == 1 ?
+                     OneDrivenWheelGripFraction : 0.0) + 1.0e-9 ||
+            axles.FrontSteeringTractionScale >
+                axles.FrontAxleLoadRatio *
+                (axles.FrontWheelContacts == 2 ? 1.0 :
+                 axles.FrontWheelContacts == 1 ?
+                     OneSteeringWheelGripFraction : 0.0) + 1.0e-9 ||
             axles.RearDriveTractionScale >
                 ground.ContactTractionScale + 1.0e-9 ||
             axles.FrontSteeringTractionScale >
