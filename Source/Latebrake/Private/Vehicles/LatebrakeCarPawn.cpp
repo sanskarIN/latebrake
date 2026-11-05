@@ -1185,16 +1185,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
-    // Resist actual planar motion, including reverse/sliding, rather than
-    // permanently damping all speeds by the same strong Chaos constant.
-    // Validate the proposed load BEFORE any motor/nitro/AI force this tick.
+    // Keep aerodynamic drag even in the air, but no tire rolling/shoulder
+    // force unless the SAME real four-spring frame supports body weight.
+    // WorldStatic ray hits with unloaded springs or an inverted chassis
+    // can never masquerade as a tire actually rolling on pavement.
+    const double SprungRoadLoadFraction = FMath::Clamp(
+        SpringResponse.TotalUpForce / SpringResponse.WeightForce, 0.0, 1.0);
     const latebrake::ProgressiveRoadLoadOutput RoadLoad =
         latebrake::CalculateProgressiveRoadLoad({
             static_cast<double>(DeltaSeconds),
             static_cast<double>(Velocity.X),
             static_cast<double>(Velocity.Y),
             static_cast<double>(Mass),
-            bArcade, Surface.OffPavement});
+            bArcade, Surface.OffPavement, SprungRoadLoadFraction});
     if (!RoadLoad.Valid)
     {
         RejectOptionalDriveAfterSpring(SpringResponse);
