@@ -37,6 +37,12 @@ int main()
     Require(!cadence.ShouldReport(tick, allLoaded, true),
             "heartbeat must reset the elapsed timer");
 
+    // Use an explicitly fresh publication boundary for an exact 12-tick
+    // cooldown. The heartbeat check above intentionally advanced one
+    // extra no-report tick; reusing its timer would cross 0.20 s early.
+    cadence.Reset();
+    Require(cadence.ShouldReport(tick, allLoaded, true),
+            "fresh observed boundary is the baseline for wheel-loss timing");
     // Front/rear loss must be recorded as soon as rate limiting permits,
     // rather than being hidden behind the previous two-second schedule.
     for (int i = 0; i < 12; ++i)
