@@ -77,6 +77,26 @@ int main()
     Check(steady.Valid && Near(steady.Ground.ContactTractionScale, 1.0),
           "flat equilibrium must keep the existing full-force baseline");
 
+    // A complete three-second 3/2/1 countdown keeps measuring physical
+    // spring contact but cannot command propulsion. With stable contact,
+    // the first real GO sample should already have full traction authority.
+    filter.Reset();
+    for (int gridFrame = 0; gridFrame < 180; ++gridFrame)
+    {
+        const auto grid = filter.Advance(1.0 / 60.0, flat.Ground, flat.Axles);
+        Check(grid.Valid, "pre-GO spring grip sample must remain valid");
+        Check(grid.Axles.RearDriveTractionScale <=
+                  flat.Axles.RearDriveTractionScale &&
+              grid.Axles.FrontSteeringTractionScale <=
+                  flat.Axles.FrontSteeringTractionScale,
+              "countdown cannot exceed measured spring axle grip");
+    }
+    const auto firstGreen = filter.Advance(1.0 / 60.0, flat.Ground, flat.Axles);
+    Check(firstGreen.Valid &&
+          Near(firstGreen.Axles.RearDriveTractionScale, 1.0) &&
+          Near(firstGreen.Axles.FrontSteeringTractionScale, 1.0),
+          "settled 3-second grid must avoid artificial motor/yaw lag on GO");
+
     // Front axle over empty pavement: motor authority is immediately zero,
     // even though front steering and whole-body support can remain.
     auto frontOnly = Flat();
