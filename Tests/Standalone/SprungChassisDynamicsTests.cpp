@@ -278,6 +278,18 @@ int main()
     s.PhysicsReady = false;
     Require(!CalculateSprungChassis(s).Valid,
             "unqualified physics cannot activate springs");
+    // The production Tick sends only supported short physics frames
+    // through this force path. At a finite 100ms engine hitch the real
+    // Chaos velocity is handled independently: this helper must reject
+    // unsupported samples, not fabricate a compensating spring impulse.
+    s = Resting();
+    s.DeltaSeconds = SuspensionMaximumFrameSeconds;
+    Require(CalculateSprungChassis(s).Valid,
+            "100ms suspension frame remains within the accepted boundary");
+    s = Resting();
+    s.DeltaSeconds = SuspensionMaximumFrameSeconds + 0.000001;
+    Require(!CalculateSprungChassis(s).Valid,
+            "just-over-boundary hitch cannot submit spring forces");
     s = Resting();
     s.DeltaSeconds = 0.11;
     Require(!CalculateSprungChassis(s).Valid,
