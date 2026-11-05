@@ -92,6 +92,54 @@ This change is the start of **one production-quality car-driving foundation**:
   skeletal car assets or professional animation. The original rigid
   box chassis still supplies the collision response.
 
+## Safe rear-drive and front-steer reattachment (source candidate)
+
+The initial four-corner spring controller already drops whole-car force
+when actual measured support vanishes. The new
+`Vehicles/SprungGripReattachment.h` prevents a single lucky road trace
+on landing from immediately restoring the **full rear-drive motor/boost**
+or **front-yaw steering** torque. It is wired into
+`ALatebrakeCarPawn::Tick` after physical spring/axle observation and
+before the first motor/steer force submission:
+
+- **Lose grip immediately:** missing rear loads zero rear motor authority
+  that same frame; missing front loads zero steering torque that same
+  frame. Full airborne / unqualified frames cannot retain stale state.
+- **Earn it back by real re-contact:** each axle's measured authority
+  can increase by at most `6 × valid frame seconds` (0.10 at 60 FPS;
+  full authority after at least about 0.17 seconds with continuous
+  genuine support). Any *smaller* measured force ceiling applies
+  immediately. A frame hitch greater than 0.10 seconds or invalid
+  axle state resets the response.
+- **Do not weaken emergency braking:** the filtered output preserves
+  the raw, already-measured whole-chassis `ContactTractionScale`.
+  Service braking, handbrake, and lateral grip keep their immediate
+  physically limited support budget; ONLY rear-drive and front-yaw
+  traction gain are rate limited.
+- **Reset on lifecycle boundaries:** race stats/reset, pause toggle,
+  recovery, neutralized race/physics state and non-simulating physics
+  frames discard saved authority. A fresh 3/2/1 grid countdown can
+  settle both the physical springs and these motor/steer authority
+  states without allowing pre-GO acceleration.
+- **One measured sample:** no extra wheel traces, actors, tire art,
+  SaveGame writes, lap claims, network calls or telemetry side effects.
+
+`Tests/Standalone/SprungGripReattachmentTests.cpp` reuses the genuine
+production spring, ground-contact and axle load algorithms. It covers
+30/60/120 FPS, snap loss of rear support, separate axle reattachment,
+airborne no-grip, malformed/hitch frames, reset behavior, and **100,000
+deterministic changing-contact frames** with source ceilings verified
+each frame. Editor-source binding tests assert reset and force dispatch
+order; these are not substitutes for real licensed Chaos/UHT validation.
+
+**Manual acceptance still required:** on an authorized UE 5.8 runner
+compile the exact PR commit, package an original map, test the same
+vehicle on an installed Win64 candidate at 30/60/120 FPS, and observe
+a real contact-loss/landing run with measured force, braking and
+steering. Reject the feature if braking loses responsiveness or
+re-contact feels delayed or unstable. Do not claim an excellent or
+playable racing game from source tests alone.
+
 ## Numerical source tests
 
 `Tests/Standalone/SprungChassisDynamicsTests.cpp` compiles the actual
