@@ -865,11 +865,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const FVector Forward =
         FVector(ChassisForward.X, ChassisForward.Y, 0.f).GetSafeNormal();
     const FVector Right(-Forward.Y, Forward.X, 0.f);
-    if (Forward.IsNearlyZero())
-    {
-        NeutralizeMotionWhenDrivingBlocked();
-        return;
-    }
+    // A car nearly standing on its nose can have no usable planar heading.
+    // Do not freeze Chaos here: genuine wheel support and gravity must still
+    // be applied later in this Tick, so the chassis can naturally settle.
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
     if (!FMath::IsFinite(Velocity.X) || !FMath::IsFinite(Velocity.Y) ||
         !FMath::IsFinite(Velocity.Z))
@@ -1071,6 +1069,20 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // A later rejected drive frame still needs gravity-balanced wheel
     // loading; this call is exclusive with the pre-green settling branch.
     ApplySprungForces(SpringResponse, WheelWorldAnchors);
+
+    // A nose-up/nose-down chassis may have an almost zero XY heading.
+    // Its REAL springs have already been submitted. Never send a motor,
+    // steering or skid correction through an undefined horizontal axis;
+    // equally, never zero Chaos linear/angular velocity here, since doing
+    // so every frame could prevent the body from tipping back onto the road.
+    if (Forward.IsNearlyZero())
+    {
+        ClearDriverInputs();
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
+        return;
+    }
+
     // One accepted physics frame only: the HUD never repeats a stale
     // ground observation after pause, lost input or failed recovery.
     LastGroundContact = GroundContact;
