@@ -302,8 +302,8 @@ private:
     // Actual world-contact spring force response for this Chaos frame.
     // Only the visual child wheels read this; saves and race authority do not.
     latebrake::SuspensionResponse LastSuspension{};
-    // Traction falls immediately with physical support, then ramps back only
-    // after fresh qualified spring/axle observations; never saved or scored.
+    // Rear motor/front steering authority falls immediately on contact
+    // loss and ramps back on measured re-contact. Braking is not delayed.
     latebrake::SprungGripReattachment GripReattachment;
 #if !UE_BUILD_SHIPPING
     // At most one non-shipping diagnostic record per 2 seconds; no disk IO,
