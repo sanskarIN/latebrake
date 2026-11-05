@@ -808,6 +808,35 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             FVector(GridAngular.X, GridAngular.Y, 0.f));
     }
 
+    // A long *finite* game frame is not an OS pause or a broken Chaos
+    // body. The spring and grip policies correctly reject >100ms samples,
+    // but routing that rejection through NeutralizeMotionWhenDrivingBlocked
+    // would zero both physical velocities. On a slow machine it could stop
+    // the car in mid-air or repeatedly freeze normal corner recovery.
+    // Stop stale driver/AI force authority and observations for this frame,
+    // while Chaos collision/gravity and already measured momentum continue
+    // naturally. Invalid bodies and actual race/menu pauses still use the
+    // strong velocity-neutralization gate above.
+    //
+    // This follows the pre-green XY/yaw lock so a frame hitch never lets
+    // a grid car roll forward before the authoritative GO transition.
+    if (FMath::IsFinite(DeltaSeconds) &&
+        static_cast<double>(DeltaSeconds) >
+            latebrake::SuspensionMaximumFrameSeconds)
+    {
+        ClearDriverInputs();
+        ApplySignalLights(false, false, 0.0);
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
+        DrivingStats.Suspend();
+        DriftMeter.Suspend();
+        GForceMeter.Suspend();
+        SlipAngleMeter.Suspend();
+        // ClearDriverInputs suspends the rest of the transient drive,
+        // service, surface, tire and HUD state; no force is sent to Chaos.
+        return;
+    }
+
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
         // A rejected physics frame must not leave last tick's full road
