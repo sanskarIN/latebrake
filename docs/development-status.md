@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90), **source only**, zero runnable assets (immutable exact-source tag at `a85e564a`; seven qualification jobs passed; verified non-draft GitHub prerelease) |
-| Latest source-development milestone | **v0.5.90 source-only:** progressive chassis drag, speed-aware yaw, four-forward-gear automatic transmission, grip-limited braking and lateral force, early rival corner deceleration, conservative long-straight overtaking with independent traffic emergency braking priority. Earlier v0.5.89 garage, checkpoint HUD, matched rival splits and local AI difficulty are retained. **Actual UE 5.8/UHT game compilation, wheel suspension, cooked circuit, installed Win64 game and Android hardware QA remain unverified.** |
+| Latest published GitHub pre-release | [v0.5.91](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91), **experimental source only**, immutable exact draft-branch commit `8edba49c`; no EXE, installers, APK or other executable assets |
+| Latest source-development milestone | **v0.5.91 source-only:** experimental unmerged [PR #295](https://github.com/sanskarIN/latebrake/pull/295) adds four genuine WorldStatic suspension rays, per-corner physical vertical spring forces, capped anti-roll, load-limited steering/drive, diagnostic event sampling and safer physics-momentum fallbacks. It is a tagged source preview, **not code verified and merged into protected main**. v0.5.90 remains the preceding main-line source milestone. **Real UE 5.8/UHT game compilation, working independent wheel physics, cooked circuit, installed Win64 game and Android hardware QA remain unverified.** |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.

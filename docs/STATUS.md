@@ -1,9 +1,15 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-02
-**Latest published milestone:** [v0.5.90 source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90), independently verified at immutable source commit `a85e564a4856a2d0915df5287b3fdc8079e7b72d`, published November 2, 2026 with **zero executable assets** after seven successful release jobs: three portable C++20 OS targets, Python source integration, Windows packaging policy, docs and the final immutable publish gate. Earlier [v0.5.89](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.89) racing HUD, garage and rival timing source remains available.
+**Updated:** 2026-11-05
+**Latest published milestone:** [v0.5.91 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91), immutable commit `8edba49c0a6294ece2797c708d80b6dd52288d40`, **zero executable attachments**. This freezes unmerged draft suspension PR #295, **not** a runnable game or a merge of experimental handling into protected `main`. [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90) remains the preceding main-line source-only milestone; actual UE 5.8/UHT, cooked Win64 and installed physics QA remain unverified.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.91 experimental tagged draft source (NOT merged playable game)
+
+- Immutable `8edba49c0a6294ece2797c708d80b6dd52288d40` freezes source from PR #295: four corner springs sampled from blocking WorldStatic road, actual Chaos point velocities, bounded vertical forces at four wheel anchors, axle anti-roll load transfer and spring-qualified rear motor/front steering authority.
+- Rate-limited loss/recontact QA logging and physical-momentum-preserving guard paths have passed cross-platform **source-only** CI; no licensed Unreal Editor/UHT, Windows cook, genuine driving test or independent wheel/tire solver has been qualified.
+- v0.5.91 intentionally has no executable release assets and is **not** merged into protected `main`. This public status tracks the latest published tag, not installed playability.
 
 ## v0.5.90 published source-only milestone (not installed gameplay)
 
