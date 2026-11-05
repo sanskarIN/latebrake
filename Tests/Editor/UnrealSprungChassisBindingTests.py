@@ -87,10 +87,10 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySprungForces(", 1
         )[0]
-        heading_marker = "if (Forward.IsNearlyZero())\\n    {"
+        heading_marker = "if (Forward.IsNearlyZero())\n    {"
         self.assertEqual(tick.count(heading_marker), 1)
         guard_index = tick.index(heading_marker)
-        heading_guard = tick.split(heading_marker, 1)[1].split("\\n    }", 1)[0]
+        heading_guard = tick.split(heading_marker, 1)[1].split("\n    }", 1)[0]
         for required in (
             "ClearDriverInputs();",
             "LastSuspension = SpringResponse;",
