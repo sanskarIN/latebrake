@@ -1009,14 +1009,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         latebrake::EvaluateChassisGroundContact(GroundSample);
     const latebrake::SuspensionResponse SpringResponse =
         latebrake::CalculateSprungChassis(SpringSample);
-    if (!GroundContact.Valid)
+    // Actual road support is authoritative once the independent spring
+    // policy validates its measured Chaos frame. Submit exactly once,
+    // before any optional road/grip/axle authority can fail closed.
+    // Failed driver policies below must NOT cancel lift or freeze momentum.
+    if (!SpringResponse.Valid)
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
-    if (!SpringResponse.Valid)
+    ApplySprungForces(SpringResponse, WheelWorldAnchors);
+    if (!GroundContact.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // No 115 cm coarse trace may still claim drive grip while its physical
@@ -1026,7 +1031,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         GroundContact, SpringResponse);
     if (!GroundContact.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // A production racer must not power the rear axle from a front-only
@@ -1037,7 +1042,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         latebrake::CalculateAxleTractionBudget(GroundContact, SpringResponse);
     if (!MeasuredAxleBudget.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // Real spring forces and instant physically limited service braking
@@ -1049,7 +1054,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(DeltaSeconds), GroundContact, MeasuredAxleBudget);
     if (!GripFrame.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     GroundContact = GripFrame.Ground;
@@ -1119,16 +1124,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // forces bring the body to its supported ride height before GO.
         // This branch never reaches motor, grip, race telemetry or awards.
         LastGroundContact = GroundContact;
-        ApplySprungForces(SpringResponse, WheelWorldAnchors);
+        // Physical support was already submitted before optional policies.
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
         return;
     }
-    // Physical spring support must not depend on optional drivetrain,
-    // surface, heat, HUD or transmission calculations later in this tick.
-    // A later rejected drive frame still needs gravity-balanced wheel
-    // loading; this call is exclusive with the pre-green settling branch.
-    ApplySprungForces(SpringResponse, WheelWorldAnchors);
+    // The same single four-corner spring dispatch serves grid settling,
+    // live driving and subsequent optional-policy recovery. No second
+    // force submission occurs on any path through this frame.
 
     // A nose-up/nose-down chassis may have an almost zero XY heading.
     // Its REAL springs have already been submitted. Never send a motor,
