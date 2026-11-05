@@ -45,8 +45,9 @@ int main()
     drive.Press(landscape, 2, steerX, steerY);
     Check(drive.ThrottleActive() && drive.SteeringActive(),
           "both owners have previously valid driving input");
-    Check(pit.Begin(3, TouchControl::PitService, true),
-          "a separate held pit finger begins before the resize");
+    Check(presses.Press(3) &&
+          pit.Begin(3, TouchControl::PitService, true),
+          "a separate physically tracked pit finger begins before the resize");
 
     const auto portrait = CalculateTouchControlLayout(720, 1280);
     Check(portrait.Valid, "new portrait touch UI is geometrically valid");
