@@ -254,10 +254,25 @@ not UHT, a physics trace execution or a real road-driving replay**.
 ## Observational evidence in a real non-shipping Unreal session
 
 Once an **actual** Unreal Development/Editor build is available, the car
-emits the structured `LATEBRAKE_SUSPENSION v=1` log at most once every
-**two seconds per live physical car**. These logs are intentionally
-compiled out of Shipping builds. They do not save player data, award
-credits or run any extra physics traces.
+emits the original structured `LATEBRAKE_SUSPENSION v=1` log on the
+**first valid physics frame**, on changes to the positively loaded
+**FL/FR/RL/RR spring contact mask** or `grid`/`go` phase at most once
+every **0.20 seconds per physical car**, and once every **2 seconds**
+during stable contact as a heartbeat. A nearby road ray whose spring is
+completely unloaded does not count as a bearing corner for this
+event policy. The output fields stay identical, so the strict offline
+v1 log parser needs no unverified schema migration.
+
+This is deliberately rate-limited diagnostic sampling: a change that
+reverses faster than 0.20 seconds may not be printed, and no log line
+proves genuine physical tire/road contact or handling quality. It is
+not a frame-by-frame replay, lap-time record or full production physics
+telemetry system. The cadence is reset on pause/restart/recovery and
+invalid physics frames, but a persistent vertical pose does not flood
+the logs with 60 redundant first-frame observations.
+
+These logs are compiled out of Shipping builds. They do not save player
+data, award credits or run any extra physics traces.
 
 Each real log line reports:
 

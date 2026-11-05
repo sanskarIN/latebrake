@@ -92,14 +92,15 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         guard_index = tick.index(heading_marker)
         heading_guard = tick.split(heading_marker, 1)[1].split("\n    }", 1)[0]
         for required in (
-            "ClearDriverInputs();",
+            "ClearDriverInputs(false);",
+            "GripReattachment.Reset();",
             "LastSuspension = SpringResponse;",
             "WheelMotion.Suspend();",
             "ApplyWheelVisualPose();",
             "return;",
         ):
             self.assertIn(required, heading_guard)
-        self.assertLess(heading_guard.index("ClearDriverInputs();"),
+        self.assertLess(heading_guard.index("ClearDriverInputs(false);"),
                         heading_guard.index("LastSuspension = SpringResponse;"))
         self.assertLess(heading_guard.index("LastSuspension = SpringResponse;"),
                         heading_guard.index("ApplyWheelVisualPose();"))
@@ -215,7 +216,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertIn("SetRelativeRotation(Visual.Rotator());", visual)
         self.assertNotIn("AddForce", visual)
         self.assertNotIn("PassCheckpoint", visual)
-        self.assertIn("LastSuspension = {}; GripReattachment.Reset(); BrakeDistance.Reset();", self.pawn_h)
+        self.assertIn("LastSuspension = {}; GripReattachment.Reset(); ResetSuspensionQa(); BrakeDistance.Reset();", self.pawn_h)
         self.assertIn("LastSuspension = {};", self.pawn)
 
     def test_real_nonshipping_telemetry_has_no_race_or_physics_side_effects(self):
@@ -227,9 +228,11 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         )[1].split("if (bPreGreen)", 1)[0]
         for required in (
             "#if !UE_BUILD_SHIPPING",
-            "SuspensionQaElapsedSeconds += static_cast<double>(DeltaSeconds);",
-            "if (SuspensionQaElapsedSeconds >= 2.0)",
-            "SuspensionQaElapsedSeconds = 0.0;",
+            "unsigned LoadedCornerMask = 0u;",
+            "SpringResponse.Corners[Corner]",
+            "Wheel.UpForce > SpringResponse.WeightForce * 1.0e-6",
+            "SuspensionQaSchedule.ShouldReport(",
+            "LoadedCornerMask, bPreGreen",
             "LATEBRAKE_SUSPENSION v=1",
             "contacts=%d", "weight_ratio=%.3f",
             "traction=%.3f", "pitch_deg=%.1f",
@@ -245,11 +248,14 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, debug)
         self.assertIn("#if !UE_BUILD_SHIPPING", self.pawn_h)
-        self.assertIn("double SuspensionQaElapsedSeconds = 0.0;", self.pawn_h)
+        self.assertIn("latebrake::SuspensionQaCadence SuspensionQaSchedule;", self.pawn_h)
+        self.assertIn("void ResetSuspensionQa() noexcept", self.pawn_h)
+        self.assertIn("SuspensionQaCadenceTests.cpp", self.cmake)
+        self.assertIn("NAME SuspensionQaCadence", self.cmake)
         neutral = self.pawn.split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1
         )[1].split("void ALatebrakeCarPawn::ThrottleInput(", 1)[0]
-        self.assertIn("SuspensionQaElapsedSeconds = 0.0;", neutral)
+        self.assertIn("ResetSuspensionQa();", neutral)
 
     def test_policy_is_bounded_and_portable(self):
         for required in (

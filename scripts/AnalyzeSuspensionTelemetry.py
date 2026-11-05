@@ -175,9 +175,11 @@ def summarize_log(text: str) -> dict[str, object]:
         "maximums": maximums,
         "flagged_samples": flags,
         "limitations": (
-            "Editable local log text, at most one record every 2 seconds per "
-            "vehicle, cannot prove source authenticity, real Chaos solver, "
-            "framerate, lap completion, road clearance or player experience. "
+            "Editable local log text; source cadence limits event records to "
+            "one per 0.2 seconds per vehicle and emits a 2-second heartbeat. "
+            "Brief transitions can be missed. Logs cannot prove authentic "
+            "source, Chaos solver, frame rate, lap completion, road clearance "
+            "or real player experience. "
             "Requires UE5.8 hardware gameplay plus build/manifest verification."
         ),
     }

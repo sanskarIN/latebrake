@@ -2015,3 +2015,18 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ChassisWheelGeometry COMMAND latebrake_chassis_wheel_geometry_tests)
+
+# Non-shipping suspension logs must retain the exact v=1 schema, publish
+# immediate contact/phase changes no faster than 5 Hz, heartbeat at 0.5 Hz
+# and never touch actual Chaos forces, timing or player progression.
+add_executable(latebrake_suspension_qa_cadence_tests SuspensionQaCadenceTests.cpp)
+target_include_directories(latebrake_suspension_qa_cadence_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_suspension_qa_cadence_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_suspension_qa_cadence_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_suspension_qa_cadence_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SuspensionQaCadence COMMAND latebrake_suspension_qa_cadence_tests)
