@@ -12,6 +12,7 @@
 #include "Vehicles/ChassisGroundContactTraction.h"
 #include "Vehicles/SprungChassisDynamics.h"
 #include "Vehicles/ChassisWheelAnchors.h"
+#include "Vehicles/MeasuredPlanarForwardSpeed.h"
 #include "Vehicles/AxleTractionBudget.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/SpeedAwareYawTorque.h"
@@ -1744,9 +1745,16 @@ float ALatebrakeCarPawn::GetForwardSpeedKmH() const
     {
         return std::numeric_limits<float>::quiet_NaN();
     }
+    // Real Chaos pitches and rolls while supported by independent wheel
+    // springs. Use only XY road motion; vertical landing velocity must not
+    // manufacture a quick 0–5 km/h launch or shorten signed road speed.
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
     const FVector Forward = GetActorForwardVector();
-    const double ForwardKmH = FVector::DotProduct(Velocity, Forward) * 0.036;
+    const double ForwardKmH = latebrake::MeasuredPlanarForwardSpeedKmh(
+        static_cast<double>(Velocity.X),
+        static_cast<double>(Velocity.Y),
+        static_cast<double>(Forward.X),
+        static_cast<double>(Forward.Y));
     if (!FMath::IsFinite(ForwardKmH) ||
         ForwardKmH > static_cast<double>(std::numeric_limits<float>::max()) ||
         ForwardKmH < -static_cast<double>(std::numeric_limits<float>::max()))

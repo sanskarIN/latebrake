@@ -2077,3 +2077,20 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TouchViewportActionEpoch COMMAND latebrake_touch_viewport_action_epoch_tests)
+
+# Actual Chaos launch telemetry uses horizontal vehicle motion, not the
+# vertical component of a pitching/landing rigid body. No race authority.
+add_executable(latebrake_measured_planar_forward_speed_tests
+    MeasuredPlanarForwardSpeedTests.cpp)
+target_include_directories(latebrake_measured_planar_forward_speed_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_measured_planar_forward_speed_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_measured_planar_forward_speed_tests PRIVATE
+        /W4 /WX)
+else()
+    target_compile_options(latebrake_measured_planar_forward_speed_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME MeasuredPlanarForwardSpeed
+    COMMAND latebrake_measured_planar_forward_speed_tests)

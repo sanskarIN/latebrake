@@ -546,6 +546,32 @@ record plus frame-rate/ride-height evidence. Restore the normal code
 before evaluating release artifacts. Confirm zero motor/yaw force,
 continued gravity/collision, and no illegal race progression.
 
+## Planar launch measurement during pitch, roll and settling
+
+The optional 0–5 km/h launch meter is an advisory stopwatch, **not**
+a race clock or a force controller. Previously its Unreal pawn input
+projected full 3D linear velocity onto full 3D chassis forward. With
+the suspension now allowing pitch, a car descending while nose-up
+could report forward motion from its **vertical** velocity; also the
+shortened horizontal component of a pitched forward vector distorted
+actual road speed.
+
+The pawn now passes **XY chassis velocity** and the **XY projection of
+its real forward axis** to `MeasuredPlanarForwardSpeedKmh`. The
+normalized projected heading preserves forward/reverse signs and
+excludes both vertical landings and lateral slides. A near-vertical
+or nonfinite heading returns NaN: the existing launch meter skips that
+sample rather than fabricating an instant 0–5 km/h crossing. No
+extra physics probes, force submissions, race progress writes or
+reward changes are introduced.
+
+Source checks bind the actual Unreal pawn and the new strict C++20
+portable target tests yaw, roll/pitch projection, reverse, lateral
+slip, invalid inputs and 120,000 varied frames. Real UE5.8 QA must
+still inspect the 3/2/1/GO clock, pitched car landing, launch HUD,
+reverse driving and pause/recovery on an installed Win64 candidate.
+This policy is not a substitute for on-road wheel slip telemetry.
+
 ## Mandatory real engine acceptance gate
 
 **Do not merge a candidate as production-ready solely because source CI

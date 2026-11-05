@@ -21,6 +21,8 @@ class LaunchSpeedBindingTests(unittest.TestCase):
         cls.hud = read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
         cls.policy = read("Source/Latebrake/Public/Racing/LaunchSpeedMeter.h")
         cls.cmake = read("Tests/Standalone/CMakeLists.txt")
+        cls.road_speed = read("Source/Latebrake/Public/Vehicles/MeasuredPlanarForwardSpeed.h")
+        cls.road_speed_tests = read("Tests/Standalone/MeasuredPlanarForwardSpeedTests.cpp")
 
     def test_only_authoritative_clock_and_forward_chassis_speed(self):
         tick = self.mode.split("void ALatebrakeRaceGameMode::Tick(", 1)[1].split(
@@ -35,8 +37,32 @@ class LaunchSpeedBindingTests(unittest.TestCase):
                         tick.index("LaunchMeter.Observe("))
         self.assertIn("float GetForwardSpeedKmH() const;", self.pawn_h)
         self.assertIn("GetPhysicsLinearVelocity()", self.pawn)
-        self.assertIn("FVector::DotProduct", self.pawn)
         self.assertIn("FMath::IsFinite", self.pawn)
+        # The 3D chassis may pitch while its vertical springs settle.
+        # Vertical falling must not become a fictional forward launch.
+        speed = self.pawn.split(
+            "float ALatebrakeCarPawn::GetForwardSpeedKmH() const", 1
+        )[1].split("bool ALatebrakeCarPawn::TryRecoverTo(", 1)[0]
+        self.assertIn("latebrake::MeasuredPlanarForwardSpeedKmh(", speed)
+        for required in ("Velocity.X", "Velocity.Y", "Forward.X", "Forward.Y"):
+            self.assertIn(required, speed)
+        for forbidden in ("Velocity.Z", "Forward.Z", "FVector::DotProduct"):
+            self.assertNotIn(forbidden, speed)
+        self.assertIn('#include "Vehicles/MeasuredPlanarForwardSpeed.h"',
+                      self.pawn)
+
+    def test_road_speed_policy_is_bounded_observational_and_portable(self):
+        for marker in ("std::hypot(", "std::isfinite(", 
+                       "MinimumProjectedForwardLength = 1.0e-4",
+                       "RoadCmPerSecondToKmH = 0.036",
+                       "std::numeric_limits<double>::quiet_NaN()"):
+            self.assertIn(marker, self.road_speed)
+        for forbidden in ("GetWorld(", "AddForce(", "AwardCredits(", 
+                          "PassCheckpoint(", "SaveGame(", "UCLASS("):
+            self.assertNotIn(forbidden, self.road_speed)
+        self.assertIn("120000", self.road_speed_tests)
+        self.assertIn("MeasuredPlanarForwardSpeedTests.cpp", self.cmake)
+        self.assertIn("NAME MeasuredPlanarForwardSpeed", self.cmake)
 
     def test_reset_and_verified_recovery_erase_launch_evidence(self):
         self.assertIn("latebrake::LaunchSpeedMeter LaunchMeter;", self.mode_h)
