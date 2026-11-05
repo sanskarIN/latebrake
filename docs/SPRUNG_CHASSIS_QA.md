@@ -322,8 +322,13 @@ angular velocity **before spring forces were sampled**. This could lock a
 physical chassis in an unnatural suspended/vertical pose. The new Unreal
 Tick path computes and, where valid, **submits the existing four spring
 forces before checking the unusable planar heading**; if the heading is
-still invalid it clears the motor/steer inputs and temporary grip history
-but deliberately **does not zero Chaos velocity or angular momentum**.
+still invalid it clears the motor/steer inputs, HUD road-contact authority
+and temporary grip history but deliberately **does not zero Chaos velocity
+or angular momentum**. Since these four spring forces were already accepted,
+the visual-only wheel spindle travel remains bound to this latest valid
+`SpringResponse` rather than snapping all four wheels to full droop.
+The preserved cosmetic spring sample cannot authorize throttle, steering,
+race scoring or invented contact.
 
 This is not a magic righting or teleport mechanic: gravity and actual
 blocking road contacts decide whether the chassis can fall naturally.
