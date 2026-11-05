@@ -1835,6 +1835,18 @@ void ALatebrakeCarPawn::ApplyTouch(ETouchIndex::Type FingerIndex,
         return;
     }
 
+    // A fresh press may be the FIRST event delivered after a rotate or
+    // viewport resize. The old finger coordinates must not trigger
+    // PAUSE, RESTART, RECOVER, career/menu or GHOST commands against newly
+    // moved rectangles. AdmitTouchPress has already marked this physical
+    // finger down: do not reset or release that one-shot action latch.
+    // A real lift and next press on a stable viewport are still allowed.
+    if (latebrake::SuppressFreshTouchOnInvalidatedViewport(
+            bAllowAcquire, bViewportInvalidated))
+    {
+        return;
+    }
+
     const latebrake::TouchControl Region =
         latebrake::HitTestTouchControl(Layout, Location.X, Location.Y);
     ALatebrakeRaceGameMode* Mode = GetWorld()

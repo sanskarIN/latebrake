@@ -1931,3 +1931,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ChassisContactReadout COMMAND latebrake_chassis_contact_readout_tests)
+
+# Android race-action safety: the first touch delivered after viewport
+# rotation/inset changes may not dispatch PAUSE/RECOVER/RESTART or re-arm
+# a held action finger. The 100k transition test is pure C++20, not
+# a substitute for actual Android touch lifecycle/device qualification.
+add_executable(latebrake_touch_viewport_action_epoch_tests TouchViewportActionEpochTests.cpp)
+target_include_directories(latebrake_touch_viewport_action_epoch_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_touch_viewport_action_epoch_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_touch_viewport_action_epoch_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_touch_viewport_action_epoch_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TouchViewportActionEpoch COMMAND latebrake_touch_viewport_action_epoch_tests)
