@@ -270,6 +270,35 @@ wheel penetration, tyre model quality, actual substep stability or
 whether a player can complete a lap. Never report this as live evidence
 unless it was emitted by an actual licensed Unreal Engine session.
 
+## Nearly vertical chassis — physics recovery without fake drive
+
+A fully pitched/standing-on-nose car can produce a near-zero world XY
+forward projection while its **real Chaos body still has valid mass,
+velocity, gravity and four contact probes**. The previous immediate
+`Forward.IsNearlyZero()` return called
+`NeutralizeMotionWhenDrivingBlocked()`, repeatedly zeroing BOTH linear and
+angular velocity **before spring forces were sampled**. This could lock a
+physical chassis in an unnatural suspended/vertical pose. The new Unreal
+Tick path computes and, where valid, **submits the existing four spring
+forces before checking the unusable planar heading**; if the heading is
+still invalid it clears the motor/steer inputs and temporary grip history
+but deliberately **does not zero Chaos velocity or angular momentum**.
+
+This is not a magic righting or teleport mechanic: gravity and actual
+blocking road contacts decide whether the chassis can fall naturally.
+No synthetic ground hit, world-spawned righting torque, scored progression,
+engine boost or yaw force is authorized on this path. In the earlier 3/2/1
+grid branch, only the spring dispatch executes, exactly once, as before.
+
+A source-binding regression verifies actual Tick order and no motor
+dispatch for invalid XY forward vectors. **On real installed Win64
+hardware**, deliberately test a safely staged, near-vertical physical
+chassis on valid road, observe that gravity restores ordinary
+orientation without adding engine force, and capture camera,
+wheel-pose, physics and checkpoint evidence. If the car remains stuck,
+this is a failed gameplay quality gate; source tests alone cannot prove
+real physical self-righting.
+
 ## Mandatory real engine acceptance gate
 
 **Do not merge a candidate as production-ready solely because source CI
