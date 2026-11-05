@@ -83,6 +83,49 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertLess(tick.index("ChassisForward * ProbeX[Index]"),
                         tick.index("CalculateSprungChassis(SpringSample)"))
 
+    def test_nose_up_chassis_can_recover_under_real_springs_without_drive(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySprungForces(", 1
+        )[0]
+        heading_guard = (
+            "if (Forward.IsNearlyZero())\\n"
+            "    {\\n"
+            "        ClearDriverInputs();\\n"
+            "        WheelMotion.Suspend();\\n"
+            "        ApplyWheelVisualPose();\\n"
+            "        return;\\n"
+            "    }"
+        )
+        self.assertEqual(tick.count(heading_guard), 1)
+        guard_index = tick.index(heading_guard)
+        grid_index = tick.index(
+            "if (bPreGreen)\\n    {\\n"
+            "        // Keep the grid still in XY/yaw"
+        )
+        grid_force = tick.index(
+            "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
+            grid_index
+        )
+        grid_return = tick.index("return;", grid_force)
+        live_force = tick.index(
+            "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
+            grid_return
+        )
+        # Real spring lift is dispatched for both grid and driving. The
+        # no-planar-heading path must reject DRIVER FORCES without zeroing
+        # Chaos motion, allowing natural gravity and body pitch recovery.
+        self.assertLess(grid_force, grid_return)
+        self.assertLess(grid_return, live_force)
+        self.assertLess(live_force, guard_index)
+        self.assertLess(guard_index, tick.index(
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"
+        ))
+        self.assertNotIn(
+            "NeutralizeMotionWhenDrivingBlocked();", heading_guard
+        )
+        self.assertNotIn("SetPhysicsLinearVelocity(", heading_guard)
+        self.assertNotIn("SetPhysicsAngularVelocity", heading_guard)
+
     def test_point_forces_are_applied_to_the_real_physics_body_only(self):
         segment = self.pawn.split("void ALatebrakeCarPawn::ApplySprungForces(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplyWheelVisualPose()", 1)[0]
