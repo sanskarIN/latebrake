@@ -588,6 +588,7 @@ void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)
     if (bResetGripAuthority)
     {
         GripReattachment.Reset();
+        ResetSuspensionQa();
     }
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
@@ -610,9 +611,7 @@ void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
     // A pause, focus loss, failed race gate or malformed physics observation
     // must not preserve earlier grip for the first resumed driving frame.
     GripReattachment.Reset();
-#if !UE_BUILD_SHIPPING
-    SuspensionQaElapsedSeconds = 0.0;
-#endif
+    ResetSuspensionQa();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Suspend();
     ApplyWheelVisualPose();
@@ -816,6 +815,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         LastGroundContact = {};
         LastSuspension = {};
         GripReattachment.Reset();
+        ResetSuspensionQa();
         ResetSpeedCameraFov();
         ResetCornerCameraYaw();
         ApplySignalLights(false, false, 0.0);
@@ -1005,15 +1005,24 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Keep this run-local visual sample only after both policies accepted it.
     LastSuspension = SpringResponse;
 #if !UE_BUILD_SHIPPING
-    // Actual UE QA evidence only: once every two seconds per live car,
-    // report the observed spring support and chassis attitude. Do not
-    // infer "suspension verified" from these numbers without driving QA.
-    // Logs have no player data, score mutations, network requests or
-    // additional ground traces. Shipping builds omit them entirely.
-    SuspensionQaElapsedSeconds += static_cast<double>(DeltaSeconds);
-    if (SuspensionQaElapsedSeconds >= 2.0)
+    // Genuine development-build QA evidence, NOT automatic driving proof.
+    // Record first frame, supported-load/phase transitions (max 5 Hz)
+    // and a 2-second heartbeat. Existing strict v=1 schema is preserved.
+    // This only examines already measured springs: no additional ray
+    // traces, motor correction, score changes or network/file writes.
+    unsigned LoadedCornerMask = 0u;
+    for (unsigned Corner = 0; Corner < 4; ++Corner)
     {
-        SuspensionQaElapsedSeconds = 0.0;
+        const auto& Wheel = SpringResponse.Corners[Corner];
+        if (Wheel.Contact &&
+            Wheel.UpForce > SpringResponse.WeightForce * 1.0e-6)
+        {
+            LoadedCornerMask |= 1u << Corner;
+        }
+    }
+    if (SuspensionQaSchedule.ShouldReport(
+            static_cast<double>(DeltaSeconds), LoadedCornerMask, bPreGreen))
+    {
         const auto MeasuredRay = [&SpringSample](int32 Index) -> double
         {
             const auto& Corner =
@@ -1079,7 +1088,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // frame. Discard stale driving input, stored motor grip and HUD
         // contact authority, but keep the visual spindle pose matched
         // to the REAL suspension that just received Chaos force.
-        ClearDriverInputs();
+        // This is a continuing Chaos physical pose, not an app pause.
+        // Keep QA rate limiting across near-vertical frames, while
+        // immediately withdrawing any stored motor/steering grip.
+        ClearDriverInputs(false);
+        GripReattachment.Reset();
         LastSuspension = SpringResponse;
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
@@ -1966,6 +1979,7 @@ void ALatebrakeCarPawn::ToggleBestLapGhost()
 void ALatebrakeCarPawn::TogglePause()
 {
     GripReattachment.Reset();
+    ResetSuspensionQa();
     NitroReleased();
     // The world may stop ticking immediately: clear the held brake before
     // GameMode attempts to pause or resume engine time.
