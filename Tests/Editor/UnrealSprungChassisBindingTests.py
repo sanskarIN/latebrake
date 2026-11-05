@@ -31,7 +31,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertIn("Chassis->SetSimulatePhysics(true);", ctor)
         self.assertIn("Chassis->SetEnableGravity(true);", ctor)
         self.assertIn("Chassis->SetMassOverrideInKg(NAME_None, 1100.f);", ctor)
-        self.assertIn("FVector(122.f, -94.f, -29.f)", ctor)
+        self.assertIn("latebrake::ChassisWheelAnchors[static_cast<unsigned>(Index)]", ctor)
         self.assertIn("CameraBoom->bInheritPitch = false;", ctor)
         self.assertIn("CameraBoom->bInheritRoll = false;", ctor)
         self.assertIn("CameraBoom->bInheritYaw = true;", ctor)
@@ -45,8 +45,8 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "SpringSample.MassKg = static_cast<double>(Mass);",
             "World->GetGravityZ()", "GetPhysicsLinearVelocityAtPoint(Origin)",
             "WheelWorldAnchors[Index] = Origin;",
-            "constexpr float ProbeSideCm = 94.f;",
-            "ChassisForward * ProbeX[Index] + ChassisRight * ProbeY[Index]",
+            "latebrake::ChassisProbeOffset(",
+            "ChassisForward * static_cast<float>(Probe.ForwardCm)",
             "World->LineTraceSingleByChannel(",
             "ECC_WorldStatic, GroundQuery", "GroundQuery.AddIgnoredActor(this);",
             "Hit.GetComponent()->GetCollisionObjectType() == ECC_WorldStatic",
@@ -73,14 +73,14 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "FVector(ChassisForward.X, ChassisForward.Y, 0.f).GetSafeNormal()",
             "const FVector Right(-Forward.Y, Forward.X, 0.f);",
             "if (Forward.IsNearlyZero())",
-            "ChassisForward * ProbeX[Index] + ChassisRight * ProbeY[Index]",
+            "ChassisForward * static_cast<float>(Probe.ForwardCm)",
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "Chassis->AddForce(Right *",
         ):
             self.assertIn(required, tick)
         self.assertLess(tick.index("if (Forward.IsNearlyZero())"),
                         tick.index("Chassis->AddForce(Forward * DriveForce"))
-        self.assertLess(tick.index("ChassisForward * ProbeX[Index]"),
+        self.assertLess(tick.index("ChassisForward * static_cast<float>(Probe.ForwardCm)"),
                         tick.index("CalculateSprungChassis(SpringSample)"))
 
     def test_nose_up_chassis_can_recover_under_real_springs_without_drive(self):

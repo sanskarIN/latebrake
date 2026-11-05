@@ -1999,3 +1999,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SprungGripReattachment COMMAND latebrake_sprung_grip_reattachment_tests)
+
+# The SAME authored four-corner centimeter layout is used by the Unreal
+# constructor, spring-force ray origins and visual wheel travel. Exercise
+# the numerical symmetry, parent-scale compensation and pitched/raised
+# road-force torque independently of a licensed Unreal installation.
+add_executable(latebrake_chassis_wheel_geometry_tests ChassisWheelGeometryTests.cpp)
+target_include_directories(latebrake_chassis_wheel_geometry_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_chassis_wheel_geometry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_chassis_wheel_geometry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_chassis_wheel_geometry_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ChassisWheelGeometry COMMAND latebrake_chassis_wheel_geometry_tests)
