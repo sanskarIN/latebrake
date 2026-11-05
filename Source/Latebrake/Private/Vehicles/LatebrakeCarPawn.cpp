@@ -20,6 +20,7 @@
 #include "Vehicles/ArcadeBoostArbitration.h"
 #include "Vehicles/ArcadeReverseSpeedLimit.h"
 #include "Vehicles/GearAwareMotorPower.h"
+#include "Vehicles/PlanarSpeedGovernor.h"
 #include "Vehicles/AutomaticTransmission.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
@@ -1479,8 +1480,26 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
             bArcade) * TransmissionFrame.PropulsionFactor *
             RearDriveTractionScale);
-    // Spring support was already submitted after valid axle/contact
-    // sampling; never double-apply it along the motor path.
+    // A cap change after nitro must not instantly overwrite world XY
+    // velocity. Plan a finite, physically applied opposing force before
+    // ANY optional motor/handling forces are submitted this frame.
+    // This is the same true Chaos XY velocity used by road drag, for
+    // the same player/rival chassis, and has no race-clock authority.
+    const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
+    const latebrake::PlanarSpeedGovernorOutput SpeedGovernor =
+        latebrake::CalculatePlanarSpeedGovernor({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y),
+            static_cast<double>(Mass),
+            static_cast<double>(ActiveSpeedCap), bArcade});
+    if (!SpeedGovernor.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // Spring support was already submitted after independent spring
+    // validation; never double-apply it along the motor path.
     if (AxleBudget.RearDriveReady &&
         !bEffectiveBraking &&
         (FMath::Abs(EffectiveThrottle) < 0.01f ||
@@ -1558,11 +1577,16 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     Chassis->AddTorqueInRadians(FVector(
         0.f, 0.f, TurnTorque * FrontSteeringTractionScale));
 
-    const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
-    if (Speed > ActiveSpeedCap)
+    // A bounded drag force replaces the old per-frame XY velocity snap.
+    // In particular a nitro cap falling back toward its normal ceiling
+    // cannot teleport physical motion, remove sideways momentum by fiat
+    // or touch vertical spring/gravity velocity. The existing gradual
+    // gearbox power taper prevents new thrust into this soft limit.
+    if (SpeedGovernor.Active)
     {
-        const FVector Limited = FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap);
-        Chassis->SetPhysicsLinearVelocity(FVector(Limited.X, Limited.Y, Velocity.Z));
+        Chassis->AddForce(FVector(
+            static_cast<float>(SpeedGovernor.ForceX),
+            static_cast<float>(SpeedGovernor.ForceY), 0.f));
     }
 
     // Real signed chassis motion, not requested reverse throttle, drives

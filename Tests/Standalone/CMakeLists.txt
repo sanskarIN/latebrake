@@ -2094,3 +2094,18 @@ else()
 endif()
 add_test(NAME MeasuredPlanarForwardSpeed
     COMMAND latebrake_measured_planar_forward_speed_tests)
+
+# Source-only, bounded physical planar force when a live Chaos chassis
+# exceeds a changing nitro/garage speed cap. 120k numerical regression
+# frames plus 30/60/120 FPS convergence, not a UE gameplay qualification.
+add_executable(latebrake_planar_speed_governor_tests PlanarSpeedGovernorTests.cpp)
+target_include_directories(latebrake_planar_speed_governor_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_planar_speed_governor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_planar_speed_governor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_planar_speed_governor_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PlanarSpeedGovernor COMMAND latebrake_planar_speed_governor_tests)

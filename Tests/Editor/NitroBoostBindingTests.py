@@ -49,12 +49,16 @@ class NitroBoostBindingTests(unittest.TestCase):
             "static_cast<double>(LongitudinalSpeed)",
             "NitroDrive.ForceMultiplier", "NitroDrive.SpeedCapMultiplier",
             "FMath::FInterpConstantTo(", "Chassis->AddForce(",
-            "FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap)",
+            "latebrake::CalculatePlanarSpeedGovernor({",
+            "const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;",
         ):
             self.assertIn(source, tick)
         self.assertLess(tick.index("!IsRacePhysicsReady()"), tick.index("NitroBoost.Step("))
         self.assertLess(tick.index("NitroBoost.Step("), tick.index("Chassis->AddForce("))
         self.assertIn("NitroBoost.Suspend();", tick)
+        # Release from nitro must not rewrite measured Chaos XY velocity.
+        self.assertNotIn("FlatVelocity.GetClampedToMaxSize", tick)
+        self.assertIn("if (SpeedGovernor.Active)", tick)
         ai = self.pawn.split("void ALatebrakeCarPawn::SetAutonomousControls(", 1)[1].split(
             "void ALatebrakeCarPawn::SetGarageTuning(", 1)[0]
         self.assertNotIn("NitroBoost.Press(", ai)

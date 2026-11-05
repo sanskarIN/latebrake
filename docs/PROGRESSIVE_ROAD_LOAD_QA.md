@@ -116,3 +116,50 @@ Neither test runs Unreal Engine or measures real gameplay.
 The game still needs genuine driveable build evidence, polished art,
 real wheel/suspension simulation, more tracks and professional UX.
 See [playable release gate #148](https://github.com/sanskarIN/latebrake/issues/148).
+
+## Smooth nitro release without a hard planar speed snap
+
+The simplified Unreal car's old forward top-speed guard directly
+called `SetPhysicsLinearVelocity` on the XY plane whenever planar speed
+exceeded `MaxSpeed * CurrentNitroSpeedCapScale`. Even with the gearbox's
+existing motor taper and a smoothly changing nitro multiplier, this could
+instantaneously remove planar momentum at a single physics frame when the
+boost ended. It is especially noticeable while drifting or landing and is
+not a convincing force-driven car response.
+
+The four-corner Chaos draft now uses `PlanarSpeedGovernor.h`:
+
+- A strictly validated policy observes **actual** world XY chassis velocity,
+  real chassis mass, qualified frame duration and the current active speed
+  cap. It shares the same 15,000 cm/s input bound as `ProgressiveRoadLoad`.
+- At or below the cap, it adds **zero** resistance. Above the cap, it
+  requests an opposite planar **force** proportional to excess speed, capped
+  at 650 cm/s² (Arcade) or 500 cm/s² (Simulation Inspired). Its own
+  one-frame reduction cannot cross below the cap or reverse the car.
+- The gearbox's existing gradual motor taper remains intact and all base,
+  nitro and drafting drive still share it. Spring loads, brake and lateral
+  tire force are untouched; the governor adds only horizontal resistance.
+- The optional invalid-policy guard runs **before** driving forces. A valid
+  earlier spring dispatch is never undone by a failed governor input.
+- The separate **reverse-speed gear ceiling** still uses its existing
+  instant reverse component clamp. This iteration replaces only the
+  old global planar top-speed snap, not the entire speed-governance system.
+
+`PlanarSpeedGovernorTests.cpp` numerically verifies neutral, under-cap,
+gentle and large overspeed cases; yaw/sideways/reverse direction, bounded
+deceleration, invalid inputs, changing nitro cap, and 120,000 synthetic
+frames. It integrates the governor alone at 30/60/120 FPS to verify
+monotone convergence without a speed snap. New source integration tests
+check the actual player/rival Chaos Tick uses this output and does not
+reintroduce the old top-speed XY overwrite.
+
+**Limitations and real engine QA:** This is a gameplay-tuned arcade force,
+not physically calibrated aero, downforce or a tire solver. Under several
+simultaneous forces, it cannot promise a strict instantaneous velocity cap.
+A real installed UE 5.8 Win64 run must compare 60–200 km/h acceleration,
+steady-state terminal speed, nitro held/released at maximum speed,
+simultaneous steering/drift and reverse, airborne landing and full-boost
+hitch recovery at 30/60/120 FPS. Assess whether the car overshoots its
+intended top speed, if drag feels too aggressive, and whether AI finish
+times change. Only measured engine QA may authorize tuning or a playable
+release.

@@ -30,7 +30,8 @@ class ReverseSpeedBindingTests(unittest.TestCase):
             "const FVector Velocity = Chassis->GetPhysicsLinearVelocity()",
             "if (!Surface.Valid)",
             "const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;",
-            "FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap)",
+            "latebrake::CalculatePlanarSpeedGovernor({",
+            "if (SpeedGovernor.Active)",
             "const FVector PostCapVelocity = Chassis->GetPhysicsLinearVelocity();",
             "latebrake::LimitPlanarReverseSpeed(",
             "if (!ReverseLimit.Valid)",
@@ -39,6 +40,7 @@ class ReverseSpeedBindingTests(unittest.TestCase):
         self.assertEqual([tick.index(marker) for marker in markers],
                          sorted(tick.index(marker) for marker in markers))
         self.assertIn('#include "Vehicles/ArcadeReverseSpeedLimit.h"', self.car)
+        self.assertNotIn("FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap)", tick)
         self.assertIn(
             "if (!ReverseLimit.Valid)\n    {\n        NeutralizeMotionWhenDrivingBlocked();",
             tick,

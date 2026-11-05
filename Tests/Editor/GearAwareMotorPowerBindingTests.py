@@ -33,8 +33,9 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
             "AllocateArcadeBoost(",
             "CollisionDamage.MotorMultiplier()",
             "latebrake::GearAwareMotorPowerFactor(",
-            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;",
+            "latebrake::CalculatePlanarSpeedGovernor({",
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "latebrake::LimitPlanarReverseSpeed(",
         )
         offsets = [tick.index(x) for x in required]
