@@ -87,17 +87,23 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySprungForces(", 1
         )[0]
-        heading_guard = (
-            "if (Forward.IsNearlyZero())\n"
-            "    {\n"
-            "        ClearDriverInputs();\n"
-            "        WheelMotion.Suspend();\n"
-            "        ApplyWheelVisualPose();\n"
-            "        return;\n"
-            "    }"
-        )
-        self.assertEqual(tick.count(heading_guard), 1)
-        guard_index = tick.index(heading_guard)
+        heading_marker = "if (Forward.IsNearlyZero())\\n    {"
+        self.assertEqual(tick.count(heading_marker), 1)
+        guard_index = tick.index(heading_marker)
+        heading_guard = tick.split(heading_marker, 1)[1].split("\\n    }", 1)[0]
+        for required in (
+            "ClearDriverInputs();",
+            "LastSuspension = SpringResponse;",
+            "WheelMotion.Suspend();",
+            "ApplyWheelVisualPose();",
+            "return;",
+        ):
+            self.assertIn(required, heading_guard)
+        self.assertLess(heading_guard.index("ClearDriverInputs();"),
+                        heading_guard.index("LastSuspension = SpringResponse;"))
+        self.assertLess(heading_guard.index("LastSuspension = SpringResponse;"),
+                        heading_guard.index("ApplyWheelVisualPose();"))
+        self.assertNotIn("LastGroundContact = GroundContact;", heading_guard)
         grid_index = tick.index(
             "if (bPreGreen)\n    {\n"
             "        // Keep the grid still in XY/yaw"
