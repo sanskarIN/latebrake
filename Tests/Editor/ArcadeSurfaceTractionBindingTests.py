@@ -30,7 +30,6 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
             "const FVector SurfacePosition = GetActorLocation()",
             "SurfaceTraction.Observe({",
             "if (!Surface.Valid)",
-            "RejectOptionalDriveAfterSpring(SpringResponse);",
             "TireCondition.Observe({",
             "latebrake::CalculateLateralGripForce({",
             "TireCondition.GripMultiplier() *\n                Surface.LateralGripMultiplier *",
@@ -41,6 +40,16 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
         self.assertTrue(all(marker in tick for marker in markers))
         positions = [tick.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))
+        # The same helper is also used by earlier optional axle/grip
+        # guards; check the Surface branch specifically, not its first
+        # occurrence in the entire physics Tick.
+        self.assertIn(
+            "if (!Surface.Valid)\n"
+            "    {\n"
+            "        RejectOptionalDriveAfterSpring(SpringResponse);\n"
+            "        return;\n"
+            "    }", tick
+        )
 
     def test_normal_motor_and_both_bonuses_use_same_surface_scale(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(

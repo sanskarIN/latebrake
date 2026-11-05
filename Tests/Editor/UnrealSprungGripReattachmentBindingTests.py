@@ -31,12 +31,12 @@ class UnrealSprungGripReattachmentBindingTests(unittest.TestCase):
         tick = self.tick
         stages = (
             "latebrake::CalculateSprungChassis(SpringSample)",
+            "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
             "latebrake::ConstrainGroundContactToSuspension(",
             "latebrake::CalculateAxleTractionBudget(GroundContact, SpringResponse)",
             "GripReattachment.Advance(",
             "GroundContact = GripFrame.Ground;",
             "const latebrake::AxleTractionBudget AxleBudget = GripFrame.Axles;",
-            "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
             "const float RearDriveTractionScale =",
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "Chassis->AddTorqueInRadians(",
@@ -68,8 +68,21 @@ class UnrealSprungGripReattachmentBindingTests(unittest.TestCase):
         )
         self.assertIn(
             "if (!GripFrame.Valid)\n    {\n"
-            "        NeutralizeMotionWhenDrivingBlocked();",
+            "        RejectOptionalDriveAfterSpring(SpringResponse);\n"
+            "        return;\n"
+            "    }",
             self.tick
+        )
+        # Independent suspension validity remains a HARD safety gate
+        # before the single frame's lift; optional grip failure must
+        # not erase physical momentum already accepted by the chassis.
+        self.assertLess(
+            self.tick.index("if (!SpringResponse.Valid)"),
+            self.tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);")
+        )
+        self.assertLess(
+            self.tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"),
+            self.tick.index("if (!GripFrame.Valid)")
         )
         self.assertGreaterEqual(self.pawn.count("GripReattachment.Reset();"), 5)
 
@@ -103,8 +116,16 @@ class UnrealSprungGripReattachmentBindingTests(unittest.TestCase):
         grid_dispatch = self.tick.split("if (bPreGreen)\n    {\n"
                                         "        // Keep the grid still in XY/yaw", 1)[1]
         grid_dispatch = grid_dispatch.split("return;", 1)[0]
-        self.assertIn("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
-                      grid_dispatch)
+        # Lift has already been submitted before entering the countdown
+        # branch. A second call here would double spring force on the grid.
+        lift = "ApplySprungForces(SpringResponse, WheelWorldAnchors);"
+        self.assertEqual(self.tick.count(lift), 1)
+        grid_start = self.tick.index(
+            "if (bPreGreen)\n    {\n"
+            "        // Keep the grid still in XY/yaw"
+        )
+        self.assertLess(self.tick.index(lift), grid_start)
+        self.assertNotIn(lift, grid_dispatch)
         self.assertNotIn("Chassis->AddForce(Forward * DriveForce", grid_dispatch)
         self.assertNotIn("Chassis->AddTorqueInRadians(", grid_dispatch)
 

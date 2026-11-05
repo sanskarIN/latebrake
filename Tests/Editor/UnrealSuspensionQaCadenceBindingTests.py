@@ -35,8 +35,15 @@ class UnrealSuspensionQaCadenceBindingTests(unittest.TestCase):
             self.assertIn(marker, qa)
         self.assertLess(tick.index("GripReattachment.Advance("),
                         tick.index("SuspensionQaSchedule.ShouldReport("))
-        self.assertLess(tick.index("SuspensionQaSchedule.ShouldReport("),
-                        tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"))
+        # Physics support is dispatched exactly once before optional
+        # policies or QA. Non-shipping telemetry only observes it; logs
+        # must never gate or double-submit any spring force.
+        lift = "ApplySprungForces(SpringResponse, WheelWorldAnchors);"
+        self.assertEqual(tick.count(lift), 1)
+        self.assertLess(tick.index("if (!SpringResponse.Valid)"), tick.index(lift))
+        self.assertLess(tick.index(lift), tick.index("GripReattachment.Advance("))
+        self.assertLess(tick.index(lift),
+                        tick.index("SuspensionQaSchedule.ShouldReport("))
         for forbidden in (
             "Chassis->AddForce", "Chassis->AddTorque", "Chassis->SetPhysics",
             "LineTraceSingleByChannel", "SetActorLocation", "PassCheckpoint(",
