@@ -4,6 +4,48 @@
 > been compiled with Unreal Engine 5.8, run on a phone, or packaged as an APK.
 > Rectangles in the engine HUD are not native accessibility widgets.
 
+## Viewport-action epoch safety (source candidate; not Android-qualified)
+
+An Android finger press can be the **first input callback after a screen
+rotation, fold/unfold, inset change, or split-screen resize**. Earlier
+source correctly cleared GAS/STEER ownership and both smoothed commands
+when that first callback noticed the changed viewport, but still allowed
+the **same press** to activate a newly relocated PAUSE, RESTART, RECOVER
+or career/menu button. A coincidental finger position could therefore
+restart the event or request recovery from a screen-change touch.
+
+The pawn now checks
+`SuppressFreshTouchOnInvalidatedViewport(freshPress, viewportInvalidated)`
+**after** validating the viewport/coordinates but **before** menu,
+standalone PAUSE, focus-loss or race-action dispatch. A newly registered
+press that first observes a changed/unavailable viewport is discarded
+for this action epoch, not converted into a pause/restart/recovery.
+Its physical-down `TouchPressTracker` latch is **not cleared**:
+a duplicate or held finger cannot retry on `IE_Pressed` or `IE_Repeat`.
+A genuine OS lift followed by a fresh press on the stable new layout
+still works. Existing two-finger steering/pedal cancellation and PIT
+hold cancellation continue on every resize.
+
+The strict portable `TouchViewportActionEpoch` C++20 regression tests
+landscape→portrait transitions, a RECOVER finger appearing on a changed
+viewport, no residual GAS/STEER or PIT command, no duplicate
+action from the same held finger, fresh release/repress recovery,
+temporary zero-size viewport and **100,000 changing viewport epochs**.
+The Python Unreal source-binding test verifies this pre-dispatch
+check occurs before every PAUSE, RESTART, RECOVER, career/menu or
+focus-resume path; these are source-level checks, not real engine input.
+
+**Required physical Android QA under issue #13:** on a packaged
+licensed Unreal Engine 5.8 game, hold two fingers on GAS+STEER,
+rotate/resize the screen, then touch PAUSE/RECOVER/RESTART where
+the newly laid-out rectangles moved. The *first resize-observing
+press* must have no action or penalty; release and press again
+on the stable viewport to confirm PAUSE/RESUME and RECOVER can
+work normally. Repeat with split-screen, background/foreground,
+zero-size transitions and paused input dispatch. Confirm that
+no accidental five-second recovery penalty or race restart occurs.
+Do **not** mark device qualification complete from CTest alone.
+
 ## Layout and gestures
 
 The HUD and the vehicle input dispatcher use the same engine-independent

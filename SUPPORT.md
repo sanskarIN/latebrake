@@ -4,7 +4,7 @@ Latebrake is a community-driven open-source game. You can contribute code, revie
 
 Voluntary financial support is also available. Donations do not unlock vehicles, paid advantages, ranking access or gameplay progression.
 
-- Buy Me a Coffee — https://buymeacoffee.com/SanskarCodes
+- Buy Me a Coffee — https://buymeacoffee.com/sanskarIN
 - Razorpay — https://razorpay.me/@SanskarCodes
 - PayPal.me — https://paypal.me/SanskarCodes
 

@@ -2,7 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90) — SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** The published immutable source tag resolves to `a85e564a4856a2d0915df5287b3fdc8079e7b72d`, a non-draft GitHub prerelease with **zero executable assets**, after exact-SHA Windows/Ubuntu/macOS C++20 qualification, Python Unreal-source binding tests, Windows synthetic package/provenance policies and MkDocs verification. Since v0.5.89, Unreal C++ source has gained progressive chassis road load, speed-aware yaw steering, automatic transmission, grip-limited service braking, bounded lateral grip sharing the brake traction budget, earlier rival corner braking and limited original-straight passing with emergency traffic-brake priority. Previous six-car garage, race HUD, career, rival split and touch policies remain in source. **No licensed Unreal Engine 5.8/UHT game compile, independent wheel suspension, original cooked map, installed Win64 EXE, Android APK/AAB, or real driving QA has been verified. GitHub source archives are not installers.** [v0.5.90 release notes](docs/releases/v0.5.90.md) · [Lateral grip QA](docs/LATERAL_GRIP_BUDGET_QA.md) · [Rival passing and traffic QA](docs/RIVAL_PASS_TRAFFIC_QA.md).
+> **Latest published: [v0.5.91](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91) — EXPERIMENTAL SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** The immutable snapshot `8edba49c0a6294ece2797c708d80b6dd52288d40` freezes the **unmerged draft [suspension PR #295](https://github.com/sanskarIN/latebrake/pull/295)**, not a new playable version of protected `main`. Its four WorldStatic corner rays, measured Chaos point velocity, spring/anti-roll force budgeting, contact-aware drive/steer authority, non-shipping telemetry and physics-momentum-preserving fallbacks are experimental Unreal C++ source, **not verified Unreal runtime**. The prior [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90) is the previous main-line source milestone. v0.5.91 has **zero executable attachments**; no licensed UE5.8/UHT game compilation, independently validated suspension behavior, original cooked circuit map, installed Windows EXE, Android APK/AAB or hands-on driving QA has been verified. GitHub source ZIP/tarballs are **not installers**. [v0.5.91 release notes](docs/releases/v0.5.91.md) · [Suspension QA plan](docs/SPRUNG_CHASSIS_QA.md).
 
 **v0.5.87 six-car 3D body-kit source work (preserved in v0.5.88):** the real Unreal car pawn
 now contains a per-car front splitter, two side skirts, rear diffuser,
@@ -410,7 +410,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 Latebrake is free to develop and contribute to. Support is **optional** and confers no gameplay or racing advantage.
 
-- Buy Me a Coffee: https://buymeacoffee.com/SanskarCodes
+- Buy Me a Coffee: https://buymeacoffee.com/sanskarIN
 - Razorpay: https://razorpay.me/@SanskarCodes
 - PayPal.me: https://paypal.me/SanskarCodes
 
