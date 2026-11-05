@@ -49,14 +49,14 @@ public:
 
         SecondsSinceReport = std::min(
             SuspensionQaHeartbeatSeconds, SecondsSinceReport + deltaSeconds);
-        if (SecondsSinceReport < SuspensionQaMinimumEventSeconds)
+        if (SecondsSinceReport + 1.0e-12 < SuspensionQaMinimumEventSeconds)
         {
             return false;
         }
 
         const bool changed = loadedCornerMask != LastLoadMask ||
                              isGrid != bLastGrid;
-        if (!changed && SecondsSinceReport < SuspensionQaHeartbeatSeconds)
+        if (!changed && SecondsSinceReport + 1.0e-12 < SuspensionQaHeartbeatSeconds)
         {
             return false;
         }
