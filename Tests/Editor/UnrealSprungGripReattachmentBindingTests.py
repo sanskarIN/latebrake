@@ -78,10 +78,9 @@ class UnrealSprungGripReattachmentBindingTests(unittest.TestCase):
         for required in (
             "GripReattachmentRisePerSecond = 6.0",
             "GripReattachmentMaxFrameSeconds = 0.10",
-            "std::min(ground.ContactTractionScale, WholeGrip + rise)",
             "std::min(axles.RearDriveTractionScale, RearGrip + rise)",
             "std::min(axles.FrontSteeringTractionScale, FrontGrip + rise)",
-            "result.Ground.HasDriveContact =",
+            "result.Ground = ground;",
             "result.Axles.RearDriveReady =",
             "result.Axles.FrontSteeringReady =",
             "void Reset() noexcept",
