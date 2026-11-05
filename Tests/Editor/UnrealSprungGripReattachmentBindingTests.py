@@ -91,7 +91,7 @@ class UnrealSprungGripReattachmentBindingTests(unittest.TestCase):
         self.assertIn("if (bResetGripAuthority)", inputs)
         self.assertIn("GripReattachment.Reset();", inputs)
         self.assertIn(
-            "if (bPreGreen)\\n    {\\n"
+            "if (bPreGreen)\n    {\n"
             "        // Every countdown frame neutralizes driving input",
             self.tick
         )
@@ -100,7 +100,7 @@ class UnrealSprungGripReattachmentBindingTests(unittest.TestCase):
             self.tick.index("ClearDriverInputs(false);"),
             self.tick.index("GripReattachment.Advance(")
         )
-        grid_dispatch = self.tick.split("if (bPreGreen)\\n    {\\n"
+        grid_dispatch = self.tick.split("if (bPreGreen)\n    {\n"
                                         "        // Keep the grid still in XY/yaw", 1)[1]
         grid_dispatch = grid_dispatch.split("return;", 1)[0]
         self.assertIn("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
