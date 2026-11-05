@@ -121,6 +121,12 @@ before the first motor/steer force submission:
   frames discard saved authority. A fresh 3/2/1 grid countdown can
   settle both the physical springs and these motor/steer authority
   states without allowing pre-GO acceleration.
+- **Validate physical metadata before reusing any axle memory:** the
+  reattachment layer independently checks that four-corner contact counts
+  agree with the front/rear breakdown, contact-count force ceilings,
+  finite front/rear load ratios and each axle's actual load-adjusted
+  2/1/0-contact traction cap. Malformed readings reset transient
+  authority rather than granting motor or yaw torque.
 - **One measured sample:** no extra wheel traces, actors, tire art,
   SaveGame writes, lap claims, network calls or telemetry side effects.
 
