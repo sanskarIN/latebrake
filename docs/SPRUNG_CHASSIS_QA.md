@@ -331,6 +331,49 @@ wheel penetration, tyre model quality, actual substep stability or
 whether a player can complete a lap. Never report this as live evidence
 unless it was emitted by an actual licensed Unreal Engine session.
 
+## Finite frame-hitch isolation — preserve genuine Chaos momentum
+
+The spring/damper model only accepts physics samples at a finite
+`DeltaSeconds` of **0–0.10 seconds**, to prevent a single slow game frame
+from injecting unbounded or stale force. Previously a >100 ms frame
+could fall through to `CalculateSprungChassis` rejecting the sample,
+where the generic `NeutralizeMotionWhenDrivingBlocked()` handler
+**zeroed valid linear and angular Chaos velocities**. On slower hardware,
+that would create visibly unnatural stop/start motion, including while
+falling or recovering from a curb. This is different from a real
+pause/menu, an invalid/missing chassis, or nonfinite physics, which must
+still fail closed under their existing hard gate.
+
+A new early finite-hitch path runs **after** the strict authoritative
+race/mode/body gates and the countdown's XY/yaw lock, but **before**
+throttle smoothing, road traces, spring forces, or optional drive and
+reward systems. It clears stale input and transient HUD/drive authority,
+suspends run-local observations and returns without adding any spring,
+engine, brake or steering force. It deliberately **does not set the
+valid simulated chassis velocity or angular velocity**. The actual
+Chaos world continues gravity and existing momentum according to its
+own physics stepping/collision policy; this source path is not a
+substepping or framerate fix and does not guarantee a smooth on-road
+result. The next valid frame must requalify genuine ground and spring
+support from fresh observations.
+
+The `SprungChassisDynamicsTests.cpp` boundary regression tests 0.10 s
+accepted versus 0.100001 s rejected, including ordinary hitch rejection.
+The separate `UnrealFiniteHitchPhysicsBindingTests.py` proves the
+*source order*: hard pause and invalid-body checks remain first, grid
+XY/yaw freeze remains active, and no long-frame motor, ray, spring,
+reward, teleport or velocity-zeroing code runs in the hitch branch.
+
+**Real gameplay acceptance is still outstanding:** insert deliberate
+120–250 ms game-thread stalls in a licensed Unreal 5.8 Development
+Win64 build while a valid car is (1) grounded, (2) clearing a curb,
+(3) airborne, and (4) on the red-light grid. Capture actual chassis
+velocity, 4-corner force, lap timing and recorded replay/video. A jump
+in speed, phantom checkpoint grant, lost driver input, ungrounded
+propulsion or unrecoverable roll fails the feature. A source CI pass is
+not proof that Chaos or frame pacing behaves correctly during these
+stalls.
+
 ## Nearly vertical chassis — physics recovery without fake drive
 
 A fully pitched/standing-on-nose car can produce a near-zero world XY
