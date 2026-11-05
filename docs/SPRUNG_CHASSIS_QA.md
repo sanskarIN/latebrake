@@ -367,6 +367,28 @@ rejection in a controlled Development build, then measure real
 chassis velocity, supported spring impulses, driver input recovery,
 gate/clock state and camera/wheel rendering at 30/60/120 FPS.
 
+## Airborne road resistance — spring load, not map location
+
+The prior source model applied rolling and extra off-pavement friction
+while the real chassis was entirely airborne. A ground ray or a road
+surface classification is not proof of *load-bearing* tires.
+
+The shared `ProgressiveRoadLoad` policy now receives the same-frame
+`SpringResponse.TotalUpForce / SpringResponse.WeightForce`, clamped
+to [0,1]. Only rolling/shoulder resistance depends on that measured
+spring support; simple quadratic aerodynamic drag continues in the
+air. At full support, existing paved/grass force numbers remain
+unchanged. At zero support (including free flight, upward rebound and
+roof inversion), road-position classification cannot add fictional
+tire rolling force. A new `AirborneRoadLoad` C++20 target stresses
+120,000 changing samples and independent Unreal source tests protect
+the actual binding. See `PROGRESSIVE_ROAD_LOAD_QA.md`.
+
+**Win64 acceptance:** verify airborne coast-down over both paved and
+grass surfaces, landing force continuity, actual Chaos velocity and
+no snap across 30/60/120 FPS. Source CI is not an installed gameplay
+test.
+
 ## Roll and roof contact — no fictional underside wheel support
 
 A WorldStatic ray cast straight down from a 3D car's four wheel-aligned
