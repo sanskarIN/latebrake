@@ -561,7 +561,7 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageVehicleId = SafeId;
 }
 
-void ALatebrakeCarPawn::ClearDriverInputs()
+void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)
 {
     Throttle = 0.f;
     Steering = 0.f;
@@ -579,7 +579,12 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     Transmission.Suspend();
     LastGroundContact = {};
     LastSuspension = {};
-    GripReattachment.Reset();
+    // The grid calls this each Tick: only true lifecycle breaks must
+    // discard the valid spring-load authority already accumulated there.
+    if (bResetGripAuthority)
+    {
+        GripReattachment.Reset();
+    }
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
@@ -781,7 +786,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // checkpoint logic during the countdown.
     if (bPreGreen)
     {
-        ClearDriverInputs();
+        // Every countdown frame neutralizes driving input, without
+        // repeatedly resetting the gradually recovered axle authority.
+        // No motor/yaw force is applied until the authoritative GO gate.
+        ClearDriverInputs(false);
         const FVector GridVelocity = Chassis->GetPhysicsLinearVelocity();
         const FVector GridAngular = Chassis->GetPhysicsAngularVelocityInRadians();
         if (!FMath::IsFinite(GridVelocity.Z) ||
