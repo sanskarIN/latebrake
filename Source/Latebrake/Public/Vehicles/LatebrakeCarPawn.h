@@ -23,6 +23,7 @@
 #include "Vehicles/ChassisContactReadout.h"
 #include "Vehicles/SprungChassisDynamics.h"
 #include "Vehicles/SprungGripReattachment.h"
+#include "Vehicles/SuspensionQaCadence.h"
 #include "Vehicles/ArcadeCollisionDamage.h"
 #include "Vehicles/ArcadeSurfaceTraction.h"
 #include "Vehicles/ArcadeNitroBoost.h"
@@ -75,7 +76,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; LastSuspension = {}; GripReattachment.Reset(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; LastSuspension = {}; GripReattachment.Reset(); ResetSuspensionQa(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -308,10 +309,16 @@ private:
     // Rear motor/front steering authority falls immediately on contact
     // loss and ramps back on measured re-contact. Braking is not delayed.
     latebrake::SprungGripReattachment GripReattachment;
+    void ResetSuspensionQa() noexcept
+    {
 #if !UE_BUILD_SHIPPING
-    // At most one non-shipping diagnostic record per 2 seconds; no disk IO,
-    // remote telemetry, profile state, race scoring or cosmetic allocation.
-    double SuspensionQaElapsedSeconds = 0.0;
+        SuspensionQaSchedule.Reset();
+#endif
+    }
+#if !UE_BUILD_SHIPPING
+    // Source-level observation only. The live gameplay force model never
+    // reads this state; Shipping builds allocate no diagnostic history.
+    latebrake::SuspensionQaCadence SuspensionQaSchedule;
 #endif
     latebrake::ArcadeCollisionDamage CollisionDamage;
     double LastQualifiedPlanarSpeedCmPerSecond = 0.0;
