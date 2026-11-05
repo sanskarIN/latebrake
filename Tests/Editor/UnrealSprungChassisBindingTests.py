@@ -166,7 +166,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         self.assertIn("SetRelativeRotation(Visual.Rotator());", visual)
         self.assertNotIn("AddForce", visual)
         self.assertNotIn("PassCheckpoint", visual)
-        self.assertIn("LastSuspension = {}; BrakeDistance.Reset();", self.pawn_h)
+        self.assertIn("LastSuspension = {}; GripReattachment.Reset(); BrakeDistance.Reset();", self.pawn_h)
         self.assertIn("LastSuspension = {};", self.pawn)
 
     def test_real_nonshipping_telemetry_has_no_race_or_physics_side_effects(self):
