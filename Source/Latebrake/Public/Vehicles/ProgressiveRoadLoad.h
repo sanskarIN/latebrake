@@ -19,6 +19,10 @@ struct ProgressiveRoadLoadSample final
     double ChassisMassKg = 0.0;
     bool ArcadeHandling = true;
     bool OffPavement = false;
+    // Actual positive spring load / mass-gravity weight, [0,1].
+    // The real Unreal pawn MUST supply this same-frame measurement.
+    // Existing standalone callers default to the fully-loaded baseline.
+    double SprungLoadFraction = 1.0;
 };
 
 struct ProgressiveRoadLoadOutput final
@@ -56,7 +60,9 @@ inline ProgressiveRoadLoadOutput CalculateProgressiveRoadLoad(
         !std::isfinite(sample.VelocityY) ||
         !std::isfinite(sample.ChassisMassKg) ||
         sample.ChassisMassKg < RoadLoadMinimumMassKg ||
-        sample.ChassisMassKg > RoadLoadMaximumMassKg)
+        sample.ChassisMassKg > RoadLoadMaximumMassKg ||
+        !std::isfinite(sample.SprungLoadFraction) ||
+        sample.SprungLoadFraction < 0.0 || sample.SprungLoadFraction > 1.0)
     {
         return {};
     }
@@ -76,10 +82,16 @@ inline ProgressiveRoadLoadOutput CalculateProgressiveRoadLoad(
     // Near a stop, avoid a constant Coulomb force that can reverse the car
     // across the origin; use a bounded continuous ramp (0 at exactly zero).
     const double rollingRamp = std::min(1.0, speed / 250.0);
+    // Geometric road proximity is NOT physical tire support. Keep simple
+    // quadratic aerodynamic drag in free flight, but only apply rolling
+    // and shoulder resistance from the measured bounded wheel-spring load.
+    // At full support this is bit-for-bit the previous tuning; as spring
+    // loading vanishes, surface position cannot slow an airborne car.
+    const double support = sample.SprungLoadFraction;
     const double surface = sample.OffPavement
-        ? RoadLoadOffPavementResistance : 1.0;
-    const double demand =
-        surface * (quadratic * speed * speed + rolling * rollingRamp);
+        ? 1.0 + (RoadLoadOffPavementResistance - 1.0) * support : 1.0;
+    const double demand = surface *
+        (quadratic * speed * speed + rolling * rollingRamp * support);
     // Reserve 20% of the current speed against a one-frame reversal from
     // THIS additional resistance alone. Physics substeps/contact remain
     // the Chaos engine's responsibility.
