@@ -73,6 +73,41 @@ class UnrealSprungGripReattachmentBindingTests(unittest.TestCase):
         )
         self.assertGreaterEqual(self.pawn.count("GripReattachment.Reset();"), 5)
 
+    def test_grid_keeps_measured_traction_warm_without_starting_drive(self):
+        # The live 3-2-1 countdown runs ClearDriverInputs every Tick.
+        # It must NOT reset the ramp on every frame, or GO will begin
+        # with an artificial grip deficit despite a settled chassis.
+        self.assertIn(
+            "void ClearDriverInputs(bool bResetGripAuthority = true);",
+            self.pawn_header
+        )
+        self.assertIn(
+            "void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)",
+            self.pawn
+        )
+        inputs = self.pawn.split(
+            "void ALatebrakeCarPawn::ClearDriverInputs(", 1
+        )[1].split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked(", 1)[0]
+        self.assertIn("if (bResetGripAuthority)", inputs)
+        self.assertIn("GripReattachment.Reset();", inputs)
+        self.assertIn(
+            "if (bPreGreen)\\n    {\\n"
+            "        // Every countdown frame neutralizes driving input",
+            self.tick
+        )
+        self.assertIn("ClearDriverInputs(false);", self.tick)
+        self.assertLess(
+            self.tick.index("ClearDriverInputs(false);"),
+            self.tick.index("GripReattachment.Advance(")
+        )
+        grid_dispatch = self.tick.split("if (bPreGreen)\\n    {\\n"
+                                        "        // Keep the grid still in XY/yaw", 1)[1]
+        grid_dispatch = grid_dispatch.split("return;", 1)[0]
+        self.assertIn("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
+                      grid_dispatch)
+        self.assertNotIn("Chassis->AddForce(Forward * DriveForce", grid_dispatch)
+        self.assertNotIn("Chassis->AddTorqueInRadians(", grid_dispatch)
+
     def test_loss_is_immediate_and_regain_is_bounded_without_score_mutation(self):
         header = self.header
         for required in (
