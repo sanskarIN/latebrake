@@ -2046,3 +2046,18 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SuspensionMountAttitude COMMAND latebrake_suspension_mount_attitude_tests)
+
+# A rigid Chaos chassis must not use road/grass tire rolling resistance
+# in flight, rebound or on its roof. Test 120k valid same-frame spring
+# loads and the aerodynamic-only case with strict C++20 warnings.
+add_executable(latebrake_airborne_road_load_tests AirborneRoadLoadTests.cpp)
+target_include_directories(latebrake_airborne_road_load_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_airborne_road_load_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_airborne_road_load_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_airborne_road_load_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AirborneRoadLoad COMMAND latebrake_airborne_road_load_tests)
