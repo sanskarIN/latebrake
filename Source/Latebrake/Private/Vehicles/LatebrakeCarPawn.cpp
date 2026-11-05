@@ -11,6 +11,7 @@
 #include "Vehicles/LateralGripBudget.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
 #include "Vehicles/SprungChassisDynamics.h"
+#include "Vehicles/ChassisWheelAnchors.h"
 #include "Vehicles/AxleTractionBudget.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/SpeedAwareYawTorque.h"
@@ -184,17 +185,20 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
 
     UStaticMeshComponent* Wheels[] = {FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel};
     UStaticMeshComponent* Spokes[] = {FrontLeftSpoke, FrontRightSpoke, RearLeftSpoke, RearRightSpoke};
-    const FVector Locations[] =
-    {
-        FVector(122.f, -94.f, -29.f), FVector(122.f, 94.f, -29.f),
-        FVector(-122.f, -94.f, -29.f), FVector(-122.f, 94.f, -29.f)
-    };
     for (int32 Index = 0; Index < 4; ++Index)
     {
+        // Visual mesh placement, physical trace origins and returned spring
+        // corner order share one immutable authored centimeter layout.
+        const auto& Anchor =
+            latebrake::ChassisWheelAnchors[static_cast<unsigned>(Index)];
+        const FVector Location(
+            static_cast<float>(Anchor.ForwardCm),
+            static_cast<float>(Anchor.RightCm),
+            static_cast<float>(Anchor.SpindleHeightCm));
         Wheels[Index]->SetupAttachment(Chassis);
         if (Cylinder.Succeeded())
         {
-            ConfigureDecorativeMesh(Wheels[Index], Cylinder.Object, Locations[Index], FVector(0.58f, 0.58f, 0.25f));
+            ConfigureDecorativeMesh(Wheels[Index], Cylinder.Object, Location, FVector(0.58f, 0.58f, 0.25f));
             // Align the cylinder's original Z axis with the car's Y axis:
             // this is a *wheel spindle*, not a tire facing nose-to-tail.
             Wheels[Index]->SetRelativeRotation(FRotator(0.f, 0.f, 90.f));
@@ -210,7 +214,7 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
             Spokes[Index]->SetStaticMesh(Cube.Object);
             // Position on the outward-facing cylinder cap of each side.
             Spokes[Index]->SetRelativeLocation(FVector(
-                28.f, 0.f, Locations[Index].Y < 0.f ? 51.5f : -51.5f));
+                28.f, 0.f, Anchor.RightCm < 0.0 ? 51.5f : -51.5f));
             Spokes[Index]->SetRelativeScale3D(FVector(0.14f, 0.24f, 0.09f));
         }
     }
@@ -911,22 +915,16 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     FCollisionQueryParams GroundQuery(
         SCENE_QUERY_STAT(LatebrakeChassisGroundContact), false);
     GroundQuery.AddIgnoredActor(this);
-    constexpr float ProbeForwardCm = 122.f;
-    // These anchors must match the 94 cm Y offset of the decorative
-    // wheel spindles, rather than the old inboard traction-only sensors.
-    constexpr float ProbeSideCm = 94.f;
-    const float ProbeX[] = {
-        ProbeForwardCm, ProbeForwardCm,
-        -ProbeForwardCm, -ProbeForwardCm
-    };
-    const float ProbeY[] = {
-        -ProbeSideCm, ProbeSideCm, -ProbeSideCm, ProbeSideCm
-    };
     FVector WheelWorldAnchors[4];
     for (int32 Index = 0; Index < 4; ++Index)
     {
+        // The physical ray follows the same x/y layout as the visible
+        // wheel. Never include suspension visual travel in physics probes.
+        const auto Probe = latebrake::ChassisProbeOffset(
+            static_cast<unsigned>(Index));
         const FVector Origin = GroundOrigin +
-            ChassisForward * ProbeX[Index] + ChassisRight * ProbeY[Index];
+            ChassisForward * static_cast<float>(Probe.ForwardCm) +
+            ChassisRight * static_cast<float>(Probe.RightCm);
         WheelWorldAnchors[Index] = Origin;
         const FVector End = Origin -
             FVector(0.f, 0.f,
@@ -1590,11 +1588,14 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
             const double Travel = LastSuspension.Valid
                 ? LastSuspension.Corners[static_cast<unsigned>(Index)].WheelTravelCm
                 : latebrake::SuspensionVisualMinTravelCm;
-            const double WheelX = Index < 2 ? 122.0 : -122.0;
-            const double WheelY = Index % 2 == 0 ? -94.0 : 94.0;
+            const auto Position = latebrake::ChassisVisualOffset(
+                static_cast<unsigned>(Index), Travel);
             const FVector RootScale(3.8f, 1.8f, 0.65f);
             Wheels[Index]->SetRelativeLocation(
-                FVector(WheelX, WheelY, -29.0 + Travel) / RootScale);
+                FVector(static_cast<float>(Position.ForwardCm),
+                        static_cast<float>(Position.RightCm),
+                        static_cast<float>(Position.SpindleHeightCm))
+                    / RootScale);
         }
     }
 }
