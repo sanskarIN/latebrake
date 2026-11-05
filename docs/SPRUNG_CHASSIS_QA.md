@@ -44,10 +44,19 @@ This change is the start of **one production-quality car-driving foundation**:
 - The four cosmetic spindle meshes now move up/down **independently**
   with sampled vertical travel (between -23 and +25 cm), while their
   existing real-velocity roll and steer animation remains intact.
-- Spring anchors use the **same front/rear 122 cm and lateral 94 cm**
-  offsets as the visual wheels. The earlier inboard 68 cm sensor was
-  inappropriate for physical load transfer; contact forces now act at the
-  actual spindle track width.
+- The single authoritative `ChassisWheelAnchors.h` layout defines four
+  centimeter offsets (FL/FR/RL/RR), with **122 cm front/rear and 94 cm
+  left/right**, and a **-29 cm decorative spindle height**. The Unreal
+  constructor, four actual `WorldStatic` spring rays, `AddForceAtLocation`
+  locations and independently animated decorative wheel spindles use
+  the SAME X/Y data. Physics traces begin in the actual chassis-root
+  wheel-aligned plane and never follow cosmetic spring travel. The
+  earlier inboard 68 cm ground sensor was inappropriate for physical
+  load transfer. The previous three separate wheel-coordinate literals
+  could drift apart as body kits change; tests now protect this contract.
+  Because the chassis root mesh is nonuniformly scaled, cosmetic
+  attachment transforms divide centimeter positions by root scale
+  and preserve measured in-world positions.
 - **Axle-local anti-roll support:** a front/rear pair whose wheels both
   carry positive measured spring load redistributes a small portion to
   the more-compressed (or descending) wheel. Left-to-right transfers
@@ -82,7 +91,9 @@ This change is the start of **one production-quality car-driving foundation**:
   probe anchors rotate with the physical chassis pitch/roll, but all
   engine/brake/lateral/yaw-driving thrust uses a normalized **flat XY
   heading**. Tilting the car cannot inject unintended vertical engine
-  acceleration. An almost vertical/invalid forward projection fails closed.
+  acceleration. An almost vertical/invalid forward projection prevents
+  motor and yaw corrections **after submitting genuine spring forces**,
+  without zeroing Chaos linear/angular momentum.
 - During the race's existing countdown, the actual body may settle
   vertically on real springs. Horizontal and yaw input are neutralized;
   no engine/nitro, tire wear, race clock or checkpoint grants are allowed
@@ -153,6 +164,36 @@ a real contact-loss/landing run with measured force, braking and
 steering. Reject the feature if braking loses responsiveness or
 re-contact feels delayed or unstable. Do not claim an excellent or
 playable racing game from source tests alone.
+
+## Canonical wheel layout and load-transfer verification
+
+`Source/Latebrake/Public/Vehicles/ChassisWheelAnchors.h` is the
+engine-independent single source for four clockwise axle-paired wheel
+centers. `ChassisProbeOffset` returns the real chassis-frame ray origin
+(with a fixed Z of zero); `ChassisVisualOffset` shares its exact X/Y
+but adds measured, bounded visual-only travel to the -29 cm spindle.
+
+The existing prototype's cylinder wheel radius is 29 cm: at target ride
+distance 59 cm, its nominal bottom is 58 cm below the chassis origin,
+leaving **1 cm intended visual clearance**. This is a geometric source
+assertion, **not** a claim that the actual Unreal collision body's
+wheel/body geometry passes hardware penetration QA.
+
+`Tests/Standalone/ChassisWheelGeometryTests.cpp` verifies matched
+4-corner order, nonuniform parent-scale compensation, visual travel
+is strictly Z-only, actual yaw-rotated contact/visual XY alignment
+at five headings, flat equal-force pitch/roll balance, and physically
+asymmetric corner-bump torque from the **same production spring code**.
+`Tests/Editor/UnrealWheelAnchorBindingTests.py` ensures the real pawn
+uses the shared header for visible wheels, real road traces, force
+anchors and wheel animation. The tests intentionally avoid any claim
+of an installed playable game.
+
+Before accepting this geometry in a playable build, test all four
+corners on a flat map, offset/raised road edges, pitched and rolled
+body, and every cosmetic garage car at 30/60/120 FPS; confirm force
+anchors line up with rendered wheel centers and actual road height.
+Reject the feature if wheel and probe movement visibly diverge.
 
 ## Numerical source tests
 
