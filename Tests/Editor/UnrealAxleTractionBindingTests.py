@@ -36,7 +36,10 @@ class UnrealAxleTractionBindingTests(unittest.TestCase):
             "latebrake::CalculateSprungChassis(SpringSample)",
             "latebrake::ConstrainGroundContactToSuspension(",
             "latebrake::CalculateAxleTractionBudget(GroundContact, SpringResponse)",
-            "if (!AxleBudget.Valid)",
+            "const latebrake::AxleTractionBudget AxleBudget = GripFrame.Axles;",
+            "GripReattachment.Advance(",
+            "if (!GripFrame.Valid)",
+            "if (!MeasuredAxleBudget.Valid)",
             "AxleBudget.RearDriveTractionScale",
             "AxleBudget.FrontSteeringTractionScale",
             "const float RearDriveTractionScale =",
@@ -71,11 +74,11 @@ class UnrealAxleTractionBindingTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, tick)
         self.assertLess(
-            tick.index("if (!AxleBudget.Valid)"),
+            tick.index("if (!MeasuredAxleBudget.Valid)"),
             tick.index("NitroBoost.Step(")
         )
         self.assertLess(
-            tick.index("if (!AxleBudget.Valid)"),
+            tick.index("if (!MeasuredAxleBudget.Valid)"),
             tick.index("Chassis->AddForce(Forward * DriveForce")
         )
         # No positive motor or extra boost may use the old front-only
