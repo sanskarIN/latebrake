@@ -54,7 +54,7 @@ class ObservedBrakeDistanceBindingTests(unittest.TestCase):
         )[1].split("void ALatebrakeCarPawn::ThrottleInput(", 1)[0]
         self.assertIn("BrakeDistance.Suspend();", blocked)
         clear = self.pawn.split(
-            "void ALatebrakeCarPawn::ClearDriverInputs()", 1
+            "void ALatebrakeCarPawn::ClearDriverInputs(", 1
         )[1].split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("BrakeDistance.Suspend();", clear)
         recover = self.pawn.split(

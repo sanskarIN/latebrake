@@ -65,7 +65,7 @@ class NitroBoostBindingTests(unittest.TestCase):
         self.assertIn("GetNitroBoost() const", self.pawn_h)
         self.assertIn("NitroBoost.Reset();", self.pawn_h)
         self.assertIn("CurrentNitroSpeedCapScale = 1.f;", self.pawn_h)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("NitroBoost.Suspend();", clear)
         self.assertIn("CurrentNitroSpeedCapScale = 1.f;", clear)

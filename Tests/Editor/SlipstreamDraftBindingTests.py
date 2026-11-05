@@ -73,7 +73,7 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("latebrake::SlipstreamDraftBoost SlipstreamBoost;", self.pawn_h)
         self.assertIn("SlipstreamBoost.Reset();", self.pawn_h)
         self.assertIn("GetSlipstreamBoost() const", self.pawn_h)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("SlipstreamBoost.Suspend();", clear)
         self.assertIn("SLIPSTREAM +%.1f%% DRIVE", self.hud)
