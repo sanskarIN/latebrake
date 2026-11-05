@@ -7,10 +7,11 @@
 
 namespace latebrake
 {
-// Suspension-dependent tire force MUST fall as soon as measured support is
-// lost. After physical re-contact, ramp motor/steering/braking authority
-// back up over ~1/6 second rather than snapping on for a single ray hit.
-// This shapes arcade force AUTHORIZATION only, not Chaos spring forces,
+// Suspension-dependent axle authority MUST fall as soon as measured support
+// is lost. After real re-contact, ramp REAR MOTOR and FRONT STEERING only.
+// Whole-body braking and lateral grip retain the immediate, physically
+// measured ceiling; delaying service braking would compromise control.
+// This shapes arcade drive force AUTHORIZATION only, not Chaos spring forces,
 // world collision, tire friction coefficients, or race scoring.
 inline constexpr double GripReattachmentRisePerSecond = 6.0;
 inline constexpr double GripReattachmentMaxFrameSeconds = 0.10;
@@ -27,7 +28,6 @@ class SprungGripReattachment final
 public:
     void Reset() noexcept
     {
-        WholeGrip = 0.0;
         RearGrip = 0.0;
         FrontGrip = 0.0;
     }
@@ -76,18 +76,16 @@ public:
 
         // Falling edges are IMMEDIATE: this cannot preserve or invent
         // force after the production contact/axle policy says it is gone.
-        WholeGrip = std::min(ground.ContactTractionScale, WholeGrip + rise);
         RearGrip = std::min(axles.RearDriveTractionScale, RearGrip + rise);
         FrontGrip = std::min(axles.FrontSteeringTractionScale, FrontGrip + rise);
-        result.Ground.ContactTractionScale = WholeGrip;
-        result.Ground.HasDriveContact =
-            ground.SupportingProbes >= 2 && WholeGrip > AxleGripLoadEpsilon;
-        result.Axles.RearDriveTractionScale = std::min(RearGrip, WholeGrip);
-        result.Axles.FrontSteeringTractionScale = std::min(FrontGrip, WholeGrip);
-        result.Axles.RearDriveReady = result.Ground.HasDriveContact &&
+        result.Axles.RearDriveTractionScale =
+            std::min(RearGrip, ground.ContactTractionScale);
+        result.Axles.FrontSteeringTractionScale =
+            std::min(FrontGrip, ground.ContactTractionScale);
+        result.Axles.RearDriveReady = ground.HasDriveContact &&
             axles.RearWheelContacts > 0 &&
             result.Axles.RearDriveTractionScale > AxleGripLoadEpsilon;
-        result.Axles.FrontSteeringReady = result.Ground.HasDriveContact &&
+        result.Axles.FrontSteeringReady = ground.HasDriveContact &&
             axles.FrontWheelContacts > 0 &&
             result.Axles.FrontSteeringTractionScale > AxleGripLoadEpsilon;
         return result;
@@ -99,7 +97,6 @@ private:
         return std::isfinite(value) && value >= 0.0 && value <= 1.0;
     }
 
-    double WholeGrip = 0.0;
     double RearGrip = 0.0;
     double FrontGrip = 0.0;
 };
