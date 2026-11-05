@@ -224,6 +224,11 @@ private:
     void PitServicePressed();
     void PitServiceReleased();
     void NeutralizeMotionWhenDrivingBlocked();
+    // Optional drivetrain/surface failures must not erase real Chaos
+    // spring/gravity momentum after a valid four-corner force dispatch.
+    // This revokes input, HUD grip and transient authority only.
+    void RejectOptionalDriveAfterSpring(
+        const latebrake::SuspensionResponse& AcceptedSprings);
     // Actual contact springs: four vertical forces at measured Chaos anchors.
     // The pre-GO grid can settle under gravity with NO motor/steering input.
     void ApplySprungForces(const latebrake::SuspensionResponse& Response,

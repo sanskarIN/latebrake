@@ -35,7 +35,7 @@ class UnrealSpeedAwareYawTorqueBindingTests(unittest.TestCase):
             "static_cast<double>(AssistedSteering)",
             "bArcade, Surface.OffPavement",
             "if (!PlannedYaw.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
+            "RejectOptionalDriveAfterSpring(SpringResponse);",
             "static_cast<float>(PlannedYaw.TorqueZ)",
             "Chassis->AddTorqueInRadians(FVector(",
             "TurnTorque * FrontSteeringTractionScale",

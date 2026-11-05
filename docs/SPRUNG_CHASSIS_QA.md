@@ -331,6 +331,42 @@ wheel penetration, tyre model quality, actual substep stability or
 whether a player can complete a lap. Never report this as live evidence
 unless it was emitted by an actual licensed Unreal Engine session.
 
+## Failed optional drive policy — preserve submitted real springs
+
+A physics-valid frame can pass actual mass/gravity, four WorldStatic
+contact readings and the axle authority checks, **submit four real
+Chaos spring forces**, then fail an *optional* source policy: surface
+classification, progressive planar road load, grip-limited braking,
+sideways force, yaw torque or the automatic gearbox. Previously the
+unrelated hard race-pause/body-failure routine zeroed **both valid Chaos
+velocities** even after physical spring dispatch. A bad optional policy
+would thereby freeze a moving car or prevent it falling naturally.
+This was not a safe abstraction boundary for production driving.
+
+`RejectOptionalDriveAfterSpring(SpringResponse)` now distinguishes
+this case from genuine invalid Chaos body, source velocity, pause,
+focus-loss, menu and race-authority failure, which still invoke the
+hard neutralizer. The optional failure branch revokes stale driver
+inputs and axle grip, shuts off physical brake/reverse cosmetic lamps,
+suspends untrusted HUD/motion telemetry and steering/wheel animation,
+and retains **only** the last qualified physical spring frame for
+cosmetic spindle height. It **does not** set linear/angular Chaos
+velocity, inject motor/yaw force, reverse a spring impulse already
+submitted or authorize continued traction on the next frame. The
+next valid frame reevaluates real four-corner contact. The existing
+late reverse-speed-limit failure, which occurs *after* motor/steering
+dispatch, still uses hard neutralization and is outside this change.
+
+The standalone Unreal-source binding suite checks every one of the
+**six** pre-drive reject branches, the shared helper's lack of force
+and score side effects, complete motor/yaw dispatch ordering,
+continuing pre-GO grid safeguards and strong invalid-body/menu gates.
+These source checks **do not prove** actual Chaos runtime behavior.
+Manual licensed UE 5.8 Win64 playtest must inject each policy
+rejection in a controlled Development build, then measure real
+chassis velocity, supported spring impulses, driver input recovery,
+gate/clock state and camera/wheel rendering at 30/60/120 FPS.
+
 ## Finite frame-hitch isolation — preserve genuine Chaos momentum
 
 The spring/damper model only accepts physics samples at a finite

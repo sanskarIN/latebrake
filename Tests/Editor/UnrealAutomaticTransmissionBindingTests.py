@@ -38,7 +38,7 @@ class UnrealAutomaticTransmissionBindingTests(unittest.TestCase):
             "static_cast<double>(EffectiveThrottle)",
             "static_cast<double>(MaxSpeed)",
             "if (!TransmissionFrame.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
+            "RejectOptionalDriveAfterSpring(SpringResponse);",
             "TransmissionFrame.PropulsionFactor",
             "latebrake::GearAwareMotorPowerFactor(",
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",

@@ -606,6 +606,26 @@ void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)
     ResetCornerCameraYaw();
 }
 
+void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(
+    const latebrake::SuspensionResponse& AcceptedSprings)
+{
+    // At entry the real four measured spring forces have been submitted,
+    // but no motor, tire-force correction or yaw-driving torque has been.
+    // A rejected optional surface/gear/grip policy is NOT a failed Chaos
+    // body, pause or race-control gate. Preserve natural gravity/velocity.
+    ClearDriverInputs();
+    ApplySignalLights(false, false, 0.0);
+    WheelMotion.Suspend();
+    // ClearDriverInputs deliberately invalidates last HUD contact. The
+    // decorative spindle may still show only this validated spring frame.
+    LastSuspension = AcceptedSprings;
+    ApplyWheelVisualPose();
+    DrivingStats.Suspend();
+    DriftMeter.Suspend();
+    GForceMeter.Suspend();
+    SlipAngleMeter.Suspend();
+}
+
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
     // A pause, focus loss, failed race gate or malformed physics observation
@@ -1158,7 +1178,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(SurfacePosition.Y), true});
     if (!Surface.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // Resist actual planar motion, including reverse/sliding, rather than
@@ -1173,7 +1193,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             bArcade, Surface.OffPavement});
     if (!RoadLoad.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // Only a finite, source-authorized live chassis tick can arm actual
@@ -1253,7 +1273,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0});
     if (!PhysicalBraking.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // A shared friction-circle budget prevents arbitrary 20g+ lateral
@@ -1274,7 +1294,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             bArcade, BrakeProfile.HandbrakeActive});
     if (!LateralForce.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // Advisory, from actual consecutive signed-forward chassis motion
@@ -1317,7 +1337,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             bArcade, Surface.OffPavement});
     if (!PlannedYaw.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     const float EffectiveThrottle = static_cast<float>(
@@ -1438,7 +1458,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             bArcade, true});
     if (!TransmissionFrame.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     const float GearPowerFactor = static_cast<float>(

@@ -34,7 +34,7 @@ class UnrealGripLimitedBrakingBindingTests(unittest.TestCase):
             "TireCondition.GripMultiplier() * GarageGrip",
             "Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0",
             "if (!PhysicalBraking.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
+            "RejectOptionalDriveAfterSpring(SpringResponse);",
             "Chassis->AddForce(Forward *",
             "static_cast<float>(PhysicalBraking.ForwardForce)",
         ):

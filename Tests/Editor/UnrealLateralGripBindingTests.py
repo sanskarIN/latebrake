@@ -38,7 +38,7 @@ class UnrealLateralGripBindingTests(unittest.TestCase):
             "PhysicalBraking.DecelerationCmPerSecondSquared",
             "bArcade, BrakeProfile.HandbrakeActive",
             "if (!LateralForce.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
+            "RejectOptionalDriveAfterSpring(SpringResponse);",
             "Chassis->AddForce(Right *",
             "static_cast<float>(LateralForce.RightForce)",
         ):
