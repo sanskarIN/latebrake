@@ -1075,7 +1075,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // so every frame could prevent the body from tipping back onto the road.
     if (Forward.IsNearlyZero())
     {
+        // Force support was computed from this exact measured spring
+        // frame. Discard stale driving input, stored motor grip and HUD
+        // contact authority, but keep the visual spindle pose matched
+        // to the REAL suspension that just received Chaos force.
         ClearDriverInputs();
+        LastSuspension = SpringResponse;
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
         return;
