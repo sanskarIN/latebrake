@@ -30,7 +30,7 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
             "const FVector SurfacePosition = GetActorLocation()",
             "SurfaceTraction.Observe({",
             "if (!Surface.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
+            "RejectOptionalDriveAfterSpring(SpringResponse);",
             "TireCondition.Observe({",
             "latebrake::CalculateLateralGripForce({",
             "TireCondition.GripMultiplier() *\n                Surface.LateralGripMultiplier *",
@@ -39,9 +39,7 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
             "static_cast<float>(LateralForce.RightForce)",
         )
         self.assertTrue(all(marker in tick for marker in markers))
-        positions = [tick.index(x) if x != "NeutralizeMotionWhenDrivingBlocked();"
-                     else tick.index(x, tick.index("if (!Surface.Valid)"))
-                     for x in markers]
+        positions = [tick.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))
 
     def test_normal_motor_and_both_bonuses_use_same_surface_scale(self):
