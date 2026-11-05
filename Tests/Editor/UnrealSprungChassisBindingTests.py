@@ -88,18 +88,18 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::ApplySprungForces(", 1
         )[0]
         heading_guard = (
-            "if (Forward.IsNearlyZero())\\n"
-            "    {\\n"
-            "        ClearDriverInputs();\\n"
-            "        WheelMotion.Suspend();\\n"
-            "        ApplyWheelVisualPose();\\n"
-            "        return;\\n"
+            "if (Forward.IsNearlyZero())\n"
+            "    {\n"
+            "        ClearDriverInputs();\n"
+            "        WheelMotion.Suspend();\n"
+            "        ApplyWheelVisualPose();\n"
+            "        return;\n"
             "    }"
         )
         self.assertEqual(tick.count(heading_guard), 1)
         guard_index = tick.index(heading_guard)
         grid_index = tick.index(
-            "if (bPreGreen)\\n    {\\n"
+            "if (bPreGreen)\n    {\n"
             "        // Keep the grid still in XY/yaw"
         )
         grid_force = tick.index(
