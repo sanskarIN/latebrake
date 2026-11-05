@@ -66,13 +66,18 @@ class UnrealSuspensionQaCadenceBindingTests(unittest.TestCase):
         self.assertIn("SuspensionQaHeartbeatSeconds = 2.0", POLICY)
         self.assertIn("SuspensionQaMaximumFrameSeconds = 0.10", POLICY)
         for marker in ("void Reset() noexcept", "std::isfinite(deltaSeconds)",
-                       "loadedCornerMask > 0x0Fu", "isGrid != bLastGrid"):
+                       "loadedCornerMask > 0x0Fu", "isGrid != bLastGrid",
+                       "bPendingTransition = bPendingTransition ||",
+                       "loadedCornerMask != LastObservedLoadMask",
+                       "isGrid != bLastObservedGrid",
+                       "bPendingTransition = false;"):
             self.assertIn(marker, POLICY)
         for forbidden in ("UCLASS(", "GetWorld(", "AddForce(", "SaveGame(",
                           "AwardCredits(", "SetPhysics", "Http"):
             self.assertNotIn(forbidden, POLICY)
         self.assertIn("120000", TESTS)
         self.assertIn("24000", TESTS)
+        self.assertIn("shortLossReports == 1", TESTS)
         self.assertIn("SuspensionQaCadenceTests.cpp", CMAKE)
         self.assertIn("NAME SuspensionQaCadence", CMAKE)
 
