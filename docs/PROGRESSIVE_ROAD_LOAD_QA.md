@@ -41,6 +41,45 @@ aerodynamics, vehicle dynamics, tire contact, real-world braking
 performance or an official speed benchmark. The existing reverse
 limit and safety top-speed cap are deliberately retained.
 
+## Contact-gated road friction — aerodynamic drag remains in flight
+
+The original road-load force included low-speed **rolling resistance**
+and extra grass/shoulder slowdown based only on the car's map position.
+But a flying, rebounding, or inverted chassis can be directly above a
+road while carrying **zero actual spring load**. Applying tire rolling
+resistance in that case creates fictitious mid-air braking.
+
+The real Unreal pawn now supplies the previously accepted
+`SpringResponse.TotalUpForce / SpringResponse.WeightForce`, clamped to
+[0,1], to `ProgressiveRoadLoadSample.SprungLoadFraction`. This is the
+same genuine four-spring force frame used for the rear motor, front
+steering, brake grip and wheel visuals. There are no new traces.
+
+- **Fully loaded (1.0):** original paved/off-pavement tuning is
+  unchanged. Existing standalone clients default to 1.0 only for
+  backwards-compatible source fixtures; the real game supplies a value.
+- **Partially loaded (0–1):** rolling resistance fades with actual
+  positive spring load, and the off-pavement multiplier approaches 1.
+- **Fully airborne, on unloaded rebound or upside down (0):** only the
+  quadratic aerodynamic component remains, independent of map surface.
+  No tire force is invented from visually nearby pavement.
+- Nonfinite or out-of-range input fails closed; the previous strict
+  frame, velocity, mass and 80%-of-motion one-frame reversal caps remain.
+
+`AirborneRoadLoadTests.cpp` runs 120,000 changing spring-load,
+motion-direction and frame-time samples. It explicitly checks no-load
+roof and rebound, grass/pavement equivalence in flight, backwards and
+sideways drag, exact full-contact baseline and 30/60/120 FPS force
+equivalence. The Unreal source-binding test verifies the actual
+physics-frame connection before any corresponding applied force.
+
+**Actual acceptance still requires Unreal Engine 5.8 Win64 QA:** drive
+a packaged car off ramps and over grass/pavement; compare horizontal
+velocity on jumps, momentary positive spring load on landing, rolling
+coast-down and post-contact reacceleration. Inspect 30/60/120 FPS,
+actual Chaos damping and false road contact. Portable tests cannot
+prove gameplay behavior, solver pacing, or collision correctness.
+
 ## Portable tests and source binding
 
 `Tests/Standalone/ProgressiveRoadLoadTests.cpp` exercises zero speed,
