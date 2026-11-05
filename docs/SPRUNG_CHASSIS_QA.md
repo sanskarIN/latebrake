@@ -263,13 +263,18 @@ completely unloaded does not count as a bearing corner for this
 event policy. The output fields stay identical, so the strict offline
 v1 log parser needs no unverified schema migration.
 
-This is deliberately rate-limited diagnostic sampling: a change that
-reverses faster than 0.20 seconds may not be printed, and no log line
-proves genuine physical tire/road contact or handling quality. It is
-not a frame-by-frame replay, lap-time record or full production physics
-telemetry system. The cadence is reset on pause/restart/recovery and
-invalid physics frames, but a persistent vertical pose does not flood
-the logs with 60 redundant first-frame observations.
+This is deliberately rate-limited diagnostic sampling. A brief
+support-loss/recontact or phase change is **latched until the next
+permitted report**, even when the four-bit contact mask has returned to
+its earlier value; a continuous 120 FPS alternation is still capped at
+five reports per second. The original v1 log always reflects the
+**latest** measured contact and forces, not the historical minimum
+mask, so it cannot reconstruct the exact transient or prove handling
+quality. It is not a frame-by-frame replay, lap-time record or full
+production physics telemetry system. The cadence is reset on
+pause/restart/recovery and invalid physics frames, but a persistent
+vertical pose does not flood the logs with redundant first-frame
+observations.
 
 These logs are compiled out of Shipping builds. They do not save player
 data, award credits or run any extra physics traces.
