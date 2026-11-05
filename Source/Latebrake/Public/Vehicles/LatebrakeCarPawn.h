@@ -95,7 +95,10 @@ public:
     const latebrake::SlipstreamDraftBoost& GetSlipstreamBoost() const noexcept { return SlipstreamBoost; }
     float GetAppliedDraftBoostFraction() const noexcept { return CurrentDraftAppliedFraction; }
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
-    void ClearDriverInputs();
+    // Countdown clears held inputs on every frame without discarding
+    // successfully observed spring/grip settling. Real interruptions
+    // and recovery paths retain the default full reset.
+    void ClearDriverInputs(bool bResetGripAuthority = true);
     void HandleAppInputInterruption();
     void HandleAppFocusLost();
 
