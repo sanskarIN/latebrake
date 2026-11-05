@@ -116,6 +116,14 @@ before the first motor/steer force submission:
   Service braking, handbrake, and lateral grip keep their immediate
   physically limited support budget; ONLY rear-drive and front-yaw
   traction gain are rate limited.
+- **Separate countdown clearing from a real interruption:** the pre-GO
+  `Tick` calls `ClearDriverInputs(false)`, which still clears throttle,
+  brakes, handbrake, nitro, transient drive policies and stale HUD
+  readings but **does not reset earned axle adhesion every frame**.
+  Regular `ClearDriverInputs()` after focus loss, controller loss, recovery
+  and shutdown performs the full reset. This fixes a genuine integration
+  problem where the first GO frame could otherwise have only 0.10
+  steering/motor authority after three seconds of flat-road settling.
 - **Reset on lifecycle boundaries:** race stats/reset, pause toggle,
   recovery, neutralized race/physics state and non-simulating physics
   frames discard saved authority. A fresh 3/2/1 grid countdown can
