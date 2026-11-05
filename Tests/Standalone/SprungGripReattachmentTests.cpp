@@ -136,6 +136,45 @@ int main()
     Check(!filter.Advance(0.11, flat.Ground, flat.Axles).Valid,
           "physics hitch may not authorize stale reattachment");
 
+    // Corrupt metadata can be finite yet physically impossible. A load
+    // ratio of zero cannot authorize real axle torque, and whole-body
+    // force still obeys the same contact-count ceiling as road sampling.
+    for (const double invalidRatio : {
+             -0.01, 1.01, std::numeric_limits<double>::quiet_NaN(),
+             std::numeric_limits<double>::infinity()})
+    {
+        auto bogus = flat;
+        bogus.Axles.FrontAxleLoadRatio = invalidRatio;
+        Check(!filter.Advance(1.0 / 60.0, bogus.Ground, bogus.Axles).Valid,
+              "invalid front axle load ratio must fail closed");
+        bogus = flat;
+        bogus.Axles.RearAxleLoadRatio = invalidRatio;
+        Check(!filter.Advance(1.0 / 60.0, bogus.Ground, bogus.Axles).Valid,
+              "invalid rear axle load ratio must fail closed");
+    }
+    {
+        auto bogus = flat;
+        bogus.Axles.RearAxleLoadRatio = 0.2;
+        Check(!filter.Advance(1.0 / 60.0, bogus.Ground, bogus.Axles).Valid,
+              "rear motor cannot exceed claimed measured spring load");
+        bogus = flat;
+        bogus.Axles.FrontAxleLoadRatio = 0.2;
+        Check(!filter.Advance(1.0 / 60.0, bogus.Ground, bogus.Axles).Valid,
+              "front yaw cannot exceed claimed measured spring load");
+        bogus = front;
+        bogus.Ground.ContactTractionScale = 0.70;
+        Check(!filter.Advance(1.0 / 60.0, bogus.Ground, bogus.Axles).Valid,
+              "two physical contacts cannot claim three-wheel grip");
+        bogus = flat;
+        bogus.Axles.RearWheelContacts = 1;
+        bogus.Axles.FrontWheelContacts = 3;
+        Check(!filter.Advance(1.0 / 60.0, bogus.Ground, bogus.Axles).Valid,
+              "impossible front wheel count must not authorize steering");
+    }
+    Check(Near(filter.Advance(1.0 / 60.0, flat.Ground, flat.Axles)
+               .Axles.RearDriveTractionScale, 0.1),
+          "failed metadata observation must clear previous axle grip");
+
     // Seeded repeated detach/reattach frames: never exceed current physical
     // observations, never lag a loss, and never outpace the 6/s rise budget.
     unsigned seed = 0x9e3779b9u;
