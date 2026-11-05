@@ -515,6 +515,37 @@ wheel-pose, physics and checkpoint evidence. If the car remains stuck,
 this is a failed gameplay quality gate; source tests alone cannot prove
 real physical self-righting.
 
+## One physical spring dispatch, independent of optional driving policies
+
+In this draft the first valid four-corner `SpringResponse` is the
+authority for upward support. The actual Unreal pawn now calls
+`ApplySprungForces(SpringResponse, WheelWorldAnchors)` **exactly once**
+immediately after validating the spring measurement, before checking
+coarse road-contact validity, contact-to-grip conversion, axle loading,
+or reattachment smoothing. This common dispatch covers both 3/2/1 grid
+settling and live racing. A separate force call in either branch would
+double the lift and is forbidden by source-contract tests.
+
+If any *optional* driving policy rejects the frame, the recovery path
+withdraws motor/steering/grip authority, HUD contact, and transient
+input without changing Chaos linear/angular momentum. The already
+applied, physically measured spring forces remain. A malformed spring
+frame itself is still rejected before any force dispatch; true race
+pause and invalid-body gates retain their hard neutralization behavior.
+
+This protects the vertical load path against a disagreement between
+the coarse contact probe and valid measured wheel spring, and against
+optional axle/grip arithmetic failures. It does **not** prove the
+suspension improves driving or that a rejected optional frame is
+common in real play. Source tests check force-call uniqueness and order
+but cannot emulate Chaos. On Windows UE 5.8, use a debug build to inject
+a fail-closed optional driving-policy result while the car is stationary
+on a valid four-wheel road, verify the chassis keeps settling rather
+than losing spring support, and capture an actual `LATEBRAKE_SUSPENSION`
+record plus frame-rate/ride-height evidence. Restore the normal code
+before evaluating release artifacts. Confirm zero motor/yaw force,
+continued gravity/collision, and no illegal race progression.
+
 ## Mandatory real engine acceptance gate
 
 **Do not merge a candidate as production-ready solely because source CI
