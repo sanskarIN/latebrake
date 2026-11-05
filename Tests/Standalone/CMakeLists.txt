@@ -2030,3 +2030,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SuspensionQaCadence COMMAND latebrake_suspension_qa_cadence_tests)
+
+# True physics-chassis orientation must gate wheel-underbody spring forces:
+# a ray hitting the road beneath an inverted body is NOT wheel support.
+# This also protects axle traction, anti-roll force limits and the same
+# upright equilibrium under 120k orientation/mass/contact frames.
+add_executable(latebrake_suspension_mount_attitude_tests SuspensionMountAttitudeTests.cpp)
+target_include_directories(latebrake_suspension_mount_attitude_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_suspension_mount_attitude_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_suspension_mount_attitude_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_suspension_mount_attitude_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SuspensionMountAttitude COMMAND latebrake_suspension_mount_attitude_tests)

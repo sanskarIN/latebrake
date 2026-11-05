@@ -17,6 +17,18 @@ inline constexpr double SuspensionMaximumFrameSeconds = 0.10;
 inline constexpr double SuspensionRestDistanceCm = 82.0;
 inline constexpr double SuspensionTargetRideDistanceCm = 59.0;
 inline constexpr double SuspensionMinNormalZ = 0.68;
+// World-down suspension rays may see the road while the real chassis is
+// lying on its roof. Real wheels are mounted underneath, not on both sides.
+// Smoothly fade their support after 60 degrees of pitch/roll and remove it
+// beyond ~75.5 degrees. The actual rigid body's local +Z is the authority.
+inline constexpr double SuspensionFullMountUpZ = 0.50;
+inline constexpr double SuspensionNoMountUpZ = 0.25;
+inline double SuspensionMountLoadScale(double chassisUpZ) noexcept
+{
+    return std::clamp(
+        (chassisUpZ - SuspensionNoMountUpZ) /
+            (SuspensionFullMountUpZ - SuspensionNoMountUpZ), 0.0, 1.0);
+}
 inline constexpr double SuspensionMaxTraceDistanceCm = 280.0;
 // Bounded bump/landing peak. The 0.70 budget bottomed the 65 cm tall
 // rigid chassis in a deterministic 180 cm grid-height drop at 60/120 FPS.
@@ -50,6 +62,10 @@ struct SuspensionFrame final
     double GravityCmPerSecondSquared = SuspensionGravityCmPerSecondSquared;
     bool PhysicsReady = false;
     std::array<SuspensionCornerObservation, 4> Corners{};
+    // Actual Chaos body-local up axis projected onto world +Z. Default
+    // represents a level chassis for old engine-independent sample fixtures.
+    // The Unreal pawn MUST explicitly provide its true component up vector.
+    double ChassisUpZ = 1.0;
 };
 
 struct SuspensionCornerResponse final
@@ -90,7 +106,9 @@ inline SuspensionResponse CalculateSprungChassis(
         frame.MassKg < 100.0 || frame.MassKg > 15000.0 ||
         !std::isfinite(frame.GravityCmPerSecondSquared) ||
         frame.GravityCmPerSecondSquared < 100.0 ||
-        frame.GravityCmPerSecondSquared > 2000.0)
+        frame.GravityCmPerSecondSquared > 2000.0 ||
+        !std::isfinite(frame.ChassisUpZ) ||
+        frame.ChassisUpZ < -1.0 || frame.ChassisUpZ > 1.0)
     {
         return {};
     }
@@ -110,18 +128,30 @@ inline SuspensionResponse CalculateSprungChassis(
         }
     }
 
-    const double quarterMass = frame.MassKg * 0.25;
-    const double spring = quarterMass * frame.GravityCmPerSecondSquared /
-        (SuspensionRestDistanceCm - SuspensionTargetRideDistanceCm);
-    const double damping = 2.0 * SuspensionDampingRatio *
-        std::sqrt(spring * quarterMass);
-    const double maxCornerForce = frame.MassKg *
-        frame.GravityCmPerSecondSquared *
-        SuspensionMaxPerCornerWeightFactor;
-
     SuspensionResponse result;
     result.Valid = true;
     result.WeightForce = frame.MassKg * frame.GravityCmPerSecondSquared;
+
+    const double mountScale = SuspensionMountLoadScale(frame.ChassisUpZ);
+    // The downward rays are geometric probes, NOT proof that the wheel
+    // undersides face the road. On the roof/side, continue actual Chaos
+    // gravity/collision with ZERO synthetic upward wheel force, contact
+    // authority, or motor/steering grip. Valid=true is intentional: this
+    // is a genuine physical pose, not an invalid body to freeze.
+    if (mountScale <= 0.0)
+    {
+        return result;
+    }
+
+    const double quarterMass = frame.MassKg * 0.25;
+    const double unscaledSpring = quarterMass *
+        frame.GravityCmPerSecondSquared /
+        (SuspensionRestDistanceCm - SuspensionTargetRideDistanceCm);
+    const double spring = unscaledSpring * mountScale;
+    const double damping = 2.0 * SuspensionDampingRatio *
+        std::sqrt(unscaledSpring * quarterMass) * mountScale;
+    const double maxCornerForce = result.WeightForce *
+        SuspensionMaxPerCornerWeightFactor * mountScale;
     for (unsigned i = 0; i < result.Corners.size(); ++i)
     {
         const auto& observed = frame.Corners[i];
@@ -159,7 +189,8 @@ inline SuspensionResponse CalculateSprungChassis(
     // sum remains exactly the original suspension total. With one tire
     // airborne there is no anti-roll force at that axle.
     const double antiRollMaxTransfer =
-        result.WeightForce * SuspensionAntiRollMaxWeightFractionPerAxle;
+        result.WeightForce * SuspensionAntiRollMaxWeightFractionPerAxle *
+        mountScale;
     for (unsigned left = 0; left < 4; left += 2)
     {
         const unsigned right = left + 1;

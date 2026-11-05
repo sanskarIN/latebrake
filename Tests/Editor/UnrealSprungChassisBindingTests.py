@@ -43,6 +43,8 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         for marker in (
             "latebrake::SuspensionFrame SpringSample{};",
             "SpringSample.MassKg = static_cast<double>(Mass);",
+            "SpringSample.ChassisUpZ =",
+            "static_cast<double>(Chassis->GetUpVector().Z);",
             "World->GetGravityZ()", "GetPhysicsLinearVelocityAtPoint(Origin)",
             "WheelWorldAnchors[Index] = Origin;",
             "latebrake::ChassisProbeOffset(",
@@ -61,6 +63,12 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
                 self.assertIn(marker, tick)
         self.assertLess(tick.index("GetPhysicsLinearVelocityAtPoint(Origin)"),
                         tick.index("CalculateSprungChassis(SpringSample)"))
+        self.assertLess(tick.index("Chassis->GetUpVector().Z"),
+                        tick.index("CalculateSprungChassis(SpringSample)"))
+        self.assertIn("SuspensionMountLoadScale(frame.ChassisUpZ)", self.policy)
+        self.assertIn("SuspensionFullMountUpZ = 0.50", self.policy)
+        self.assertIn("SuspensionNoMountUpZ = 0.25", self.policy)
+        self.assertIn("NAME SuspensionMountAttitude", self.cmake)
         self.assertLess(tick.index("CalculateSprungChassis(SpringSample)"),
                         tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"))
 

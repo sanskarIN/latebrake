@@ -960,6 +960,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     SpringSample.GravityCmPerSecondSquared =
         -static_cast<double>(World->GetGravityZ());
     SpringSample.PhysicsReady = GroundSample.PhysicsReady;
+    // Real Chaos component orientation, not screen camera or flat heading.
+    // Prevent world-down spring probes from propping up an inverted car.
+    SpringSample.ChassisUpZ =
+        static_cast<double>(Chassis->GetUpVector().Z);
     const FVector GroundOrigin = Chassis->GetComponentLocation();
     FCollisionQueryParams GroundQuery(
         SCENE_QUERY_STAT(LatebrakeChassisGroundContact), false);

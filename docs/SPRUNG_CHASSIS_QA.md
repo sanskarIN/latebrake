@@ -367,6 +367,52 @@ rejection in a controlled Development build, then measure real
 chassis velocity, supported spring impulses, driver input recovery,
 gate/clock state and camera/wheel rendering at 30/60/120 FPS.
 
+## Roll and roof contact — no fictional underside wheel support
+
+A WorldStatic ray cast straight down from a 3D car's four wheel-aligned
+locations **can still hit pavement while the rigid chassis has rolled
+onto its roof**. Road distance and surface-normal checks alone cannot
+distinguish an underside tire from a roof/side lying above the road. The
+old source policy could apply four full upward spring forces and
+authorize motor/steering load even while the car was inverted. This is
+a serious race-handling failure, not a decorative wheel issue.
+
+The updated `SuspensionFrame.ChassisUpZ` is read from the actual
+Chaos physical `Chassis->GetUpVector().Z`, *not* camera up, road normal
+or planar heading. Nonfinite/out-of-bounds orientation fails closed.
+Four real independent spring forces, their per-corner caps and axle
+anti-roll transfer use the same continuous orientation load multiplier:
+
+- **Upright to 60° total tilt:** up-axis Z ≥ 0.50, normal
+  measured spring support and load-based traction (factor 1).
+- **60° to approximately 75.5° tilt:** smoothly fade spring, damper
+  and anti-roll forces toward zero (no step discontinuity).
+  The axle and whole-car grip budget see only **actual reduced load**.
+- **Beyond approximately 75.5° or on the roof:** no wheel support,
+  anti-roll force, motor, steering, braking traction or fresh wheel
+  authority is invented from down-facing road probes. The returned
+  frame remains valid, with zero spring contacts/forces, so an upside
+  down car stays free to fall and collide under the real Chaos solver
+  rather than entering a forced-zero-velocity error path.
+
+Source regression `SuspensionMountAttitude` checks level equilibrium,
+smooth intermediate loads, conservation of actual anti-roll transfer,
+inverted/sideways no-grip authority, invalid orientation rejection and
+120,000 changing attitude/mass/force samples. The Unreal source-binding
+suite requires direct sampling of the simulated chassis orientation
+before `CalculateSprungChassis` and disallows any camera-derived
+orientation input.
+
+**Mandatory game-engine acceptance:** roll the real car 65°, 80°, 90°
+and 180° while the road remains under the down-facing probes. Check
+that physical spring impulses decay without lifting its roof,
+`AxleBudget` loses drive/steering on the roof, camera/horizon and
+non-colliding wheel visuals stay sensible, and upright recovery
+reacquires true four-wheel support without a speed/force snap.
+Repeat on curbs, sloped roads, and 30/60/120 FPS cooked Win64 playtests.
+Source calculations are not evidence that Chaos collision/mesh
+geometry actually handles these attitudes correctly.
+
 ## Finite frame-hitch isolation — preserve genuine Chaos momentum
 
 The spring/damper model only accepts physics samples at a finite
