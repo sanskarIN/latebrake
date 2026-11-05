@@ -579,6 +579,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     Transmission.Suspend();
     LastGroundContact = {};
     LastSuspension = {};
+    GripReattachment.Reset();
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
@@ -597,6 +598,9 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
+    // A pause, focus loss, failed race gate or malformed physics observation
+    // must not preserve earlier grip for the first resumed driving frame.
+    GripReattachment.Reset();
 #if !UE_BUILD_SHIPPING
     SuspensionQaElapsedSeconds = 0.0;
 #endif
@@ -799,6 +803,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // contact displayed after simulation stops or frame validity fails.
         LastGroundContact = {};
         LastSuspension = {};
+        GripReattachment.Reset();
         ResetSpeedCameraFov();
         ResetCornerCameraYaw();
         ApplySignalLights(false, false, 0.0);
@@ -971,13 +976,27 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // contact or apply front steering torque while only the rear wheels
     // are physically loaded. Reuse this exact accepted spring sample,
     // never a second fictitious wheel ray or a HUD-only road mask.
-    const latebrake::AxleTractionBudget AxleBudget =
+    const latebrake::AxleTractionBudget MeasuredAxleBudget =
         latebrake::CalculateAxleTractionBudget(GroundContact, SpringResponse);
-    if (!AxleBudget.Valid)
+    if (!MeasuredAxleBudget.Valid)
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+    // Actual spring forces remain unchanged. Only force authorization for
+    // whole-body grip, the rear-drive axle and front steering gradually
+    // returns after a real re-contact. Unloading takes effect immediately.
+    // The SAME filtered budget drives the HUD, motor, brakes and yaw.
+    const latebrake::GripReattachmentFrame GripFrame =
+        GripReattachment.Advance(
+            static_cast<double>(DeltaSeconds), GroundContact, MeasuredAxleBudget);
+    if (!GripFrame.Valid)
+    {
+        NeutralizeMotionWhenDrivingBlocked();
+        return;
+    }
+    GroundContact = GripFrame.Ground;
+    const latebrake::AxleTractionBudget AxleBudget = GripFrame.Axles;
     // A valid spring observation is useful even while a wheel hangs in air.
     // Keep this run-local visual sample only after both policies accepted it.
     LastSuspension = SpringResponse;
@@ -1670,6 +1689,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
     ApplyWheelVisualPose();
+    GripReattachment.Reset();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())
     {
@@ -1919,6 +1939,7 @@ void ALatebrakeCarPawn::ToggleBestLapGhost()
 
 void ALatebrakeCarPawn::TogglePause()
 {
+    GripReattachment.Reset();
     NitroReleased();
     // The world may stop ticking immediately: clear the held brake before
     // GameMode attempts to pause or resume engine time.
