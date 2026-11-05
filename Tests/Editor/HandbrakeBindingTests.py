@@ -60,7 +60,7 @@ class HandbrakeBindingTests(unittest.TestCase):
         self.assertIn('HandbrakeDrivePolicyTests.cpp', self.cmake)
 
     def test_pause_recovery_restart_clear_transient_brake(self):
-        clear = self.pawn.split('void ALatebrakeCarPawn::ClearDriverInputs()', 1)[1].split(
+        clear = self.pawn.split('void ALatebrakeCarPawn::ClearDriverInputs(', 1)[1].split(
             'void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()', 1)[0]
         self.assertIn('bHandbrakeHeld = false;', clear)
         for method, next_method in (

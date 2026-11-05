@@ -57,7 +57,7 @@ class ArcadeBoostArbitrationBindingTests(unittest.TestCase):
         self.assertIn("GetAppliedDraftBoostFraction()", self.hud)
         self.assertIn("GetAppliedDraftBoostFraction() > 0.f", self.hud)
         self.assertNotIn("GetSlipstreamBoost().ExtraForce() * 100.0", self.hud)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("CurrentDraftAppliedFraction = 0.f;", clear)
         self.assertIn("NAME ArcadeBoostArbitration", self.cmake)

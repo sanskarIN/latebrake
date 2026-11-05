@@ -61,7 +61,7 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
         self.assertIn("latebrake::ArcadeSurfaceTraction SurfaceTraction;", self.pawn_h)
         self.assertIn("SurfaceTraction.Reset();", self.pawn_h)
         self.assertIn("GetSurfaceTraction() const", self.pawn_h)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1
         )[0]
         self.assertIn("SurfaceTraction.Suspend();", clear)
