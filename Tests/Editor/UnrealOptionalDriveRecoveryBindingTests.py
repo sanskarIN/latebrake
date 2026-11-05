@@ -16,11 +16,13 @@ class UnrealOptionalDriveRecoveryBindingTests(unittest.TestCase):
     def test_pre_motor_rejections_keep_physical_momentum_after_springs(self):
         tick = PAWN.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySprungForces(", 1)[0]
-        spring = tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
-                            tick.index("if (bPreGreen)", tick.index("LATEBRAKE_SUSPENSION v=1")))
-        # Skip the countdown's exclusive spring call and find the live one.
-        spring = tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
-                            spring + 1)
+        # Valid physical lift is submitted once BEFORE optional contact,
+        # axle or grip validation (including during the grid countdown).
+        spring = tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);")
+        self.assertEqual(
+            tick.count("ApplySprungForces(SpringResponse, WheelWorldAnchors);"), 1)
+        self.assertLess(tick.index("if (!SpringResponse.Valid)"), spring)
+        self.assertLess(spring, tick.index("if (!GroundContact.Valid)"))
         motor = tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle")
         yaw = tick.index("Chassis->AddTorqueInRadians(")
         candidates = (
@@ -42,6 +44,19 @@ class UnrealOptionalDriveRecoveryBindingTests(unittest.TestCase):
                 self.assertLess(spring, position)
                 self.assertLess(position, motor)
                 self.assertLess(position, yaw)
+        # A rejected optional chassis/axle policy must not stop Chaos.
+        for name in ("GroundContact", "MeasuredAxleBudget", "GripFrame"):
+            branch = (
+                "if (!" + name + ".Valid)\n"
+                "    {\n"
+                "        RejectOptionalDriveAfterSpring(SpringResponse);\n"
+                "        return;\n"
+                "    }"
+            )
+            with self.subTest(optional=name):
+                self.assertIn(branch, tick)
+                self.assertLess(spring, tick.index(branch))
+        self.assertEqual(tick.count("if (!GroundContact.Valid)"), 2)
         self.assertIn(
             "RejectOptionalDriveAfterSpring(\n"
             "    const latebrake::SuspensionResponse& AcceptedSprings)",
