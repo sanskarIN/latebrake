@@ -100,6 +100,24 @@ int main()
     Require(stableReports >= 190 && stableReports <= 205,
             "stable car must emit roughly one record per two seconds");
 
+    // Short-lived unloading must not be erased just because the mask
+    // returns to the original state before the next admissible log line.
+    cadence.Reset();
+    Require(cadence.ShouldReport(tick, allLoaded, true),
+            "transient fixture begins with a real four-wheel observation");
+    Require(!cadence.ShouldReport(tick, 0x07u, true),
+            "first transient change must obey the 200ms log spacing");
+    int shortLossReports = 0;
+    for (int i = 0; i < 11; ++i)
+    {
+        shortLossReports +=
+            cadence.ShouldReport(tick, allLoaded, true) ? 1 : 0;
+    }
+    Require(shortLossReports == 1,
+            "a short load-loss and recovery must latch one bounded QA sample");
+    Require(!cadence.ShouldReport(tick, allLoaded, true),
+            "latched transition must clear after publishing once");
+
     // Rapid mask chatter must never emit faster than 0.2 seconds even on
     // alternating loaded-corner patterns, including 120 FPS physics.
     cadence.Reset();
