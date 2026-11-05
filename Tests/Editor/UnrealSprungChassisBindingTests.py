@@ -117,21 +117,15 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "if (bPreGreen)\n    {\n"
             "        // Keep the grid still in XY/yaw"
         )
-        grid_force = tick.index(
-            "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
-            grid_index
+        lift_call = tick.index(
+            "ApplySprungForces(SpringResponse, WheelWorldAnchors);"
         )
-        grid_return = tick.index("return;", grid_force)
-        live_force = tick.index(
-            "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
-            grid_return
-        )
-        # Real spring lift is dispatched for both grid and driving. The
-        # no-planar-heading path must reject DRIVER FORCES without zeroing
-        # Chaos motion, allowing natural gravity and body pitch recovery.
-        self.assertLess(grid_force, grid_return)
-        self.assertLess(grid_return, live_force)
-        self.assertLess(live_force, guard_index)
+        # Lift is dispatched once before entering either the grid or
+        # driving path. Nearly vertical headings never zero Chaos motion.
+        self.assertEqual(tick.count(
+            "ApplySprungForces(SpringResponse, WheelWorldAnchors);"), 1)
+        self.assertLess(lift_call, grid_index)
+        self.assertLess(grid_index, guard_index)
         self.assertLess(guard_index, tick.index(
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"
         ))
@@ -169,9 +163,12 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         end = tick.split("LastSuspension = SpringResponse;", 1)[1]
         early = end.split("// One accepted physics frame only", 1)[0]
         self.assertIn("if (bPreGreen)", early)
-        self.assertIn("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
-                      early)
+        self.assertNotIn("ApplySprungForces(SpringResponse, WheelWorldAnchors);",
+                         early)
         self.assertIn("return;", early)
+        self.assertLess(
+            tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"),
+            tick.index("LastSuspension = SpringResponse;"))
         self.assertLess(tick.index("LastSuspension = SpringResponse;"),
                         tick.index("if (AxleBudget.RearDriveReady &&"))
         self.assertLess(tick.index("ApplySprungForces(SpringResponse, WheelWorldAnchors);"),
@@ -181,18 +178,17 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySprungForces(", 1)[0]
         force_call = "ApplySprungForces(SpringResponse, WheelWorldAnchors);"
-        # Exactly one call per path: one for the pre-green countdown, one
-        # for accepted live driving. Normal racing never runs both.
-        self.assertEqual(tick.count(force_call), 2)
+        # One force dispatch after the independent spring frame validates,
+        # BEFORE the first optional road/grip decision or grid branch.
+        self.assertEqual(tick.count(force_call), 1)
+        force_index = tick.index(force_call)
+        self.assertLess(tick.index("if (!SpringResponse.Valid)"), force_index)
+        self.assertLess(force_index, tick.index("if (!GroundContact.Valid)"))
         grid_branch = tick.index(
             "if (bPreGreen)\n    {\n"
             "        // Keep the grid still in XY/yaw")
-        grid_call = tick.index(force_call, grid_branch)
-        grid_return = tick.index("return;", grid_call)
-        live_call = tick.index(force_call, grid_return)
-        self.assertLess(grid_branch, grid_call)
-        self.assertLess(grid_call, grid_return)
-        self.assertLess(grid_return, live_call)
+        self.assertLess(force_index, grid_branch)
+        self.assertNotIn(force_call, tick[grid_branch:])
         # These independent policy functions can reject a driving tick.
         # Their early returns must not switch off physical suspension.
         for later in (
@@ -206,9 +202,21 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "Chassis->AddTorqueInRadians(",
         ):
             with self.subTest(later=later):
-                self.assertLess(live_call, tick.index(later))
-        # No duplicate physical support may be inserted after gearbox
-        # selection, even when the rear axle has valid traction.
+                self.assertLess(force_index, tick.index(later))
+        # The contact and axle/grip policies may veto MOTOR authority but
+        # they cannot cancel the already-submitted physical spring forces.
+        self.assertEqual(
+            tick.count("if (!GroundContact.Valid)\n"
+                       "    {\n"
+                       "        RejectOptionalDriveAfterSpring(SpringResponse);"),
+            2)
+        for marker in ("if (!MeasuredAxleBudget.Valid)",
+                       "if (!GripFrame.Valid)"):
+            self.assertIn(
+                marker + "\n    {\n"
+                "        RejectOptionalDriveAfterSpring(SpringResponse);\n"
+                "        return;\n"
+                "    }", tick)
         self.assertNotIn(
             force_call,
             tick.split("const float GearPowerFactor =", 1)[1]
