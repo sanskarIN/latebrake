@@ -24,7 +24,10 @@ public:
     {
         SecondsSinceReport = 0.0;
         LastLoadMask = 0;
+        LastObservedLoadMask = 0;
         bLastGrid = false;
+        bLastObservedGrid = false;
+        bPendingTransition = false;
         bHasReport = false;
     }
 
@@ -47,6 +50,15 @@ public:
             return true;
         }
 
+        // Preserve any brief load-loss/recontact or grid/GO edge observed
+        // DURING the cooldown. A noisy 120 Hz alternating load mask may
+        // equal the last reported mask on every 200 ms boundary; looking
+        // only at that boundary would otherwise erase every real edge.
+        bPendingTransition = bPendingTransition ||
+            loadedCornerMask != LastObservedLoadMask ||
+            isGrid != bLastObservedGrid;
+        LastObservedLoadMask = loadedCornerMask;
+        bLastObservedGrid = isGrid;
         SecondsSinceReport = std::min(
             SuspensionQaHeartbeatSeconds, SecondsSinceReport + deltaSeconds);
         if (SecondsSinceReport + 1.0e-12 < SuspensionQaMinimumEventSeconds)
@@ -54,7 +66,8 @@ public:
             return false;
         }
 
-        const bool changed = loadedCornerMask != LastLoadMask ||
+        const bool changed = bPendingTransition ||
+                             loadedCornerMask != LastLoadMask ||
                              isGrid != bLastGrid;
         if (!changed && SecondsSinceReport + 1.0e-12 < SuspensionQaHeartbeatSeconds)
         {
@@ -69,14 +82,20 @@ private:
     void Commit(unsigned mask, bool grid) noexcept
     {
         LastLoadMask = mask;
+        LastObservedLoadMask = mask;
         bLastGrid = grid;
+        bLastObservedGrid = grid;
+        bPendingTransition = false;
         bHasReport = true;
         SecondsSinceReport = 0.0;
     }
 
     double SecondsSinceReport = 0.0;
     unsigned LastLoadMask = 0;
+    unsigned LastObservedLoadMask = 0;
     bool bLastGrid = false;
+    bool bLastObservedGrid = false;
+    bool bPendingTransition = false;
     bool bHasReport = false;
 };
 } // namespace latebrake
