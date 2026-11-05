@@ -62,12 +62,13 @@ int main()
           Near(flat.Ground.ContactTractionScale, 1.0),
           "real flat four-corner source sample is mandatory");
 
-    // A cold newly spawned car cannot obtain a full acceleration impulse
-    // on a single lucky contact query. A settled grid restores full grip.
+    // A cold car cannot instantly apply full motor/yaw force on a lucky
+    // trace; brake/lateral grip must retain its real physical ceiling.
+    // A settled countdown restores both axle authorities.
     for (int i = 1; i <= 10; ++i)
     {
         const auto r = filter.Advance(1.0 / 60.0, flat.Ground, flat.Axles);
-        Check(r.Valid && Near(r.Ground.ContactTractionScale, i * 0.1) &&
+        Check(r.Valid && Near(r.Ground.ContactTractionScale, 1.0) &&
               Near(r.Axles.RearDriveTractionScale, i * 0.1) &&
               Near(r.Axles.FrontSteeringTractionScale, i * 0.1),
               "cold adhesion must rise at a bounded, deterministic rate");
@@ -116,13 +117,13 @@ int main()
     // Recovery, pause, focus loss and invalid input must reset stored gain.
     filter.Reset();
     Check(Near(filter.Advance(1.0 / 30.0, flat.Ground, flat.Axles)
-               .Ground.ContactTractionScale, 0.2),
+               .Axles.RearDriveTractionScale, 0.2),
           "30 fps rise is bounded by actual frame duration");
     auto invalid = filter.Advance(
         std::numeric_limits<double>::infinity(), flat.Ground, flat.Axles);
     Check(!invalid.Valid, "nonfinite frame duration must fail closed");
     Check(Near(filter.Advance(1.0 / 60.0, flat.Ground, flat.Axles)
-               .Ground.ContactTractionScale, 0.1),
+               .Axles.RearDriveTractionScale, 0.1),
           "reject must erase stored grip before resuming");
 
     auto forged = flat;
@@ -130,7 +131,7 @@ int main()
     Check(!filter.Advance(1.0 / 60.0, forged.Ground, forged.Axles).Valid,
           "invalid input must not bypass measured whole-body grip");
     Check(Near(filter.Advance(1.0 / 60.0, flat.Ground, flat.Axles)
-               .Ground.ContactTractionScale, 0.1),
+               .Axles.RearDriveTractionScale, 0.1),
           "rejection must reset response memory");
     Check(!filter.Advance(0.11, flat.Ground, flat.Axles).Valid,
           "physics hitch may not authorize stale reattachment");
@@ -138,7 +139,6 @@ int main()
     // Seeded repeated detach/reattach frames: never exceed current physical
     // observations, never lag a loss, and never outpace the 6/s rise budget.
     unsigned seed = 0x9e3779b9u;
-    double lastWhole = 0.0;
     double lastRear = 0.0;
     double lastFront = 0.0;
     filter.Reset();
@@ -163,14 +163,11 @@ int main()
                   input.Axles.RearDriveTractionScale + 1.0e-8 &&
               r.Axles.FrontSteeringTractionScale <=
                   input.Axles.FrontSteeringTractionScale + 1.0e-8 &&
-              r.Ground.ContactTractionScale <= lastWhole +
-                  GripReattachmentRisePerSecond * dt + 1.0e-8 &&
               r.Axles.RearDriveTractionScale <= lastRear +
                   GripReattachmentRisePerSecond * dt + 1.0e-8 &&
               r.Axles.FrontSteeringTractionScale <= lastFront +
                   GripReattachmentRisePerSecond * dt + 1.0e-8,
               "100k frames must stay below physical and rate ceilings");
-        lastWhole = r.Ground.ContactTractionScale;
         lastRear = r.Axles.RearDriveTractionScale;
         lastFront = r.Axles.FrontSteeringTractionScale;
     }
