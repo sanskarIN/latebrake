@@ -286,9 +286,12 @@ but deliberately **does not zero Chaos velocity or angular momentum**.
 
 This is not a magic righting or teleport mechanic: gravity and actual
 blocking road contacts decide whether the chassis can fall naturally.
-No synthetic ground hit, world-spawned righting torque, scored progression,
-engine boost or yaw force is authorized on this path. In the earlier 3/2/1
-grid branch, only the spring dispatch executes, exactly once, as before.
+No synthetic ground hit, world-spawned righting torque, engine
+boost or yaw force is authorized by this Tick branch. The separate
+GameMode still owns the race clock and checkpoint gates; real hardware
+QA must verify tipped vehicle motion cannot earn illegitimate gate or
+finish results. In the earlier 3/2/1 grid branch, only the spring
+dispatch executes, exactly once, as before.
 
 A source-binding regression verifies actual Tick order and no motor
 dispatch for invalid XY forward vectors. **On real installed Win64
