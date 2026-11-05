@@ -983,10 +983,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
-    // Actual spring forces remain unchanged. Only force authorization for
-    // whole-body grip, the rear-drive axle and front steering gradually
-    // returns after a real re-contact. Unloading takes effect immediately.
-    // The SAME filtered budget drives the HUD, motor, brakes and yaw.
+    // Real spring forces and instant physically limited service braking
+    // remain unchanged. Only rear motor and front yaw authority regain
+    // their measured grip gradually after a real re-contact. Loss is
+    // immediate, never retaining stale motor force on an airborne axle.
     const latebrake::GripReattachmentFrame GripFrame =
         GripReattachment.Advance(
             static_cast<double>(DeltaSeconds), GroundContact, MeasuredAxleBudget);
