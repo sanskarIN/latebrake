@@ -29,6 +29,18 @@ int main()
     Require(IsRaceVehiclePhysicsReady(car),
             "original simulated collision-bearing finite car is ready");
 
+    // A car tilted almost onto its nose is still a VALID Chaos body.
+    // The Unreal pawn now disables an unusable planar driving heading
+    // AFTER applying real springs, instead of freezing angular motion.
+    // Physical orientation is not itself a fabricated world-health failure.
+    for (double pitch : {-89.999, 89.999, -179.0, 179.0})
+    {
+        auto tilted = car;
+        tilted.RotationPitchDegrees = pitch;
+        Require(IsRaceVehiclePhysicsReady(tilted),
+                "finite vertical or inverted chassis must remain physically ready");
+    }
+
     // Changing ANY material chassis precondition must invalidate the driver,
     // regardless of a still-possessed pawn and valid velocity coordinates.
     auto withoutChassis = car;
