@@ -1985,3 +1985,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ChassisContactReadout COMMAND latebrake_chassis_contact_readout_tests)
+
+# Immediate wheel-load losses and bounded reattachment for ALL production
+# force authorities (whole-car brakes/side grip, rear-drive, front-steer).
+add_executable(latebrake_sprung_grip_reattachment_tests SprungGripReattachmentTests.cpp)
+target_include_directories(latebrake_sprung_grip_reattachment_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_grip_reattachment_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_grip_reattachment_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_grip_reattachment_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungGripReattachment COMMAND latebrake_sprung_grip_reattachment_tests)
