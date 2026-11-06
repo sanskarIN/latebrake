@@ -797,7 +797,12 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
         bool bHasColor = false;
         for (const FMaterialParameterInfo& Info : ParameterInfos)
         {
-            if (Info.Name == FName(TEXT("Color")))
+            // A Color parameter inside a material layer is not the
+            // GLOBAL vector set through this component's MID. Only a
+            // global parameter can honestly satisfy the runtime tint
+            // contract used for both straight and corner sections.
+            if (Info.Name == FName(TEXT("Color")) &&
+                Info.Association == EMaterialParameterAssociation::GlobalParameter)
             {
                 bHasColor = true;
                 break;

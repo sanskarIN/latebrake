@@ -87,6 +87,7 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "latebrake::PlannedRacingLineMark(Index)",
             "LoadObject<UMaterialInterface>",
             "/Game/Materials/M_RacingLineGuide.M_RacingLineGuide",
+            "Info.Association == EMaterialParameterAssociation::GlobalParameter",
             "LATEBRAKE_RACING_LINE_MATERIAL authored=%s",
             "Instances->SetMaterial(0, AuthoredMaterial)",
             "Instances->GetMaterial(0) != AuthoredMaterial",

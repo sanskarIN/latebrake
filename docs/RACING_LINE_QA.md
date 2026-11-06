@@ -34,7 +34,9 @@ materials, track layouts or car art.
   Their actual in-engine appearance still needs real Win64 evaluation.
 - Optional material tint requests teal on straight marks and amber on turns.
   A **new Editor-only script** can author a genuine `M_RacingLineGuide.uasset`
-  with a real `Color` vector parameter. The GameMode now verifies that
+  with a real **global** `Color` vector parameter (a same-named
+  material-layer parameter cannot be set by the runtime's global MID
+  API). The GameMode now verifies that
   **both registered instanced-mesh components actually install the authored
   parent and a valid dynamic material instance** before it reports
   `LATEBRAKE_RACING_LINE_MATERIAL authored=yes`. Failed material assignment
