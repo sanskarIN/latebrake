@@ -54,8 +54,8 @@ class UnrealSpeedAwareYawTorqueBindingTests(unittest.TestCase):
 
     def test_brake_sensitive_yaw_uses_same_frame_measured_grip(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
-            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
-        ]
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1
+        )[0]
         call = tick.split("latebrake::CalculateSpeedAwareYawTorque({", 1)[1].split(
             "if (!PlannedYaw.Valid)", 1
         )[0]
