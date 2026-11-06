@@ -81,7 +81,7 @@ class NitroBoostBindingTests(unittest.TestCase):
         ):
             self.assertIn(term, tick)
         self.assertLess(tick.index("NitroBoost.Step("),
-                        tick.index("const float NitroBonusForce ="))
+                        tick.index("const double DeliveredNitroBonusForce ="))
         self.assertLess(tick.index("const double DeliveredNitroBonusForce ="),
                         tick.index("bNitroBonusDispatched = true;"))
         self.assertLess(tick.index("bNitroBonusDispatched = true;"),
