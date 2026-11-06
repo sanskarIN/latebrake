@@ -112,11 +112,39 @@ int main()
     out = CalculateOpposingThrottleBraking(s);
     Require(out.Valid && !out.OpposingThrottle && out.ForwardForce == 0.0,
         "preserve the original near-stop direction-change allowance");
+    // Total planar speed can remain high during a spin even when the car
+    // has no meaningful signed drive-axis movement. Neither direction
+    // should be mistaken for opposing engine braking in this condition.
     s = Sample(0.0);
     s.PlanarCmPerSecond = 1500.0;
     out = CalculateOpposingThrottleBraking(s);
-    Require(out.Valid && out.OpposingThrottle && out.ForwardForce == 0.0,
-        "pure sideslip preserves the existing no-longitudinal-thrust classification");
+    Require(out.Valid && !out.OpposingThrottle && out.ForwardForce == 0.0,
+        "pure sideslip does not steal throttle with a zero-force brake");
+    for (int fps : {30, 60, 120})
+    {
+        for (double forward : {-99.9, -0.001, 0.0, 0.001, 99.9})
+        {
+            s = Sample(forward);
+            s.DeltaSeconds = 1.0 / fps;
+            s.PlanarCmPerSecond = 2400.0;
+            out = CalculateOpposingThrottleBraking(s);
+            Require(out.Valid && !out.OpposingThrottle &&
+                out.ForwardForce == 0.0 &&
+                out.WholeBodyBudgetDeceleration == 0.0,
+                "sideways speed does not override signed-axis near-stop allowance");
+        }
+        for (double forward : {-100.0, 100.0, -1500.0, 1500.0})
+        {
+            s = Sample(forward);
+            s.DeltaSeconds = 1.0 / fps;
+            s.PlanarCmPerSecond = 2400.0;
+            out = CalculateOpposingThrottleBraking(s);
+            Require(out.Valid && out.OpposingThrottle &&
+                out.ForwardForce * forward < 0.0 &&
+                out.DecelerationCmPerSecondSquared > 0.0,
+                "real opposing signed travel still brakes at all frame rates");
+        }
+    }
     s = Sample();
     s.EffectiveBrakeHeld = true;
     out = CalculateOpposingThrottleBraking(s);
