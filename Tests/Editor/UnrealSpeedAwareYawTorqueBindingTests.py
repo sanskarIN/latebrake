@@ -57,6 +57,10 @@ class UnrealSpeedAwareYawTorqueBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
         self.assertIn("const float TurnTorque = BrakeProfile.HandbrakeActive", tick)
         self.assertIn("(bArcade ? 21000000.f : 14000000.f)", tick)
+        self.assertIn("latebrake::SignedHandbrakeYawAuthority(", tick)
+        self.assertIn("AssistedSteering * HandbrakeYawAuthority", tick)
+        self.assertNotIn("LongitudinalSpeed < -75.f ? -1.f : 1.f", tick)
+        self.assertNotIn("AssistedSteering * SteeringAuthority * SteerDirection", tick)
         self.assertIn("latebrake::LimitSteeringAtSpeed(", tick)
         self.assertIn("latebrake::CalculateReverseSpeedGovernor({", tick)
         self.assertIn("if (ReverseGovernor.Active)", tick)
