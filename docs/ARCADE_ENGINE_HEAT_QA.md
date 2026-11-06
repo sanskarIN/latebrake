@@ -36,8 +36,17 @@ python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
 The C++20 regression includes long full-throttle warmup, cooldown,
 additional nitro load, forward/reverse velocity, malformed frames,
 suspend/restart and 200,000 deterministic frames with strict limits.
-The editor Python source test checks that all three motor paths share
-the same heat multiplier and only expanded HUD shows the advisory.
+It also composes the **production opposing-throttle classifier** with
+the heat model over 40-second forward and reverse direction-change
+sequences at **30/60/120 FPS**: opposite-pedal braking must cause no
+artificial propulsion heat, whereas ordinary forward/reverse propulsion
+must still heat and derate as before. A high-speed sideways slide with
+less than 100 cm/s signed travel exercises the distinct near-stop
+direction-change allowance, where real motor demand is again eligible.
+The editor Python source test binds the actual Unreal pawn's heat
+admission to the **same** opposite-pedal classifier used to suppress
+motor force and verifies evaluation order. The original heat
+multiplier remains shared by base, nitro and drafting motor paths.
 Neither test proves real Unreal Engine gameplay.
 
 ## Mandatory installed-game checks
