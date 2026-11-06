@@ -1560,6 +1560,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // ANY optional motor/handling forces are submitted this frame.
     // This is the same true Chaos XY velocity used by road drag, for
     // the same player/rival chassis, and has no race-clock authority.
+    // Unlike aerodynamic road load, this additional arcade speed-cap
+    // brake requires the SAME accepted sprung contact as tire grip.
+    // Airborne/unloaded chassis keeps true momentum until it lands.
     const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
     const latebrake::PlanarSpeedGovernorOutput SpeedGovernor =
         latebrake::CalculatePlanarSpeedGovernor({
@@ -1567,7 +1570,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(Velocity.X),
             static_cast<double>(Velocity.Y),
             static_cast<double>(Mass),
-            static_cast<double>(ActiveSpeedCap), bArcade});
+            static_cast<double>(ActiveSpeedCap), bArcade,
+            GroundContact.ContactTractionScale});
     if (!SpeedGovernor.Valid)
     {
         RejectOptionalDriveAfterSpring(SpringResponse);
