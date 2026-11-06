@@ -377,11 +377,22 @@ python scripts/AnalyzeSuspensionTelemetry.py --log "C:\\LateBrakeQA\\my-session.
 
 This read-only, offline parser accepts the explicit
 `LATEBRAKE_SUSPENSION v=1` telemetry schema and prints a JSON summary.
-It validates finite spring/load values, confirms rear-drive and front
-steering never exceed the supported overall contact fraction, flags
-unpowered rear-only / unsteerable front-only conditions, counts airborne
-sampling, and highlights potentially unstable grid motion, large body
-angles and unusually fast vertical contact events.
+It validates finite spring/load values and the **cross-field physical
+invariants** of the same logged sample: whole-car traction cannot exceed
+either its counted spring-contact ceiling or its positive supported-weight
+fraction; the sum of independently normalized front/rear axle loads cannot
+exceed twice the total weight ratio; rear drive/front steering cannot exceed
+their respective axle loads. Reported spring contacts cannot outnumber
+blocking road rays, and anti-roll transfer is rejected if either ray on its
+axle is missing. Log rounding is allowed a narrow tolerance, and a
+non-load-bearing road ray is still permitted. These are source-policy
+consistency checks, **not proof that the editable log came from Unreal**.
+
+The inspector also confirms rear-drive and front steering never exceed the
+supported overall contact fraction, flags unpowered rear-only / unsteerable
+front-only conditions, counts airborne sampling, and highlights potentially
+unstable grid motion, large body angles and unusually fast vertical contact
+events.
 
 The output says `UNVERIFIED_OFFLINE_SUSPENSION_DIAGNOSTIC`,
 `gameplay_verified=false`, `ready_for_release=false` **always**.
