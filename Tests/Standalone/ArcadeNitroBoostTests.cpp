@@ -42,6 +42,49 @@ int main()
           "human forward-drive press activates both bounded effects");
     Check(boost.ChargeFraction() < 1.0 && boost.HeatFraction() > 0.0,
           "boost consumes energy and creates heat");
+    // Nitro is only provisionally ACTIVE until the real Chaos motor
+    // dispatch confirms positive bonus thrust. A saturated grip circle,
+    // gear interruption or engine derate must not consume finite charge.
+    boost.Reset();
+    boost.Press(true);
+    const double startingCharge = boost.ChargeFraction();
+    const double startingHeat = boost.HeatFraction();
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active &&
+          boost.RejectUndeliveredFrame() &&
+          !boost.IsActive() && boost.IsHeld() &&
+          std::abs(boost.ChargeFraction() - startingCharge) < 1.0e-12 &&
+          std::abs(boost.HeatFraction() - startingHeat) < 1.0e-12 &&
+          boost.CooldownRemainingSeconds() == 0.0,
+          "undelivered nitro cannot spend energy or accumulate meter heat");
+    Check(!boost.RejectUndeliveredFrame() &&
+          boost.ChargeFraction() == startingCharge &&
+          boost.HeatFraction() == startingHeat,
+          "rejected boost cannot refund the same frame twice");
+    for (int i = 0; i < 250; ++i)
+    {
+        const auto candidate = boost.Step(0.05, true, false, 1.0, 2200.0);
+        Check(candidate.Active && boost.RejectUndeliveredFrame() &&
+              boost.IsHeld() && !boost.IsActive(),
+              "held key stays eligible when temporary traction blocks boost");
+    }
+    Check(std::abs(boost.ChargeFraction() - startingCharge) < 1.0e-12 &&
+          std::abs(boost.HeatFraction() - startingHeat) < 1.0e-12 &&
+          boost.CooldownRemainingSeconds() == 0.0,
+          "250 consecutive undelivered frames cannot drain/overheat nitro");
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active &&
+          boost.ChargeFraction() < startingCharge &&
+          boost.HeatFraction() > startingHeat,
+          "next physically delivered nitro frame charges normally");
+    const double deliveredCharge = boost.ChargeFraction();
+    boost.Release();
+    Check(!boost.RejectUndeliveredFrame() &&
+          boost.ChargeFraction() == deliveredCharge,
+          "released genuinely spent nitro cannot be retroactively refunded");
+    boost.Reset();
+    boost.Press(true);
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
+          "test fixture resumes real qualifying held state");
+
     const double chargeBeforeBlocked = boost.ChargeFraction();
     const double heatBeforeBlocked = boost.HeatFraction();
     const auto blocked = boost.Step(0.05, false, false, 1.0, 2200.0);
