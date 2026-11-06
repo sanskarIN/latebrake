@@ -28,6 +28,11 @@ struct PlanarSpeedGovernorSample final
     double MassKg = 0.0;
     double SpeedCapCmPerSecond = 0.0;
     bool ArcadeHandling = true;
+    // SAME FRAME accepted spring/contact traction from the real chassis.
+    // Zero means fully airborne/unloaded: no synthetic speed-cap brake.
+    // The legacy standalone callers default to fully loaded pavement;
+    // the production pawn MUST supply the actual measured contact scale.
+    double ContactTractionScale = 1.0;
 };
 
 struct PlanarSpeedGovernorOutput final
@@ -58,7 +63,10 @@ inline PlanarSpeedGovernorOutput CalculatePlanarSpeedGovernor(
         sample.MassKg < 100.0 || sample.MassKg > 15000.0 ||
         !std::isfinite(sample.SpeedCapCmPerSecond) ||
         sample.SpeedCapCmPerSecond < PlanarGovernorMinimumCapCmPerSecond ||
-        sample.SpeedCapCmPerSecond > PlanarGovernorMaximumCapCmPerSecond)
+        sample.SpeedCapCmPerSecond > PlanarGovernorMaximumCapCmPerSecond ||
+        !std::isfinite(sample.ContactTractionScale) ||
+        sample.ContactTractionScale < 0.0 ||
+        sample.ContactTractionScale > 1.0)
     {
         return {};
     }
@@ -72,7 +80,12 @@ inline PlanarSpeedGovernorOutput CalculatePlanarSpeedGovernor(
 
     PlanarSpeedGovernorOutput output;
     output.Valid = true;
-    if (speed <= sample.SpeedCapCmPerSecond)
+    // Airborne travel continues under Chaos gravity/collision and the
+    // separately bounded aerodynamic road load. A geometric speed cap
+    // alone cannot manufacture an extra tire-like braking impulse in air.
+    // One corner is also insufficient to establish qualified road grip.
+    if (speed <= sample.SpeedCapCmPerSecond ||
+        sample.ContactTractionScale <= 1.0e-6)
     {
         return output;
     }
@@ -81,12 +94,16 @@ inline PlanarSpeedGovernorOutput CalculatePlanarSpeedGovernor(
     const double limit = sample.ArcadeHandling
         ? PlanarGovernorArcadeMaxDeceleration
         : PlanarGovernorSimulationMaxDeceleration;
+    // Scale the existing bounded request by this same physical contact
+    // budget ONCE. With full measured load the old arcade/simulation
+    // tuning is unchanged. Partial contact can only reduce deceleration;
+    // losing all support immediately withdraws speed-cap brake authority.
     const double decel = std::min({
         PlanarGovernorResponsePerSecond * excess,
         limit,
         excess / sample.DeltaSeconds,
         0.8 * speed / sample.DeltaSeconds
-    });
+    }) * sample.ContactTractionScale;
     // Positive excess guarantees speed>0. Bounded unit vector and mass
     // produce no acceleration, no reversal, and no upward/downward force.
     const double scale = -sample.MassKg * decel / speed;
