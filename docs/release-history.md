@@ -1,9 +1,9 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.91**. It is an **experimental source-only tag from unmerged draft PR #295**, not a compiled game or a feature merged into protected main. It has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
+    The independently verified latest published GitHub tag is **v0.5.92**. It is an **experimental source-only tag from unmerged draft PR #295**, not a compiled game or a feature merged into protected main. It has no verified Windows EXE, Android APK or installed gameplay. Some intermediate development milestones (v0.5.23–v0.5.29) did not receive individual tags. The v0.5.30 and v0.5.31 source previews were subsequently published as separate pre-releases; neither contains a playable game.
 
-**Current published source release:** [v0.5.91](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91) is a **SOURCE-ONLY experimental pre-release** at immutable draft-branch commit `8edba49c0a6294ece2797c708d80b6dd52288d40`. Four-corner physics support, diagnostic events and frame-invalidity handling remain **unmerged from PR #295** and **have not passed licensed UE 5.8/UHT or real driving QA**. The release has zero attached executable assets: no Windows installer, game EXE or Android APK. The previous [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90) was the main-line source-only racing-control and rival-AI milestone.
+**Current published source release:** [v0.5.92](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.92) is an experimental **SOURCE-ONLY pre-release** at immutable draft-branch commit `13f5588b64462a6dcdcb7d7406c584c63837e87b`. It refines the suspension, road load, planar speed, braking and shared motor/cornering grip of unmerged PR #295. It has zero attached assets and **has not passed licensed UE5.8/UHT compilation, authentic cooking or installed driving QA**. [v0.5.91](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91) is the previous experimental source snapshot; v0.5.90 remains the preceding main-line source milestone.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 
@@ -13,6 +13,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.92 | [Release notes](releases/v0.5.92.md) |
 | v0.5.91 | [Release notes](releases/v0.5.91.md) |
 | v0.5.90 | [Release notes](releases/v0.5.90.md) |
 | v0.5.89 | [Release notes](releases/v0.5.89.md) |
