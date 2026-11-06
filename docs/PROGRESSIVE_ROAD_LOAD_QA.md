@@ -141,17 +141,36 @@ The four-corner Chaos draft now uses `PlanarSpeedGovernor.h`:
   tire force are untouched; the governor adds only horizontal resistance.
 - The optional invalid-policy guard runs **before** driving forces. A valid
   earlier spring dispatch is never undone by a failed governor input.
-- The separate **reverse-speed gear ceiling** still uses its existing
-  instant reverse component clamp. This iteration replaces only the
-  old global planar top-speed snap, not the entire speed-governance system.
+- **No mid-air cap braking:** the real pawn passes the already accepted,
+  same-frame `GroundContact.ContactTractionScale` from its four-corner
+  suspension/axle authority to the governor. Zero (airborne, fully
+  unloaded, inverted, or fewer than two supporting wheels) yields **zero
+  extra governor force**, even above the cap. Partial support (for
+  example 0.45 with two supported corners) can only reduce the previous
+  bounded deceleration; full 1.0 support retains the original arcade and
+  Simulation Inspired strength. No new ray casts, teleport or forced
+  vertical movement is involved. Normal quadratic aerodynamic drag still
+  operates in flight through the separate progressive road-load policy.
+- The extra scalar is validated in [0,1], with nonfinite/out-of-range
+  contact failing closed before any optional physical motor dispatch.
+  The default 1.0 exists ONLY for older engine-independent test fixtures;
+  production supplies actual measured grip explicitly every frame.
+- The separate reverse-speed gear ceiling is managed by the
+  **finite rear-load-qualified reverse force governor** on the current
+  four-corner Chaos draft; it also never snaps XY velocity. Forward
+  planar overspeed and signed reverse speed have separate physical
+  authorization. Neither is a hard instantaneous gameplay speed cap.
 
 `PlanarSpeedGovernorTests.cpp` numerically verifies neutral, under-cap,
 gentle and large overspeed cases; yaw/sideways/reverse direction, bounded
 deceleration, invalid inputs, changing nitro cap, and 120,000 synthetic
 frames. It integrates the governor alone at 30/60/120 FPS to verify
-monotone convergence without a speed snap. New source integration tests
-check the actual player/rival Chaos Tick uses this output and does not
-reintroduce the old top-speed XY overwrite.
+monotone convergence without a speed snap. Tests now also cover zero
+contact, nearly-zero spring load, two-/three-/four-corner grip fractions,
+invalid/nonfinite traction and mixed-contact 120,000-frame stress runs.
+The Unreal source integration checks that measured spring grip is
+actually passed to the cap governor, not just stored for the HUD, and
+that no extra force is created after spring support is lost.
 
 **Limitations and real engine QA:** This is a gameplay-tuned arcade force,
 not physically calibrated aero, downforce or a tire solver. Under several
