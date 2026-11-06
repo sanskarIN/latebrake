@@ -33,8 +33,15 @@ chassis movement**:
 - Turn direction naturally reverses at physically negative signed
   forward speeds and never requests yaw from steering at zero speed.
 - Preserve the previous simple torque specifically for intentional
-  **human held-handbrake slides**. Existing speed caps, nitro, brakes,
-  collision and garage power tuning remain independent.
+  **human held-handbrake slides**, but replace its abrupt reverse-speed
+  direction switch with a smooth, signed **measured-chassis-speed**
+  authority. At zero speed the drift steering torque is zero; rolling
+  backwards even at a crawl selects the correct reverse turning direction.
+  Authority is proportional to signed longitudinal motion up to ±900 cm/s,
+  matching the old full-speed tuning in either direction. There is no
+  sudden force-sign jump near −75 cm/s and no wheel/gear teleport.
+  Existing speed caps, nitro, brakes, collision and garage power tuning
+  remain independent.
 
 **Not** tire physics: body inertia is approximated from source-authored
 380×180cm dimensions and actual mass, and the values are a first
@@ -49,10 +56,15 @@ or new world collisions were introduced.
   lateral limit, off-road / simulation differences, yaw overshoot,
   countersteering, neutral spin damping, torque bounds, corrupted
   axes/velocity/mass, invalid frame time, cadence independence.
-- `Tests/Editor/UnrealSpeedAwareYawTorqueBindingTests.py` checks
-  real Unreal chassis uses the controller before motor physics, keeps
-  the previous explicit handbrake drift exception, and never obtains
-  checkpoint or SaveGame authority.
+- `Tests/Standalone/HandbrakeDrivePolicyTests.cpp` additionally
+  tests the exact new continuous signed handbrake yaw law, its ±75 cm/s
+  former discontinuity, stationary/reverse/forward behavior, extreme
+  input rejection, mirror symmetry and 300,000 finite speed samples.
+- `Tests/Editor/UnrealSpeedAwareYawTorqueBindingTests.py` and
+  `Tests/Editor/HandbrakeBindingTests.py` check the actual Unreal
+  chassis uses the measured signed speed for the human handbrake yaw
+  exception; the old hard reverse-sign threshold cannot return, and
+  the ordinary measured yaw controller and race authority stay separate.
 
 These are *source-only* checks, not engine/real-drive verification.
 
