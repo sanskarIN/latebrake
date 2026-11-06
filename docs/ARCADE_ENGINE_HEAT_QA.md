@@ -12,8 +12,10 @@ checks. A synthetic heat fraction increases with sustained driving and
 qualified human nitro. Coasting cools the system with additional airflow
 at speed. A warm engine gradually reduces normal, nitro and drafting
 motor forces **together** above 67% heat, never below 82% of the previous
-propulsive force. Service braking does not add engine heat; the thermal
-multiplier does not alter braking, steering or opposing-throttle damping.
+propulsive force. Service braking and *actual opposite-pedal deceleration* do not add
+propulsion heat, even when input is held throughout a long direction change.
+Both still permit heat to cool while the car moves. The thermal multiplier
+does not alter braking, steering or opposing-throttle damping.
 Pauses, focus loss, invalid numbers and frame hitches suspend updates.
 Race-local reset restores the ambient fraction. The optional expanded
 HUD reports engine heat and available motor percentage above 64%.
