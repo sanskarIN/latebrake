@@ -3,6 +3,8 @@
 #include "Track/CircuitLayout.h"
 #include "Track/CircuitCollisionPlan.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace latebrake
@@ -79,8 +81,9 @@ static_assert(RacingLinePaintWidthCm > 0.0 &&
 // Every stripe is an oriented rectangle on one of the four genuine asphalt
 // slab unions; checking only the centre misses future track edits that could
 // put most of a piece on grass. The 5x5 grid also samples mid-edges and
-// interior, including quarter-turn seams. This is a conservative sampled
-// policy, NOT a proof of continuous polygon coverage or GPU contact.
+// interior, including quarter-turn seams. The independent exact polygon
+// union-area check below also catches narrow unsampled overhangs. Neither
+// check can establish physical GPU contact or real Unreal gameplay.
 inline bool IsOnPhysicalRacingLineAsphalt(CircuitPoint point) noexcept
 {
     if (!std::isfinite(point.X) || !std::isfinite(point.Y)) return false;
@@ -97,6 +100,155 @@ inline bool IsOnPhysicalRacingLineAsphalt(CircuitPoint point) noexcept
         }
     }
     return false;
+}
+
+// Analytic coverage of the ENTIRE rotated paint rectangle by the union
+// of the four collision-bearing asphalt AABBs. A 5x5 grid by itself can
+// incorrectly accept a narrow sliver crossing the inside corner of a road
+// intersection. Here Sutherland-Hodgman clips the convex paint quadrilateral
+// against each overlapping asphalt intersection, then inclusion-exclusion
+// computes the union area. Four road slabs require only 15 small polygons.
+// Fixed-size buffers: no allocation, Unreal dependency or race authority.
+struct RacingLineClipPolygon final
+{
+    std::array<CircuitPoint, 8> Points{};
+    int Count = 0;
+};
+
+inline RacingLineClipPolygon ClipRacingLineHalfPlane(
+    const RacingLineClipPolygon& polygon, int axis,
+    double boundary, bool keepAbove) noexcept
+{
+    RacingLineClipPolygon clipped;
+    if (polygon.Count < 1 || polygon.Count > 8) return clipped;
+    const auto coordinate = [axis](CircuitPoint p) noexcept
+    {
+        return axis == 0 ? p.X : p.Y;
+    };
+    CircuitPoint prior = polygon.Points[static_cast<unsigned>(polygon.Count - 1)];
+    double priorCoordinate = coordinate(prior);
+    bool priorInside = keepAbove ? priorCoordinate >= boundary :
+                                  priorCoordinate <= boundary;
+    for (int i = 0; i < polygon.Count; ++i)
+    {
+        const CircuitPoint current = polygon.Points[static_cast<unsigned>(i)];
+        const double currentCoordinate = coordinate(current);
+        const bool currentInside = keepAbove
+            ? currentCoordinate >= boundary
+            : currentCoordinate <= boundary;
+        if (priorInside != currentInside)
+        {
+            const double difference = currentCoordinate - priorCoordinate;
+            if (difference == 0.0 || clipped.Count >= 8) return {};
+            const double alpha = std::clamp(
+                (boundary - priorCoordinate) / difference, 0.0, 1.0);
+            const CircuitPoint crossing{
+                prior.X + alpha * (current.X - prior.X),
+                prior.Y + alpha * (current.Y - prior.Y)
+            };
+            if (!std::isfinite(crossing.X) ||
+                !std::isfinite(crossing.Y)) return {};
+            clipped.Points[static_cast<unsigned>(clipped.Count++)] = crossing;
+        }
+        if (currentInside)
+        {
+            if (clipped.Count >= 8) return {};
+            clipped.Points[static_cast<unsigned>(clipped.Count++)] = current;
+        }
+        prior = current;
+        priorCoordinate = currentCoordinate;
+        priorInside = currentInside;
+    }
+    return clipped;
+}
+
+inline double RacingLinePolygonAreaCm2(
+    const RacingLineClipPolygon& polygon) noexcept
+{
+    if (polygon.Count < 3 || polygon.Count > 8) return 0.0;
+    // Origin-relative triangles avoid subtracting 1e7 cm² world-coordinate
+    // cross products merely to compute a narrow 20 cm stripe's area.
+    const CircuitPoint origin = polygon.Points[0];
+    double twiceArea = 0.0;
+    for (int i = 1; i + 1 < polygon.Count; ++i)
+    {
+        const CircuitPoint a = polygon.Points[static_cast<unsigned>(i)];
+        const CircuitPoint b = polygon.Points[static_cast<unsigned>(i + 1)];
+        twiceArea += (a.X - origin.X) * (b.Y - origin.Y) -
+                     (a.Y - origin.Y) * (b.X - origin.X);
+    }
+    return 0.5 * std::abs(twiceArea);
+}
+
+inline double RacingLineAsphaltCoveredAreaCm2(
+    RacingLineMark mark) noexcept
+{
+    const double radians = mark.HeadingDegrees * RacingLinePi / 180.0;
+    const double fx = std::cos(radians);
+    const double fy = std::sin(radians);
+    const double halfLength = mark.LengthCm * 0.5;
+    const double halfWidth = RacingLinePaintWidthCm * 0.5;
+    RacingLineClipPolygon footprint;
+    footprint.Count = 4;
+    const std::array<CircuitPoint, 4> offsets{{
+        {-halfLength, -halfWidth}, {halfLength, -halfWidth},
+        {halfLength, halfWidth}, {-halfLength, halfWidth}
+    }};
+    for (int i = 0; i < 4; ++i)
+    {
+        const CircuitPoint offset = offsets[static_cast<unsigned>(i)];
+        footprint.Points[static_cast<unsigned>(i)] = {
+            mark.Center.X + offset.X * fx - offset.Y * fy,
+            mark.Center.Y + offset.X * fy + offset.Y * fx
+        };
+    }
+    double covered = 0.0;
+    // Intersection area of a finite union, not the sum of all four slab
+    // areas: overlapping intersection corners must not count twice.
+    for (int mask = 1; mask < (1 << 4); ++mask)
+    {
+        double left = 0.0;
+        double right = 0.0;
+        double bottom = 0.0;
+        double top = 0.0;
+        int members = 0;
+        for (int index = 0; index < 4; ++index)
+        {
+            if ((mask & (1 << index)) == 0) continue;
+            const CircuitCollisionBlock slab = PlannedCollisionBlock(index + 1);
+            if (slab.Style != CollisionBlockStyle::Asphalt ||
+                !IsValidCollisionBlock(slab)) return 0.0;
+            const double minX =
+                slab.Center.X - slab.ScaleX * RacingLineCubeSizeCm * 0.5;
+            const double maxX =
+                slab.Center.X + slab.ScaleX * RacingLineCubeSizeCm * 0.5;
+            const double minY =
+                slab.Center.Y - slab.ScaleY * RacingLineCubeSizeCm * 0.5;
+            const double maxY =
+                slab.Center.Y + slab.ScaleY * RacingLineCubeSizeCm * 0.5;
+            if (members++ == 0)
+            {
+                left = minX; right = maxX;
+                bottom = minY; top = maxY;
+            }
+            else
+            {
+                left = std::max(left, minX);
+                right = std::min(right, maxX);
+                bottom = std::max(bottom, minY);
+                top = std::min(top, maxY);
+            }
+        }
+        if (left >= right || bottom >= top) continue;
+        RacingLineClipPolygon clipped =
+            ClipRacingLineHalfPlane(footprint, 0, left, true);
+        clipped = ClipRacingLineHalfPlane(clipped, 0, right, false);
+        clipped = ClipRacingLineHalfPlane(clipped, 1, bottom, true);
+        clipped = ClipRacingLineHalfPlane(clipped, 1, top, false);
+        const double intersection = RacingLinePolygonAreaCm2(clipped);
+        covered += (members % 2 == 1 ? intersection : -intersection);
+    }
+    return covered;
 }
 
 inline bool IsValidRacingLinePaintFootprint(RacingLineMark mark) noexcept
@@ -132,7 +284,13 @@ inline bool IsValidRacingLinePaintFootprint(RacingLineMark mark) noexcept
             }
         }
     }
-    return true;
+    // Analytic union-area proof (to floating-point tolerance) is stronger
+    // than the sampled gate: no thin corner triangle can escape detection.
+    const double fullArea = mark.LengthCm * RacingLinePaintWidthCm;
+    const double covered = RacingLineAsphaltCoveredAreaCm2(mark);
+    const double tolerance = std::max(1.0e-5, fullArea * 1.0e-8);
+    return std::isfinite(covered) &&
+           std::abs(fullArea - covered) <= tolerance;
 }
 
 // Counter-clockwise lap: south eastbound, east northbound, north westbound,
