@@ -69,6 +69,48 @@ int main()
             Near(overspeed.OverspeedCmPerSecond, 400.0),
             "large overspeed is capped at finite mass-scaled arcade deceleration");
 
+    // Speed-cap correction is an extra contact-dependent arcade brake,
+    // not aerodynamic drag or a kinematic velocity cap. Genuine suspended
+    // motion must not be slowed by this force before the springs reattach.
+    auto contactFrame = Frame(6400.0, 0.0, 6000.0);
+    contactFrame.ContactTractionScale = 0.0;
+    const auto flying = CalculatePlanarSpeedGovernor(contactFrame);
+    Require(flying.Valid && !flying.Active &&
+            flying.ForceX == 0.0 && flying.ForceY == 0.0 &&
+            flying.DecelerationCmPerSecondSquared == 0.0 &&
+            flying.OverspeedCmPerSecond == 0.0,
+            "airborne overspeed cannot manufacture tire-like braking");
+    contactFrame.ContactTractionScale = 1.0e-7;
+    const auto unloaded = CalculatePlanarSpeedGovernor(contactFrame);
+    Require(unloaded.Valid && !unloaded.Active &&
+            unloaded.ForceX == 0.0 && unloaded.ForceY == 0.0,
+            "tiny spring load cannot revive a synthetic braking impulse");
+
+    contactFrame.ContactTractionScale = 0.45;
+    const auto halfSupported = CalculatePlanarSpeedGovernor(contactFrame);
+    Require(halfSupported.Valid && halfSupported.Active &&
+            Near(halfSupported.DecelerationCmPerSecondSquared,
+                 0.45 * PlanarGovernorArcadeMaxDeceleration) &&
+            Near(halfSupported.ForceX,
+                 -1100.0 * 0.45 * PlanarGovernorArcadeMaxDeceleration) &&
+            halfSupported.ForceY == 0.0 &&
+            halfSupported.DecelerationCmPerSecondSquared <
+                overspeed.DecelerationCmPerSecondSquared,
+            "two supported corners reduce cap braking exactly once");
+    contactFrame.ContactTractionScale = 0.75;
+    const auto threeSupported = CalculatePlanarSpeedGovernor(contactFrame);
+    Require(threeSupported.Valid && threeSupported.Active &&
+            Near(threeSupported.DecelerationCmPerSecondSquared,
+                 0.75 * PlanarGovernorArcadeMaxDeceleration),
+            "partial spring contact never accelerates overspeed braking");
+    contactFrame.ContactTractionScale = 1.0;
+    const auto fullySupported = CalculatePlanarSpeedGovernor(contactFrame);
+    Require(fullySupported.Valid && fullySupported.Active &&
+            Near(fullySupported.ForceX, overspeed.ForceX) &&
+            Near(fullySupported.DecelerationCmPerSecondSquared,
+                 overspeed.DecelerationCmPerSecondSquared),
+            "fully loaded road retains prior calibrated arcade behavior");
+
     const auto simulation = CalculatePlanarSpeedGovernor(
         Frame(6400.0, 0.0, 6000.0, false));
     Require(simulation.Valid && simulation.Active &&
@@ -138,6 +180,17 @@ int main()
                 "nonfinite physics time fails closed");
         s = Frame(6000.0, 0.0, 6500.0);
     }
+    for (double bad : {-0.01, 1.0001,
+                       std::numeric_limits<double>::quiet_NaN(),
+                       std::numeric_limits<double>::infinity()})
+    {
+        s = Frame(6400.0, 0.0, 6000.0);
+        s.ContactTractionScale = bad;
+        const auto rejected = CalculatePlanarSpeedGovernor(s);
+        Require(!rejected.Valid && !rejected.Active &&
+                rejected.ForceX == 0.0 && rejected.ForceY == 0.0,
+                "invalid sampled spring grip cannot authorize cap braking");
+    }
     for (double dt : {0.0, -0.02, 0.100001})
     {
         s = Frame(6000.0, 0.0, 6500.0, true, dt);
@@ -167,6 +220,9 @@ int main()
                                   i % 3 == 1 ? 60.0 : 120.0);
         s = {dt, speed * std::cos(angle), speed * std::sin(angle),
              100.0 + (i % 14901), 500.0 + (i % 13001), i % 2 == 0};
+        s.ContactTractionScale = i % 5 == 0 ? 0.0 :
+            i % 5 == 1 ? 0.20 : i % 5 == 2 ? 0.45 :
+            i % 5 == 3 ? 0.75 : 1.0;
         const auto out = CalculatePlanarSpeedGovernor(s);
         Require(out.Valid &&
                 std::isfinite(out.ForceX) && std::isfinite(out.ForceY),
@@ -177,17 +233,18 @@ int main()
             Require(d > 0.0 &&
                     d <= (s.ArcadeHandling
                         ? PlanarGovernorArcadeMaxDeceleration
-                        : PlanarGovernorSimulationMaxDeceleration) + 1.0e-8 &&
+                        : PlanarGovernorSimulationMaxDeceleration) *
+                            s.ContactTractionScale + 1.0e-8 &&
                     d * dt <= out.OverspeedCmPerSecond + 1.0e-8 &&
                     out.ForceX * s.VelocityX +
                     out.ForceY * s.VelocityY <= 0.0,
-                    "opposing deceleration cannot exceed cap or reverse direction");
+                    "spring-limited deceleration cannot exceed cap or reverse direction");
         }
         else
         {
             Require(out.ForceX == 0.0 && out.ForceY == 0.0 &&
                     out.OverspeedCmPerSecond == 0.0,
-                    "non-overspeed sample never creates a force");
+                    "non-overspeed or unsupported sample never creates a force");
         }
     }
     std::cout << "Planar speed governor passed 120k independent frames.\n";
