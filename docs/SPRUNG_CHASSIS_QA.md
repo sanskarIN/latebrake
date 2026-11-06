@@ -245,9 +245,24 @@ python3 -m unittest discover -s Tests/Editor -p '*DriveTelemetry*Tests.py' -v
 
 The offline inspector rejects malformed records, out-of-range or
 nonfinite numeric input, impossible simultaneous motor/opposite/service
-brake authority, and motor/yaw forces on unloaded axles. It reports
-observed maximums and diagnostic flags but **never reports gameplay
-verified or ready for release**. It cannot attest the log's provenance,
+brake authority, and motor/yaw forces on unloaded axles. It additionally
+verifies the logged longitudinal/lateral speeds are projections of **one**
+planar velocity (not two independent 15,000 cm/s budgets); opposing-pedal
+engine braking requires genuinely opposite motion and nonzero input;
+an already-opposed pedal cannot submit ordinary motor force; substantial
+motor force is rejected with a displayed neutral throttle. A nonzero
+draft HUD percentage can only come from a **human** driver moving
+forward at the source's minimum follower speed, with a qualified
+forward throttle and actual dispatched positive motor force. Logging
+precision is accounted for; tiny rounded values do not incorrectly
+claim force inconsistencies.
+
+These checks make fake or inconsistent Development diagnostics easier to
+detect, but **cannot authenticate editable text, verify a genuine Chaos
+force impulse, measure delivered acceleration, or prove racing feel**.
+The inspector reports observed maximums and diagnostic flags but
+**never reports gameplay verified or ready for release**. It cannot
+attest the log's provenance,
 missed brief frame transitions, physics feel, force fidelity, map cooking,
 the installation's identity or installed Win64 behavior. In a real
 30/60/120 FPS playtest, record no-load, partial contact, a long sideways
