@@ -216,6 +216,45 @@ drivetrain recovery is responsive without an unexpected torque spike,
 unnatural spin or braking reversal. Also repeat with service braking,
 handbrake, partial rear-wheel contact, Arcade and Simulation Inspired modes.
 
+## Measured handling force evidence — Development builds only
+
+The existing \`LATEBRAKE_SUSPENSION v=1\` format is unchanged. In a genuine
+**non-shipping** Unreal 5.8 Development game, the same bounded suspension
+report cadence additionally emits \`LATEBRAKE_DRIVE v=1\` **after** the
+real motor, reverse-pedal braking, service/handbrake, lateral correction,
+yaw torque and optional speed governor forces are submitted. It records
+the same physics frame's signed longitudinal/lateral speeds, measured
+yaw rate, throttle/steer commands, accepted whole-car and axle traction,
+actual branch-authorized longitudinal contributions, lateral correction,
+steering torque and post-limit drafting percentage. Pre-GO grid frames
+remain suspension-only; the handling line cannot authorize input or
+affect any race scoring, camera, car energy, files or save data.
+
+The signed forces are the **planned submitted contributions in Unreal
+kg·cm/s²**, not observed G-force, a measured stopping distance, or a
+guaranteed precise Chaos impulse. They exclude collision, ordinary drag,
+speed-governor and arbitrary physics substeps. The yaw torque is a world
+Z planned command; it cannot on its own certify cornering traction.
+
+To inspect a log that a real installed Development build has produced:
+
+\`\`\`sh
+python3 scripts/AnalyzeDriveTelemetry.py --log "Saved/Logs/Latebrake.log"
+python3 -m unittest discover -s Tests/Editor -p '*DriveTelemetry*Tests.py' -v
+\`\`\`
+
+The offline inspector rejects malformed records, out-of-range or
+nonfinite numeric input, impossible simultaneous motor/opposite/service
+brake authority, and motor/yaw forces on unloaded axles. It reports
+observed maximums and diagnostic flags but **never reports gameplay
+verified or ready for release**. It cannot attest the log's provenance,
+missed brief frame transitions, physics feel, force fidelity, map cooking,
+the installation's identity or installed Win64 behavior. In a real
+30/60/120 FPS playtest, record no-load, partial contact, a long sideways
+slide, opposite-pedal braking, qualified drafting, full steering,
+coasting, braking and pre-GO/GO, then compare actual car motion to the
+reported requests. A source CI pass is not sufficient.
+
 ## Numerical source tests
 
 `Tests/Standalone/SprungChassisDynamicsTests.cpp` compiles the actual

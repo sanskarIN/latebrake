@@ -1098,8 +1098,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             LoadedCornerMask |= 1u << Corner;
         }
     }
-    if (SuspensionQaSchedule.ShouldReport(
-            static_cast<double>(DeltaSeconds), LoadedCornerMask, bPreGreen))
+    // Reuse this existing at-most-5-Hz, 2-second-heartbeat decision for
+    // BOTH the unchanged suspension v=1 record and the new GO-only drive
+    // evidence. No second sampling clock, road query or shipping overhead.
+    const bool bReportSuspensionDriveEvidence =
+        SuspensionQaSchedule.ShouldReport(
+            static_cast<double>(DeltaSeconds), LoadedCornerMask, bPreGreen);
+    if (bReportSuspensionDriveEvidence)
     {
         const auto MeasuredRay = [&SpringSample](int32 Index) -> double
         {
@@ -1669,6 +1674,57 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<float>(SpeedGovernor.ForceX),
             static_cast<float>(SpeedGovernor.ForceY), 0.f));
     }
+
+#if !UE_BUILD_SHIPPING
+    // Real Development-build evidence for installed-handling QA only.
+    // Use the SAME accepted suspension cadence as the existing v=1
+    // record (including grid->GO transitions). The values below are
+    // signed planned contributions from the just-submitted motor, brake,
+    // lateral and yaw paths, NOT measured acceleration. Chaos collision,
+    // road load, governor, float rounding and physics substeps can change
+    // the resulting vehicle motion. No gameplay or release authority.
+    if (bReportSuspensionDriveEvidence)
+    {
+        const bool bMotorSubmitted = AxleBudget.RearDriveReady &&
+            !bEffectiveBraking && !OpposingBraking.OpposingThrottle;
+        const bool bOpposingSubmitted = AxleBudget.RearDriveReady &&
+            !bEffectiveBraking && OpposingBraking.OpposingThrottle;
+        const double SubmittedMotorForce = bMotorSubmitted
+            ? MotorTraction.ForwardForce : 0.0;
+        const double SubmittedOpposingForce = bOpposingSubmitted
+            ? OpposingBraking.ForwardForce : 0.0;
+        const double SubmittedServiceForce =
+            bEffectiveBraking && GroundContact.HasDriveContact
+            ? PhysicalBraking.ForwardForce *
+                static_cast<double>(ContactTractionScale) : 0.0;
+        const double SubmittedLateralForce =
+            LateralForce.RightForce *
+            static_cast<double>(ContactTractionScale);
+        const double SubmittedYawTorque =
+            static_cast<double>(TurnTorque) *
+            static_cast<double>(FrontSteeringTractionScale);
+        const bool bLocalHuman = IsLocallyControlled() &&
+            Cast<APlayerController>(GetController()) != nullptr;
+        UE_LOG(LogTemp, Display,
+            TEXT("LATEBRAKE_DRIVE v=1 driver=%s mode=%s "
+                 "forward_cmps=%.1f lateral_cmps=%.1f yaw_radps=%.3f "
+                 "throttle=%.3f steer=%.3f contact=%.3f "
+                 "rear=%.3f front=%.3f motor_force=%.1f "
+                 "opposing_force=%.1f service_force=%.1f "
+                 "lateral_force=%.1f yaw_torque=%.1f draft_pct=%.3f"),
+            bLocalHuman ? TEXT("player") : TEXT("autonomous"),
+            bArcade ? TEXT("arcade") : TEXT("simulation"),
+            LongitudinalSpeed, LateralSpeed, AngularVelocity.Z,
+            EffectiveThrottle, AssistedSteering,
+            GroundContact.ContactTractionScale,
+            AxleBudget.RearDriveTractionScale,
+            AxleBudget.FrontSteeringTractionScale,
+            SubmittedMotorForce, SubmittedOpposingForce,
+            SubmittedServiceForce, SubmittedLateralForce,
+            SubmittedYawTorque,
+            static_cast<double>(CurrentDraftAppliedFraction) * 100.0);
+    }
+#endif
 
     // Real signed chassis motion, not requested reverse throttle, drives
     // the backward gear limit for player and autonomous rival alike. Leave
