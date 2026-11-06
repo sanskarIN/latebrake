@@ -53,7 +53,7 @@ self-hosted runner, or accept source from outside this repository.
 6. Download the complete cooked archive onto a Windows test machine,
    verify its manifest, then follow
    [Windows personal playtesting](WINDOWS_PERSONAL_PLAYTEST.md)
-   and [sprung-chassis QA](SPRUNG_CHASSIS_QA.md). Capture true hardware
+   and [sprung-chassis QA](https://github.com/sanskarIN/latebrake/blob/feat/chaos-four-corner-suspension/docs/SPRUNG_CHASSIS_QA.md). Capture true hardware
    FPS, car stability, steering, braking, AI, body/wheel attitude,
    starts, focus/pause and recovery. Inspect
    `LATEBRAKE_SUSPENSION v=1` debug logs from an actual Development

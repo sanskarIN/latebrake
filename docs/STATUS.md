@@ -1,15 +1,34 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-05
-**Latest published milestone:** [v0.5.91 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91), immutable commit `8edba49c0a6294ece2797c708d80b6dd52288d40`, **zero executable attachments**. This freezes unmerged draft suspension PR #295, **not** a runnable game or a merge of experimental handling into protected `main`. [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90) remains the preceding main-line source-only milestone; actual UE 5.8/UHT, cooked Win64 and installed physics QA remain unverified.
-**Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
-**Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+**Updated:** 2026-11-06
+**Latest published milestone:** [v0.5.94 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94), immutable commit `7919a3e553de94e12f1dcfa961e305d9aff71bcd`, **zero executable attachments**. It freezes experimental unmerged draft PR #295, with signed reverse overspeed changed from an instantaneous XY speed snap to a finite rear-traction-limited Chaos force. Experimental physics is **not merged into protected main**; actual UE5.8/UHT, Win64 cooking, hardware driving and Windows installation remain unverified.
+**Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
+**Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
+
+## v0.5.94 experimental physical reverse overspeed (tagged source, NOT merged)
+
+- Immutable `7919a3e553de94e12f1dcfa961e305d9aff71bcd` captures the true shared Chaos pawn's finite reverse overspeed planar braking, 48.6/36 km/h **soft** signed reverse targets and a rear load-limited correction in the existing lateral friction budget. Normal race authority and sideways/vertical motion remain unchanged by the new controller.
+- Exact-source publication succeeded only after correcting seven source-binding assertions that initially blocked release. [Publisher run](https://github.com/sanskarIN/latebrake/actions/runs/42203654085) passed **185/185 CTests on Windows, Ubuntu and macOS each, 673/673 Python source fixtures**, packaging policy and site/docs verification. These are not Unreal builds or installed physical driving tests.
+- The GitHub release has **zero attached executable assets**. The independent [playable-game issue #148](https://github.com/sanskarIN/latebrake/issues/148), genuine engine compilation and installed QA remain unresolved. Earlier v0.5.93 remains immutable.
+
+## v0.5.93 immutable experimental source (NOT a playable game)
+
+- The tagged draft source commit `9dd2b3236f25b242387233c988255881dd7aab59` corrects sideways-slide opposite-pedal classification, prevents engine heat caused by blocked motor thrust, reports the post-limit physically submitted slipstream bonus and records non-shipping requested drive/brake/steer forces.
+- The offline Win64 reviewer can require a human-driver record and bind those forces to the original SHA256-matched runtime receipt, exact log, source commit, engine Build.version, authored map and complete cooked archive. Editable files and matching hashes are **not** independent proof of Unreal compilation or gameplay.
+- The exact-source release publisher passed **184 portable C++20 CTests each on Windows, Ubuntu and macOS** plus **674 directly tagged Python checks**, PowerShell source-policy tests and documentation. Separate PR merge-preview CI passed **679 Python tests** because it also included five historical publisher-policy tests in protected main. [Exact verification clarification](releases/v0.5.93-test-count-clarification.md) is separate from the immutable release notes.
+- The release is a source-only pre-release with zero assets. PR #295 stays draft/unmerged, and [issue #148](https://github.com/sanskarIN/latebrake/issues/148) remains open until a real playable Win64 qualification is achieved.
+
+## v0.5.92 experimental tagged handling source
+
+- Immutable `13f5588b64462a6dcdcb7d7406c584c63837e87b` captures the tested unmerged PR #295 source, including spring continuity, airborne rolling-load isolation, planar launch measurement, bounded opposing-throttle braking, shared motor/cornering grip and static-road ray-length damping.
+- The pinned-source publisher qualified all 184 CTests on Windows/Ubuntu/macOS, 659 Python source checks, PowerShell policies and strict documentation before creating the pre-release.
+- The release has zero attached assets and does not establish UE compilation, cooking, installed driving or a production game. The physics PR remains draft pending those independent gates.
 
 ## v0.5.91 experimental tagged draft source (NOT merged playable game)
 
 - Immutable `8edba49c0a6294ece2797c708d80b6dd52288d40` freezes source from PR #295: four corner springs sampled from blocking WorldStatic road, actual Chaos point velocities, bounded vertical forces at four wheel anchors, axle anti-roll load transfer and spring-qualified rear motor/front steering authority.
 - Rate-limited loss/recontact QA logging and physical-momentum-preserving guard paths have passed cross-platform **source-only** CI; no licensed Unreal Editor/UHT, Windows cook, genuine driving test or independent wheel/tire solver has been qualified.
-- v0.5.91 intentionally has no executable release assets and is **not** merged into protected `main`. This public status tracks the latest published tag, not installed playability.
+- v0.5.91 intentionally has no executable release assets and is **not** merged into protected `main`. This historical entry records the first tagged suspension snapshot, not installed playability.
 
 ## v0.5.90 published source-only milestone (not installed gameplay)
 
