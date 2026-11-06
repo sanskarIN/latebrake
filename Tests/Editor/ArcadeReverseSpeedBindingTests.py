@@ -95,7 +95,9 @@ class ReverseSpeedBindingTests(unittest.TestCase):
         self.assertIn("ReverseGovernorArcadeMaxDeceleration = 850.0", self.policy)
         self.assertIn("s.RearTractionScale > s.ContactTractionScale", self.policy)
         self.assertIn("s.OtherLongitudinalBrake", self.policy)
-        self.assertIn("MAX", self.docs.upper())
+        self.assertIn("850 cm/s² Arcade", self.docs)
+        self.assertIn("650 cm/s² Simulation", self.docs)
+        self.assertIn("not a verified playable Win64 game", self.docs)
         self.assertIn("ReverseSpeedGovernorTests.cpp", self.cmake)
         self.assertIn("NAME ReverseSpeedGovernor", self.cmake)
         self.assertIn("latebrake_reverse_speed_governor_tests PRIVATE /W4 /WX",
