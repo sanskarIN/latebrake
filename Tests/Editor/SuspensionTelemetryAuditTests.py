@@ -150,6 +150,80 @@ class SuspensionTelemetryAuditTests(unittest.TestCase):
         self.reject(contacts="1", drive_rear="0.200")
         self.reject(contacts="1", steer_front="0.200")
 
+    def test_contact_load_budget_cross_fields_are_consistent(self):
+        # A valid-looking individual value cannot borrow more authority
+        # than the same record's physically measured tire support.
+        self.reject(
+            contacts="2", weight_ratio="0.500", traction="0.600",
+            front_load="0.000", rear_load="1.000",
+            drive_rear="0.400", steer_front="0.000",
+            fl_cm="-1.0", fr_cm="-1.0"
+        )  # contact-count 0.45 ceiling
+        self.reject(
+            weight_ratio="0.500", traction="0.700",
+            front_load="0.500", rear_load="0.500",
+            drive_rear="0.400", steer_front="0.400"
+        )  # traction exceeds available spring weight
+        self.reject(
+            weight_ratio="0.400", traction="0.400",
+            front_load="0.800", rear_load="0.600",
+            drive_rear="0.300", steer_front="0.300"
+        )  # sum of axle loads exceeds total spring force
+        self.reject(
+            rear_load="0.200", drive_rear="0.400",
+            steer_front="0.500"
+        )  # drive claimed on an underloaded rear axle
+        self.reject(
+            front_load="0.200", steer_front="0.400",
+            drive_rear="0.500"
+        )  # steering claimed on an underloaded front axle
+
+    def test_contact_count_and_antiroll_require_actual_rays(self):
+        self.reject(fl_cm="-1.0", contacts="4")
+        self.reject(fl_cm="-1.0", fr_cm="-1.0", contacts="3",
+                    weight_ratio="1.000", traction="0.450",
+                    drive_rear="0.450", steer_front="0.000")
+        self.reject(
+            contacts="3", fl_cm="-1.0", weight_ratio="0.750",
+            traction="0.750", front_load="0.500", rear_load="1.000",
+            drive_rear="0.700", steer_front="0.200",
+            arb_front_pct="0.80"
+        )
+        self.reject(
+            contacts="3", rr_cm="-1.0", weight_ratio="0.750",
+            traction="0.750", front_load="1.000", rear_load="0.500",
+            drive_rear="0.200", steer_front="0.700",
+            arb_rear_pct="-0.80"
+        )
+        # A ray may hit road without providing load. This intentionally
+        # stays valid: physical support count is a subset of road hits.
+        no_load = parse_record(line(
+            contacts="0", weight_ratio="0.000", traction="0.000",
+            drive_rear="0.000", steer_front="0.000",
+            front_load="0.000", rear_load="0.000"
+        ))
+        self.assertEqual(no_load["contacts"], 0)
+
+    def test_rounding_and_saturated_axle_ratios_are_not_false_positives(self):
+        compressed = parse_record(line(
+            weight_ratio="1.500", traction="1.000",
+            front_load="1.000", rear_load="1.000"
+        ))
+        self.assertEqual(compressed["weight_ratio"], 1.5)
+        partial = parse_record(line(
+            contacts="2", weight_ratio="0.500", traction="0.450",
+            front_load="1.000", rear_load="0.000",
+            drive_rear="0.000", steer_front="0.450",
+            rl_cm="-1.0", rr_cm="-1.0"
+        ))
+        self.assertEqual(partial["traction"], 0.45)
+        tiny = parse_record(line(
+            weight_ratio="0.004", traction="0.004",
+            front_load="0.005", rear_load="0.003",
+            drive_rear="0.002", steer_front="0.002"
+        ))
+        self.assertEqual(tiny["weight_ratio"], 0.004)
+
     def test_log_analyzer_stays_offline_and_never_publishes(self):
         script = (ROOT / "scripts/AnalyzeSuspensionTelemetry.py").read_text(
             encoding="utf-8"
