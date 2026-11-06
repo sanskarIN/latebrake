@@ -37,6 +37,8 @@ public:
         Cooldown = 0.0;
         Held = false;
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
     }
 
     // Input interruption stops boost without replenishing run-local energy.
@@ -44,6 +46,8 @@ public:
     {
         Held = false;
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
     }
     void Press(bool eligibleHumanDriver) noexcept
     {
@@ -52,11 +56,30 @@ public:
     }
     void Release() noexcept { Suspend(); }
 
+    // A qualifying key press produces a CANDIDATE nitro bonus. The real
+    // Unreal motor may still be fully blocked by gears, engine heat or
+    // the final axle/contact friction budget. Undo just this ACTIVE
+    // frame's provisional charge/heat when no bonus force was delivered.
+    // Keep Held so the actual player can retry on the next racing frame.
+    // Idempotent: an invalid/overheated/depleted step cannot be refunded.
+    bool RejectUndeliveredFrame() noexcept
+    {
+        if (!Active) return false;
+        Charge = std::clamp(Charge + PendingChargeDebit, 0.0, 1.0);
+        Heat = std::clamp(Heat - PendingHeatIncrease, 0.0, 1.0);
+        Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        return true;
+    }
+
     NitroDriveOutput Step(double seconds, bool eligibleHumanDriver,
                           bool serviceOrHandBraking, double throttle,
                           double signedForwardCmPerSecond) noexcept
     {
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
         if (!eligibleHumanDriver || !std::isfinite(seconds) ||
             seconds <= 0.0 || seconds > MaxSampleSeconds ||
             !std::isfinite(throttle) || throttle < -1.0 || throttle > 1.0 ||
@@ -75,6 +98,8 @@ public:
             Cooldown <= 0.0 && Charge > 0.0 && Heat < HeatCutoff;
         if (canFire)
         {
+            const double previousCharge = Charge;
+            const double previousHeat = Heat;
             Charge = std::max(0.0, Charge - seconds * DrainPerSecond);
             Heat = std::min(1.0, Heat + seconds * HeatPerSecond);
             // Depleted/overheated nitro requires fresh physical key-down.
@@ -84,6 +109,8 @@ public:
                 Suspend();
                 return {};
             }
+            PendingChargeDebit = previousCharge - Charge;
+            PendingHeatIncrease = Heat - previousHeat;
             Active = true;
             return {ForceMultiplier, SpeedCapMultiplier, true};
         }
@@ -116,5 +143,8 @@ private:
     double Cooldown = 0.0;
     bool Held = false;
     bool Active = false;
+    // Valid only for the latest ACTIVE Step; never a deferred frame timer.
+    double PendingChargeDebit = 0.0;
+    double PendingHeatIncrease = 0.0;
 };
 } // namespace latebrake
