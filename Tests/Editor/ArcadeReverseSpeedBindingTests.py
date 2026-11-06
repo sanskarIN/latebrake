@@ -103,6 +103,11 @@ class ReverseSpeedBindingTests(unittest.TestCase):
         self.assertIn("latebrake_reverse_speed_governor_tests PRIVATE /W4 /WX",
                       self.cmake)
         self.assertIn("100000", self.tests)
+        self.assertIn("60000", self.tests)
+        self.assertIn('#include "Vehicles/LateralGripBudget.h"', self.tests)
+        self.assertIn("reverse.WholeBodyBudgetDeceleration", self.tests)
+        self.assertIn("ArcadeCombinedGripBudget", self.tests)
+        self.assertIn("SimulationCombinedGripBudget", self.tests)
         self.assertIn("Settle(30)-Settle(120)", self.tests)
 
 

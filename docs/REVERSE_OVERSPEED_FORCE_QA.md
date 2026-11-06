@@ -58,7 +58,12 @@ python3 -m unittest discover -s Tests/Editor -p '*ReverseSpeedBindingTests.py' -
 The dedicated strict C++20 test covers 100,000 independent heading,
 contact, grip, braking and drift samples, plus 30/60/120 FPS
 reverse-to-cap force integration, near-cap continuity, forward motion,
-lateral momentum, invalid inputs and no-contact conditions. Python
+lateral momentum, invalid inputs and no-contact conditions. **An additional
+60,000 deterministic compositions** combine this governor's rear-wheel
+force with the production `CalculateLateralGripForce` policy, preserving
+the shared per-frame friction-circle budget over varying handling modes,
+slip angles, chassis mass, suspension load and wet-road grip. These remain
+portable source calculations; installed Chaos handling has not been tested. Python
 source bindings check actual force dispatch, motor/heat gating,
 the shared lateral budget and removal of the old runtime speed snap.
 These only test source code, **not Unreal compilation or gameplay**.
