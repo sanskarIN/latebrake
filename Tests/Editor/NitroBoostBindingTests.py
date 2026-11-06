@@ -69,9 +69,11 @@ class NitroBoostBindingTests(unittest.TestCase):
         )[0]
         for term in (
             "bool bNitroBonusDispatched = false;",
-            "const float NitroBonusForce =",
-            "FMath::IsFinite(NitroBonusForce) && NitroBonusForce > 0.01f",
-            "Chassis->AddForce(Forward * NitroBonusForce);",
+            "const double DeliveredNitroBonusForce =",
+            "MotorTraction.ForwardForce * CombinedBoost.NitroExtra /",
+            "std::isfinite(DeliveredNitroBonusForce) &&",
+            "DeliveredNitroBonusForce > 0.01",
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "bNitroBonusDispatched = true;",
             "NitroDrive.Active && !bNitroBonusDispatched &&",
             "NitroBoost.RejectUndeliveredFrame()",
@@ -80,7 +82,9 @@ class NitroBoostBindingTests(unittest.TestCase):
             self.assertIn(term, tick)
         self.assertLess(tick.index("NitroBoost.Step("),
                         tick.index("const float NitroBonusForce ="))
-        self.assertLess(tick.index("Chassis->AddForce(Forward * NitroBonusForce)"),
+        self.assertLess(tick.index("const double DeliveredNitroBonusForce ="),
+                        tick.index("bNitroBonusDispatched = true;"))
+        self.assertLess(tick.index("bNitroBonusDispatched = true;"),
                         tick.index("NitroBoost.RejectUndeliveredFrame()"))
         reject = self.pawn.split(
             "void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(", 1
