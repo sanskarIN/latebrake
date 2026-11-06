@@ -41,8 +41,13 @@ class UnrealDriveTelemetryBindingTests(unittest.TestCase):
                         tick.index("LATEBRAKE_DRIVE v=1"))
         self.assertLess(tick.index("if (SpeedGovernor.Active)"),
                         tick.index("LATEBRAKE_DRIVE v=1"))
-        self.assertLess(tick.index("LATEBRAKE_DRIVE v=1"),
-                        tick.index("const FVector PostCapVelocity"))
+        # The post-force diagnostic must observe the NEW physical
+        # reverse-overspeed force, after it has been submitted, rather
+        # than expecting the removed reverse XY-velocity teleport.
+        self.assertLess(tick.index("if (ReverseGovernor.Active)"),
+                        tick.index("LATEBRAKE_DRIVE v=1"))
+        self.assertNotIn("const FVector PostCapVelocity", tick)
+        self.assertNotIn("ReverseLimit.VelocityX", tick)
         diagnostic = tick.split("    // Real Development-build evidence", 1)[1].split(
             "\n#endif", 1)[0]
         for forbidden in ("Chassis->AddForce(", "Chassis->AddTorqueInRadians(",
