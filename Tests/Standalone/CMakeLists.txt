@@ -2109,3 +2109,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PlanarSpeedGovernor COMMAND latebrake_planar_speed_governor_tests)
+
+# Rear-load-limited opposing accelerator braking must share actual lateral
+# grip. Includes 120k frames through the real spring/axle/reattachment chain.
+add_executable(latebrake_opposing_throttle_braking_tests OpposingThrottleBrakingTests.cpp)
+target_include_directories(latebrake_opposing_throttle_braking_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_opposing_throttle_braking_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_opposing_throttle_braking_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_opposing_throttle_braking_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OpposingThrottleBraking COMMAND latebrake_opposing_throttle_braking_tests)

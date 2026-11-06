@@ -26,7 +26,7 @@ class UnrealOptionalDriveRecoveryBindingTests(unittest.TestCase):
         motor = tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle")
         yaw = tick.index("Chassis->AddTorqueInRadians(")
         candidates = (
-            "Surface", "RoadLoad", "PhysicalBraking", "LateralForce",
+            "Surface", "RoadLoad", "PhysicalBraking", "OpposingBraking", "LateralForce",
             "PlannedYaw", "TransmissionFrame",
         )
         for policy in candidates:

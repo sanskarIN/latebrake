@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — suspension handling draft
+
+- Replace opposing-throttle engine braking that could request about 20g at
+  racing speed with rear-load-, pedal-, grip- and frame-limited force in the
+  actual Unreal player/rival pawn. Share its planned deceleration with the
+  same-frame lateral grip circle; service/handbrake retains precedence.
+- Keep one motor/brake direction classification, genuine coasting, the
+  existing near-stop direction-change allowance, spring support and race
+  authority. Add strict portable composition and source-binding regressions
+  plus Win64 acceptance instructions. This is draft source work pending
+  licensed UE5.8 compilation, cooking and hardware driving qualification.
+
 ## v0.5.77 — Unreleased source development
 
 - Improve the launch-speed estimate using bounded, finite linear interpolation

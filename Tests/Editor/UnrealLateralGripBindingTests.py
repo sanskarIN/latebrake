@@ -69,7 +69,9 @@ class UnrealLateralGripBindingTests(unittest.TestCase):
         self.assertIn("HandbrakeActive", self.policy)
         self.assertIn("GripLimitedBrakingOutput PhysicalBraking", self.tick)
         self.assertIn("PhysicalBraking.ForwardForce", self.tick)
-        self.assertIn("FrameStableDampingRate(3.0, DeltaSeconds)", self.tick)
+        self.assertIn("CalculateOpposingThrottleBraking({", self.tick)
+        self.assertIn("OpposingBraking.WholeBodyBudgetDeceleration", self.tick)
+        self.assertNotIn("FrameStableDampingRate(3.0, DeltaSeconds)", self.tick)
         self.assertNotIn("FrameStableDampingRate(GripRate, DeltaSeconds)", self.tick)
         self.assertNotIn("Chassis->AddForce(-Right * LateralSpeed", self.tick)
 

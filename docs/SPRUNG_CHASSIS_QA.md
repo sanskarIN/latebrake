@@ -572,6 +572,51 @@ still inspect the 3/2/1/GO clock, pitched car landing, launch HUD,
 reverse driving and pause/recovery on an installed Win64 candidate.
 This policy is not a substitute for on-road wheel slip telemetry.
 
+## Opposing-throttle braking under measured rear support
+
+The old reverse/accelerator direction-change branch requested
+`3 × abs(forward speed)` deceleration. At 6500 cm/s this was
+19500 cm/s² (about 20g) before rear-load scaling, and it was absent
+from the same-frame lateral friction-circle calculation. Frame-bounded
+damping alone did not make that request a reasonable tire force.
+
+`OpposingThrottleBraking.h` now caps this request at 650 cm/s² in Arcade
+or 750 cm/s² in Simulation Inspired, scaled by final analog pedal
+magnitude, actual surface/tire/garage/damage grip, and the accepted
+reattached rear-axle budget. These are candidate tuning values, not
+measured vehicle specifications. The force opposes true signed forward
+motion in either direction. Its own one-frame removal is bounded to
+80% of that axis's speed, and neither front-only support nor airborne,
+roof, unloaded rebound or service/handbrake precedence grants it force.
+Neutral throttle retains coasting and the existing below-100 cm/s
+planar direction-change allowance is preserved.
+
+The actual pawn computes final assisted throttle before both brake
+policies. Motor dispatch and the opposing brake use one classification.
+The returned engine-brake force already includes rear traction once;
+it must not receive a second axle/whole-body scale at dispatch. Its
+deceleration divided by the whole-body contact ceiling is included in
+the lateral budget. After the existing whole-body lateral force scale,
+the two actual planned forces therefore consume the same grip circle,
+including partial axle loading. This calculation uses existing spring
+observations; no extra traces, velocity setters or race authority are added.
+
+Strict C++20 regressions include pedal strength, both directions and
+handling presets, no input/brake stacking, invalid data, 30/60/120 FPS
+force integration and 120,000 changing-contact frames through the actual
+spring, contact, axle, reattachment and lateral policies. Python contracts
+inspect the real Unreal pawn's input, guard, budget and force ordering.
+These remain numerical/source checks, not Chaos driving evidence.
+
+For actual UE 5.8 Win64 acceptance, compare reverse-pedal and service
+braking at 50/100/200 km/h where safely achievable on the test circuit.
+Record deceleration and stopping distance at 30/60/120 FPS; test partial
+pedal, reverse-to-forward transition, hard cornering with opposing
+throttle, grass, worn/damaged tires, rear-axle unloading, landings,
+AI input and pause/recovery. Confirm no abrupt stop, extra lateral grip,
+unloaded-axle force or unexpected direction change. Tune these candidate
+values from real telemetry before approving handling or merging the draft.
+
 ## Mandatory real engine acceptance gate
 
 **Do not merge a candidate as production-ready solely because source CI

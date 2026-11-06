@@ -64,8 +64,15 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
         self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
         self.assertIn("PhysicalBraking.ForwardForce", tick)
         self.assertNotIn("if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)", tick)
-        self.assertIn("Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *", tick)
-        self.assertIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
+        self.assertIn("CalculateOpposingThrottleBraking({", tick)
+        self.assertIn("static_cast<float>(OpposingBraking.ForwardForce)", tick)
+        self.assertIn("!OpposingBraking.OpposingThrottle", tick)
+        self.assertNotIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
+        engine_brake = tick.split(
+            "else if (AxleBudget.RearDriveReady && !bEffectiveBraking)", 1
+        )[1].split("// Real planar resistance", 1)[0]
+        self.assertNotIn("GearPowerFactor", engine_brake)
+        self.assertNotIn("RearDriveTractionScale", engine_brake)  # already applied once
         self.assertIn("if (AxleBudget.RearDriveReady &&", tick)
         self.assertIn("RearDriveTractionScale", tick)
         self.assertIn("if (NitroDrive.Active)", tick)

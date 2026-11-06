@@ -6,7 +6,7 @@
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
-#include "Vehicles/FrameStableDamping.h"
+#include "Vehicles/OpposingThrottleBraking.h"
 #include "Vehicles/GripLimitedBraking.h"
 #include "Vehicles/LateralGripBudget.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
@@ -1269,6 +1269,26 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
         bServiceBraking && GroundContact.HasDriveContact, true});
+    // Apply the same bounded corner-assist policy to controller, touch
+    // and rival throttle. Brake/reverse demand is never reduced by it.
+    const float CornerThrottle = static_cast<float>(
+        latebrake::StabilizeCornerThrottle(
+            BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
+    // This is a *second* Arcade-only human safeguard. It observes actual
+    // Chaos yaw rate and signed chassis slip. The rival keeps its independent
+    // AI spin guard;
+    // Simulation Inspired and an intentional handbrake drift are unchanged.
+    const bool bHumanDriver = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr;
+    const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();
+    const float AssistedSteering = static_cast<float>(
+        latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
+    const float EffectiveThrottle = static_cast<float>(
+        latebrake::ModerateHumanSpinThrottle(
+            CornerThrottle, static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(LateralSpeed),
+            static_cast<double>(AngularVelocity.Z),
+            bArcade, bHumanDriver, BrakeProfile.HandbrakeActive));
     // Ordinary service/handbrake braking now uses an explicit finite
     // longitudinal deceleration budget, not a huge speed-proportional
     // resistance that stops a racing car almost instantaneously.
@@ -1288,6 +1308,25 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
+    // Opposing reverse/accelerator demand shares the same final throttle
+    // classification as motor dispatch. Its actual rear-load-limited force
+    // must also consume the same-frame cornering budget, not bypass it.
+    const latebrake::OpposingThrottleBrakeOutput OpposingBraking =
+        latebrake::CalculateOpposingThrottleBraking({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(Speed), static_cast<double>(Mass),
+            static_cast<double>(EffectiveThrottle),
+            Surface.LateralGripMultiplier * TireCondition.GripMultiplier() *
+                static_cast<double>(GarageGrip) *
+                CollisionDamage.LateralGripMultiplier(),
+            AxleBudget.RearDriveReady ? AxleBudget.RearDriveTractionScale : 0.0,
+            GroundContact.ContactTractionScale, bEffectiveBraking, bArcade});
+    if (!OpposingBraking.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
     // A shared friction-circle budget prevents arbitrary 20g+ lateral
     // corrections. True physics chassis slip and the SAME-FRAME braking
     // request compete for finite road/tire grip. Garage upgrades modify
@@ -1302,7 +1341,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 TireCondition.GripMultiplier() *
                 Surface.LateralGripMultiplier *
                 CollisionDamage.LateralGripMultiplier(),
-            PhysicalBraking.DecelerationCmPerSecondSquared,
+            PhysicalBraking.DecelerationCmPerSecondSquared +
+                OpposingBraking.WholeBodyBudgetDeceleration,
             bArcade, BrakeProfile.HandbrakeActive});
     if (!LateralForce.Valid)
     {
@@ -1321,20 +1361,6 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     ApplySignalLights(true, bEffectiveBraking,
         static_cast<double>(LongitudinalSpeed));
 
-    // Apply the same bounded corner-assist policy to controller, touch
-    // and rival throttle. Brake/reverse demand is never reduced by it.
-    const float CornerThrottle = static_cast<float>(
-        latebrake::StabilizeCornerThrottle(
-            BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
-    // This is a *second* Arcade-only human safeguard. It observes actual
-    // Chaos yaw rate and signed chassis slip after the existing lateral
-    // traction policy. The rival keeps its independent AI spin guard;
-    // Simulation Inspired and an intentional handbrake drift are unchanged.
-    const bool bHumanDriver = IsLocallyControlled() &&
-        Cast<APlayerController>(GetController()) != nullptr;
-    const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();
-    const float AssistedSteering = static_cast<float>(
-        latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
     // Replace the rigid fixed steering impulse with a measured-yaw
     // target. Both player and AI use exactly the same bounded controller.
     // Handbrake slides retain their original, intentionally loose torque.
@@ -1352,12 +1378,6 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
-    const float EffectiveThrottle = static_cast<float>(
-        latebrake::ModerateHumanSpinThrottle(
-            CornerThrottle, static_cast<double>(LongitudinalSpeed),
-            static_cast<double>(LateralSpeed),
-            static_cast<double>(AngularVelocity.Z),
-            bArcade, bHumanDriver, BrakeProfile.HandbrakeActive));
     // Observational only: classify the reduction ACTUALLY applied to the
     // shared base/nitro/draft throttle, never the driver's requested axis.
     // This meter cannot alter physics, race progress or stored rewards.
@@ -1502,9 +1522,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // validation; never double-apply it along the motor path.
     if (AxleBudget.RearDriveReady &&
         !bEffectiveBraking &&
-        (FMath::Abs(EffectiveThrottle) < 0.01f ||
-         FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) ||
-         Speed < 100.f))
+        !OpposingBraking.OpposingThrottle)
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
             static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
@@ -1527,10 +1545,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     }
     else if (AxleBudget.RearDriveReady && !bEffectiveBraking)
     {
-        // Opposite throttle acts as engine braking until the car slows.
-        Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *
-            static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)) *
-            RearDriveTractionScale);
+        // This force already includes the same-frame rear traction once.
+        // It is grip/pedal/frame bounded and included in LateralForce above.
+        Chassis->AddForce(Forward *
+            static_cast<float>(OpposingBraking.ForwardForce));
     }
 
     // Real planar resistance: low-speed coasting, increasing aero drag
