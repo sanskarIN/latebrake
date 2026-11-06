@@ -1,5 +1,6 @@
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/FrameStableDamping.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -84,6 +85,59 @@ int main()
                 brake * dt <= 1.0 + 1e-12,
                 "handbrake resists no more than the measured component per frame");
     }
+    // Signed handbrake yaw regression: a reversing crawl must already
+    // steer backwards; there must be no old discontinuous threshold at
+    // -75 cm/s. At 900 cm/s and beyond it preserves the previous torque
+    // magnitude in either direction.
+    using latebrake::SignedHandbrakeYawAuthority;
+    Require(Close(SignedHandbrakeYawAuthority(0.0), 0.0) &&
+            Close(SignedHandbrakeYawAuthority(-0.0), 0.0),
+            "parked chassis cannot acquire handbrake yaw from steering");
+    for (double speed : {-900.0, -899.0, -75.001, -75.0, -74.999,
+                         -20.0, -0.001, 0.0, 0.001, 20.0, 74.999,
+                         75.0, 75.001, 899.0, 900.0})
+    {
+        const double actual = SignedHandbrakeYawAuthority(speed);
+        const double expected = std::clamp(speed / 900.0, -1.0, 1.0);
+        Require(Close(actual, expected) &&
+                Close(actual, -SignedHandbrakeYawAuthority(-speed)) &&
+                actual >= -1.0 && actual <= 1.0,
+                "signed yaw authority is smooth, mirror-symmetric and bounded");
+    }
+    Require(Close(SignedHandbrakeYawAuthority(10000.0), 1.0) &&
+            Close(SignedHandbrakeYawAuthority(-10000.0), -1.0),
+            "fully moving cars retain their former handbrake yaw magnitude");
+    Require(SignedHandbrakeYawAuthority(-0.1) < 0.0 &&
+            SignedHandbrakeYawAuthority(-74.999) < 0.0 &&
+            SignedHandbrakeYawAuthority(-75.001) < 0.0,
+            "reverse direction is consistent even below the old 75 cm/s flip");
+    Require(Close(SignedHandbrakeYawAuthority(-74.999),
+                  SignedHandbrakeYawAuthority(-75.001), 3e-6),
+            "reverse crawl has no discontinuous handbrake yaw impulse");
+    for (double invalidSpeed : invalid)
+    {
+        Require(SignedHandbrakeYawAuthority(invalidSpeed) == 0.0,
+                "nonfinite speed cannot generate a handbrake yaw impulse");
+    }
+    Require(SignedHandbrakeYawAuthority(15000.0001) == 0.0 &&
+            SignedHandbrakeYawAuthority(-15000.0001) == 0.0 &&
+            SignedHandbrakeYawAuthority(15000.0) == 1.0 &&
+            SignedHandbrakeYawAuthority(-15000.0) == -1.0,
+            "reject out-of-range measured speed without oversteering");
+    // Deterministic dense sweep catches sudden sign or magnitude changes
+    // on forward/reverse speed transitions at every low-speed bucket.
+    double lastYaw = SignedHandbrakeYawAuthority(-15000.0);
+    for (int i = -149999; i <= 150000; ++i)
+    {
+        const double speed = static_cast<double>(i) / 10.0;
+        const double yaw = SignedHandbrakeYawAuthority(speed);
+        Require(std::isfinite(yaw) && yaw >= lastYaw &&
+                yaw - lastYaw <= 0.000112 &&
+                Close(yaw, -SignedHandbrakeYawAuthority(-speed)),
+                "dense signed-speed sweep remains monotone and continuous");
+        lastYaw = yaw;
+    }
+
     std::cout << "Prototype handbrake policy tests passed.\n";
     return 0;
 }
