@@ -55,6 +55,33 @@ class PlanarSpeedGovernorBindingTests(unittest.TestCase):
         self.assertEqual([tick.index(x) for x in stage],
                          sorted(tick.index(x) for x in stage))
 
+    def test_airborne_or_unloaded_suspension_cannot_add_cap_braking(self):
+        tick = self.tick
+        governor = tick.split(
+            "latebrake::CalculatePlanarSpeedGovernor({", 1
+        )[1].split("if (!SpeedGovernor.Valid)", 1)[0]
+        self.assertIn(
+            "static_cast<double>(ActiveSpeedCap), bArcade,\n"
+            "            GroundContact.ContactTractionScale", governor
+        )
+        self.assertLess(tick.index("CalculateSprungChassis(SpringSample)"),
+                        tick.index("ConstrainGroundContactToSuspension("))
+        self.assertLess(tick.index("ConstrainGroundContactToSuspension("),
+                        tick.index("CalculatePlanarSpeedGovernor({"))
+        self.assertIn("double ContactTractionScale = 1.0;", self.policy)
+        self.assertIn("!std::isfinite(sample.ContactTractionScale)",
+                      self.policy)
+        self.assertIn("sample.ContactTractionScale <= 1.0e-6", self.policy)
+        self.assertIn("}) * sample.ContactTractionScale;", self.policy)
+        for forbidden in (
+            "LineTraceSingleByChannel(", "GetActorLocation(",
+            "PassCheckpoint(", "SaveGame("
+        ):
+            self.assertNotIn(forbidden, governor)
+        self.assertIn("airborne overspeed cannot manufacture", self.tests)
+        self.assertIn("120000", self.tests)
+        self.assertIn("mid-air", self.docs.lower())
+
     def test_no_global_planar_velocity_teleport_at_nitro_cap(self):
         tick = self.tick
         for banned in (
