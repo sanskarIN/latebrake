@@ -52,6 +52,42 @@ class UnrealSpeedAwareYawTorqueBindingTests(unittest.TestCase):
             tick.index("Chassis->AddTorqueInRadians(")
         )
 
+    def test_brake_sensitive_yaw_uses_same_frame_measured_grip(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        ]
+        call = tick.split("latebrake::CalculateSpeedAwareYawTorque({", 1)[1].split(
+            "if (!PlannedYaw.Valid)", 1
+        )[0]
+        for marker in (
+            "bArcade, Surface.OffPavement,",
+            "PhysicalBraking.DecelerationCmPerSecondSquared +",
+            "OpposingBraking.WholeBodyBudgetDeceleration +",
+            "ReverseGovernor.WholeBodyBudgetDeceleration,",
+            "static_cast<double>(GarageGrip) *",
+            "TireCondition.GripMultiplier() *",
+            "Surface.LateralGripMultiplier *",
+            "CollisionDamage.LateralGripMultiplier()",
+        ):
+            self.assertIn(marker, call)
+        self.assertLess(tick.index("CalculateLateralGripForce({"),
+                        tick.index("CalculateSpeedAwareYawTorque({"))
+        self.assertLess(tick.index("CalculateReverseSpeedGovernor({"),
+                        tick.index("CalculateSpeedAwareYawTorque({"))
+        for marker in (
+            '#include "Vehicles/LateralGripBudget.h"',
+            "BrakeDecelerationCmPerSecondSquared = 0.0",
+            "GripScale = 1.0",
+            "ArcadeCombinedGripBudget : SimulationCombinedGripBudget",
+            "const double usedBrake = std::min(",
+            "const double steeringGripFraction = std::sqrt(",
+            "geometricYaw * steeringGripFraction",
+        ):
+            self.assertIn(marker, self.policy)
+        self.assertNotIn("SetPhysicsLinearVelocity(", self.policy)
+        self.assertNotIn("AddForce(", self.policy)
+        self.assertNotIn("PassCheckpoint(", self.policy)
+
     def test_handbrake_drift_and_existing_speed_limits_retained(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]

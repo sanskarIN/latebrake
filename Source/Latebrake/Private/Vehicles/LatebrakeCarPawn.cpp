@@ -1411,6 +1411,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Replace the rigid fixed steering impulse with a measured-yaw
     // target. Both player and AI use exactly the same bounded controller.
     // Handbrake slides retain their original, intentionally loose torque.
+    // Normal player/rival yaw now shares the SAME frame's qualified
+    // longitudinal brake request and grip product as lateral tire forces.
+    // Heavy braking reduces NEW requested corner yaw; measured-yaw
+    // correction still damps a genuine spin instead of freezing physics.
     const latebrake::SpeedAwareYawOutput PlannedYaw =
         latebrake::CalculateSpeedAwareYawTorque({
             static_cast<double>(DeltaSeconds),
@@ -1419,7 +1423,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(AngularVelocity.Z),
             static_cast<double>(AssistedSteering),
             static_cast<double>(Mass),
-            bArcade, Surface.OffPavement});
+            bArcade, Surface.OffPavement,
+            PhysicalBraking.DecelerationCmPerSecondSquared +
+                OpposingBraking.WholeBodyBudgetDeceleration +
+                ReverseGovernor.WholeBodyBudgetDeceleration,
+            static_cast<double>(GarageGrip) *
+                TireCondition.GripMultiplier() *
+                Surface.LateralGripMultiplier *
+                CollisionDamage.LateralGripMultiplier()});
     if (!PlannedYaw.Valid)
     {
         RejectOptionalDriveAfterSpring(SpringResponse);

@@ -28,6 +28,17 @@ chassis movement**:
   35% reduction after confirmed off-pavement driving.
 - Limit Z torque based on mass and a capped steering response, including
   measured-rate feedback and known linear Chaos angular damping.
+- **Brake-aware cornering:** the real shared player/rival yaw controller
+  now consumes the *same accepted frame's* service/handbrake, opposing-
+  pedal and reverse-governor longitudinal deceleration request used by
+  `CalculateLateralGripForce`. With exactly the same tire/surface/
+  garage/damage grip product, it reduces fresh requested steering yaw
+  by the remaining fraction of the existing friction-circle budget:
+  `sqrt(1-(bounded_brake/shared_grip)^2)`. No brake keeps the previous
+  steering baseline; a fully spent friction circle requests no new turn.
+  A car already spinning still receives opposing measured-yaw feedback.
+  Front axle support remains an additional final actual-force gate.
+  The separate intentional held-handbrake drift torque is unchanged.
 - When the car is already rotating too quickly, apply corrective
   opposing torque. Neutral steering damps an unwanted yaw spin.
 - Turn direction naturally reverses at physically negative signed
@@ -56,6 +67,10 @@ or new world collisions were introduced.
   lateral limit, off-road / simulation differences, yaw overshoot,
   countersteering, neutral spin damping, torque bounds, corrupted
   axes/velocity/mass, invalid frame time, cadence independence.
+  New tests cover Arcade/Simulation brake reduction, reverse mirrors,
+  fully saturated steering target with spin damping retained, physical
+  grip/brake proportion equivalence, nonfinite/out-of-range budgets,
+  and 120,000 signed-speed/steer/brake/grip combinations.
 - `Tests/Standalone/HandbrakeDrivePolicyTests.cpp` additionally
   tests the exact new continuous signed handbrake yaw law, its ±75 cm/s
   former discontinuity, stationary/reverse/forward behavior, extreme
@@ -77,7 +92,11 @@ These are *source-only* checks, not engine/real-drive verification.
    150km/h, no abrupt yaw or unexpectedly stiff steering.
 3. Perform sustained opposite-direction steering, slalom/quick lane
    changes, reverse parking turns, countersteering a physical slide,
-   held-handbrake drifts, and AI rival full-lap turn tracing.
+   held-handbrake drifts, and AI rival full-lap turn tracing. Drive
+   repeated identical corners with no brake, mild service brake and hard
+   brake in both modes; compare true yaw rate, lateral slip, stopping
+   length and brake-while-turning overshoot. Confirm handbrake slides
+   remain intentional and that spin damping still works.
 4. Compare yaw-rate telemetry at 30/60/120FPS and after a frame hitch;
    inspect any strong oscillation, excessive correction, unsafe
    lateral jerks, collision-induced rotation and off-road recovery.

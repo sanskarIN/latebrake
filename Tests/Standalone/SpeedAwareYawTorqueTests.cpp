@@ -28,11 +28,12 @@ int main()
     static_assert(SteeringTorqueLimitPerMass > 0.0);
     auto calc = [](double forward, double yaw, double steer,
                    bool arcade = true, bool offRoad = false,
-                   double planar = -1.0, double dt = 1.0 / 60.0)
+                   double planar = -1.0, double dt = 1.0 / 60.0,
+                   double braking = 0.0, double grip = 1.0)
     {
         return CalculateSpeedAwareYawTorque({
             dt, forward, planar < 0.0 ? std::abs(forward) : planar,
-            yaw, steer, 1100.0, arcade, offRoad});
+            yaw, steer, 1100.0, arcade, offRoad, braking, grip});
     };
     const auto parked = calc(0.0, 0.0, 1.0);
     Check(parked.Valid && parked.TargetYawRadiansPerSecond == 0.0 &&
@@ -61,6 +62,52 @@ int main()
     Check(Close(backwards.TargetYawRadiansPerSecond,
                 -cruising.TargetYawRadiansPerSecond),
           "reverse steering turns opposite forward travel");
+
+    // Real service-brake demand consumes the SAME whole-body grip
+    // circle as the lateral correction. The yaw controller must reduce
+    // fresh steering target, rather than pretending that 100% of tire
+    // grip remains available while hard braking into a corner.
+    for (bool arcade : {true, false})
+    {
+        const double brake = arcade ? 900.0 : 1050.0;
+        const double shared = arcade
+            ? ArcadeCombinedGripBudget : SimulationCombinedGripBudget;
+        const double expectedFraction =
+            std::sqrt(1.0 - (brake / shared) * (brake / shared));
+        const auto free = calc(800.0, 0.0, 0.35, arcade);
+        const auto braking = calc(800.0, 0.0, 0.35,
+                                  arcade, false, -1.0, 1.0/60.0, brake);
+        Check(free.Valid && braking.Valid &&
+              free.TargetYawRadiansPerSecond > 0.0 &&
+              braking.TargetYawRadiansPerSecond > 0.0 &&
+              braking.TargetYawRadiansPerSecond < free.TargetYawRadiansPerSecond &&
+              Close(braking.TargetYawRadiansPerSecond /
+                    free.TargetYawRadiansPerSecond, expectedFraction, 1.0e-10),
+              "service braking progressively consumes physical turn-in grip");
+
+        const auto reverseBrake = calc(-800.0, 0.0, 0.35,
+                                       arcade, false, -1.0, 1.0/60.0, brake);
+        Check(reverseBrake.Valid &&
+              Close(reverseBrake.TargetYawRadiansPerSecond,
+                    -braking.TargetYawRadiansPerSecond),
+              "under-brake yaw authority remains symmetric in reverse");
+        const auto halfGrip = calc(800.0, 0.0, 0.35, arcade,
+                                   false, -1.0, 1.0/60.0, brake * 0.5, 0.5);
+        Check(halfGrip.Valid &&
+              Close(halfGrip.TargetYawRadiansPerSecond,
+                    braking.TargetYawRadiansPerSecond),
+              "physical grip and measured braking proportion scale together");
+    }
+    const auto fullyBraked = calc(800.0, 0.6, 0.35, true,
+                                  false, -1.0, 1.0/60.0, 2000.0);
+    Check(fullyBraked.Valid &&
+          fullyBraked.TargetYawRadiansPerSecond == 0.0 &&
+          fullyBraked.TorqueZ < 0.0,
+          "saturated braking blocks new steering but retains real spin damping");
+    const auto overBraked = calc(800.0, 0.0, 0.35, true,
+                                 false, -1.0, 1.0/60.0, 3000.0);
+    Check(overBraked.Valid && overBraked.TargetYawRadiansPerSecond == 0.0,
+          "reported brake beyond tire grip cannot invent negative steering");
 
     const auto onCourse = calc(2500.0, 0.0, 1.0, true, false);
     const auto offCourse = calc(2500.0, 0.0, 1.0, true, true);
@@ -106,6 +153,48 @@ int main()
                     .TargetYawRadiansPerSecond,
                 cruising.TargetYawRadiansPerSecond),
           "target yaw profile independent of normal frame cadence");
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const double infinity = std::numeric_limits<double>::infinity();
+    for (double bad : {nan, infinity, -infinity, -0.001, 5000.001})
+    {
+        Check(!calc(800.0, 0.0, 0.35, true, false,
+                    -1.0, 1.0/60.0, bad).Valid,
+              "malformed longitudinal brake must not authorize steering");
+    }
+    for (double bad : {nan, infinity, -infinity, 0.049, 4.001})
+    {
+        Check(!calc(800.0, 0.0, 0.35, true, false,
+                    -1.0, 1.0/60.0, 200.0, bad).Valid,
+              "malformed real grip factor cannot authorize steering");
+    }
+
+    // Deterministic brake/steering/gear/grip sweep; all outputs must be
+    // finite and consistent with a shared physically bounded yaw target.
+    // Same profile and measured speed with more brake cannot INCREASE
+    // the demanded turn-in magnitude. Both directions and modes covered.
+    for (int i = 0; i < 120000; ++i)
+    {
+        const bool arcade = (i % 2) == 0;
+        const double speed = 200.0 + (i % 3000);
+        const double forward = (i % 4 < 2) ? speed : -speed;
+        const double steer = (i % 6 < 3) ? 0.35 : -0.35;
+        const double grip = 0.10 + (i % 300) * 0.01;
+        const double total = (arcade
+            ? ArcadeCombinedGripBudget : SimulationCombinedGripBudget) * grip;
+        const double brake = total * static_cast<double>(i % 101) / 100.0;
+        const auto free = calc(forward, 0.0, steer, arcade,
+                               false, -1.0, 1.0/60.0, 0.0, grip);
+        const auto blocked = calc(forward, 0.0, steer, arcade,
+                                  false, -1.0, 1.0/60.0, brake, grip);
+        Check(free.Valid && blocked.Valid &&
+              std::isfinite(free.TorqueZ) && std::isfinite(blocked.TorqueZ) &&
+              std::abs(blocked.TargetYawRadiansPerSecond) <=
+                  std::abs(free.TargetYawRadiansPerSecond) + 1.0e-9 &&
+              (free.TargetYawRadiansPerSecond *
+                   blocked.TargetYawRadiansPerSecond >= 0.0),
+              "120k brake-aware target-yaw samples conserve finite turn sign");
+    }
+
     std::cout << "Speed/rotation-aware steering torque validated.\n";
     return EXIT_SUCCESS;
 }
