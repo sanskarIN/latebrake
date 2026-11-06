@@ -4,9 +4,15 @@ No source checks prove licensed UE5.8 compilation, cooked Win64 playability,
 actual force response, or trustworthiness of user-supplied log text.
 """
 from pathlib import Path
+import re
+import sys
 import unittest
 
+# This is an offline source/parser consistency check, never UE execution.
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from AnalyzeDriveTelemetry import FIELDS  # noqa: E402
+
 PAWN = (ROOT / "Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp").read_text(
     encoding="utf-8")
 SCRIPT = (ROOT / "scripts/AnalyzeDriveTelemetry.py").read_text(encoding="utf-8")
@@ -65,6 +71,19 @@ class UnrealDriveTelemetryBindingTests(unittest.TestCase):
         for key in ("motor_force=", "opposing_force=", "service_force=",
                     "lateral_force=", "yaw_torque=", "draft_pct="):
             self.assertIn(key, diagnostic)
+        # Lock the real Unreal UE_LOG field order and precision to the
+        # strict offline v=1 parser schema, not merely the six force names.
+        # Catches a field rename/reorder that fabricated parser tests alone
+        # could otherwise overlook.
+        source_format = diagnostic.split(
+            'TEXT("LATEBRAKE_DRIVE v=1 ', 1)[1].split(
+            '"),\\n            bLocalHuman', 1)[0]
+        observed_fields = tuple(re.findall(
+            r"([a-z_]+)=%\\.(?:1|3)f", source_format))
+        self.assertEqual(observed_fields, FIELDS)
+        self.assertEqual(source_format.count("%s"), 2)
+        self.assertEqual(source_format.count("%.1f"), 7)
+        self.assertEqual(source_format.count("%.3f"), 7)
         self.assertIn("UNVERIFIED_OFFLINE_DRIVE_DIAGNOSTIC", SCRIPT)
         self.assertIn('"gameplay_verified": False', SCRIPT)
         self.assertIn('"ready_for_release": False', SCRIPT)
