@@ -76,6 +76,49 @@ int main()
         Require(IsOnPavedSurface(offRoad.Center) &&
                 !IsValidRacingLinePaintFootprint(offRoad),
                 "a centre on road must not conceal a stripe edge on grass");
+        // A carefully chosen rotated stripe at the southeast INSIDE
+        // asphalt seam passes the old 25 samples, yet about 32 cm² of
+        // its actual paint rectangle crosses an unsampled grass sliver.
+        // This must fail with the analytic 15-subset asphalt-union gate.
+        RacingLineMark hiddenOverhang{
+            {1992.2333413551903, -1020.779553524833},
+            57.50528463582525, 218.50926082863054,
+            RacingLineSection::Corner, true
+        };
+        int sampledOnAsphalt = 0;
+        const double hiddenRadians =
+            hiddenOverhang.HeadingDegrees * RacingLinePi / 180.0;
+        const double forwardX = std::cos(hiddenRadians);
+        const double forwardY = std::sin(hiddenRadians);
+        for (int longitudinal = -2; longitudinal <= 2; ++longitudinal)
+        {
+            for (int lateral = -2; lateral <= 2; ++lateral)
+            {
+                const double along = 0.25 * longitudinal *
+                    hiddenOverhang.LengthCm;
+                const double across = 0.25 * lateral *
+                    RacingLinePaintWidthCm;
+                const CircuitPoint oldSample{
+                    hiddenOverhang.Center.X + along * forwardX -
+                        across * forwardY,
+                    hiddenOverhang.Center.Y + along * forwardY +
+                        across * forwardX
+                };
+                if (IsOnPhysicalRacingLineAsphalt(oldSample))
+                    ++sampledOnAsphalt;
+            }
+        }
+        Require(sampledOnAsphalt == 25,
+                "adversarial stripe must fool the old 5x5 point sampler");
+        const double hiddenFullArea =
+            hiddenOverhang.LengthCm * RacingLinePaintWidthCm;
+        const double hiddenCoveredArea =
+            RacingLineAsphaltCoveredAreaCm2(hiddenOverhang);
+        Require(hiddenCoveredArea > 0.0 &&
+                hiddenCoveredArea < hiddenFullArea - 25.0,
+                "analytic union catches unsampled off-asphalt paint sliver");
+        Require(!IsValidRacingLinePaintFootprint(hiddenOverhang),
+                "production painter must fail closed when sample grid misses grass");
         RacingLineMark invalidSection = validFirst;
         invalidSection.Section = static_cast<RacingLineSection>(15);
         Require(!IsValidRacingLinePaintFootprint(invalidSection),
@@ -113,6 +156,9 @@ int main()
                     "every painted mark must stay on actual pavement");
             Require(IsValidRacingLinePaintFootprint(mark),
                     "every planned 3D stripe must pass production road-footprint gate");
+            Require(Near(RacingLineAsphaltCoveredAreaCm2(mark),
+                         mark.LengthCm * RacingLinePaintWidthCm, 1.0e-5),
+                    "complete stripe polygon, not merely 25 samples, lies on asphalt");
             if (mark.Section == RacingLineSection::Straight)
             {
                 ++straight;

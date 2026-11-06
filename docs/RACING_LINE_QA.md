@@ -14,11 +14,18 @@ materials, track layouts or car art.
 - Exactly **88 planned cube instances** cover four sections, each containing
   12 straight and 10 corner dashes. The layout comes from the same
   `CircuitLayout.h` road coordinates as the actual circuit and gates.
-  Before spawning a mark the real GameMode now rechecks a **5x5 sampled,
-  rotated stripe footprint against the four actual asphalt collision slabs**.
+  Before spawning a mark the real GameMode now runs **two independent
+  geometric checks**: a 5x5 sampled rotated footprint and an **analytic
+  polygon-area union test against all four collision-bearing asphalt slabs**.
+  The latter clips the entire paint quadrilateral against each of 15
+  nonempty intersection subsets of the four slabs, correcting overlap by
+  inclusion-exclusion. This catches tiny off-road slivers that fall between
+  sample points, including a regression case at the southeast inside seam
+  where all 25 samples are on asphalt but over 25 cm² of the stripe is not.
   An invalid piece logs `reason=off_asphalt`, discards the optional actor,
-  and leaves circuit readiness and scoring unchanged. This is a conservative
-  sampled runtime guard, not mathematically complete polygon coverage.
+  and leaves circuit readiness and scoring unchanged. Coverage is exact
+  **within a small numeric area tolerance**, not a proof of GPU rendering,
+  material colors or physical road surface contact.
 - The guide is inset 250 cm towards the centre of the circuit to avoid the
   existing central road stripes. Four circular quarter-turns use a 650 cm
   guide radius. The thin 0.8 cm high marks are placed with their undersides
@@ -146,10 +153,11 @@ CI source-parser regression fixtures live in
 logs and MUST NOT be presented as hardware/playable evidence.
 
 The portable C++20 regression checks all 88 transforms are finite,
-on-pavement and forwards, rejects invalid indices, verifies the **full rotated
-rectangle** of every stripe lies on a real collision-bearing asphalt slab,
-and checks surface offset, exact 48/40 instance budgets, complete-loop
-continuity and representative headings. Python verifies the
+on-pavement and forwards, rejects invalid indices, verifies **analytic
+full-area union coverage** (including actual asphalt slab overlaps) of
+the entire rotated rectangle, and checks the original 25-sample false
+acceptance counterexample, surface offset, exact 48/40 instance budgets,
+complete-loop continuity and representative headings. Python verifies the
 real Unreal C++ source **refers to** the geometry and prohibits gameplay
 mutation in the optional visual function. **Neither suite compiles Unreal.**
 

@@ -269,6 +269,22 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         self.assertIn("PlannedCollisionBlock(index)", self.policy)
         self.assertIn("longitudinal = -2; longitudinal <= 2", self.policy)
         self.assertIn("lateral = -2; lateral <= 2", self.policy)
+        # A single point grid can miss a tiny concave-corner overhang;
+        # the whole rotated stripe needs independently computed union area.
+        for marker in (
+            "struct RacingLineClipPolygon final",
+            "ClipRacingLineHalfPlane(",
+            "RacingLinePolygonAreaCm2(",
+            "RacingLineAsphaltCoveredAreaCm2(",
+            "for (int mask = 1; mask < (1 << 4); ++mask)",
+            "members % 2 == 1 ? intersection : -intersection",
+            "std::abs(fullArea - covered) <= tolerance",
+        ):
+            self.assertIn(marker, self.policy)
+        cpp_test = (ROOT / "Tests/Standalone/RacingLineLayoutTests.cpp").read_text(
+            encoding="utf-8")
+        self.assertIn("sampledOnAsphalt == 25", cpp_test)
+        self.assertIn("hiddenCoveredArea < hiddenFullArea - 25.0", cpp_test)
         self.assertIn("RACING_LINE_QA.md", nav)
         validator = ROOT / "scripts/Verify-RacingLineRuntimeLog.py"
         tests = ROOT / "Tests/Editor/RacingLineRuntimeLogTests.py"
