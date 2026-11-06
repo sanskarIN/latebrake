@@ -52,7 +52,8 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
             "TireCondition.Observe({",
             "bServiceBraking && GroundContact.HasDriveContact",
             "bHumanDriver && AxleBudget.RearDriveReady",
-            "bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"\n            "            !AxleBudget.RearDriveReady",
+            "bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"
+            "            !AxleBudget.RearDriveReady",
             "bDraftTargetReady && AxleBudget.RearDriveReady",
             "TransmissionFrame.PropulsionFactor *",
             "RearDriveTractionScale",
