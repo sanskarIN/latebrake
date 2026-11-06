@@ -1627,6 +1627,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<float>(MotorTraction.ForceScale);
     // Spring support was already submitted after independent spring
     // validation; never double-apply it along the motor path.
+    // Candidate nitro consumption must be settled using the real
+    // post-traction AddForce decision, never an input or HUD guess.
+    bool bNitroBonusDispatched = false;
     if (AxleBudget.RearDriveReady &&
         !bEffectiveBraking &&
         !OpposingBraking.OpposingThrottle &&
@@ -1638,9 +1641,16 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
-            Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
+            const float NitroBonusForce =
+                DriveForce * EffectiveThrottle *
                 static_cast<float>(CombinedBoost.NitroExtra) *
-                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
+                static_cast<float>(Surface.MotorMultiplier) *
+                ImpactMotorScale * EngineMotorScale * GearPowerFactor;
+            if (FMath::IsFinite(NitroBonusForce) && NitroBonusForce > 0.01f)
+            {
+                Chassis->AddForce(Forward * NitroBonusForce);
+                bNitroBonusDispatched = true;
+            }
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
@@ -1669,6 +1679,20 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // It is grip/pedal/frame bounded and included in LateralForce above.
         Chassis->AddForce(Forward *
             static_cast<float>(OpposingBraking.ForwardForce));
+    }
+
+    // A held nitro press can be eligible BEFORE the gearbox/real tire
+    // budget removes all thrust. Charge and nitro meter heat must be
+    // consumed ONLY when this same frame submitted positive bonus force.
+    // Leave the key held on a rejection for natural later traction recovery.
+    // The old active speed-cap interpolation also returns to neutral
+    // without directly rewriting measured Chaos velocity.
+    if (NitroDrive.Active && !bNitroBonusDispatched &&
+        NitroBoost.RejectUndeliveredFrame())
+    {
+        CurrentNitroSpeedCapScale = FMath::FInterpConstantTo(
+            CurrentNitroSpeedCapScale, 1.f,
+            FMath::Min(DeltaSeconds, 0.1f), 0.24f);
     }
 
     // Real planar resistance: low-speed coasting, increasing aero drag
