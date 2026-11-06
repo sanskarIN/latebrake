@@ -53,6 +53,8 @@ public:
     {
         Held = eligibleHumanDriver;
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
     }
     void Release() noexcept { Suspend(); }
 
