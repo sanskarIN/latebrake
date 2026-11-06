@@ -26,7 +26,7 @@ class UnrealDriveTelemetryBindingTests(unittest.TestCase):
         # The Tick's INITIAL pre-green input-neutralization occurs
         # before spring sampling; this assertion targets the later
         # mutually exclusive GRID RETURN after the suspension log.
-        grid_return = "if (bPreGreen)\\n    {\\n        // Keep the grid still"
+        grid_return = "if (bPreGreen)\n    {\n        // Keep the grid still"
         self.assertLess(tick.index("SuspensionQaSchedule.ShouldReport("),
                         tick.index(grid_return))
         self.assertLess(tick.index(grid_return),
