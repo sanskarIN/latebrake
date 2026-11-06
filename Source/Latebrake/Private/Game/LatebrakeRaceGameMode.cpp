@@ -808,10 +808,9 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
             AuthoredMaterial = nullptr;
         }
     }
-    UE_LOG(LogLatebrakeStartup, Display,
-        TEXT("LATEBRAKE_RACING_LINE_MATERIAL authored=%s"),
-        IsValid(AuthoredMaterial) ? TEXT("yes") : TEXT("no"));
-
+    // The source status is emitted only after BOTH instancers have accepted
+    // and installed the selected dynamic materials. A shader parameter on
+    // the asset alone cannot prove the two real batches are using it.
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride =
         ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -888,20 +887,40 @@ void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
             Holder->Destroy();
             return;
         }
-        // The authored parent exposes Color through its own shader graph.
-        // If the licensed Editor asset has not been saved/committed yet,
-        // preserve the original stock-mesh material as an honest fallback.
+        // Genuine authored paint must be on both actual instanced mesh
+        // batches. Never report authored=yes simply because an asset with
+        // a Color parameter was found on disk: its assignment or MID
+        // creation can still fail on a real packaged platform.
+        // Without an authored material, leave the stock cube material
+        // intact for the explicitly neutral, unverified fallback.
         if (IsValid(AuthoredMaterial))
         {
             Instances->SetMaterial(0, AuthoredMaterial);
-        }
-        if (UMaterialInstanceDynamic* Mat =
-                Instances->CreateAndSetMaterialInstanceDynamic(0))
-        {
+            if (Instances->GetMaterial(0) != AuthoredMaterial)
+            {
+                UE_LOG(LogLatebrakeStartup, Warning,
+                    TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=material_assignment section=%d"),
+                    Section);
+                Holder->Destroy();
+                return;
+            }
+            UMaterialInstanceDynamic* Mat =
+                Instances->CreateAndSetMaterialInstanceDynamic(0);
+            if (!IsValid(Mat) || Instances->GetMaterial(0) != Mat)
+            {
+                UE_LOG(LogLatebrakeStartup, Warning,
+                    TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=dynamic_material section=%d"),
+                    Section);
+                Holder->Destroy();
+                return;
+            }
             Mat->SetVectorParameterValue(TEXT("Color"), Colors[Section]);
         }
         Sections[Section] = Instances;
     }
+    UE_LOG(LogLatebrakeStartup, Display,
+        TEXT("LATEBRAKE_RACING_LINE_MATERIAL authored=%s"),
+        IsValid(AuthoredMaterial) ? TEXT("yes") : TEXT("no"));
 
     int32 AddedStraight = 0;
     int32 AddedCorner = 0;

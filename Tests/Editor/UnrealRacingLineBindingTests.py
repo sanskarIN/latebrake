@@ -89,6 +89,10 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
             "/Game/Materials/M_RacingLineGuide.M_RacingLineGuide",
             "LATEBRAKE_RACING_LINE_MATERIAL authored=%s",
             "Instances->SetMaterial(0, AuthoredMaterial)",
+            "Instances->GetMaterial(0) != AuthoredMaterial",
+            "Instances->GetMaterial(0) != Mat",
+            "reason=material_assignment section=%d",
+            "reason=dynamic_material section=%d",
             "latebrake::IsValidRacingLinePaintFootprint(Mark)",
             "reason=off_asphalt index=%d",
             "Mark.HeadingDegrees",
@@ -111,6 +115,37 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, code)
+
+    def test_authored_material_marker_only_follows_two_verified_batch_bindings(self):
+        code = self.source.split(
+            "void ALatebrakeRaceGameMode::BuildRacingLine(", 1
+        )[1].split(
+            "void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(", 1
+        )[0]
+        # The former implementation logged "authored=yes" before an actor
+        # existed. Real MID creation and material assignment MUST precede
+        # the material status and READY marker; failures destroy only the
+        # optional guide and cannot certify an actual visual.
+        material_guard = code.index("Instances->GetMaterial(0) != AuthoredMaterial")
+        instance_guard = code.index("Instances->GetMaterial(0) != Mat")
+        report = code.index("LATEBRAKE_RACING_LINE_MATERIAL authored=%s")
+        ready = code.index("LATEBRAKE_RACING_LINE_READY marks=%d/%d")
+        self.assertLess(material_guard, instance_guard)
+        self.assertLess(instance_guard, report)
+        self.assertLess(report, ready)
+        self.assertEqual(
+            code.count("Instances->CreateAndSetMaterialInstanceDynamic(0)"), 1)
+        self.assertIn("if (IsValid(AuthoredMaterial))\n        {", code)
+        self.assertIn("Mat->SetVectorParameterValue(TEXT(\"Color\"), Colors[Section]);",
+                      code)
+        for reason in ("material_assignment", "dynamic_material"):
+            self.assertIn(
+                "LATEBRAKE_RACING_LINE_INCOMPLETE reason=" + reason, code)
+        self.assertIn("Holder->Destroy();", code)
+        self.assertIn("RacingLineActor = Holder;", code)
+        for forbidden in ("Race.PassCheckpoint(", "SaveRecords(",
+                          "AddForce(", "AwardCredits("):
+            self.assertNotIn(forbidden, code)
 
     def test_local_player_controls_optional_guide_without_race_mutation(self):
         pawn_h = PAWN_H.read_text(encoding="utf-8")

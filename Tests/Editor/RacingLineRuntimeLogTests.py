@@ -56,6 +56,10 @@ class RacingLineRuntimeLogTests(unittest.TestCase):
 
     def test_failure_markers_and_fake_categories_are_not_accepted(self):
         for log in (sample("LATEBRAKE_RACING_LINE_INCOMPLETE reason=mesh"),
+                    event(MATERIAL) + "\n" +
+                    sample("LATEBRAKE_RACING_LINE_INCOMPLETE reason=dynamic_material section=1"),
+                    event(MATERIAL) + "\n" +
+                    sample("LATEBRAKE_RACING_LINE_INCOMPLETE reason=material_assignment section=0"),
                     sample("LATEBRAKE_STARTUP_BLOCKED reason=geometry"),
                     "LogTemp: Display: " + READY + "\n" + event(START),
                     "LogTemp: Display: quoted " + event(READY) +

@@ -34,10 +34,15 @@ materials, track layouts or car art.
   Their actual in-engine appearance still needs real Win64 evaluation.
 - Optional material tint requests teal on straight marks and amber on turns.
   A **new Editor-only script** can author a genuine `M_RacingLineGuide.uasset`
-  with a real `Color` vector parameter, and the GameMode uses the asset if
-  loaded and verified. Missing or incompatible material is reported as
+  with a real `Color` vector parameter. The GameMode now verifies that
+  **both registered instanced-mesh components actually install the authored
+  parent and a valid dynamic material instance** before it reports
+  `LATEBRAKE_RACING_LINE_MATERIAL authored=yes`. Failed material assignment
+  or dynamic instancing logs `LATEBRAKE_RACING_LINE_INCOMPLETE`, destroys
+  only the optional visual and leaves actual racing/scoring untouched.
+  Missing or incompatible material is reported as
   `LATEBRAKE_RACING_LINE_MATERIAL authored=no` and falls back to a neutral
-  stock appearance. The actual binary asset is **not in this source PR yet**,
+  stock appearance without constructing misleading Color MIDs. The actual binary asset is **not in this source PR yet**,
   and visual quality still requires genuine Unreal tests. See
   [material authoring and cook QA](RACING_LINE_MATERIAL.md).
 - This does **not** affect track physics, AI drive path, road traction,
@@ -52,7 +57,9 @@ disabled collision state. A missing/invalid source cube or a partly created
 visual is reported INCOMPLETE instead of falsely claiming readiness. These
 checks **cannot certify GPU rendering or a material's actual color**.
 The actor disables collision and navigation, overlap generation and dynamic
-shadows. Circuit reconstruction first destroys a previously owned guide actor,
+shadows. In particular, `authored=yes` is **not** logged before both
+material binds succeed; even a successful runtime bind is not evidence
+of final rendered pixel colors, shader quality or hardware performance. Circuit reconstruction first destroys a previously owned guide actor,
 clears its pointer, and restores the normal default ON visibility preference
 before creating fresh batches; it cannot silently reuse stale instances.
 No game asset downloads are required.
