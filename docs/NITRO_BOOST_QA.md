@@ -53,6 +53,41 @@ reverse, low throttle, brake priority, player-only press admission,
 thermal shutdown, cooldown, regeneration, stale press release and
 5,000 repeated simulation cycles. These are **not** UE runtime tests.
 
+## Actual bonus-force delivery must pay for nitro
+
+A qualified held B/gamepad press first produces a **candidate** boost. The
+real shared Unreal pawn still has to pass the final rear-drive spring load,
+automatic gearbox, engine/collision derate and shared tire-friction circle
+before submitting the additional nitro `Chassis->AddForce`. Previously,
+the nitro meter could drain charge and generate nitro heat when these
+downstream physics gates delivered *zero* positive bonus thrust.
+
+The real pawn now records actual positive nitro-force submission. If
+none was dispatched, `RejectUndeliveredFrame()` restores **only this
+sample's provisional charge debit and nitro-meter heat exactly once**,
+leaves the real key hold eligible for a future traction-ready racing
+frame, and clears the ACTIVE meter flag. A rejected later gear/traction
+frame also refunds the candidate before invalidating driver inputs.
+The temporary boosted speed-cap interpolation returns toward the
+neutral target without any direct change to Chaos chassis velocity.
+Delivered positive nitro force retains existing allocation and tuning;
+there is no extra charge, cooldown bypass, race reward or save effect.
+
+The standalone tests verify one-frame debit/refund, double-refund
+rejection, 250 consecutive held frames with no delivered boost, the
+first subsequently delivered force frame and release/reset behavior.
+The Unreal source test binds the actual positive bonus `AddForce` to
+this settlement path, including rejection before early-return cleanup.
+The separate **approximate engine heat** controller still samples
+the pre-dispatch drive demand; that observation is *not* a calibrated
+physical engine energy or temperature measurement.
+
+Manual UE5.8 Win64 QA must exercise nitro during gear shifts, no-rear
+contact, grip-saturated slides, damage/thermal power loss, full-speed
+cap transitions, braking, reverse and recovered traction at 30/60/120
+FPS. Verify the real HUD charge/heat and acceleration, rather than
+assuming source CI establishes delivered game physics.
+
 ## Required manual real-game test (still open)
 
 1. Build the actual UE 5.8 editor/game targets and cook the circuit.
