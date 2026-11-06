@@ -1471,7 +1471,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         latebrake::AllocateArcadeBoost(
             NitroDrive.ForceMultiplier, DraftExtraForce, NitroDrive.Active);
     DraftExtraForce = CombinedBoost.DraftExtra;
-    CurrentDraftAppliedFraction = static_cast<float>(DraftExtraForce);
+    // Allocation is not physically applied motor thrust. Clear the HUD
+    // until the final shared grip/gear/heat/damage limits and the actual
+    // drafting AddForce branch have all executed this frame.
+    CurrentDraftAppliedFraction = 0.f;
     // Advisory metrics only: no scoring, lap records or tire-forces use
     // these values. Invalid long frames are rejected by the policy.
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),
@@ -1589,6 +1592,18 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(DraftExtraForce) *
                 static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
+            // The only truth for the bonus displayed in the HUD is the
+            // same complete scale used by the real physics force above.
+            // Report zero when gear/rear contact/traction removes thrust;
+            // never advertise an unspent geometric eligibility bonus.
+            const double DeliveredMotorScale =
+                static_cast<double>(Surface.MotorMultiplier) *
+                static_cast<double>(ImpactMotorScale) *
+                static_cast<double>(EngineMotorScale) *
+                static_cast<double>(GearPowerFactor);
+            CurrentDraftAppliedFraction = static_cast<float>(
+                latebrake::CalculateDeliveredDraftFraction(
+                    DraftExtraForce, DeliveredMotorScale));
         }
     }
     else if (AxleBudget.RearDriveReady && !bEffectiveBraking)
