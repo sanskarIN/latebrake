@@ -9,6 +9,7 @@
 #include "Vehicles/OpposingThrottleBraking.h"
 #include "Vehicles/GripLimitedBraking.h"
 #include "Vehicles/LateralGripBudget.h"
+#include "Vehicles/TractionLimitedPropulsion.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
 #include "Vehicles/SprungChassisDynamics.h"
 #include "Vehicles/ChassisWheelAnchors.h"
@@ -1493,7 +1494,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
-    const float GearPowerFactor = static_cast<float>(
+    const float AxleGearPowerFactor = static_cast<float>(
         latebrake::GearAwareMotorPowerFactor(
             static_cast<double>(EffectiveThrottle),
             static_cast<double>(LongitudinalSpeed),
@@ -1518,6 +1519,32 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
+    // Base, nitro and draft share the remaining tire-force allowance after
+    // this same frame's actual lateral correction. Earlier gear/heat/axle
+    // reductions remain ceilings; this final factor can only reduce thrust.
+    const double AllocatedMotorForce =
+        static_cast<double>(DriveForce) * static_cast<double>(EffectiveThrottle) *
+        Surface.MotorMultiplier * static_cast<double>(ImpactMotorScale) *
+        static_cast<double>(EngineMotorScale) *
+        static_cast<double>(AxleGearPowerFactor) *
+        (1.0 + CombinedBoost.NitroExtra + DraftExtraForce);
+    const latebrake::TractionLimitedPropulsionOutput MotorTraction =
+        latebrake::CalculateTractionLimitedPropulsion({
+            static_cast<double>(DeltaSeconds), static_cast<double>(Mass),
+            AllocatedMotorForce,
+            LateralForce.RightForce * static_cast<double>(ContactTractionScale),
+            static_cast<double>(GarageGrip) * TireCondition.GripMultiplier() *
+                Surface.LateralGripMultiplier *
+                CollisionDamage.LateralGripMultiplier(),
+            GroundContact.ContactTractionScale,
+            AxleBudget.RearDriveTractionScale, bArcade});
+    if (!MotorTraction.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    const float GearPowerFactor = AxleGearPowerFactor *
+        static_cast<float>(MotorTraction.ForceScale);
     // Spring support was already submitted after independent spring
     // validation; never double-apply it along the motor path.
     if (AxleBudget.RearDriveReady &&

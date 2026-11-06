@@ -2123,3 +2123,16 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME OpposingThrottleBraking COMMAND latebrake_opposing_throttle_braking_tests)
+
+# All three additive motor paths share the same remaining tire-force circle.
+add_executable(latebrake_traction_limited_propulsion_tests TractionLimitedPropulsionTests.cpp)
+target_include_directories(latebrake_traction_limited_propulsion_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_traction_limited_propulsion_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_traction_limited_propulsion_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_traction_limited_propulsion_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TractionLimitedPropulsion COMMAND latebrake_traction_limited_propulsion_tests)

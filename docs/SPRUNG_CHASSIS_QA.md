@@ -617,6 +617,46 @@ AI input and pause/recovery. Confirm no abrupt stop, extra lateral grip,
 unloaded-axle force or unexpected direction change. Tune these candidate
 values from real telemetry before approving handling or merging the draft.
 
+## Shared propulsion and cornering grip
+
+The earlier lateral circle accounted for braking but allowed motor forces
+outside that same circle. For example, at 2500 cm/s forward and 200 cm/s
+sideways with full normal-road grip, the production corner assist and
+gear taper retain full throttle. Base thrust alone could then combine
+with lateral correction beyond the configured 1550 cm/s² Arcade budget;
+nitro/drafting could increase the excess.
+
+`TractionLimitedPropulsion.h` receives the sum of allocated base, nitro
+and drafting force after gear, heat, damage, surface and rear-load limits,
+plus the actual planned lateral force **after** whole-body contact scaling.
+It uses the existing Arcade/Simulation Inspired combined-grip constants
+and returns one factor in [0,1] for all three motor force submissions.
+Available longitudinal force is the smaller of the remaining whole-body
+circle and the rear-axle ceiling. Rear load is a ceiling here, not another
+multiplier on an already rear-scaled motor request. Under-budget launches
+are unchanged; zero rear support never authorizes propulsion. Existing
+brake precedence and driving eligibility remain authoritative.
+
+This deliberately preserves lateral control and reduces motor demand at
+the limit; it does not simulate wheelspin, differentials, per-tire contact
+patches or torque-induced chassis pitch. Road/aerodynamic drag and the
+overspeed governor remain separate resistive forces. No new probes,
+velocity rewrites, saved state or race authority are introduced.
+
+Portable checks reproduce the old excessive combined force and exercise
+120,000 frames through the real spring/contact/axle/reattachment, surface,
+gear, boost and lateral policies. Both ideal double outputs and the three
+actual float-scaled motor terms are checked (with float rounding tolerance).
+Source bindings enforce one cap before all three force paths and preserve
+early spring support on an optional-policy failure.
+
+Real UE5.8 Win64 QA must compare straight launches with corner exits,
+partial/full throttle, nitro, actual rival drafting, upgrades, grass,
+damaged/worn tires and rear-axle unloading at 30/60/120 FPS. Check that
+coasting, service/opposing brakes, AI, reverse, restart and pause still work.
+Record actual acceleration/lateral G and lap behavior, and tune from driving
+evidence. Portable force budgets are not proof of good Chaos vehicle feel.
+
 ## Mandatory real engine acceptance gate
 
 **Do not merge a candidate as production-ready solely because source CI

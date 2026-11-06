@@ -22,7 +22,8 @@ For a valid, forward-driving frame, the intended shared motor budget is:
     applied force / healthy base force
       = qualified throttle × valid surface motor factor
         × retained impact motor factor × qualified engine heat factor
-        × gear-aware motor taper × (1 + allocated nitro + draft)
+        × gear-aware motor taper × accepted rear grip
+        × final shared traction factor × (1 + allocated nitro + draft)
 
 Here allocated nitro + draft is at most **0.40**. The existing allocator
 prioritizes finite nitro charge. Confirmed dirt reduces the entire motor
@@ -36,6 +37,16 @@ throttle or makes official lap timing dependent on advisory telemetry.
 The real pawn must not drive after an invalid/blocked chassis or
 surface sample.
 Reverse and braking keep their existing separate guards.
+
+On the suspension draft, the final traction factor comes from
+`TractionLimitedPropulsion.h`. The already axle-scaled sum of all three
+motor terms and the actual contact-scaled lateral force share the existing
+combined-grip circle. This factor can only reduce power, with one common
+value applied to base, nitro and draft. Rear support is a force ceiling,
+not a second rear-load multiplier. Straight launches below the grip limit
+keep their existing power; a boosted corner exit cannot bypass the same
+ceiling. Lateral control takes priority in this simplified model. This is
+not per-wheel tire slip, a differential or calibrated road physics.
 
 The existing lateral resistance scale uses real tire condition, surface
 traction and damage multipliers, all bounded at or below one. Service
@@ -51,7 +62,12 @@ brake heat only affects service braking and never grants motor power.
 - The Python binding suite checks production chassis validation, ordered
   source observation, all three shared motor scales (including thermal and
   gear taper), brake fade branch, and reset/suspension lifecycle.
-- No runtime force values or source physics are changed.
+- `TractionLimitedPropulsionTests.cpp` adds 120,000 integrated production-policy
+  frames, normal straight-launch preservation, corner/boost saturation,
+  partial/absent rear support, reverse sign, malformed data and float-force
+  composition checks. New source bindings verify the final cap precedes all
+  three real motor submissions. This draft changes motor force at the grip
+  limit; automated checks remain numerical/source-only.
 
 From the repository root:
 

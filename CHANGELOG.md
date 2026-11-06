@@ -2,6 +2,11 @@
 
 ## Unreleased — suspension handling draft
 
+- Limit the sum of base, nitro and drafting propulsion to the tire-force
+  budget remaining after actual same-frame cornering force. Reuse existing
+  rear spring-load and whole-body contact ceilings without scaling rear load
+  twice; preserve ordinary straight-line power when within grip. Add strict
+  portable composition/source-binding checks and real Win64 QA criteria.
 - Replace opposing-throttle engine braking that could request about 20g at
   racing speed with rear-load-, pedal-, grip- and frame-limited force in the
   actual Unreal player/rival pawn. Share its planned deceleration with the
