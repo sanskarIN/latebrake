@@ -1646,14 +1646,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
-            const float NitroBonusForce =
-                DriveForce * EffectiveThrottle *
-                static_cast<float>(CombinedBoost.NitroExtra) *
-                static_cast<float>(Surface.MotorMultiplier) *
-                ImpactMotorScale * EngineMotorScale * GearPowerFactor;
-            if (FMath::IsFinite(NitroBonusForce) && NitroBonusForce > 0.01f)
+            // Compute the positive delivered bonus from the SAME final
+            // post-friction total motor force. Avoid a second independent
+            // boost/tire budget and retain the original explicit 3-path
+            // motor force expression for auditable source equality.
+            const double DeliveredNitroBonusForce =
+                MotorTraction.ForwardForce * CombinedBoost.NitroExtra /
+                (1.0 + CombinedBoost.NitroExtra + DraftExtraForce);
+            if (std::isfinite(DeliveredNitroBonusForce) &&
+                DeliveredNitroBonusForce > 0.01)
             {
-                Chassis->AddForce(Forward * NitroBonusForce);
+                Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
+                    static_cast<float>(CombinedBoost.NitroExtra) *
+                    static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
                 bNitroBonusDispatched = true;
             }
         }
