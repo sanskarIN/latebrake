@@ -63,12 +63,17 @@ inline OpposingThrottleBrakeOutput CalculateOpposingThrottleBraking(
 
     OpposingThrottleBrakeOutput out;
     out.Valid = true;
-    // Preserve the existing near-stop direction-change threshold. Neutral
-    // throttle still coasts; no reverse brake may be added to service brake.
+    // Opposite-pedal braking depends on actual signed longitudinal travel,
+    // NOT total planar speed. During a large sideways slide the car can have
+    // 2,000 cm/s of lateral velocity but almost no forward motion. Using
+    // planar speed incorrectly marks either pedal as an opposing brake,
+    // discarding motor authority with zero useful deceleration. Preserve
+    // the original 100 cm/s near-stop allowance along the actual drive axis.
+    // Neutral input coasts; service/handbrake always takes precedence.
     out.OpposingThrottle = !s.EffectiveBrakeHeld &&
         std::abs(s.EffectiveThrottle) >= 0.01 &&
-        s.PlanarCmPerSecond >= 100.0 &&
-        s.ForwardCmPerSecond * s.EffectiveThrottle <= 0.0;
+        std::abs(s.ForwardCmPerSecond) >= 100.0 &&
+        s.ForwardCmPerSecond * s.EffectiveThrottle < 0.0;
     if (!out.OpposingThrottle || s.RearTractionScale <= 1.0e-6)
     {
         return out;
