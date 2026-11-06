@@ -35,6 +35,7 @@ class UnrealRacingLineBindingTests(unittest.TestCase):
     def test_actual_circuit_spawns_visual_only_line(self):
         self.assertIn("void BuildRacingLine(UStaticMesh* Mesh);", self.header)
         self.assertIn('#include "Track/RacingLineLayout.h"', self.source)
+        self.assertIn('#include "Materials/MaterialParameters.h"', self.source)
         self.assertIn('#include "Track/CircuitLayout.h"', self.policy)
         build = self.source.split(
             "void ALatebrakeRaceGameMode::BuildCircuit()", 1

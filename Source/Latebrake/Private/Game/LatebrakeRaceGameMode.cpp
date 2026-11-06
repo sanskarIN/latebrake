@@ -19,6 +19,7 @@
 #include "Racing/StartGantryVisual.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameters.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
