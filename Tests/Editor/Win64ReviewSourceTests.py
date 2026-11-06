@@ -672,7 +672,10 @@ class Win64ReviewSourceTests(unittest.TestCase):
             "throttle=0.800 steer=0.300 contact=1.000 rear=1.000 "
             "front=1.000 motor_force=1250000.0 opposing_force=0.0 "
             "service_force=0.0 lateral_force=-80000.0 "
-            "yaw_torque=1600000.0 draft_pct=2.500"
+            # Only a possessed human can earn delivered slipstream motor
+            # boost. Keep the rival-only fixture physically consistent so
+            # --require-player, not a fake drafting record, is the failure.
+            f"yaw_torque=1600000.0 draft_pct={'2.500' if human else '0.000'}"
         )
         brake = (
             "LogTemp: Display: LATEBRAKE_DRIVE v=1 "
