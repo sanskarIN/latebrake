@@ -182,3 +182,31 @@ hitch recovery at 30/60/120 FPS. Assess whether the car overshoots its
 intended top speed, if drag feels too aggressive, and whether AI finish
 times change. Only measured engine QA may authorize tuning or a playable
 release.
+
+## Shared friction-circle and deliberate braking priority
+
+The soft planar speed-cap brake is *optional* and must not stack with
+service/handbrake, opposing-pedal engine braking, or an already-active
+reverse gear overspeed controller. Those policies take precedence.
+Moreover, the cap governor's opposite-XY vector can be aligned with
+the measured sideways correction, so two independent force budgets
+incorrectly overstate available tire grip. The actual Unreal pawn
+now supplies the SAME frame's measured right-axis speed, *already
+dispatched* lateral correction (after contact), actual surface/tire/
+garage/damage multiplier and supported spring grip. The governor
+solves the exact two-vector residual **shared friction-circle** limit.
+For example, pure sideways slip already consuming 1000 cm/s² of
+1550 cm/s² permits only 550 cm/s² of additional co-directional cap
+braking, not a new independent 650 cm/s² impulse. Partial grip and
+road support reduce this, never increase it. Full-grip straight-line
+braking retains the original speed governor response. Genuine Chaos
+collision, aerodynamic road load, vertical spring forces, motor force
+and UHT/runtime vehicle calibration are independent and unverified.
+
+`PlanarSpeedGovernorTests.cpp` adds pure/diagonal slip, active-brake
+priority, low-grip partial support, invalid force/speed observations
+and 120,000 synthetic mixed-contact/slide/force-vector checks.
+`PlanarSpeedGovernorBindingTests.py` verifies the real Unreal
+sampling/dispatch integration. Neither test runs UE 5.8 or proves
+that driving feel, net tire forces or installed Windows gameplay
+have been calibrated; these remain mandatory acceptance checks.

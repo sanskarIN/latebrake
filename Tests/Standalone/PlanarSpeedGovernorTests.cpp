@@ -111,6 +111,55 @@ int main()
                  overspeed.DecelerationCmPerSecondSquared),
             "fully loaded road retains prior calibrated arcade behavior");
 
+    // Explicit service/opposing/reverse braking has priority over this
+    // optional cap controller. Otherwise two independent brakes stack.
+    auto braking = Frame(6400.0, 0.0, 6000.0);
+    braking.OtherLongitudinalBrake = true;
+    const auto yielding = CalculatePlanarSpeedGovernor(braking);
+    Require(yielding.Valid && !yielding.Active &&
+            yielding.ForceX == 0.0 && yielding.ForceY == 0.0 &&
+            yielding.OverspeedCmPerSecond == 0.0,
+            "deliberate braking takes planar overspeed governor priority");
+
+    // Pure side-slip: existing 1000 acceleration and cap force point
+    // in the SAME direction. Only 550 of a 1550 budget remains, not
+    // the naive independent sqrt(1550^2-1000^2) allowance.
+    auto pureSlide = Frame(0.0, 6400.0, 6000.0);
+    pureSlide.LateralCmPerSecond = 6400.0;
+    pureSlide.AppliedRightForce = -1100.0 * 1000.0;
+    const auto cornering = CalculatePlanarSpeedGovernor(pureSlide);
+    Require(cornering.Valid && cornering.Active &&
+            Near(cornering.DecelerationCmPerSecondSquared, 550.0) &&
+            cornering.ForceX == 0.0 &&
+            Near(cornering.ForceY, -1100.0 * 550.0),
+            "co-directional slide and cap braking share one vector budget");
+
+    auto diagonalSlip = Frame(4800.0, 6400.0, 6500.0);
+    diagonalSlip.LateralCmPerSecond = 6400.0;
+    diagonalSlip.AppliedRightForce = -1100.0 * 1000.0;
+    const auto diagonalGrip = CalculatePlanarSpeedGovernor(diagonalSlip);
+    const double diagonalBudget = std::hypot(
+        diagonalGrip.ForceX / 1100.0,
+        (diagonalGrip.ForceY + diagonalSlip.AppliedRightForce) / 1100.0);
+    Require(diagonalGrip.Valid && diagonalGrip.Active &&
+            diagonalGrip.DecelerationCmPerSecondSquared < 650.0 &&
+            Near(diagonalBudget, ArcadeCombinedGripBudget, 1.0e-5),
+            "diagonal skid saturates one shared force-vector friction circle");
+
+    auto dampedGrip = Frame(0.0, 6400.0, 6000.0);
+    dampedGrip.GripScale = 0.20;
+    dampedGrip.ContactTractionScale = 0.45;
+    dampedGrip.LateralCmPerSecond = 6400.0;
+    dampedGrip.AppliedRightForce = -1100.0 * 60.0;
+    const auto limitedWet = CalculatePlanarSpeedGovernor(dampedGrip);
+    const double wetBudget = ArcadeCombinedGripBudget * 0.20 * 0.45;
+    Require(limitedWet.Valid && limitedWet.Active &&
+            Near(limitedWet.DecelerationCmPerSecondSquared,
+                 wetBudget - 60.0, 1.0e-5) &&
+            limitedWet.DecelerationCmPerSecondSquared <
+                PlanarGovernorArcadeMaxDeceleration * 0.45,
+            "worn low-grip partial road contact limits braking once");
+
     const auto simulation = CalculatePlanarSpeedGovernor(
         Frame(6400.0, 0.0, 6000.0, false));
     Require(simulation.Valid && simulation.Active &&
@@ -191,6 +240,42 @@ int main()
                 rejected.ForceX == 0.0 && rejected.ForceY == 0.0,
                 "invalid sampled spring grip cannot authorize cap braking");
     }
+    for (double bad : {-0.01, 4.001,
+                       std::numeric_limits<double>::quiet_NaN(),
+                       std::numeric_limits<double>::infinity()})
+    {
+        s = Frame(6400.0, 0.0, 6000.0);
+        s.GripScale = bad;
+        Require(!CalculatePlanarSpeedGovernor(s).Valid,
+                "invalid physical grip cannot authorize cap braking");
+    }
+    for (double bad : {std::numeric_limits<double>::quiet_NaN(),
+                       std::numeric_limits<double>::infinity()})
+    {
+        s = Frame(0.0, 6400.0, 6000.0);
+        s.LateralCmPerSecond = bad;
+        Require(!CalculatePlanarSpeedGovernor(s).Valid,
+                "nonfinite true lateral speed fails closed");
+        s = Frame(0.0, 6400.0, 6000.0);
+        s.AppliedRightForce = bad;
+        Require(!CalculatePlanarSpeedGovernor(s).Valid,
+                "nonfinite delivered lateral force fails closed");
+    }
+    s = Frame(0.0, 6400.0, 6000.0);
+    s.LateralCmPerSecond = 6400.0;
+    s.AppliedRightForce = 1100.0 * 500.0;
+    Require(!CalculatePlanarSpeedGovernor(s).Valid,
+            "fabricated lateral slip-accelerating force fails closed");
+    s = Frame(6400.0, 0.0, 6000.0);
+    s.LateralCmPerSecond = 6401.5;
+    Require(!CalculatePlanarSpeedGovernor(s).Valid,
+            "impossible measured sideways projection fails closed");
+    s = Frame(0.0, 6400.0, 6000.0);
+    s.LateralCmPerSecond = 6400.0;
+    s.AppliedRightForce = -1100.0 * 1700.0;
+    Require(!CalculatePlanarSpeedGovernor(s).Valid,
+            "fabricated force over full contact-grip limit fails closed");
+
     for (double dt : {0.0, -0.02, 0.100001})
     {
         s = Frame(6000.0, 0.0, 6500.0, true, dt);
@@ -223,6 +308,15 @@ int main()
         s.ContactTractionScale = i % 5 == 0 ? 0.0 :
             i % 5 == 1 ? 0.20 : i % 5 == 2 ? 0.45 :
             i % 5 == 3 ? 0.75 : 1.0;
+        s.GripScale = 0.10 + (i % 350) * 0.01;
+        s.LateralCmPerSecond = s.VelocityY; // right = world +Y
+        const double shared = (s.ArcadeHandling
+            ? ArcadeCombinedGripBudget : SimulationCombinedGripBudget) *
+            s.GripScale * s.ContactTractionScale;
+        s.AppliedRightForce = std::abs(s.LateralCmPerSecond) < 1.0e-7
+            ? 0.0 : -std::copysign(0.63 * shared * s.MassKg,
+                                  s.LateralCmPerSecond);
+        s.OtherLongitudinalBrake = i % 17 == 0;
         const auto out = CalculatePlanarSpeedGovernor(s);
         Require(out.Valid &&
                 std::isfinite(out.ForceX) && std::isfinite(out.ForceY),
@@ -237,8 +331,12 @@ int main()
                             s.ContactTractionScale + 1.0e-8 &&
                     d * dt <= out.OverspeedCmPerSecond + 1.0e-8 &&
                     out.ForceX * s.VelocityX +
-                    out.ForceY * s.VelocityY <= 0.0,
-                    "spring-limited deceleration cannot exceed cap or reverse direction");
+                    out.ForceY * s.VelocityY <= 0.0 &&
+                    std::hypot(out.ForceX / s.MassKg,
+                        (out.ForceY + s.AppliedRightForce) / s.MassKg) <=
+                            shared + 1.0e-6 &&
+                    !s.OtherLongitudinalBrake,
+                    "120k samples share one grip vector and never stack braking");
         }
         else
         {

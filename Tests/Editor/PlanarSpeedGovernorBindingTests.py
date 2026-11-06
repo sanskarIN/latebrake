@@ -82,6 +82,42 @@ class PlanarSpeedGovernorBindingTests(unittest.TestCase):
         self.assertIn("120000", self.tests)
         self.assertIn("mid-air", self.docs.lower())
 
+    def test_deliberate_braking_and_lateral_force_share_real_grip(self):
+        governor = self.tick.split(
+            "latebrake::CalculatePlanarSpeedGovernor({", 1
+        )[1].split("if (!SpeedGovernor.Valid)", 1)[0]
+        for token in (
+            "GroundContact.ContactTractionScale",
+            "static_cast<double>(GarageGrip) * TireCondition.GripMultiplier()",
+            "Surface.LateralGripMultiplier *",
+            "CollisionDamage.LateralGripMultiplier()",
+            "static_cast<double>(LateralSpeed)",
+            "LateralForce.RightForce * static_cast<double>(ContactTractionScale)",
+            "bEffectiveBraking || OpposingBraking.OpposingThrottle ||",
+            "ReverseGovernor.Active",
+        ):
+            self.assertIn(token, governor)
+        self.assertLess(self.tick.index("CalculateLateralGripForce({"),
+                        self.tick.index("CalculatePlanarSpeedGovernor({"))
+        self.assertLess(self.tick.index("CalculateReverseSpeedGovernor({"),
+                        self.tick.index("CalculatePlanarSpeedGovernor({"))
+        for token in (
+            '#include "Vehicles/LateralGripBudget.h"',
+            "double GripScale = 1.0;",
+            "double LateralCmPerSecond = 0.0;",
+            "double AppliedRightForce = 0.0;",
+            "bool OtherLongitudinalBrake = false;",
+            "sample.OtherLongitudinalBrake",
+            "ArcadeCombinedGripBudget : SimulationCombinedGripBudget",
+            "const double aligned = std::clamp(",
+            "const double transverseSquared = std::max(",
+            "const double decel = std::min(requested, available);",
+        ):
+            self.assertIn(token, self.policy)
+        self.assertIn("co-directional slide and cap braking", self.tests)
+        self.assertIn("120k samples share one grip vector", self.tests)
+        self.assertIn("shared friction-circle", self.docs)
+
     def test_no_global_planar_velocity_teleport_at_nitro_cap(self):
         tick = self.tick
         for banned in (

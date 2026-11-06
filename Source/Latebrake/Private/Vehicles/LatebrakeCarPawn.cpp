@@ -1563,6 +1563,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Unlike aerodynamic road load, this additional arcade speed-cap
     // brake requires the SAME accepted sprung contact as tire grip.
     // Airborne/unloaded chassis keeps true momentum until it lands.
+    // Actual lateral skid force competes for the same vector grip budget;
+    // deliberate service/opposing/reverse brakes take precedence.
     const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
     const latebrake::PlanarSpeedGovernorOutput SpeedGovernor =
         latebrake::CalculatePlanarSpeedGovernor({
@@ -1571,7 +1573,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(Velocity.Y),
             static_cast<double>(Mass),
             static_cast<double>(ActiveSpeedCap), bArcade,
-            GroundContact.ContactTractionScale});
+            GroundContact.ContactTractionScale,
+            static_cast<double>(GarageGrip) * TireCondition.GripMultiplier() *
+                Surface.LateralGripMultiplier *
+                CollisionDamage.LateralGripMultiplier(),
+            static_cast<double>(LateralSpeed),
+            LateralForce.RightForce * static_cast<double>(ContactTractionScale),
+            bEffectiveBraking || OpposingBraking.OpposingThrottle ||
+                ReverseGovernor.Active});
     if (!SpeedGovernor.Valid)
     {
         RejectOptionalDriveAfterSpring(SpringResponse);
