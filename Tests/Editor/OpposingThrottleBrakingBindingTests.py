@@ -51,9 +51,11 @@ class OpposingThrottleBrakingBindingTests(unittest.TestCase):
     def test_braking_cannot_stack_with_motor_or_bypass_lateral_grip(self):
         self.assertIn("if (AxleBudget.RearDriveReady &&\n"
                       "        !bEffectiveBraking &&\n"
-                      "        !OpposingBraking.OpposingThrottle)", self.tick)
+                      "        !OpposingBraking.OpposingThrottle &&\n"
+                      "        !ReverseGovernor.ReverseMotorBlocked)", self.tick)
         self.assertIn("PhysicalBraking.DecelerationCmPerSecondSquared +\n"
-                      "                OpposingBraking.WholeBodyBudgetDeceleration,", self.tick)
+                      "                OpposingBraking.WholeBodyBudgetDeceleration +\n"
+                      "                ReverseGovernor.WholeBodyBudgetDeceleration,", self.tick)
         brake = self.tick.split(
             "else if (AxleBudget.RearDriveReady && !bEffectiveBraking)", 1
         )[1].split("// Real planar resistance", 1)[0]

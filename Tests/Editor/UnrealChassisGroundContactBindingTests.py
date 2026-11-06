@@ -53,6 +53,7 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
             "bServiceBraking && GroundContact.HasDriveContact",
             "bHumanDriver && AxleBudget.RearDriveReady",
             "bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"
+            "            ReverseGovernor.ReverseMotorBlocked ||\n"
             "            !AxleBudget.RearDriveReady",
             "bDraftTargetReady && AxleBudget.RearDriveReady",
             "TransmissionFrame.PropulsionFactor *",

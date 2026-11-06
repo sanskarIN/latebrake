@@ -26,7 +26,8 @@ class UnrealOptionalDriveRecoveryBindingTests(unittest.TestCase):
         motor = tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle")
         yaw = tick.index("Chassis->AddTorqueInRadians(")
         candidates = (
-            "Surface", "RoadLoad", "PhysicalBraking", "OpposingBraking", "LateralForce",
+            "Surface", "RoadLoad", "PhysicalBraking", "OpposingBraking",
+            "ReverseGovernor", "LateralForce",
             "PlannedYaw", "TransmissionFrame", "MotorTraction",
         )
         for policy in candidates:
@@ -99,8 +100,14 @@ class UnrealOptionalDriveRecoveryBindingTests(unittest.TestCase):
         self.assertLess(hard, physics)
         self.assertLess(physics, optional)
         self.assertIn("NeutralizeMotionWhenDrivingBlocked();", tick[:physics+140])
-        late = tick.split("if (!ReverseLimit.Valid)", 1)[1][:160]
-        self.assertIn("NeutralizeMotionWhenDrivingBlocked();", late)
+        # A malformed optional force controller must preserve legitimate
+        # Chaos springs/momentum, unlike the old post-force velocity clamp.
+        # Hard race/pause/invalid-physics states still neutralize earlier.
+        late = tick.split("if (!ReverseGovernor.Valid)", 1)[1][:180]
+        self.assertIn("RejectOptionalDriveAfterSpring(SpringResponse);", late)
+        self.assertNotIn("NeutralizeMotionWhenDrivingBlocked();", late)
+        self.assertLess(tick.index("if (!ReverseGovernor.Valid)"),
+                        tick.index("Chassis->AddForce(Forward * DriveForce"))
         neutral = PAWN.split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[1].split(
             "void ALatebrakeCarPawn::ThrottleInput(", 1)[0]
         self.assertIn("SetPhysicsLinearVelocity(FVector::ZeroVector)", neutral)

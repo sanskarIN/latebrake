@@ -33,10 +33,12 @@ class TractionLimitedPropulsionBindingTests(unittest.TestCase):
         self.assertIn("if (!MotorTraction.Valid)\n    {\n"
                       "        RejectOptionalDriveAfterSpring(SpringResponse);\n"
                       "        return;\n    }", self.tick)
+        self.assertIn("AuthorizedMotorThrottle = ReverseGovernor.ReverseMotorBlocked", self.tick)
+        self.assertIn("? 0.0 : static_cast<double>(EffectiveThrottle);", self.tick)
         allocated = self.tick.split("const double AllocatedMotorForce =", 1)[1].split(
             "const latebrake::TractionLimitedPropulsionOutput", 1)[0]
         for token in (
-            "static_cast<double>(DriveForce)", "static_cast<double>(EffectiveThrottle)",
+            "static_cast<double>(DriveForce)", "AuthorizedMotorThrottle",
             "Surface.MotorMultiplier", "static_cast<double>(ImpactMotorScale)",
             "static_cast<double>(EngineMotorScale)",
             "static_cast<double>(AxleGearPowerFactor)",
@@ -61,7 +63,8 @@ class TractionLimitedPropulsionBindingTests(unittest.TestCase):
                       "        static_cast<float>(MotorTraction.ForceScale);", tick)
         motor = tick.split("if (AxleBudget.RearDriveReady &&\n"
                            "        !bEffectiveBraking &&\n"
-                           "        !OpposingBraking.OpposingThrottle)", 1)[1].split(
+                           "        !OpposingBraking.OpposingThrottle &&\n"
+                           "        !ReverseGovernor.ReverseMotorBlocked)", 1)[1].split(
             "else if (AxleBudget.RearDriveReady && !bEffectiveBraking)", 1)[0]
         self.assertEqual(motor.count("Chassis->AddForce("), 3)
         self.assertEqual(motor.count("* EngineMotorScale * GearPowerFactor);"), 3)

@@ -29,6 +29,7 @@ class ArcadeEngineHeatBindingTests(unittest.TestCase):
     def test_all_motor_boosts_share_the_same_power_limit(self):
         self.assertIn("EngineHeat.Observe({", self.cpp)
         self.assertIn("bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"
+                      "            ReverseGovernor.ReverseMotorBlocked ||\n"
                       "            !AxleBudget.RearDriveReady", self.cpp)
         tick = self.cpp.split("void ALatebrakeCarPawn::Tick(", 1)[1]
         self.assertLess(tick.index("CalculateOpposingThrottleBraking({"),
@@ -36,7 +37,8 @@ class ArcadeEngineHeatBindingTests(unittest.TestCase):
         self.assertLess(tick.index("EngineHeat.Observe({"),
                         tick.index("if (AxleBudget.RearDriveReady &&\n"
                                    "        !bEffectiveBraking &&\n"
-                                   "        !OpposingBraking.OpposingThrottle)"))
+                                   "        !OpposingBraking.OpposingThrottle &&\n"
+                                   "        !ReverseGovernor.ReverseMotorBlocked)"))
         self.assertIn("RearDriveTractionScale", self.cpp)
         self.assertIn("ContactTractionScale", self.cpp)
         self.assertIn("NitroDrive.Active, true", self.cpp)

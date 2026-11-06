@@ -62,6 +62,7 @@ class UnrealAxleTractionBindingTests(unittest.TestCase):
         for token in (
             "bHumanDriver && AxleBudget.RearDriveReady",
             "bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"
+            "            ReverseGovernor.ReverseMotorBlocked ||\n"
             "            !AxleBudget.RearDriveReady",
             "if (bDraftTargetReady && AxleBudget.RearDriveReady)",
             "bArcade) * TransmissionFrame.PropulsionFactor *\n            RearDriveTractionScale);",
