@@ -1,9 +1,15 @@
 # Latebrake engineering status
 
 **Updated:** 2026-11-06
-**Latest published milestone:** [v0.5.93 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.93), immutable commit `9dd2b3236f25b242387233c988255881dd7aab59`, **zero executable attachments**. It freezes unmerged draft PR #295 with improved slide recovery, engine-heat gating, delivered drafting feedback and Win64 source evidence checks. The protected main branch does not acquire the unqualified suspension physics. The prior experimental tag is v0.5.92.
-**Next engineering priority:** real licensed Unreal Engine 5.8 Editor/UHT and Game compilation, an authored cooked circuit, and hardware Win64/Android driving with measured suspension and braking. Historical v0.5.9–v0.5.13 changes were merged without individual tags.
-**Playable status:** Not verified; no installed package, Windows setup installer, real UE5.8 compiled game or physical hardware qualification has been established by portable CI.
+**Latest published milestone:** [v0.5.94 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94), immutable commit `7919a3e553de94e12f1dcfa961e305d9aff71bcd`, **zero executable attachments**. It freezes experimental unmerged draft PR #295, with signed reverse overspeed changed from an instantaneous XY speed snap to a finite rear-traction-limited Chaos force. Experimental physics is **not merged into protected main**; actual UE5.8/UHT, Win64 cooking, hardware driving and Windows installation remain unverified.
+**Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
+**Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
+
+## v0.5.94 experimental physical reverse overspeed (tagged source, NOT merged)
+
+- Immutable `7919a3e553de94e12f1dcfa961e305d9aff71bcd` captures the true shared Chaos pawn's finite reverse overspeed planar braking, 48.6/36 km/h **soft** signed reverse targets and a rear load-limited correction in the existing lateral friction budget. Normal race authority and sideways/vertical motion remain unchanged by the new controller.
+- Exact-source publication succeeded only after correcting seven source-binding assertions that initially blocked release. [Publisher run](https://github.com/sanskarIN/latebrake/actions/runs/42203654085) passed **185/185 CTests on Windows, Ubuntu and macOS each, 673/673 Python source fixtures**, packaging policy and site/docs verification. These are not Unreal builds or installed physical driving tests.
+- The GitHub release has **zero attached executable assets**. The independent [playable-game issue #148](https://github.com/sanskarIN/latebrake/issues/148), genuine engine compilation and installed QA remain unresolved. Earlier v0.5.93 remains immutable.
 
 ## v0.5.93 immutable experimental source (NOT a playable game)
 
