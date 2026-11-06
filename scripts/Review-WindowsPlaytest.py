@@ -18,6 +18,11 @@ import sys
 
 from candidate_file_integrity import require_unlinked_path, verify_candidate_archive
 from AnalyzeRaceAudit import MAX_LOG_BYTES, RaceAuditError, analyze_race_audit
+from AnalyzeDriveTelemetry import (
+    MAX_LOG_BYTES as MAX_DRIVE_LOG_BYTES,
+    DriveTelemetryError,
+    summarize_log as summarize_drive_log,
+)
 
 SCHEMA = 1
 CHECKS = (
@@ -375,10 +380,94 @@ def audit_race(args: argparse.Namespace) -> None:
     print("A hash-consistent, editable runtime log never certifies actual gameplay.")
 
 
+
+def audit_drive(args: argparse.Namespace) -> None:
+    """Bind a non-shipping physics observation to the original sealed files.
+
+    Hash consistency cannot authenticate real Unreal execution or gameplay.
+    """
+    receipt, root, _, manifest, receipt_hash = candidate_context(args.receipt)
+    if receipt["schema_version"] != 2 or receipt["unreal_log_present"] is not True:
+        fail("Drive audit requires a schema-2 receipt with a present, hashed runtime log.")
+    raw_log = Path(receipt["unreal_log_path"])
+    require_unlinked_path(raw_log)
+    if raw_log.stat().st_size > MAX_DRIVE_LOG_BYTES:
+        fail("Drive audit log exceeds 32 MiB parser safety limit.")
+    # Rehash the exact byte snapshot we parse, not only the earlier log
+    # verification in candidate_context. Reject changed or missing bytes.
+    log_bytes = raw_log.read_bytes()
+    if (len(log_bytes) > MAX_DRIVE_LOG_BYTES or
+            len(log_bytes) != receipt["unreal_log_bytes"] or
+            hashlib.sha256(log_bytes).hexdigest() != require_hash(
+                receipt["unreal_log_sha256"], "Runtime log hash"
+            )):
+        fail("Runtime log changed while constructing drive audit report.")
+    try:
+        readings = summarize_drive_log(log_bytes.decode("utf-8-sig"))
+    except DriveTelemetryError as error:
+        fail(f"Drive audit rejected: {error}")
+    if args.require_player and readings["drivers"]["player"] == 0:
+        fail("Drive audit requires a recorded human-player vehicle sample.")
+
+    manifest_bytes = manifest.read_bytes()
+    if hashlib.sha256(manifest_bytes).hexdigest() != require_hash(
+            receipt["candidate_manifest_sha256"], "Manifest hash"
+    ):
+        fail("Manifest changed while constructing drive audit report.")
+    metadata = json.loads(
+        manifest_bytes.decode("utf-8-sig"), object_pairs_hook=unique_pairs
+    )
+    report = {
+        "schema_version": 1,
+        "status": "HASH_BOUND_SOURCE_DRIVE_AUDIT_UNVERIFIED",
+        "source_authenticity_verified": False,
+        "gameplay_verified": False,
+        "ready_for_release": False,
+        "receipt_sha256": receipt_hash,
+        "executable_sha256": require_hash(receipt["executable_sha256"], "EXE hash"),
+        "candidate_manifest_sha256": require_hash(
+            receipt["candidate_manifest_sha256"], "Manifest hash"
+        ),
+        "runtime_log_sha256": require_hash(
+            receipt["unreal_log_sha256"], "Runtime log hash"
+        ),
+        "source_commit": metadata["source_commit"].lower(),
+        "unreal_engine_build_sha256": require_hash(
+            metadata["unreal_engine_build_sha256"], "Engine build hash"
+        ),
+        "starter_map_sha256": require_hash(
+            metadata["starter_map_sha256"], "Circuit map hash"
+        ),
+        "candidate_file_count": len(metadata["files"]),
+        "runtime_log_integrity_verified": True,
+        "candidate_integrity_at_exit_verified": (
+            receipt.get("candidate_integrity_at_exit_pass") is True
+        ),
+        "runtime_exit_ok": receipt["process_exit_code"] == 0,
+        "startup_log_markers_pass": receipt["startup_log_markers_pass"],
+        "drive_audit": readings,
+        "warning": WARN,
+        "next_gate": (
+            "Compare source-reported requested forces with observed vehicle "
+            "braking, yaw and grip in an installed UE5.8 Win64 game. "
+            "Complete human driving and real engine build checks for #148."
+        ),
+    }
+    if sha256(args.receipt) != receipt_hash:
+        fail("Runtime receipt changed while constructing drive audit report.")
+    write_new(args.output, report, root)
+    print(f"Unverified hash-bound drive audit created: {args.output}")
+    print(
+        f"Samples={readings['samples']}, human={readings['drivers']['player']}, "
+        f"rival={readings['drivers']['autonomous']}."
+    )
+    print("Text and matching hashes cannot certify real vehicle handling.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("init", "evaluate", "audit"):
+    for command in ("init", "evaluate", "audit", "drive-audit"):
         step = commands.add_parser(command)
         step.add_argument("--receipt", type=Path, required=True, help="Private JSON receipt from Run-WindowsPlaytest.ps1")
         step.add_argument("--output", type=Path, required=True, help="New JSON path outside the candidate game")
@@ -389,9 +478,14 @@ def main() -> int:
                 "--require-finish", action="store_true",
                 help="Reject records without a complete reported ordered race finish",
             )
+        if command == "drive-audit":
+            step.add_argument(
+                "--require-player", action="store_true",
+                help="Reject logs without a human-driver record",
+            )
     args = parser.parse_args()
     try:
-        {"init": new_template, "evaluate": evaluate, "audit": audit_race}[args.command](args)
+        {"init": new_template, "evaluate": evaluate, "audit": audit_race, "drive-audit": audit_drive}[args.command](args)
         return 0
     except (ValueError, OSError, TypeError, KeyError) as error:
         print(f"Private Win64 QA review rejected: {error}", file=sys.stderr)
