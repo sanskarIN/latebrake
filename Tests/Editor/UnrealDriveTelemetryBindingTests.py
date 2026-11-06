@@ -77,9 +77,9 @@ class UnrealDriveTelemetryBindingTests(unittest.TestCase):
         # could otherwise overlook.
         source_format = diagnostic.split(
             'TEXT("LATEBRAKE_DRIVE v=1 ', 1)[1].split(
-            '"),\\n            bLocalHuman', 1)[0]
+            '"),\n            bLocalHuman', 1)[0]
         observed_fields = tuple(re.findall(
-            r"([a-z_]+)=%\\.(?:1|3)f", source_format))
+            r"([a-z_]+)=%\.(?:1|3)f", source_format))
         self.assertEqual(observed_fields, FIELDS)
         self.assertEqual(source_format.count("%s"), 2)
         self.assertEqual(source_format.count("%.1f"), 7)
