@@ -195,6 +195,27 @@ body, and every cosmetic garage car at 30/60/120 FPS; confirm force
 anchors line up with rendered wheel centers and actual road height.
 Reject the feature if wheel and probe movement visibly diverge.
 
+## Opposite-pedal recovery during sideways slides (source candidate)
+
+The opposing-throttle policy uses **signed forward speed**, not total XY
+speed, to decide whether accelerator/reverse input must first decelerate the
+car. A high-speed **sideways** slide with under 100 cm/s along the car's
+forward axis no longer consumes throttle as a zero-use engine-brake request.
+When signed forward speed reaches 100 cm/s, a genuinely opposite pedal
+still requests the existing bounded, rear-load-limited engine brake.
+Service/handbrake priority, traction ceilings and spin-throttle moderation
+are unchanged.
+
+Portable tests cover zero signed travel, both motion directions just below
+the threshold, exact boundary crossing, 1,500 cm/s signed travel and
+2,400 cm/s lateral-dominated motion at 30/60/120 FPS. This is a source
+regression, not a demonstrated drift-handling fix. **Real Win64 acceptance:**
+enter a controlled sideways slide on a safe in-game circuit, apply each
+pedal while the longitudinal speed approaches zero, and verify that
+drivetrain recovery is responsive without an unexpected torque spike,
+unnatural spin or braking reversal. Also repeat with service braking,
+handbrake, partial rear-wheel contact, Arcade and Simulation Inspired modes.
+
 ## Numerical source tests
 
 `Tests/Standalone/SprungChassisDynamicsTests.cpp` compiles the actual
