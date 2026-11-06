@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RELEASE_COMMIT: 0d0e196d700b58a46956c6ad869cef0954fa417d
+  RELEASE_COMMIT: 7919a3e553de94e12f1dcfa961e305d9aff71bcd
 
 jobs:
   preflight:
@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0d0e196d700b58a46956c6ad869cef0954fa417d
+          ref: 7919a3e553de94e12f1dcfa961e305d9aff71bcd
           persist-credentials: false
       - name: Require exact candidate source commit
         shell: bash
@@ -94,7 +94,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0d0e196d700b58a46956c6ad869cef0954fa417d
+          ref: 7919a3e553de94e12f1dcfa961e305d9aff71bcd
           persist-credentials: false
       - run: test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
       - run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py
@@ -107,7 +107,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0d0e196d700b58a46956c6ad869cef0954fa417d
+          ref: 7919a3e553de94e12f1dcfa961e305d9aff71bcd
           persist-credentials: false
       - name: Verify exact source and source-only packaging safety
         shell: pwsh
@@ -132,7 +132,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0d0e196d700b58a46956c6ad869cef0954fa417d
+          ref: 7919a3e553de94e12f1dcfa961e305d9aff71bcd
           persist-credentials: false
       - run: test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
       - uses: actions/setup-python@v5

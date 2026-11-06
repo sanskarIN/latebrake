@@ -9,7 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/publish-suspension-v0594-experimental.yml"
 NOTES = ROOT / "docs/releases/v0.5.94.md"
-SOURCE_SHA = "0d0e196d700b58a46956c6ad869cef0954fa417d"
+SOURCE_SHA = "7919a3e553de94e12f1dcfa961e305d9aff71bcd"
 
 
 class ExperimentalV0594SourceReleasePolicyTests(unittest.TestCase):
