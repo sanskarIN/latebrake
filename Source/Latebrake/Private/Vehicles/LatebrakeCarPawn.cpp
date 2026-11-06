@@ -617,6 +617,11 @@ void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(
     // but no motor, tire-force correction or yaw-driving torque has been.
     // A rejected optional surface/gear/grip policy is NOT a failed Chaos
     // body, pause or race-control gate. Preserve natural gravity/velocity.
+    // A candidate nitro Step may already have spent this frame's meter
+    // before the failed downstream gear/traction validation. No bonus
+    // AddForce has occurred here: refund that one provisional debit
+    // BEFORE ClearDriverInputs suspends the input and loses its receipt.
+    NitroBoost.RejectUndeliveredFrame();
     ClearDriverInputs();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Suspend();
