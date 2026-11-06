@@ -1251,6 +1251,20 @@ else()
 endif()
 add_test(NAME ArcadeReverseSpeedLimit COMMAND latebrake_arcade_reverse_speed_tests)
 
+# The real Unreal shared-player/rival reverse overspeed path must apply
+# a contact/grip-bounded Chaos force, not replace the measured XY velocity.
+add_executable(latebrake_reverse_speed_governor_tests ReverseSpeedGovernorTests.cpp)
+target_include_directories(latebrake_reverse_speed_governor_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_reverse_speed_governor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_reverse_speed_governor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_reverse_speed_governor_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ReverseSpeedGovernor COMMAND latebrake_reverse_speed_governor_tests)
+
 # Actual rigid-body motor power tapers near gear-specific measured speed caps.
 # Shared by normal propulsion, nitro and drafting; no Unreal game runtime.
 add_executable(latebrake_gear_aware_motor_power_tests GearAwareMotorPowerTests.cpp)

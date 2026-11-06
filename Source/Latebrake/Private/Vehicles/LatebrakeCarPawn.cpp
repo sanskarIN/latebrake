@@ -20,7 +20,7 @@
 #include "Vehicles/SpeedAwareYawTorque.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/ArcadeBoostArbitration.h"
-#include "Vehicles/ArcadeReverseSpeedLimit.h"
+#include "Vehicles/ReverseSpeedGovernor.h"
 #include "Vehicles/GearAwareMotorPower.h"
 #include "Vehicles/PlanarSpeedGovernor.h"
 #include "Vehicles/AutomaticTransmission.h"
@@ -1350,6 +1350,29 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
+    // Unlike the original hard reverse-velocity snap, overspeed now
+    // submits a finite forward-axis force on the real Chaos chassis.
+    // Brake and opposite-pedal policies take precedence; the true rear
+    // contact caps force and its equivalent request joins the SAME
+    // frame's cornering budget. An upside-down/airborne car gets no
+    // imaginary brake or artificial instantaneous horizontal velocity.
+    const latebrake::ReverseSpeedGovernorOutput ReverseGovernor =
+        latebrake::CalculateReverseSpeedGovernor({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(Velocity.X), static_cast<double>(Velocity.Y),
+            static_cast<double>(Forward.X), static_cast<double>(Forward.Y),
+            static_cast<double>(Mass), static_cast<double>(EffectiveThrottle),
+            Surface.LateralGripMultiplier * TireCondition.GripMultiplier() *
+                static_cast<double>(GarageGrip) *
+                CollisionDamage.LateralGripMultiplier(),
+            AxleBudget.RearDriveReady ? AxleBudget.RearDriveTractionScale : 0.0,
+            GroundContact.ContactTractionScale, bArcade,
+            bEffectiveBraking || OpposingBraking.OpposingThrottle});
+    if (!ReverseGovernor.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
     // A shared friction-circle budget prevents arbitrary 20g+ lateral
     // corrections. True physics chassis slip and the SAME-FRAME braking
     // request compete for finite road/tire grip. Garage upgrades modify
@@ -1365,7 +1388,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 Surface.LateralGripMultiplier *
                 CollisionDamage.LateralGripMultiplier(),
             PhysicalBraking.DecelerationCmPerSecondSquared +
-                OpposingBraking.WholeBodyBudgetDeceleration,
+                OpposingBraking.WholeBodyBudgetDeceleration +
+                ReverseGovernor.WholeBodyBudgetDeceleration,
             bArcade, BrakeProfile.HandbrakeActive});
     if (!LateralForce.Valid)
     {
@@ -1431,6 +1455,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
         bEffectiveBraking || OpposingBraking.OpposingThrottle ||
+            ReverseGovernor.ReverseMotorBlocked ||
             !AxleBudget.RearDriveReady
             ? 0.0 : static_cast<double>(EffectiveThrottle),
         NitroDrive.Active, true});
@@ -1551,8 +1576,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Base, nitro and draft share the remaining tire-force allowance after
     // this same frame's actual lateral correction. Earlier gear/heat/axle
     // reductions remain ceilings; this final factor can only reduce thrust.
+    const double AuthorizedMotorThrottle = ReverseGovernor.ReverseMotorBlocked
+        ? 0.0 : static_cast<double>(EffectiveThrottle);
     const double AllocatedMotorForce =
-        static_cast<double>(DriveForce) * static_cast<double>(EffectiveThrottle) *
+        static_cast<double>(DriveForce) * AuthorizedMotorThrottle *
         Surface.MotorMultiplier * static_cast<double>(ImpactMotorScale) *
         static_cast<double>(EngineMotorScale) *
         static_cast<double>(AxleGearPowerFactor) *
@@ -1578,7 +1605,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // validation; never double-apply it along the motor path.
     if (AxleBudget.RearDriveReady &&
         !bEffectiveBraking &&
-        !OpposingBraking.OpposingThrottle)
+        !OpposingBraking.OpposingThrottle &&
+        !ReverseGovernor.ReverseMotorBlocked)
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
             static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
@@ -1674,6 +1702,16 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<float>(SpeedGovernor.ForceX),
             static_cast<float>(SpeedGovernor.ForceY), 0.f));
     }
+    // Reversing beyond the signed gear target now settles under finite
+    // physical force. Never replace world/sideways/vertical Chaos velocity.
+    // Service/opposing braking already holds priority and the available
+    // rear contact is accounted for by the shared cornering budget.
+    if (ReverseGovernor.Active)
+    {
+        Chassis->AddForce(FVector(
+            static_cast<float>(ReverseGovernor.ForceX),
+            static_cast<float>(ReverseGovernor.ForceY), 0.f));
+    }
 
 #if !UE_BUILD_SHIPPING
     // Real Development-build evidence for installed-handling QA only.
@@ -1686,7 +1724,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     if (bReportSuspensionDriveEvidence)
     {
         const bool bMotorSubmitted = AxleBudget.RearDriveReady &&
-            !bEffectiveBraking && !OpposingBraking.OpposingThrottle;
+            !bEffectiveBraking && !OpposingBraking.OpposingThrottle &&
+            !ReverseGovernor.ReverseMotorBlocked;
         const bool bOpposingSubmitted = AxleBudget.RearDriveReady &&
             !bEffectiveBraking && OpposingBraking.OpposingThrottle;
         const double SubmittedMotorForce = bMotorSubmitted
@@ -1726,29 +1765,6 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     }
 #endif
 
-    // Real signed chassis motion, not requested reverse throttle, drives
-    // the backward gear limit for player and autonomous rival alike. Leave
-    // lateral slides and Chaos vertical velocity untouched, including after
-    // the existing forward/nitro maximum-speed budget has been enforced.
-    const FVector PostCapVelocity = Chassis->GetPhysicsLinearVelocity();
-    const latebrake::ReverseSpeedLimitOutput ReverseLimit =
-        latebrake::LimitPlanarReverseSpeed(
-            static_cast<double>(PostCapVelocity.X),
-            static_cast<double>(PostCapVelocity.Y),
-            static_cast<double>(Forward.X),
-            static_cast<double>(Forward.Y), bArcade);
-    if (!ReverseLimit.Valid)
-    {
-        NeutralizeMotionWhenDrivingBlocked();
-        return;
-    }
-    if (ReverseLimit.Limited)
-    {
-        Chassis->SetPhysicsLinearVelocity(FVector(
-            static_cast<float>(ReverseLimit.VelocityX),
-            static_cast<float>(ReverseLimit.VelocityY),
-            PostCapVelocity.Z));
-    }
 }
 
 void ALatebrakeCarPawn::ApplySignalLights(

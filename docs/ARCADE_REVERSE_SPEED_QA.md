@@ -1,4 +1,13 @@
-# Arcade reverse-speed limit — source QA
+# Arcade reverse-speed limit — original reference QA
+
+> **Current draft upgrade:** [Physically bounded reverse overspeed](REVERSE_OVERSPEED_FORCE_QA.md)
+> replaces the original real-vehicle `SetPhysicsLinearVelocity` cap
+> with a genuine rear-contact/grip-limited Chaos force. The legacy
+> instant-clamp function below is retained as a *portable reference*,
+> not the actual draft pawn's present drive path. A force-based reverse
+> target is soft and may be exceeded transiently after impacts; see
+> the new QA procedure. The released v0.5.93 remains source-only.
+
 
 This milestone makes reversing behave more like a low-speed gear on
 LateBrake's existing rigid-body car. **It is not a new gearbox, tire solver,

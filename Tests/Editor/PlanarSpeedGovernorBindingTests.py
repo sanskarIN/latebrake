@@ -50,7 +50,7 @@ class PlanarSpeedGovernorBindingTests(unittest.TestCase):
             "if (!SpeedGovernor.Valid)",
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "if (SpeedGovernor.Active)",
-            "latebrake::LimitPlanarReverseSpeed(",
+            "if (ReverseGovernor.Active)",
         )
         self.assertEqual([tick.index(x) for x in stage],
                          sorted(tick.index(x) for x in stage))
@@ -63,12 +63,15 @@ class PlanarSpeedGovernorBindingTests(unittest.TestCase):
             "if (Speed > ActiveSpeedCap)",
         ):
             self.assertNotIn(banned, tick)
-        # The independent reverse-gear safety rule remains in place.
-        self.assertIn("latebrake::LimitPlanarReverseSpeed(", tick)
-        self.assertIn("PostCapVelocity.Z", tick)
+        # Reverse overspeed now ALSO applies finite braking force, never
+        # a direct XY velocity snap, and has its own rear-contact budget.
+        self.assertIn("latebrake::CalculateReverseSpeedGovernor({", tick)
+        self.assertIn("if (ReverseGovernor.Active)", tick)
+        self.assertNotIn("latebrake::LimitPlanarReverseSpeed(", tick)
+        self.assertNotIn("const FVector PostCapVelocity", tick)
         governor_force = tick.split(
             "if (SpeedGovernor.Active)", 1
-        )[1].split("// Real signed chassis motion", 1)[0]
+        )[1].split("#if !UE_BUILD_SHIPPING", 1)[0]
         self.assertIn("Chassis->AddForce(FVector(", governor_force)
         self.assertNotIn("SetPhysicsLinearVelocity(", governor_force)
         self.assertNotIn("SetPhysicsAngularVelocity", governor_force)

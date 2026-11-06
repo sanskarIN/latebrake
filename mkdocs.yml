@@ -143,6 +143,7 @@ nav:
       - Human physical spin traction QA: HUMAN_SPIN_TRACTION_QA.md
       - Player stability-assist HUD QA: HUMAN_SPIN_ASSIST_HUD_QA.md
       - Arcade reverse-speed handling QA: ARCADE_REVERSE_SPEED_QA.md
+      - Physical reverse overspeed force QA: REVERSE_OVERSPEED_FORCE_QA.md
       - Gear-aware motor power QA: GEAR_AWARE_MOTOR_POWER_QA.md
       - Automatic transmission and RPM QA: AUTOMATIC_TRANSMISSION_QA.md
       - Rival player-traffic awareness QA: RIVAL_TRAFFIC_QA.md

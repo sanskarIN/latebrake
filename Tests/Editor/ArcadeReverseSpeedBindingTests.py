@@ -1,7 +1,8 @@
-"""Protect real-player and physical-rival reverse-gear speed cap bindings.
+"""Source contract: qualified physical reverse overspeed force, no XY snap.
 
-Source-only assertions. They cannot compile UnrealHeaderTool, cook the map,
-prove Chaos force behavior, or replace installed Windows/Android playtests.
+Real Unreal 5.8 compile/cook and installed Win64 driving remain mandatory.
+The older instantaneous pure reference is retained only as a numerical
+baseline; it must NEVER write physical Chaos velocity in normal driving.
 """
 from pathlib import Path
 import unittest
@@ -17,70 +18,90 @@ class ReverseSpeedBindingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.car = read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
-        cls.header = read("Source/Latebrake/Public/Vehicles/ArcadeReverseSpeedLimit.h")
+        cls.policy = read("Source/Latebrake/Public/Vehicles/ReverseSpeedGovernor.h")
+        cls.reference = read("Source/Latebrake/Public/Vehicles/ArcadeReverseSpeedLimit.h")
         cls.cmake = read("Tests/Standalone/CMakeLists.txt")
-        cls.tests = read("Tests/Standalone/ArcadeReverseSpeedLimitTests.cpp")
-
-    def test_shared_actual_chassis_callback_runs_after_chaos_and_race_gates(self):
-        tick = self.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+        cls.tests = read("Tests/Standalone/ReverseSpeedGovernorTests.cpp")
+        cls.docs = read("docs/REVERSE_OVERSPEED_FORCE_QA.md")
+        cls.tick = cls.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
-        markers = (
-            "Mode->IsRaceStartGreen()",
-            "!IsRacePhysicsReady()",
-            "const FVector Velocity = Chassis->GetPhysicsLinearVelocity()",
-            "if (!Surface.Valid)",
-            "const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;",
-            "latebrake::CalculatePlanarSpeedGovernor({",
-            "if (SpeedGovernor.Active)",
-            "const FVector PostCapVelocity = Chassis->GetPhysicsLinearVelocity();",
-            "latebrake::LimitPlanarReverseSpeed(",
-            "if (!ReverseLimit.Valid)",
-            "if (ReverseLimit.Limited)",
-        )
-        self.assertEqual([tick.index(marker) for marker in markers],
-                         sorted(tick.index(marker) for marker in markers))
-        self.assertIn('#include "Vehicles/ArcadeReverseSpeedLimit.h"', self.car)
-        self.assertNotIn("FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap)", tick)
-        self.assertIn(
-            "if (!ReverseLimit.Valid)\n    {\n        NeutralizeMotionWhenDrivingBlocked();",
-            tick,
-        )
 
-    def test_reverse_clamp_uses_real_world_yaw_and_preserves_vertical(self):
-        tick = self.car.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
-            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+    def test_real_shared_pawn_no_longer_teleports_valid_reverse_motion(self):
+        tick = self.tick
+        self.assertIn('#include "Vehicles/ReverseSpeedGovernor.h"', self.car)
         for marker in (
-            "FVector(ChassisForward.X, ChassisForward.Y, 0.f).GetSafeNormal();",
-            "static_cast<double>(PostCapVelocity.X)",
-            "static_cast<double>(PostCapVelocity.Y)",
-            "static_cast<double>(Forward.X)",
-            "static_cast<double>(Forward.Y), bArcade)",
-            "static_cast<float>(ReverseLimit.VelocityX)",
-            "static_cast<float>(ReverseLimit.VelocityY)",
-            "PostCapVelocity.Z",
+            "latebrake::CalculateReverseSpeedGovernor({",
+            "const latebrake::ReverseSpeedGovernorOutput ReverseGovernor",
+            "if (!ReverseGovernor.Valid)",
+            "if (ReverseGovernor.Active)",
+            "static_cast<float>(ReverseGovernor.ForceX)",
+            "static_cast<float>(ReverseGovernor.ForceY), 0.f",
         ):
             self.assertIn(marker, tick)
-        self.assertEqual(tick.count("LimitPlanarReverseSpeed("), 1)
-        self.assertIn("return {true, false, velocityX, velocityY};", self.header)
-        self.assertIn("velocityX + unitForwardX * excessReverse", self.header)
-        self.assertIn("velocityY + unitForwardY * excessReverse", self.header)
+        for forbidden in (
+            "latebrake::LimitPlanarReverseSpeed(",
+            "ReverseLimit.Limited",
+            "const FVector PostCapVelocity",
+            "ReverseLimit.VelocityX",
+            "ReverseLimit.VelocityY",
+        ):
+            self.assertNotIn(forbidden, tick)
+        physical = tick.split("const latebrake::ReverseSpeedGovernorOutput", 1)[1]
+        self.assertNotIn("Chassis->SetPhysicsLinearVelocity(", physical)
+        self.assertIn("RejectOptionalDriveAfterSpring(SpringResponse);", physical)
+        self.assertNotIn("NeutralizeMotionWhenDrivingBlocked();", physical)
+        self.assertIn("MaximumReverseSpeedCmPerSecond", self.policy)
+        self.assertIn("inline ReverseSpeedLimitOutput LimitPlanarReverseSpeed(", self.reference)
 
-    def test_no_free_forward_speed_or_award_paths(self):
-        self.assertIn("MaximumReverseSpeedCmPerSecond(bool arcadeHandling)", self.header)
-        self.assertIn("arcadeHandling ? 1350.0 : 1000.0", self.header)
-        self.assertNotIn("SaveGame", self.header)
-        self.assertNotIn("RaceRewards", self.header)
-        self.assertNotIn("Nitro", self.header)
-        self.assertNotIn("Throttle", self.header)
-        self.assertIn("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle", self.car)
-        self.assertIn("CurrentNitroSpeedCapScale", self.car)
+    def test_chassis_contact_steering_and_motor_paths_use_one_physical_budget(self):
+        tick = self.tick
+        ordered = (
+            "ApplySprungForces(SpringResponse, WheelWorldAnchors);",
+            "latebrake::CalculateOpposingThrottleBraking({",
+            "latebrake::CalculateReverseSpeedGovernor({",
+            "latebrake::CalculateLateralGripForce({",
+            "EngineHeat.Observe({",
+            "const double AuthorizedMotorThrottle",
+            "latebrake::CalculateTractionLimitedPropulsion({",
+            "if (ReverseGovernor.Active)",
+            "LATEBRAKE_DRIVE v=1",
+        )
+        self.assertEqual([tick.index(s) for s in ordered],
+                         sorted(tick.index(s) for s in ordered))
+        for marker in (
+            "GroundContact.ContactTractionScale, bArcade,",
+            "AxleBudget.RearDriveReady ? AxleBudget.RearDriveTractionScale : 0.0",
+            "bEffectiveBraking || OpposingBraking.OpposingThrottle",
+            "ReverseGovernor.WholeBodyBudgetDeceleration,",
+            "ReverseGovernor.ReverseMotorBlocked ||",
+            "!ReverseGovernor.ReverseMotorBlocked)",
+            "AuthorizedMotorThrottle = ReverseGovernor.ReverseMotorBlocked",
+            "Chassis->AddForce(FVector(",
+        ):
+            self.assertIn(marker, tick)
+        # No new force may run without the authenticated race/physics frame.
+        self.assertLess(tick.index("if (!IsRacePhysicsReady())"),
+                        tick.index("CalculateReverseSpeedGovernor({"))
+        self.assertLess(tick.index("if (!ReverseGovernor.Valid)"),
+                        tick.index("if (ReverseGovernor.Active)"))
 
-    def test_registered_on_all_platforms_with_bounds_stress(self):
-        self.assertIn("ArcadeReverseSpeedLimitTests.cpp", self.cmake)
-        self.assertIn("NAME ArcadeReverseSpeedLimit", self.cmake)
-        self.assertIn("latebrake_arcade_reverse_speed_tests PRIVATE /W4 /WX", self.cmake)
-        self.assertIn("200000", self.tests)
-        self.assertIn("std::abs(outputLateral - lateral)", self.tests)
+    def test_no_extra_scoring_or_tire_simulation_authority(self):
+        for forbidden in (
+            "GetWorld(", "SetPhysicsLinearVelocity(", "PassCheckpoint(",
+            "AwardCredits(", "SaveGame(", "UCLASS(", "AddForce(",
+        ):
+            self.assertNotIn(forbidden, self.policy)
+        self.assertIn("ReverseGovernorMaximumFrameSeconds = 0.10", self.policy)
+        self.assertIn("ReverseGovernorArcadeMaxDeceleration = 850.0", self.policy)
+        self.assertIn("s.RearTractionScale > s.ContactTractionScale", self.policy)
+        self.assertIn("s.OtherLongitudinalBrake", self.policy)
+        self.assertIn("MAX", self.docs.upper())
+        self.assertIn("ReverseSpeedGovernorTests.cpp", self.cmake)
+        self.assertIn("NAME ReverseSpeedGovernor", self.cmake)
+        self.assertIn("latebrake_reverse_speed_governor_tests PRIVATE /W4 /WX",
+                      self.cmake)
+        self.assertIn("100000", self.tests)
+        self.assertIn("Settle(30)-Settle(120)", self.tests)
 
 
 if __name__ == "__main__":
