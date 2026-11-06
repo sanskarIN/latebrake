@@ -63,6 +63,43 @@ class NitroBoostBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::SetGarageTuning(", 1)[0]
         self.assertNotIn("NitroBoost.Press(", ai)
 
+    def test_nitro_meter_requires_delivered_chaos_motor_bonus(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1
+        )[0]
+        for term in (
+            "bool bNitroBonusDispatched = false;",
+            "const float NitroBonusForce =",
+            "FMath::IsFinite(NitroBonusForce) && NitroBonusForce > 0.01f",
+            "Chassis->AddForce(Forward * NitroBonusForce);",
+            "bNitroBonusDispatched = true;",
+            "NitroDrive.Active && !bNitroBonusDispatched &&",
+            "NitroBoost.RejectUndeliveredFrame()",
+            "CurrentNitroSpeedCapScale, 1.f,",
+        ):
+            self.assertIn(term, tick)
+        self.assertLess(tick.index("NitroBoost.Step("),
+                        tick.index("const float NitroBonusForce ="))
+        self.assertLess(tick.index("Chassis->AddForce(Forward * NitroBonusForce)"),
+                        tick.index("NitroBoost.RejectUndeliveredFrame()"))
+        reject = self.pawn.split(
+            "void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(", 1
+        )[1].split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked(", 1)[0]
+        self.assertLess(reject.index("NitroBoost.RejectUndeliveredFrame();"),
+                        reject.index("ClearDriverInputs();"))
+        for term in (
+            "bool RejectUndeliveredFrame() noexcept",
+            "Charge + PendingChargeDebit",
+            "Heat - PendingHeatIncrease",
+            "PendingChargeDebit = 0.0;",
+            "PendingHeatIncrease = 0.0;",
+        ):
+            self.assertIn(term, self.policy)
+        nitro_cpp = read("Tests/Standalone/ArcadeNitroBoostTests.cpp")
+        self.assertIn("250 consecutive undelivered frames", nitro_cpp)
+        self.assertNotIn("SetPhysicsLinearVelocity(", self.policy)
+        self.assertNotIn("SaveGame(", self.policy)
+
     def test_reset_interruption_and_paused_release(self):
         self.assertIn("#include \"Vehicles/ArcadeNitroBoost.h\"", self.pawn_h)
         self.assertIn("latebrake::ArcadeNitroBoost NitroBoost;", self.pawn_h)
