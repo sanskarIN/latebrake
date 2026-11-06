@@ -1,15 +1,21 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-05
-**Latest published milestone:** [v0.5.91 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.91), immutable commit `8edba49c0a6294ece2797c708d80b6dd52288d40`, **zero executable attachments**. This freezes unmerged draft suspension PR #295, **not** a runnable game or a merge of experimental handling into protected `main`. [v0.5.90](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.90) remains the preceding main-line source-only milestone; actual UE 5.8/UHT, cooked Win64 and installed physics QA remain unverified.
+**Updated:** 2026-11-06
+**Latest published milestone:** [v0.5.92 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.92), immutable commit `13f5588b64462a6dcdcb7d7406c584c63837e87b`, **zero executable attachments**. This freezes unmerged draft PR #295 with refined suspension, axle grip, braking, propulsion/cornering budgets and static-slope damping. Physics remains unmerged into protected `main`; actual UE5.8/UHT, Win64 cooking and installed driving QA remain unverified.
 **Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
 **Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+
+## v0.5.92 experimental tagged handling source
+
+- Immutable `13f5588b64462a6dcdcb7d7406c584c63837e87b` captures the tested unmerged PR #295 source, including spring continuity, airborne rolling-load isolation, planar launch measurement, bounded opposing-throttle braking, shared motor/cornering grip and static-road ray-length damping.
+- The pinned-source publisher qualified all 184 CTests on Windows/Ubuntu/macOS, 659 Python source checks, PowerShell policies and strict documentation before creating the pre-release.
+- The release has zero attached assets and does not establish UE compilation, cooking, installed driving or a production game. The physics PR remains draft pending those independent gates.
 
 ## v0.5.91 experimental tagged draft source (NOT merged playable game)
 
 - Immutable `8edba49c0a6294ece2797c708d80b6dd52288d40` freezes source from PR #295: four corner springs sampled from blocking WorldStatic road, actual Chaos point velocities, bounded vertical forces at four wheel anchors, axle anti-roll load transfer and spring-qualified rear motor/front steering authority.
 - Rate-limited loss/recontact QA logging and physical-momentum-preserving guard paths have passed cross-platform **source-only** CI; no licensed Unreal Editor/UHT, Windows cook, genuine driving test or independent wheel/tire solver has been qualified.
-- v0.5.91 intentionally has no executable release assets and is **not** merged into protected `main`. This public status tracks the latest published tag, not installed playability.
+- v0.5.91 intentionally has no executable release assets and is **not** merged into protected `main`. This historical entry records the first tagged suspension snapshot, not installed playability.
 
 ## v0.5.90 published source-only milestone (not installed gameplay)
 
