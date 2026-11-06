@@ -1,9 +1,16 @@
 # Latebrake engineering status
 
 **Updated:** 2026-11-06
-**Latest published milestone:** [v0.5.92 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.92), immutable commit `13f5588b64462a6dcdcb7d7406c584c63837e87b`, **zero executable attachments**. This freezes unmerged draft PR #295 with refined suspension, axle grip, braking, propulsion/cornering budgets and static-slope damping. Physics remains unmerged into protected `main`; actual UE5.8/UHT, Win64 cooking and installed driving QA remain unverified.
-**Next engineering priority:** licensed UE 5.8 Editor/UHT and game compilation, authored cookable circuit map, and installed Windows/Android focus-loss/physics QA with evidence. Historical v0.5.9–v0.5.13 changes were merged without individual release tags.
-**Playable status:** Not verified; Unreal Engine 5.8 editor/UHT game compilation, cookable original map, installed Windows/Android packages and hardware driving QA remain outstanding.
+**Latest published milestone:** [v0.5.93 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.93), immutable commit `9dd2b3236f25b242387233c988255881dd7aab59`, **zero executable attachments**. It freezes unmerged draft PR #295 with improved slide recovery, engine-heat gating, delivered drafting feedback and Win64 source evidence checks. The protected main branch does not acquire the unqualified suspension physics. The prior experimental tag is v0.5.92.
+**Next engineering priority:** real licensed Unreal Engine 5.8 Editor/UHT and Game compilation, an authored cooked circuit, and hardware Win64/Android driving with measured suspension and braking. Historical v0.5.9–v0.5.13 changes were merged without individual tags.
+**Playable status:** Not verified; no installed package, Windows setup installer, real UE5.8 compiled game or physical hardware qualification has been established by portable CI.
+
+## v0.5.93 immutable experimental source (NOT a playable game)
+
+- The tagged draft source commit `9dd2b3236f25b242387233c988255881dd7aab59` corrects sideways-slide opposite-pedal classification, prevents engine heat caused by blocked motor thrust, reports the post-limit physically submitted slipstream bonus and records non-shipping requested drive/brake/steer forces.
+- The offline Win64 reviewer can require a human-driver record and bind those forces to the original SHA256-matched runtime receipt, exact log, source commit, engine Build.version, authored map and complete cooked archive. Editable files and matching hashes are **not** independent proof of Unreal compilation or gameplay.
+- The exact-source release publisher passed **184 portable C++20 CTests each on Windows, Ubuntu and macOS** plus **674 directly tagged Python checks**, PowerShell source-policy tests and documentation. Separate PR merge-preview CI passed **679 Python tests** because it also included five historical publisher-policy tests in protected main. [Exact verification clarification](releases/v0.5.93-test-count-clarification.md) is separate from the immutable release notes.
+- The release is a source-only pre-release with zero assets. PR #295 stays draft/unmerged, and [issue #148](https://github.com/sanskarIN/latebrake/issues/148) remains open until a real playable Win64 qualification is achieved.
 
 ## v0.5.92 experimental tagged handling source
 
