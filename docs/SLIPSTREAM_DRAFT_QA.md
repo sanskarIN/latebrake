@@ -83,10 +83,10 @@ portable logic and static Unreal-source wiring.
 4. Check starting grid, countdown, menu, manually failed pause,
    focus loss, vehicle recovery, fresh restart, opposing headings,
    AI route completion and Time Attack. No phantom boost may survive.
-4. Compare control/input handoff, standalone engine car physics,
+5. Compare control/input handoff, standalone engine car physics,
    motor-force application and normal steering/braking on Win64.
    Confirm no collision or vehicle penetration is needed to draft.
-5. Verify this cannot affect legitimate lap/checkpoint validation,
+6. Verify this cannot affect legitimate lap/checkpoint validation,
    game saves or credit awards; preserve genuine engine logs and
    observed hardware results. Test Android rendering separately.
 
