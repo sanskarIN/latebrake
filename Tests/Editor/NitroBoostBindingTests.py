@@ -77,6 +77,10 @@ class NitroBoostBindingTests(unittest.TestCase):
             "bNitroBonusDispatched = true;",
             "NitroDrive.Active && !bNitroBonusDispatched &&",
             "NitroBoost.RejectUndeliveredFrame()",
+            "NitroBoost.CommitDeliveredFrame();",
+            "EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);",
+            "PreviousNitroSpeedCapScale = CurrentNitroSpeedCapScale;",
+            "CurrentNitroSpeedCapScale = PreviousNitroSpeedCapScale;",
             "CurrentNitroSpeedCapScale, 1.f,",
         ):
             self.assertIn(term, tick)
@@ -85,14 +89,23 @@ class NitroBoostBindingTests(unittest.TestCase):
         self.assertLess(tick.index("const double DeliveredNitroBonusForce ="),
                         tick.index("bNitroBonusDispatched = true;"))
         self.assertLess(tick.index("bNitroBonusDispatched = true;"),
+                        tick.index("NitroBoost.CommitDeliveredFrame();"))
+        self.assertLess(tick.index("bNitroBonusDispatched = true;"),
                         tick.index("NitroBoost.RejectUndeliveredFrame()"))
+        self.assertLess(tick.index("NitroBoost.CommitDeliveredFrame();"),
+                        tick.index("EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);"))
         reject = self.pawn.split(
             "void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(", 1
         )[1].split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked(", 1)[0]
         self.assertLess(reject.index("NitroBoost.RejectUndeliveredFrame();"),
+                        reject.index("EngineHeat.SettleNitroDelivery(false);"))
+        self.assertLess(reject.index("EngineHeat.SettleNitroDelivery(false);"),
                         reject.index("ClearDriverInputs();"))
         for term in (
             "bool RejectUndeliveredFrame() noexcept",
+            "bool CommitDeliveredFrame() noexcept",
+            "PendingCutoff = Charge <= 0.0 || Heat >= HeatCutoff;",
+            "Cooldown = CooldownSeconds;",
             "Charge + PendingChargeDebit",
             "Heat - PendingHeatIncrease",
             "PendingChargeDebit = 0.0;",
@@ -101,6 +114,8 @@ class NitroBoostBindingTests(unittest.TestCase):
             self.assertIn(term, self.policy)
         nitro_cpp = read("Tests/Standalone/ArcadeNitroBoostTests.cpp")
         self.assertIn("250 consecutive undelivered frames", nitro_cpp)
+        self.assertIn("120 rejected overheat-boundary frames", nitro_cpp)
+        self.assertIn("no-thrust charge depletion", nitro_cpp)
         self.assertNotIn("SetPhysicsLinearVelocity(", self.policy)
         self.assertNotIn("SaveGame(", self.policy)
 

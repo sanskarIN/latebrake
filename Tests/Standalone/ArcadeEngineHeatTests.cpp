@@ -128,6 +128,40 @@ int main()
         }
     }
 
+    // Undelivered nitro must add ZERO EXTRA engine heat, but still
+    // retain the physical throttle/airflow baseline in every frame.
+    ArcadeEngineHeat denied;
+    ArcadeEngineHeat ordinary;
+    for (int i = 0; i < 400; ++i)
+    {
+        const auto candidate = denied.Observe({
+            0.05, 3000.0, 1.0, true, true});
+        const auto normal = ordinary.Observe({
+            0.05, 3000.0, 1.0, false, true});
+        Require(candidate.Valid && normal.Valid &&
+                denied.SettleNitroDelivery(false) &&
+                Near(denied.HeatFraction(), ordinary.HeatFraction()) &&
+                !denied.SettleNitroDelivery(false),
+                "400 undelivered nitro engine samples equal ordinary throttle");
+    }
+    ArcadeEngineHeat delivered;
+    ArcadeEngineHeat ordinaryCompare;
+    for (int i = 0; i < 400; ++i)
+    {
+        delivered.Observe({0.05, 3000.0, 1.0, true, true});
+        ordinaryCompare.Observe({0.05, 3000.0, 1.0, false, true});
+        Require(delivered.SettleNitroDelivery(true),
+                "positive real nitro force commits extra engine heating");
+    }
+    Require(delivered.HeatFraction() > ordinaryCompare.HeatFraction() &&
+            !delivered.SettleNitroDelivery(true),
+            "only delivered bonus adds incremental engine heat");
+    delivered.Reset();
+    const auto rejected = delivered.Observe({
+        0.0, 3000.0, 1.0, true, true});
+    Require(!rejected.Valid && !delivered.SettleNitroDelivery(false),
+            "invalid engine sampling cannot leave a refundable receipt");
+
     const double remembered = heat.HeatFraction();
     const EngineHeatSample invalid[] = {
         {0.0, 2000.0, 1.0, false, true},

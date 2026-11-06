@@ -73,14 +73,32 @@ neutral target without any direct change to Chaos chassis velocity.
 Delivered positive nitro force retains existing allocation and tuning;
 there is no extra charge, cooldown bypass, race reward or save effect.
 
+**Exhaustion and heat cutoff now settle transactionally.** The
+candidate frame that would drop charge to zero or cross 95% nitro heat
+remains provisional: only a *confirmed positive motor bonus* invokes
+`CommitDeliveredFrame()`, finalizes the payment and starts the 2.5s
+cooldown with a fresh-key requirement. Rejected terminal candidates
+restore the previous meter state, keep the real held input and cannot
+trigger cooldown without actual acceleration. Focus loss, pause, race
+reset and key release clear any pending receipt. The same-frame
+additional engine-nitro heat is also reversed by
+`ArcadeEngineHeat::SettleNitroDelivery` when the bonus fails to
+dispatch, while *ordinary engine throttle heat* remains valid.
+Rejected nitro cap interpolation reuses the original start-of-frame
+scale to avoid a second artificial interpolation this tick.
+
 The standalone tests verify one-frame debit/refund, double-refund
-rejection, 250 consecutive held frames with no delivered boost, the
-first subsequently delivered force frame and release/reset behavior.
+rejection, 250 consecutive held frames with no delivered boost,
+120 repeatedly rejected thermal-cutoff candidates, the last-charge
+depletion boundary, delivered terminal-frame cooldown, and
+release/reset behavior.
 The Unreal source test binds the actual positive bonus `AddForce` to
 this settlement path, including rejection before early-return cleanup.
 The separate **approximate engine heat** controller still samples
-the pre-dispatch drive demand; that observation is *not* a calibrated
-physical engine energy or temperature measurement.
+pre-dispatch normal engine demand, and refunds **only incremental
+nitro engine heat** if no bonus force was applied. Ordinary engine
+throttle/airflow heating is preserved. This remains an arcade
+estimate, not a calibrated engine temperature measurement.
 
 Manual UE5.8 Win64 QA must exercise nitro during gear shifts, no-rear
 contact, grip-saturated slides, damage/thermal power loss, full-speed

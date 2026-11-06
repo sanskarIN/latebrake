@@ -21,7 +21,9 @@ void Drive(latebrake::ArcadeNitroBoost& boost, int count,
 {
     for (int i = 0; i < count; ++i)
     {
-        boost.Step(0.05, eligible, braking, throttle, speed);
+        const auto candidate =
+            boost.Step(0.05, eligible, braking, throttle, speed);
+        if (candidate.Active) boost.CommitDeliveredFrame();
     }
 }
 }
@@ -76,6 +78,11 @@ int main()
           boost.HeatFraction() > startingHeat,
           "next physically delivered nitro frame charges normally");
     const double deliveredCharge = boost.ChargeFraction();
+    Check(boost.CommitDeliveredFrame() &&
+          boost.IsActive() && boost.IsHeld() &&
+          !boost.CommitDeliveredFrame() &&
+          boost.ChargeFraction() == deliveredCharge,
+          "delivered nitro settles exactly once without double debit");
     boost.Release();
     Check(!boost.RejectUndeliveredFrame() &&
           boost.ChargeFraction() == deliveredCharge,
@@ -118,7 +125,8 @@ int main()
     boost.Press(true);
     for (int i = 0; i < 150 && boost.IsHeld(); ++i)
     {
-        boost.Step(0.05, true, false, 1.0, 2200.0);
+        const auto candidate = boost.Step(0.05, true, false, 1.0, 2200.0);
+        if (candidate.Active) boost.CommitDeliveredFrame();
     }
     Check(!boost.IsActive() && !boost.IsHeld() &&
           boost.CooldownRemainingSeconds() > 0.0 &&
@@ -135,6 +143,82 @@ int main()
     boost.Press(true);
     Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
           "cooldown completed and new key press reactivates");
+
+    // An overheat-limit sample is not a physically delivered bonus
+    // until the engine's actual AddForce. Keep eligible key/charge
+    // through repeated rejected terminal candidates, then prove the
+    // first true delivery is what latches the cooldown.
+    ArcadeNitroBoost heatEdge;
+    heatEdge.Press(true);
+    for (int i = 0; i < 52; ++i)
+    {
+        const auto s = heatEdge.Step(0.05, true, false, 1.0, 2200.0);
+        Check(s.Active && heatEdge.CommitDeliveredFrame(),
+              "preheat setup must commit qualified physical bonus");
+    }
+    Check(heatEdge.HeatFraction() < ArcadeNitroBoost::HeatCutoff &&
+          heatEdge.HeatFraction() + 0.05 *
+              ArcadeNitroBoost::HeatPerSecond >= ArcadeNitroBoost::HeatCutoff,
+          "thermal edge fixture is one committed bonus from cutoff");
+    const double baselineCharge = heatEdge.ChargeFraction();
+    const double baselineHeat = heatEdge.HeatFraction();
+    for (int i = 0; i < 120; ++i)
+    {
+        const auto s = heatEdge.Step(0.05, true, false, 1.0, 2200.0);
+        Check(s.Active &&
+              heatEdge.HeatFraction() >= ArcadeNitroBoost::HeatCutoff &&
+              heatEdge.RejectUndeliveredFrame() && heatEdge.IsHeld() &&
+              heatEdge.CooldownRemainingSeconds() == 0.0 &&
+              std::abs(heatEdge.ChargeFraction() - baselineCharge) < 1e-10 &&
+              std::abs(heatEdge.HeatFraction() - baselineHeat) < 1e-10,
+              "120 rejected overheat-boundary frames cannot start cooldown");
+    }
+    const auto lastHeat =
+        heatEdge.Step(0.05, true, false, 1.0, 2200.0);
+    Check(lastHeat.Active && heatEdge.CommitDeliveredFrame() &&
+          !heatEdge.IsHeld() && !heatEdge.IsActive() &&
+          heatEdge.CooldownRemainingSeconds() ==
+              ArcadeNitroBoost::CooldownSeconds &&
+          !heatEdge.CommitDeliveredFrame() &&
+          !heatEdge.RejectUndeliveredFrame(),
+          "only the final delivered hot bonus triggers cooldown");
+
+    // Alternating qualified boost and ordinary cooling frames can
+    // exhaust charge before the heat limit, exercising the OTHER
+    // previously irrevocable cutoff boundary.
+    ArcadeNitroBoost chargeEdge;
+    chargeEdge.Press(true);
+    for (int i = 0; i < 120; ++i)
+    {
+        const auto s = chargeEdge.Step(0.05, true, false, 1.0, 2200.0);
+        Check(s.Active && chargeEdge.CommitDeliveredFrame(),
+              "low-charge fixture actually delivers each motor bonus");
+        chargeEdge.Release();
+        Check(!chargeEdge.Step(0.05, true, false, 1.0, 2200.0).Active,
+              "cooling/regen fixture has no stale held key");
+        chargeEdge.Press(true);
+    }
+    Check(chargeEdge.ChargeFraction() > 0.0 &&
+          chargeEdge.ChargeFraction() <
+              0.05 * ArcadeNitroBoost::DrainPerSecond &&
+          chargeEdge.HeatFraction() < ArcadeNitroBoost::HeatCutoff,
+          "low-charge test sits one real bonus from depletion");
+    const double remainingCharge = chargeEdge.ChargeFraction();
+    const auto rejectedLast =
+        chargeEdge.Step(0.05, true, false, 1.0, 2200.0);
+    Check(rejectedLast.Active && chargeEdge.ChargeFraction() == 0.0 &&
+          chargeEdge.RejectUndeliveredFrame() &&
+          std::abs(chargeEdge.ChargeFraction() - remainingCharge) < 1e-10 &&
+          chargeEdge.CooldownRemainingSeconds() == 0.0 &&
+          chargeEdge.IsHeld(),
+          "no-thrust charge depletion must not trigger phantom cooldown");
+    const auto finalDelivered =
+        chargeEdge.Step(0.05, true, false, 1.0, 2200.0);
+    Check(finalDelivered.Active && chargeEdge.CommitDeliveredFrame() &&
+          !chargeEdge.IsHeld() &&
+          chargeEdge.CooldownRemainingSeconds() ==
+              ArcadeNitroBoost::CooldownSeconds,
+          "physically delivered last charge triggers cooldown exactly once");
 
     const double nan = std::numeric_limits<double>::quiet_NaN();
     const double inf = std::numeric_limits<double>::infinity();

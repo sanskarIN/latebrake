@@ -63,3 +63,26 @@ Neither test proves real Unreal Engine gameplay.
    release gate.
 
 Source-only CI success must never be presented as a playable release.
+
+## Nitro heat settlement after real force delivery
+
+Engine derating is estimated **before** final gearbox and contact/
+friction-circle propulsion, but an eligible nitro press can still
+deliver zero additional motor thrust. `ArcadeEngineHeat::Observe`
+now retains a sample-local baseline for ordinary throttle/airflow
+heating and a reversible incremental candidate-nitro receipt.
+The real shared Chaos pawn calls `SettleNitroDelivery` with the
+**actual positive nitro AddForce result**, before any HUD readout:
+a rejected bonus restores only extra nitro heat, whereas legitimate
+normal engine heating remains. The method is idempotent. Optional
+downstream validation failures reject this receipt before
+`ClearDriverInputs` suspends the source state.
+
+The same physical motor decision now commits nitro charge depletion
+and 95% meter-heat cutoff (fresh key and 2.5s cooldown). A terminal
+candidate blocked by gear/traction can no longer burn the last charge
+or trigger a cooldown without actual boost. Portable C++ covers
+400 denied engine-nitro samples against an otherwise identical
+ordinary-throttle controller, 120 rejected overheat-limit samples,
+and a separately reached low-charge terminal case. These are
+*source-level* tests, not genuine Unreal Engine 5.8 gameplay.

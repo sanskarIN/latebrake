@@ -617,11 +617,11 @@ void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(
     // but no motor, tire-force correction or yaw-driving torque has been.
     // A rejected optional surface/gear/grip policy is NOT a failed Chaos
     // body, pause or race-control gate. Preserve natural gravity/velocity.
-    // A candidate nitro Step may already have spent this frame's meter
-    // before the failed downstream gear/traction validation. No bonus
-    // AddForce has occurred here: refund that one provisional debit
-    // BEFORE ClearDriverInputs suspends the input and loses its receipt.
+    // The engine-heat estimate and nitro meter are provisional until
+    // the shared real motor force is submitted. Reject BOTH bonus
+    // receipts before driver reset discards their frame state.
     NitroBoost.RejectUndeliveredFrame();
+    EngineHeat.SettleNitroDelivery(false);
     ClearDriverInputs();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Suspend();
@@ -1452,6 +1452,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // A finite, player-only boost modifies existing acceleration and speed
     // cap; it never modifies checkpoints, rivals, rewards or race records.
     // Steady-speed cap ramps avoid a velocity snap when a held boost ends.
+    // Preserve the starting cap for a rejected candidate: one interpolation
+    // per physical frame, not a second artificial speed-cap step.
+    const float PreviousNitroSpeedCapScale = CurrentNitroSpeedCapScale;
     const latebrake::NitroDriveOutput NitroDrive = NitroBoost.Step(
         static_cast<double>(DeltaSeconds),
         bHumanDriver && AxleBudget.RearDriveReady,
@@ -1691,19 +1694,25 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<float>(OpposingBraking.ForwardForce));
     }
 
-    // A held nitro press can be eligible BEFORE the gearbox/real tire
-    // budget removes all thrust. Charge and nitro meter heat must be
-    // consumed ONLY when this same frame submitted positive bonus force.
-    // Leave the key held on a rejection for natural later traction recovery.
-    // The old active speed-cap interpolation also returns to neutral
-    // without directly rewriting measured Chaos velocity.
-    if (NitroDrive.Active && !bNitroBonusDispatched &&
-        NitroBoost.RejectUndeliveredFrame())
+    // The last charge/heat threshold frame is an ACTIVE candidate
+    // until real positive nitro AddForce is submitted. Commit it only
+    // after delivery; a rejected terminal candidate must NOT start
+    // cooldown or demand a new physical key press.
+    if (NitroDrive.Active && bNitroBonusDispatched)
     {
+        NitroBoost.CommitDeliveredFrame();
+    }
+    else if (NitroDrive.Active && !bNitroBonusDispatched &&
+             NitroBoost.RejectUndeliveredFrame())
+    {
+        CurrentNitroSpeedCapScale = PreviousNitroSpeedCapScale;
         CurrentNitroSpeedCapScale = FMath::FInterpConstantTo(
             CurrentNitroSpeedCapScale, 1.f,
             FMath::Min(DeltaSeconds, 0.1f), 0.24f);
     }
+    // Engine nitro-only heat uses the SAME delivery verdict; ordinary
+    // propulsion-demand/airflow engine heat remains independently valid.
+    EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);
 
     // Real planar resistance: low-speed coasting, increasing aero drag
     // toward top speed, and additional grass/shoulder rolling loss. Applied

@@ -39,6 +39,7 @@ public:
         Active = false;
         PendingChargeDebit = 0.0;
         PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
     }
 
     // Input interruption stops boost without replenishing run-local energy.
@@ -48,6 +49,7 @@ public:
         Active = false;
         PendingChargeDebit = 0.0;
         PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
     }
     void Press(bool eligibleHumanDriver) noexcept
     {
@@ -55,6 +57,7 @@ public:
         Active = false;
         PendingChargeDebit = 0.0;
         PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
     }
     void Release() noexcept { Suspend(); }
 
@@ -72,6 +75,25 @@ public:
         Active = false;
         PendingChargeDebit = 0.0;
         PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
+        return true;
+    }
+
+    // Only an actual positive Chaos nitro AddForce may finalize the
+    // depletion/heat-cutoff cooldown. A terminal candidate is payable
+    // once if delivered, or refundable if friction/gear blocked it.
+    bool CommitDeliveredFrame() noexcept
+    {
+        if (!Active) return false;
+        const bool cutoff = PendingCutoff;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
+        if (cutoff)
+        {
+            Cooldown = CooldownSeconds;
+            Suspend();
+        }
         return true;
     }
 
@@ -82,6 +104,7 @@ public:
         Active = false;
         PendingChargeDebit = 0.0;
         PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
         if (!eligibleHumanDriver || !std::isfinite(seconds) ||
             seconds <= 0.0 || seconds > MaxSampleSeconds ||
             !std::isfinite(throttle) || throttle < -1.0 || throttle > 1.0 ||
@@ -104,15 +127,11 @@ public:
             const double previousHeat = Heat;
             Charge = std::max(0.0, Charge - seconds * DrainPerSecond);
             Heat = std::min(1.0, Heat + seconds * HeatPerSecond);
-            // Depleted/overheated nitro requires fresh physical key-down.
-            if (Charge <= 0.0 || Heat >= HeatCutoff)
-            {
-                Cooldown = CooldownSeconds;
-                Suspend();
-                return {};
-            }
+            // This terminal sample is PROVISIONAL until the same frame
+            // submits an actual motor bonus, not only a qualifying key.
             PendingChargeDebit = previousCharge - Charge;
             PendingHeatIncrease = Heat - previousHeat;
+            PendingCutoff = Charge <= 0.0 || Heat >= HeatCutoff;
             Active = true;
             return {ForceMultiplier, SpeedCapMultiplier, true};
         }
@@ -148,5 +167,6 @@ private:
     // Valid only for the latest ACTIVE Step; never a deferred frame timer.
     double PendingChargeDebit = 0.0;
     double PendingHeatIncrease = 0.0;
+    bool PendingCutoff = false; // settle only on delivered motor force
 };
 } // namespace latebrake

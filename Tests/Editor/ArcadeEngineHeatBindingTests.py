@@ -42,6 +42,15 @@ class ArcadeEngineHeatBindingTests(unittest.TestCase):
         self.assertIn("RearDriveTractionScale", self.cpp)
         self.assertIn("ContactTractionScale", self.cpp)
         self.assertIn("NitroDrive.Active, true", self.cpp)
+        self.assertIn("EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);",
+                      self.cpp)
+        self.assertIn("EngineHeat.SettleNitroDelivery(false);",
+                      self.cpp)
+        self.assertIn("bool SettleNitroDelivery(bool delivered) noexcept",
+                      self.policy)
+        self.assertIn("PendingHeatWithoutNitro", self.policy)
+        self.assertIn("400 undelivered nitro engine samples",
+                      read("Tests/Standalone/ArcadeEngineHeatTests.cpp"))
         self.assertIn("EngineThermal.MotorMultiplier", self.cpp)
         self.assertEqual(
             self.cpp.count("ImpactMotorScale * EngineMotorScale * GearPowerFactor"),
