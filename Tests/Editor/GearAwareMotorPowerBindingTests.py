@@ -36,7 +36,7 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
             "const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;",
             "latebrake::CalculatePlanarSpeedGovernor({",
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
-            "latebrake::LimitPlanarReverseSpeed(",
+            "if (ReverseGovernor.Active)",
         )
         offsets = [tick.index(x) for x in required]
         self.assertEqual(offsets, sorted(offsets))
@@ -67,6 +67,12 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
         self.assertIn("CalculateOpposingThrottleBraking({", tick)
         self.assertIn("static_cast<float>(OpposingBraking.ForwardForce)", tick)
         self.assertIn("!OpposingBraking.OpposingThrottle", tick)
+        # At the signed backwards target the separate rear-grip source
+        # policy blocks new REVERSE motor thrust; ordinary gear taper
+        # cannot apply competing reverse work against the force governor.
+        self.assertIn("!ReverseGovernor.ReverseMotorBlocked", tick)
+        self.assertIn("AuthorizedMotorThrottle = ReverseGovernor.ReverseMotorBlocked", tick)
+        self.assertIn("latebrake::CalculateReverseSpeedGovernor({", tick)
         self.assertNotIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
         engine_brake = tick.split(
             "else if (AxleBudget.RearDriveReady && !bEffectiveBraking)", 1

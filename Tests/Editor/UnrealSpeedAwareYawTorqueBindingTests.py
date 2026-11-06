@@ -58,8 +58,14 @@ class UnrealSpeedAwareYawTorqueBindingTests(unittest.TestCase):
         self.assertIn("const float TurnTorque = BrakeProfile.HandbrakeActive", tick)
         self.assertIn("(bArcade ? 21000000.f : 14000000.f)", tick)
         self.assertIn("latebrake::LimitSteeringAtSpeed(", tick)
-        self.assertIn("latebrake::LimitPlanarReverseSpeed(", tick)
-        self.assertIn("Chassis->SetPhysicsLinearVelocity(", tick)
+        self.assertIn("latebrake::CalculateReverseSpeedGovernor({", tick)
+        self.assertIn("if (ReverseGovernor.Active)", tick)
+        self.assertNotIn("latebrake::LimitPlanarReverseSpeed(", tick)
+        # Invalid physics and paused countdown still have independent
+        # safety neutralization; the accepted driving force path MUST
+        # not snap or rewrite measured Chaos chassis velocity.
+        force_path = tick.split("const latebrake::ReverseSpeedGovernorOutput", 1)[1]
+        self.assertNotIn("Chassis->SetPhysicsLinearVelocity(", force_path)
         self.assertIn("SteeringArcadeLateralAcceleration = 1176.0;", self.policy)
         self.assertIn("SteeringSimulationLateralAcceleration = 784.0;", self.policy)
         self.assertIn("SteeringTorqueLimitPerMass = 105000.0;", self.policy)
