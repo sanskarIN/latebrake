@@ -38,7 +38,14 @@ class SpeedSensitiveSteeringBindingTests(unittest.TestCase):
         )
         self.assertIn("latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade)", tick)
         self.assertIn("const float AssistedSteering", tick)
-        self.assertIn("AssistedSteering * SteeringAuthority * SteerDirection", tick)
+        # Both the ordinary yaw controller and the intentionally held
+        # handbrake path must consume the same speed-filtered steering.
+        # Reverse creep uses signed travel without a -75 cm/s sign flip.
+        self.assertIn("AssistedSteering * HandbrakeYawAuthority", tick)
+        self.assertIn("latebrake::SignedHandbrakeYawAuthority(", tick)
+        self.assertIn("const float TurnTorque = BrakeProfile.HandbrakeActive", tick)
+        self.assertNotIn("AssistedSteering * SteeringAuthority * SteerDirection", tick)
+        self.assertNotIn("LongitudinalSpeed < -75.f ? -1.f : 1.f", tick)
         self.assertNotIn("SmoothedSteering * SteeringAuthority * SteerDirection", tick)
         self.assertLess(tick.index("LimitSteeringAtSpeed("),
                         tick.index("Chassis->AddTorqueInRadians("))
