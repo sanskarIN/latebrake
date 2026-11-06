@@ -61,7 +61,7 @@ class UnrealAxleTractionBindingTests(unittest.TestCase):
         tick = self.tick
         for token in (
             "bHumanDriver && AxleBudget.RearDriveReady",
-            "bEffectiveBraking || !AxleBudget.RearDriveReady",
+            "bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"\n            "            !AxleBudget.RearDriveReady",
             "if (bDraftTargetReady && AxleBudget.RearDriveReady)",
             "bArcade) * TransmissionFrame.PropulsionFactor *\n            RearDriveTractionScale);",
             "if (AxleBudget.RearDriveReady &&",
