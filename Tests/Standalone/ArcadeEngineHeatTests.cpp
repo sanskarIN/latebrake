@@ -1,4 +1,5 @@
 #include "Vehicles/ArcadeEngineHeat.h"
+#include "Vehicles/OpposingThrottleBraking.h"
 
 #include <cmath>
 #include <cstdlib>
