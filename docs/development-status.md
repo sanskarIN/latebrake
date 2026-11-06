@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.92](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.92), **experimental source only**, immutable draft-branch commit `13f5588b64462a6dcdcb7d7406c584c63837e87b`; zero executable attachments |
-| Latest source-development milestone | **v0.5.92 source-only:** unmerged [PR #295](https://github.com/sanskarIN/latebrake/pull/295) refines spring support, airborne road load, planar speed, bounded reverse-pedal braking, shared motor/cornering grip and static-slope damping. Source CI passed; **UE5.8/UHT compilation, authentic cooking, installed Windows and Android driving remain unverified**. v0.5.91 is the previous experimental snapshot; v0.5.90 remains the preceding main-line source milestone. |
+| Latest published GitHub pre-release | [v0.5.93](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.93), **experimental source only**, immutable unmerged PR #295 commit `9dd2b3236f25b242387233c988255881dd7aab59`; **zero executable attachments** |
+| Latest source-development milestone | **v0.5.93 source-only:** unmerged [PR #295](https://github.com/sanskarIN/latebrake/pull/295) improves signed longitudinal opposite-pedal recovery during sideways slides, engine heat when motor force is blocked, physically delivered slipstream HUD readouts and non-shipping force telemetry with a hash-bound Win64 playtest inspector. The **exact source** passed 184 CTests each on Windows/Ubuntu/macOS and **674 Python tests**. The separate PR merge-preview passed 679 Python tests by adding five main-branch publisher-policy tests; see the [clarification](releases/v0.5.93-test-count-clarification.md). **UE5.8/UHT compilation, authentic cooking and installed Windows/Android driving remain unverified.** Previous pre-release v0.5.92 was also source-only. |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.92).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.93).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.
