@@ -255,6 +255,13 @@ slide, opposite-pedal braking, qualified drafting, full steering,
 coasting, braking and pre-GO/GO, then compare actual car motion to the
 reported requests. A source CI pass is not sufficient.
 
+For a genuine packaged Development game, the
+[hash-bound Win64 handling review](WINDOWS_PERSONAL_PLAYTEST.md#hash-bound-handling-diagnostics-for-genuine-development-playtests)
+also links these drive-force samples to the original runtime receipt,
+complete cooked candidate, source SHA, map hash and engine Build.version
+SHA256. It rejects missing, modified or malformed session evidence; it
+**cannot** prove real Chaos physics, installation or human interaction.
+
 ## Numerical source tests
 
 `Tests/Standalone/SprungChassisDynamicsTests.cpp` compiles the actual
