@@ -71,6 +71,35 @@ def parse_record(source: str) -> dict[str, object]:
         distance = numbers[name]
         if distance != -1.0 and not 0.0 <= distance <= 280.1:
             raise SuspensionAuditError(f"{name} outside supported road trace")
+    # The v=1 source emits rounded values (three decimals for loads/grip,
+    # two for anti-roll), so allow a small printing tolerance. These are
+    # cross-field invariants of the ACTUAL source policies, not an assertion
+    # that editable log text authenticates Unreal gameplay.
+    tolerance = 0.004
+    count_ceiling = (1.0 if contacts == 4 else
+                     0.75 if contacts == 3 else
+                     0.45 if contacts == 2 else 0.0)
+    if numbers["traction"] > min(count_ceiling, numbers["weight_ratio"]) + tolerance:
+        raise SuspensionAuditError("whole-car traction exceeds contact/load budget")
+    if (numbers["front_load"] + numbers["rear_load"] >
+            2.0 * numbers["weight_ratio"] + tolerance):
+        raise SuspensionAuditError("axle loads exceed reported total spring lift")
+    if (numbers["drive_rear"] > numbers["rear_load"] + tolerance or
+            numbers["steer_front"] > numbers["front_load"] + tolerance):
+        raise SuspensionAuditError("axle authority exceeds its measured spring load")
+
+    # An engaged spring is necessarily backed by a blocking road ray.
+    # A ray CAN hit without a loaded spring (far/steep/unloaded), so only
+    # impose the safe one-way count bound.
+    rays = tuple(numbers[name] >= 0.0 for name in
+                 ("fl_cm", "fr_cm", "rl_cm", "rr_cm"))
+    if contacts > sum(rays):
+        raise SuspensionAuditError("more sprung contacts than actual road hits")
+    # Anti-roll transfers require BOTH wheels on the same axle to carry
+    # spring force. A missing ray proves that axle cannot transfer load.
+    if (not all(rays[:2]) and abs(numbers["arb_front_pct"]) > 0.005 or
+            not all(rays[2:]) and abs(numbers["arb_rear_pct"]) > 0.005):
+        raise SuspensionAuditError("anti-roll transfer on an axle with a missing ray")
     if (numbers["drive_rear"] > numbers["traction"] + 0.002 or
             numbers["steer_front"] > numbers["traction"] + 0.002):
         raise SuspensionAuditError("axle grip exceeds verified whole-car limit")
