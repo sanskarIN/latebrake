@@ -45,6 +45,12 @@ def parse_record(record: str) -> dict[str, object]:
     for name in ("forward_cmps", "lateral_cmps"):
         if abs(values[name]) > 15000.1:
             raise DriveTelemetryError(f"{name} exceeds validated chassis speed")
+    # The pawn logs two projections of one bounded Chaos XY vector.
+    # Checking each component independently would accept an impossible
+    # 15,000 cm/s forward PLUS 15,000 cm/s lateral observation. Allow
+    # 0.5 cm/s for 0.1-decimal UE_LOG rounding and floating-point dots.
+    if math.hypot(values["forward_cmps"], values["lateral_cmps"]) > 15000.5:
+        raise DriveTelemetryError("combined chassis speed exceeds physics sample gate")
     if abs(values["yaw_radps"]) > 12.01:
         raise DriveTelemetryError("yaw rate exceeds controller validation")
     for name in ("throttle", "steer"):
@@ -88,6 +94,44 @@ def parse_record(record: str) -> dict[str, object]:
         raise DriveTelemetryError("service brake accelerates current travel")
     if values["lateral_force"] * values["lateral_cmps"] > 1.0:
         raise DriveTelemetryError("lateral correction accelerates slip")
+
+    # These fields are POST-DISPATCH requests from the same exact Tick,
+    # not hypothetical independent effects. Preserve display-precision
+    # tolerances: throttle/steer are printed to three decimal places,
+    # force to one decimal, speed to one decimal.
+    motor = values["motor_force"]
+    opposing = values["opposing_force"]
+    throttle = values["throttle"]
+    forward = values["forward_cmps"]
+    draft = values["draft_pct"]
+
+    # A displayed 0.000 throttle can hide up to 0.0005 actual input.
+    # Tolerate minor force from that rounding; a large engine impulse
+    # cannot be attributed to a neutral driver command.
+    if abs(throttle) < 0.0005 and abs(motor) > 10000.0:
+        raise DriveTelemetryError("large motor force with neutral throttle")
+
+    # The real direction classifier diverts an opposing pedal into its
+    # separate engine-brake path whenever signed longitudinal speed
+    # reaches 100 cm/s. Never report ordinary motor force as well.
+    if (abs(throttle) > 0.011 and abs(forward) > 100.1 and
+            throttle * forward < 0.0 and abs(motor) > 0.11):
+        raise DriveTelemetryError("motor thrust bypassed opposing-pedal braking")
+
+    if abs(opposing) > 0.11 and (
+            abs(throttle) < 0.009 or abs(forward) < 99.9 or
+            opposing * throttle <= 0.0):
+        raise DriveTelemetryError("opposing-pedal force contradicts drive direction")
+
+    # Source drafting only exists for a possessed human follower moving
+    # at least 1200 cm/s with >=0.30 forward throttle. Its HUD fraction
+    # is written only AFTER positive draft-motor force was dispatched
+    # and remains finite after the same gear/rear-grip limits.
+    if draft > 0.001 and (
+            driver != "player" or forward < 1199.9 or
+            throttle < 0.299 or motor <= 0.11):
+        raise DriveTelemetryError("draft HUD claims undelivered player propulsion")
+
     return {"driver": driver, "mode": mode, **values}
 
 
