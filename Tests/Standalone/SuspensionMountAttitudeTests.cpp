@@ -133,8 +133,8 @@ int main()
     frame.Corners[1].DistanceCm = 61.0;
     frame.Corners[2].DistanceCm = 62.0;
     frame.Corners[3].DistanceCm = 56.0;
-    frame.Corners[0].PointVerticalSpeedCmPerSecond = -25.0;
-    frame.Corners[1].PointVerticalSpeedCmPerSecond = 25.0;
+    frame.Corners[0].RayDistanceSpeedCmPerSecond = -25.0;
+    frame.Corners[1].RayDistanceSpeedCmPerSecond = 25.0;
     const auto unevenLevel = CalculateSprungChassis(frame);
     Require(unevenLevel.Valid && unevenLevel.AntiRollTransfer[0] > 0.0 &&
             unevenLevel.AntiRollTransfer[1] < 0.0,
@@ -167,7 +167,7 @@ int main()
         {
             auto& c = frame.Corners[j];
             c.DistanceCm = 35.0 + ((i + static_cast<int>(j) * 19) % 48);
-            c.PointVerticalSpeedCmPerSecond =
+            c.RayDistanceSpeedCmPerSecond =
                 ((i * 13 + static_cast<int>(j) * 7) % 801) - 400;
             c.Hit = (i + static_cast<int>(j)) % 7 != 0;
         }

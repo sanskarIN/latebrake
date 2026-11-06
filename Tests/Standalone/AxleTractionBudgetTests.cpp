@@ -134,7 +134,7 @@ int main()
     frame = Standing();
     for (auto& c : frame.Corners)
     {
-        c.PointVerticalSpeedCmPerSecond = 700.0;
+        c.RayDistanceSpeedCmPerSecond = 700.0;
     }
     const auto rising = Measure(frame);
     Require(rising.Valid && !rising.RearDriveReady &&
@@ -219,7 +219,7 @@ int main()
             c.Hit = ((t * 3 + i * 7) % 13) < 8;
             c.DistanceCm = static_cast<double>((t * 19 + i * 37) % 281);
             c.NormalZ = ((t + i * 3) % 17 == 0) ? 0.25 : 1.0;
-            c.PointVerticalSpeedCmPerSecond =
+            c.RayDistanceSpeedCmPerSecond =
                 static_cast<double>(((t * 17 + i * 101) % 1601) - 800);
         }
         const auto sr = CalculateSprungChassis(frame);

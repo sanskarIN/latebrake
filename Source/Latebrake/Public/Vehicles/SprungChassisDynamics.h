@@ -14,6 +14,7 @@ namespace latebrake
 // Unreal applies the returned vertical forces AT the four probe positions.
 inline constexpr double SuspensionGravityCmPerSecondSquared = 980.0;
 inline constexpr double SuspensionMaximumFrameSeconds = 0.10;
+inline constexpr double SuspensionMaximumDistanceSpeedCmPerSecond = 15000.0;
 inline constexpr double SuspensionRestDistanceCm = 82.0;
 inline constexpr double SuspensionTargetRideDistanceCm = 59.0;
 inline constexpr double SuspensionMinNormalZ = 0.68;
@@ -51,7 +52,9 @@ struct SuspensionCornerObservation final
     bool Hit = false;
     double DistanceCm = 0.0; // Origin (at chassis wheel anchor) to WorldStatic
     double NormalZ = 0.0;
-    double PointVerticalSpeedCmPerSecond = 0.0; // true Chaos velocity AT corner
+    // Rate of change of the world-down ray length against its static road
+    // plane, from true corner velocity and hit normal. On flat road = Vz.
+    double RayDistanceSpeedCmPerSecond = 0.0;
 };
 
 struct SuspensionFrame final
@@ -118,11 +121,12 @@ inline SuspensionResponse CalculateSprungChassis(
         if (!c.Hit) continue;
         if (!std::isfinite(c.DistanceCm) ||
             !std::isfinite(c.NormalZ) ||
-            !std::isfinite(c.PointVerticalSpeedCmPerSecond) ||
+            !std::isfinite(c.RayDistanceSpeedCmPerSecond) ||
             c.DistanceCm < 0.0 ||
             c.DistanceCm > SuspensionMaxTraceDistanceCm ||
             c.NormalZ < -1.0 || c.NormalZ > 1.0 ||
-            std::abs(c.PointVerticalSpeedCmPerSecond) > 15000.0)
+            std::abs(c.RayDistanceSpeedCmPerSecond) >
+                SuspensionMaximumDistanceSpeedCmPerSecond)
         {
             return {};
         }
@@ -167,10 +171,11 @@ inline SuspensionResponse CalculateSprungChassis(
         ++result.ContactCount;
         const double penetration =
             SuspensionRestDistanceCm - observed.DistanceCm;
-        // Damping acts against actual point motion, not only COM velocity:
-        // compression on one side can calm roll without braking yaw.
+        // Damping follows actual spring extension/compression, not world
+        // vertical travel along a slope. Each true corner rate also includes
+        // body pitch/roll point motion rather than only COM velocity.
         const double requested = spring * penetration -
-            damping * observed.PointVerticalSpeedCmPerSecond;
+            damping * observed.RayDistanceSpeedCmPerSecond;
         output.UpForce = std::clamp(requested, 0.0, maxCornerForce);
         output.WheelTravelCm = std::clamp(
             SuspensionTargetRideDistanceCm - observed.DistanceCm,
@@ -209,8 +214,8 @@ inline SuspensionResponse CalculateSprungChassis(
             SuspensionAntiRollSpringFraction * spring *
                 (ro.DistanceCm - lo.DistanceCm) +
             SuspensionAntiRollDamperFraction * damping *
-                (ro.PointVerticalSpeedCmPerSecond -
-                 lo.PointVerticalSpeedCmPerSecond);
+                (ro.RayDistanceSpeedCmPerSecond -
+                 lo.RayDistanceSpeedCmPerSecond);
         if (requested > 0.0)
         {
             const double transfer = std::min({

@@ -51,7 +51,7 @@ Result Integrate(double initialHeight, int fps,
                 SuspensionMaxTraceDistanceCm;
             c.DistanceCm = c.Hit ? height : 0.0;
             c.NormalZ = c.Hit ? 1.0 : 0.0;
-            c.PointVerticalSpeedCmPerSecond = velocity;
+            c.RayDistanceSpeedCmPerSecond = velocity;
         }
         const auto support = CalculateSprungChassis(frame);
         Require(support.Valid, "finite mass/gravity/frame must remain accepted");

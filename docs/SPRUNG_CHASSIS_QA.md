@@ -657,6 +657,50 @@ coasting, service/opposing brakes, AI, reverse, restart and pause still work.
 Record actual acceleration/lateral G and lap behavior, and tune from driving
 evidence. Portable force budgets are not proof of good Chaos vehicle feel.
 
+## Static-slope spring damping
+
+The original damper subtracted world vertical point speed from spring force.
+For a chassis moving tangentially along a static slope, vertical travel does
+not mean spring extension. At 3000 cm/s along a 30% grade with unchanged
+59 cm ray lengths, the old numerical policy removed all four spring forces
+uphill and saturated above three times body weight downhill. These are
+portable model results, not observations from an Unreal driving session.
+
+`SuspensionRayVelocity.h` now differentiates the actual world-down ray
+against the static tangent plane using the same hit normal and true
+`GetPhysicsLinearVelocityAtPoint` corner velocity:
+
+    ray distance rate = dot(impact normal, corner velocity) / impact normal Z
+
+Pure tangential road motion gives zero distance rate; real compression,
+rebound and pitch/roll point motion are retained. Flat-road behavior is
+unchanged. Both spring damping and the anti-roll damper now consume this
+rate. Finite extreme rates saturate at the existing 15000 cm/s domain,
+while malformed/nonfinite sensors invalidate the whole spring frame
+before any corner force is submitted. Steep/underside hits cannot supply
+spring support or divide by a near-zero normal Z.
+
+Initial-overlap ray hits are excluded from road support: Epic documents
+their zero distance and depenetration-normal interpretation in
+[Break Hit Result](https://dev.epicgames.com/documentation/en-us/unreal-engine/BlueprintAPI/Collision/BreakHitResult).
+They are not a measured tangent-plane intersection. Existing Chaos body
+collision remains responsible for resolving a penetrating chassis.
+
+The new C++20 regression reproduces the original slope error, verifies
+flat-road equivalence, compression/rebound, corner angular motion,
+malformed normals/velocity and finite-rate saturation, and checks 120,000
+grade/yaw/velocity fixtures against independent plane finite differences
+at 30/60/120 FPS. Python bindings inspect the actual four-probe pawn path.
+No extra traces, force authority, velocity setters or saved state are added.
+
+The current starter circuit is flat. A real licensed UE5.8 validation must
+therefore add an isolated static ramp/compound-slope QA fixture. Drive up,
+down and across it at steady speed and inspect actual ride distance, load,
+pitch/roll, wheel travel and contact transitions. Test crests, edges,
+initial penetration recovery and flat-road countdown/landing regressions
+at 30/60/120 FPS. This static-plane approximation does not qualify moving
+platforms, discontinuous terrain, a per-wheel tire solver or good game feel.
+
 ## Mandatory real engine acceptance gate
 
 **Do not merge a candidate as production-ready solely because source CI

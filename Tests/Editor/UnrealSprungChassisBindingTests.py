@@ -292,7 +292,7 @@ class UnrealSprungChassisBindingTests(unittest.TestCase):
             "r.UpForce += transfer;",
             "l.UpForce -= transfer;",
             "SuspensionMinNormalZ = 0.68",
-            "PointVerticalSpeedCmPerSecond",
+            "RayDistanceSpeedCmPerSecond",
             "ConstrainGroundContactToSuspension(",
             "sprung.ContactCount > coarse.SupportingProbes",
             "sprung.TotalUpForce / sprung.WeightForce",

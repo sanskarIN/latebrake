@@ -108,8 +108,8 @@ int main()
         // Equal ride height but opposite wheel point speeds load the
         // compression side: the anti-roll damper responds to genuine
         // asymmetric chassis pitch/roll, not decorative visual tilt.
-        s.Corners[0].PointVerticalSpeedCmPerSecond = -60.0;
-        s.Corners[1].PointVerticalSpeedCmPerSecond = 60.0;
+        s.Corners[0].RayDistanceSpeedCmPerSecond = -60.0;
+        s.Corners[1].RayDistanceSpeedCmPerSecond = 60.0;
         const auto rateDamping = CalculateSprungChassis(s);
         Require(rateDamping.Valid &&
                 rateDamping.AntiRollTransfer[0] > 0.0 &&
@@ -182,7 +182,7 @@ int main()
     auto reboundSample = Resting();
     for (auto& corner : reboundSample.Corners)
     {
-        corner.PointVerticalSpeedCmPerSecond = 700.0;
+        corner.RayDistanceSpeedCmPerSecond = 700.0;
     }
     const auto reboundResponse = CalculateSprungChassis(reboundSample);
     const auto reboundGrip =
@@ -233,11 +233,11 @@ int main()
             loaded.Corners[0].UpForce > loaded.Corners[1].UpForce &&
             loaded.Corners[0].WheelTravelCm > 0.0,
             "one physically raised wheel applies extra lift and visually compresses");
-    s.Corners[0].PointVerticalSpeedCmPerSecond = 600.0;
+    s.Corners[0].RayDistanceSpeedCmPerSecond = 600.0;
     const auto rebound = CalculateSprungChassis(s);
     Require(rebound.Corners[0].UpForce == 0.0,
             "strong upward corner motion cannot create downward spring suction");
-    s.Corners[0].PointVerticalSpeedCmPerSecond = -2000.0;
+    s.Corners[0].RayDistanceSpeedCmPerSecond = -2000.0;
     const auto compression = CalculateSprungChassis(s);
     Require(Near(compression.Corners[0].UpForce,
                  s.MassKg * SuspensionGravityCmPerSecondSquared *
@@ -262,7 +262,7 @@ int main()
 
     s = Resting();
     s.Corners[0].DistanceCm = SuspensionRestDistanceCm;
-    s.Corners[0].PointVerticalSpeedCmPerSecond = 0.0;
+    s.Corners[0].RayDistanceSpeedCmPerSecond = 0.0;
     const auto fullExtension = CalculateSprungChassis(s);
     Require(fullExtension.Corners[0].Contact &&
             fullExtension.Corners[0].UpForce == 0.0,
@@ -330,7 +330,7 @@ int main()
     Require(!CalculateSprungChassis(s).Valid,
             "impossible ground normal fails closed");
     s = Resting();
-    s.Corners[3].PointVerticalSpeedCmPerSecond = inf;
+    s.Corners[3].RayDistanceSpeedCmPerSecond = inf;
     Require(!CalculateSprungChassis(s).Valid,
             "infinite local contact speed fails closed");
     s = Resting();
@@ -352,7 +352,7 @@ int main()
                 static_cast<double>((i + j * 17) % 281);
             s.Corners[static_cast<unsigned>(j)].NormalZ =
                 (i + j) % 9 == 0 ? 0.5 : 0.99;
-            s.Corners[static_cast<unsigned>(j)].PointVerticalSpeedCmPerSecond =
+            s.Corners[static_cast<unsigned>(j)].RayDistanceSpeedCmPerSecond =
                 static_cast<double>(((i * 17 + j * 13) % 1801) - 900);
         }
         const auto out = CalculateSprungChassis(s);

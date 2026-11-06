@@ -96,7 +96,7 @@ int main()
 
     springs = Springs();
     for (auto& wheel : springs.Corners)
-        wheel.PointVerticalSpeedCmPerSecond = 700.0;
+        wheel.RayDistanceSpeedCmPerSecond = 700.0;
     const auto rebound = CalculateSprungChassis(springs);
     Check(rebound.Valid && rebound.TotalUpForce == 0.0 &&
           Near(Drag(speed, 0.0,

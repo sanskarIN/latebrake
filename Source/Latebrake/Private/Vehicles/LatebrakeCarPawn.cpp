@@ -12,6 +12,7 @@
 #include "Vehicles/TractionLimitedPropulsion.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
 #include "Vehicles/SprungChassisDynamics.h"
+#include "Vehicles/SuspensionRayVelocity.h"
 #include "Vehicles/ChassisWheelAnchors.h"
 #include "Vehicles/MeasuredPlanarForwardSpeed.h"
 #include "Vehicles/AxleTractionBudget.h"
@@ -990,7 +991,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         const bool bGroundHit = World &&
             World->LineTraceSingleByChannel(
                 Hit, Origin, End, ECC_WorldStatic, GroundQuery) &&
-            Hit.bBlockingHit &&
+            Hit.bBlockingHit && !Hit.bStartPenetrating &&
             IsValid(Hit.GetComponent()) &&
             Hit.GetComponent()->GetCollisionObjectType() == ECC_WorldStatic;
         if (bGroundHit)
@@ -999,12 +1000,28 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             const double NormalZ = static_cast<double>(Hit.ImpactNormal.Z);
             const FVector PointVelocity =
                 Chassis->GetPhysicsLinearVelocityAtPoint(Origin);
+            // Damping tracks ray-length change relative to this genuine
+            // static road plane, not uphill/downhill world vertical travel.
+            const latebrake::SuspensionRayVelocityOutput RayVelocity =
+                latebrake::MeasureSuspensionRayVelocity({
+                    static_cast<double>(PointVelocity.X),
+                    static_cast<double>(PointVelocity.Y),
+                    static_cast<double>(PointVelocity.Z),
+                    static_cast<double>(Hit.ImpactNormal.X),
+                    static_cast<double>(Hit.ImpactNormal.Y), NormalZ});
+            if (!RayVelocity.Valid)
+            {
+                // A corrupt physical observation cannot authorize ANY
+                // corner force. The independent spring guard below rejects
+                // this whole frame before the single force submission.
+                SpringSample.PhysicsReady = false;
+            }
             GroundSample.Probes[static_cast<unsigned>(Index)] = {
                 true, Distance, NormalZ
             };
             SpringSample.Corners[static_cast<unsigned>(Index)] = {
                 true, Distance, NormalZ,
-                static_cast<double>(PointVelocity.Z)
+                RayVelocity.DistanceSpeedCmPerSecond
             };
         }
     }

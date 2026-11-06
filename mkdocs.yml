@@ -175,6 +175,7 @@ nav:
   - Roadmap & history:
       - Roadmap: ROADMAP.md
       - Release history: release-history.md
+      - Next pre-release plan (unpublished): releases/v0.5.92-plan.md
       - Engineering status log: STATUS.md
 
 # The historical release Markdown is rendered and remains accessible by

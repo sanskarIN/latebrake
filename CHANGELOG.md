@@ -2,6 +2,11 @@
 
 ## Unreleased — suspension handling draft
 
+- Correct static-slope suspension damping to use true per-corner ray-length
+  change from the measured point velocity and hit normal. Tangential uphill
+  or downhill motion no longer masquerades as compression/rebound. Reject
+  initial-overlap rays as road support; keep existing finite force limits.
+  Add independent plane-geometry regressions and source integration checks.
 - Limit the sum of base, nitro and drafting propulsion to the tire-force
   budget remaining after actual same-frame cornering force. Reuse existing
   rear spring-load and whole-body contact ceilings without scaling rear load

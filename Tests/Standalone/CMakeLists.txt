@@ -2136,3 +2136,16 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TractionLimitedPropulsion COMMAND latebrake_traction_limited_propulsion_tests)
+
+# Actual per-corner ray-length damping on static slopes, preserving flat heave.
+add_executable(latebrake_suspension_ray_velocity_tests SuspensionRayVelocityTests.cpp)
+target_include_directories(latebrake_suspension_ray_velocity_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_suspension_ray_velocity_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_suspension_ray_velocity_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_suspension_ray_velocity_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SuspensionRayVelocity COMMAND latebrake_suspension_ray_velocity_tests)
