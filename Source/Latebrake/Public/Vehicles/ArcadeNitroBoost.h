@@ -69,7 +69,9 @@ public:
     // Idempotent: an invalid/overheated/depleted step cannot be refunded.
     bool RejectUndeliveredFrame() noexcept
     {
-        if (!Active) return false;
+        // A committed (or refunded) candidate has no live receipt even
+        // while HUD Active remains true after a successful normal frame.
+        if (!Active || PendingChargeDebit <= 0.0) return false;
         Charge = std::clamp(Charge + PendingChargeDebit, 0.0, 1.0);
         Heat = std::clamp(Heat - PendingHeatIncrease, 0.0, 1.0);
         Active = false;
@@ -84,7 +86,9 @@ public:
     // once if delivered, or refundable if friction/gear blocked it.
     bool CommitDeliveredFrame() noexcept
     {
-        if (!Active) return false;
+        // A committed (or refunded) candidate has no live receipt even
+        // while HUD Active remains true after a successful normal frame.
+        if (!Active || PendingChargeDebit <= 0.0) return false;
         const bool cutoff = PendingCutoff;
         PendingChargeDebit = 0.0;
         PendingHeatIncrease = 0.0;
