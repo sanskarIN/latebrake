@@ -218,9 +218,9 @@ handbrake, partial rear-wheel contact, Arcade and Simulation Inspired modes.
 
 ## Measured handling force evidence — Development builds only
 
-The existing \`LATEBRAKE_SUSPENSION v=1\` format is unchanged. In a genuine
+The existing `LATEBRAKE_SUSPENSION v=1` format is unchanged. In a genuine
 **non-shipping** Unreal 5.8 Development game, the same bounded suspension
-report cadence additionally emits \`LATEBRAKE_DRIVE v=1\` **after** the
+report cadence additionally emits `LATEBRAKE_DRIVE v=1` **after** the
 real motor, reverse-pedal braking, service/handbrake, lateral correction,
 yaw torque and optional speed governor forces are submitted. It records
 the same physics frame's signed longitudinal/lateral speeds, measured
@@ -238,10 +238,10 @@ Z planned command; it cannot on its own certify cornering traction.
 
 To inspect a log that a real installed Development build has produced:
 
-\`\`\`sh
+```sh
 python3 scripts/AnalyzeDriveTelemetry.py --log "Saved/Logs/Latebrake.log"
 python3 -m unittest discover -s Tests/Editor -p '*DriveTelemetry*Tests.py' -v
-\`\`\`
+```
 
 The offline inspector rejects malformed records, out-of-range or
 nonfinite numeric input, impossible simultaneous motor/opposite/service

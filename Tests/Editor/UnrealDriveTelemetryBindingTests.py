@@ -23,9 +23,13 @@ class UnrealDriveTelemetryBindingTests(unittest.TestCase):
         self.assertIn("#if !UE_BUILD_SHIPPING\n"
                       "    // Real Development-build evidence", tick)
         self.assertIn("if (bReportSuspensionDriveEvidence)", tick)
+        # The Tick's INITIAL pre-green input-neutralization occurs
+        # before spring sampling; this assertion targets the later
+        # mutually exclusive GRID RETURN after the suspension log.
+        grid_return = "if (bPreGreen)\\n    {\\n        // Keep the grid still"
         self.assertLess(tick.index("SuspensionQaSchedule.ShouldReport("),
-                        tick.index("if (bPreGreen)"))
-        self.assertLess(tick.index("if (bPreGreen)"),
+                        tick.index(grid_return))
+        self.assertLess(tick.index(grid_return),
                         tick.index("LATEBRAKE_DRIVE v=1"))
         self.assertLess(tick.index("Chassis->AddTorqueInRadians("),
                         tick.index("LATEBRAKE_DRIVE v=1"))

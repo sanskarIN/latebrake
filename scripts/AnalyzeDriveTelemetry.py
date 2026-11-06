@@ -137,7 +137,8 @@ def summarize_log(text: str) -> dict[str, object]:
             ("service_braking_samples", "service_force"),
             ("positive_draft_samples", "draft_pct"),
         ):
-            if abs(float(observation[key])) > 0.11 if key != "draft_pct" else float(observation[key]) > 0.001:
+            threshold = 0.001 if key == "draft_pct" else 0.11
+            if abs(float(observation[key])) > threshold:
                 flags[flag] += 1
     if samples == 0:
         raise DriveTelemetryError("No LATEBRAKE_DRIVE v=1 records")
