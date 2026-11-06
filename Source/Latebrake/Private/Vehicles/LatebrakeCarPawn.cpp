@@ -1416,13 +1416,17 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         CurrentNitroSpeedCapScale,
         static_cast<float>(NitroDrive.SpeedCapMultiplier),
         FMath::Min(DeltaSeconds, 0.1f), 0.24f);
-    // Race-local heat uses real signed chassis speed, effective propulsion
-    // after spin moderation, and qualified nitro; service braking does not
-    // generate motor heat. Player and rival share the same policy.
+    // Race-local heat must measure the propulsion that can ACTUALLY reach
+    // the motor path. Opposite-pedal deceleration is an engine-brake command,
+    // not propulsive work: otherwise a long reverse/forward direction change
+    // heats and derates the engine while motor thrust is explicitly denied.
+    // Preserve cooling during braking, and heat genuine forward/reverse
+    // driving only with qualified rear contact. Player and rival share this.
     const latebrake::EngineHeatOutput EngineThermal = EngineHeat.Observe({
         static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
-        bEffectiveBraking || !AxleBudget.RearDriveReady
+        bEffectiveBraking || OpposingBraking.OpposingThrottle ||
+            !AxleBudget.RearDriveReady
             ? 0.0 : static_cast<double>(EffectiveThrottle),
         NitroDrive.Active, true});
     // Drafting must observe an actual ahead, aligned, moving rival and a
