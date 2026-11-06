@@ -111,8 +111,8 @@ int main()
             SignedHandbrakeYawAuthority(-74.999) < 0.0 &&
             SignedHandbrakeYawAuthority(-75.001) < 0.0,
             "reverse direction is consistent even below the old 75 cm/s flip");
-    Require(Close(SignedHandbrakeYawAuthority(-74.999),
-                  SignedHandbrakeYawAuthority(-75.001), 3e-6),
+    Require(std::abs(SignedHandbrakeYawAuthority(-74.999) -
+                     SignedHandbrakeYawAuthority(-75.001)) <= 3e-6,
             "reverse crawl has no discontinuous handbrake yaw impulse");
     for (double invalidSpeed : invalid)
     {
