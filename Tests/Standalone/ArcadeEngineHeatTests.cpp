@@ -64,6 +64,70 @@ int main()
         heat.Observe({0.05, -3200.0, -1.0, false, true});
     }
     Require(nitroHot > heat.HeatFraction(), "nitro adds load heat");
+
+    // Cross-policy regression: motor force is withheld while the opposite
+    // accelerator/reverse pedal brakes actual signed chassis travel. Its
+    // input must not masquerade as propulsion heat for either direction.
+    // This uses the production braking classifier, not a test-only sign
+    // approximation. Exact pawn admission wiring is separately bound by
+    // ArcadeEngineHeatBindingTests.py.
+    for (int fps : {30, 60, 120})
+    {
+        const double dt = 1.0 / fps;
+        for (double direction : {-1.0, 1.0})
+        {
+            const double forward = 3000.0 * direction;
+            const double opposingPedal = -direction;
+            const auto opposite = latebrake::CalculateOpposingThrottleBraking({
+                dt, forward, 3400.0, 1100.0, opposingPedal,
+                1.0, 1.0, 1.0, false, true});
+            Require(opposite.Valid && opposite.OpposingThrottle &&
+                    opposite.ForwardForce * forward < 0.0,
+                "real brake classification for both travel directions");
+            ArcadeEngineHeat brakingHeat;
+            ArcadeEngineHeat motorHeat;
+            for (int frame = 0; frame < fps * 40; ++frame)
+            {
+                // Mirrors the real pawn's propulsion authorization.
+                const double admittedDemand = opposite.OpposingThrottle
+                    ? 0.0 : opposingPedal;
+                const auto braking = brakingHeat.Observe({
+                    dt, forward, admittedDemand, false, true});
+                const auto powered = motorHeat.Observe({
+                    dt, forward, direction, false, true});
+                Require(braking.Valid && powered.Valid,
+                    "opposing and powered samples remain valid");
+            }
+            Require(Near(brakingHeat.HeatFraction(),
+                         ArcadeEngineHeat::IdleHeat) &&
+                    Near(brakingHeat.MotorMultiplier(), 1.0),
+                "long opposite-pedal braking cannot heat/derate a motor that is off");
+            Require(motorHeat.HeatFraction() >
+                    ArcadeEngineHeat::DerateThreshold &&
+                    motorHeat.MotorMultiplier() < 1.0,
+                "same-direction reverse/forward propulsion still builds heat");
+
+            const auto nearStop = latebrake::CalculateOpposingThrottleBraking({
+                dt, 75.0 * direction, 2400.0, 1100.0,
+                opposingPedal, 1.0, 1.0, 1.0, false, true});
+            Require(nearStop.Valid && !nearStop.OpposingThrottle &&
+                    nearStop.ForwardForce == 0.0,
+                "large sideways slip must not block near-stop direction changes");
+            ArcadeEngineHeat nearStopHeat;
+            for (int frame = 0; frame < fps * 2; ++frame)
+            {
+                const auto warmed = nearStopHeat.Observe({
+                    dt, 75.0 * direction,
+                    nearStop.OpposingThrottle ? 0.0 : opposingPedal,
+                    false, true});
+                Require(warmed.Valid, "eligible near-stop propulsion sample");
+            }
+            Require(nearStopHeat.HeatFraction() >
+                    ArcadeEngineHeat::IdleHeat,
+                "near-stop direction-change motor demand may heat normally");
+        }
+    }
+
     const double remembered = heat.HeatFraction();
     const EngineHeatSample invalid[] = {
         {0.0, 2000.0, 1.0, false, true},
