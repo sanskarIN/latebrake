@@ -1673,15 +1673,20 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Neutral throttle COASTS under the progressive road load and Chaos
     // baseline damping. It is not an implicit service-brake command.
 
-    const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
-    const float SteerDirection = LongitudinalSpeed < -75.f ? -1.f : 1.f;
+    // The deliberate handbrake torque uses true signed longitudinal
+    // movement, not a discontinuous -75 cm/s reverse classifier. At a
+    // reversing crawl its yaw direction must already be reversed, fade
+    // continuously to zero at rest, and remain bounded at racing speed.
+    const float HandbrakeYawAuthority = static_cast<float>(
+        latebrake::SignedHandbrakeYawAuthority(
+            static_cast<double>(LongitudinalSpeed)));
     // Speed-sensitive steering is already evaluated before the motor
     // forces. Prefer a real measured yaw-rate response with lateral
     // acceleration limits; preserve the original yaw authority only
     // during deliberate human handbrake slides.
     const float TurnTorque = BrakeProfile.HandbrakeActive
         ? (bArcade ? 21000000.f : 14000000.f) *
-              AssistedSteering * SteeringAuthority * SteerDirection
+              AssistedSteering * HandbrakeYawAuthority
         : static_cast<float>(PlannedYaw.TorqueZ);
     // Decorative wheels track real forward chassis motion, including
     // reverse, using the same bounded speed-sensitive visual steering.
