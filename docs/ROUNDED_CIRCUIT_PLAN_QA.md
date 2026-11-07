@@ -242,3 +242,41 @@ but *neither the model nor the source-plan C++ tests certify actual
 Chaos tyre/grip behaviour or Unreal renderer fidelity*. The runtime
 switch and installed 3D Windows preview remain separate later gates.
 
+
+## Full-scale isolated Unreal Editor collision lab — source integration candidate
+
+The **1.70-km** profile now has a *separate* portable C++ JSON exporter,
+`latebrake_world_scale_rounded_circuit_lab_exporter`, with a compiled-output
+contract test against an independent Python circle/straight model. Its geometry
+is 10× in world X/Y and along-road piece length, **not** across the physical
+road width: asphalt stays **9 m wide** and the planned 68 physical slabs
+keep the original top elevation. The new authoring option deliberately does
+**not** touch the original 170-m lab or the active playable/career map.
+
+On a Windows machine with CMake, Python and an **authorized real Unreal
+Engine 5.8 Editor** installation:
+
+```powershell
+pwsh ./scripts/New-RoundedCircuitLab.ps1 -EngineRoot "C:/Program Files/Epic Games/UE_5.8" -WorldScale
+```
+
+This builds the separate C++ exporter and verifies the shape of its output,
+then passes the actual compiled-export **SHA256** and the explicit
+`world_scale` mode to the Editor, restoring both process environment
+variables afterward. It refuses an existing map and stores the candidate
+map at `/Game/Maps/LatebrakeWorldScaleRoundedPhysicsLab`, with distinct
+JSON and receipt paths under ignored `Saved/LatebrakeAutomation`.
+The Editor must persist and reload **68 BlockAll collision road actors
+plus one separate larger ground actor**, with the `GameModeBase` isolation
+and exact readback of positions, road widths, heading and physical surface
+height. Both source-data and map SHA256 digests must match the fresh receipt
+before the wrapper reports success. No existing prototype map is overwritten.
+
+**Current verification scope:** portable C++/Python/PowerShell source checks
+and mocked Editor API contracts; a real UE5.8 Editor authoring run has **not
+been performed**. A successful lab map would *still not* qualify driving:
+the 68 box seams are not a continuous Chaos collision mesh, the separate
+visual-only OBJ is not automatically imported, and the real race-mode
+checkpoint/AI/vehicle/camera systems have not been wired to this profile.
+Installed Win64 gameplay, material quality and frame-time remain blocked
+under [#148](https://github.com/sanskarIN/latebrake/issues/148).
