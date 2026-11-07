@@ -23,6 +23,22 @@ RECEIPT = ROOT_SAVED / "rounded-physics-lab-result.json"
 EXPECTED_PIECES = 68
 SOURCE_DIGEST_ENV = "LATEBRAKE_ROUNDED_GEOMETRY_SHA256"
 
+# The full-size lab is a separate generated Unreal level, never the live
+# LatebrakeCircuit and never an in-place rescale of a car or a 9-m road.
+LAB_VARIANT = os.environ.get("LATEBRAKE_ROUNDED_LAB_MODE", "prototype")
+if LAB_VARIANT not in ("prototype", "world_scale"):
+    raise RuntimeError("Unrecognized rounded collision lab mode")
+WORLD_SCALE = LAB_VARIANT == "world_scale"
+GROUND_SCALE = (1100.0, 850.0, 1.25) if WORLD_SCALE else (110.0, 85.0, 1.25)
+MAX_SCALE_X = 450.0 if WORLD_SCALE else 45.0
+MAX_X = 40000.0 if WORLD_SCALE else 4000.0
+MAX_Y = 30000.0 if WORLD_SCALE else 3000.0
+if WORLD_SCALE:
+    LAB_PACKAGE = "/Game/Maps/LatebrakeWorldScaleRoundedPhysicsLab"
+    LAB_MAP = Path(unreal.Paths.project_content_dir()) / "Maps" / "LatebrakeWorldScaleRoundedPhysicsLab.umap"
+    GEOMETRY_FILE = ROOT_SAVED / "world-scale-rounded-road-pieces.json"
+    RECEIPT = ROOT_SAVED / "world-scale-rounded-physics-lab-result.json"
+
 
 def sha256_file(path):
     digest = hashlib.sha256()
@@ -85,8 +101,8 @@ def read_verified_geometry(path):
         if (not all(v > 0 for v in scale) or abs(yaw) > 360 or
             abs(point[2] + 50.0 * scale[2] + 1.0) > 0.000001):
             raise RuntimeError(f"Misaligned/invalid collision road slab {i}")
-        if (abs(scale[1] - 9.0) > 0.000001 or scale[0] > 45 or
-            not (-4000 <= point[0] <= 4000 and -3000 <= point[1] <= 3000)):
+        if (abs(scale[1] - 9.0) > 0.000001 or scale[0] > MAX_SCALE_X or
+            not (-MAX_X <= point[0] <= MAX_X and -MAX_Y <= point[1] <= MAX_Y)):
             raise RuntimeError(f"Out-of-bounds rounded road slab {i}")
     return data
 
@@ -151,7 +167,7 @@ def audit_saved_physics_lab(actors, world_api, cube, pieces):
 
     check_actor(
         found["RoundedPhysicsLabGround"], "RoundedPhysicsLabGround",
-        (0.0, 0.0, -100.0), 0.0, (110.0, 85.0, 1.25))
+        (0.0, 0.0, -100.0), 0.0, GROUND_SCALE)
     for piece in pieces:
         name = f"RoundedPhysicsRoad_{piece['index']:02d}"
         if name not in found:
@@ -189,7 +205,7 @@ def author_map(subsystem, actors, world_api, cube, pieces):
     ground_mesh.set_static_mesh(cube)
     ground_mesh.set_collision_profile_name("BlockAll")
     ground_mesh.set_collision_enabled(unreal.CollisionEnabled.QUERY_AND_PHYSICS)
-    ground.set_actor_scale3d(unreal.Vector(110.0, 85.0, 1.25))
+    ground.set_actor_scale3d(unreal.Vector(*GROUND_SCALE))
     ground.set_actor_label("RoundedPhysicsLabGround")
 
     spawned = 0
@@ -259,6 +275,7 @@ def main():
     RECEIPT.write_text(json.dumps({
         "schema_version": 1,
         "status": "saved_by_unreal_editor",
+        "lab_variant": LAB_VARIANT,
         "engine_version": "5.8",
         "map": LAB_PACKAGE,
         "pieces": count,
@@ -271,7 +288,7 @@ def main():
         "map_sha256": sha256_file(LAB_MAP),
         "game_mode": "GameModeBase",
     }, sort_keys=True), encoding="utf-8")
-    unreal.log("LATEBRAKE_ROUNDED_LAB_AUTHORED collision_road_pieces=68 ground=1 racing=disabled")
+    unreal.log(f"LATEBRAKE_ROUNDED_LAB_AUTHORED mode={LAB_VARIANT} collision_road_pieces=68 ground=1 racing=disabled")
     unreal.log("This is a separate unverified Editor-only physics inspection level, not a playable Win64 build.")
 
 
