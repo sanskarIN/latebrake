@@ -151,6 +151,65 @@ def verify_obj(obj_path, mtl_path):
     return vertices, face_count
 
 
+
+def mutation_qa(obj, mtl):
+    """A valid exported OBJ must fail closed under independently corrupted bytes."""
+    original_obj = obj.read_text(encoding="utf-8")
+    original_mtl = mtl.read_text(encoding="utf-8")
+    lines = original_obj.splitlines()
+    vertex = next(i for i, row in enumerate(lines) if row.startswith("v "))
+    uv = next(i for i, row in enumerate(lines) if row.startswith("vt "))
+    face = next(i for i, row in enumerate(lines) if row.startswith("f "))
+    corruptions = {}
+    moved = lines.copy()
+    coordinates = moved[vertex].split()
+    coordinates[1] = str(float(coordinates[1]) + 20.0)
+    moved[vertex] = " ".join(coordinates)
+    corruptions["translated road vertex"] = "\\n".join(moved) + "\\n"
+
+    wrong_uv = lines.copy()
+    values = wrong_uv[uv].split()
+    values[1] = str(float(values[1]) + 1.0)
+    wrong_uv[uv] = " ".join(values)
+    corruptions["stretched road UV"] = "\\n".join(wrong_uv) + "\\n"
+
+    wrong_winding = lines.copy()
+    parts = wrong_winding[face].split()
+    parts[1], parts[2] = parts[2], parts[1]
+    wrong_winding[face] = " ".join(parts)
+    corruptions["reversed road-top triangle"] = "\\n".join(wrong_winding) + "\\n"
+
+    missing = lines.copy()
+    missing.pop(face)
+    corruptions["missing physical collision triangle"] = "\\n".join(missing) + "\\n"
+
+    wrong_material = lines.copy()
+    lib = next(i for i, row in enumerate(lines) if row.startswith("mtllib "))
+    wrong_material[lib] = "mtllib ../UnexpectedExternalSource.mtl"
+    corruptions["asset-library path escape"] = "\\n".join(wrong_material) + "\\n"
+
+    try:
+        for label, contents in corruptions.items():
+            obj.write_text(contents, encoding="utf-8")
+            try:
+                verify_obj(obj, mtl)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"Verifier accepted {label}")
+        obj.write_text(original_obj, encoding="utf-8")
+        mtl.write_text(original_mtl + "map_Kd external.png\\n", encoding="utf-8")
+        try:
+            verify_obj(obj, mtl)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Verifier accepted external texture dependency")
+    finally:
+        obj.write_text(original_obj, encoding="utf-8")
+        mtl.write_text(original_mtl, encoding="utf-8")
+
+
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("Usage: VerifyWorldScaleCollisionRoadObj.py <compiled-exporter>")
@@ -162,6 +221,7 @@ def main():
             "NOT_DRIVEN" not in run.stdout or run.stderr):
             raise ValueError("Physical exporter lacks unverified collision warning")
         v, f = verify_obj(destination, destination.with_suffix(".mtl"))
+        mutation_qa(destination, destination.with_suffix(".mtl"))
     print(f"Verified original continuous 1.7-km full-width physical road: "
           f"{v} vertices, {f} wound triangles, 9m x 42cm, seam and UV closure. "
           "NO UNREAL/CHAOS RUNTIME TEST PERFORMED.")
