@@ -20,9 +20,11 @@ class EngineBuildIdentityBindingTests(unittest.TestCase):
         self.assertIn("Get-FileHash -LiteralPath $engineVersionPath -Algorithm SHA256", self.wrapper)
         self.assertGreaterEqual(self.wrapper.count("Test-EngineBuildSnapshot.ps1"), 2)
         self.assertEqual(
-            self.wrapper.count("-ExpectedEngineSha256 $engineBuildSha256"), 2,
-            "both UAT and manifest writer must receive the same pinned engine digest",
+            self.wrapper.count("ExpectedEngineSha256 = $engineBuildSha256"), 2,
+            "UAT and manifest dictionaries must pin identical engine bytes",
         )
+        self.assertIn("Build-PreRelease.ps1') @packageArgs", self.wrapper)
+        self.assertIn("Write-CandidateManifest.ps1') @manifestArgs", self.wrapper)
         self.assertLess(self.wrapper.index("$engineBuildSha256 = "),
                         self.wrapper.index("Build-Editor.ps1"))
         self.assertLess(self.wrapper.index("Build-Editor.ps1"),

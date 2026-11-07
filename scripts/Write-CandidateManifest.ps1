@@ -13,7 +13,8 @@ param(
     [Parameter(Mandatory)][string]$EngineRoot,
     [string]$ExpectedCommit,
     [string]$ExpectedMapSha256,
-    [string]$ExpectedEngineSha256
+    [string]$ExpectedEngineSha256,
+    [string]$ExpectedTrackMaterialSha256
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -27,6 +28,18 @@ if ($PSBoundParameters.ContainsKey('ExpectedCommit')) {
 }
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') @sourceCheck
 if (-not $?) { throw 'Untraceable source checkout blocks candidate manifest creation.' }
+$trackMaterialPath = Join-Path $repo 'Content/Latebrake/Materials/M_LatebrakeTrackPBR.uasset'
+$trackMaterialSha256 = $null
+if ((Test-Path -LiteralPath $trackMaterialPath -PathType Any) -or
+    $PSBoundParameters.ContainsKey('ExpectedTrackMaterialSha256')) {
+    $artArgs = @{ RepoRoot = $repo; RequireMaterial = $true }
+    if ($PSBoundParameters.ContainsKey('ExpectedTrackMaterialSha256')) {
+        $artArgs.ExpectedSha256 = $ExpectedTrackMaterialSha256
+    }
+    & (Join-Path $PSScriptRoot 'Test-TrackMaterialSource.ps1') @artArgs
+    if (-not $?) { throw 'Untraceable track material blocks manifest.' }
+    $trackMaterialSha256 = (Get-FileHash -LiteralPath $trackMaterialPath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
 $versionPath = Join-Path $EngineRoot 'Engine/Build/Build.version'
 $projectMap = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
 if (-not (Test-Path -LiteralPath $PackageDirectory -PathType Container)) {
@@ -116,6 +129,10 @@ $manifest = [ordered]@{
     starter_map_sha256 = (Get-FileHash -LiteralPath $projectMap -Algorithm SHA256).Hash.ToLowerInvariant()
     created_utc = [DateTime]::UtcNow.ToString('o')
     files = $fingerprints
+}
+if ($trackMaterialSha256) {
+    # Only source byte provenance, not proof that the material rendered.
+    $manifest['authored_track_material_sha256'] = $trackMaterialSha256
 }
 $manifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $manifestPath -Encoding utf8NoBOM
 Write-Host "Unverified candidate hashes written to $manifestPath"

@@ -14,7 +14,8 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$ExpectedCommit,
     [string]$ExpectedMapSha256,
-    [string]$ExpectedEngineSha256
+    [string]$ExpectedEngineSha256,
+    [string]$ExpectedTrackMaterialSha256
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -28,6 +29,16 @@ if ($PSBoundParameters.ContainsKey('ExpectedCommit')) {
 }
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') @sourceCheck
 if (-not $?) { throw 'Untraceable source checkout blocks UAT packaging.' }
+$trackMaterialPath = Join-Path $repo 'Content/Latebrake/Materials/M_LatebrakeTrackPBR.uasset'
+if ((Test-Path -LiteralPath $trackMaterialPath -PathType Any) -or
+    $PSBoundParameters.ContainsKey('ExpectedTrackMaterialSha256')) {
+    $trackArgs = @{ RepoRoot = $repo; RequireMaterial = $true }
+    if ($PSBoundParameters.ContainsKey('ExpectedTrackMaterialSha256')) {
+        $trackArgs.ExpectedSha256 = $ExpectedTrackMaterialSha256
+    }
+    & (Join-Path $PSScriptRoot 'Test-TrackMaterialSource.ps1') @trackArgs
+    if (-not $?) { throw 'Invalid Unreal track art source before UAT.' }
+}
 $project = Join-Path $repo 'Latebrake.uproject'
 $uat = Join-Path $EngineRoot 'Engine/Build/BatchFiles/RunUAT.bat'
 $engineVersionPath = Join-Path $EngineRoot 'Engine/Build/Build.version'
@@ -116,6 +127,11 @@ if ($LASTEXITCODE -ne 0) {
     throw "Unreal BuildCookRun failed with exit code $LASTEXITCODE"
 }
 
+if ((Test-Path -LiteralPath $trackMaterialPath -PathType Any) -or
+    $PSBoundParameters.ContainsKey('ExpectedTrackMaterialSha256')) {
+    & (Join-Path $PSScriptRoot 'Test-TrackMaterialSource.ps1') @trackArgs
+    if (-not $?) { throw 'Authored track art bytes changed during UAT.' }
+}
 # UAT is long-running; a changed HEAD cannot be relabeled with the
 # revision recorded at the beginning of the authorized build.
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1') @sourceCheck
