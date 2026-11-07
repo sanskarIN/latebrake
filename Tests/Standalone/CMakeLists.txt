@@ -1976,3 +1976,15 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RoundedCircuitLabExport COMMAND latebrake_rounded_circuit_lab_exporter)
+
+# Independently check ACTUAL compiled JSON numeric geometry, not only the
+# producer's zero exit code. Python is optional for C++-only downstream builds.
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    add_test(
+        NAME RoundedCircuitLabJsonContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedCircuitLabExport.py"
+            "$<TARGET_FILE:latebrake_rounded_circuit_lab_exporter>"
+    )
+endif()

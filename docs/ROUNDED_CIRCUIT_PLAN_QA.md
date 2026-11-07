@@ -115,3 +115,20 @@ digests. Mock-only tests cover a different-but-valid geometry payload and
 invalid digests. **These checks establish source handoff consistency,
 not smooth meshes, rendered quality or actual UE5.8 wheel collision.**
 
+## End-to-end C++ exporter numeric contract
+
+A passing C++ exporter process alone cannot guarantee it emitted the correct
+map. The new **independent Python verifier** runs the **actually compiled**
+`latebrake_rounded_circuit_lab_exporter` as an optional additional CTest
+and checks every one of the 68 JSON positions, sizes, rotations, physical
+asphalt top and exact arc/straight placement against a separately computed
+rounded-rectangle plan (9-decimal export tolerance). The verifier rejects
+nonstandard NaN/Infinity literals, wrong units or road counts, duplicate
+indices, changed corner headings, altered widths, off-road displacement,
+missing pieces or unknown fields. Synthetic source-only mutation tests
+exercise those rejection paths separately.
+
+This makes the C++ to JSON representation independently inspectable across
+Windows, Linux and macOS. It still **does not** create a real Unreal map or
+verify physics contact; those are gated by the genuine UE5.8 Editor workflow
+and installed-game QA.

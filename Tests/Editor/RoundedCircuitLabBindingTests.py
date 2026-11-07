@@ -35,6 +35,15 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
                 self.assertIn(key, self.exporter)
         self.assertIn("RoundedCircuitLabExporter.cpp", self.cmake)
         self.assertIn("NAME RoundedCircuitLabExport", self.cmake)
+        self.assertIn("NAME RoundedCircuitLabJsonContract", self.cmake)
+        self.assertIn("VerifyRoundedCircuitLabExport.py", self.cmake)
+        self.assertIn("RoundedCircuitLabExporter.cpp", self.cmake)
+        verifier = read("Tests/Standalone/VerifyRoundedCircuitLabExport.py")
+        for required in (
+            "subprocess.run(", "EXPECTED_PIECES = 68", "expected_piece(index)",
+            "math.isclose(", "parse_constant=_reject_nonstandard_float",
+        ):
+            self.assertIn(required, verifier)
 
     def test_genuine_separate_editor_map_cannot_start_race(self):
         for required in (
