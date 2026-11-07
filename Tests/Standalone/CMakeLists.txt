@@ -2056,3 +2056,29 @@ if(Python3_Interpreter_FOUND)
             10
     )
 endif()
+
+
+# An independently guarded Editor-only 1.70-km road-collision JSON handoff.
+# This is NOT cooked collision, physics contact or a playable Unreal level.
+add_executable(latebrake_world_scale_rounded_circuit_lab_exporter
+    WorldScaleRoundedCircuitLabExporter.cpp)
+target_include_directories(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleRoundedCircuitLabExport
+    COMMAND latebrake_world_scale_rounded_circuit_lab_exporter)
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleRoundedCircuitLabJsonContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedCircuitLabExport.py"
+            "$<TARGET_FILE:latebrake_world_scale_rounded_circuit_lab_exporter>"
+            10
+    )
+endif()
