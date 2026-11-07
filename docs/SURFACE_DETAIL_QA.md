@@ -85,3 +85,22 @@ cooked texture, installed 3D game or validated PBR appearance. Runtime
 shader compilation/cooking, lighting, color gamut, paint readability,
 original textures and visual acceptance remain required.
 
+
+## Committed PBR source gate for a realistic preview
+
+The genuine Unreal Editor material-authoring step is intentionally
+separate from the packaging step. An editor-created material first needs
+visual review and must be committed to the repository through Git LFS.
+Generating it during a build would leave an untracked binary that cannot
+honestly be attributed to the source commit.
+
+After a real UE 5.8 Editor creates
+Content/Latebrake/Materials/M_LatebrakeTrackPBR.uasset, commit the hydrated
+asset before starting a new clean build. Use the existing
+Build-PlayableCandidate.ps1 with -RequireAuthoredTrackMaterial on Win64.
+That flag refuses missing, untracked, modified, symlinked or unhydrated
+material files; pins SHA256 before compile, verifies the same material
+through UAT and writes authored_track_material_sha256 to the manifest.
+Older source-only candidates can omit the switch, but cannot claim
+realistic authored track materials. Source CI exercises only synthetic
+Git fixtures, never real Unreal asset quality.

@@ -49,6 +49,28 @@ class UnrealTrackPBRMaterialBindingTests(unittest.TestCase):
         )
         self.assertIn("CreateAndSetMaterialInstanceDynamic(0)", self.game)
 
+    def test_realistic_preview_material_source_is_immutable(self):
+        pipeline = read("scripts/Build-PlayableCandidate.ps1")
+        uat = read("scripts/Build-PreRelease.ps1")
+        manifest = read("scripts/Write-CandidateManifest.ps1")
+        checker = read("scripts/Test-CandidateManifest.ps1")
+        policy = read("scripts/Test-TrackMaterialSource.ps1")
+        fixture = read("scripts/Test-TrackMaterialSourcePolicy.ps1")
+        workflow = read(".github/workflows/core-tests.yml")
+        for token in ("RequireAuthoredTrackMaterial", "trackMaterialSha256",
+                      "ExpectedTrackMaterialSha256", "Test-TrackMaterialSource.ps1"):
+            self.assertIn(token, pipeline)
+        self.assertIn("ExpectedTrackMaterialSha256", uat)
+        self.assertIn("Test-TrackMaterialSource.ps1", uat)
+        self.assertIn("authored_track_material_sha256", manifest)
+        self.assertIn("authored_track_material_sha256", checker)
+        for token in ("ls-files --error-unmatch", "git -C $root status",
+                      "Get-FileHash", "ExpectedSha256", "ReparsePoint"):
+            self.assertIn(token, policy)
+        self.assertIn("untracked material", fixture)
+        self.assertIn("unhydrated Git LFS pointer", fixture)
+        self.assertIn("Test-TrackMaterialSourcePolicy.ps1", workflow)
+
     def test_wrapper_rejects_stale_or_forged_material_receipt(self):
         for s in (
             'Remove-Item -LiteralPath $receipt -Force',
