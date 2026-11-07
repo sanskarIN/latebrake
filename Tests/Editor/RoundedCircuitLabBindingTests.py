@@ -100,7 +100,7 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
         self.assertIn("verified_after_reload", self.wrapper)
         self.assertIn("LATEBRAKE_ROUNDED_LAB_MODE", self.wrapper)
         self.assertIn("latebrake_world_scale_rounded_circuit_lab_exporter", self.wrapper)
-        self.assertIn("WorldScaleRoundedCircuitLabJsonContract", self.wrapper)
+        self.assertIn("LabJsonContract$", self.wrapper)
         self.assertIn("LatebrakeWorldScaleRoundedPhysicsLab", self.editor)
         self.assertIn("lab_variant", self.editor)
         for required in (
