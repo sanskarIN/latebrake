@@ -53,7 +53,7 @@ class CornerLookAheadCameraBindingTests(unittest.TestCase):
         self.assertIn("CameraBoom->SetRelativeRotation(", reset)
         self.assertIn("LookBackCamera.SpringArmYawDegrees()", reset)
         self.assertIn("ResetCornerCameraYaw();", self.pawn.split(
-            "void ALatebrakeCarPawn::ClearDriverInputs()",1)[1].split(
+            "void ALatebrakeCarPawn::ClearDriverInputs(",1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()",1)[0])
 
     def test_pure_camera_policy_bounded_source_only(self):

@@ -28,9 +28,34 @@ class ArcadeEngineHeatBindingTests(unittest.TestCase):
 
     def test_all_motor_boosts_share_the_same_power_limit(self):
         self.assertIn("EngineHeat.Observe({", self.cpp)
-        self.assertIn("bEffectiveBraking || !GroundContact.HasDriveContact", self.cpp)
+        self.assertIn("bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"
+                      "            ReverseGovernor.ReverseMotorBlocked ||\n"
+                      "            !AxleBudget.RearDriveReady", self.cpp)
+        tick = self.cpp.split("void ALatebrakeCarPawn::Tick(", 1)[1]
+        self.assertLess(tick.index("CalculateOpposingThrottleBraking({"),
+                        tick.index("EngineHeat.Observe({"))
+        self.assertLess(tick.index("EngineHeat.Observe({"),
+                        tick.index("if (AxleBudget.RearDriveReady &&\n"
+                                   "        !bEffectiveBraking &&\n"
+                                   "        !OpposingBraking.OpposingThrottle &&\n"
+                                   "        !ReverseGovernor.ReverseMotorBlocked)"))
+        self.assertIn("RearDriveTractionScale", self.cpp)
         self.assertIn("ContactTractionScale", self.cpp)
         self.assertIn("NitroDrive.Active, true", self.cpp)
+        self.assertIn("EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);",
+                      self.cpp)
+        self.assertIn("EngineHeat.SettleNitroDelivery(false);",
+                      self.cpp)
+        self.assertIn("bool SettleNitroDelivery(bool delivered) noexcept",
+                      self.policy)
+        self.assertIn("PendingNitroExtra = nitroExtra;", self.policy)
+        self.assertIn("Heat = baseHeat;", self.policy)
+        self.assertIn("if (delivered)", self.policy)
+        self.assertIn("Heat = std::clamp(Heat + PendingNitroExtra", self.policy)
+        self.assertNotIn("PendingHeatWithoutNitro", self.policy)
+        self.assertNotIn("Heat = std::clamp(baseHeat + nitroExtra", self.policy)
+        self.assertIn("400 denied nitro samples never enter heat before settlement",
+                      read("Tests/Standalone/ArcadeEngineHeatTests.cpp"))
         self.assertIn("EngineThermal.MotorMultiplier", self.cpp)
         self.assertEqual(
             self.cpp.count("ImpactMotorScale * EngineMotorScale * GearPowerFactor"),

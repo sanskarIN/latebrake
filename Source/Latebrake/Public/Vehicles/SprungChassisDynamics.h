@@ -1,0 +1,281 @@
+#pragma once
+
+#include "Vehicles/ChassisGroundContactTraction.h"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+
+namespace latebrake
+{
+// Engine-independent contact-to-force policy for the REAL Chaos rigid body.
+// The four observations are blocking WorldStatic ray hits. They are not
+// virtual tires, road-mask guesses, or authoritative race checkpoints.
+// Unreal applies the returned vertical forces AT the four probe positions.
+inline constexpr double SuspensionGravityCmPerSecondSquared = 980.0;
+inline constexpr double SuspensionMaximumFrameSeconds = 0.10;
+inline constexpr double SuspensionMaximumDistanceSpeedCmPerSecond = 15000.0;
+inline constexpr double SuspensionRestDistanceCm = 82.0;
+inline constexpr double SuspensionTargetRideDistanceCm = 59.0;
+inline constexpr double SuspensionMinNormalZ = 0.68;
+// World-down suspension rays may see the road while the real chassis is
+// lying on its roof. Real wheels are mounted underneath, not on both sides.
+// Smoothly fade their support after 60 degrees of pitch/roll and remove it
+// beyond ~75.5 degrees. The actual rigid body's local +Z is the authority.
+inline constexpr double SuspensionFullMountUpZ = 0.50;
+inline constexpr double SuspensionNoMountUpZ = 0.25;
+inline double SuspensionMountLoadScale(double chassisUpZ) noexcept
+{
+    return std::clamp(
+        (chassisUpZ - SuspensionNoMountUpZ) /
+            (SuspensionFullMountUpZ - SuspensionNoMountUpZ), 0.0, 1.0);
+}
+inline constexpr double SuspensionMaxTraceDistanceCm = 280.0;
+// Bounded bump/landing peak. The 0.70 budget bottomed the 65 cm tall
+// rigid chassis in a deterministic 180 cm grid-height drop at 60/120 FPS.
+// 0.85 retains a finite ceiling, while leaving clearance in the isolated
+// vertical-heave model. Real Chaos contact/handling remains unverified.
+inline constexpr double SuspensionMaxPerCornerWeightFactor = 0.85;
+inline constexpr double SuspensionDampingRatio = 0.78;
+// A modest axle-local anti-roll bar transfers *existing* positive spring
+// support between both loaded corners. It must never create net vertical
+// acceleration, pull at an airborne tire or exceed per-corner force caps.
+// Candidate values require real UE vehicle tuning at 30/60/120 FPS.
+inline constexpr double SuspensionAntiRollSpringFraction = 0.20;
+inline constexpr double SuspensionAntiRollDamperFraction = 0.08;
+inline constexpr double SuspensionAntiRollMaxWeightFractionPerAxle = 0.08;
+inline constexpr double SuspensionVisualMinTravelCm = -23.0;
+inline constexpr double SuspensionVisualMaxTravelCm = 25.0;
+
+struct SuspensionCornerObservation final
+{
+    bool Hit = false;
+    double DistanceCm = 0.0; // Origin (at chassis wheel anchor) to WorldStatic
+    double NormalZ = 0.0;
+    // Rate of change of the world-down ray length against its static road
+    // plane, from true corner velocity and hit normal. On flat road = Vz.
+    double RayDistanceSpeedCmPerSecond = 0.0;
+};
+
+struct SuspensionFrame final
+{
+    double DeltaSeconds = 0.0;
+    double MassKg = 0.0;
+    // Actual UWorld gravity magnitude, not an assumed universal fixed g.
+    double GravityCmPerSecondSquared = SuspensionGravityCmPerSecondSquared;
+    bool PhysicsReady = false;
+    std::array<SuspensionCornerObservation, 4> Corners{};
+    // Actual Chaos body-local up axis projected onto world +Z. Default
+    // represents a level chassis for old engine-independent sample fixtures.
+    // The Unreal pawn MUST explicitly provide its true component up vector.
+    double ChassisUpZ = 1.0;
+};
+
+struct SuspensionCornerResponse final
+{
+    bool Contact = false;
+    double UpForce = 0.0; // kg*cm/s^2, world +Z at the same measured corner
+    // Visual-only spindle position; zero at the designated static ride height.
+    double WheelTravelCm = SuspensionVisualMinTravelCm;
+};
+
+struct SuspensionResponse final
+{
+    bool Valid = false;
+    int ContactCount = 0;
+    double TotalUpForce = 0.0;
+    // Authoritative weight for this *sampled* mass/gravity pair. Used only
+    // to cap arcade traction by actual spring loading, never to add force.
+    double WeightForce = 0.0;
+    // Signed additional support shifted toward left (positive) or right
+    // (negative) wheel on each axle. QA observation only; the four output
+    // corner forces already include these balanced transfers.
+    std::array<double, 2> AntiRollTransfer{};
+    std::array<SuspensionCornerResponse, 4> Corners{};
+};
+
+// Fail closed before any per-corner force is submitted. Forces scale with the
+// genuine Chaos mass so changing car mass will not change equilibrium height.
+// A one-sided road edge still has independent wheel forces, causing natural
+// pitch/roll in the now-unlocked rigid body without invented contact.
+inline SuspensionResponse CalculateSprungChassis(
+    const SuspensionFrame& frame) noexcept
+{
+    if (!frame.PhysicsReady ||
+        !std::isfinite(frame.DeltaSeconds) ||
+        frame.DeltaSeconds <= 0.0 ||
+        frame.DeltaSeconds > SuspensionMaximumFrameSeconds ||
+        !std::isfinite(frame.MassKg) ||
+        frame.MassKg < 100.0 || frame.MassKg > 15000.0 ||
+        !std::isfinite(frame.GravityCmPerSecondSquared) ||
+        frame.GravityCmPerSecondSquared < 100.0 ||
+        frame.GravityCmPerSecondSquared > 2000.0 ||
+        !std::isfinite(frame.ChassisUpZ) ||
+        frame.ChassisUpZ < -1.0 || frame.ChassisUpZ > 1.0)
+    {
+        return {};
+    }
+
+    for (const auto& c : frame.Corners)
+    {
+        if (!c.Hit) continue;
+        if (!std::isfinite(c.DistanceCm) ||
+            !std::isfinite(c.NormalZ) ||
+            !std::isfinite(c.RayDistanceSpeedCmPerSecond) ||
+            c.DistanceCm < 0.0 ||
+            c.DistanceCm > SuspensionMaxTraceDistanceCm ||
+            c.NormalZ < -1.0 || c.NormalZ > 1.0 ||
+            std::abs(c.RayDistanceSpeedCmPerSecond) >
+                SuspensionMaximumDistanceSpeedCmPerSecond)
+        {
+            return {};
+        }
+    }
+
+    SuspensionResponse result;
+    result.Valid = true;
+    result.WeightForce = frame.MassKg * frame.GravityCmPerSecondSquared;
+
+    const double mountScale = SuspensionMountLoadScale(frame.ChassisUpZ);
+    // The downward rays are geometric probes, NOT proof that the wheel
+    // undersides face the road. On the roof/side, continue actual Chaos
+    // gravity/collision with ZERO synthetic upward wheel force, contact
+    // authority, or motor/steering grip. Valid=true is intentional: this
+    // is a genuine physical pose, not an invalid body to freeze.
+    if (mountScale <= 0.0)
+    {
+        return result;
+    }
+
+    const double quarterMass = frame.MassKg * 0.25;
+    const double unscaledSpring = quarterMass *
+        frame.GravityCmPerSecondSquared /
+        (SuspensionRestDistanceCm - SuspensionTargetRideDistanceCm);
+    const double spring = unscaledSpring * mountScale;
+    const double damping = 2.0 * SuspensionDampingRatio *
+        std::sqrt(unscaledSpring * quarterMass) * mountScale;
+    const double maxCornerForce = result.WeightForce *
+        SuspensionMaxPerCornerWeightFactor * mountScale;
+    for (unsigned i = 0; i < result.Corners.size(); ++i)
+    {
+        const auto& observed = frame.Corners[i];
+        auto& output = result.Corners[i];
+        // Missing/steep/far contact is not a wheel ground support. Visually,
+        // wheels droop to their bounded extension until the ray sees road.
+        if (!observed.Hit || observed.NormalZ < SuspensionMinNormalZ ||
+            observed.DistanceCm > SuspensionRestDistanceCm)
+        {
+            continue;
+        }
+        output.Contact = true;
+        ++result.ContactCount;
+        const double penetration =
+            SuspensionRestDistanceCm - observed.DistanceCm;
+        // Damping follows actual spring extension/compression, not world
+        // vertical travel along a slope. Each true corner rate also includes
+        // body pitch/roll point motion rather than only COM velocity.
+        const double requested = spring * penetration -
+            damping * observed.RayDistanceSpeedCmPerSecond;
+        output.UpForce = std::clamp(requested, 0.0, maxCornerForce);
+        output.WheelTravelCm = std::clamp(
+            SuspensionTargetRideDistanceCm - observed.DistanceCm,
+            SuspensionVisualMinTravelCm, SuspensionVisualMaxTravelCm);
+        result.TotalUpForce += output.UpForce;
+    }
+
+    // The same actual 4-corner sampling provides a modest front/rear
+    // anti-roll response. Pair order is FL/FR and RL/RR. A difference in
+    // measured corner compression/speed induces body-roll resistance by
+    // reallocating existing forces within that axle only.
+    //
+    // IMPORTANT: no synthetic downforce. Transfers are equal-and-opposite
+    // changes in POSITIVE support, bounded by the source's donor load and
+    // the destination corner's pre-existing physical force ceiling. The
+    // sum remains exactly the original suspension total. With one tire
+    // airborne there is no anti-roll force at that axle.
+    const double antiRollMaxTransfer =
+        result.WeightForce * SuspensionAntiRollMaxWeightFractionPerAxle *
+        mountScale;
+    for (unsigned left = 0; left < 4; left += 2)
+    {
+        const unsigned right = left + 1;
+        auto& l = result.Corners[left];
+        auto& r = result.Corners[right];
+        if (!l.Contact || !r.Contact || l.UpForce <= 0.0 ||
+            r.UpForce <= 0.0)
+        {
+            continue;
+        }
+        const auto& lo = frame.Corners[left];
+        const auto& ro = frame.Corners[right];
+        // More-compressed/dropping side gets more support to resist body
+        // roll. At identical road heights and corner speeds, transfer=0.
+        const double requested =
+            SuspensionAntiRollSpringFraction * spring *
+                (ro.DistanceCm - lo.DistanceCm) +
+            SuspensionAntiRollDamperFraction * damping *
+                (ro.RayDistanceSpeedCmPerSecond -
+                 lo.RayDistanceSpeedCmPerSecond);
+        if (requested > 0.0)
+        {
+            const double transfer = std::min({
+                requested, antiRollMaxTransfer, r.UpForce,
+                maxCornerForce - l.UpForce});
+            l.UpForce += transfer;
+            r.UpForce -= transfer;
+            result.AntiRollTransfer[left / 2] = transfer;
+        }
+        else if (requested < 0.0)
+        {
+            const double transfer = std::min({
+                -requested, antiRollMaxTransfer, l.UpForce,
+                maxCornerForce - r.UpForce});
+            r.UpForce += transfer;
+            l.UpForce -= transfer;
+            result.AntiRollTransfer[left / 2] = -transfer;
+        }
+    }
+    return result;
+}
+// The legacy road query allowed center heights up to 115 cm for coarse
+// advisory traction. A sprung body has REAL road support only when its
+// individual 82 cm spring contacts engage. Keep brake, lateral force,
+// pit service and HUD on a shared, physically qualified whole-body limit.
+// Rear motor/boost and front steering are FURTHER reduced according to the
+// independent axle loads in AxleTractionBudget.h.
+inline ChassisGroundContactOutput ConstrainGroundContactToSuspension(
+    ChassisGroundContactOutput coarse,
+    const SuspensionResponse& sprung) noexcept
+{
+    if (!coarse.Valid || !sprung.Valid ||
+        sprung.ContactCount < 0 || sprung.ContactCount > 4 ||
+        sprung.ContactCount > coarse.SupportingProbes ||
+        !std::isfinite(sprung.TotalUpForce) ||
+        !std::isfinite(sprung.WeightForce) ||
+        sprung.TotalUpForce < 0.0 ||
+        sprung.WeightForce <= 0.0 ||
+        sprung.TotalUpForce > sprung.WeightForce *
+            SuspensionMaxPerCornerWeightFactor * 4.0)
+    {
+        return {};
+    }
+    coarse.SupportingProbes = sprung.ContactCount;
+    const double countBasedGrip = sprung.ContactCount == 4 ? 1.0 :
+        sprung.ContactCount == 3 ? 0.75 :
+        sprung.ContactCount == 2 ? 0.45 : 0.0;
+    // A ray geometrically within 82 cm is not sufficient for tyre grip:
+    // near full extension, or on upward rebound, the damped spring can
+    // carry no weight. Use its *actual bounded positive load* to cap
+    // the legacy traction budget. At flat equilibrium the old 4/4,
+    // 3/4 and 2/4 behavior is preserved; unsupported wheels cannot
+    // still launch nitro, steer, brake or accumulate fictitious wear.
+    const double supportedLoadFraction = std::clamp(
+        sprung.TotalUpForce / sprung.WeightForce, 0.0, 1.0);
+    coarse.ContactTractionScale =
+        std::min(countBasedGrip, supportedLoadFraction);
+    coarse.HasDriveContact = sprung.ContactCount >= 2 &&
+        coarse.ContactTractionScale > 1.0e-6;
+    return coarse;
+}
+
+} // namespace latebrake

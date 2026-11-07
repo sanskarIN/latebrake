@@ -49,15 +49,75 @@ class NitroBoostBindingTests(unittest.TestCase):
             "static_cast<double>(LongitudinalSpeed)",
             "NitroDrive.ForceMultiplier", "NitroDrive.SpeedCapMultiplier",
             "FMath::FInterpConstantTo(", "Chassis->AddForce(",
-            "FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap)",
+            "latebrake::CalculatePlanarSpeedGovernor({",
+            "const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;",
         ):
             self.assertIn(source, tick)
         self.assertLess(tick.index("!IsRacePhysicsReady()"), tick.index("NitroBoost.Step("))
         self.assertLess(tick.index("NitroBoost.Step("), tick.index("Chassis->AddForce("))
         self.assertIn("NitroBoost.Suspend();", tick)
+        # Release from nitro must not rewrite measured Chaos XY velocity.
+        self.assertNotIn("FlatVelocity.GetClampedToMaxSize", tick)
+        self.assertIn("if (SpeedGovernor.Active)", tick)
         ai = self.pawn.split("void ALatebrakeCarPawn::SetAutonomousControls(", 1)[1].split(
             "void ALatebrakeCarPawn::SetGarageTuning(", 1)[0]
         self.assertNotIn("NitroBoost.Press(", ai)
+
+    def test_nitro_meter_requires_delivered_chaos_motor_bonus(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1
+        )[0]
+        for term in (
+            "bool bNitroBonusDispatched = false;",
+            "const double DeliveredNitroBonusForce =",
+            "MotorTraction.ForwardForce * CombinedBoost.NitroExtra /",
+            "std::isfinite(DeliveredNitroBonusForce) &&",
+            "DeliveredNitroBonusForce > 0.01",
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
+            "bNitroBonusDispatched = true;",
+            "NitroDrive.Active && !bNitroBonusDispatched &&",
+            "NitroBoost.RejectUndeliveredFrame()",
+            "NitroBoost.CommitDeliveredFrame();",
+            "EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);",
+            "PreviousNitroSpeedCapScale = CurrentNitroSpeedCapScale;",
+            "CurrentNitroSpeedCapScale = PreviousNitroSpeedCapScale;",
+            "CurrentNitroSpeedCapScale, 1.f,",
+        ):
+            self.assertIn(term, tick)
+        self.assertLess(tick.index("NitroBoost.Step("),
+                        tick.index("const double DeliveredNitroBonusForce ="))
+        self.assertLess(tick.index("const double DeliveredNitroBonusForce ="),
+                        tick.index("bNitroBonusDispatched = true;"))
+        self.assertLess(tick.index("bNitroBonusDispatched = true;"),
+                        tick.index("NitroBoost.CommitDeliveredFrame();"))
+        self.assertLess(tick.index("bNitroBonusDispatched = true;"),
+                        tick.index("NitroBoost.RejectUndeliveredFrame()"))
+        self.assertLess(tick.index("NitroBoost.CommitDeliveredFrame();"),
+                        tick.index("EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);"))
+        reject = self.pawn.split(
+            "void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(", 1
+        )[1].split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked(", 1)[0]
+        self.assertLess(reject.index("NitroBoost.RejectUndeliveredFrame();"),
+                        reject.index("EngineHeat.SettleNitroDelivery(false);"))
+        self.assertLess(reject.index("EngineHeat.SettleNitroDelivery(false);"),
+                        reject.index("ClearDriverInputs();"))
+        for term in (
+            "bool RejectUndeliveredFrame() noexcept",
+            "bool CommitDeliveredFrame() noexcept",
+            "PendingCutoff = Charge <= 0.0 || Heat >= HeatCutoff;",
+            "Cooldown = CooldownSeconds;",
+            "Charge + PendingChargeDebit",
+            "Heat - PendingHeatIncrease",
+            "PendingChargeDebit = 0.0;",
+            "PendingHeatIncrease = 0.0;",
+        ):
+            self.assertIn(term, self.policy)
+        nitro_cpp = read("Tests/Standalone/ArcadeNitroBoostTests.cpp")
+        self.assertIn("250 consecutive undelivered frames", nitro_cpp)
+        self.assertIn("120 rejected overheat-boundary frames", nitro_cpp)
+        self.assertIn("no-thrust charge depletion", nitro_cpp)
+        self.assertNotIn("SetPhysicsLinearVelocity(", self.policy)
+        self.assertNotIn("SaveGame(", self.policy)
 
     def test_reset_interruption_and_paused_release(self):
         self.assertIn("#include \"Vehicles/ArcadeNitroBoost.h\"", self.pawn_h)
@@ -65,7 +125,7 @@ class NitroBoostBindingTests(unittest.TestCase):
         self.assertIn("GetNitroBoost() const", self.pawn_h)
         self.assertIn("NitroBoost.Reset();", self.pawn_h)
         self.assertIn("CurrentNitroSpeedCapScale = 1.f;", self.pawn_h)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("NitroBoost.Suspend();", clear)
         self.assertIn("CurrentNitroSpeedCapScale = 1.f;", clear)

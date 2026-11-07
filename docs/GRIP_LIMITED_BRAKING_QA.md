@@ -42,6 +42,23 @@ lock, suspension, braking certification, or calibrated stopping
 distance. The input numbers must be tested and adjusted with a
 real Unreal physics/gameplay build before release.
 
+## Opposing accelerator / reverse-pedal braking
+
+The suspension draft also replaces the remaining uncapped direction-change
+engine-brake branch (`3 × abs(forward speed)`, about 20g at 6500 cm/s).
+The actual shared pawn uses `OpposingThrottleBraking.h` with candidate
+650/750 cm/s² Arcade/Simulation Inspired ceilings, analog pedal magnitude,
+surface/tire/garage/damage grip and measured rear-axle reattachment.
+Service/handbrake takes precedence; no extra engine force stacks on it.
+Front-only or absent rear support gives no drivetrain braking.
+
+The rear-limited output force is applied once. Its whole-body-equivalent
+deceleration is included in the same-frame lateral friction-circle request
+before the existing contact scale. Neutral throttle coasts and the original
+near-stop direction-change threshold remains. This is still simplified
+rigid-body physics requiring real UE5.8 Win64 deceleration, cornering,
+reverse, road-edge and airborne tests; see [suspension QA](SPRUNG_CHASSIS_QA.md).
+
 ## Automated validation
 
 - `Tests/Standalone/GripLimitedBrakingTests.cpp`: cold/hot service
@@ -56,6 +73,11 @@ real Unreal physics/gameplay build before release.
   assertion to enforce **new** bounded-brake and road-load pathways
   rather than the removed instantaneous rate-based service-brake
   behavior.
+- `OpposingThrottleBrakingTests.cpp` exercises the actual spring/contact/
+  axle/reattachment/lateral policies over 120,000 varying frames, signed
+  braking, pedal strength, partial/absent rear support and malformed input.
+  Source contracts bind the new brake force, shared motor classification
+  and actual lateral budget to the Unreal pawn.
 
 These are portable C++20 + source-binding tests. They DO NOT compile
 or execute Unreal, and do not certify actual car feel.

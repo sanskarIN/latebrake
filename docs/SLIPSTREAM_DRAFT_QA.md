@@ -34,8 +34,14 @@ multiplayer positioning or a source of official race results.
   single **40% total extra motor-force cap**. Nitro has priority because
   it consumes limited charge. Drafting can contribute only the remaining
   share (as little as 2% when nitro grants its full 38%). The HUD shows
-  the **actually granted** drafting percentage, not the unrestricted
-  geometric eligibility estimate.
+  the **physically delivered** drafting percentage relative to the
+  nominal base motor request, not merely the approved geometric bonus.
+  The real pawn records it only after its draft AddForce branch, using
+  exactly the combined gear, rear-axle, surface, impact, engine-heat and
+  final friction-circle force scale. An eligible draft with zero usable
+  rear grip, zero gear power or fully exhausted tire budget shows no
+  positive SLIPSTREAM drive readout. This changes HUD observation only,
+  not the actual thrust, nitro charge, steering, scoring or saved data.
 - [Cross-mechanic budget tests](https://github.com/sanskarIN/latebrake/blob/main/Tests/Standalone/ArcadeBoostArbitrationTests.cpp)
   reject nonfinite inputs and excessive additive force.
 
@@ -67,13 +73,20 @@ portable logic and static Unreal-source wiring.
    with measured gap and heading. Confirm extra acceleration is
    repeatable but bounded at both 30/60/120 FPS and different garage
    configurations. Verify driving feel and stability.
-3. Check starting grid, countdown, menu, manually failed pause,
+3. Drive directly behind the real rival on paved straights, then repeat
+   during hard cornering, worn tires, partial rear-wheel support, a gear
+   shift and near the governed speed cap. Confirm the optional SLIPSTREAM
+   drive line reports the delivered bonus (including zero when traction
+   removes it), rather than an unqualified +6% award; inspect actual
+   acceleration and frames 30/60/120. Source tests cannot establish HUD
+   frame timing or real tire behavior.
+4. Check starting grid, countdown, menu, manually failed pause,
    focus loss, vehicle recovery, fresh restart, opposing headings,
    AI route completion and Time Attack. No phantom boost may survive.
-4. Compare control/input handoff, standalone engine car physics,
+5. Compare control/input handoff, standalone engine car physics,
    motor-force application and normal steering/braking on Win64.
    Confirm no collision or vehicle penetration is needed to draft.
-5. Verify this cannot affect legitimate lap/checkpoint validation,
+6. Verify this cannot affect legitimate lap/checkpoint validation,
    game saves or credit awards; preserve genuine engine logs and
    observed hardware results. Test Android rendering separately.
 

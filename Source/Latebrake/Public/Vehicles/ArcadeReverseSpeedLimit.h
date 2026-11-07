@@ -4,10 +4,13 @@
 
 namespace latebrake
 {
-// This prototype drives an Unreal rigid body rather than a simulated gearbox.
-// Bound only the measured backwards component of planar chassis travel.
-// Preserve lateral (drift/impact) velocity and vertical Chaos motion.
-// This is not reverse gear shifting, tire traction or an ABS system.
+// LEGACY NUMERICAL REFERENCE ONLY. The experimental real player/rival pawn
+// no longer uses this instantaneous projection to change Chaos velocity;
+// see ReverseSpeedGovernor.h for the actual bounded contact-force policy.
+// Retain these deterministic reference outputs for historical regression
+// coverage and to compare the soft controller's signed reverse target.
+// This pure helper must NEVER write physical velocity during live driving.
+// It is not reverse gear shifting, tire traction or an ABS system.
 struct ReverseSpeedLimitOutput final
 {
     bool Valid = false;

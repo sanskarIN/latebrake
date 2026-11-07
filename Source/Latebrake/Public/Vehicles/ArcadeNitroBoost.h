@@ -37,26 +37,87 @@ public:
         Cooldown = 0.0;
         Held = false;
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
     }
 
     // Input interruption stops boost without replenishing run-local energy.
     void Suspend() noexcept
     {
+        // An interrupted candidate is not proof of physical AddForce.
+        // Roll it back before clearing the held input and frame receipt.
+        RejectUndeliveredFrame();
         Held = false;
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
     }
     void Press(bool eligibleHumanDriver) noexcept
     {
+        // A repeated/changed button event cannot silently pay an
+        // outstanding frame whose bonus was never committed.
+        RejectUndeliveredFrame();
         Held = eligibleHumanDriver;
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
     }
     void Release() noexcept { Suspend(); }
+
+    // A qualifying key press produces a CANDIDATE nitro bonus. The real
+    // Unreal motor may still be fully blocked by gears, engine heat or
+    // the final axle/contact friction budget. Undo just this ACTIVE
+    // frame's provisional charge/heat when no bonus force was delivered.
+    // Keep Held so the actual player can retry on the next racing frame.
+    // Idempotent: an invalid/overheated/depleted step cannot be refunded.
+    bool RejectUndeliveredFrame() noexcept
+    {
+        // A committed (or refunded) candidate has no live receipt even
+        // while HUD Active remains true after a successful normal frame.
+        if (!Active || PendingChargeDebit <= 0.0) return false;
+        Charge = std::clamp(Charge + PendingChargeDebit, 0.0, 1.0);
+        Heat = std::clamp(Heat - PendingHeatIncrease, 0.0, 1.0);
+        Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
+        return true;
+    }
+
+    // Only an actual positive Chaos nitro AddForce may finalize the
+    // depletion/heat-cutoff cooldown. A terminal candidate is payable
+    // once if delivered, or refundable if friction/gear blocked it.
+    bool CommitDeliveredFrame() noexcept
+    {
+        // A committed (or refunded) candidate has no live receipt even
+        // while HUD Active remains true after a successful normal frame.
+        if (!Active || PendingChargeDebit <= 0.0) return false;
+        const bool cutoff = PendingCutoff;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
+        if (cutoff)
+        {
+            Cooldown = CooldownSeconds;
+            Suspend();
+        }
+        return true;
+    }
 
     NitroDriveOutput Step(double seconds, bool eligibleHumanDriver,
                           bool serviceOrHandBraking, double throttle,
                           double signedForwardCmPerSecond) noexcept
     {
+        // If a caller aborted last frame before settlement, charge and
+        // heat must not leak into this frame's candidate or cooldown.
+        RejectUndeliveredFrame();
         Active = false;
+        PendingChargeDebit = 0.0;
+        PendingHeatIncrease = 0.0;
+        PendingCutoff = false;
         if (!eligibleHumanDriver || !std::isfinite(seconds) ||
             seconds <= 0.0 || seconds > MaxSampleSeconds ||
             !std::isfinite(throttle) || throttle < -1.0 || throttle > 1.0 ||
@@ -75,15 +136,15 @@ public:
             Cooldown <= 0.0 && Charge > 0.0 && Heat < HeatCutoff;
         if (canFire)
         {
+            const double previousCharge = Charge;
+            const double previousHeat = Heat;
             Charge = std::max(0.0, Charge - seconds * DrainPerSecond);
             Heat = std::min(1.0, Heat + seconds * HeatPerSecond);
-            // Depleted/overheated nitro requires fresh physical key-down.
-            if (Charge <= 0.0 || Heat >= HeatCutoff)
-            {
-                Cooldown = CooldownSeconds;
-                Suspend();
-                return {};
-            }
+            // This terminal sample is PROVISIONAL until the same frame
+            // submits an actual motor bonus, not only a qualifying key.
+            PendingChargeDebit = previousCharge - Charge;
+            PendingHeatIncrease = Heat - previousHeat;
+            PendingCutoff = Charge <= 0.0 || Heat >= HeatCutoff;
             Active = true;
             return {ForceMultiplier, SpeedCapMultiplier, true};
         }
@@ -116,5 +177,9 @@ private:
     double Cooldown = 0.0;
     bool Held = false;
     bool Active = false;
+    // Valid only for the latest ACTIVE Step; never a deferred frame timer.
+    double PendingChargeDebit = 0.0;
+    double PendingHeatIncrease = 0.0;
+    bool PendingCutoff = false; // settle only on delivered motor force
 };
 } // namespace latebrake

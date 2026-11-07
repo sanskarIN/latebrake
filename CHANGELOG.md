@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased — suspension handling draft
+
+- Correct static-slope suspension damping to use true per-corner ray-length
+  change from the measured point velocity and hit normal. Tangential uphill
+  or downhill motion no longer masquerades as compression/rebound. Reject
+  initial-overlap rays as road support; keep existing finite force limits.
+  Add independent plane-geometry regressions and source integration checks.
+- Limit the sum of base, nitro and drafting propulsion to the tire-force
+  budget remaining after actual same-frame cornering force. Reuse existing
+  rear spring-load and whole-body contact ceilings without scaling rear load
+  twice; preserve ordinary straight-line power when within grip. Add strict
+  portable composition/source-binding checks and real Win64 QA criteria.
+- Replace opposing-throttle engine braking that could request about 20g at
+  racing speed with rear-load-, pedal-, grip- and frame-limited force in the
+  actual Unreal player/rival pawn. Share its planned deceleration with the
+  same-frame lateral grip circle; service/handbrake retains precedence.
+- Keep one motor/brake direction classification, genuine coasting, the
+  existing near-stop direction-change allowance, spring support and race
+  authority. Add strict portable composition and source-binding regressions
+  plus Win64 acceptance instructions. This is draft source work pending
+  licensed UE5.8 compilation, cooking and hardware driving qualification.
+
 ## v0.5.77 — Unreleased source development
 
 - Improve the launch-speed estimate using bounded, finite linear interpolation

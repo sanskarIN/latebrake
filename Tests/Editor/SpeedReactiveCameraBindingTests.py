@@ -36,7 +36,7 @@ class SpeedReactiveCameraBindingTests(unittest.TestCase):
         self.assertIn("ReactiveFov.Sample(", update)
 
     def test_pause_camera_cycle_and_recovery_discard_old_visual_state(self):
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1]
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1]
         clear = clear.split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("ResetSpeedCameraFov();", clear)
         apply = self.pawn.split("void ALatebrakeCarPawn::ApplyCameraPreset()", 1)[1]

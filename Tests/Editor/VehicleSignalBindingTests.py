@@ -63,7 +63,7 @@ class VehicleSignalBindingTests(unittest.TestCase):
 
     def test_no_saved_rewards_or_chassis_force_modification(self):
         fn = self.pawn.split("void ALatebrakeCarPawn::ApplySignalLights(", 1)[1].split(
-            "void ALatebrakeCarPawn::ApplyWheelVisualPose()", 1)[0]
+            "void ALatebrakeCarPawn::ApplySprungForces(", 1)[0]
         for marker in (
             "SelectVehicleSignalLights({", "RearLeftSignal->SetIntensity(",
             "RearRightSignal->SetIntensity(", "ReverseSignal->SetIntensity(",

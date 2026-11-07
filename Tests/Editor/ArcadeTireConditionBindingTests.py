@@ -51,7 +51,7 @@ class ArcadeTireConditionBindingTests(unittest.TestCase):
         self.assertIn("latebrake::ArcadeTireCondition TireCondition;", self.pawn_h)
         self.assertIn("GetTireCondition() const", self.pawn_h)
         self.assertIn("TireCondition.Reset();", self.pawn_h)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("TireCondition.Suspend();", clear)
         self.assertIn("Car->ResetDrivingStats();", self.mode)

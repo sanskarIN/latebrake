@@ -30,7 +30,6 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
             "const FVector SurfacePosition = GetActorLocation()",
             "SurfaceTraction.Observe({",
             "if (!Surface.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
             "TireCondition.Observe({",
             "latebrake::CalculateLateralGripForce({",
             "TireCondition.GripMultiplier() *\n                Surface.LateralGripMultiplier *",
@@ -39,10 +38,18 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
             "static_cast<float>(LateralForce.RightForce)",
         )
         self.assertTrue(all(marker in tick for marker in markers))
-        positions = [tick.index(x) if x != "NeutralizeMotionWhenDrivingBlocked();"
-                     else tick.index(x, tick.index("if (!Surface.Valid)"))
-                     for x in markers]
+        positions = [tick.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))
+        # The same helper is also used by earlier optional axle/grip
+        # guards; check the Surface branch specifically, not its first
+        # occurrence in the entire physics Tick.
+        self.assertIn(
+            "if (!Surface.Valid)\n"
+            "    {\n"
+            "        RejectOptionalDriveAfterSpring(SpringResponse);\n"
+            "        return;\n"
+            "    }", tick
+        )
 
     def test_normal_motor_and_both_bonuses_use_same_surface_scale(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
@@ -61,7 +68,7 @@ class ArcadeSurfaceTractionBindingTests(unittest.TestCase):
         self.assertIn("latebrake::ArcadeSurfaceTraction SurfaceTraction;", self.pawn_h)
         self.assertIn("SurfaceTraction.Reset();", self.pawn_h)
         self.assertIn("GetSurfaceTraction() const", self.pawn_h)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1
         )[0]
         self.assertIn("SurfaceTraction.Suspend();", clear)

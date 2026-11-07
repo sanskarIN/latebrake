@@ -115,6 +115,7 @@ nav:
       - Grip-limited service and handbrake QA: GRIP_LIMITED_BRAKING_QA.md
       - Lateral grip and shared brake budget QA: LATERAL_GRIP_BUDGET_QA.md
       - Chassis ground-contact traction QA: CHASSIS_GROUND_CONTACT_QA.md
+      - Four-corner sprung chassis QA: SPRUNG_CHASSIS_QA.md
       - Speed-aware real chassis yaw steering QA: SPEED_AWARE_YAW_STEERING_QA.md
       - Verified recovery teleport QA: VERIFIED_RECOVERY_QA.md
       - Restart-grid placement QA: RESTART_PLACEMENT_QA.md
@@ -142,6 +143,7 @@ nav:
       - Human physical spin traction QA: HUMAN_SPIN_TRACTION_QA.md
       - Player stability-assist HUD QA: HUMAN_SPIN_ASSIST_HUD_QA.md
       - Arcade reverse-speed handling QA: ARCADE_REVERSE_SPEED_QA.md
+      - Physical reverse overspeed force QA: REVERSE_OVERSPEED_FORCE_QA.md
       - Gear-aware motor power QA: GEAR_AWARE_MOTOR_POWER_QA.md
       - Automatic transmission and RPM QA: AUTOMATIC_TRANSMISSION_QA.md
       - Rival player-traffic awareness QA: RIVAL_TRAFFIC_QA.md
@@ -174,6 +176,7 @@ nav:
   - Roadmap & history:
       - Roadmap: ROADMAP.md
       - Release history: release-history.md
+      - Next pre-release plan (unpublished): releases/v0.5.92-plan.md
       - Engineering status log: STATUS.md
 
 # The historical release Markdown is rendered and remains accessible by

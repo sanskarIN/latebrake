@@ -171,6 +171,39 @@ parsing of other local log text, but **does not check any receipt or
 candidate hashes**. Use the hash-bound review when investigating an
 actual personal Windows candidate.
 
+## Hash-bound handling diagnostics for genuine Development playtests
+
+The new `LATEBRAKE_DRIVE v=1` log line records source-sampled requested
+motor, braking, sideways grip and steering/yaw forces after the actual
+Unreal physics force submissions. It appears only in non-shipping
+Development builds; it does not measure observed acceleration.
+
+The ordinary `AnalyzeDriveTelemetry.py --log` command reads arbitrary
+text. To instead associate a **real local playtest session** with its
+unchanged Win64 game files, source commit, engine Build.version hash,
+map hash and recorded runtime log SHA256, use the original receipt:
+
+```powershell
+python ./scripts/Review-WindowsPlaytest.py drive-audit `
+  --receipt 'D:\LateBrakePlaytestLogs\LateBrake-your-session.json' `
+  --output 'D:\LateBrakeQA\handling-review.json' `
+  --require-player
+```
+
+Create the output directory yourself first. The tool refuses to
+overwrite evidence or write inside the sealed game directory.
+The optional `--require-player` flag rejects AI-only logs; it cannot
+confirm a real player drove. A schema-2 receipt and matching unmodified
+runtime log/complete cooked archive are mandatory. Any changes to
+the log, EXE, manifest or packaged files invalidate this analysis.
+
+This is an **offline diagnostic report**, never a release certificate:
+the recorded files and receipt can themselves be edited, and actual
+Unreal compilation, graphics, input and physical driving must still
+be observed separately. Every report explicitly retains
+`source_authenticity_verified: false`, `gameplay_verified: false` and
+`ready_for_release: false`. Keep the original log and receipt for QA.
+
 ## Record a private, self-reported Win64 QA review
 
 After closing the real game session, the diagnostic runner prints the path

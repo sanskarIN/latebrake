@@ -15,20 +15,23 @@ class FrameStableDampingBindingTests(unittest.TestCase):
         cls.policy = POLICY.read_text(encoding="utf-8")
         cls.cmake = CMAKE.read_text(encoding="utf-8")
 
-    def test_runtime_uses_the_same_bounded_policy_for_all_resistance(self):
-        self.assertIn('#include "Vehicles/FrameStableDamping.h"', self.pawn)
+    def test_runtime_uses_grip_and_frame_bounds_for_all_resistance(self):
+        self.assertIn('#include "Vehicles/OpposingThrottleBraking.h"', self.pawn)
         start = self.pawn.index("void ALatebrakeCarPawn::Tick(float DeltaSeconds)")
         end = self.pawn.index("void ALatebrakeCarPawn::ApplySignalLights(", start)
         tick = self.pawn[start:end]
         self.assertIn("!IsRacePhysicsReady()", tick)
         self.assertLess(tick.index("!IsRacePhysicsReady()"),
-                        tick.index("FrameStableDampingRate("))
+                        tick.index("CalculateOpposingThrottleBraking("))
         for expression in (
-            "FrameStableDampingRate(3.0, DeltaSeconds)",
+            "CalculateOpposingThrottleBraking({",
+            "if (!OpposingBraking.Valid)",
+            "OpposingBraking.ForwardForce",
+            "OpposingBraking.WholeBodyBudgetDeceleration",
         ):
             with self.subTest(expression=expression):
                 self.assertIn(expression, tick)
-        # Opposite-pedal engine braking still uses frame-stable damping.
+        # Opposite-pedal braking now has a stricter grip/axle/frame ceiling.
         # Service braking and sideways slip each have independent finite
         # force/impulse ceilings, sharing a bounded contact-grip allowance.
         self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
@@ -38,6 +41,8 @@ class FrameStableDampingBindingTests(unittest.TestCase):
         self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
         for forbidden in (
             "LongitudinalSpeed * Mass * 3.f",
+            "FrameStableDampingRate(3.0, DeltaSeconds)",
+            "Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *",
             "LateralSpeed * Mass * GripRate",
             "LongitudinalSpeed * Mass * BrakeRate",
         ):
@@ -51,11 +56,11 @@ class FrameStableDampingBindingTests(unittest.TestCase):
         self.assertIn("NAME FrameStableDamping", self.cmake)
         self.assertIn("cxx_std_20", self.cmake)
 
-    def test_unbound_damping_is_detectable(self):
-        required = "FrameStableDampingRate(3.0, DeltaSeconds)"
-        self.assertIn(required, self.pawn)
-        bad = self.pawn.replace(required, "3.0")
-        self.assertNotIn(required, bad)
+    def test_unbounded_engine_damping_is_forbidden(self):
+        self.assertIn("CalculateOpposingThrottleBraking({", self.pawn)
+        self.assertIn("if (!OpposingBraking.Valid)", self.pawn)
+        self.assertIn("!OpposingBraking.OpposingThrottle", self.pawn)
+        self.assertNotIn("Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *", self.pawn)
         self.assertIn("CalculateGripLimitedBraking({", self.pawn)
         self.assertIn("if (!PhysicalBraking.Valid)", self.pawn)
         self.assertIn("CalculateLateralGripForce({", self.pawn)

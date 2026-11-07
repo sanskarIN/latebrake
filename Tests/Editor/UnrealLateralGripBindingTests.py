@@ -24,7 +24,7 @@ class UnrealLateralGripBindingTests(unittest.TestCase):
     def test_actual_shared_chaos_chassis_uses_measured_side_slip(self):
         for token in (
             '#include "Vehicles/LateralGripBudget.h"',
-            "const FVector Right = GetActorRightVector()",
+            "const FVector Right(-Forward.Y, Forward.X, 0.f);",
             "const float LateralSpeed = FVector::DotProduct(FlatVelocity, Right)",
             "latebrake::CalculateGripLimitedBraking({",
             "latebrake::CalculateLateralGripForce({",
@@ -38,7 +38,7 @@ class UnrealLateralGripBindingTests(unittest.TestCase):
             "PhysicalBraking.DecelerationCmPerSecondSquared",
             "bArcade, BrakeProfile.HandbrakeActive",
             "if (!LateralForce.Valid)",
-            "NeutralizeMotionWhenDrivingBlocked();",
+            "RejectOptionalDriveAfterSpring(SpringResponse);",
             "Chassis->AddForce(Right *",
             "static_cast<float>(LateralForce.RightForce)",
         ):
@@ -69,7 +69,9 @@ class UnrealLateralGripBindingTests(unittest.TestCase):
         self.assertIn("HandbrakeActive", self.policy)
         self.assertIn("GripLimitedBrakingOutput PhysicalBraking", self.tick)
         self.assertIn("PhysicalBraking.ForwardForce", self.tick)
-        self.assertIn("FrameStableDampingRate(3.0, DeltaSeconds)", self.tick)
+        self.assertIn("CalculateOpposingThrottleBraking({", self.tick)
+        self.assertIn("OpposingBraking.WholeBodyBudgetDeceleration", self.tick)
+        self.assertNotIn("FrameStableDampingRate(3.0, DeltaSeconds)", self.tick)
         self.assertNotIn("FrameStableDampingRate(GripRate, DeltaSeconds)", self.tick)
         self.assertNotIn("Chassis->AddForce(-Right * LateralSpeed", self.tick)
 

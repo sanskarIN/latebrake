@@ -1251,6 +1251,20 @@ else()
 endif()
 add_test(NAME ArcadeReverseSpeedLimit COMMAND latebrake_arcade_reverse_speed_tests)
 
+# The real Unreal shared-player/rival reverse overspeed path must apply
+# a contact/grip-bounded Chaos force, not replace the measured XY velocity.
+add_executable(latebrake_reverse_speed_governor_tests ReverseSpeedGovernorTests.cpp)
+target_include_directories(latebrake_reverse_speed_governor_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_reverse_speed_governor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_reverse_speed_governor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_reverse_speed_governor_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ReverseSpeedGovernor COMMAND latebrake_reverse_speed_governor_tests)
+
 # Actual rigid-body motor power tapers near gear-specific measured speed caps.
 # Shared by normal propulsion, nitro and drafting; no Unreal game runtime.
 add_executable(latebrake_gear_aware_motor_power_tests GearAwareMotorPowerTests.cpp)
@@ -1918,6 +1932,60 @@ else()
 endif()
 add_test(NAME ChassisGroundContactTraction COMMAND latebrake_chassis_ground_contact_traction_tests)
 
+# Four physically observed world-contact springs and point-velocity damping:
+# warnings-as-errors on all three hosted OSes, no Unreal SDK emulation.
+add_executable(latebrake_sprung_chassis_dynamics_tests SprungChassisDynamicsTests.cpp)
+target_include_directories(latebrake_sprung_chassis_dynamics_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_chassis_dynamics_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_chassis_dynamics_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_chassis_dynamics_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungChassisDynamics COMMAND latebrake_sprung_chassis_dynamics_tests)
+# Deterministic vertical-only vehicle settling (NO Unreal collision model).
+add_executable(latebrake_sprung_chassis_ride_height_tests SprungChassisRideHeightTests.cpp)
+target_include_directories(latebrake_sprung_chassis_ride_height_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_chassis_ride_height_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_chassis_ride_height_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_chassis_ride_height_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungChassisRideHeight COMMAND latebrake_sprung_chassis_ride_height_tests)
+
+# Approximate three-axis response using the ACTUAL production spring policy.
+# This is a portable isolated integrator, not a Chaos / hardware qualification.
+add_executable(latebrake_sprung_chassis_attitude_recovery_tests SprungChassisAttitudeRecoveryTests.cpp)
+target_include_directories(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_chassis_attitude_recovery_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungChassisAttitudeRecovery COMMAND latebrake_sprung_chassis_attitude_recovery_tests)
+
+# Real front/rear axle force eligibility from the current four sprung corners.
+# This also guards nitro/draft eligibility and the source-only yaw gate.
+add_executable(latebrake_axle_traction_budget_tests AxleTractionBudgetTests.cpp)
+target_include_directories(latebrake_axle_traction_budget_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_axle_traction_budget_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_axle_traction_budget_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_axle_traction_budget_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AxleTractionBudget COMMAND latebrake_axle_traction_budget_tests)
+
 # Show accepted real-Chaos-ground contact states only; no UE headers or
 # authority over the real physical chassis, race clock or score.
 add_executable(latebrake_chassis_contact_readout_tests ChassisContactReadoutTests.cpp)
@@ -1931,6 +1999,82 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ChassisContactReadout COMMAND latebrake_chassis_contact_readout_tests)
+
+# Immediate wheel-load losses and bounded reattachment for ALL production
+# force authorities (whole-car brakes/side grip, rear-drive, front-steer).
+add_executable(latebrake_sprung_grip_reattachment_tests SprungGripReattachmentTests.cpp)
+target_include_directories(latebrake_sprung_grip_reattachment_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_grip_reattachment_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_grip_reattachment_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_grip_reattachment_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungGripReattachment COMMAND latebrake_sprung_grip_reattachment_tests)
+
+# The SAME authored four-corner centimeter layout is used by the Unreal
+# constructor, spring-force ray origins and visual wheel travel. Exercise
+# the numerical symmetry, parent-scale compensation and pitched/raised
+# road-force torque independently of a licensed Unreal installation.
+add_executable(latebrake_chassis_wheel_geometry_tests ChassisWheelGeometryTests.cpp)
+target_include_directories(latebrake_chassis_wheel_geometry_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_chassis_wheel_geometry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_chassis_wheel_geometry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_chassis_wheel_geometry_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ChassisWheelGeometry COMMAND latebrake_chassis_wheel_geometry_tests)
+
+# Non-shipping suspension logs must retain the exact v=1 schema, publish
+# immediate contact/phase changes no faster than 5 Hz, heartbeat at 0.5 Hz
+# and never touch actual Chaos forces, timing or player progression.
+add_executable(latebrake_suspension_qa_cadence_tests SuspensionQaCadenceTests.cpp)
+target_include_directories(latebrake_suspension_qa_cadence_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_suspension_qa_cadence_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_suspension_qa_cadence_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_suspension_qa_cadence_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SuspensionQaCadence COMMAND latebrake_suspension_qa_cadence_tests)
+
+# True physics-chassis orientation must gate wheel-underbody spring forces:
+# a ray hitting the road beneath an inverted body is NOT wheel support.
+# This also protects axle traction, anti-roll force limits and the same
+# upright equilibrium under 120k orientation/mass/contact frames.
+add_executable(latebrake_suspension_mount_attitude_tests SuspensionMountAttitudeTests.cpp)
+target_include_directories(latebrake_suspension_mount_attitude_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_suspension_mount_attitude_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_suspension_mount_attitude_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_suspension_mount_attitude_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SuspensionMountAttitude COMMAND latebrake_suspension_mount_attitude_tests)
+
+# A rigid Chaos chassis must not use road/grass tire rolling resistance
+# in flight, rebound or on its roof. Test 120k valid same-frame spring
+# loads and the aerodynamic-only case with strict C++20 warnings.
+add_executable(latebrake_airborne_road_load_tests AirborneRoadLoadTests.cpp)
+target_include_directories(latebrake_airborne_road_load_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_airborne_road_load_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_airborne_road_load_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_airborne_road_load_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AirborneRoadLoad COMMAND latebrake_airborne_road_load_tests)
 
 # Android race-action safety: the first touch delivered after viewport
 # rotation/inset changes may not dispatch PAUSE/RECOVER/RESTART or re-arm
@@ -1947,3 +2091,75 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TouchViewportActionEpoch COMMAND latebrake_touch_viewport_action_epoch_tests)
+
+# Actual Chaos launch telemetry uses horizontal vehicle motion, not the
+# vertical component of a pitching/landing rigid body. No race authority.
+add_executable(latebrake_measured_planar_forward_speed_tests
+    MeasuredPlanarForwardSpeedTests.cpp)
+target_include_directories(latebrake_measured_planar_forward_speed_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_measured_planar_forward_speed_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_measured_planar_forward_speed_tests PRIVATE
+        /W4 /WX)
+else()
+    target_compile_options(latebrake_measured_planar_forward_speed_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME MeasuredPlanarForwardSpeed
+    COMMAND latebrake_measured_planar_forward_speed_tests)
+
+# Source-only, bounded physical planar force when a live Chaos chassis
+# exceeds a changing nitro/garage speed cap. 120k numerical regression
+# frames plus 30/60/120 FPS convergence, not a UE gameplay qualification.
+add_executable(latebrake_planar_speed_governor_tests PlanarSpeedGovernorTests.cpp)
+target_include_directories(latebrake_planar_speed_governor_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_planar_speed_governor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_planar_speed_governor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_planar_speed_governor_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PlanarSpeedGovernor COMMAND latebrake_planar_speed_governor_tests)
+
+# Rear-load-limited opposing accelerator braking must share actual lateral
+# grip. Includes 120k frames through the real spring/axle/reattachment chain.
+add_executable(latebrake_opposing_throttle_braking_tests OpposingThrottleBrakingTests.cpp)
+target_include_directories(latebrake_opposing_throttle_braking_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_opposing_throttle_braking_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_opposing_throttle_braking_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_opposing_throttle_braking_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OpposingThrottleBraking COMMAND latebrake_opposing_throttle_braking_tests)
+
+# All three additive motor paths share the same remaining tire-force circle.
+add_executable(latebrake_traction_limited_propulsion_tests TractionLimitedPropulsionTests.cpp)
+target_include_directories(latebrake_traction_limited_propulsion_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_traction_limited_propulsion_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_traction_limited_propulsion_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_traction_limited_propulsion_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TractionLimitedPropulsion COMMAND latebrake_traction_limited_propulsion_tests)
+
+# Actual per-corner ray-length damping on static slopes, preserving flat heave.
+add_executable(latebrake_suspension_ray_velocity_tests SuspensionRayVelocityTests.cpp)
+target_include_directories(latebrake_suspension_ray_velocity_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_suspension_ray_velocity_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_suspension_ray_velocity_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_suspension_ray_velocity_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SuspensionRayVelocity COMMAND latebrake_suspension_ray_velocity_tests)

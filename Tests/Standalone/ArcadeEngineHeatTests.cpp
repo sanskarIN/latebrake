@@ -1,4 +1,5 @@
 #include "Vehicles/ArcadeEngineHeat.h"
+#include "Vehicles/OpposingThrottleBraking.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -55,6 +56,8 @@ int main()
     for (int i = 0; i < 450; ++i)
     {
         heat.Observe({0.05, 3200.0, 1.0, true, true});
+        Require(heat.SettleNitroDelivery(true),
+                "hot nitro fixture must deliver and commit actual bonus");
     }
     const double nitroHot = heat.HeatFraction();
     heat.Reset();
@@ -63,6 +66,170 @@ int main()
         heat.Observe({0.05, -3200.0, -1.0, false, true});
     }
     Require(nitroHot > heat.HeatFraction(), "nitro adds load heat");
+
+    // Cross-policy regression: motor force is withheld while the opposite
+    // accelerator/reverse pedal brakes actual signed chassis travel. Its
+    // input must not masquerade as propulsion heat for either direction.
+    // This uses the production braking classifier, not a test-only sign
+    // approximation. Exact pawn admission wiring is separately bound by
+    // ArcadeEngineHeatBindingTests.py.
+    for (int fps : {30, 60, 120})
+    {
+        const double dt = 1.0 / fps;
+        for (double direction : {-1.0, 1.0})
+        {
+            const double forward = 3000.0 * direction;
+            const double opposingPedal = -direction;
+            const auto opposite = latebrake::CalculateOpposingThrottleBraking({
+                dt, forward, 3400.0, 1100.0, opposingPedal,
+                1.0, 1.0, 1.0, false, true});
+            Require(opposite.Valid && opposite.OpposingThrottle &&
+                    opposite.ForwardForce * forward < 0.0,
+                "real brake classification for both travel directions");
+            ArcadeEngineHeat brakingHeat;
+            ArcadeEngineHeat motorHeat;
+            for (int frame = 0; frame < fps * 40; ++frame)
+            {
+                // Mirrors the real pawn's propulsion authorization.
+                const double admittedDemand = opposite.OpposingThrottle
+                    ? 0.0 : opposingPedal;
+                const auto braking = brakingHeat.Observe({
+                    dt, forward, admittedDemand, false, true});
+                const auto powered = motorHeat.Observe({
+                    dt, forward, direction, false, true});
+                Require(braking.Valid && powered.Valid,
+                    "opposing and powered samples remain valid");
+            }
+            Require(Near(brakingHeat.HeatFraction(),
+                         ArcadeEngineHeat::IdleHeat) &&
+                    Near(brakingHeat.MotorMultiplier(), 1.0),
+                "long opposite-pedal braking cannot heat/derate a motor that is off");
+            Require(motorHeat.HeatFraction() >
+                    ArcadeEngineHeat::DerateThreshold &&
+                    motorHeat.MotorMultiplier() < 1.0,
+                "same-direction reverse/forward propulsion still builds heat");
+
+            const auto nearStop = latebrake::CalculateOpposingThrottleBraking({
+                dt, 75.0 * direction, 2400.0, 1100.0,
+                opposingPedal, 1.0, 1.0, 1.0, false, true});
+            Require(nearStop.Valid && !nearStop.OpposingThrottle &&
+                    nearStop.ForwardForce == 0.0,
+                "large sideways slip must not block near-stop direction changes");
+            ArcadeEngineHeat nearStopHeat;
+            for (int frame = 0; frame < fps * 2; ++frame)
+            {
+                const auto warmed = nearStopHeat.Observe({
+                    dt, 75.0 * direction,
+                    nearStop.OpposingThrottle ? 0.0 : opposingPedal,
+                    false, true});
+                Require(warmed.Valid, "eligible near-stop propulsion sample");
+            }
+            Require(nearStopHeat.HeatFraction() >
+                    ArcadeEngineHeat::IdleHeat,
+                "near-stop direction-change motor demand may heat normally");
+        }
+    }
+
+    // Undelivered nitro must add ZERO EXTRA engine heat, but still
+    // retain the physical throttle/airflow baseline in every frame.
+    ArcadeEngineHeat denied;
+    ArcadeEngineHeat ordinary;
+    for (int i = 0; i < 400; ++i)
+    {
+        const auto candidate = denied.Observe({
+            0.05, 3000.0, 1.0, true, true});
+        const auto normal = ordinary.Observe({
+            0.05, 3000.0, 1.0, false, true});
+        Require(candidate.Valid && normal.Valid &&
+                Near(candidate.HeatFraction, normal.HeatFraction) &&
+                Near(candidate.MotorMultiplier, normal.MotorMultiplier) &&
+                Near(denied.HeatFraction(), ordinary.HeatFraction()) &&
+                denied.SettleNitroDelivery(false) &&
+                Near(denied.HeatFraction(), ordinary.HeatFraction()) &&
+                !denied.SettleNitroDelivery(false),
+                "400 denied nitro samples never enter heat before settlement");
+    }
+    // Before settlement all public heat readouts and power decisions
+    // must represent only applied, ordinary load, not a speculative
+    // nitro extra. An accepted force then commits that extra once.
+    ArcadeEngineHeat proposed;
+    ArcadeEngineHeat baseline;
+    const auto pendingOutput = proposed.Observe({
+        0.05, 3000.0, 1.0, true, true});
+    const auto baselineOutput = baseline.Observe({
+        0.05, 3000.0, 1.0, false, true});
+    Require(pendingOutput.Valid && baselineOutput.Valid &&
+            Near(pendingOutput.HeatFraction, baselineOutput.HeatFraction) &&
+            Near(proposed.HeatFraction(), baseline.HeatFraction()) &&
+            Near(pendingOutput.MotorMultiplier, baselineOutput.MotorMultiplier) &&
+            Near(proposed.MotorMultiplier(), baseline.MotorMultiplier()),
+            "uncommitted nitro must not expose speculative heat or power");
+    const double beforeCommit = proposed.HeatFraction();
+    Require(proposed.SettleNitroDelivery(true) &&
+            proposed.HeatFraction() > beforeCommit &&
+            !proposed.SettleNitroDelivery(true),
+            "real bonus commits heat once, never twice");
+    const double committedHeat = proposed.HeatFraction();
+    proposed.Suspend();
+    Require(Near(proposed.HeatFraction(), committedHeat) &&
+            !proposed.SettleNitroDelivery(false),
+            "suspend cannot refund already committed extra heat");
+
+    ArcadeEngineHeat delivered;
+    ArcadeEngineHeat ordinaryCompare;
+    for (int i = 0; i < 400; ++i)
+    {
+        delivered.Observe({0.05, 3000.0, 1.0, true, true});
+        ordinaryCompare.Observe({0.05, 3000.0, 1.0, false, true});
+        Require(delivered.SettleNitroDelivery(true),
+                "positive real nitro force commits extra engine heating");
+    }
+    Require(delivered.HeatFraction() > ordinaryCompare.HeatFraction() &&
+            !delivered.SettleNitroDelivery(true),
+            "only delivered bonus adds incremental engine heat");
+    delivered.Reset();
+    const auto rejected = delivered.Observe({
+        0.0, 3000.0, 1.0, true, true});
+    Require(!rejected.Valid && !delivered.SettleNitroDelivery(false),
+            "invalid engine sampling cannot leave a refundable receipt");
+
+    // A lost delivery verdict (early return, pause or next-frame race
+    // transition) must never silently turn a proposed heat increment
+    // into real history. Provisional nitro heat must also not derate the
+    // *same* motor dispatch before the real extra force was accepted.
+    ArcadeEngineHeat orphanNitroHeat;
+    ArcadeEngineHeat throttleOnlyHeat;
+    bool baselineDerated = false;
+    for (int i = 0; i < 600; ++i)
+    {
+        const auto pending = orphanNitroHeat.Observe({
+            0.05, 3000.0, 1.0, true, true});
+        const auto ordinaryFrame = throttleOnlyHeat.Observe({
+            0.05, 3000.0, 1.0, false, true});
+        Require(pending.Valid && ordinaryFrame.Valid &&
+                Near(pending.HeatFraction, ordinaryFrame.HeatFraction) &&
+                Near(orphanNitroHeat.HeatFraction(),
+                     throttleOnlyHeat.HeatFraction()) &&
+                Near(pending.MotorMultiplier, ordinaryFrame.MotorMultiplier),
+                "orphan proposal never pre-heats or pre-derates same-frame motor");
+        baselineDerated = baselineDerated || ordinaryFrame.Derated;
+        if (i % 17 == 0)
+        {
+            orphanNitroHeat.Suspend();
+            throttleOnlyHeat.Suspend();
+            Require(Near(orphanNitroHeat.HeatFraction(),
+                         throttleOnlyHeat.HeatFraction()) &&
+                    !orphanNitroHeat.SettleNitroDelivery(true),
+                    "suspend must refund unanswered nitro receipt exactly once");
+        }
+    }
+    Require(baselineDerated, "orphan sample fixture reaches engine derating");
+    Require(orphanNitroHeat.SettleNitroDelivery(false) &&
+            Near(orphanNitroHeat.HeatFraction(),
+                 throttleOnlyHeat.HeatFraction()) &&
+            !orphanNitroHeat.SettleNitroDelivery(false),
+            "next Observe refunds absent verdict; final pending refund is idempotent");
+
     const double remembered = heat.HeatFraction();
     const EngineHeatSample invalid[] = {
         {0.0, 2000.0, 1.0, false, true},

@@ -62,7 +62,7 @@ class UnrealPitServiceBindingTests(unittest.TestCase):
         self.assertLess(confirm.index("ClearDriverInputs();"),
                         confirm.index("Mode->MenuActivate();"))
         clear = self.pawn.split(
-            "void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+            "void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::", 1)[0]
         self.assertIn("bPitServiceHeld = false;", clear)
         self.assertIn("PitService.Suspend();", clear)

@@ -33,9 +33,10 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
             "AllocateArcadeBoost(",
             "CollisionDamage.MotorMultiplier()",
             "latebrake::GearAwareMotorPowerFactor(",
-            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;",
-            "latebrake::LimitPlanarReverseSpeed(",
+            "latebrake::CalculatePlanarSpeedGovernor({",
+            "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
+            "if (ReverseGovernor.Active)",
         )
         offsets = [tick.index(x) for x in required]
         self.assertEqual(offsets, sorted(offsets))
@@ -63,9 +64,23 @@ class GearAwareMotorPowerBindingTests(unittest.TestCase):
         self.assertIn("latebrake::CalculateGripLimitedBraking({", tick)
         self.assertIn("PhysicalBraking.ForwardForce", tick)
         self.assertNotIn("if (bEffectiveBraking || FMath::Abs(EffectiveThrottle) < 0.02f)", tick)
-        self.assertIn("Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *", tick)
-        self.assertIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
-        self.assertIn("if (GroundContact.HasDriveContact &&", tick)
+        self.assertIn("CalculateOpposingThrottleBraking({", tick)
+        self.assertIn("static_cast<float>(OpposingBraking.ForwardForce)", tick)
+        self.assertIn("!OpposingBraking.OpposingThrottle", tick)
+        # At the signed backwards target the separate rear-grip source
+        # policy blocks new REVERSE motor thrust; ordinary gear taper
+        # cannot apply competing reverse work against the force governor.
+        self.assertIn("!ReverseGovernor.ReverseMotorBlocked", tick)
+        self.assertIn("AuthorizedMotorThrottle = ReverseGovernor.ReverseMotorBlocked", tick)
+        self.assertIn("latebrake::CalculateReverseSpeedGovernor({", tick)
+        self.assertNotIn("FrameStableDampingRate(3.0, DeltaSeconds)", tick)
+        engine_brake = tick.split(
+            "else if (AxleBudget.RearDriveReady && !bEffectiveBraking)", 1
+        )[1].split("// Real planar resistance", 1)[0]
+        self.assertNotIn("GearPowerFactor", engine_brake)
+        self.assertNotIn("RearDriveTractionScale", engine_brake)  # already applied once
+        self.assertIn("if (AxleBudget.RearDriveReady &&", tick)
+        self.assertIn("RearDriveTractionScale", tick)
         self.assertIn("if (NitroDrive.Active)", tick)
 
     def test_production_curve_is_finite_and_registered_as_strict_cxx(self):
