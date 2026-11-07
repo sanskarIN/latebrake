@@ -432,3 +432,38 @@ Win64 installer. The full playable gate remains
 do not close it using the static-query receipt. The already-published
 v0.5.96 source-only snapshot is immutable and does not contain this
 newer unmerged PR #316 experiment.
+
+
+## Portable C++ triangle-contact coverage (source only)
+
+The earlier `WorldScaleSmoothCollisionSurface` test establishes mesh
+manifold edges, face normals and 42-cm volume, while the Python OBJ
+contract independently validates every imported-source triangle. A
+separate `WorldScaleCollisionRayTriangleCoverage` CTest now intersects
+actual downward vertical mathematical rays against the **original C++
+physical candidate mesh triangles**, not just sampled centerline positions:
+
+- At 256 full-lap stations plus 2 extra near the welded lap seam:
+  **774 rays** at 0 and ±400 cm must hit *both* z=−1 cm road top and
+  z=−43 cm road underside, and **516 rays** at ±550 cm must hit
+  **neither** physical-road face.
+- An additional **3,072 source rays** at all 1,024 triangulation
+  midpoints (0 and ±400 cm) require both top and underside hits.
+  This catches gaps **between** sampled section vertices.
+- The checks use an explicit independent barycentric 2-D
+  ray/triangle intersection over the source mesh triangles. A
+  zero-area horizontal triangle, missing top/bottom, or unintended
+  off-road cover is an error, even if a mesh-exporter process itself
+  returned success.
+
+[Source CI run #42386650331](https://github.com/sanskarIN/latebrake/actions/runs/42386650331)
+passed this exact CTest on **Windows, Ubuntu and macOS**, with
+**183/183 tests passed** on each runner. These **4,362 source-level**
+triangle coverage queries are a stronger geometric qualification than
+simple manifold closure, but are **not** real
+`unreal.SystemLibrary.line_trace_single` calls, physical Chaos
+collision cooking, runtime rigid-body/suspension contacts, or a
+playable Win64 racing game. Perform the separate 1,290-query
+**genuine Editor** audit on a licensed Unreal 5.8 workstation before
+treating the map as a viable static collision level; even an
+Editor PASS leaves real vehicle-driving and tire-contact gates open.
