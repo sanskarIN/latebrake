@@ -196,6 +196,54 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  world-scale-rounded-road-preview:
+    name: Export UNVERIFIED 1.70-km original 3D road (NOT playable)
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 316
+    needs: [portable-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure world-scale original road source
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      - name: Compile the 1.70-km geometry policy and real OBJ exporter
+        run: |
+          cmake --build Tests/Standalone/build --config Release \
+            --target latebrake_world_scale_rounded_tests latebrake_world_scale_rounded_obj_exporter --parallel 4
+      - name: Require actual physical backing and independently verified 10x OBJ
+        run: |
+          ctest --test-dir Tests/Standalone/build -C Release \
+            -R '^WorldScaleRounded' --no-tests=error --output-on-failure
+      - name: Generate full-scale non-colliding 3D road model with evidence
+        shell: bash
+        run: |
+          mkdir -p Tests/Standalone/build/world-scale-visual-only-preview
+          Tests/Standalone/build/latebrake_world_scale_rounded_obj_exporter \
+            Tests/Standalone/build/world-scale-visual-only-preview/LateBrake_1p70km_OriginalTrack.obj
+          python3 Tests/Standalone/VerifyRoundedSmoothRoadObj.py \
+            Tests/Standalone/build/latebrake_world_scale_rounded_obj_exporter 10
+          printf '%s\n' \
+            'LateBrake ORIGINAL 1.70-KM WORLD-SCALE TRACK: UNVERIFIED 3D GEOMETRY ONLY' \
+            'Lap about 1702.65 metres; original physical collision corridor 9 metres wide.' \
+            'No real Unreal Engine editor compile, asset import, lighting, textures, physics, or driving QA.' \
+            'OBJ/MTL is NON-COLLIDING VISUAL geometry, not a playable Win64 game or installer.' \
+            'The 68 matching 9-m-wide physical collision pieces exist as C++ source plan ONLY.' \
+            'Old 170-m lab, career track and published v0.5.95 remain unchanged.' \
+            > Tests/Standalone/build/world-scale-visual-only-preview/READ_ME_FIRST.txt
+          (cd Tests/Standalone/build/world-scale-visual-only-preview &&
+            sha256sum LateBrake_1p70km_OriginalTrack.obj LateBrake_1p70km_OriginalTrack.mtl \
+              > SHA256SUMS.txt)
+      - name: Archive original 1.70-km full-size visual model (no game assets)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNVERIFIED-Original-1p70km-Road-OBJ-${{ github.sha }}
+          path: Tests/Standalone/build/world-scale-visual-only-preview/
+          if-no-files-found: error
+          retention-days: 7
+
   editor-script-syntax:
     name: Unreal editor-only Python syntax (not Unreal runtime)
     runs-on: ubuntu-latest

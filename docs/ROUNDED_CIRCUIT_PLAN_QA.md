@@ -224,3 +224,21 @@ full-scale course will need separate race checkpoints, start/recovery
 positions, natural landscaping, surface mesh collider and real Chaos
 seam tests before runtime activation.
 
+## Full-scale original 1.70-km model preview artifact
+
+After all three platform C++20 matrices pass, a separate source-only
+GitHub Actions job compiles **the exact C++ 1.70-km model exporter** and
+runs the independent `WorldScaleRoundedCircuit` and
+`WorldScaleRoundedRoadObjContract` tests. It then publishes a seven-day
+artifact `UNVERIFIED-Original-1p70km-Road-OBJ-<commit>`, containing
+`LateBrake_1p70km_OriginalTrack.obj`, the original placeholder
+material `.mtl`, `SHA256SUMS.txt`, and `READ_ME_FIRST.txt`.
+It contains **zero playable Windows assets**, and this step intentionally
+does not touch the older 170-m Editor-only physics lab, existing game
+levels, GitHub releases, or the protected default branch.
+
+Full-scale model previews can be inspected in a standard 3D OBJ viewer,
+but *neither the model nor the source-plan C++ tests certify actual
+Chaos tyre/grip behaviour or Unreal renderer fidelity*. The runtime
+switch and installed 3D Windows preview remain separate later gates.
+
