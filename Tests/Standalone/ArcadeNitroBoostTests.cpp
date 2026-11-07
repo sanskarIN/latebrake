@@ -132,13 +132,28 @@ int main()
     Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
           "test fixture resumes real qualifying held state");
 
-    const double chargeBeforeBlocked = boost.ChargeFraction();
-    const double heatBeforeBlocked = boost.HeatFraction();
+    // This candidate is still uncommitted: pause is a rejection and
+    // must refund the proposed debit. The old test expected that
+    // undelivered frame to remain charged, masking receipt leakage.
     const auto blocked = boost.Step(0.05, false, false, 1.0, 2200.0);
     Check(!blocked.Active && !boost.IsHeld() && !boost.IsActive() &&
-          boost.ChargeFraction() == chargeBeforeBlocked &&
-          boost.HeatFraction() == heatBeforeBlocked,
-          "pause/focus preserves finite meter and clears held input");
+          std::abs(boost.ChargeFraction() - 1.0) < 1e-12 &&
+          std::abs(boost.HeatFraction()) < 1e-12,
+          "pause/focus refunds pending force and clears held input");
+    // A genuinely delivered, COMMITTED bonus is different: pause may
+    // clear held controls but must not mint charge or undo its heat.
+    boost.Press(true);
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active &&
+          boost.CommitDeliveredFrame(),
+          "committed pause fixture applies the real bonus");
+    const double committedCharge = boost.ChargeFraction();
+    const double committedHeat = boost.HeatFraction();
+    const auto committedPause =
+        boost.Step(0.05, false, false, 1.0, 2200.0);
+    Check(!committedPause.Active && !boost.IsHeld() &&
+          boost.ChargeFraction() == committedCharge &&
+          boost.HeatFraction() == committedHeat,
+          "pause preserves previously delivered nitro expenditure");
     Check(!boost.Step(0.05, true, false, 1.0, 2200.0).Active,
           "resuming without a new key press never fires boost");
 
