@@ -169,3 +169,19 @@ visual actor** and actual 68-slab physical collision readback, followed
 by independent UE5.8 render/handling QA. It must not silently alter the
 existing rectangular race/career map or qualify an executable pre-release.
 
+## Portable real-geometry preview artifact (not an Unreal game)
+
+The Ubuntu source CI matrix now builds the *actual* C++ exporter and
+runs its independent OBJ geometry validator after the full source-test
+suite. Only if those gates pass, Actions archives an artifact named
+`UNVERIFIED-RoundedRoad-OBJ-Only-<source-SHA>` containing
+`LateBrakeRoundedVisualRoad.obj`, `.mtl`, `READ_ME_FIRST.txt`
+and `SHA256SUMS.txt` with seven-day retention. It contains **no EXE**,
+no playable race, no Unreal Editor asset and no installer.
+
+This is useful for looking at the continuous proposed original track
+shape in a 3D model viewer. It is **not** UE5.8 rendering, realistic
+textures, lighting or driving QA. Never substitute its dark placeholder
+MTL colors for approved final road materials or claim its mesh is a
+tested collision model.
+

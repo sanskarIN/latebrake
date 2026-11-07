@@ -81,6 +81,34 @@ jobs:
         run: ccache --show-stats
       - name: Test
         run: ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
+      - name: Build strictly UNVERIFIED smooth-road 3D OBJ preview (NOT a game)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          mkdir -p Tests/Standalone/build/rounded-road-art-preview
+          Tests/Standalone/build/latebrake_rounded_smooth_obj_exporter \
+            Tests/Standalone/build/rounded-road-art-preview/LateBrakeRoundedVisualRoad.obj
+          python3 Tests/Standalone/VerifyRoundedSmoothRoadObj.py \
+            Tests/Standalone/build/latebrake_rounded_smooth_obj_exporter
+          printf '%s\n' \
+            'LateBrake ORIGINAL ROUNDED ROAD VISUAL MESH - UNVERIFIED' \
+            'The OBJ/MTL files are static source-generated artwork only.' \
+            'They are NOT a playable Windows game, Unreal .uasset, editor test, collision mesh, or installer.' \
+            'The existing 68-box physics-lab collision model is still authoritative.' \
+            'The material colors are simple placeholders, NOT realistic PBR textures.' \
+            'View this in a 3D model viewer; do NOT use it to infer driving or graphics quality.' \
+            > Tests/Standalone/build/rounded-road-art-preview/READ_ME_FIRST.txt
+          (cd Tests/Standalone/build/rounded-road-art-preview &&
+            sha256sum LateBrakeRoundedVisualRoad.obj LateBrakeRoundedVisualRoad.mtl \
+              > SHA256SUMS.txt)
+      - name: Archive UNVERIFIED OBJ-only visual preview (no EXE)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNVERIFIED-RoundedRoad-OBJ-Only-${{ github.sha }}
+          path: Tests/Standalone/build/rounded-road-art-preview/
+          if-no-files-found: error
+          retention-days: 7
 
   packaging-script-syntax:
     name: Release PowerShell syntax
