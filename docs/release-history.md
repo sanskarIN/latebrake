@@ -1,11 +1,11 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.94**. It is an **experimental SOURCE-ONLY tag from unmerged draft PR #295**, not a compiled game or a feature merged into protected main. It has no verified Windows EXE, Android APK/AAB, Windows setup installer or installed gameplay.
+    The independently verified latest published GitHub tag is **v0.5.95**. It snapshots experimental **SOURCE-ONLY** Unreal circuit surface work from **unmerged draft PR #313**; it is NOT a Windows game, executable or installer.
 
-**Current source release:** [v0.5.94](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94) freezes immutable commit `7919a3e553de94e12f1dcfa961e305d9aff71bcd`: a bounded force-based reverse overspeed response in the actual shared player/rival Unreal pawn, rear-axle contact-grip limitations, reverse-drive heat gating, shared cornering-force budget and documented source regressions. The release contains **zero executable assets** and **has not passed licensed UE5.8/UHT compilation, authentic cooking or installed driving QA**. [v0.5.93](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.93) was the preceding experimental source tag.
+**Current source release:** [v0.5.95](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95) freezes immutable source commit `45e62e2f9009741bf947019105708abe64f89c3f` with eight physically bounded 3D road-edge paint segments, 48 braking-zone rubber details, an original Unreal Editor PBR material authoring script and SHA256-pinned optional material provenance checks for future Win64 candidates. The old Win32 2D cartoon-like preview is **not** the Unreal game and is not included. The public release contains **zero executable assets**, does not merge PR #313 and does not demonstrate a cooked Unreal map/material, genuine car 3D visuals, compiled Windows 3D EXE or gameplay QA. [v0.5.94](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94) remains the previous immutable source milestone.
 
-**Pinned-source evidence:** The GitHub [v0.5.94 publisher](https://github.com/sanskarIN/latebrake/actions/runs/42203654085) passed **185 portable C++20 tests on each of Windows, Ubuntu and macOS and 673 direct Python tests**, plus PowerShell packaging checks and documentation. The first publishing attempt was blocked by seven stale Python source bindings; those were corrected before the successful exact-source publication. Neither the source tests nor an immutable tag prove Unreal game playability.
+**Pinned-source evidence:** The [v0.5.95 publication workflow](https://github.com/sanskarIN/latebrake/actions/runs/42339222627) passed **171 CTests per Windows, Ubuntu and macOS platform; 621 Python source tests; PowerShell build/safety fixtures and docs**. This is **not** an actual licensed UE 5.8 Editor/UHT or rendered/material/runtime game test.
 
 **Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
 
@@ -15,6 +15,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.95 | [Release notes](releases/v0.5.95.md) |
 | v0.5.94 | [Release notes](releases/v0.5.94.md) |
 | v0.5.93 | [Release notes](releases/v0.5.93.md) |
 | v0.5.92 | [Release notes](releases/v0.5.92.md) |
