@@ -65,6 +65,14 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
             "Test-Path -LiteralPath $map -PathType Any",
         ):
             self.assertIn(required, self.wrapper)
+        self.assertIn(
+            "unreal.Rotator(roll=0.0, pitch=0.0, yaw=yaw)", self.editor
+        )
+        self.assertIn("audit_saved_physics_lab(", self.editor)
+        self.assertIn("subsystem.load_level(LAB_PACKAGE)", self.editor)
+        self.assertIn('"verified_after_reload": True', self.editor)
+        self.assertIn("audited_actors", self.editor)
+        self.assertIn("verified_after_reload", self.wrapper)
         for required in (
             "NOT been executed in a licensed Unreal Editor",
             "never overwrites an existing lab map",

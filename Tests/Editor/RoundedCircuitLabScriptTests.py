@@ -120,7 +120,8 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
             "schema_version": 1, "units": "cm", "road_top_cm": -1.0,
             "piece_count": 68, "pieces": [
                 {"index": i, "position": [float(i-34), 150.0, -22.0],
-                 "rotation_yaw": 0.0, "scale": [1.35, 9.0, 0.42]}
+                 "rotation_yaw": float((i % 8) * 5.625),
+                 "scale": [1.35, 9.0, 0.42]}
                 for i in range(68)
             ]
         }
@@ -147,8 +148,10 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
         fake.CollisionEnabled = types.SimpleNamespace(QUERY_AND_PHYSICS=3)
         fake.Vector = lambda *args: types.SimpleNamespace(
             x=float(args[0]), y=float(args[1]), z=float(args[2]))
-        fake.Rotator = lambda *args: types.SimpleNamespace(
-            roll=float(args[0]), pitch=float(args[1]), yaw=float(args[2]))
+        # Unreal Python constructor order is (roll, pitch, yaw), not
+        # C++ FRotator's (pitch, yaw, roll). Never mock yaw as arg #2.
+        fake.Rotator = lambda roll=0.0, pitch=0.0, yaw=0.0: types.SimpleNamespace(
+            roll=float(roll), pitch=float(pitch), yaw=float(yaw))
         cube = fake.StaticMesh()
         fake.load_asset = lambda path: cube if path == "/Engine/BasicShapes/Cube.Cube" else None
         fake.get_editor_subsystem = lambda cls: {
@@ -179,7 +182,9 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
             self.assertEqual((actor.scale.x, actor.scale.y, actor.scale.z),
                              (1.35, 9.0, 0.42))
             self.assertEqual(pos.z, -22.0)
-            self.assertEqual(angle.yaw, 0.0)
+            self.assertAlmostEqual(angle.yaw, float((i % 8) * 5.625))
+            self.assertEqual(angle.pitch, 0.0)
+            self.assertEqual(angle.roll, 0.0)
             self.assertFalse(transient)
         self.assertFalse((self.content / "Maps" / "LatebrakeCircuit.umap").exists())
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))

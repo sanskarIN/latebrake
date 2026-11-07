@@ -77,3 +77,25 @@ and installed Win64 qualification.
 The existing `main` circuit, controller preview, career save schema,
 nine audited physical blocks and v0.5.95 release remain unchanged.
 
+## November 7 Editor round-trip and orientation corrections
+
+The first Editor-only lab script had an important unqualified Unreal Python
+API risk: unlike C++ FRotator, **Python's Rotator constructor orders its
+arguments (roll, pitch, yaw)**. It now passes all three with named
+arguments so a curved slab is rotated horizontally, never pitched.
+The mocked fixture now uses nonzero corner headings and checks both
+pitch and roll remain zero; positional-argument regressions fail source CI.
+
+Before the source script claims any save success, it now **reads back**
+all 68 road actors and one ground actor from the actual Unreal Editor
+world, requiring unique expected labels, original stock Cube mesh,
+BlockAll query-and-physics collision, exact world positions/scales/yaw,
+and the isolated GameModeBase override. It then asks the *real Editor*
+to **reload the serialized level** and repeats that audit. A missing or
+drifted actor, disabled collision, unexpected pitch/roll, lost game mode,
+failed reload or failed save blocks its success receipt. The PowerShell
+entrypoint requires `audited_actors=69` and
+`verified_after_reload=true` alongside the fresh JSON/map SHA256 hashes.
+These APIs and numeric tolerances still require genuine UE5.8 validation;
+a mock unit test is **not** real physics or a rendered game.
+

@@ -155,7 +155,7 @@ def author_map(subsystem, actors, world_api, cube, pieces):
     # collision/context but never constitutes one of the 68 tested road pieces.
     ground = actors.spawn_actor_from_class(
         unreal.StaticMeshActor, unreal.Vector(0.0, 0.0, -100.0),
-        unreal.Rotator(0.0, 0.0, 0.0), False)
+        unreal.Rotator(roll=0.0, pitch=0.0, yaw=0.0), False)
     if ground is None:
         raise RuntimeError("Unreal failed to spawn dedicated lab ground")
     ground_mesh = ground.get_editor_property("static_mesh_component")
@@ -174,7 +174,7 @@ def author_map(subsystem, actors, world_api, cube, pieces):
         actor = actors.spawn_actor_from_class(
             unreal.StaticMeshActor,
             unreal.Vector(position[0], position[1], position[2]),
-            unreal.Rotator(0.0, yaw, 0.0),
+            unreal.Rotator(roll=0.0, pitch=0.0, yaw=yaw),
             False,
         )
         if actor is None:
