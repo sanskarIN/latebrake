@@ -41,7 +41,7 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
             'LAB_PACKAGE = "/Game/Maps/LatebrakeRoundedPhysicsLab"',
             "Existing rounded lab .umap must be reviewed",
             "read_verified_geometry(GEOMETRY_FILE)",
-            'settings.set_editor_property("default_game_mode", unreal.GameModeBase)',
+            'settings.set_editor_property("default_game_mode", unreal.GameModeBase.static_class())',
             "unreal.StaticMeshActor",
             "unreal.CollisionEnabled.QUERY_AND_PHYSICS",
             "subsystem.save_current_level()",
