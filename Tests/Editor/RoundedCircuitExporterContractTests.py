@@ -68,5 +68,31 @@ class RoundedCircuitExporterContractTests(unittest.TestCase):
                     parse_and_validate(source)
 
 
+    def test_full_scale_all_transform_contracts_keep_original_nine_metre_width(self):
+        document = valid_document()
+        document["pieces"] = [expected_piece(i, 10.0) for i in range(EXPECTED_PIECES)]
+        self.assertEqual(validate_document(document, 10.0), EXPECTED_PIECES)
+        self.assertEqual(parse_and_validate(json.dumps(document), 10.0), EXPECTED_PIECES)
+        self.assertEqual(document["pieces"][0]["scale"][1], 9.0)
+        self.assertEqual(document["pieces"][0]["position"][1], -18000.0)
+        self.assertEqual(document["pieces"][0]["scale"][0], 412.0)
+        # A valid 1.70-km source must not be mistaken for the 170-m profile.
+        with self.assertRaises(ValueError):
+            validate_document(document)
+        variants = (
+            ("road-too-wide", lambda d: d["pieces"][7]["scale"].__setitem__(1, 90.0)),
+            ("scaled-only-position", lambda d: d["pieces"][0]["scale"].__setitem__(0, 41.2)),
+            ("scaled-height", lambda d: d["pieces"][2]["position"].__setitem__(2, -220.0)),
+            ("shift-corner", lambda d: d["pieces"][44]["position"].__setitem__(0, 9999.0)),
+        )
+        for case, mutation in variants:
+            with self.subTest(case=case):
+                mutated = copy.deepcopy(document)
+                mutation(mutated)
+                with self.assertRaises(ValueError):
+                    validate_document(mutated, 10.0)
+
+
+
 if __name__ == "__main__":
     unittest.main()
