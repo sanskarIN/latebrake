@@ -368,3 +368,67 @@ before retrying. **Do not merge into live GameMode or ship installers without
 all of [playable gate #148](https://github.com/sanskarIN/latebrake/issues/148).**
 The published v0.5.96 pre-release is an older immutable **SOURCE-ONLY**
 snapshot and does not include this later experimental import work.
+
+
+## Full-lap *real Editor collision query* QA — 1,290 source-derived probes
+
+The earlier continuous-road import checks that Unreal can serialize a
+static `.uasset` and dedicated lab map; that is **not evidence** the actual
+unloaded/loaded scene will answer useful road-surface collision queries.
+A new, separately gated **static query audit** checks an **existing
+imported** continuous physical road without generating or overwriting any
+asset. It uses actual `unreal.SystemLibrary.line_trace_single` calls in an
+authorized Unreal **5.8 Editor world** (the Python mock suite is separate).
+
+After **successfully completing** `New-ContinuousRoadLab.ps1` on your own
+licensed UE5.8 workstation, from the repository root run:
+
+```powershell
+pwsh ./scripts/Audit-ContinuousRoadQueries.ps1 -EngineRoot "C:/Program Files/Epic Games/UE_5.8"
+```
+
+What the new workflow **requires**, rather than merely claiming:
+
+- Generate a deterministic JSON probe plan using the *independent Python
+  centreline model*, covering **256 stations across the complete 1.70-km
+  lap** and **two additional stations just 0.25 cm either side of the
+  closed loop seam**.
+- At each of the 258 positions, trace vertically with **complex collision
+  enabled** at five fixed lateral offsets: centre, ±400 cm (inside the
+  actual 450-cm physical edge), and ±550 cm (outside the road edge).
+  Verify **774 hits on the authored static physical road** and **516 hits
+  on the separately authored ground**, never an unrelated actor.
+- Require surface heights at z=−1 cm (physical asphalt) and z=−37.5 cm
+  (off-road ground) to be within **1.5 cm**, XY impact points within
+  **2 cm** of the probe, and **upward normal Z ≥ 0.98**. Missed/incorrect
+  actors, wrong normals, 90-m pavement, missing seam support and
+  ground-as-road false positives must fail.
+- Before loading any Editor map, authenticate the original imported asset
+  and map using exact SHA256 from the real import receipt, the compiled
+  C++ OBJ+MTL bytes, and a SHA256 of the independently validated probe
+  JSON. After **all 1,290 actual queries**, verify hashes still match.
+- If and only if every query passes, create a separate
+  `Saved/LatebrakeAutomation/world-scale-continuous-ray-audit-result.json`
+  receipt recording actual hit counts, maximum error, minimum normal-Z,
+  source/assets/probe hashes and explicitly
+  `dynamic_chaos_wheel_contact_tested: false`,
+  `playable_game_tested: false`. Existing result or signed source
+  probe files cannot silently be overwritten; review/move prior
+  inspection evidence before repeating the audit.
+
+The 1,290-point plan is also checked as a strict CTest
+`WorldScaleCollisionRayProbePlan`; disposable fake-Editor tests verify
+the audit **refuses** missing rays, changed assets, wrong normals/actor,
+altered probes and already existing receipts. **Green CI only validates
+the source code and mocks.** No actual licensed UE Editor run or
+vehicle-contact simulation has happened in the hosted CI.
+
+**Scope limit:** a static Editor line trace is *not* a drivable physics
+test. It cannot verify dynamic Chaos rigid-body wheel/suspension
+contact, vehicle slip, seam ride quality, loading under motion,
+render quality, frame rate, cook/packaging, career gameplay or a
+Win64 installer. The full playable gate remains
+[issue #148](https://github.com/sanskarIN/latebrake/issues/148);
+do not close it using the static-query receipt. The already-published
+v0.5.96 source-only snapshot is immutable and does not contain this
+newer unmerged PR #316 experiment.
