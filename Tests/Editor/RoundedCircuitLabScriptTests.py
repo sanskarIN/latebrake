@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import json
+import os
 import runpy
 import sys
 import tempfile
@@ -162,7 +163,14 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
                     get_world_settings=lambda: self.settings)),
         }[cls]
         fake.log = self.events.append
-        with patch.dict(sys.modules, {"unreal": fake}):
+        with patch.dict(sys.modules, {"unreal": fake}), patch.dict(
+            os.environ, {
+                "LATEBRAKE_ROUNDED_GEOMETRY_SHA256": getattr(
+                    self, "source_digest", hashlib.sha256(
+                        self.geometry.read_bytes()).hexdigest()
+                )
+            },
+        ):
             runpy.run_path(str(SCRIPT), run_name="__main__")
 
     def test_success_is_separate_from_racing_map_and_hashes_real_editor_calls(self):
@@ -192,10 +200,32 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
         self.assertEqual(receipt["ground_pieces"], 1)
         self.assertEqual(receipt["audited_actors"], 69)
         self.assertTrue(receipt["verified_after_reload"])
+        self.assertTrue(receipt["source_identity_verified"])
         self.assertEqual(receipt["game_mode"], "GameModeBase")
         self.assertEqual(receipt["status"], "saved_by_unreal_editor")
         self.assertEqual(receipt["geometry_sha256"], hashlib.sha256(self.geometry.read_bytes()).hexdigest())
         self.assertEqual(receipt["map_sha256"], hashlib.sha256(self.map.read_bytes()).hexdigest())
+
+    def test_mutated_syntactically_valid_road_json_is_rejected_before_editor(self):
+        # SHA is taken from the original compiler-exported bytes, not
+        # recomputed from potentially swapped editor input.
+        self.source_digest = hashlib.sha256(
+            self.geometry.read_bytes()).hexdigest()
+        self.data["pieces"][24]["position"][0] += 20.0
+        self.write_data()
+        with self.assertRaisesRegex(RuntimeError, "differ from the verified C\\+\\+ export"):
+            self.run_script()
+        self.assertEqual(self.editor.creates, 0)
+        self.assertFalse(self.receipt.exists())
+
+    def test_missing_or_invalid_source_digest_is_rejected_before_editor(self):
+        for digest in ("", "0" * 63, "not-a-sha256", "A" * 64):
+            with self.subTest(digest=digest):
+                self.source_digest = digest
+                with self.assertRaisesRegex(RuntimeError, "Missing or malformed canonical"):
+                    self.run_script()
+                self.assertEqual(self.editor.creates, 0)
+                self.assertFalse(self.receipt.exists())
 
     def test_existing_user_map_is_never_overwritten(self):
         self.map.parent.mkdir(parents=True)

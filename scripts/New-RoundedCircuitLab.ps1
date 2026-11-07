@@ -63,8 +63,18 @@ if (Test-Path -LiteralPath $receipt -PathType Leaf) {
 $expectedDataHash = (Get-FileHash -LiteralPath $data -Algorithm SHA256).Hash.ToLowerInvariant()
 $projectPath = (Resolve-Path -LiteralPath $project).Path
 $scriptPath = (Resolve-Path -LiteralPath $python).Path
-& $editor $projectPath "-ExecutePythonScript=$scriptPath" '-unattended' '-nop4' '-nosplash'
-if ($LASTEXITCODE -ne 0) { throw 'Genuine Unreal Editor map authoring failed.' }
+# Pass the identity of the *actual compiled C++ export* to the Editor.
+# A valid-looking but mutated 68-element JSON is not an authorized road.
+$envName = 'LATEBRAKE_ROUNDED_GEOMETRY_SHA256'
+$originalEnvironment = [Environment]::GetEnvironmentVariable($envName, 'Process')
+try {
+    [Environment]::SetEnvironmentVariable($envName, $expectedDataHash, 'Process')
+    & $editor $projectPath "-ExecutePythonScript=$scriptPath" '-unattended' '-nop4' '-nosplash'
+    $editorExitCode = $LASTEXITCODE
+} finally {
+    [Environment]::SetEnvironmentVariable($envName, $originalEnvironment, 'Process')
+}
+if ($editorExitCode -ne 0) { throw 'Genuine Unreal Editor map authoring failed.' }
 if (-not (Test-Path -LiteralPath $map -PathType Leaf) -or
     -not (Test-Path -LiteralPath $receipt -PathType Leaf)) {
     throw 'Unreal did not produce both a genuine physics-lab map and fresh receipt.'
@@ -78,6 +88,7 @@ if ($r.schema_version -ne 1 -or $r.status -cne 'saved_by_unreal_editor' -or
     $r.pieces -ne 68 -or $r.ground_pieces -ne 1 -or
     $r.audited_actors -ne 69 -or $r.verified_after_reload -ne $true -or
     $r.game_mode -cne 'GameModeBase' -or
+    $r.source_identity_verified -ne $true -or
     $r.geometry_sha256 -cne $expectedDataHash -or
     $r.geometry_sha256 -cne $dataHash -or
     $r.map_sha256 -cne $mapHash -or

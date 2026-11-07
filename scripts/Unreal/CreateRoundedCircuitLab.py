@@ -6,8 +6,11 @@ interpreter. It never changes the active LatebrakeCircuit or default map.
 """
 
 import hashlib
+import hmac
 import json
 import math
+import os
+import re
 from pathlib import Path
 
 import unreal
@@ -18,6 +21,7 @@ ROOT_SAVED = Path(unreal.Paths.project_saved_dir()) / "LatebrakeAutomation"
 GEOMETRY_FILE = ROOT_SAVED / "rounded-road-pieces.json"
 RECEIPT = ROOT_SAVED / "rounded-physics-lab-result.json"
 EXPECTED_PIECES = 68
+SOURCE_DIGEST_ENV = "LATEBRAKE_ROUNDED_GEOMETRY_SHA256"
 
 
 def sha256_file(path):
@@ -26,6 +30,27 @@ def sha256_file(path):
         for part in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(part)
     return digest.hexdigest()
+
+
+def verify_exported_source_identity(path):
+    """Require the C++ wrapper's original byte digest BEFORE map creation.
+
+    A JSON document can be structurally valid but refer to an entirely
+    different track. The trusted wrapper hashes its actual C++ export and
+    passes the digest in the Editor process environment. Never infer the
+    source identity from the mutable file alone.
+    """
+    expected = os.environ.get(SOURCE_DIGEST_ENV, "")
+    if re.fullmatch(r"[a-f0-9]{64}", expected) is None:
+        raise RuntimeError(
+            "Missing or malformed canonical C++ rounded road source digest"
+        )
+    actual = sha256_file(path)
+    if not hmac.compare_digest(expected, actual):
+        raise RuntimeError(
+            "Rounded road JSON bytes differ from the verified C++ export"
+        )
+    return actual
 
 
 def read_verified_geometry(path):
@@ -216,8 +241,11 @@ def main():
     # Validate ALL source-exported transforms before creating any level.
     if LAB_MAP.exists():
         raise RuntimeError("Existing rounded lab .umap must be reviewed before rerunning")
+    geometry_sha = verify_exported_source_identity(GEOMETRY_FILE)
     data = read_verified_geometry(GEOMETRY_FILE)
-    geometry_sha = sha256_file(GEOMETRY_FILE)
+    # A second digest closes the parsing window before any Editor creation.
+    if not hmac.compare_digest(geometry_sha, sha256_file(GEOMETRY_FILE)):
+        raise RuntimeError("Canonical rounded source changed during validation")
     editor = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
     world_api = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
@@ -238,6 +266,7 @@ def main():
         "audited_actors": count + 1,
         "verified_after_reload": True,
         "geometry_sha256": geometry_sha,
+        "source_identity_verified": True,
         "map_bytes": LAB_MAP.stat().st_size,
         "map_sha256": sha256_file(LAB_MAP),
         "game_mode": "GameModeBase",

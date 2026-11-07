@@ -46,6 +46,8 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
             "unreal.CollisionEnabled.QUERY_AND_PHYSICS",
             "subsystem.save_current_level()",
             "geometry_sha256",
+            "source_identity_verified",
+            "verify_exported_source_identity(GEOMETRY_FILE)",
             "map_sha256",
             "RoundedPhysicsLabGround",
         ):
@@ -61,6 +63,8 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
             "EngineAssociation -cne '5.8'",
             "Get-FileHash",
             "expectedDataHash",
+            "LATEBRAKE_ROUNDED_GEOMETRY_SHA256",
+            "originalEnvironment",
             "Verify-UnrealMapHeader.ps1",
             "Test-Path -LiteralPath $map -PathType Any",
         ):

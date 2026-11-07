@@ -99,3 +99,19 @@ entrypoint requires `audited_actors=69` and
 These APIs and numeric tolerances still require genuine UE5.8 validation;
 a mock unit test is **not** real physics or a rendered game.
 
+## Canonical C++ geometry byte-identity handoff
+
+Before Unreal Editor opens, the Windows wrapper now hashes the exact 68-piece
+JSON output produced by its compiled C++ exporter. It passes that SHA-256
+through the dedicated process-environment variable
+`LATEBRAKE_ROUNDED_GEOMETRY_SHA256`, restoring the previous value after
+the Editor process exits. The Unreal Python script **requires** a lowercase
+64-digit hexadecimal digest and compares it to the incoming JSON bytes
+*before creating any level*, and rechecks the file after schema validation.
+Missing, malformed, stale or changed-but-plausible 68-piece geometry fails
+closed. The post-reload receipt adds `source_identity_verified=true`;
+the Windows wrapper requires it as well as the original geometry and map
+digests. Mock-only tests cover a different-but-valid geometry payload and
+invalid digests. **These checks establish source handoff consistency,
+not smooth meshes, rendered quality or actual UE5.8 wheel collision.**
+
