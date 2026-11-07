@@ -1961,3 +1961,18 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RoundedCircuitRoadPlan COMMAND latebrake_rounded_circuit_road_plan_tests)
+
+# Export the exact proposed physical slab transforms as machine-readable
+# JSON for a *different* genuine Unreal Editor-only inspection map.
+# The exporter is portable; running it does not author a .umap or game.
+add_executable(latebrake_rounded_circuit_lab_exporter RoundedCircuitLabExporter.cpp)
+target_include_directories(latebrake_rounded_circuit_lab_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_circuit_lab_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_circuit_lab_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_circuit_lab_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RoundedCircuitLabExport COMMAND latebrake_rounded_circuit_lab_exporter)
