@@ -18,6 +18,7 @@
 #include "Components/PointLightComponent.h"
 #include "Racing/StartGantryVisual.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
@@ -473,8 +474,15 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label,
         return nullptr;
     }
 
-    // An appearance material is optional for this prototype. Its failure
-    // does not change an already checked physical actor configuration.
+    // Prefer an original, Cooked project-owned PBR parent when the genuine
+    // editor has authored it. A missing visual asset never disables real
+    // road/wall collision or pretends that stock cubes are photoreal.
+    if (UMaterialInterface* ProjectTrackMaterial =
+            LoadObject<UMaterialInterface>(nullptr,
+                TEXT("/Game/Latebrake/Materials/M_LatebrakeTrackPBR.M_LatebrakeTrackPBR")))
+    {
+        Mesh->SetMaterial(0, ProjectTrackMaterial);
+    }
     if (UMaterialInstanceDynamic* Material =
             Mesh->CreateAndSetMaterialInstanceDynamic(0))
     {
@@ -902,6 +910,12 @@ void ALatebrakeRaceGameMode::BuildCircuitSurfaceDetail(UStaticMesh* Mesh)
         Marks->SetupAttachment(Root);
         Marks->SetMobility(EComponentMobility::Static);
         Marks->SetStaticMesh(Mesh);
+        if (UMaterialInterface* ProjectTrackMaterial =
+                LoadObject<UMaterialInterface>(nullptr,
+                    TEXT("/Game/Latebrake/Materials/M_LatebrakeTrackPBR.M_LatebrakeTrackPBR")))
+        {
+            Marks->SetMaterial(0, ProjectTrackMaterial);
+        }
         Marks->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         Marks->SetGenerateOverlapEvents(false);
         Marks->SetCanEverAffectNavigation(false);
@@ -1089,6 +1103,12 @@ void ALatebrakeRaceGameMode::BuildCircuit()
                     Instances->SetupAttachment(DecorationRoot);
                     Instances->SetMobility(EComponentMobility::Static);
                     Instances->SetStaticMesh(DecorationMesh);
+                    if (UMaterialInterface* ProjectTrackMaterial =
+                            LoadObject<UMaterialInterface>(nullptr,
+                                TEXT("/Game/Latebrake/Materials/M_LatebrakeTrackPBR.M_LatebrakeTrackPBR")))
+                    {
+                        Instances->SetMaterial(0, ProjectTrackMaterial);
+                    }
                     Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
                     Instances->SetGenerateOverlapEvents(false);
                     Instances->SetCanEverAffectNavigation(false);

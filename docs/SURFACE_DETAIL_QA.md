@@ -56,3 +56,32 @@ A cooked asset, real manufacturer-independent 3D car model, realistic
 asphalt/grass PBR material, lighting, curved course and installed QA are
 **separate unfinished work**. Do not release this source milestone as a
 downloadable realistic Windows racing game without that evidence.
+
+## Source-authored Unreal material stage (not yet cooked or renderer-verified)
+
+The 3D GameMode will prefer the original project-owned
+`/Game/Latebrake/Materials/M_LatebrakeTrackPBR` asset when a licensed
+Unreal Editor has created and cooked it. Its `Color`, `Roughness` and
+`Specular` parameters provide a consistent, physically based but
+**not photoreal or textured** base for roadway, barriers and decorative
+paint. When the asset is missing, the source retains the engine stock
+material and logs no visual quality claim.
+
+On an **authorized UE 5.8 Windows workstation**:
+
+```powershell
+pwsh ./scripts/New-TrackMaterial.ps1 -EngineRoot 'C:/Program Files/Epic Games/UE_5.8'
+```
+
+This launches the genuine editor, creates a real serialized `.uasset`
+**without overwriting user-authored assets**, recompiles the material and
+writes a SHA256-linked local receipt after saving. The PowerShell wrapper
+checks that the receipt is new and matches the actual file. The packaging
+configuration lists the dedicated asset folder for cooking, but this
+source branch does **not** contain a generated binary material asset.
+
+This is a material *authoring mechanism*, not a rendered screenshot,
+cooked texture, installed 3D game or validated PBR appearance. Runtime
+shader compilation/cooking, lighting, color gamut, paint readability,
+original textures and visual acceptance remain required.
+
