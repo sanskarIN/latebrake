@@ -266,7 +266,7 @@ jobs:
       - name: Require independently verified physical 9m OBJ and manifold
         run: |
           ctest --test-dir Tests/Standalone/build -C Release \
-            -R '^WorldScale(SmoothCollisionSurface|CollisionRoadObjContract) \
+            -R '^WorldScale(SmoothCollisionSurface|CollisionRoadObjContract)$' \
             --no-tests=error --output-on-failure
       - name: Export exact model and destructive-validation provenance
         shell: bash
