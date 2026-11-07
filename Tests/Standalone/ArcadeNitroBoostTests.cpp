@@ -87,6 +87,46 @@ int main()
     Check(!boost.RejectUndeliveredFrame() &&
           boost.ChargeFraction() == deliveredCharge,
           "released genuinely spent nitro cannot be retroactively refunded");
+    // Unsettled engine-frame receipts must NEVER become an implicit
+    // delivery when another Tick or input lifecycle event arrives.
+    boost.Reset();
+    boost.Press(true);
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
+          "orphan candidate fixture starts with legitimate press");
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active &&
+          std::abs(boost.ChargeFraction() -
+              (1.0 - 0.05 * ArcadeNitroBoost::DrainPerSecond)) < 1e-12,
+          "next Tick refunds missing settlement before its own new debit");
+    Check(boost.RejectUndeliveredFrame() &&
+          std::abs(boost.ChargeFraction() - 1.0) < 1e-12 &&
+          std::abs(boost.HeatFraction()) < 1e-12 &&
+          boost.IsHeld(), "new Tick retains held input without phantom cost");
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
+          "release-interruption fixture creates a pending receipt");
+    boost.Release();
+    Check(!boost.IsHeld() && !boost.IsActive() &&
+          std::abs(boost.ChargeFraction() - 1.0) < 1e-12 &&
+          std::abs(boost.HeatFraction()) < 1e-12 &&
+          !boost.CommitDeliveredFrame(),
+          "release refunds undelivered bonus without leaving commit authority");
+    boost.Press(true);
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
+          "disallowed-press fixture has another pending receipt");
+    boost.Press(false);
+    Check(!boost.IsHeld() && !boost.IsActive() &&
+          std::abs(boost.ChargeFraction() - 1.0) < 1e-12 &&
+          !boost.RejectUndeliveredFrame(),
+          "disallowed press refunds prior candidate and disarms correctly");
+    boost.Press(true);
+    Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
+          "suspend-interruption fixture starts with pending candidate");
+    boost.Suspend();
+    Check(!boost.IsHeld() && !boost.IsActive() &&
+          std::abs(boost.ChargeFraction() - 1.0) < 1e-12 &&
+          std::abs(boost.HeatFraction()) < 1e-12 &&
+          boost.CooldownRemainingSeconds() == 0.0,
+          "pause or invalid tick cannot retain an undelivered debit");
+
     boost.Reset();
     boost.Press(true);
     Check(boost.Step(0.05, true, false, 1.0, 2200.0).Active,
@@ -162,6 +202,13 @@ int main()
           "thermal edge fixture is one committed bonus from cutoff");
     const double baselineCharge = heatEdge.ChargeFraction();
     const double baselineHeat = heatEdge.HeatFraction();
+    Check(heatEdge.Step(0.05, true, false, 1.0, 2200.0).Active &&
+          heatEdge.Step(0.05, true, false, 1.0, 2200.0).Active &&
+          heatEdge.IsHeld() && heatEdge.CooldownRemainingSeconds() == 0.0 &&
+          heatEdge.RejectUndeliveredFrame() &&
+          std::abs(heatEdge.ChargeFraction() - baselineCharge) < 1e-10 &&
+          std::abs(heatEdge.HeatFraction() - baselineHeat) < 1e-10,
+          "unsettled thermal cutoff retries without phantom cooldown");
     for (int i = 0; i < 120; ++i)
     {
         const auto s = heatEdge.Step(0.05, true, false, 1.0, 2200.0);

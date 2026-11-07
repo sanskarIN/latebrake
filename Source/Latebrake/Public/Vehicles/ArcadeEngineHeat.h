@@ -44,6 +44,8 @@ public:
     // Pausing freezes heat; wall-clock time is not qualified driving time.
     void Suspend() noexcept
     {
+        // An interrupted tick is not evidence of delivered bonus force.
+        SettleNitroDelivery(false);
         Valid = false;
         PendingNitroHeat = false;
     }
@@ -61,7 +63,9 @@ public:
 
     EngineHeatOutput Observe(const EngineHeatSample& sample) noexcept
     {
-        PendingNitroHeat = false;
+        // A forgotten prior receipt never rolls phantom nitro heat into
+        // the next frame's ordinary throttle/airflow calculation.
+        SettleNitroDelivery(false);
         if (!sample.DrivingAllowed ||
             !std::isfinite(sample.DeltaSeconds) ||
             sample.DeltaSeconds <= 0.0 ||
@@ -91,7 +95,10 @@ public:
         PendingNitroHeat = nitroExtra > 0.0;
         PendingHeatWithoutNitro = baseHeat;
         Valid = true;
-        const double scale = ComputeMotorMultiplier();
+        // The motor dispatch occurs BEFORE its real nitro force verdict.
+        // Use the settled ordinary-load heat for this frame's motor limit;
+        // provisional bonus heat can only affect later frames if delivered.
+        const double scale = ComputeMotorMultiplier(baseHeat);
         return {true, Heat, scale, scale < 1.0};
     }
 
@@ -99,14 +106,14 @@ public:
     double HeatFraction() const noexcept { return Heat; }
     double MotorMultiplier() const noexcept
     {
-        return Valid ? ComputeMotorMultiplier() : 1.0;
+        return Valid ? ComputeMotorMultiplier(Heat) : 1.0;
     }
 
 private:
-    double ComputeMotorMultiplier() const noexcept
+    double ComputeMotorMultiplier(double heatFraction) const noexcept
     {
         const double excess = std::clamp(
-            (Heat - DerateThreshold) / (1.0 - DerateThreshold), 0.0, 1.0);
+            (heatFraction - DerateThreshold) / (1.0 - DerateThreshold), 0.0, 1.0);
         return 1.0 - (1.0 - MinimumMotorMultiplier) * excess;
     }
 

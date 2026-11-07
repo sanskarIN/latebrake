@@ -45,6 +45,9 @@ public:
     // Input interruption stops boost without replenishing run-local energy.
     void Suspend() noexcept
     {
+        // An interrupted candidate is not proof of physical AddForce.
+        // Roll it back before clearing the held input and frame receipt.
+        RejectUndeliveredFrame();
         Held = false;
         Active = false;
         PendingChargeDebit = 0.0;
@@ -53,6 +56,9 @@ public:
     }
     void Press(bool eligibleHumanDriver) noexcept
     {
+        // A repeated/changed button event cannot silently pay an
+        // outstanding frame whose bonus was never committed.
+        RejectUndeliveredFrame();
         Held = eligibleHumanDriver;
         Active = false;
         PendingChargeDebit = 0.0;
@@ -105,6 +111,9 @@ public:
                           bool serviceOrHandBraking, double throttle,
                           double signedForwardCmPerSecond) noexcept
     {
+        // If a caller aborted last frame before settlement, charge and
+        // heat must not leak into this frame's candidate or cooldown.
+        RejectUndeliveredFrame();
         Active = false;
         PendingChargeDebit = 0.0;
         PendingHeatIncrease = 0.0;

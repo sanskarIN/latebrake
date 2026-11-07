@@ -56,6 +56,8 @@ int main()
     for (int i = 0; i < 450; ++i)
     {
         heat.Observe({0.05, 3200.0, 1.0, true, true});
+        Require(heat.SettleNitroDelivery(true),
+                "hot nitro fixture must deliver and commit actual bonus");
     }
     const double nitroHot = heat.HeatFraction();
     heat.Reset();
@@ -161,6 +163,40 @@ int main()
         0.0, 3000.0, 1.0, true, true});
     Require(!rejected.Valid && !delivered.SettleNitroDelivery(false),
             "invalid engine sampling cannot leave a refundable receipt");
+
+    // A lost delivery verdict (early return, pause or next-frame race
+    // transition) must never silently turn a proposed heat increment
+    // into real history. Provisional nitro heat must also not derate the
+    // *same* motor dispatch before the real extra force was accepted.
+    ArcadeEngineHeat orphanNitroHeat;
+    ArcadeEngineHeat throttleOnlyHeat;
+    bool baselineDerated = false;
+    for (int i = 0; i < 600; ++i)
+    {
+        const auto pending = orphanNitroHeat.Observe({
+            0.05, 3000.0, 1.0, true, true});
+        const auto ordinaryFrame = throttleOnlyHeat.Observe({
+            0.05, 3000.0, 1.0, false, true});
+        Require(pending.Valid && ordinaryFrame.Valid &&
+                Near(pending.MotorMultiplier, ordinaryFrame.MotorMultiplier),
+                "provisional bonus heat cannot pre-derate same-frame motor");
+        baselineDerated = baselineDerated || ordinaryFrame.Derated;
+        if (i % 17 == 0)
+        {
+            orphanNitroHeat.Suspend();
+            throttleOnlyHeat.Suspend();
+            Require(Near(orphanNitroHeat.HeatFraction(),
+                         throttleOnlyHeat.HeatFraction()) &&
+                    !orphanNitroHeat.SettleNitroDelivery(true),
+                    "suspend must refund unanswered nitro receipt exactly once");
+        }
+    }
+    Require(baselineDerated, "orphan sample fixture reaches engine derating");
+    Require(orphanNitroHeat.SettleNitroDelivery(false) &&
+            Near(orphanNitroHeat.HeatFraction(),
+                 throttleOnlyHeat.HeatFraction()) &&
+            !orphanNitroHeat.SettleNitroDelivery(false),
+            "next Observe refunds absent verdict; final pending refund is idempotent");
 
     const double remembered = heat.HeatFraction();
     const EngineHeatSample invalid[] = {
