@@ -245,6 +245,66 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  continuous-physical-obj-preview:
+    name: Export UNVERIFIED 9m collision-road OBJ for offline inspection (NOT a game)
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 316
+    needs: [portable-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure original FULL-WIDTH collision geometry test source
+        run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
+      - name: Compile actual physical source OBJ producer and geometry test
+        run: |
+          cmake --build Tests/Standalone/build --config Release \
+            --target latebrake_world_scale_collision_obj_exporter \
+              latebrake_world_scale_smooth_collision_tests --parallel 4
+      - name: Require independently verified physical 9m OBJ and manifold
+        run: |
+          ctest --test-dir Tests/Standalone/build -C Release \
+            -R '^WorldScale(SmoothCollisionSurface|CollisionRoadObjContract)    name: Unreal editor-only Python syntax (not Unreal runtime)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Unreal Editor automation source
+        run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py scripts/Unreal/CreateRoundedCircuitLab.py scripts/Unreal/ImportWorldScaleContinuousRoad.py
+      - name: Test editor map automation decisions with disposable stub (NO Unreal SDK)
+        run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
+ \
+            --no-tests=error --output-on-failure
+      - name: Export exact model and destructive-validation provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=Tests/Standalone/build/continuous-physical-road-NOT-PLAYABLE
+          mkdir -p "$target"
+          Tests/Standalone/build/latebrake_world_scale_collision_obj_exporter \
+            "$target/SM_WorldScaleContinuousRoad.obj"
+          python3 Tests/Standalone/VerifyWorldScaleCollisionRoadObj.py \
+            Tests/Standalone/build/latebrake_world_scale_collision_obj_exporter
+          printf '%s\n' \
+            'WARNING — SOURCE GEOMETRY ONLY. NOT a playable Windows game or installer.' \
+            'Original 1.70-km static-road physical model with 9-m corridor and 42-cm depth.' \
+            'OBJ is NOT an Unreal StaticMesh/.uasset, cooked Chaos collision, or real wheel contact.' \
+            'Unreal Engine 5.8 Editor import API and hardware/vehicle tests have NOT been exercised.' \
+            'The live race map and original 68-slab Editor lab remain unchanged.' \
+            'Import through manually run scripts/New-ContinuousRoadLab.ps1 ONLY on UE5.8 Windows.' \
+            'Experimental PR #316; all real installed playability checks remain issue #148.' \
+            > "$target/READ_ME_FIRST.txt"
+          (cd "$target" && sha256sum SM_WorldScaleContinuousRoad.obj \
+            SM_WorldScaleContinuousRoad.mtl > SHA256SUMS.txt)
+      - name: Archive source physical-road model only (no EXE)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNVERIFIED-9m-ContinuousCollision-OBJ-${{ github.sha }}
+          path: Tests/Standalone/build/continuous-physical-road-NOT-PLAYABLE/
+          if-no-files-found: error
+          retention-days: 7
+
   editor-script-syntax:
     name: Unreal editor-only Python syntax (not Unreal runtime)
     runs-on: ubuntu-latest
