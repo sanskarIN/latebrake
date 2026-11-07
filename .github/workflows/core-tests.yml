@@ -278,9 +278,12 @@ jobs:
             "$target/SM_WorldScaleContinuousRoad.obj"
           python3 Tests/Standalone/VerifyWorldScaleCollisionRoadObj.py \
             Tests/Standalone/build/latebrake_world_scale_collision_obj_exporter
+          python3 Tests/Standalone/WorldScaleCollisionTracePlan.py \
+            "$target/SourceOnly_StaticCollisionProbes_1290.json"
           printf '%s\n' \
             'WARNING — SOURCE GEOMETRY ONLY. NOT a playable Windows game or installer.' \
             'Original 1.70-km static-road physical model with 9-m corridor and 42-cm depth.' \
+            'Includes 1,290 PLANNED line-query coordinates; zero genuine Unreal rays were fired in CI.' \
             'OBJ is NOT an Unreal StaticMesh/.uasset, cooked Chaos collision, or real wheel contact.' \
             'Unreal Engine 5.8 Editor import API and hardware/vehicle tests have NOT been exercised.' \
             'The live race map and original 68-slab Editor lab remain unchanged.' \
@@ -288,7 +291,8 @@ jobs:
             'Experimental PR #316; all real installed playability checks remain issue #148.' \
             > "$target/READ_ME_FIRST.txt"
           (cd "$target" && sha256sum SM_WorldScaleContinuousRoad.obj \
-            SM_WorldScaleContinuousRoad.mtl > SHA256SUMS.txt)
+            SM_WorldScaleContinuousRoad.mtl SourceOnly_StaticCollisionProbes_1290.json \
+            > SHA256SUMS.txt)
       - name: Archive source physical-road model only (no EXE)
         uses: actions/upload-artifact@v4
         with:
