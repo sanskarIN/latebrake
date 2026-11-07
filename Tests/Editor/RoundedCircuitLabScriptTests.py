@@ -31,18 +31,30 @@ class FakeMesh:
     def set_static_mesh(self, asset): self.asset = asset
     def set_collision_profile_name(self, profile): self.profile = profile
     def set_collision_enabled(self, collision): self.collision = collision
+    def get_editor_property(self, key):
+        assert key == "static_mesh"
+        return self.asset
+    def get_collision_profile_name(self): return self.profile
+    def get_collision_enabled(self): return self.collision
 
 
 class FakeActor:
-    def __init__(self):
+    def __init__(self, location, rotation):
         self.mesh = FakeMesh()
         self.label = None
         self.scale = None
+        self.location = location
+        self.rotation = rotation
     def get_editor_property(self, key):
         assert key == "static_mesh_component"
         return self.mesh
     def set_actor_scale3d(self, scale): self.scale = scale
     def set_actor_label(self, name): self.label = name
+    def get_actor_label(self): return self.label
+    def get_actor_scale3d(self): return self.scale
+    def get_actor_location(self): return self.location
+    def get_actor_rotation(self): return self.rotation
+    def get_actor_enable_collision(self): return True
 
 
 class FakeEditor:
@@ -51,6 +63,9 @@ class FakeEditor:
         self.creates = 0
         self.saves = 0
         self.can_save = True
+        self.reloads = 0
+        self.can_reload = True
+        self.on_reload = None
     def new_level(self, name, partitioned):
         assert name == "/Game/Maps/LatebrakeRoundedPhysicsLab"
         assert partitioned is False
@@ -62,18 +77,28 @@ class FakeEditor:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_bytes(b"TEST_ONLY_NON_UNREAL_LEVEL" * 200)
         return True
+    def load_level(self, name):
+        assert name == "/Game/Maps/LatebrakeRoundedPhysicsLab"
+        self.reloads += 1
+        if self.on_reload is not None:
+            self.on_reload()
+        return self.can_reload
 
 
 class FakeActors:
     def __init__(self):
         self.spawned = []
         self.fail_at = None
+        self.omit_last = False
     def spawn_actor_from_class(self, actor_class, location, rotation, transient):
         if self.fail_at is not None and len(self.spawned) == self.fail_at:
             return None
-        actor = FakeActor()
+        actor = FakeActor(location, rotation)
         self.spawned.append((actor, location, rotation, transient))
         return actor
+    def get_all_level_actors(self):
+        result = [item[0] for item in self.spawned]
+        return result[:-1] if self.omit_last else result
 
 
 class RoundedCircuitLabScriptTests(unittest.TestCase):
@@ -116,10 +141,14 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
         fake.UnrealEditorSubsystem = type("UnrealEditorSubsystem", (), {})
         fake.StaticMeshActor = type("StaticMeshActor", (), {})
         fake.StaticMesh = type("StaticMesh", (), {})
-        fake.GameModeBase = type("GameModeBase", (), {})
+        fake.GameModeBase = type("GameModeBase", (), {
+            "static_class": classmethod(lambda cls: cls)
+        })
         fake.CollisionEnabled = types.SimpleNamespace(QUERY_AND_PHYSICS=3)
-        fake.Vector = lambda *args: tuple(args)
-        fake.Rotator = lambda *args: tuple(args)
+        fake.Vector = lambda *args: types.SimpleNamespace(
+            x=float(args[0]), y=float(args[1]), z=float(args[2]))
+        fake.Rotator = lambda *args: types.SimpleNamespace(
+            roll=float(args[0]), pitch=float(args[1]), yaw=float(args[2]))
         cube = fake.StaticMesh()
         fake.load_asset = lambda path: cube if path == "/Engine/BasicShapes/Cube.Cube" else None
         fake.get_editor_subsystem = lambda cls: {
@@ -137,22 +166,27 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
         self.run_script()
         self.assertEqual(self.editor.creates, 1)
         self.assertEqual(self.editor.saves, 1)
+        self.assertEqual(self.editor.reloads, 1)
         self.assertEqual(len(self.actors.spawned), 69)
         ground = self.actors.spawned[0][0]
         self.assertEqual(ground.label, "RoundedPhysicsLabGround")
-        self.assertEqual(ground.scale, (110.0, 85.0, 1.25))
+        self.assertEqual((ground.scale.x, ground.scale.y, ground.scale.z),
+                         (110.0, 85.0, 1.25))
         for i, (actor, pos, angle, transient) in enumerate(self.actors.spawned[1:]):
             self.assertEqual(actor.label, f"RoundedPhysicsRoad_{i:02d}")
             self.assertEqual(actor.mesh.profile, "BlockAll")
             self.assertEqual(actor.mesh.collision, 3)
-            self.assertEqual(actor.scale, (1.35, 9.0, 0.42))
-            self.assertEqual(pos[2], -22.0)
-            self.assertEqual(angle[1], 0.0)
+            self.assertEqual((actor.scale.x, actor.scale.y, actor.scale.z),
+                             (1.35, 9.0, 0.42))
+            self.assertEqual(pos.z, -22.0)
+            self.assertEqual(angle.yaw, 0.0)
             self.assertFalse(transient)
         self.assertFalse((self.content / "Maps" / "LatebrakeCircuit.umap").exists())
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual(receipt["pieces"], 68)
         self.assertEqual(receipt["ground_pieces"], 1)
+        self.assertEqual(receipt["audited_actors"], 69)
+        self.assertTrue(receipt["verified_after_reload"])
         self.assertEqual(receipt["game_mode"], "GameModeBase")
         self.assertEqual(receipt["status"], "saved_by_unreal_editor")
         self.assertEqual(receipt["geometry_sha256"], hashlib.sha256(self.geometry.read_bytes()).hexdigest())
@@ -208,6 +242,35 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
                 self.assertEqual(self.editor.creates, 0)
                 self.assertFalse(self.receipt.exists())
                 self.data = old
+
+    def test_reloaded_world_missing_actor_rejects_success_receipt(self):
+        self.editor.on_reload = lambda: setattr(self.actors, "omit_last", True)
+        with self.assertRaisesRegex(RuntimeError, "Incomplete persisted collision actors"):
+            self.run_script()
+        self.assertEqual(self.editor.reloads, 1)
+        self.assertFalse(self.receipt.exists())
+
+    def test_reloaded_world_collision_downgrade_rejects_receipt(self):
+        def change_collision():
+            self.actors.spawned[18][0].mesh.collision = 0
+        self.editor.on_reload = change_collision
+        with self.assertRaisesRegex(RuntimeError, "Nonblocking physical asphalt"):
+            self.run_script()
+        self.assertFalse(self.receipt.exists())
+
+    def test_reloaded_world_transform_drift_rejects_receipt(self):
+        def move_road():
+            self.actors.spawned[12][0].location.x += 20
+        self.editor.on_reload = move_road
+        with self.assertRaisesRegex(RuntimeError, "Wrong persisted world position"):
+            self.run_script()
+        self.assertFalse(self.receipt.exists())
+
+    def test_reload_failure_rejects_receipt(self):
+        self.editor.can_reload = False
+        with self.assertRaisesRegex(RuntimeError, "reload failed"):
+            self.run_script()
+        self.assertFalse(self.receipt.exists())
 
     def test_failed_actor_spawn_cannot_write_success_receipt(self):
         self.actors.fail_at = 18  # 1 ground + 17 road slabs

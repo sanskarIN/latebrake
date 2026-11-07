@@ -66,6 +66,76 @@ def read_verified_geometry(path):
     return data
 
 
+
+def _xyz(vector):
+    return (float(vector.x), float(vector.y), float(vector.z))
+
+
+def _close3(actual, expected, epsilon=0.001):
+    return all(math.isfinite(value) and abs(value - target) <= epsilon
+               for value, target in zip(actual, expected))
+
+
+def audit_saved_physics_lab(actors, world_api, cube, pieces):
+    """Read actual Unreal actor/component state, never infer from spawn calls.
+
+    Re-running this audit after a real level reload catches nonpersistent
+    world settings, silent transform/clamp drift and missing collision actors.
+    It verifies the authored asset state, NOT Chaos wheel-contact gameplay.
+    """
+    world = world_api.get_editor_world()
+    if world is None:
+        raise RuntimeError("Rounded lab Editor world unavailable during audit")
+    settings = world.get_world_settings()
+    if settings is None or settings.get_editor_property(
+            "default_game_mode") != unreal.GameModeBase.static_class():
+        raise RuntimeError("Rounded lab lost its isolated GameModeBase override")
+
+    found = {}
+    for actor in actors.get_all_level_actors():
+        name = actor.get_actor_label()
+        if name.startswith("RoundedPhysicsRoad_") or name == "RoundedPhysicsLabGround":
+            if name in found:
+                raise RuntimeError(f"Duplicate collision road actor: {name}")
+            found[name] = actor
+    if len(found) != EXPECTED_PIECES + 1:
+        raise RuntimeError(
+            f"Incomplete persisted collision actors: {len(found)} / {EXPECTED_PIECES+1}"
+        )
+
+    def check_actor(actor, name, position, yaw, scale):
+        if actor.get_actor_label() != name:
+            raise RuntimeError(f"Unexpected collision actor label {name}")
+        mesh = actor.get_editor_property("static_mesh_component")
+        if mesh is None or mesh.get_editor_property("static_mesh") != cube:
+            raise RuntimeError(f"Missing original Cube on {name}")
+        if (str(mesh.get_collision_profile_name()) != "BlockAll" or
+            mesh.get_collision_enabled() != unreal.CollisionEnabled.QUERY_AND_PHYSICS or
+            not actor.get_actor_enable_collision()):
+            raise RuntimeError(f"Nonblocking physical asphalt collision on {name}")
+        if not _close3(_xyz(actor.get_actor_location()), position):
+            raise RuntimeError(f"Wrong persisted world position on {name}")
+        if not _close3(_xyz(actor.get_actor_scale3d()), scale):
+            raise RuntimeError(f"Wrong persisted collision scale on {name}")
+        rotation = actor.get_actor_rotation()
+        if (not math.isfinite(float(rotation.yaw)) or
+            abs((float(rotation.yaw) - yaw + 180.0) % 360.0 - 180.0) > 0.001 or
+            abs(float(rotation.pitch)) > 0.001 or
+            abs(float(rotation.roll)) > 0.001):
+            raise RuntimeError(f"Wrong persisted road yaw/pitch/roll on {name}")
+
+    check_actor(
+        found["RoundedPhysicsLabGround"], "RoundedPhysicsLabGround",
+        (0.0, 0.0, -100.0), 0.0, (110.0, 85.0, 1.25))
+    for piece in pieces:
+        name = f"RoundedPhysicsRoad_{piece['index']:02d}"
+        if name not in found:
+            raise RuntimeError(f"Missing physical road actor {name}")
+        check_actor(found[name], name, piece["position"],
+                    piece["rotation_yaw"], piece["scale"])
+    return len(found)
+
+
 def author_map(subsystem, actors, world_api, cube, pieces):
     """No caller may create the production starter circuit through this path."""
     if LAB_MAP.exists():
@@ -78,8 +148,8 @@ def author_map(subsystem, actors, world_api, cube, pieces):
     settings = world.get_world_settings()
     if settings is None:
         raise RuntimeError("Unreal world settings unavailable; cannot isolate game mode")
-    settings.set_editor_property("default_game_mode", unreal.GameModeBase)
-    if settings.get_editor_property("default_game_mode") != unreal.GameModeBase:
+    settings.set_editor_property("default_game_mode", unreal.GameModeBase.static_class())
+    if settings.get_editor_property("default_game_mode") != unreal.GameModeBase.static_class():
         raise RuntimeError("Cannot enforce non-racing GameModeBase in lab map")
     # A separate ground slab 37.5 cm below the paved top provides off-road
     # collision/context but never constitutes one of the 68 tested road pieces.
@@ -120,10 +190,20 @@ def author_map(subsystem, actors, world_api, cube, pieces):
         spawned += 1
     if spawned != EXPECTED_PIECES:
         raise RuntimeError("Partial collision road creation must fail before saving")
+    # Never report a successful level merely because spawn calls returned.
+    # Verify the instantiated Editor-world actors and physical configuration.
+    audit_saved_physics_lab(actors, world_api, cube, pieces)
     if not subsystem.save_current_level():
         raise RuntimeError("Unreal failed to save rounded physics lab")
     if not LAB_MAP.is_file() or LAB_MAP.stat().st_size < 1024:
         raise RuntimeError("Unreal did not serialize a genuine lab .umap")
+    # This must cause a genuine Unreal level reload: a fixture that is only
+    # correct in memory but persists incorrect collision is not accepted.
+    if not subsystem.load_level(LAB_PACKAGE):
+        raise RuntimeError("Genuine Unreal rounded lab reload failed")
+    if not LAB_MAP.is_file() or LAB_MAP.stat().st_size < 1024:
+        raise RuntimeError("Unreal rounded lab disappeared after reload")
+    audit_saved_physics_lab(actors, world_api, cube, pieces)
     return spawned
 
 
@@ -155,6 +235,8 @@ def main():
         "map": LAB_PACKAGE,
         "pieces": count,
         "ground_pieces": 1,
+        "audited_actors": count + 1,
+        "verified_after_reload": True,
         "geometry_sha256": geometry_sha,
         "map_bytes": LAB_MAP.stat().st_size,
         "map_sha256": sha256_file(LAB_MAP),

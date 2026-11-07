@@ -76,6 +76,7 @@ if ($r.schema_version -ne 1 -or $r.status -cne 'saved_by_unreal_editor' -or
     $r.engine_version -cne '5.8' -or
     $r.map -cne '/Game/Maps/LatebrakeRoundedPhysicsLab' -or
     $r.pieces -ne 68 -or $r.ground_pieces -ne 1 -or
+    $r.audited_actors -ne 69 -or $r.verified_after_reload -ne $true -or
     $r.game_mode -cne 'GameModeBase' -or
     $r.geometry_sha256 -cne $expectedDataHash -or
     $r.geometry_sha256 -cne $dataHash -or
