@@ -12,7 +12,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$CandidateDirectory,
-    [string]$LogDirectory
+    [string]$LogDirectory,
+    [switch]$RequireRacingLineToggle
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -45,6 +46,22 @@ if ($executables.Count -ne 1) {
 $game = $executables[0]
 $gameSha256 = (Get-FileHash -LiteralPath $game.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 $manifestSha256 = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
+
+if ($RequireRacingLineToggle) {
+    # A source-log string can come from an earlier binary. Strict guide QA
+    # only attributes evidence to the exact commit used to cook this package.
+    $sourceRoot = Split-Path -Parent $PSScriptRoot
+    $checkoutSha = @(& git -C $sourceRoot rev-parse --verify HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $checkoutSha.Count -ne 1 -or
+        $checkoutSha[0] -cnotmatch '^[0-9a-fA-F]{40}$') {
+        throw 'Strict guide QA requires a real Git checkout pinned to the tested commit.'
+    }
+    $manifestMetadata = Get-Content -LiteralPath $manifest -Raw -ErrorAction Stop |
+        ConvertFrom-Json -ErrorAction Stop
+    if ($manifestMetadata.source_commit -cne $checkoutSha[0]) {
+        throw "Strict guide QA source mismatch: archived game $($manifestMetadata.source_commit) is not the checked-out revision $($checkoutSha[0])."
+    }
+}
 
 # Runtime logs must remain OUTSIDE the fingerprinted game archive. An extra
 # Saved/Logs file inside the candidate would invalidate its closed-world
@@ -116,6 +133,42 @@ if (Test-Path -LiteralPath $log -PathType Leaf) {
     }
 }
 
+# Cosmetic guide audit is separate from the mandatory nine-block/four-gate
+# startup gate. The opt-in switch requires a REAL non-Shipping session in
+# which the driver pressed L to hide AND show the guide. An absent Python
+# interpreter, missing log or invalid markers can never become a false PASS.
+# The default launcher remains usable on main (which lacks this draft guide).
+$racingLineSourceLogPass = $false
+$racingLineSourceLogError = $null
+if (Test-Path -LiteralPath $log -PathType Leaf) {
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        $racingLineSourceLogError = 'Python 3 is required for optional guide log verification.'
+    } else {
+        $guideAuditor = Join-Path $PSScriptRoot 'Verify-RacingLineRuntimeLog.py'
+        if (-not (Test-Path -LiteralPath $guideAuditor -PathType Leaf)) {
+            $racingLineSourceLogError = 'Optional guide log parser is missing from this checkout.'
+        } else {
+            try {
+                $guideArgs = @($guideAuditor, $log)
+                if ($RequireRacingLineToggle) {
+                    $guideArgs += '--require-toggle'
+                    $guideArgs += '--require-authored-material'
+                }
+                & $python.Source @guideArgs
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Racing-line parser returned exit code $LASTEXITCODE."
+                }
+                $racingLineSourceLogPass = $true
+            } catch {
+                $racingLineSourceLogError = $_.Exception.Message
+            }
+        }
+    }
+} else {
+    $racingLineSourceLogError = 'Real Unreal ABSLOG is missing; guide was not observed.'
+}
+
 # Seal the exact finished Unreal log alongside the executable and
 # manifest. A missing/early-crash log remains a valid *failed* probe,
 # represented explicitly with null metadata; no success is inferred.
@@ -153,6 +206,9 @@ $report = [ordered]@{
     unreal_log_bytes = $logBytes
     startup_log_markers_pass = $startupLogMarkersPass
     startup_log_error = $startupLogError
+    racing_line_toggle_audit_requested = [bool]$RequireRacingLineToggle
+    racing_line_source_log_markers_pass = $racingLineSourceLogPass
+    racing_line_source_log_error = $racingLineSourceLogError
     note = 'EXE exit status and a log never prove playable gameplay; record hands-on QA separately.'
 }
 $report | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $receipt -Encoding utf8 -NoNewline
@@ -164,6 +220,9 @@ if ($report.unreal_log_present) {
 }
 if (-not $startupLogMarkersPass) {
     Write-Warning "Track startup markers are NOT verified. Inspect $receipt and $log."
+}
+if (-not $racingLineSourceLogPass) {
+    Write-Warning "Optional racing-line source markers NOT verified: $racingLineSourceLogError"
 }
 if (-not $archiveIntegrityAtExitPass) {
     # Do not discard crash/log diagnostics if the game wrote into or
@@ -177,5 +236,12 @@ if ($null -ne $startFailure) {
 Write-Host "Packaged game exited with code $exitCode."
 if ($exitCode -ne 0) {
     throw "The game returned a nonzero process exit code; inspect $receipt and $log."
+}
+if ($RequireRacingLineToggle -and
+    (-not $racingLineSourceLogPass -or -not $startupLogMarkersPass)) {
+    # Failure occurs AFTER the receipt and immutable-log digest are written.
+    # A guide cannot be considered qualified if its physical circuit's
+    # existing 9/9 blocks, 7/93 scenery and four-gate source audit failed.
+    throw "Required Win64 guide/track source-log audit failed. Guide: $racingLineSourceLogError; track: $startupLogError. Session diagnostics: $receipt"
 }
 Write-Host 'Process exited normally. Only hands-on controls, rendering, racing and save tests can confirm gameplay.'

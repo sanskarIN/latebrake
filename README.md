@@ -89,6 +89,31 @@ covered by C++20 and Unreal-source regression tests. Real UE 5.8
 rendering/physics QA remains necessary; see
 [drift combo QA](docs/DRIFT_COMBO_QA.md).
 
+**Unreleased Unreal 3D circuit guide (source candidate):** the actual
+GameMode can now spawn 88 short, non-colliding instanced marks forming a
+counter-clockwise inset reference line around the four original circuit corners.
+Press **L** on a qualified desktop race to hide/show the marks without
+saving the preference. The expanded desktop HUD differentiates ON, OFF and
+UNAVAILABLE (failed optional guide construction). The 48 straight and 40
+corner marks now have exact batch capacities, a physical asphalt-derived
+elevation, 0.25 cm surface clearance and full-footprint geometric tests.
+This is cosmetic wayfinding only: it does not teach optimal braking, drive
+AI, change road physics, authorize gates, alter rewards or introduce an
+authored track asset. Portable C++20 and Unreal source-wiring tests are added.
+The `scripts/Verify-RacingLineRuntimeLog.py` parser checks construction
+counts and observed OFF/ON visibility events in a **real Development log**.
+The private Win64 launcher now records an optional guide source-log result
+in its hash-bound session receipt; `-RequireRacingLineToggle` enforces the
+OFF/ON observation, authored-material source and original circuit startup
+gate without pretending it certifies playable gameplay. A UE5.8 Editor
+script can author `M_RacingLineGuide.uasset` with a genuine `Color`
+parameter, but the binary asset has **not** yet been generated here:
+until it is committed through Git LFS the visual guide honestly uses the
+stock-material fallback. Synthetic regression cases test only the
+parser, not the game. [Material authoring](docs/RACING_LINE_MATERIAL.md).
+Actual UE 5.8 compilation, road-level visuals and installed Windows driving
+remain unverified. [Racing-line QA](docs/RACING_LINE_QA.md).
+
 **Unreleased HUD source development:** The expanded desktop Unreal instrument
 panel now includes a read-only **GATES credited / total** bar, updated only from
 accepted authoritative race checkpoint/lap counters. The new portable safety

@@ -47,6 +47,19 @@ try {
     if (-not $rejectedMalformed -or (Test-Path -LiteralPath $logs)) {
         throw 'A fake Win64 EXE with a malformed manifest was accepted.'
     }
+
+    # The new strict guide switch must NOT provide an alternate path
+    # around the closed-world candidate preflight; fake EXE testing is
+    # rejected before Python, GameMode, or process launch is reached.
+    $rejectedStrictGuide = $false
+    try {
+        & $runner -CandidateDirectory $fake -LogDirectory $logs -RequireRacingLineToggle *> $null
+    } catch {
+        $rejectedStrictGuide = $true
+    }
+    if (-not $rejectedStrictGuide -or (Test-Path -LiteralPath $logs)) {
+        throw 'Strict racing-line validation bypassed private candidate preflight.'
+    }
     Write-Host 'Private Win64 runtime launcher rejected absent, unsigned and malformed candidates.'
     Write-Host 'These checks do not launch or produce a real packaged game.'
 } finally {

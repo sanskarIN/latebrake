@@ -1707,6 +1707,18 @@ void ALatebrakeCarPawn::LookBackReleased()
     }
 }
 
+void ALatebrakeCarPawn::ToggleRacingLine()
+{
+    // The rival pawn inherits this C++ type but never owns local visual
+    // preferences. No acceleration or steering inputs are modified.
+    if (!IsLocallyControlled()) return;
+    if (ALatebrakeRaceGameMode* Mode = GetWorld()
+            ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr)
+    {
+        Mode->ToggleRacingLineView();
+    }
+}
+
 void ALatebrakeCarPawn::ToggleBestLapGhost()
 {
     // Display-only: do not neutralize acceleration or steer inputs, and
@@ -2244,6 +2256,7 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
         TEXT("LookBack"), IE_Released, this, &ALatebrakeCarPawn::LookBackReleased);
     LookBackRelease.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("GhostView"), IE_Pressed, this, &ALatebrakeCarPawn::ToggleBestLapGhost);
+    PlayerInputComponent->BindAction(TEXT("RacingLineView"), IE_Pressed, this, &ALatebrakeCarPawn::ToggleRacingLine);
     FInputTouchBinding& PressedTouch = PlayerInputComponent->BindTouch(
         IE_Pressed, this, &ALatebrakeCarPawn::TouchPressed);
     PressedTouch.bExecuteWhenPaused = true; // Mobile PAUSE pad can also resume play.

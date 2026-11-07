@@ -18,6 +18,8 @@
 #include "Components/PointLightComponent.h"
 #include "Racing/StartGantryVisual.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameters.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
@@ -40,6 +42,7 @@
 #include "Track/DecorationBatchPlan.h"
 #include "Track/BrakingReferenceBoards.h"
 #include "Track/CornerApproachChevrons.h"
+#include "Track/RacingLineLayout.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/CollisionBlockSetup.h"
@@ -743,6 +746,261 @@ void ALatebrakeRaceGameMode::BuildBrakingReferenceBoards(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::ToggleRacingLineView()
+{
+    // Input is cosmetic and only for a valid local race. A paused/menu
+    // frame cannot toggle state behind the UI; rival actors never call this.
+    if (!IsValid(RacingLineActor) || !bCircuitReady ||
+        !HasLocalPlayerDriver() || Menu.IsOpen() ||
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended() ||
+        Race.IsFinished() || !GetWorld() ||
+        UGameplayStatics::IsGamePaused(this))
+    {
+        return;
+    }
+    bRacingLineVisible = !bRacingLineVisible;
+    RacingLineActor->SetActorHiddenInGame(!bRacingLineVisible);
+#if !UE_BUILD_SHIPPING
+    // A source-backed QA observation of a real accepted L-key toggle.
+    // No location, player identity, telemetry or official score is logged.
+    UE_LOG(LogLatebrakeStartup, Display,
+        TEXT("LATEBRAKE_RACING_LINE_VISIBILITY visible=%s"),
+        bRacingLineVisible ? TEXT("on") : TEXT("off"));
+#endif
+}
+
+void ALatebrakeRaceGameMode::BuildRacingLine(UStaticMesh* Mesh)
+{
+    // Optional painted, counter-clockwise guide for the four-turn circuit.
+    // This actor is intentionally separate from the nine audited collision
+    // blocks and four real gates; no driving force, AI or reward reads it.
+    if (!IsValid(Mesh) || !GetWorld())
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=missing_mesh_or_world"));
+        return;
+    }
+
+    // A project-authored UE5.8 Material with a real vector parameter
+    // allows deterministic teal/amber batches when an authentic .uasset is
+    // committed and cooked. Old source-only builds retain neutral engine
+    // material fallback; no source-only test can claim actual color output.
+    UMaterialInterface* AuthoredMaterial = LoadObject<UMaterialInterface>(
+        nullptr, TEXT("/Game/Materials/M_RacingLineGuide.M_RacingLineGuide"));
+    if (IsValid(AuthoredMaterial))
+    {
+        // An arbitrary asset at the expected path does not prove it has
+        // the Color shader parameter. Reject mismatched artist revisions
+        // instead of reporting a false "authored=yes" visual contract.
+        TArray<FMaterialParameterInfo> ParameterInfos;
+        TArray<FGuid> ParameterIds;
+        AuthoredMaterial->GetAllVectorParameterInfo(ParameterInfos, ParameterIds);
+        bool bHasColor = false;
+        for (const FMaterialParameterInfo& Info : ParameterInfos)
+        {
+            // A Color parameter inside a material layer is not the
+            // GLOBAL vector set through this component's MID. Only a
+            // global parameter can honestly satisfy the runtime tint
+            // contract used for both straight and corner sections.
+            if (Info.Name == FName(TEXT("Color")) &&
+                Info.Association == EMaterialParameterAssociation::GlobalParameter)
+            {
+                bHasColor = true;
+                break;
+            }
+        }
+        if (!bHasColor)
+        {
+            AuthoredMaterial = nullptr;
+        }
+    }
+    // The source status is emitted only after BOTH instancers have accepted
+    // and installed the selected dynamic materials. A shader parameter on
+    // the asset alone cannot prove the two real batches are using it.
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AActor* Holder = GetWorld()->SpawnActor<AActor>(
+        AActor::StaticClass(), FVector::ZeroVector,
+        FRotator::ZeroRotator, Params);
+    if (!IsValid(Holder))
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=actor_spawn"));
+        return;
+    }
+#if WITH_EDITOR
+    Holder->SetActorLabel(TEXT("LatebrakeRacingLine_NoCollision"));
+#endif
+    Holder->SetActorEnableCollision(false);
+    USceneComponent* Root =
+        NewObject<USceneComponent>(Holder, TEXT("RacingLineRoot"));
+    if (!Root)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=scene_root"));
+        Holder->Destroy();
+        return;
+    }
+    Root->SetMobility(EComponentMobility::Static);
+    Holder->SetRootComponent(Root);
+    Holder->AddInstanceComponent(Root);
+    Root->RegisterComponent();
+    if (!Root->IsRegistered())
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=root_registration"));
+        Holder->Destroy();
+        return;
+    }
+
+    UInstancedStaticMeshComponent* Sections[2]{};
+    const FLinearColor Colors[2] = {
+        FLinearColor(0.20f, 0.87f, 0.65f), // straight advisory
+        FLinearColor(0.97f, 0.65f, 0.15f)  // corner advisory
+    };
+    for (int32 Section = 0; Section < 2; ++Section)
+    {
+        const FName Name(*FString::Printf(
+            TEXT("RacingLineSection%d"), Section));
+        UInstancedStaticMeshComponent* Instances =
+            NewObject<UInstancedStaticMeshComponent>(Holder, Name);
+        if (!IsValid(Instances))
+        {
+            UE_LOG(LogLatebrakeStartup, Warning,
+                TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=instancer"));
+            Holder->Destroy();
+            return;
+        }
+        Instances->SetupAttachment(Root);
+        Instances->SetMobility(EComponentMobility::Static);
+        Instances->SetStaticMesh(Mesh);
+        Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Instances->SetGenerateOverlapEvents(false);
+        Instances->SetCanEverAffectNavigation(false);
+        Instances->SetCastShadow(false);
+        Instances->PreAllocateInstancesMemory(
+            Section == 0 ? latebrake::RacingLineStraightPieceCount
+                         : latebrake::RacingLineCornerPieceCount);
+        Holder->AddInstanceComponent(Instances);
+        Instances->RegisterComponent();
+        if (!Instances->IsRegistered() ||
+            Instances->GetStaticMesh() != Mesh ||
+            Instances->GetCollisionEnabled() != ECollisionEnabled::NoCollision)
+        {
+            UE_LOG(LogLatebrakeStartup, Warning,
+                TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=component_registration"));
+            Holder->Destroy();
+            return;
+        }
+        // Genuine authored paint must be on both actual instanced mesh
+        // batches. Never report authored=yes simply because an asset with
+        // a Color parameter was found on disk: its assignment or MID
+        // creation can still fail on a real packaged platform.
+        // Without an authored material, leave the stock cube material
+        // intact for the explicitly neutral, unverified fallback.
+        if (IsValid(AuthoredMaterial))
+        {
+            Instances->SetMaterial(0, AuthoredMaterial);
+            if (Instances->GetMaterial(0) != AuthoredMaterial)
+            {
+                UE_LOG(LogLatebrakeStartup, Warning,
+                    TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=material_assignment section=%d"),
+                    Section);
+                Holder->Destroy();
+                return;
+            }
+            UMaterialInstanceDynamic* Mat =
+                Instances->CreateAndSetMaterialInstanceDynamic(0);
+            if (!IsValid(Mat) || Instances->GetMaterial(0) != Mat)
+            {
+                UE_LOG(LogLatebrakeStartup, Warning,
+                    TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=dynamic_material section=%d"),
+                    Section);
+                Holder->Destroy();
+                return;
+            }
+            Mat->SetVectorParameterValue(TEXT("Color"), Colors[Section]);
+        }
+        Sections[Section] = Instances;
+    }
+    UE_LOG(LogLatebrakeStartup, Display,
+        TEXT("LATEBRAKE_RACING_LINE_MATERIAL authored=%s"),
+        IsValid(AuthoredMaterial) ? TEXT("yes") : TEXT("no"));
+
+    int32 AddedStraight = 0;
+    int32 AddedCorner = 0;
+    for (int32 Index = 0; Index < latebrake::RacingLineMarkCount; ++Index)
+    {
+        const latebrake::RacingLineMark Mark =
+            latebrake::PlannedRacingLineMark(Index);
+        // Never render a floating/detached reference just because a centre
+        // is on the abstract course. The exact real asphalt slabs are
+        // inspected at startup, including each rotated stripe's corners.
+        // A failed cosmetic guide must not block legitimate driving.
+        if (!latebrake::IsValidRacingLinePaintFootprint(Mark))
+        {
+            UE_LOG(LogLatebrakeStartup, Warning,
+                TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE reason=off_asphalt index=%d"),
+                Index);
+            Holder->Destroy();
+            return;
+        }
+        const int32 Section =
+            Mark.Section == latebrake::RacingLineSection::Corner ? 1 : 0;
+        // Derived from the four REAL asphalt collision slabs. A thin paint
+        // cube floats only 0.25 cm above Z=-1 surface, rather than several
+        // centimetres above the pavement. Always collision-free.
+        const FTransform Pose(
+            FRotator(0.0, Mark.HeadingDegrees, 0.0),
+            FVector(Mark.Center.X, Mark.Center.Y,
+                latebrake::RacingLinePaintCenterZCm),
+            FVector(Mark.LengthCm / latebrake::RacingLineCubeSizeCm,
+                latebrake::RacingLinePaintWidthCm /
+                    latebrake::RacingLineCubeSizeCm,
+                latebrake::RacingLinePaintThicknessCm /
+                    latebrake::RacingLineCubeSizeCm));
+        if (Sections[Section]->AddInstance(Pose, false) >= 0)
+        {
+            if (Section == 0) ++AddedStraight;
+            else ++AddedCorner;
+        }
+    }
+    const int32 Added = AddedStraight + AddedCorner;
+    // AddInstance success alone is not enough: the registered rendering
+    // components must contain the expected real per-batch instances.
+    const bool bComponentsReady =
+        IsValid(Sections[0]) && IsValid(Sections[1]) &&
+        Sections[0]->IsRegistered() && Sections[1]->IsRegistered() &&
+        Sections[0]->GetInstanceCount() ==
+            latebrake::RacingLineStraightPieceCount &&
+        Sections[1]->GetInstanceCount() ==
+            latebrake::RacingLineCornerPieceCount &&
+        !Holder->GetActorEnableCollision();
+    // Verify each semantic batch, physical component and disabled actor
+    // collision. Even a failed guide must never block circuit readiness.
+    if (bComponentsReady &&
+        Added == latebrake::RacingLineMarkCount &&
+        AddedStraight == latebrake::RacingLineStraightPieceCount &&
+        AddedCorner == latebrake::RacingLineCornerPieceCount)
+    {
+        RacingLineActor = Holder;
+        Holder->SetActorHiddenInGame(!bRacingLineVisible);
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_RACING_LINE_READY marks=%d/%d straight=%d corner=%d collision=off"),
+            Added, latebrake::RacingLineMarkCount,
+            AddedStraight, AddedCorner);
+    }
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_RACING_LINE_INCOMPLETE marks=%d/%d straight=%d corner=%d collision=off"),
+            Added, latebrake::RacingLineMarkCount,
+            AddedStraight, AddedCorner);
+        Holder->Destroy();
+    }
+}
+
 void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
 {
     // Optional painted arrows on the left-hand approach shoulder.
@@ -850,6 +1108,15 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
+    // Re-entry during editor/world reconstruction must not leave the old
+    // cosmetic guide alive or let a previous actor count as this map's
+    // successful optional batch. This never changes race/track authority.
+    if (IsValid(RacingLineActor))
+    {
+        RacingLineActor->Destroy();
+    }
+    RacingLineActor = nullptr;
+    bRacingLineVisible = true;
     bCircuitReady = false;
     // Spawning an Actor does not prove rendering or collision on installed
     // devices, but failed block creation must never be hidden by the
@@ -1033,6 +1300,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     // nine-block/four-checkpoint collision and startup readiness audit.
     BuildBrakingReferenceBoards(DecorationMesh);
     BuildCornerApproachChevrons(DecorationMesh);
+    BuildRacingLine(DecorationMesh);
 
     // Visual-only pit beacon near the inside edge of the southern road.
     // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is

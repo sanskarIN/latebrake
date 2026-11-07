@@ -1778,6 +1778,20 @@ else()
 endif()
 add_test(NAME CornerApproachChevrons COMMAND latebrake_corner_chevron_tests)
 
+# Optional 88-piece counter-clockwise driving reference, pure original-circuit
+# geometry with no additional Unreal content or gameplay authorization.
+add_executable(latebrake_racing_line_tests RacingLineLayoutTests.cpp)
+target_include_directories(latebrake_racing_line_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_racing_line_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_racing_line_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_racing_line_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RacingLineLayout COMMAND latebrake_racing_line_tests)
+
 # Run-local observed rival finishing clock, not official race placement or
 # hardware-verified timing. No Unreal dependency is needed for this policy.
 add_executable(latebrake_rival_finish_clock_review_tests RivalFinishClockReviewTests.cpp)

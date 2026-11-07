@@ -129,6 +129,58 @@ Official Epic documentation:
 https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-command-line-arguments-reference)
 describes `ABSLOG` as an absolute log filename argument.
 
+## Optional draft racing-line observation — PR #297 (NOT released)
+
+A real, privately cooked **Development** Win64 candidate built from the
+racing-line feature branch may produce source-level guide diagnostics. To
+observe an actual **L-key OFF then ON** sequence, relaunch that genuine,
+hash-checked candidate with the strict opt-in switch:
+
+```powershell
+pwsh ./scripts/Run-WindowsPlaytest.ps1 `
+  -CandidateDirectory 'D:\LateBrakeCandidates\YourActualCandidate' `
+  -RequireRacingLineToggle
+```
+
+Play a valid local race, press **L** twice, visually verify the guide
+disappears/reappears, and close the game. The launcher rechecks the entire
+cooked archive and writes a source-log receipt **before** rejecting a
+missing/incomplete guide observation. Strict mode requires both the
+existing **9 physical road/collision blocks, 7 scenery groups/93 instances
+and four gate startup** audit and the new **88 racing-line instances
+(48 straight + 40 corner), collision-off, OFF/ON events** audit. It now
+also requires `LATEBRAKE_RACING_LINE_MATERIAL authored=yes`, proving only
+that a project-owned material exposing the `Color` vector parameter was
+loaded. The asset must be created in the genuine Editor and committed
+through LFS first; see [guide material authoring](RACING_LINE_MATERIAL.md).
+The default stock-material fallback deliberately does **not** qualify
+strict visual QA. This does not establish the actual pixel colors.
+
+For this optional audit, Python 3 must be available as `python` on the
+Windows PATH (no Python runtime is shipped with the game). Strict mode also
+requires the candidate manifest's `source_commit` to match the **exact Git
+HEAD** of the current checkout *before* launching the EXE. If you updated
+the repository after building the candidate, check out its original commit
+for this test or build a new candidate; never relabel an old binary as a
+new PR revision. Missing Python, missing log, mismatched source SHA,
+malformed markers or absent toggles fail the opt-in check.
+Without this switch, the existing launcher still runs a real candidate
+and stores advisory guide status; it does not require the guide to be
+present on older/main-branch builds.
+
+The private schema-2 receipt records:
+
+- `racing_line_toggle_audit_requested` — whether strict mode was selected.
+- `racing_line_source_log_markers_pass` — **text parser result only**.
+- `racing_line_source_log_error` — missing Python/log or other parser error.
+
+`gameplay_verified` stays **false** even if all text markers pass.
+No user-authored log or synthetic fixture, successful exit, checksum or
+self-reported receipt proves in-game rendering or playability. Match the
+receipt/log hashes with real video/screenshot evidence and the
+[full manual track guide checklist](RACING_LINE_QA.md). Existing source-only
+CI does not run this command on actual Unreal/Windows hardware.
+
 ## Analyze accepted race progression in a real Development log
 
 The source-level GameMode now writes a small non-shipping
