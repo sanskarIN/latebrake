@@ -40,6 +40,10 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
         self.assertIn("RoundedCircuitLabExporter.cpp", self.cmake)
         self.assertIn("NAME RoundedSmoothRoadMesh", self.cmake)
         self.assertIn("NAME RoundedSmoothRoadObjContract", self.cmake)
+        self.assertIn("NAME WorldScaleRoundedCircuit", self.cmake)
+        self.assertIn("NAME WorldScaleRoundedRoadObjContract", self.cmake)
+        self.assertIn("WorldScaleRoundedCircuitTests.cpp", self.cmake)
+        self.assertIn("WorldScaleRoundedRoadObjExporter.cpp", self.cmake)
         self.assertIn("RoundedSmoothRoadMeshTests.cpp", self.cmake)
         self.assertIn("RoundedSmoothRoadObjExporter.cpp", self.cmake)
 

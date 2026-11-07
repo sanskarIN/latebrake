@@ -2021,3 +2021,38 @@ if (Python3_Interpreter_FOUND)
             "$<TARGET_FILE:latebrake_rounded_smooth_obj_exporter>"
     )
 endif()
+
+# Second independent geometric profile: full-size 1.7026-km lap while the
+# real candidate physical road stays 900 cm wide and visual road 850 cm.
+# Separate from the old 170-m lab and unmodified active gameplay GameMode.
+add_executable(latebrake_world_scale_rounded_tests WorldScaleRoundedCircuitTests.cpp)
+target_include_directories(latebrake_world_scale_rounded_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_rounded_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_rounded_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_rounded_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleRoundedCircuit COMMAND latebrake_world_scale_rounded_tests)
+
+add_executable(latebrake_world_scale_rounded_obj_exporter WorldScaleRoundedRoadObjExporter.cpp)
+target_include_directories(latebrake_world_scale_rounded_obj_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_rounded_obj_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_rounded_obj_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_rounded_obj_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleRoundedRoadObjContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedSmoothRoadObj.py"
+            "$<TARGET_FILE:latebrake_world_scale_rounded_obj_exporter>"
+            10
+    )
+endif()

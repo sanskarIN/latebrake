@@ -25,7 +25,12 @@ LENGTH_V = 2000.0
 LAP = 2 * LENGTH_H + 2 * LENGTH_V + 4 * QUARTER
 
 
-def centerline_at(s):
+def centerline_at(s, world_scale=1.0):
+    if world_scale not in (1.0, 10.0):
+        raise ValueError('Only original or physically fixed-width 10x circuit is supported')
+    if world_scale != 1.0:
+        x, y, yaw = centerline_at(s / world_scale)
+        return x * world_scale, y * world_scale, yaw
     s = math.fmod(s, LAP)
     for section in range(8):
         if section % 2 == 0:
@@ -52,9 +57,9 @@ def centerline_at(s):
     raise ValueError("invalid forward lap station")
 
 
-def expected_vertex(vertex):
+def expected_vertex(vertex, world_scale=1.0):
     section, corner = divmod(vertex, 4)
-    x, y, deg = centerline_at(LAP * section / SECTIONS)
+    x, y, deg = centerline_at(LAP * world_scale * section / SECTIONS, world_scale)
     angle = math.radians(deg)
     side = 1 if corner % 2 == 0 else -1
     return (x - math.sin(angle) * WIDTH * side,
@@ -67,7 +72,7 @@ def require_close(a, b, label, tol=0.000002):
         raise ValueError(f"Invalid original road OBJ {label}: {a!r} vs {b!r}")
 
 
-def verify_obj(obj, material):
+def verify_obj(obj, material, world_scale=1.0):
     if not obj.is_file() or not material.is_file():
         raise ValueError("Compiled C++ visual road and MTL must both exist")
     lines = obj.read_text(encoding="utf-8").splitlines()
@@ -89,7 +94,7 @@ def verify_obj(obj, material):
             if len(values) != 4:
                 raise ValueError("Incomplete OBJ world-space vertex")
             for axis, (actual, expect) in enumerate(
-                zip((float(x) for x in values[1:]), expected_vertex(vertex_count))
+                zip((float(x) for x in values[1:]), expected_vertex(vertex_count, world_scale))
             ):
                 require_close(actual, expect, f"vertex {vertex_count} axis {axis}")
             vertex_count += 1
@@ -100,7 +105,7 @@ def verify_obj(obj, material):
             if len(values) != 3:
                 raise ValueError("Incomplete OBJ UV")
             section, edge = divmod(uv_count, 4)
-            require_close(float(values[1]), LAP * section / SECTIONS / 400.0,
+            require_close(float(values[1]), LAP * world_scale * section / SECTIONS / 400.0,
                           f"UV {uv_count} longitudinal")
             require_close(float(values[2]), 1.0 if edge % 2 == 0 else 0.0,
                           f"UV {uv_count} lateral")
@@ -147,8 +152,11 @@ def verify_obj(obj, material):
 
 
 def main():
-    if len(sys.argv) != 2:
-        raise SystemExit("Usage: VerifyRoundedSmoothRoadObj.py <compiled-exporter>")
+    if len(sys.argv) not in (2, 3):
+        raise SystemExit("Usage: VerifyRoundedSmoothRoadObj.py <compiled-exporter> [1|10]")
+    world_scale = float(sys.argv[2]) if len(sys.argv) == 3 else 1.0
+    if world_scale not in (1.0, 10.0):
+        raise ValueError("Unsupported original road preview scale")
     with tempfile.TemporaryDirectory(prefix="latebrake-original-road-") as directory:
         destination = Path(directory) / "RoundedSmoothPreview.obj"
         result = subprocess.run(
@@ -157,8 +165,8 @@ def main():
         )
         if "collision=off" not in result.stdout or result.stderr:
             raise ValueError("Compiled original OBJ exporter log has invalid provenance")
-        vertices, faces = verify_obj(destination, destination.with_suffix(".mtl"))
-    print(f"Verified {vertices} continuous road OBJ vertices, {faces} triangles, UV closure, and original MTL against an independent centerline")
+        vertices, faces = verify_obj(destination, destination.with_suffix(".mtl"), world_scale)
+    print(f"Verified {vertices} continuous road OBJ vertices, {faces} triangles, UV closure, original 9-m physical road width and {world_scale:.0f}x-scale MTL against an independent centerline")
 
 
 if __name__ == "__main__":

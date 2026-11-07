@@ -185,3 +185,42 @@ textures, lighting or driving QA. Never substitute its dark placeholder
 MTL colors for approved final road materials or claim its mesh is a
 tested collision model.
 
+## New full-scale profile — 1.70-km lap, preserved 9-m physical width
+
+The 170-m original rounded lab is mathematically convenient for testing
+but far too short for the intended full-length racing experience. The
+new **isolated world-scale 10× profile** expands **only** the centreline
+positions and the tangential lengths of all 68 physical candidate road
+pieces. It does **not** inflate the road across its width or scale any
+vehicle/camera/physics assets:
+
+- Lap length: approximately **1,702.65 metres** instead of 170.27 m.
+- Corner radius: **80 metres** instead of 8 m.
+- Road physical width: **9.0 metres** in both profiles.
+- Visible original asphalt top width: **8.5 metres**, still inset by
+  25 cm on each side of the collision road.
+- Original 1024 cross-sections, 4096 manifold vertices and 8192 triangles
+  are retained, with longitudinal UV coordinates extended to the full lap.
+- Both profiles still specify **68 overlapping physical collision-backed
+  sections** and retain their `-1 cm` asphalt top. This does not yet
+  eliminate the potential wheel bumps and stepping caused by separate
+  collision boxes.
+
+The full-scale mesh is generated from the same C++ source-of-truth
+`WorldScaleRoundedCircuit.h` and exported by
+`latebrake_world_scale_rounded_obj_exporter`. Existing standalone
+C++ geometry tests and independent Python OBJ/UV validation remain in
+place for the original 170-m candidate. Separate full-scale CTests
+validate **8192 driving-line samples**, all 68 collision plans and all
+4096 visible vertices plus triangle centroids/edge midpoints against
+the scaled physical union.
+
+**This is a separate, unactivated 3D artwork/physics proposal.**
+It has NOT changed the active rectangular career circuit, scoring
+gates, live player/rival spawn locations, AI racing line or driving
+behaviour. No real UE5.8 UHT, Editor build, cooked material, real tyre
+contact, Windows EXE or installer has been created or validated. The
+full-scale course will need separate race checkpoints, start/recovery
+positions, natural landscaping, surface mesh collider and real Chaos
+seam tests before runtime activation.
+

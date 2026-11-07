@@ -25,6 +25,21 @@ class RoundedSmoothSurfaceSourceTests(unittest.TestCase):
         last = expected_vertex(4 * (SECTIONS - 1))
         self.assertLess(math.dist(first[:2], last[:2]), 40)
 
+    def test_real_world_profile_is_1700m_but_road_still_9m(self):
+        self.assertGreater(10 * LAP / 100.0, 1600.0)
+        self.assertLess(10 * LAP / 100.0, 1800.0)
+        for i in range(SECTIONS):
+            x, y, heading = centerline_at(10 * LAP * i / SECTIONS, 10)
+            base_x, base_y, base_heading = centerline_at(LAP * i / SECTIONS)
+            self.assertAlmostEqual(x, 10 * base_x)
+            self.assertAlmostEqual(y, 10 * base_y)
+            self.assertAlmostEqual(heading, base_heading)
+            left = expected_vertex(4 * i, 10)
+            right = expected_vertex(4 * i + 1, 10)
+            self.assertAlmostEqual(math.dist(left[:2], right[:2]), 850.0)
+        self.assertLess(math.dist(expected_vertex(0, 10)[:2],
+                                  expected_vertex(4 * (SECTIONS - 1), 10)[:2]), 250)
+
     def test_round_corners_use_genuine_headings_not_rectangular_slabs(self):
         # Each arc transitions continuously through four quarter circles.
         curved = []
@@ -34,6 +49,18 @@ class RoundedSmoothSurfaceSourceTests(unittest.TestCase):
                 curved.append(deg)
         self.assertGreater(len(curved), 180)
         self.assertTrue(all(0 <= deg < 360.000000001 for deg in curved))
+
+    def test_world_scale_candidate_is_separate_from_live_game(self):
+        root = Path(__file__).resolve().parents[2]
+        header = (root / "Source/Latebrake/Public/Track/WorldScaleRoundedCircuit.h").read_text(encoding="utf-8")
+        mode = (root / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp").read_text(encoding="utf-8")
+        for value in ("WorldScaleCircuitFactor = 10.0", "WorldScaleCircuitLapCm",
+                      "BuildWorldScaleVisualRoadMesh", "IsOnWorldScaleRoad"):
+            self.assertIn(value, header)
+        self.assertIn("ScaleX *= WorldScaleCircuitFactor", header)
+        self.assertNotIn("piece.ScaleY *= WorldScaleCircuitFactor", header)
+        self.assertNotIn("WorldScaleRoundedCircuit.h", mode)
+        self.assertNotIn("PlannedWorldScaleRoadPiece", mode)
 
     def test_experimental_mesh_never_claims_gameplay_or_collisions(self):
         header = (Path(__file__).resolve().parents[2] /
