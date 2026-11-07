@@ -280,3 +280,33 @@ visual-only OBJ is not automatically imported, and the real race-mode
 checkpoint/AI/vehicle/camera systems have not been wired to this profile.
 Installed Win64 gameplay, material quality and frame-time remain blocked
 under [#148](https://github.com/sanskarIN/latebrake/issues/148).
+
+
+## Continuous full-width 9-m physics-surface source candidate
+
+To eliminate the seam topology of 68 intersecting BlockAll boxes in a future
+licensed-engine implementation, a **different, fully continuous and closed**
+1.70265-km source geometry is now specified by
+`WorldScaleSmoothCollisionRoad.h`. It reconstructs the physical surface
+directly from the tested world-scale centreline at 1,024 evenly spaced
+cross-sections, using 9.0 m of physical lateral width at every section,
+not the 8.5-m decorative inset and not 90 m of accidentally scaled road.
+
+The experimental volume has a top at `z=-1cm` and bottom at `z=-43cm`.
+Its original 4,096 vertices and 8,192 triangles include road top,
+underside and continuous sidewalls. Unlike 68 isolated boxes, it uses
+the same **closed manifold** on every bend and around the lap seam.
+The new `WorldScaleSmoothCollisionSurface` strict C++20 test requires
+exact widths, thickness, centreline station positions, road-top/bottom
+winding, nonzero triangle area, manifold edge incidence and a 25-cm
+outboard offset from the independent 8.5-m cosmetic mesh. Every station
+is checked, including the wrap seam, on all three desktop CI platforms.
+
+**Important:** this is a source-level shape contract, **not** cooked
+Unreal collision. It must **not** be enabled as a Chaos collider or
+treated as wheel-contact-ready without an authorized UE5.8 Editor
+mesh-cooking pipeline, correct `Collision Complexity` policy, joined
+normal/edge handling, actual dynamic-vehicle tyre contact tests and
+installed 30/60/120 FPS driving QA. The existing 68-cube lab remains
+unchanged. The live career circuit still uses its original rectangular
+road and score/AI policies. No 3D game EXE or installer is implied.
