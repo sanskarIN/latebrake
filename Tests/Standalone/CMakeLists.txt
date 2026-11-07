@@ -1947,3 +1947,211 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TouchViewportActionEpoch COMMAND latebrake_touch_viewport_action_epoch_tests)
+
+# NEXT circuit alternative: 68 real (future) physical collision slabs with
+# four rounded corners, not cosmetic extra road inside the live game.
+add_executable(latebrake_rounded_circuit_road_plan_tests RoundedCircuitRoadPlanTests.cpp)
+target_include_directories(latebrake_rounded_circuit_road_plan_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_circuit_road_plan_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_circuit_road_plan_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_circuit_road_plan_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RoundedCircuitRoadPlan COMMAND latebrake_rounded_circuit_road_plan_tests)
+
+# Export the exact proposed physical slab transforms as machine-readable
+# JSON for a *different* genuine Unreal Editor-only inspection map.
+# The exporter is portable; running it does not author a .umap or game.
+add_executable(latebrake_rounded_circuit_lab_exporter RoundedCircuitLabExporter.cpp)
+target_include_directories(latebrake_rounded_circuit_lab_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_circuit_lab_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_circuit_lab_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_circuit_lab_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RoundedCircuitLabExport COMMAND latebrake_rounded_circuit_lab_exporter)
+
+# Independently check ACTUAL compiled JSON numeric geometry, not only the
+# producer's zero exit code. Python is optional for C++-only downstream builds.
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    add_test(
+        NAME RoundedCircuitLabJsonContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedCircuitLabExport.py"
+            "$<TARGET_FILE:latebrake_rounded_circuit_lab_exporter>"
+    )
+endif()
+
+# First original continuous smooth OBJ+MTL surface. THIS IS NON-COLLIDING
+# VISUAL ROAD ART; the 68 collision pieces remain the candidate's authority.
+add_executable(latebrake_rounded_smooth_mesh_tests RoundedSmoothRoadMeshTests.cpp)
+target_include_directories(latebrake_rounded_smooth_mesh_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_smooth_mesh_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_smooth_mesh_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_smooth_mesh_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RoundedSmoothRoadMesh COMMAND latebrake_rounded_smooth_mesh_tests)
+
+add_executable(latebrake_rounded_smooth_obj_exporter RoundedSmoothRoadObjExporter.cpp)
+target_include_directories(latebrake_rounded_smooth_obj_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_smooth_obj_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_smooth_obj_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_smooth_obj_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME RoundedSmoothRoadObjContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedSmoothRoadObj.py"
+            "$<TARGET_FILE:latebrake_rounded_smooth_obj_exporter>"
+    )
+endif()
+
+# Second independent geometric profile: full-size 1.7026-km lap while the
+# real candidate physical road stays 900 cm wide and visual road 850 cm.
+# Separate from the old 170-m lab and unmodified active gameplay GameMode.
+add_executable(latebrake_world_scale_rounded_tests WorldScaleRoundedCircuitTests.cpp)
+target_include_directories(latebrake_world_scale_rounded_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_rounded_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_rounded_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_rounded_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleRoundedCircuit COMMAND latebrake_world_scale_rounded_tests)
+
+add_executable(latebrake_world_scale_rounded_obj_exporter WorldScaleRoundedRoadObjExporter.cpp)
+target_include_directories(latebrake_world_scale_rounded_obj_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_rounded_obj_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_rounded_obj_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_rounded_obj_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleRoundedRoadObjContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedSmoothRoadObj.py"
+            "$<TARGET_FILE:latebrake_world_scale_rounded_obj_exporter>"
+            10
+    )
+endif()
+
+
+# An independently guarded Editor-only 1.70-km road-collision JSON handoff.
+# This is NOT cooked collision, physics contact or a playable Unreal level.
+add_executable(latebrake_world_scale_rounded_circuit_lab_exporter
+    WorldScaleRoundedCircuitLabExporter.cpp)
+target_include_directories(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_rounded_circuit_lab_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleRoundedCircuitLabExport
+    COMMAND latebrake_world_scale_rounded_circuit_lab_exporter)
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleRoundedCircuitLabJsonContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedCircuitLabExport.py"
+            "$<TARGET_FILE:latebrake_world_scale_rounded_circuit_lab_exporter>"
+            10
+    )
+endif()
+
+
+# Experimental smooth FULL-WIDTH collision geometry candidate; no UE5.8
+# cooking/BodySetup and no change to active 68-box physics or career.
+add_executable(latebrake_world_scale_smooth_collision_tests
+    WorldScaleSmoothCollisionRoadTests.cpp)
+target_include_directories(latebrake_world_scale_smooth_collision_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_smooth_collision_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_smooth_collision_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_smooth_collision_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleSmoothCollisionSurface
+    COMMAND latebrake_world_scale_smooth_collision_tests)
+
+
+# Realistic physical-road track research: deterministic full-width (9m)
+# OBJ+MTL handoff, deliberately distinct from the 8.5m noncolliding art.
+# Source tests DO NOT prove Unreal Editor import, Chaos cooking or driving.
+add_executable(latebrake_world_scale_collision_obj_exporter
+    WorldScaleCollisionRoadObjExporter.cpp)
+target_include_directories(latebrake_world_scale_collision_obj_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_collision_obj_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_collision_obj_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_collision_obj_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleCollisionRoadObjContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyWorldScaleCollisionRoadObj.py"
+            "$<TARGET_FILE:latebrake_world_scale_collision_obj_exporter>"
+    )
+endif()
+
+
+# Exactly 1290 geometrically reconstructed static collision-ray queries.
+# This is a portable source-contract only: no licensed UE5.8 world is run.
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleCollisionRayProbePlan
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/WorldScaleCollisionTracePlan.py"
+            "${CMAKE_CURRENT_BINARY_DIR}/WorldScaleCollisionTracePlan.json"
+    )
+endif()
+
+
+# Physically probe the ACTUAL 1.70-km C++ manifold: 774 vertical road
+# top+bottom hits, 516 offroad no-hits and 3072 polygon midpoints.
+# This is independent triangle arithmetic only, NOT a Chaos/Unreal run.
+add_executable(latebrake_world_scale_collision_ray_triangle_tests
+    WorldScaleCollisionRayTriangleTests.cpp)
+target_include_directories(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+    cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+        /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleCollisionRayTriangleCoverage
+    COMMAND latebrake_world_scale_collision_ray_triangle_tests)
