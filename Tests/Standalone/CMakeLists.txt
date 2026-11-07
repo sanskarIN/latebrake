@@ -2135,3 +2135,23 @@ if (Python3_Interpreter_FOUND)
             "${CMAKE_CURRENT_BINARY_DIR}/WorldScaleCollisionTracePlan.json"
     )
 endif()
+
+
+# Physically probe the ACTUAL 1.70-km C++ manifold: 774 vertical road
+# top+bottom hits, 516 offroad no-hits and 3072 polygon midpoints.
+# This is independent triangle arithmetic only, NOT a Chaos/Unreal run.
+add_executable(latebrake_world_scale_collision_ray_triangle_tests
+    WorldScaleCollisionRayTriangleTests.cpp)
+target_include_directories(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+    cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+        /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_collision_ray_triangle_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleCollisionRayTriangleCoverage
+    COMMAND latebrake_world_scale_collision_ray_triangle_tests)
