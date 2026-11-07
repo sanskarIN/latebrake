@@ -1947,3 +1947,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TouchViewportActionEpoch COMMAND latebrake_touch_viewport_action_epoch_tests)
+
+# NEXT circuit alternative: 68 real (future) physical collision slabs with
+# four rounded corners, not cosmetic extra road inside the live game.
+add_executable(latebrake_rounded_circuit_road_plan_tests RoundedCircuitRoadPlanTests.cpp)
+target_include_directories(latebrake_rounded_circuit_road_plan_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_circuit_road_plan_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_circuit_road_plan_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_circuit_road_plan_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RoundedCircuitRoadPlan COMMAND latebrake_rounded_circuit_road_plan_tests)

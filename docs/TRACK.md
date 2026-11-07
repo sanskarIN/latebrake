@@ -92,3 +92,14 @@ The pure `CircuitMap.h` helper normalizes finite world locations to a north-up 0
 ## Validation requirements
 
 Portable Windows/Linux/macOS CMake suites check this geometry and math, including fixed batch membership and unchanged legacy piece transforms. **They cannot establish** that a UE 5.8 game builds, materials/colors render correctly, that curbs never obstruct driving, or that the minimap avoids all HUD overlap. Real Unreal Editor tests and Win64/Android playtesting are required before a playable/stable release.
+
+## Next physical track experiment: rounded-corner circuit
+
+The [isolated collision-backed rounded circuit plan](ROUNDED_CIRCUIT_PLAN_QA.md)
+models four straights and 64 corner segments with a 900 cm physical width,
+800 cm turn radius and an arc-length racing centerline. Unlike visual-only
+road art, every planned piece describes collidable asphalt and its exact
+XY footprint. **This source model is not connected to the live GameMode.**
+The existing four rectangular asphalt slabs, checkpoint rewards, AI, pit
+service, camera and physics still run unchanged. Licensed Unreal testing,
+continuous geometry and physical driving QA remain prerequisites.
