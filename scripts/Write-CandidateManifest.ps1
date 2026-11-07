@@ -132,7 +132,7 @@ $manifest = [ordered]@{
 }
 if ($trackMaterialSha256) {
     # Only source byte provenance, not proof that the material rendered.
-    $manifest.authored_track_material_sha256 = $trackMaterialSha256
+    $manifest['authored_track_material_sha256'] = $trackMaterialSha256
 }
 $manifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $manifestPath -Encoding utf8NoBOM
 Write-Host "Unverified candidate hashes written to $manifestPath"
