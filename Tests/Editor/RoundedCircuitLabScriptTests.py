@@ -68,7 +68,7 @@ class FakeEditor:
         self.can_reload = True
         self.on_reload = None
     def new_level(self, name, partitioned):
-        assert name == "/Game/Maps/LatebrakeRoundedPhysicsLab"
+        assert name == f"/Game/Maps/{self.path.stem}"
         assert partitioned is False
         self.creates += 1
         return True
@@ -79,7 +79,7 @@ class FakeEditor:
         self.path.write_bytes(b"TEST_ONLY_NON_UNREAL_LEVEL" * 200)
         return True
     def load_level(self, name):
-        assert name == "/Game/Maps/LatebrakeRoundedPhysicsLab"
+        assert name == f"/Game/Maps/{self.path.stem}"
         self.reloads += 1
         if self.on_reload is not None:
             self.on_reload()
@@ -319,6 +319,59 @@ class RoundedCircuitLabScriptTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "failed to save"):
             self.run_script()
         self.assertFalse(self.receipt.exists())
+
+
+    def configure_world_scale(self):
+        # This is a mock fixture; real coordinates are checked separately
+        # against the actual compiled C++ exporter with an independent model.
+        self.map = self.content / "Maps" / "LatebrakeWorldScaleRoundedPhysicsLab.umap"
+        self.geometry = self.saved / "LatebrakeAutomation" / "world-scale-rounded-road-pieces.json"
+        self.receipt = self.saved / "LatebrakeAutomation" / "world-scale-rounded-physics-lab-result.json"
+        self.editor.path = self.map
+        for part in self.data["pieces"]:
+            part["position"][0] *= 10.0
+            part["position"][1] *= 10.0
+            part["scale"][0] *= 10.0
+        self.write_data()
+
+    def test_world_scale_isolated_lab_keeps_nine_metre_road_and_ground_scale(self):
+        self.configure_world_scale()
+        with patch.dict(os.environ, {"LATEBRAKE_ROUNDED_LAB_MODE": "world_scale"}):
+            self.run_script()
+        self.assertEqual(self.editor.creates, 1)
+        self.assertEqual(self.editor.reloads, 1)
+        self.assertEqual(len(self.actors.spawned), 69)
+        ground = self.actors.spawned[0][0]
+        self.assertEqual((ground.scale.x, ground.scale.y, ground.scale.z),
+                         (1100.0, 850.0, 1.25))
+        self.assertEqual(self.actors.spawned[1][0].scale.y, 9.0)
+        self.assertEqual(self.actors.spawned[1][0].scale.x, 13.5)
+        self.assertFalse((self.content / "Maps" / "LatebrakeRoundedPhysicsLab.umap").exists())
+        self.assertFalse((self.content / "Maps" / "LatebrakeCircuit.umap").exists())
+        record = json.loads(self.receipt.read_text(encoding="utf-8"))
+        self.assertEqual(record["lab_variant"], "world_scale")
+        self.assertEqual(record["map"], "/Game/Maps/LatebrakeWorldScaleRoundedPhysicsLab")
+        self.assertTrue(record["verified_after_reload"])
+        self.assertEqual(record["geometry_sha256"],
+                         hashlib.sha256(self.geometry.read_bytes()).hexdigest())
+
+    def test_world_scale_rejects_ninety_metre_wide_road_before_editor(self):
+        self.configure_world_scale()
+        self.data["pieces"][12]["scale"][1] = 90.0
+        self.write_data()
+        with patch.dict(os.environ, {"LATEBRAKE_ROUNDED_LAB_MODE": "world_scale"}):
+            with self.assertRaisesRegex(RuntimeError, "Out-of-bounds rounded road slab"):
+                self.run_script()
+        self.assertEqual(self.editor.creates, 0)
+        self.assertFalse(self.receipt.exists())
+
+    def test_unrecognized_lab_variant_is_rejected_without_creating_level(self):
+        with patch.dict(os.environ, {"LATEBRAKE_ROUNDED_LAB_MODE": "production"}):
+            with self.assertRaisesRegex(RuntimeError, "Unrecognized rounded collision lab mode"):
+                self.run_script()
+        self.assertEqual(self.editor.creates, 0)
+        self.assertFalse(self.receipt.exists())
+
 
 
 if __name__ == "__main__":
