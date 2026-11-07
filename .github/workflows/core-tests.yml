@@ -212,7 +212,8 @@ jobs:
       - name: Compile the 1.70-km geometry policy and real OBJ exporter
         run: |
           cmake --build Tests/Standalone/build --config Release \
-            --target latebrake_world_scale_rounded_tests latebrake_world_scale_rounded_obj_exporter --parallel 4
+            --target latebrake_world_scale_rounded_tests latebrake_world_scale_rounded_obj_exporter \
+              latebrake_world_scale_rounded_circuit_lab_exporter --parallel 4
       - name: Require actual physical backing and independently verified 10x OBJ
         run: |
           ctest --test-dir Tests/Standalone/build -C Release \
