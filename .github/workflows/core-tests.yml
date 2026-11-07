@@ -147,6 +147,7 @@ jobs:
         run: ./scripts/Test-CandidatePairIdentityPolicy.ps1
 
 
+
   rounded-visual-road-preview:
     name: Export UNVERIFIED continuous 3D road (NOT a playable game)
     if: github.event_name == 'pull_request' && github.event.pull_request.number == 316
@@ -160,25 +161,15 @@ jobs:
           persist-credentials: false
       - name: Configure portable original mesh and OBJ exporter
         run: cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
-      - name: Build only source-generated continuous ribbon tests and exporter
+      - name: Build source-generated continuous ribbon tests and exporter
         run: |
           cmake --build Tests/Standalone/build --config Release \
             --target latebrake_rounded_smooth_mesh_tests latebrake_rounded_smooth_obj_exporter --parallel 4
-      - name: Prove same exact compiled mesh and visual model before archiving
+      - name: Independently verify actual compiled mesh and OBJ
         run: |
           ctest --test-dir Tests/Standalone/build -C Release \
-            -R '^RoundedSmoothRoad(Mesh|ObjContract)
-    name: Unreal editor-only Python syntax (not Unreal runtime)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Parse Unreal Editor automation source
-        run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py
-      - name: Test editor map automation decisions with disposable stub (NO Unreal SDK)
-        run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
- \
-            --no-tests=error --output-on-failure
-      - name: Generate STATIC VISUAL-ONLY preview, without any Unreal or game binaries
+            -R RoundedSmoothRoad --no-tests=error --output-on-failure
+      - name: Generate STATIC VISUAL-ONLY preview without a game executable
         shell: bash
         run: |
           mkdir -p Tests/Standalone/build/rounded-road-art-preview
@@ -204,7 +195,6 @@ jobs:
           path: Tests/Standalone/build/rounded-road-art-preview/
           if-no-files-found: error
           retention-days: 7
-
 
   editor-script-syntax:
     name: Unreal editor-only Python syntax (not Unreal runtime)
