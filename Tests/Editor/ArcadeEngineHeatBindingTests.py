@@ -48,7 +48,12 @@ class ArcadeEngineHeatBindingTests(unittest.TestCase):
                       self.cpp)
         self.assertIn("bool SettleNitroDelivery(bool delivered) noexcept",
                       self.policy)
-        self.assertIn("PendingHeatWithoutNitro", self.policy)
+        self.assertIn("PendingNitroExtra = nitroExtra;", self.policy)
+        self.assertIn("Heat = baseHeat;", self.policy)
+        self.assertIn("if (delivered)", self.policy)
+        self.assertIn("Heat = std::clamp(Heat + PendingNitroExtra", self.policy)
+        self.assertNotIn("PendingHeatWithoutNitro", self.policy)
+        self.assertNotIn("Heat = std::clamp(baseHeat + nitroExtra", self.policy)
         self.assertIn("400 undelivered nitro engine samples",
                       read("Tests/Standalone/ArcadeEngineHeatTests.cpp"))
         self.assertIn("EngineThermal.MotorMultiplier", self.cpp)

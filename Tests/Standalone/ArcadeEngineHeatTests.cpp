@@ -141,11 +141,40 @@ int main()
         const auto normal = ordinary.Observe({
             0.05, 3000.0, 1.0, false, true});
         Require(candidate.Valid && normal.Valid &&
+                Near(candidate.HeatFraction, normal.HeatFraction) &&
+                Near(candidate.MotorMultiplier, normal.MotorMultiplier) &&
+                Near(denied.HeatFraction(), ordinary.HeatFraction()) &&
                 denied.SettleNitroDelivery(false) &&
                 Near(denied.HeatFraction(), ordinary.HeatFraction()) &&
                 !denied.SettleNitroDelivery(false),
-                "400 undelivered nitro engine samples equal ordinary throttle");
+                "400 denied nitro samples never enter heat before settlement");
     }
+    // Before settlement all public heat readouts and power decisions
+    // must represent only applied, ordinary load, not a speculative
+    // nitro extra. An accepted force then commits that extra once.
+    ArcadeEngineHeat proposed;
+    ArcadeEngineHeat baseline;
+    const auto pendingOutput = proposed.Observe({
+        0.05, 3000.0, 1.0, true, true});
+    const auto baselineOutput = baseline.Observe({
+        0.05, 3000.0, 1.0, false, true});
+    Require(pendingOutput.Valid && baselineOutput.Valid &&
+            Near(pendingOutput.HeatFraction, baselineOutput.HeatFraction) &&
+            Near(proposed.HeatFraction(), baseline.HeatFraction()) &&
+            Near(pendingOutput.MotorMultiplier, baselineOutput.MotorMultiplier) &&
+            Near(proposed.MotorMultiplier(), baseline.MotorMultiplier()),
+            "uncommitted nitro must not expose speculative heat or power");
+    const double beforeCommit = proposed.HeatFraction();
+    Require(proposed.SettleNitroDelivery(true) &&
+            proposed.HeatFraction() > beforeCommit &&
+            !proposed.SettleNitroDelivery(true),
+            "real bonus commits heat once, never twice");
+    const double committedHeat = proposed.HeatFraction();
+    proposed.Suspend();
+    Require(Near(proposed.HeatFraction(), committedHeat) &&
+            !proposed.SettleNitroDelivery(false),
+            "suspend cannot refund already committed extra heat");
+
     ArcadeEngineHeat delivered;
     ArcadeEngineHeat ordinaryCompare;
     for (int i = 0; i < 400; ++i)
@@ -178,8 +207,11 @@ int main()
         const auto ordinaryFrame = throttleOnlyHeat.Observe({
             0.05, 3000.0, 1.0, false, true});
         Require(pending.Valid && ordinaryFrame.Valid &&
+                Near(pending.HeatFraction, ordinaryFrame.HeatFraction) &&
+                Near(orphanNitroHeat.HeatFraction(),
+                     throttleOnlyHeat.HeatFraction()) &&
                 Near(pending.MotorMultiplier, ordinaryFrame.MotorMultiplier),
-                "provisional bonus heat cannot pre-derate same-frame motor");
+                "orphan proposal never pre-heats or pre-derates same-frame motor");
         baselineDerated = baselineDerated || ordinaryFrame.Derated;
         if (i % 17 == 0)
         {

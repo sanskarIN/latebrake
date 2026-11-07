@@ -69,13 +69,15 @@ Source-only CI success must never be presented as a playable release.
 Engine derating is estimated **before** final gearbox and contact/
 friction-circle propulsion, but an eligible nitro press can still
 deliver zero additional motor thrust. `ArcadeEngineHeat::Observe`
-now retains a sample-local baseline for ordinary throttle/airflow
-heating and a reversible incremental candidate-nitro receipt.
-The real shared Chaos pawn calls `SettleNitroDelivery` with the
-**actual positive nitro AddForce result**, before any HUD readout:
-a rejected bonus restores only extra nitro heat, whereas legitimate
-normal engine heating remains. The method is idempotent. Optional
-downstream validation failures reject this receipt before
+now immediately commits **only ordinary throttle/airflow heat** and
+holds incremental candidate nitro heat in a separate pending receipt.
+The same-frame output heat fraction, motor multiplier and HUD-facing
+getter therefore cannot temporarily report bonus heat that the car
+never delivered. The real shared Chaos pawn calls `SettleNitroDelivery`
+with the **actual positive nitro AddForce result**: only a true verdict
+commits the held extra, once, for later frames. A rejected, interrupted
+or forgotten candidate is simply discarded, with no state to refund.
+Optional downstream validation failures reject the receipt before
 `ClearDriverInputs` suspends the source state.
 
 The same physical motor decision now commits nitro charge depletion
@@ -106,3 +108,14 @@ engine derating begins. This is **source-only regression coverage**;
 runtime frame ordering, displayed HUD state, and actual acceleration
 still require a compiled Unreal Engine 5.8 and installed Win64 QA.
 
+## Commit-only heat observation regression (November 7)
+
+The draft physics branch also covers 400 deliberately denied boost samples,
+600 unanswered candidate samples across engine derating and interruptions,
+and a standalone same-frame comparison of unconfirmed nitro against ordinary
+throttle. The returned `EngineHeatOutput.HeatFraction`, the live getter and
+the motor multiplier now agree before the actual bonus `AddForce`; an
+accepted bonus alone increments heat **after** dispatch. Subsequent
+pause/suspend cannot undo a successfully committed boost, and no orphan
+receipt can leak across frames. These are portable source contracts only,
+not measured heat or real UE5.8 Win64 performance.

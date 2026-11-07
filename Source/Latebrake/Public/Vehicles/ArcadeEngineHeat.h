@@ -38,16 +38,15 @@ public:
         Heat = IdleHeat;
         Valid = false;
         PendingNitroHeat = false;
-        PendingHeatWithoutNitro = IdleHeat;
+        PendingNitroExtra = 0.0;
     }
 
     // Pausing freezes heat; wall-clock time is not qualified driving time.
     void Suspend() noexcept
     {
-        // An interrupted tick is not evidence of delivered bonus force.
+        // An interrupted tick cannot commit a pending bonus receipt.
         SettleNitroDelivery(false);
         Valid = false;
-        PendingNitroHeat = false;
     }
 
     // Preserve normal throttle/airflow heating but commit the extra
@@ -56,15 +55,20 @@ public:
     bool SettleNitroDelivery(bool delivered) noexcept
     {
         if (!PendingNitroHeat) return false;
-        if (!delivered) Heat = PendingHeatWithoutNitro;
+        if (delivered)
+        {
+            Heat = std::clamp(Heat + PendingNitroExtra, IdleHeat, 1.0);
+        }
+        // A rejected candidate never entered Heat, so requires no refund.
         PendingNitroHeat = false;
+        PendingNitroExtra = 0.0;
         return true;
     }
 
     EngineHeatOutput Observe(const EngineHeatSample& sample) noexcept
     {
-        // A forgotten prior receipt never rolls phantom nitro heat into
-        // the next frame's ordinary throttle/airflow calculation.
+        // Drop any unconfirmed old receipt before computing fresh
+        // ordinary throttle/airflow heat; it was never added to Heat.
         SettleNitroDelivery(false);
         if (!sample.DrivingAllowed ||
             !std::isfinite(sample.DeltaSeconds) ||
@@ -82,8 +86,8 @@ public:
         const double load = std::abs(sample.PropulsionDemand);
         const double airflow = std::clamp(
             std::abs(sample.ForwardSpeedCmPerSecond) / 6000.0, 0.0, 1.0);
-        // Base heat is still sampled before motor derating, while
-        // nitro-only heat is a provisional extra until force dispatch.
+        // Ordinary-load heat is settled now; nitro-specific heat remains
+        // only a pending proposal until real positive AddForce dispatch.
         const double cooling = (0.022 + 0.028 * airflow) *
             (Heat - IdleHeat);
         const double baseHeat = std::clamp(
@@ -91,14 +95,14 @@ public:
             IdleHeat, 1.0);
         const double nitroExtra = sample.NitroActive && load > 0.01
             ? sample.DeltaSeconds * 0.025 * load : 0.0;
-        Heat = std::clamp(baseHeat + nitroExtra, IdleHeat, 1.0);
+        Heat = baseHeat;
+        PendingNitroExtra = nitroExtra;
         PendingNitroHeat = nitroExtra > 0.0;
-        PendingHeatWithoutNitro = baseHeat;
         Valid = true;
-        // The motor dispatch occurs BEFORE its real nitro force verdict.
-        // Use the settled ordinary-load heat for this frame's motor limit;
-        // provisional bonus heat can only affect later frames if delivered.
-        const double scale = ComputeMotorMultiplier(baseHeat);
+        // Heat, the public observation and motor power are coherent even
+        // before force authorization. Only an explicit true settlement
+        // increases heat, and only subsequent frames can use that increment.
+        const double scale = ComputeMotorMultiplier(Heat);
         return {true, Heat, scale, scale < 1.0};
     }
 
@@ -120,6 +124,6 @@ private:
     double Heat = IdleHeat;
     bool Valid = false;
     bool PendingNitroHeat = false;
-    double PendingHeatWithoutNitro = IdleHeat;
+    double PendingNitroExtra = 0.0; // held, not reflected in Heat
 };
 } // namespace latebrake
