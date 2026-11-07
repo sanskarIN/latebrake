@@ -44,12 +44,15 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
         self.assertIn("NAME WorldScaleRoundedRoadObjContract", self.cmake)
         self.assertIn("WorldScaleRoundedCircuitTests.cpp", self.cmake)
         self.assertIn("WorldScaleRoundedRoadObjExporter.cpp", self.cmake)
+        self.assertIn("WorldScaleRoundedCircuitLabExporter.cpp", self.cmake)
+        self.assertIn("NAME WorldScaleRoundedCircuitLabJsonContract", self.cmake)
+        self.assertIn("NAME WorldScaleRoundedCircuitLabExport", self.cmake)
         self.assertIn("RoundedSmoothRoadMeshTests.cpp", self.cmake)
         self.assertIn("RoundedSmoothRoadObjExporter.cpp", self.cmake)
 
         verifier = read("Tests/Standalone/VerifyRoundedCircuitLabExport.py")
         for required in (
-            "subprocess.run(", "EXPECTED_PIECES = 68", "expected_piece(index)",
+            "subprocess.run(", "EXPECTED_PIECES = 68", "expected_piece(index, scale_factor=1.0)",
             "math.isclose(", "parse_constant=_reject_nonstandard_float",
         ):
             self.assertIn(required, verifier)
@@ -95,6 +98,11 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
         self.assertIn('"verified_after_reload": True', self.editor)
         self.assertIn("audited_actors", self.editor)
         self.assertIn("verified_after_reload", self.wrapper)
+        self.assertIn("LATEBRAKE_ROUNDED_LAB_MODE", self.wrapper)
+        self.assertIn("latebrake_world_scale_rounded_circuit_lab_exporter", self.wrapper)
+        self.assertIn("WorldScaleRoundedCircuitLabJsonContract", self.wrapper)
+        self.assertIn("LatebrakeWorldScaleRoundedPhysicsLab", self.editor)
+        self.assertIn("lab_variant", self.editor)
         for required in (
             "NOT been executed in a licensed Unreal Editor",
             "never overwrites an existing lab map",
