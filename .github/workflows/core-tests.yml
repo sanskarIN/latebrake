@@ -266,15 +266,7 @@ jobs:
       - name: Require independently verified physical 9m OBJ and manifold
         run: |
           ctest --test-dir Tests/Standalone/build -C Release \
-            -R '^WorldScale(SmoothCollisionSurface|CollisionRoadObjContract)    name: Unreal editor-only Python syntax (not Unreal runtime)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Parse Unreal Editor automation source
-        run: python3 -m py_compile scripts/Unreal/CreateStarterMap.py scripts/Unreal/CreateRoundedCircuitLab.py scripts/Unreal/ImportWorldScaleContinuousRoad.py
-      - name: Test editor map automation decisions with disposable stub (NO Unreal SDK)
-        run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
- \
+            -R '^WorldScale(SmoothCollisionSurface|CollisionRoadObjContract) \
             --no-tests=error --output-on-failure
       - name: Export exact model and destructive-validation provenance
         shell: bash
