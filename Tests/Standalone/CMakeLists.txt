@@ -2099,3 +2099,27 @@ else()
 endif()
 add_test(NAME WorldScaleSmoothCollisionSurface
     COMMAND latebrake_world_scale_smooth_collision_tests)
+
+
+# Realistic physical-road track research: deterministic full-width (9m)
+# OBJ+MTL handoff, deliberately distinct from the 8.5m noncolliding art.
+# Source tests DO NOT prove Unreal Editor import, Chaos cooking or driving.
+add_executable(latebrake_world_scale_collision_obj_exporter
+    WorldScaleCollisionRoadObjExporter.cpp)
+target_include_directories(latebrake_world_scale_collision_obj_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_collision_obj_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_collision_obj_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_collision_obj_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleCollisionRoadObjContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyWorldScaleCollisionRoadObj.py"
+            "$<TARGET_FILE:latebrake_world_scale_collision_obj_exporter>"
+    )
+endif()
