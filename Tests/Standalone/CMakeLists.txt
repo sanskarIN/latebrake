@@ -2082,3 +2082,20 @@ if (Python3_Interpreter_FOUND)
             10
     )
 endif()
+
+
+# Experimental smooth FULL-WIDTH collision geometry candidate; no UE5.8
+# cooking/BodySetup and no change to active 68-box physics or career.
+add_executable(latebrake_world_scale_smooth_collision_tests
+    WorldScaleSmoothCollisionRoadTests.cpp)
+target_include_directories(latebrake_world_scale_smooth_collision_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_smooth_collision_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_smooth_collision_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_smooth_collision_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleSmoothCollisionSurface
+    COMMAND latebrake_world_scale_smooth_collision_tests)
