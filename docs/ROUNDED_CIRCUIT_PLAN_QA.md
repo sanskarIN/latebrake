@@ -310,3 +310,61 @@ normal/edge handling, actual dynamic-vehicle tyre contact tests and
 installed 30/60/120 FPS driving QA. The existing 68-cube lab remains
 unchanged. The live career circuit still uses its original rectangular
 road and score/AI policies. No 3D game EXE or installer is implied.
+
+
+## Dedicated 1.70-km continuous static collision — *licensed Unreal Editor lab only*
+
+The 68 BlockAll overlap slabs were a useful source-backed prototype, **not a
+professional physics surface**. A new, separately generated C++20 OBJ+MTL
+handoff now captures the full 9.0-m physical road directly from the
+closed manifold geometry: 1,024 stations, 4,096 source vertices,
+8,192 consistently wound triangles, 42 cm thickness, and UV lap closure.
+This is distinct from the **8.5-m visual-only ribbon**. Source-only
+`WorldScaleCollisionRoadObjContract` independently rechecks every C++
+vertex, all triangle connectivity and winding, UV continuity, material
+bindings, and deliberate bad geometry/texture mutations across CTest.
+
+**On your own licensed UE5.8 Windows workstation only**, check out the
+experimental [draft PR #316](https://github.com/sanskarIN/latebrake/pull/316)
+branch and run from the LateBrake repository root:
+
+```powershell
+pwsh ./scripts/New-ContinuousRoadLab.ps1 -EngineRoot "C:/Program Files/Epic Games/UE_5.8"
+```
+
+This wrapper fails before Unreal if the exact C++ numeric tests fail,
+the engine version/project association is wrong, or an existing destination
+asset/map would be overwritten. It passes the SHA256 of the **actual compiled
+original OBJ and MTL bytes** into the UE5.8 Python process, which
+independently validates all source vertices/faces again before any import.
+The import targets only
+`/Game/LatebrakeExperimental/SM_WorldScaleContinuousRoad`, with a distinct
+non-racing GameModeBase map at
+`/Game/Maps/LatebrakeWorldScaleContinuousCollisionLab`. It is never
+`LatebrakeCircuit`, and does not use or rescale the physical car or AI.
+
+The importer attempts a **static non-simulating** triangle mesh with
+`BodySetup.collision_trace_flag = CTF_USE_COMPLEX_AS_SIMPLE`,
+`BlockAll` and `QueryAndPhysics`. The script rejects importer-generated
+alternate asset names, incorrect 1.7-km bounds, missing BodySetup, missing
+physical triangles, lost collision configuration, map-save/reload failures
+and tampered source/asset bytes. On actual success the **locally generated**
+`Saved/LatebrakeAutomation/world-scale-continuous-road-import-result.json`
+contains source OBJ/MTL SHA256, authentic `.uasset` and `.umap` hashes,
+persisted collision settings, engine version and an explicit
+`road_chaos_contact_tested: false` marker. The success receipt is **not**
+created by portable source-only CI.
+
+**What this does not prove:** The 5.8 Editor import may fail depending on
+the installed OBJ/Interchange plugins and engine API. Portable mock tests
+can verify fail-closed logic but cannot prove actual engine import, Chaos
+cooking, dynamic tire collisions, suspension comfort, triangulation
+performance, material appearance or gameplay. Inspect imported faces in
+the Editor, confirm the map reloads, then test tyre/vehicle contact and
+frame-time behavior with real physics. If an import fails after making a
+partial `.uasset`, do not simply rerun over it; review the generated
+asset/map and remove only the intentionally generated lab artifacts yourself
+before retrying. **Do not merge into live GameMode or ship installers without
+all of [playable gate #148](https://github.com/sanskarIN/latebrake/issues/148).**
+The published v0.5.96 pre-release is an older immutable **SOURCE-ONLY**
+snapshot and does not include this later experimental import work.
