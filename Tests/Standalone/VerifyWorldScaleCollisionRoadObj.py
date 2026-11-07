@@ -165,28 +165,28 @@ def mutation_qa(obj, mtl):
     coordinates = moved[vertex].split()
     coordinates[1] = str(float(coordinates[1]) + 20.0)
     moved[vertex] = " ".join(coordinates)
-    corruptions["translated road vertex"] = "\\n".join(moved) + "\\n"
+    corruptions["translated road vertex"] = "\n".join(moved) + "\n"
 
     wrong_uv = lines.copy()
     values = wrong_uv[uv].split()
     values[1] = str(float(values[1]) + 1.0)
     wrong_uv[uv] = " ".join(values)
-    corruptions["stretched road UV"] = "\\n".join(wrong_uv) + "\\n"
+    corruptions["stretched road UV"] = "\n".join(wrong_uv) + "\n"
 
     wrong_winding = lines.copy()
     parts = wrong_winding[face].split()
     parts[1], parts[2] = parts[2], parts[1]
     wrong_winding[face] = " ".join(parts)
-    corruptions["reversed road-top triangle"] = "\\n".join(wrong_winding) + "\\n"
+    corruptions["reversed road-top triangle"] = "\n".join(wrong_winding) + "\n"
 
     missing = lines.copy()
     missing.pop(face)
-    corruptions["missing physical collision triangle"] = "\\n".join(missing) + "\\n"
+    corruptions["missing physical collision triangle"] = "\n".join(missing) + "\n"
 
     wrong_material = lines.copy()
     lib = next(i for i, row in enumerate(lines) if row.startswith("mtllib "))
     wrong_material[lib] = "mtllib ../UnexpectedExternalSource.mtl"
-    corruptions["asset-library path escape"] = "\\n".join(wrong_material) + "\\n"
+    corruptions["asset-library path escape"] = "\n".join(wrong_material) + "\n"
 
     try:
         for label, contents in corruptions.items():
@@ -198,7 +198,7 @@ def mutation_qa(obj, mtl):
             else:
                 raise AssertionError(f"Verifier accepted {label}")
         obj.write_text(original_obj, encoding="utf-8")
-        mtl.write_text(original_mtl + "map_Kd external.png\\n", encoding="utf-8")
+        mtl.write_text(original_mtl + "map_Kd external.png\n", encoding="utf-8")
         try:
             verify_obj(obj, mtl)
         except ValueError:
