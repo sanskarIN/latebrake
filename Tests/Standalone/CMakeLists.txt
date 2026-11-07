@@ -2123,3 +2123,15 @@ if (Python3_Interpreter_FOUND)
             "$<TARGET_FILE:latebrake_world_scale_collision_obj_exporter>"
     )
 endif()
+
+
+# Exactly 1290 geometrically reconstructed static collision-ray queries.
+# This is a portable source-contract only: no licensed UE5.8 world is run.
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME WorldScaleCollisionRayProbePlan
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/WorldScaleCollisionTracePlan.py"
+            "${CMAKE_CURRENT_BINARY_DIR}/WorldScaleCollisionTracePlan.json"
+    )
+endif()
