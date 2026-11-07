@@ -48,6 +48,27 @@ if (Test-Path -LiteralPath $map -PathType Any) {
 if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed.' }
 & cmake --build $build --config Release --target $exportTarget --parallel 4
 if ($LASTEXITCODE -ne 0) { throw 'Canonical rounded road C++ exporter build failed.' }
+if ($WorldScale) {
+    # Do not permit the Editor to author a 1.70-km level from geometry
+    # that only passed the exporter's own success status. Run the separate
+    # independent compiled-coordinate contract before mutating the map.
+    & cmake --build $build --config Release --target latebrake_world_scale_rounded_tests --parallel 4
+    if ($LASTEXITCODE -ne 0) { throw 'Full-scale road geometry tests failed to build.' }
+    Push-Location $build
+    try {
+        $tests = & ctest -C Release -N -R '^WorldScaleRoundedCircuit($|LabExport$|LabJsonContract$)'
+        if ($LASTEXITCODE -ne 0 -or
+            (($tests -join [Environment]::NewLine) -notmatch 'Total Tests: 3')) {
+            throw 'Independent world-scale numeric JSON contract test is not registered.'
+        }
+        & ctest -C Release --output-on-failure -R '^WorldScaleRoundedCircuit($|LabExport$|LabJsonContract$)'
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Compiled world-scale physical geometry/JSON contract verification failed.'
+        }
+    } finally {
+        Pop-Location
+    }
+}
 $candidates = @(
     (Join-Path $build "Release/$exportTarget.exe"),
     (Join-Path $build "$exportTarget.exe")
