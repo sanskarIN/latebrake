@@ -1,9 +1,15 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-06
-**Latest published milestone:** [v0.5.94 experimental source-only pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94), immutable commit `7919a3e553de94e12f1dcfa961e305d9aff71bcd`, **zero executable attachments**. It freezes experimental unmerged draft PR #295, with signed reverse overspeed changed from an instantaneous XY speed snap to a finite rear-traction-limited Chaos force. Experimental physics is **not merged into protected main**; actual UE5.8/UHT, Win64 cooking, hardware driving and Windows installation remain unverified.
+**Updated:** 2026-11-07
+**Latest published milestone:** [v0.5.95 experimental SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95), immutable source commit `45e62e2f9009741bf947019105708abe64f89c3f`, **zero executable attachments**. It snapshots **unmerged draft PR #313** (physical-asphalt edge paint, braking rubber, author-only PBR material script and pinned authored-asset build gates). It does **not** include a cooked Unreal material or Windows executable. Exact-source publication passed 171 C++20 tests per Windows/Ubuntu/macOS and 621 Python source tests. Physical Unreal 5.8 Editor/UHT compilation, gameplay visuals, cooking and installed QA remain unverified; source publication does not merge PR #313.
 **Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
 **Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
+
+## v0.5.95 original Unreal circuit surface source (published tag, NOT merged)
+
+- Exact source `45e62e2f9009741bf947019105708abe64f89c3f` was published as [v0.5.95](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95) through the independent [publisher workflow](https://github.com/sanskarIN/latebrake/actions/runs/42339222627) on November 7, 2026: **171/171 CTests each on Windows, Ubuntu and macOS, 621 Python source-binding tests**, PowerShell material/manifest fixture tests and documentation verification.
+- The draft PR #313 contains 8 road-edge paint segments and 48 braking rubber markers fully bounded to the physical existing asphalt slabs. An Unreal Editor-only PBR material authoring script and hashed source-provenance checks were added. The real .uasset, shader cook, dynamic material appearance, 3D cars/track quality and Windows executable have NOT been generated or verified.
+- The published source-only GitHub release has **zero executable assets**. PR #313 remains draft and unmerged pending a licensed Unreal Editor/UHT build and installed Win64 visual/driving QA. See [source notes](releases/v0.5.95.md) and [gameplay gate #148](https://github.com/sanskarIN/latebrake/issues/148).
 
 ## v0.5.94 experimental physical reverse overspeed (tagged source, NOT merged)
 
