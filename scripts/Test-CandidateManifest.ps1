@@ -66,7 +66,11 @@ if ($manifest.schema_version -ne 2 -or
 
 # Existing schema-2 candidates without a material remain compatible.
 if ($manifest.PSObject.Properties.Name -contains 'authored_track_material_sha256') {
-    if ($manifest.authored_track_material_sha256 -cnotmatch '^[a-f0-9]{64}
+    if ($manifest.authored_track_material_sha256 -cnotmatch '^[a-f0-9]{64}$') {
+        throw 'Malformed optional authored track material SHA256.'
+    }
+}
+$entries = @($manifest.files)
 if ($entries.Count -eq 0) {
     throw 'Manifest has no archived files.'
 }
