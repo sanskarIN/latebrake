@@ -86,3 +86,23 @@ or trigger a cooldown without actual boost. Portable C++ covers
 ordinary-throttle controller, 120 rejected overheat-limit samples,
 and a separately reached low-charge terminal case. These are
 *source-level* tests, not genuine Unreal Engine 5.8 gameplay.
+
+## Unanswered receipt and pre-dispatch motor-power isolation
+
+Draft PR #295 now rolls back an **unsettled** incremental nitro-heat
+receipt on the next `Observe` or `Suspend`. It does not erase the
+ordinary throttle/airflow heat from the same frame. More importantly,
+`Observe` returns the **baseline** motor multiplier for the motor
+force currently being dispatched; proposed nitro-specific heat cannot
+derate a motor before the corresponding bonus `AddForce` is actually
+confirmed. A genuinely delivered bonus commits its additional heat for
+subsequent frames. The player and rival still share the same engine
+power limit and the physical motor path remains authoritative.
+
+Portable C++ regressions compare 600 unanswered nitro candidates with
+an equivalent ordinary-throttle heat history, including repeated
+suspend/resume, and check power equality even after genuine ordinary
+engine derating begins. This is **source-only regression coverage**;
+runtime frame ordering, displayed HUD state, and actual acceleration
+still require a compiled Unreal Engine 5.8 and installed Win64 QA.
+

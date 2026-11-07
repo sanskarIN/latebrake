@@ -106,6 +106,26 @@ cap transitions, braking, reverse and recovered traction at 30/60/120
 FPS. Verify the real HUD charge/heat and acceleration, rather than
 assuming source CI establishes delivered game physics.
 
+## Unanswered same-frame delivery and interrupt safety
+
+On draft PR #295, `Step` treats a charge/heat debit as a **provisional
+receipt**, not physical delivery. The real pawn must explicitly commit
+it only after a positive nitro `AddForce`, or reject it when traction,
+gearbox or other safety policy blocks that force. If the caller aborts
+before either verdict, the **next** `Step`, `Press`, `Release` or
+`Suspend` first refunds that still-pending debit. These paths never
+manufacture an extra cooldown or treat an unanswered press as a
+delivered boost. A completed commit is not refundable later.
+
+Portable regressions exercise a lost delivery verdict followed by a
+new physics tick, key release, disallowed press, pause/suspension and
+a repeated terminal thermal sample. They additionally check that
+legitimate delivered boost remains charged once. This is protection
+against dropped source-level receipts, **not** evidence of runtime
+Unreal Engine verification. Real Win64 testing should intentionally
+interrupt held boost during low-grip transitions and pause/resume,
+then verify the charge/heat HUD against actual motor response.
+
 ## Required manual real-game test (still open)
 
 1. Build the actual UE 5.8 editor/game targets and cook the circuit.
