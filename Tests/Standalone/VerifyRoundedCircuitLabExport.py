@@ -29,7 +29,7 @@ ARC_OVERLAP_CM = 20.0
 FLOAT_TOL = 0.000002
 
 
-def expected_piece(index):
+def expected_piece(index, scale_factor=1.0):
     if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < EXPECTED_PIECES:
         raise ValueError("invalid canonical physical-road piece index")
     width = 2.0 * HALF_WIDTH_CM / 100.0
@@ -61,9 +61,9 @@ def expected_piece(index):
                         + ARC_OVERLAP_CM) / 100.0
     return {
         "index": index,
-        "position": [x, y, ROAD_CENTER_Z_CM],
+        "position": [x * scale_factor, y * scale_factor, ROAD_CENTER_Z_CM],
         "rotation_yaw": yaw,
-        "scale": [length, width, ROAD_DEPTH_SCALE],
+        "scale": [length * scale_factor, width, ROAD_DEPTH_SCALE],
     }
 
 
@@ -78,7 +78,9 @@ def close(actual, expected, where):
         raise ValueError(f"Incorrect physical collision geometry at {where}: {actual!r}")
 
 
-def validate_document(document):
+def validate_document(document, scale_factor=1.0):
+    if scale_factor not in (1.0, 10.0):
+        raise ValueError("Unsupported rounded road profile factor")
     if not isinstance(document, dict) or set(document) != {
         "schema_version", "units", "road_top_cm", "piece_count", "pieces"
     }:
@@ -94,7 +96,7 @@ def validate_document(document):
     if not isinstance(pieces, list) or len(pieces) != EXPECTED_PIECES:
         raise ValueError("Missing, duplicated or overbudget physical road pieces")
     for i, item in enumerate(pieces):
-        expect = expected_piece(i)
+        expect = expected_piece(i, scale_factor)
         if not isinstance(item, dict) or set(item) != set(expect):
             raise ValueError(f"Unexpected road piece structure {i}")
         if type(item["index"]) is not int or item["index"] != i:
@@ -116,24 +118,25 @@ def _reject_nonstandard_float(word):
     raise ValueError(f"Non-JSON floating-point constant: {word}")
 
 
-def parse_and_validate(raw):
+def parse_and_validate(raw, scale_factor=1.0):
     data = json.loads(raw, parse_constant=_reject_nonstandard_float)
-    return validate_document(data)
+    return validate_document(data, scale_factor)
 
 
-def check_exporter(executable):
+def check_exporter(executable, scale_factor=1.0):
     completed = subprocess.run([str(Path(executable))], capture_output=True,
                                text=True, check=True, timeout=15)
     if completed.stderr:
         raise ValueError("C++ canonical road exporter emitted unexpected diagnostics")
-    return parse_and_validate(completed.stdout)
+    return parse_and_validate(completed.stdout, scale_factor)
 
 
 def main():
-    if len(sys.argv) != 2:
-        raise SystemExit("Usage: VerifyRoundedCircuitLabExport.py <compiled-exporter>")
-    count = check_exporter(sys.argv[1])
-    print(f"Verified {count} real compiled C++ rounded road JSON transforms against an independent circle/straight model")
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "10"):
+        raise SystemExit("Usage: VerifyRoundedCircuitLabExport.py <compiled-exporter> [10]")
+    scale_factor = 10.0 if len(sys.argv) == 3 else 1.0
+    count = check_exporter(sys.argv[1], scale_factor)
+    print(f"Verified {count} compiled C++ rounded road transforms, XY/length factor={scale_factor}, width=9 m")
 
 
 if __name__ == "__main__":
