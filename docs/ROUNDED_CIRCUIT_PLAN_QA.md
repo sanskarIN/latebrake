@@ -25,3 +25,55 @@ These checks do **not** prove actual collision shapes or professional visuals in
 - Test licensed UE5.8/UHT Editor compilation, real cooked map, Chaos tire contact and seams, 30/60/120 FPS driving, checkpoints/AI and installed Win64 package before switching the runtime track or publishing a playable executable.
 
 See [playable-release gate #148](https://github.com/sanskarIN/latebrake/issues/148). **No new pre-release or Windows EXE is implied by this source-only plan.**
+
+## Isolated Editor physics-lab authoring stage
+
+The candidate includes **a real Editor-only level-authoring workflow**, not
+a handcrafted/fake map or a new playable track:
+
+1. A new strict C++20 executable `latebrake_rounded_circuit_lab_exporter`
+   exports the 68 collidable pieces from the **same** tested C++20 header as
+   deterministic JSON in centimetres. Python is not allowed to invent a
+   different road.
+2. `scripts/New-RoundedCircuitLab.ps1` builds just that exporter through
+   CMake, validates 68 records, then writes a local export in the ignored
+   `Saved/LatebrakeAutomation` directory.
+3. On a trusted Windows workstation with **an authorized Unreal Engine 5.8
+   Editor installation**, it invokes the genuine Editor Python script
+   `scripts/Unreal/CreateRoundedCircuitLab.py`. The script refuses an
+   existing `.umap`, NaN/Inf, missing/duplicate/reordered road pieces,
+   nonpositive/out-of-bounds geometry, and mismatched top elevation
+   **before creating any level**.
+4. The real Editor creates the separate
+   `/Game/Maps/LatebrakeRoundedPhysicsLab` with **68 BlockAll physical
+   asphalt cubes and one original-ground-sized BlockAll cube**.
+   World Settings must override the LateBrake racing GameMode to
+   `GameModeBase`. This prevents the old rectangular RaceGameMode
+   from spawning over the lab during Editor Play and makes this a
+   *track-physics inspection level*, not a scored race.
+5. Only after an Editor save succeeds, a receipt records the real
+   `.umap` and C++ JSON SHA256 digests, byte length, UE version,
+   separate map identity, one ground and all 68 road instances.
+   The PowerShell wrapper verifies a *fresh* receipt, rehashes both files,
+   and validates a genuine serialized Unreal map package header.
+
+Manual Windows operator command (run in a clean checkout with CMake and an
+authorized genuine Unreal Editor installation):
+
+```powershell
+pwsh ./scripts/New-RoundedCircuitLab.ps1 -EngineRoot "C:/Program Files/Epic Games/UE_5.8"
+```
+
+**This command has NOT been executed in a licensed Unreal Editor.** Its
+mock Python tests merely exercise the requested API contracts with
+synthetic bytes in temporary folders. This workflow does not compile a
+real Unreal C++ game target, cook a map, check collision seams in Chaos,
+author road materials, drive cars, replace `LatebrakeCircuit`, or build
+an installer. It **never overwrites an existing lab map**: review it
+manually if the operation is repeated. A generated local `.umap`
+must not be promoted to the game without independent visual, collision
+and installed Win64 qualification.
+
+The existing `main` circuit, controller preview, career save schema,
+nine audited physical blocks and v0.5.95 release remain unchanged.
+

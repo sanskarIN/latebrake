@@ -103,3 +103,16 @@ XY footprint. **This source model is not connected to the live GameMode.**
 The existing four rectangular asphalt slabs, checkpoint rewards, AI, pit
 service, camera and physics still run unchanged. Licensed Unreal testing,
 continuous geometry and physical driving QA remain prerequisites.
+
+### Experimental Unreal physics-lab route for rounded circuit
+
+A standalone C++ JSON exporter and genuine Unreal Editor-only level
+authoring script can build a *separate* inspection map:
+`/Game/Maps/LatebrakeRoundedPhysicsLab`. It does not replace
+`LatebrakeCircuit`, does not install a new GameMode or allow race
+progression, and does not update vehicle friction, checkpoint credits,
+career records or the existing road. Its 68 proposed collidable road
+cubes plus one ground cube are intended for **manual Unreal QA**, not
+a playable pre-release. [Detailed authoring and verification gates]
+(ROUNDED_CIRCUIT_PLAN_QA.md). This tool has not run in genuine UE 5.8.
+
