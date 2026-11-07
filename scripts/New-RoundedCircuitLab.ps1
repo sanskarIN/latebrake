@@ -6,7 +6,7 @@
     playable game, Windows installer or replacement for LatebrakeCircuit.
 #>
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$EngineRoot)
+param([Parameter(Mandatory)][string]$EngineRoot, [switch]$WorldScale)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -19,6 +19,17 @@ $source = Join-Path $repo 'Tests/Standalone'
 $data = Join-Path $repo 'Saved/LatebrakeAutomation/rounded-road-pieces.json'
 $receipt = Join-Path $repo 'Saved/LatebrakeAutomation/rounded-physics-lab-result.json'
 $map = Join-Path $repo 'Content/Maps/LatebrakeRoundedPhysicsLab.umap'
+$exportTarget = 'latebrake_rounded_circuit_lab_exporter'
+$labPackage = '/Game/Maps/LatebrakeRoundedPhysicsLab'
+$labVariant = 'prototype'
+if ($WorldScale) {
+    $exportTarget = 'latebrake_world_scale_rounded_circuit_lab_exporter'
+    $labPackage = '/Game/Maps/LatebrakeWorldScaleRoundedPhysicsLab'
+    $labVariant = 'world_scale'
+    $data = Join-Path $repo 'Saved/LatebrakeAutomation/world-scale-rounded-road-pieces.json'
+    $receipt = Join-Path $repo 'Saved/LatebrakeAutomation/world-scale-rounded-physics-lab-result.json'
+    $map = Join-Path $repo 'Content/Maps/LatebrakeWorldScaleRoundedPhysicsLab.umap'
+}
 foreach ($path in @($project, $editor, $version, $python)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Unreal Editor physics-lab input unavailable: $path"
@@ -35,11 +46,11 @@ if (Test-Path -LiteralPath $map -PathType Any) {
 }
 & cmake -S $source -B $build -DCMAKE_BUILD_TYPE=Release
 if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed.' }
-& cmake --build $build --config Release --target latebrake_rounded_circuit_lab_exporter --parallel 4
+& cmake --build $build --config Release --target $exportTarget --parallel 4
 if ($LASTEXITCODE -ne 0) { throw 'Canonical rounded road C++ exporter build failed.' }
 $candidates = @(
-    (Join-Path $build 'Release/latebrake_rounded_circuit_lab_exporter.exe'),
-    (Join-Path $build 'latebrake_rounded_circuit_lab_exporter.exe')
+    (Join-Path $build "Release/$exportTarget.exe"),
+    (Join-Path $build "$exportTarget.exe")
 )
 $exporter = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 if (-not $exporter) { throw 'Compiled rounded road exporter EXE missing.' }
@@ -67,12 +78,16 @@ $scriptPath = (Resolve-Path -LiteralPath $python).Path
 # A valid-looking but mutated 68-element JSON is not an authorized road.
 $envName = 'LATEBRAKE_ROUNDED_GEOMETRY_SHA256'
 $originalEnvironment = [Environment]::GetEnvironmentVariable($envName, 'Process')
+$modeEnvName = 'LATEBRAKE_ROUNDED_LAB_MODE'
+$originalMode = [Environment]::GetEnvironmentVariable($modeEnvName, 'Process')
 try {
     [Environment]::SetEnvironmentVariable($envName, $expectedDataHash, 'Process')
+    [Environment]::SetEnvironmentVariable($modeEnvName, $labVariant, 'Process')
     & $editor $projectPath "-ExecutePythonScript=$scriptPath" '-unattended' '-nop4' '-nosplash'
     $editorExitCode = $LASTEXITCODE
 } finally {
     [Environment]::SetEnvironmentVariable($envName, $originalEnvironment, 'Process')
+    [Environment]::SetEnvironmentVariable($modeEnvName, $originalMode, 'Process')
 }
 if ($editorExitCode -ne 0) { throw 'Genuine Unreal Editor map authoring failed.' }
 if (-not (Test-Path -LiteralPath $map -PathType Leaf) -or
@@ -84,7 +99,7 @@ $mapHash = (Get-FileHash -LiteralPath $map -Algorithm SHA256).Hash.ToLowerInvari
 $dataHash = (Get-FileHash -LiteralPath $data -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($r.schema_version -ne 1 -or $r.status -cne 'saved_by_unreal_editor' -or
     $r.engine_version -cne '5.8' -or
-    $r.map -cne '/Game/Maps/LatebrakeRoundedPhysicsLab' -or
+    $r.map -cne $labPackage -or $r.lab_variant -cne $labVariant -or
     $r.pieces -ne 68 -or $r.ground_pieces -ne 1 -or
     $r.audited_actors -ne 69 -or $r.verified_after_reload -ne $true -or
     $r.game_mode -cne 'GameModeBase' -or
@@ -97,5 +112,5 @@ if ($r.schema_version -ne 1 -or $r.status -cne 'saved_by_unreal_editor' -or
 }
 & (Join-Path $PSScriptRoot 'Verify-UnrealMapHeader.ps1') -MapPath $map
 if (-not $?) { throw 'Serialized Unreal map header check failed.' }
-Write-Host "Original collision-road physics lab: $map"
+Write-Host "Original collision-road physics lab ($labVariant): $map"
 Write-Host '68 physical road pieces and one ground; rendering and driving NOT verified.'
