@@ -1988,3 +1988,36 @@ if(Python3_Interpreter_FOUND)
             "$<TARGET_FILE:latebrake_rounded_circuit_lab_exporter>"
     )
 endif()
+
+# First original continuous smooth OBJ+MTL surface. THIS IS NON-COLLIDING
+# VISUAL ROAD ART; the 68 collision pieces remain the candidate's authority.
+add_executable(latebrake_rounded_smooth_mesh_tests RoundedSmoothRoadMeshTests.cpp)
+target_include_directories(latebrake_rounded_smooth_mesh_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_smooth_mesh_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_smooth_mesh_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_smooth_mesh_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RoundedSmoothRoadMesh COMMAND latebrake_rounded_smooth_mesh_tests)
+
+add_executable(latebrake_rounded_smooth_obj_exporter RoundedSmoothRoadObjExporter.cpp)
+target_include_directories(latebrake_rounded_smooth_obj_exporter PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rounded_smooth_obj_exporter PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rounded_smooth_obj_exporter PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rounded_smooth_obj_exporter PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+if (Python3_Interpreter_FOUND)
+    add_test(
+        NAME RoundedSmoothRoadObjContract
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/VerifyRoundedSmoothRoadObj.py"
+            "$<TARGET_FILE:latebrake_rounded_smooth_obj_exporter>"
+    )
+endif()

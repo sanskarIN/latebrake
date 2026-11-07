@@ -132,3 +132,40 @@ This makes the C++ to JSON representation independently inspectable across
 Windows, Linux and macOS. It still **does not** create a real Unreal map or
 verify physics contact; those are gated by the genuine UE5.8 Editor workflow
 and installed-game QA.
+
+## First continuous original 3D road **visual** mesh
+
+The original `RoundedCircuitSmoothMesh.h` now constructs a closed **1024-station
+continuous rounded-rectangle ribbon** directly from the candidate's same
+`RoundedRoadCenterlineAt` geometry. Its road appearance is **850 cm
+wide**, inset 25 cm on each side of the 900-cm physical collision corridor,
+and its top is at **z=-0.55 cm**, 0.45 cm above physical asphalt.
+This is **not** a new collision surface. The original 68 WorldStatic slabs
+remain the only candidate physical road authority and should not be
+disabled or replaced by the visual overlay.
+
+The C++ exporter creates an original portable Wavefront **OBJ + MTL** preview
+(`latebrake_rounded_smooth_obj_exporter <path/to/road.obj>`).
+It emits **4,096 vertices and 8,192 triangles**, with full upper/underside
+and edge walls, a watertight closed manifold, anticlockwise asphalt top
+normals, lap-wrapped texture coordinates, and two simple original material
+placeholders. It does **not** output a genuine Unreal `.uasset` or
+photorealistic road textures. Rendering or import from OBJ into UE5.8
+is a further separate acceptance task.
+
+Source CI checks every one of the 4,096 visual vertices against the
+68 rotated candidate collision footprints, additionally checks all
+upper triangle centroids and edge midpoints against that physical union,
+requires every undirected mesh edge have exactly two opposite-direction
+incidences, tests all face normals, and uses an *independent Python
+centerline computation* to verify the actual compiled OBJ geometry and
+UV lap seam. This is real custom 3D geometry, but still **not inspected
+in genuine Unreal Editor, not tested against Chaos tires, and not a
+playable Windows build**.
+
+The next integration is a controlled, separate Editor import into the
+`LatebrakeRoundedPhysicsLab` level with **collision disabled on the new
+visual actor** and actual 68-slab physical collision readback, followed
+by independent UE5.8 render/handling QA. It must not silently alter the
+existing rectangular race/career map or qualify an executable pre-release.
+

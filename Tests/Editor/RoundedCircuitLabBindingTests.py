@@ -38,6 +38,11 @@ class RoundedCircuitLabBindingTests(unittest.TestCase):
         self.assertIn("NAME RoundedCircuitLabJsonContract", self.cmake)
         self.assertIn("VerifyRoundedCircuitLabExport.py", self.cmake)
         self.assertIn("RoundedCircuitLabExporter.cpp", self.cmake)
+        self.assertIn("NAME RoundedSmoothRoadMesh", self.cmake)
+        self.assertIn("NAME RoundedSmoothRoadObjContract", self.cmake)
+        self.assertIn("RoundedSmoothRoadMeshTests.cpp", self.cmake)
+        self.assertIn("RoundedSmoothRoadObjExporter.cpp", self.cmake)
+
         verifier = read("Tests/Standalone/VerifyRoundedCircuitLabExport.py")
         for required in (
             "subprocess.run(", "EXPECTED_PIECES = 68", "expected_piece(index)",
