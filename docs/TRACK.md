@@ -92,3 +92,20 @@ The pure `CircuitMap.h` helper normalizes finite world locations to a north-up 0
 ## Validation requirements
 
 Portable Windows/Linux/macOS CMake suites check this geometry and math, including fixed batch membership and unchanged legacy piece transforms. **They cannot establish** that a UE 5.8 game builds, materials/colors render correctly, that curbs never obstruct driving, or that the minimap avoids all HUD overlap. Real Unreal Editor tests and Win64/Android playtesting are required before a playable/stable release.
+
+## Unreleased realistic-course foundation: road-edge and rubber detail
+
+The real Unreal 5.8 GameMode now has an optional, collision-free
+[physical-asphalt surface-detail plan](SURFACE_DETAIL_QA.md): eight straight
+road-edge paint lines and 48 braking-zone rubber segments in two batched
+instanced-mesh components. All 56 complete footprints are explicitly
+checked against the **actual collision-bearing asphalt**, rather than
+drawing visually convincing road where the car cannot physically drive.
+This is not the old 2D Win32 preview, and does not alter the nine
+collision blocks, four checkpoints, traction, race outcomes or saves.
+
+This is an incremental piece of 3D course readability, **not a realistic
+finished racetrack**. Photoreal materials, curved track geometry, owned
+3D vehicle assets, genuine UE5.8 build and human Windows QA remain
+incomplete. Do not attach the 2D Win32 executable to an Unreal game
+pre-release or use it as evidence of 3D playability.

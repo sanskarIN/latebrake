@@ -18,6 +18,7 @@
 #include "Components/PointLightComponent.h"
 #include "Racing/StartGantryVisual.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
@@ -40,6 +41,7 @@
 #include "Track/DecorationBatchPlan.h"
 #include "Track/BrakingReferenceBoards.h"
 #include "Track/CornerApproachChevrons.h"
+#include "Track/CircuitSurfaceDetail.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/CollisionBlockSetup.h"
@@ -472,8 +474,15 @@ AStaticMeshActor* ALatebrakeRaceGameMode::SpawnBlock(const TCHAR* Label,
         return nullptr;
     }
 
-    // An appearance material is optional for this prototype. Its failure
-    // does not change an already checked physical actor configuration.
+    // Prefer an original, Cooked project-owned PBR parent when the genuine
+    // editor has authored it. A missing visual asset never disables real
+    // road/wall collision or pretends that stock cubes are photoreal.
+    if (UMaterialInterface* ProjectTrackMaterial =
+            LoadObject<UMaterialInterface>(nullptr,
+                TEXT("/Game/Latebrake/Materials/M_LatebrakeTrackPBR.M_LatebrakeTrackPBR")))
+    {
+        Mesh->SetMaterial(0, ProjectTrackMaterial);
+    }
     if (UMaterialInstanceDynamic* Material =
             Mesh->CreateAndSetMaterialInstanceDynamic(0))
     {
@@ -847,6 +856,137 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::BuildCircuitSurfaceDetail(UStaticMesh* Mesh)
+{
+    // Entirely optional physical-road *appearance*: no independent road,
+    // checkpoint, collision or score path. All 56 full cube footprints must
+    // fit an actual collision-bearing asphalt slab before being instanced.
+    if (!Mesh || !GetWorld())
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_SURFACE_DETAIL_INCOMPLETE reason=missing_mesh_or_world"));
+        return;
+    }
+
+    FActorSpawnParameters Parameters;
+    Parameters.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AActor* Holder = GetWorld()->SpawnActor<AActor>(
+        AActor::StaticClass(), FVector::ZeroVector,
+        FRotator::ZeroRotator, Parameters);
+    if (!Holder)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_SURFACE_DETAIL_INCOMPLETE reason=missing_holder"));
+        return;
+    }
+#if WITH_EDITOR
+    Holder->SetActorLabel(TEXT("LatebrakePhysicalAsphaltSurfaceDetail"));
+#endif
+    Holder->SetActorEnableCollision(false);
+    USceneComponent* Root = NewObject<USceneComponent>(
+        Holder, TEXT("SurfaceDetailRoot"));
+    if (!Root)
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_SURFACE_DETAIL_INCOMPLETE reason=missing_root"));
+        Holder->Destroy();
+        return;
+    }
+    Root->SetMobility(EComponentMobility::Static);
+    Holder->SetRootComponent(Root);
+    Holder->AddInstanceComponent(Root);
+    Root->RegisterComponent();
+
+    UInstancedStaticMeshComponent*
+        Groups[latebrake::CircuitSurfaceStyleCount]{};
+    int32 CreatedGroups = 0;
+    for (int32 Group = 0; Group < latebrake::CircuitSurfaceStyleCount; ++Group)
+    {
+        const FName Name(*FString::Printf(TEXT("SurfaceDetailGroup%d"), Group));
+        UInstancedStaticMeshComponent* Marks =
+            NewObject<UInstancedStaticMeshComponent>(Holder, Name);
+        if (!Marks) break;
+        Marks->SetupAttachment(Root);
+        Marks->SetMobility(EComponentMobility::Static);
+        Marks->SetStaticMesh(Mesh);
+        if (UMaterialInterface* ProjectTrackMaterial =
+                LoadObject<UMaterialInterface>(nullptr,
+                    TEXT("/Game/Latebrake/Materials/M_LatebrakeTrackPBR.M_LatebrakeTrackPBR")))
+        {
+            Marks->SetMaterial(0, ProjectTrackMaterial);
+        }
+        Marks->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Marks->SetGenerateOverlapEvents(false);
+        Marks->SetCanEverAffectNavigation(false);
+        Marks->SetCastShadow(false);
+        Marks->PreAllocateInstancesMemory(
+            latebrake::PlannedSurfaceStyleCount(
+                static_cast<latebrake::CircuitSurfaceStyle>(Group)));
+        Holder->AddInstanceComponent(Marks);
+        Marks->RegisterComponent();
+        // Only a project-owned and cooked material can guarantee these
+        // intended colors. An unparameterized stock material may ignore
+        // Color; real UE5.8 visual QA remains a release gate.
+        if (UMaterialInstanceDynamic* Material =
+                Marks->CreateAndSetMaterialInstanceDynamic(0))
+        {
+            Material->SetVectorParameterValue(TEXT("Color"),
+                Group == 0 ? FLinearColor(0.86f, 0.86f, 0.82f) :
+                             FLinearColor(0.045f, 0.045f, 0.050f));
+        }
+        Groups[Group] = Marks;
+        ++CreatedGroups;
+    }
+
+    int32 Added = 0;
+    if (CreatedGroups == latebrake::CircuitSurfaceStyleCount)
+    {
+        for (int32 Index = 0;
+             Index < latebrake::CircuitSurfaceDetailCount; ++Index)
+        {
+            const latebrake::CircuitSurfaceDetail Detail =
+                latebrake::PlannedCircuitSurfaceDetail(Index);
+            if (!latebrake::IsSurfaceDetailOnPhysicalAsphalt(Detail))
+            {
+                break; // reject incomplete cosmetic batch, never partial art
+            }
+            const int32 Group = static_cast<int32>(Detail.Style);
+            if (Group < 0 || Group >= latebrake::CircuitSurfaceStyleCount ||
+                !Groups[Group])
+            {
+                break;
+            }
+            const FTransform Pose(
+                FRotator::ZeroRotator,
+                FVector(Detail.Center.X, Detail.Center.Y, Detail.Height),
+                FVector(Detail.ScaleX, Detail.ScaleY, Detail.ScaleZ));
+            if (Groups[Group]->AddInstance(Pose, false) < 0)
+            {
+                break;
+            }
+            ++Added;
+        }
+    }
+
+    if (Added == latebrake::CircuitSurfaceDetailCount &&
+        CreatedGroups == latebrake::CircuitSurfaceStyleCount)
+    {
+        UE_LOG(LogLatebrakeStartup, Display,
+            TEXT("LATEBRAKE_SURFACE_DETAIL_READY marks=%d/%d groups=%d/%d collision=off"),
+            Added, latebrake::CircuitSurfaceDetailCount,
+            CreatedGroups, latebrake::CircuitSurfaceStyleCount);
+    }
+    else
+    {
+        UE_LOG(LogLatebrakeStartup, Warning,
+            TEXT("LATEBRAKE_SURFACE_DETAIL_INCOMPLETE marks=%d/%d groups=%d/%d collision=off"),
+            Added, latebrake::CircuitSurfaceDetailCount,
+            CreatedGroups, latebrake::CircuitSurfaceStyleCount);
+        Holder->Destroy();
+    }
+}
+
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
@@ -963,6 +1103,12 @@ void ALatebrakeRaceGameMode::BuildCircuit()
                     Instances->SetupAttachment(DecorationRoot);
                     Instances->SetMobility(EComponentMobility::Static);
                     Instances->SetStaticMesh(DecorationMesh);
+                    if (UMaterialInterface* ProjectTrackMaterial =
+                            LoadObject<UMaterialInterface>(nullptr,
+                                TEXT("/Game/Latebrake/Materials/M_LatebrakeTrackPBR.M_LatebrakeTrackPBR")))
+                    {
+                        Instances->SetMaterial(0, ProjectTrackMaterial);
+                    }
                     Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
                     Instances->SetGenerateOverlapEvents(false);
                     Instances->SetCanEverAffectNavigation(false);
@@ -1033,6 +1179,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     // nine-block/four-checkpoint collision and startup readiness audit.
     BuildBrakingReferenceBoards(DecorationMesh);
     BuildCornerApproachChevrons(DecorationMesh);
+    BuildCircuitSurfaceDetail(DecorationMesh);
 
     // Visual-only pit beacon near the inside edge of the southern road.
     // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is

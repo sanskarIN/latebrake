@@ -13,7 +13,8 @@
 param(
     [Parameter(Mandatory)][string]$EngineRoot,
     [Parameter(Mandatory)][ValidateSet('Win64', 'Android')][string]$Platform,
-    [Parameter(Mandatory)][string]$OutputDirectory
+    [Parameter(Mandatory)][string]$OutputDirectory,
+    [switch]$RequireAuthoredTrackMaterial
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -32,6 +33,16 @@ if (-not $?) { throw 'Unreal workstation prerequisites were not met.' }
 & (Join-Path $PSScriptRoot 'Test-SourceProvenance.ps1')
 if (-not $?) { throw 'Untraceable source checkout blocks candidate compilation.' }
 $repo = Split-Path -Parent $PSScriptRoot
+# Source-pinned authored art is mandatory only in explicitly requested
+# realistic-preview builds; no untracked .uasset may hide behind HEAD.
+$trackMaterialPath = Join-Path $repo 'Content/Latebrake/Materials/M_LatebrakeTrackPBR.uasset'
+$trackMaterialSha256 = $null
+if ($RequireAuthoredTrackMaterial -or
+    (Test-Path -LiteralPath $trackMaterialPath -PathType Any)) {
+    & (Join-Path $PSScriptRoot 'Test-TrackMaterialSource.ps1') -RepoRoot $repo -RequireMaterial
+    if (-not $?) { throw 'Untraceable authored track material blocks this candidate.' }
+    $trackMaterialSha256 = (Get-FileHash -LiteralPath $trackMaterialPath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
 $sourceCommit = @(& git -C $repo rev-parse --verify HEAD)
 if ($LASTEXITCODE -ne 0 -or $sourceCommit.Count -ne 1 -or
     $sourceCommit[0] -cnotmatch '^[a-fA-F0-9]{40}$') {
@@ -65,13 +76,35 @@ if (-not $?) { throw 'Source changed during Editor map authoring; candidate is n
 $mapPath = Join-Path $repo 'Content/Maps/LatebrakeCircuit.umap'
 $mapSnapshot = (Get-FileHash -LiteralPath $mapPath -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "Pinned circuit map SHA256 before cook: $mapSnapshot"
+if ($trackMaterialSha256) {
+    & (Join-Path $PSScriptRoot 'Test-TrackMaterialSource.ps1') -RepoRoot $repo -RequireMaterial -ExpectedSha256 $trackMaterialSha256
+    if (-not $?) { throw 'Track material changed during Editor/map authoring.' }
+}
 
 Write-Host "Stage 3/3: cook and package real $Platform candidate."
-& (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') -EngineRoot $EngineRoot -Platform $Platform -OutputDirectory $OutputDirectory -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot -ExpectedEngineSha256 $engineBuildSha256
+$packageArgs = @{
+    EngineRoot = $EngineRoot
+    Platform = $Platform
+    OutputDirectory = $OutputDirectory
+    ExpectedCommit = $sourceCommit
+    ExpectedMapSha256 = $mapSnapshot
+    ExpectedEngineSha256 = $engineBuildSha256
+}
+if ($trackMaterialSha256) { $packageArgs.ExpectedTrackMaterialSha256 = $trackMaterialSha256 }
+& (Join-Path $PSScriptRoot 'Build-PreRelease.ps1') @packageArgs
 if (-not $?) { throw 'BuildCookRun/package stage failed.' }
 
 Write-Host 'Recording traceable source/engine/map and package SHA256 data.'
-& (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') -Platform $Platform -PackageDirectory $OutputDirectory -EngineRoot $EngineRoot -ExpectedCommit $sourceCommit -ExpectedMapSha256 $mapSnapshot -ExpectedEngineSha256 $engineBuildSha256
+$manifestArgs = @{
+    Platform = $Platform
+    PackageDirectory = $OutputDirectory
+    EngineRoot = $EngineRoot
+    ExpectedCommit = $sourceCommit
+    ExpectedMapSha256 = $mapSnapshot
+    ExpectedEngineSha256 = $engineBuildSha256
+}
+if ($trackMaterialSha256) { $manifestArgs.ExpectedTrackMaterialSha256 = $trackMaterialSha256 }
+& (Join-Path $PSScriptRoot 'Write-CandidateManifest.ps1') @manifestArgs
 if (-not $?) { throw 'Candidate fingerprint manifest stage failed.' }
 
 # Verify the complete closed-world archive immediately after writing the

@@ -69,6 +69,20 @@ try {
     if (-not $?) { throw 'Clean synthetic fixture must exercise the integrity checker.' }
     Write-Host 'Clean synthetic manifest checksum logic passed (NOT a game package).'
 
+    # Optional source-asset hash is validated without breaking historical
+    # schema-2 unverified candidates which do not have this field.
+    $state['authored_track_material_sha256'] = ('d' * 64)
+    Write-Fixture
+    & $verifier -ManifestJson $manifestPath -Platform Win64
+    if (-not $?) { throw 'Valid optional material SHA256 should be accepted.' }
+    $state['authored_track_material_sha256'] = 'malformed-asset-digest'
+    Write-Fixture
+    Expect-Rejection 'malformed optional authored PBR digest' {
+        & $verifier -ManifestJson $manifestPath -Platform Win64
+    }
+    $state.Remove('authored_track_material_sha256')
+    Write-Fixture
+
     [IO.File]::WriteAllBytes($payloadPath,
         [Text.Encoding]::UTF8.GetBytes(('X' * $originalBytes.Length)))
     Expect-Rejection 'same-size payload tampering' {
