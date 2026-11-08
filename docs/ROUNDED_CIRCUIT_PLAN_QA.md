@@ -515,3 +515,29 @@ piecewise constant-distance acceleration. An explicit C++ regression
 checks both sides of ALL 512 knots including start/finish, and the original
 8192 repeated-lap samples. This is a mathematical source correction, not
 proof of real vehicle handling or Chaos tire adhesion.
+
+
+## November 8 — candidate physics-aware rival driver (isolated source)
+
+The new Source/Latebrake/Public/AI/WorldScaleCandidateRivalPilot.h
+consumes measured physical XY, signed forward chassis velocity, flat speed,
+body yaw, source physics-readiness and post-GO eligibility. It projects
+the car onto the genuine candidate 1.70km road, anticipates a lookahead
+centreline point, and issues bounded steering, throttle and braking
+advice using the independent 512-station continuous pace model.
+
+The pilot refuses throttle on a road departure, reverse motion, severe
+misalignment, invalid/paused/finished sample, overlong hitch, malformed
+physics or discontinuous car/route movement. It detects implausible
+teleports between valid frames and reacquires separately, and handles
+the real start/finish seam without inventing progress or rewards.
+30/60/120 FPS deterministic forward-travel samples, left/right
+cross-track steering, overspeed, wrong-way, reversal, invalid sample,
+10.5-km/h movement discontinuity and 1.7km seam checks are in
+the strict portable CTest executable.
+
+This is a candidate mathematical driver, not a real UE AI pawn, tire
+contact, optimized production per-tick search, wheel/road simulation
+or genuinely driven lap. Neither the original Unreal AI nor GameMode
+instantiates it: actual activation requires the approved map, physical
+car, full checkpoint/recovery integration and installed Win64 QA.

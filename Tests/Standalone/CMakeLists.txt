@@ -2169,3 +2169,22 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME WorldScaleRacePacePlan COMMAND latebrake_world_scale_race_pace_tests)
+
+
+# Future 1.70km physical-route rival-driver policy, separate from current
+# live AI and original four-strip racing GameMode. Pure C++20 source proof.
+add_executable(latebrake_world_scale_candidate_rival_pilot_tests
+    WorldScaleCandidateRivalPilotTests.cpp)
+target_include_directories(latebrake_world_scale_candidate_rival_pilot_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_candidate_rival_pilot_tests PRIVATE
+    cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_candidate_rival_pilot_tests PRIVATE
+        /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_candidate_rival_pilot_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleCandidateRivalPilot
+    COMMAND latebrake_world_scale_candidate_rival_pilot_tests)
