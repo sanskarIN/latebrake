@@ -370,7 +370,7 @@ The published v0.5.96 pre-release is an older immutable **SOURCE-ONLY**
 snapshot and does not include this later experimental import work.
 
 
-## Full-lap *real Editor collision query* QA — 1,290 source-derived probes
+## Full-lap *real Editor collision query* QA — 2,322 source-derived probes
 
 The earlier continuous-road import checks that Unreal can serialize a
 static `.uasset` and dedicated lab map; that is **not evidence** the actual
@@ -394,10 +394,13 @@ What the new workflow **requires**, rather than merely claiming:
   lap** and **two additional stations just 0.25 cm either side of the
   closed loop seam**.
 - At each of the 258 positions, trace vertically with **complex collision
-  enabled** at five fixed lateral offsets: centre, ±400 cm (inside the
-  actual 450-cm physical edge), and ±550 cm (outside the road edge).
-  Verify **774 hits on the authored static physical road** and **516 hits
-  on the separately authored ground**, never an unrelated actor.
+  enabled** at nine fixed lateral offsets: centre, ±400 cm (inside the
+  450-cm physical half-width), ±449 cm (**1 cm inside both asphalt edges**),
+  ±451 cm (**1 cm outside both edges**), and ±550 cm (further off-road).
+  Verify **1,290 hits on the authored static physical road** and **1,032 hits
+  on the separately authored ground**, never an unrelated actor. This
+  paired 2-cm rim check detects collision overshoot and missing edge
+  contact that distant probes could not detect.
 - Require surface heights at z=−1 cm (physical asphalt) and z=−37.5 cm
   (off-road ground) to be within **1.5 cm**, XY impact points within
   **2 cm** of the probe, and **upward normal Z ≥ 0.98**. Missed/incorrect
@@ -406,7 +409,7 @@ What the new workflow **requires**, rather than merely claiming:
 - Before loading any Editor map, authenticate the original imported asset
   and map using exact SHA256 from the real import receipt, the compiled
   C++ OBJ+MTL bytes, and a SHA256 of the independently validated probe
-  JSON. After **all 1,290 actual queries**, verify hashes still match.
+  JSON. After **all 2,322 actual queries**, verify hashes still match.
 - If and only if every query passes, create a separate
   `Saved/LatebrakeAutomation/world-scale-continuous-ray-audit-result.json`
   receipt recording actual hit counts, maximum error, minimum normal-Z,
@@ -416,7 +419,7 @@ What the new workflow **requires**, rather than merely claiming:
   probe files cannot silently be overwritten; review/move prior
   inspection evidence before repeating the audit.
 
-The 1,290-point plan is also checked as a strict CTest
+The 2,322-point plan is also checked as a strict CTest
 `WorldScaleCollisionRayProbePlan`; disposable fake-Editor tests verify
 the audit **refuses** missing rays, changed assets, wrong normals/actor,
 altered probes and already existing receipts. **Green CI only validates
@@ -463,7 +466,7 @@ triangle coverage queries are a stronger geometric qualification than
 simple manifold closure, but are **not** real
 `unreal.SystemLibrary.line_trace_single` calls, physical Chaos
 collision cooking, runtime rigid-body/suspension contacts, or a
-playable Win64 racing game. Perform the separate 1,290-query
+playable Win64 racing game. Perform the separate 2,322-query
 **genuine Editor** audit on a licensed Unreal 5.8 workstation before
 treating the map as a viable static collision level; even an
 Editor PASS leaves real vehicle-driving and tire-contact gates open.

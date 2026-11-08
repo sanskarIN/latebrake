@@ -14,8 +14,11 @@ from VerifyRoundedSmoothRoadObj import centerline_at, LAP
 STATIONS = 256
 EXTRA_SEAM_DISTANCES_CM = (0.25, LAP * 10.0 - 0.25)
 # 9-m road is 450 cm from centre; the cosmetic ribbon only reaches 425 cm.
-# The 550-cm probes must be off the physical mesh and hit lab ground instead.
-OFFSETS_CM = (0, -400, 400, -550, 550)
+# Paired samples 1 cm inside/outside BOTH physical edges catch overshoot or
+# missing contact hidden by checks far from the 450-cm half-width.
+# 550-cm probes separately confirm the offroad ground further from the road.
+PHYSICAL_HALF_WIDTH_CM = 450.0
+OFFSETS_CM = (0, -400, 400, -449, 449, -451, 451, -550, 550)
 ROAD_TOP_CM = -1.0
 GROUND_TOP_CM = -37.5
 HEIGHT_START_CM = 250.0
@@ -37,7 +40,7 @@ def make_plan():
         yaw = math.radians(degrees)
         nx, ny = -math.sin(yaw), math.cos(yaw)
         for lateral_cm in OFFSETS_CM:
-            kind = "road" if abs(lateral_cm) <= 400 else "ground"
+            kind = "road" if abs(lateral_cm) < PHYSICAL_HALF_WIDTH_CM else "ground"
             sample = {
                 "station": index,
                 "distance_cm": distance,

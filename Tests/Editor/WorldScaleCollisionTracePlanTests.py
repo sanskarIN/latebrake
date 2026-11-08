@@ -30,21 +30,36 @@ class WorldScaleCollisionTracePlanTests(unittest.TestCase):
 
     def test_full_lap_covers_all_256_stations_and_both_seam_sides(self):
         self.assertEqual(validate_plan(self.plan), EXPECTED_SAMPLES)
-        self.assertEqual(EXPECTED_SAMPLES, 1290)
-        self.assertEqual(len(self.plan["samples"]), 1290)
+        self.assertEqual(EXPECTED_SAMPLES, 2322)
+        self.assertEqual(len(self.plan["samples"]), 2322)
         for station in range(STATIONS + 2):
-            cases = self.plan["samples"][5*station:5*station+5]
-            self.assertEqual([p["station"] for p in cases], [station]*5)
+            cases = self.plan["samples"][9*station:9*station+9]
+            self.assertEqual([p["station"] for p in cases], [station]*9)
             self.assertEqual([p["offset_cm"] for p in cases], list(OFFSETS_CM))
             self.assertEqual([p["expected_actor"] for p in cases],
-                             ["road", "road", "road", "ground", "ground"])
+                             ["road"]*5 + ["ground"]*4)
             for point in cases:
                 self.assertTrue(math.isfinite(point["x_cm"]))
                 self.assertTrue(math.isfinite(point["y_cm"]))
-        self.assertAlmostEqual(self.plan["samples"][-10]["distance_cm"],
+        self.assertAlmostEqual(self.plan["samples"][-18]["distance_cm"],
                                EXTRA_SEAM_DISTANCES_CM[0])
-        self.assertAlmostEqual(self.plan["samples"][-5]["distance_cm"],
+        self.assertAlmostEqual(self.plan["samples"][-9]["distance_cm"],
                                EXTRA_SEAM_DISTANCES_CM[1])
+
+    def test_physical_road_edge_is_sampled_on_both_sides(self):
+        self.assertEqual(tuple(OFFSETS_CM),
+                         (0, -400, 400, -449, 449, -451, 451, -550, 550))
+        for station in range(STATIONS + 2):
+            points = self.plan["samples"][9*station:9*station+9]
+            self.assertEqual([p["expected_actor"] for p in points[3:7]],
+                             ["road", "road", "ground", "ground"])
+            # The near-edge pair should be only 2 cm apart, not a
+            # distant offroad sample which cannot diagnose the rim.
+            for near_road, near_ground in ((3, 5), (4, 6)):
+                a, b = points[near_road], points[near_ground]
+                separation = math.hypot(a["x_cm"]-b["x_cm"],
+                                        a["y_cm"]-b["y_cm"])
+                self.assertAlmostEqual(separation, 2.0, places=6)
 
     def test_road_top_and_offroad_ground_are_distinct(self):
         for p in self.plan["samples"]:
@@ -93,7 +108,7 @@ class WorldScaleCollisionTracePlanTests(unittest.TestCase):
     def test_bad_road_width_and_metadata_rejected(self):
         for key, value in (("physical_road_width_cm", 9000),
                            ("station_count", 512),
-                           ("sample_count", 1289),
+                           ("sample_count", 2321),
                            ("units", "m")):
             mutant = copy.deepcopy(self.plan)
             mutant[key] = value

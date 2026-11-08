@@ -106,7 +106,7 @@ def validate_preflight():
         count = validator["validate_plan"](plan)
     finally:
         sys.path.remove(tests_path)
-    if count != 1290:
+    if count != 2322:
         raise RuntimeError("Missing or fabricated static-road query samples")
     if not hmac.compare_digest(expected_sha, digest(PLAN_FILE)):
         raise RuntimeError("Static-road query plan changed during numeric verification")
@@ -220,14 +220,14 @@ def run_qa(world, plan):
             )
         except Exception as exc:
             raise RuntimeError(
-                f"Real Editor collision trace failed at probe {i}/1290 "
+                f"Real Editor collision trace failed at probe {i}/2322 "
                 f"station {sample['station']} lateral {sample['offset_cm']}cm"
             ) from exc
         road_hits += int(sample["expected_actor"] == "road")
         ground_hits += int(sample["expected_actor"] == "ground")
         max_height_error = max(max_height_error, height_error)
         min_up = min(min_up, nz)
-    if road_hits != 774 or ground_hits != 516:
+    if road_hits != 1290 or ground_hits != 1032:
         raise RuntimeError("Genuine continuous-road trace counts unexpected")
     return road_hits, ground_hits, max_height_error, min_up
 

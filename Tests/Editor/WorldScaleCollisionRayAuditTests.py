@@ -221,14 +221,14 @@ class WorldScaleCollisionRayAuditTests(unittest.TestCase):
             start = FakeVec(start.x + 20.0, start.y, start.z)
         return FakeHit(actor, start.x, start.y, z, n)
 
-    def test_exact_1290_real_query_calls_required_for_success_receipt(self):
+    def test_exact_2322_real_query_calls_required_for_success_receipt(self):
         self.run_script()
         self.assertTrue(self.editor.loaded)
-        self.assertEqual(self.ray_hits, 1290)
+        self.assertEqual(self.ray_hits, 2322)
         data = json.loads(self.output.read_text())
-        self.assertEqual(data["actual_road_hits"], 774)
-        self.assertEqual(data["actual_ground_hits"], 516)
-        self.assertEqual(data["ray_queries_performed"], 1290)
+        self.assertEqual(data["actual_road_hits"], 1290)
+        self.assertEqual(data["actual_ground_hits"], 1032)
+        self.assertEqual(data["ray_queries_performed"], 2322)
         self.assertTrue(data["query_complex"])
         self.assertEqual(data["map_sha256"], sha(self.map))
         self.assertEqual(data["asset_sha256"], sha(self.asset))
@@ -240,12 +240,27 @@ class WorldScaleCollisionRayAuditTests(unittest.TestCase):
     def test_no_fake_success_if_any_real_ray_misses_or_hits_wrong_actor(self):
         for problem in ("missing", "wrong_actor", "height", "normal", "bad_coord"):
             with self.subTest(problem=problem):
-                self.fail_at = 1290
+                self.fail_at = 2322
                 self.failure_mode = problem
                 self.ray_hits = 0
                 with self.assertRaisesRegex(RuntimeError, "Real Editor collision trace failed"):
                     self.run_script()
-                self.assertEqual(self.ray_hits, 1290)
+                self.assertEqual(self.ray_hits, 2322)
+                self.assertFalse(self.output.exists())
+
+    def test_near_edge_wrong_actor_is_not_accepted(self):
+        # Fifth and sixth ray calls straddle the negative physical rim.
+        # A near-edge false-ground and false-road result must both fail.
+        for ray_number in (4, 6):
+            with self.subTest(ray_number=ray_number):
+                self.ray_hits = 0
+                self.fail_at = ray_number
+                self.failure_mode = "wrong_actor"
+                with self.assertRaisesRegex(
+                    RuntimeError, "Real Editor collision trace failed"
+                ):
+                    self.run_script()
+                self.assertEqual(self.ray_hits, ray_number)
                 self.assertFalse(self.output.exists())
 
     def test_hash_drift_rejected_before_any_query(self):

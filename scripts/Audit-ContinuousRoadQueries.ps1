@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  On a licensed UE 5.8 Windows workstation, run 1,290 real Editor
+  On a licensed UE 5.8 Windows workstation, run 2,322 real Editor
   static-complex line queries over the independent continuous road lab.
 .DESCRIPTION
   Requires the separate road asset+map created by New-ContinuousRoadLab.
@@ -66,7 +66,7 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $plan -PathType Leaf)) 
 }
 $probe = Get-Content -LiteralPath $plan -Raw | ConvertFrom-Json
 if ($probe.schema_version -ne 1 -or
-    $probe.sample_count -ne 1290 -or @($probe.samples).Count -ne 1290 -or
+    $probe.sample_count -ne 2322 -or @($probe.samples).Count -ne 2322 -or
     $probe.physical_road_width_cm -ne 900 -or
     $probe.station_count -ne 256 -or $probe.extra_seam_stations -ne 2 -or
     $probe.units -cne 'cm') {
@@ -83,7 +83,7 @@ try {
     [Environment]::SetEnvironmentVariable($envKey, $oldEnv, 'Process')
 }
 if ($editorExit -ne 0 -or -not (Test-Path -LiteralPath $result -PathType Leaf)) {
-    throw 'Genuine UE5.8 Editor did NOT successfully verify 1,290 static collision queries.'
+    throw 'Genuine UE5.8 Editor did NOT successfully verify 2,322 static collision queries.'
 }
 $r = Get-Content -LiteralPath $result -Raw | ConvertFrom-Json
 if ($r.schema_version -ne 1 -or
@@ -92,8 +92,8 @@ if ($r.schema_version -ne 1 -or
     $r.map -cne '/Game/Maps/LatebrakeWorldScaleContinuousCollisionLab' -or
     $r.road_mesh -cne '/Game/LatebrakeExperimental/SM_WorldScaleContinuousRoad' -or
     $r.query_plan_sha256 -cne $planSHA -or
-    $r.ray_queries_performed -ne 1290 -or
-    $r.actual_road_hits -ne 774 -or $r.actual_ground_hits -ne 516 -or
+    $r.ray_queries_performed -ne 2322 -or
+    $r.actual_road_hits -ne 1290 -or $r.actual_ground_hits -ne 1032 -or
     $r.max_height_error_cm -lt 0 -or $r.max_height_error_cm -gt 1.5 -or
     $r.minimum_upward_normal_z -lt 0.98 -or $r.minimum_upward_normal_z -gt 1.001 -or
     $r.query_complex -ne $true -or $r.import_asset_static -ne $true -or
@@ -107,9 +107,9 @@ if ($r.schema_version -ne 1 -or
     (Get-FileHash -LiteralPath $map -Algorithm SHA256).Hash.ToLowerInvariant() -cne $originalMapHash -or
     (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant() -cne $originalAssetHash -or
     (Get-FileHash -LiteralPath $plan -Algorithm SHA256).Hash.ToLowerInvariant() -cne $planSHA) {
-    throw 'Unreal Editor road collision ray evidence does not match source, asset or 1290 physical queries.'
+    throw 'Unreal Editor road collision ray evidence does not match source, asset or 2322 physical queries.'
 }
 Write-Host 'Genuine UE5.8 STATIC-COMPLEX collision ray-query evidence verified.'
-Write-Host "774 road hits + 516 off-road ground hits; road/map/OBJ/probe identities hash-pinned."
+Write-Host "1290 road hits + 1032 off-road ground hits; road/map/OBJ/probe identities hash-pinned."
 Write-Host "Receipt: $result"
 Write-Host 'Still NOT verified: dynamic Chaos tire contact, driving, cooking, physics performance, or playable Win64 EXE.'
