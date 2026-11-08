@@ -148,8 +148,11 @@ public:
         // reference must not be given throttle. This is advisory only;
         // authentic collision braking authority remains with Unreal.
         const bool backwards = sample.ForwardSpeedCmps < -50.0;
-        const bool badlyMisaligned = std::abs(error) > 0.8 &&
-                                     sample.FlatSpeedCmps > 1300.0;
+        // Never accelerate a stationary car facing the wrong direction.
+        // Higher-speed moderate misalignment also needs a brake demand;
+        // future Unreal recovery must handle a blocked zero-speed rival.
+        const bool badlyMisaligned = std::abs(error) > 2.2 ||
+            (std::abs(error) > 0.8 && sample.FlatSpeedCmps > 1300.0);
         const bool brake = backwards || badlyMisaligned ||
                            sample.FlatSpeedCmps > speedLimit + 120.0;
         const double throttle = !brake &&
