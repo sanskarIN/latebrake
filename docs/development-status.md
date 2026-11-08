@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.94](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94), **experimental source only**, immutable unmerged PR #295 commit `7919a3e553de94e12f1dcfa961e305d9aff71bcd`; **zero executable attachments** |
-| Latest source-development milestone | **v0.5.94 source-only:** draft [PR #295](https://github.com/sanskarIN/latebrake/pull/295) replaces the old instantaneous reverse-speed XY velocity snap with finite rear-grip-limited Chaos force, shares the lateral traction budget and avoids engine heating during blocked reverse demand. It adds **100,000 reverse policy samples and 60,000 combined braking/lateral force samples**. The exact immutable source passed **185 CTests each on Windows, Ubuntu and macOS plus 673 Python tests**, PowerShell packaging policy and docs. **UE5.8/UHT compilation, actual cooked Windows game, installed driving and Android hardware remain unverified**. v0.5.93 was the prior experimental source-only snapshot. |
+| Latest published GitHub pre-release | [v0.5.95](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95), **experimental source only**, immutable **unmerged draft PR #313** commit `45e62e2f9009741bf947019105708abe64f89c3f`; **zero executable attachments** |
+| Latest source-development milestone | **v0.5.95 source-only:** original Unreal 3D starter-circuit straight-edge paint and 48 braking-zone rubber marks, all geometry bounded to the real asphalt collision blocks; optional Editor-authored PBR material tooling and SHA256-pinned candidate build source checks. [Draft PR #313](https://github.com/sanskarIN/latebrake/pull/313) remains unmerged; real authored materials, UE 5.8 Editor/UHT compile, Windows executable, 3D lighting and installed driving are still **unverified**. [Exact publisher verification](https://github.com/sanskarIN/latebrake/actions/runs/42339222627): **171 CTests on each Windows/Ubuntu/macOS and 621 Python source tests**, plus PowerShell policies and docs. Previous source-only snapshot: v0.5.94. |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.
