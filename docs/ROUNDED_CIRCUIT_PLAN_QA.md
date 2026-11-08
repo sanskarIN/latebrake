@@ -541,3 +541,8 @@ contact, optimized production per-tick search, wheel/road simulation
 or genuinely driven lap. Neither the original Unreal AI nor GameMode
 instantiates it: actual activation requires the approved map, physical
 car, full checkpoint/recovery integration and installed Win64 QA.
+
+A zero-speed rival facing more than 2.2 radians away from its required
+route is now denied throttle as well as an already-moving wrong-way car.
+The controller cannot automatically right a stationary wrong-way car;
+that remains an Unreal AI recovery task, not a guessed steering success.
