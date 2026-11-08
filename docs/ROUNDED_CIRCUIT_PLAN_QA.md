@@ -447,9 +447,11 @@ actual downward vertical mathematical rays against the **original C++
 physical candidate mesh triangles**, not just sampled centerline positions:
 
 - At 256 full-lap stations plus 2 extra near the welded lap seam:
-  **774 rays** at 0 and ±400 cm must hit *both* z=−1 cm road top and
-  z=−43 cm road underside, and **516 rays** at ±550 cm must hit
-  **neither** physical-road face.
+  **1,290 rays** at centre, ±400 cm and **±449 cm (1 cm within each
+  edge)** must hit *both* z=−1 cm road top and z=−43 cm road underside.
+  **1,032 rays** at **±451 cm (1 cm outside each edge)** and ±550 cm
+  must hit **neither** physical-road face. The near-edge pairs
+  strengthen the source-only geometric coverage of the 9-m corridor.
 - An additional **3,072 source rays** at all 1,024 triangulation
   midpoints (0 and ±400 cm) require both top and underside hits.
   This catches gaps **between** sampled section vertices.
@@ -459,10 +461,13 @@ physical candidate mesh triangles**, not just sampled centerline positions:
   off-road cover is an error, even if a mesh-exporter process itself
   returned success.
 
-[Source CI run #42386650331](https://github.com/sanskarIN/latebrake/actions/runs/42386650331)
-passed this exact CTest on **Windows, Ubuntu and macOS**, with
-**183/183 tests passed** on each runner. These **4,362 source-level**
-triangle coverage queries are a stronger geometric qualification than
+[Historical source CI run #42386650331](https://github.com/sanskarIN/latebrake/actions/runs/42386650331)
+passed the **earlier 4,362-probe version** of this CTest on Windows,
+Ubuntu and macOS, with **183/183 tests passed** on each runner. The
+expanded **5,394-probe version** (2,322 station and 3,072 midpoint
+rays) must pass its **own exact-head CI**; the historical run does not
+qualify these new near-edge checks. Source triangle intersections are
+a stronger geometric qualification than
 simple manifold closure, but are **not** real
 `unreal.SystemLibrary.line_trace_single` calls, physical Chaos
 collision cooking, runtime rigid-body/suspension contacts, or a

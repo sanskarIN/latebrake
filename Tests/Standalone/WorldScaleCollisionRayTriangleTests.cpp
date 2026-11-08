@@ -20,10 +20,12 @@ using latebrake::RoundedSmoothVertex;
 
 constexpr int kStations = 256;
 constexpr int kExtraSeamStations = 2;
-constexpr int kExpectedSamples = (kStations + kExtraSeamStations) * 5;
+constexpr int kExpectedSamples = (kStations + kExtraSeamStations) * 9;
 constexpr int kMidpointStations = latebrake::WorldScaleRoadMeshSectionCount;
 constexpr double kRoadHalfWidthCm = 450.0;
 constexpr double kInsideCm = 400.0;
+constexpr double kNearInsideCm = 449.0;
+constexpr double kNearOutsideCm = 451.0;
 constexpr double kOutsideCm = 550.0;
 constexpr double kEpsilon = 1e-9;
 
@@ -141,6 +143,8 @@ int main()
     {
         std::size_t inside = 0;
         std::size_t outside = 0;
+        // The inner/outer physical-rim pairs have only a 2cm gap.
+        // This catches support lost or false coverage at the actual edge.
         for (int station = 0; station < kStations + kExtraSeamStations; ++station)
         {
             const double distance =
@@ -148,12 +152,14 @@ int main()
                 WorldScaleCircuitLapCm * static_cast<double>(station) /
                     static_cast<double>(kStations) :
                 station == kStations ? 0.25 : WorldScaleCircuitLapCm - 0.25;
-            for (double offset : {0.0, -kInsideCm, kInsideCm})
+            for (double offset : {0.0, -kInsideCm, kInsideCm,
+                                  -kNearInsideCm, kNearInsideCm})
             {
                 RequireCoverage(mesh, distance, offset, true);
                 ++inside;
             }
-            for (double offset : {-kOutsideCm, kOutsideCm})
+            for (double offset : {-kNearOutsideCm, kNearOutsideCm,
+                                  -kOutsideCm, kOutsideCm})
             {
                 RequireCoverage(mesh, distance, offset, false);
                 ++outside;
@@ -176,14 +182,14 @@ int main()
             }
         }
 
-        if (inside != 774 || outside != 516 ||
+        if (inside != 1290 || outside != 1032 ||
             static_cast<int>(inside + outside) != kExpectedSamples ||
             midpoints != 3072)
         {
             throw std::runtime_error("Unexpected coverage sample count");
         }
         std::cout << "Original FULL-WIDTH continuous collision mesh: "
-                  << "774 in-road top/bottom rays, 516 off-road no-hit rays, "
+                  << "1290 in-road top/bottom rays, 1032 off-road no-hit rays, "
                   << midpoints
                   << " independent polygon-midpoint rays PASS. "
                      "C++ triangle geometry ONLY, not Unreal/Chaos.\n";
