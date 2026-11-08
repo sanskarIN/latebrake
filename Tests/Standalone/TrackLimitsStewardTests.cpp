@@ -1,4 +1,5 @@
 #include "Track/TrackLimitsSteward.h"
+#include "Racing/RaceProgress.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -199,12 +200,62 @@ void TestFrameRatesAndReversedTravel()
 }
 }
 
+// Uses the actual production RaceProgress implementation, not a fake
+// clock, so charged fees are verifiably included in lap and sector time.
+void TestActualRaceProgressClock()
+{
+    latebrake::RaceProgress race(2, 1);
+    TrackLimitsSteward steward;
+    race.Advance(2.0);
+    const auto charge = [&](double seconds) {
+        return race.AddTimePenalty(seconds);
+    };
+    auto step = [&](CircuitPoint point) {
+        return steward.Update(point, 70.0, 0.1, true, charge);
+    };
+    for (int offense = 0; offense < 3; ++offense)
+    {
+        if (offense != 0)
+        {
+            bool rearmed = false;
+            for (int i = 0; i < 6; ++i)
+                rearmed |= step(kRoad) == TrackLimitsEvent::CleanRejoin;
+            Require(rearmed, "real race-clock test re-arms after clean road");
+        }
+        for (int i = 0; i < 17; ++i) step(kGrass);
+    }
+    Require(steward.Snapshot().Violations == 3 &&
+            steward.Snapshot().Penalties == 1,
+            "three independently qualified real-clock excursions");
+    Require(race.GetTimePenaltyCount() == 1 &&
+            race.GetTotalPenaltySeconds() == 5.0 &&
+            race.GetElapsedSeconds() == 7.0,
+            "actual race clock charged one exact five-second penalty");
+    Require(race.PassCheckpoint(0) &&
+            race.GetLastSectorSeconds() == 7.0,
+            "real sector includes steward fee exactly once");
+    race.Advance(1.0);
+    Require(race.PassCheckpoint(1) && race.IsFinished() &&
+            race.GetLastLapSeconds() == 8.0,
+            "real finished lap retains charged time");
+    // A finished race refuses penalties; it cannot be granted a phantom
+    // payment, even if a caller mistakenly tries another offroad event.
+    Require(!race.AddTimePenalty(5.0) && race.GetTimePenaltyCount() == 1,
+            "finished race refuses a second fee");
+    race.Reset();
+    steward.Reset();
+    Require(race.GetTimePenaltyCount() == 0 &&
+            steward.Snapshot().Violations == 0,
+            "both clock and steward reset for the next attempt");
+}
+
 int main()
 {
     TestThresholdsAndThreeStrikePenalty();
     TestFailedPenaltyDoesNotInventCredit();
     TestSuspensionInvalidInputAndRejoin();
     TestFrameRatesAndReversedTravel();
+    TestActualRaceProgressClock();
     std::cout << "TrackLimitsSteward: warnings, atomic penalty, restarts, "
                  "30/60/120 FPS and input safety PASS (portable only).\n";
     return EXIT_SUCCESS;

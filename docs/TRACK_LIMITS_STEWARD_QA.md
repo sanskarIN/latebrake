@@ -36,6 +36,7 @@ eligibility as the race, may accrue a track-limits violation.
 
 ## Current verification
 
+- Real production RaceProgress clock integration test: exactly one five-second fee on the third excursion, with sector, finished-lap and reset accounting.
 - Standalone C++20 strict warnings-as-errors policy tests: 30/60/120
   Hz, reverse movement, disabled authorization, pause/reset, no double
   counting, clean rejoin, invalid numbers and atomic failed penalties.

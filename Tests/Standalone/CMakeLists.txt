@@ -1952,7 +1952,9 @@ add_test(NAME TouchViewportActionEpoch COMMAND latebrake_touch_viewport_action_e
 # Actual starter-map track-limit game rules; charges only through GameMode's
 # authoritative RaceProgress clock. Strict cross-platform source contract,
 # NOT an Unreal Editor or installed Win64 gameplay qualification.
-add_executable(latebrake_track_limits_steward_tests TrackLimitsStewardTests.cpp)
+add_executable(latebrake_track_limits_steward_tests
+    TrackLimitsStewardTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 target_include_directories(latebrake_track_limits_steward_tests PRIVATE
     ../../Source/Latebrake/Public)
 target_compile_features(latebrake_track_limits_steward_tests PRIVATE cxx_std_20)
