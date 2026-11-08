@@ -3,6 +3,7 @@
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
+#include "Vehicles/VehicleRearLampLayout.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
@@ -57,7 +58,10 @@ void ConfigureDecorativeMesh(UStaticMeshComponent* Component, UStaticMesh* Mesh,
     Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Component->SetSimulatePhysics(false);
     // Chassis is physically scaled; compensate its scale on attached meshes.
-    const FVector RootScale(3.8f, 1.8f, 0.65f);
+    const FVector RootScale(
+        static_cast<float>(latebrake::VehicleRootScaleX),
+        static_cast<float>(latebrake::VehicleRootScaleY),
+        static_cast<float>(latebrake::VehicleRootScaleZ));
     Component->SetRelativeLocation(RelativeLocation / RootScale);
     Component->SetRelativeScale3D(Scale / RootScale);
 }
@@ -96,7 +100,11 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     {
         Chassis->SetStaticMesh(Cube.Object);
     }
-    Chassis->SetRelativeScale3D(FVector(3.8f, 1.8f, 0.65f));
+    const FVector RootScale(
+        static_cast<float>(latebrake::VehicleRootScaleX),
+        static_cast<float>(latebrake::VehicleRootScaleY),
+        static_cast<float>(latebrake::VehicleRootScaleZ));
+    Chassis->SetRelativeScale3D(RootScale);
 
     Cabin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Cabin"));
     Cabin->SetupAttachment(Chassis);
@@ -217,17 +225,26 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     RearRightSignal = CreateDefaultSubobject<UPointLightComponent>(TEXT("RearRightSignal"));
     ReverseSignal = CreateDefaultSubobject<UPointLightComponent>(TEXT("ReverseSignal"));
     UPointLightComponent* Lamps[] = {RearLeftSignal, RearRightSignal, ReverseSignal};
+    // The actual stock Cube chassis has a 190-cm rear half-length and
+    // 90-cm half-width. The old X=-385/-390cm origins were 195-200cm
+    // behind the bumper: beyond these lamps' 170cm attenuation radius.
+    // Keep all three points 4-6cm behind the real physics shell instead.
+    const auto& Rear = latebrake::VehicleRearLampOffsets;
     const FVector LampLocations[] = {
-        FVector(-385.f, -115.f, 22.f),
-        FVector(-385.f, 115.f, 22.f),
-        FVector(-390.f, 0.f, 22.f)
+        FVector(Rear[0].X, Rear[0].Y, Rear[0].Z),
+        FVector(Rear[1].X, Rear[1].Y, Rear[1].Z),
+        FVector(Rear[2].X, Rear[2].Y, Rear[2].Z)
     };
-    const FVector ChassisScale(3.8f, 1.8f, 0.65f);
+    const FVector ChassisScale(
+        static_cast<float>(latebrake::VehicleRootScaleX),
+        static_cast<float>(latebrake::VehicleRootScaleY),
+        static_cast<float>(latebrake::VehicleRootScaleZ));
     for (int32 Index = 0; Index < 3; ++Index)
     {
         Lamps[Index]->SetupAttachment(Chassis);
         Lamps[Index]->SetRelativeLocation(LampLocations[Index] / ChassisScale);
-        Lamps[Index]->SetAttenuationRadius(170.f);
+        Lamps[Index]->SetAttenuationRadius(
+            static_cast<float>(latebrake::VehicleRearLampRadiusCm));
         // Short-range cosmetic signals must not create costly per-frame
         // shadow passes, volumetric shadows or indirect/reflection updates.
         Lamps[Index]->SetCastShadows(false);
@@ -385,7 +402,10 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         latebrake::BodyKitForVehicle(VehicleId);
     // Chassis primitive uses a 3.8 x 1.8 x 0.65 non-uniform scale.
     // Compensate its parent transform, just like ConfigureDecorativeMesh.
-    const FVector RootScale(3.8f, 1.8f, 0.65f);
+    const FVector RootScale(
+        static_cast<float>(latebrake::VehicleRootScaleX),
+        static_cast<float>(latebrake::VehicleRootScaleY),
+        static_cast<float>(latebrake::VehicleRootScaleZ));
     if (IsValid(Cabin))
     {
         Cabin->SetRelativeScale3D(FVector(
