@@ -57,7 +57,23 @@ inline RecentLapPaceStatistics CalculateRecentLapPaceStatistics(
         values[static_cast<std::size_t>(index)] = lap.Seconds;
         sum += lap.Seconds; // <= 8 * 604800 due to source validation.
     }
-    std::sort(values.begin(), values.begin() + count);
+    // Exactly 2..8 validated lap samples. A bounded insertion sort is
+    // simpler than general-purpose introsort for a tiny fixed array and
+    // avoids GCC 15 -Warray-bounds in the std::sort optimizer path.
+    // No heap allocation, sentinel or access beyond 'count'.
+    for (int index = 1; index < count; ++index)
+    {
+        const double current = values[static_cast<std::size_t>(index)];
+        int insert = index;
+        while (insert > 0 &&
+               values[static_cast<std::size_t>(insert - 1)] > current)
+        {
+            values[static_cast<std::size_t>(insert)] =
+                values[static_cast<std::size_t>(insert - 1)];
+            --insert;
+        }
+        values[static_cast<std::size_t>(insert)] = current;
+    }
     const double mean = sum / static_cast<double>(count);
     const double median = count % 2 == 0
         ? (values[static_cast<std::size_t>(count / 2 - 1)] +
