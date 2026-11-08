@@ -93,5 +93,30 @@ int main()
     Check(!CalculateRecentLapPaceStatistics(wrapped).Valid,
           "restart discards previous session evidence");
 
+    // Every supported buffer length, deliberately unordered and tied.
+    // Actual RaceProgress events feed the production statistics function.
+    constexpr double times[] = {19.0, 5.0, 15.0, 5.0, 18.0, 6.0, 18.0, 12.0};
+    constexpr double medians[] = {12.0, 15.0, 10.0, 15.0, 10.5, 15.0, 13.5};
+    for (int sampleCount = 2; sampleCount <= RecentTimedLaps::Capacity;
+         ++sampleCount)
+    {
+        RaceProgress permuted(2, sampleCount);
+        double runningSum = 0.0;
+        for (int k = 0; k < sampleCount; ++k)
+        {
+            Lap(permuted, times[k]);
+            runningSum += times[k];
+        }
+        const auto result = CalculateRecentLapPaceStatistics(permuted);
+        Check(result.Valid && result.SampleCount == sampleCount &&
+              result.OldestLap == 1 && result.NewestLap == sampleCount &&
+              Near(result.AverageSeconds,
+                   runningSum / static_cast<double>(sampleCount)) &&
+              Near(result.MedianSeconds, medians[sampleCount - 2]) &&
+              Near(result.FastestSampleSeconds, 5.0) &&
+              Near(result.SlowestSampleSeconds, 19.0),
+              "all 2..8 unsorted/tied real laps preserve statistics");
+    }
+
     std::cout << "Recent lap pace statistics passed.\n";
 }

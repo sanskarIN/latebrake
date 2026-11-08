@@ -63,8 +63,11 @@ class ResultsInsightsBindingTests(unittest.TestCase):
                 self.assertNotIn(forbidden, src)
             self.assertIn("bool Valid = false;", src)
             self.assertIn("return result;", src)
+        self.assertNotIn("std::sort(", self.stats)
         for frag in ("CanAwardFinishedRace(race)", "RecentTimedLaps::Capacity",
-                     "std::sort(", "ConsecutiveImprovements"):
+                     "for (int index = 1; index < count; ++index)",
+                     "values[static_cast<std::size_t>(insert)] = current;",
+                     "ConsecutiveImprovements"):
             self.assertIn(frag, self.stats)
         for frag in ("CanAwardFinishedRace(race)", "GetBestSectorSeconds(index)",
                      "GetTheoreticalBestLapSeconds()", "SectorSeconds{}"):
