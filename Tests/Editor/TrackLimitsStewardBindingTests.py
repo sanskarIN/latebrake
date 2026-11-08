@@ -52,7 +52,12 @@ class TrackLimitsStewardBindingTests(unittest.TestCase):
         self.assertIn("TrackLimitsRules::PenaltySeconds", self.source[HEADER])
         self.assertIn("if (!std::forward<ChargePenalty>(chargePenalty)", self.source[HEADER])
         self.assertIn("TrackLimits.Suspend();\n    SuspendBestLapGhost();", cpp)
-        self.assertIn("TrackLimits.Reset();\n    // A saved PB", cpp)
+        self.assertGreaterEqual(cpp.count(
+            "Race.Reset();\\n    TrackLimits.Reset();\\n"
+            "    StewardTrackedPawn.Reset();\\n"
+            "    StewardTeleportRevision = 0;\\n"
+            "    StewardCheckpointSessionRevision = 0;"), 2)
+        self.assertIn("// A saved PB may change at finish", cpp)
         self.assertIn("TRACK LIMIT WARNING", self.source[HUD])
         self.assertIn("TRACK LIMITS  %d", self.source[HUD])
 
