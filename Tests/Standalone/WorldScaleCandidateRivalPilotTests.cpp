@@ -77,6 +77,13 @@ int main()
           wrongResult.Command.Throttle == 0.0,
           "opposite-direction rival must brake, not drive down road");
     pilot.Reset();
+    auto stationaryWrongWay = OnRoad(5000.0, 0.0);
+    stationaryWrongWay.HeadingRadians += WorldScalePilotRadiansPi;
+    const auto stationary = pilot.Step(plan, stationaryWrongWay);
+    Check(stationary.Valid && stationary.Command.Brake &&
+          stationary.Command.Throttle == 0.0,
+          "stationary reverse-facing car must not launch backwards");
+    pilot.Reset();
     auto reverse = OnRoad(5000.0, 700.0);
     reverse.ForwardSpeedCmps = -700.0;
     const auto reverseResult = pilot.Step(plan, reverse);
