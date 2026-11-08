@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
+#include "Track/TrackLimitsSteward.h"
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
 #include "Racing/RivalFinishObservation.h"
@@ -117,6 +118,7 @@ public:
     void RecoverPlayer(ALatebrakeCarPawn* Car);
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
+    const latebrake::TrackLimitsSteward& GetTrackLimits() const { return TrackLimits; }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
@@ -199,6 +201,8 @@ private:
     int32 CareerStartedVehicleId = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
+    // Race-scoped starter-map steward. Penalties use the same official race clock.
+    latebrake::TrackLimitsSteward TrackLimits;
     // Explicit per-attempt start gate: no paid race clock or chassis force
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
