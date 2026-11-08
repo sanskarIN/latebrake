@@ -217,10 +217,14 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     RearRightSignal = CreateDefaultSubobject<UPointLightComponent>(TEXT("RearRightSignal"));
     ReverseSignal = CreateDefaultSubobject<UPointLightComponent>(TEXT("ReverseSignal"));
     UPointLightComponent* Lamps[] = {RearLeftSignal, RearRightSignal, ReverseSignal};
+    // The actual stock Cube chassis has a 190-cm rear half-length and
+    // 90-cm half-width. The old X=-385/-390cm origins were 195-200cm
+    // behind the bumper: beyond these lamps' 170cm attenuation radius.
+    // Keep all three points 4-6cm behind the real physics shell instead.
     const FVector LampLocations[] = {
-        FVector(-385.f, -115.f, 22.f),
-        FVector(-385.f, 115.f, 22.f),
-        FVector(-390.f, 0.f, 22.f)
+        FVector(-194.f, -64.f, 22.f),
+        FVector(-194.f, 64.f, 22.f),
+        FVector(-196.f, 0.f, 22.f)
     };
     const FVector ChassisScale(3.8f, 1.8f, 0.65f);
     for (int32 Index = 0; Index < 3; ++Index)
