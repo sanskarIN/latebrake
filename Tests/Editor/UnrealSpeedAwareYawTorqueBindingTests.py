@@ -61,7 +61,7 @@ class UnrealSpeedAwareYawTorqueBindingTests(unittest.TestCase):
         )[0]
         for marker in (
             "bArcade, Surface.OffPavement,",
-            "PhysicalBraking.DecelerationCmPerSecondSquared +",
+            "ContactBraking.WholeBodyBudgetDeceleration +",
             "OpposingBraking.WholeBodyBudgetDeceleration +",
             "ReverseGovernor.WholeBodyBudgetDeceleration,",
             "static_cast<double>(GarageGrip) *",

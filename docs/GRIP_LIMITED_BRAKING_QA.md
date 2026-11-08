@@ -108,3 +108,39 @@ or execute Unreal, and do not certify actual car feel.
 Physical installed QA and wheel/contact modeling remain major
 blockers under [playable release gate
 #148](https://github.com/sanskarIN/latebrake/issues/148).
+
+## Load-distributed road-point braking (unmerged physics draft)
+
+`SprungContactBraking.h` now allocates the already contact-scaled bounded
+service-brake request over the four accepted positive spring loads. The
+shared player/rival pawn reuses each existing `WorldStatic` ray's actual
+`ImpactPoint` and Chaos velocity at that point. It applies each accepted
+planar share with `AddForceAtLocation`, allowing genuine rigid-body pitch
+and asymmetric yaw moments. Spring forces remain submitted exactly once.
+No additional collision trace or runtime allocation is needed.
+
+A contact travelling against the chassis's forward motion receives no
+COM-signed brake share: that would add local mechanical energy during a
+spin. Slower contacts fade their share; rejected shares are never reassigned.
+The handbrake alone uses only rear shares, so flat braking is weaker than
+the previous whole-chassis approximation and an airborne rear axle cannot
+brake through the front. Service plus handbrake retains one service request.
+Lateral/yaw grip and drive telemetry use the accepted aggregate, with no
+second contact multiplier. Reverse travel follows the same signed rules.
+
+The portable regression verifies independent road-force pitch/yaw moments,
+150,000 deterministic rigid-body point-velocity/load cases with nonpositive
+local mechanical power, missing/corrupt contacts, reverse/handbrake behavior
+and flat 30/60/120 FPS stopping against the analytic constant-deceleration
+reference (within 0.6 cm in that isolated model). This is not measured Chaos
+stopping distance, a coupled body solver or wheel-lock/ABS validation.
+
+Before merge, compile actual UE5.8 Editor/UHT and Win64 Game and perform
+installed 30/60/120 FPS braking on level road, grades, split support and
+bumps. Inspect pitch, wheel re-contact, yaw stability, reverse stops and
+handbrake-only rear contact, including an unloaded rear axle and both pedals.
+Verify no false local power sign from rapidly rotating bodies, no excessive
+pitch/roll contact oscillation, preserved pauses/restarts/countdown, and
+accurate `service_force` logs. A planar brake on a banked/sloped surface
+still approximates a tire force: this is not a road-tangent per-wheel tire
+solver or calibrated production handling. Gate #148 remains outstanding.

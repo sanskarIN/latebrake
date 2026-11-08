@@ -59,7 +59,7 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertIn("TireCondition.GripMultiplier() *", tick)
         self.assertIn("latebrake::CalculateLateralGripForce({", tick)
         self.assertIn("LateralForce.RightForce", tick)
-        self.assertIn("PhysicalBraking.DecelerationCmPerSecondSquared", tick)
+        self.assertIn("ContactBraking.WholeBodyBudgetDeceleration", tick)
         self.assertNotIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
         # The old speed-proportional hard-stop is intentionally replaced
         # by a physically capped service/handbrake force. Neutral throttle

@@ -8,6 +8,7 @@
 #include "Vehicles/HumanSpinTractionControl.h"
 #include "Vehicles/OpposingThrottleBraking.h"
 #include "Vehicles/GripLimitedBraking.h"
+#include "Vehicles/SprungContactBraking.h"
 #include "Vehicles/LateralGripBudget.h"
 #include "Vehicles/TractionLimitedPropulsion.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
@@ -978,6 +979,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SCENE_QUERY_STAT(LatebrakeChassisGroundContact), false);
     GroundQuery.AddIgnoredActor(this);
     FVector WheelWorldAnchors[4];
+    FVector WheelRoadContacts[4]{};
+    std::array<double, 4> RoadContactForwardSpeeds{};
+    bool bRoadBrakeSamplesValid = true;
     for (int32 Index = 0; Index < 4; ++Index)
     {
         // The physical ray follows the same x/y layout as the visible
@@ -1005,6 +1009,30 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             const double NormalZ = static_cast<double>(Hit.ImpactNormal.Z);
             const FVector PointVelocity =
                 Chassis->GetPhysicsLinearVelocityAtPoint(Origin);
+            // Reuse the existing accepted trace, never a visual wheel pose
+            // or a second ray. Brake moments belong at the actual road.
+            if (bEffectiveBraking)
+            {
+                const FVector RoadPoint = Hit.ImpactPoint;
+                const bool bFinitePoint = FMath::IsFinite(RoadPoint.X) &&
+                    FMath::IsFinite(RoadPoint.Y) && FMath::IsFinite(RoadPoint.Z);
+                if (bFinitePoint)
+                {
+                    WheelRoadContacts[Index] = RoadPoint;
+                    const FVector RoadVelocity =
+                        Chassis->GetPhysicsLinearVelocityAtPoint(RoadPoint);
+                    bRoadBrakeSamplesValid = bRoadBrakeSamplesValid &&
+                        FMath::IsFinite(RoadVelocity.X) &&
+                        FMath::IsFinite(RoadVelocity.Y) &&
+                        FMath::IsFinite(RoadVelocity.Z);
+                    RoadContactForwardSpeeds[static_cast<unsigned>(Index)] =
+                        static_cast<double>(FVector::DotProduct(RoadVelocity, Forward));
+                }
+                else
+                {
+                    bRoadBrakeSamplesValid = false;
+                }
+            }
             // Damping tracks ray-length change relative to this genuine
             // static road plane, not uphill/downhill world vertical travel.
             const latebrake::SuspensionRayVelocityOutput RayVelocity =
@@ -1336,6 +1364,20 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
+    // Whole-body contact is spent ONCE here. Brake-only rear shares cannot
+    // migrate to the front when the rear axle is airborne or unloaded.
+    const latebrake::SprungContactBrakeOutput ContactBraking =
+        latebrake::CalculateSprungContactBraking({
+            static_cast<double>(Mass), static_cast<double>(LongitudinalSpeed),
+            PhysicalBraking.ForwardForce * GroundContact.ContactTractionScale,
+            BrakeProfile.HandbrakeActive && !bServiceBraking,
+            bRoadBrakeSamplesValid, RoadContactForwardSpeeds},
+            GroundContact, SpringResponse);
+    if (!ContactBraking.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
     // Opposing reverse/accelerator demand shares the same final throttle
     // classification as motor dispatch. Its actual rear-load-limited force
     // must also consume the same-frame cornering budget, not bypass it.
@@ -1392,7 +1434,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 TireCondition.GripMultiplier() *
                 Surface.LateralGripMultiplier *
                 CollisionDamage.LateralGripMultiplier(),
-            PhysicalBraking.DecelerationCmPerSecondSquared +
+            ContactBraking.WholeBodyBudgetDeceleration +
                 OpposingBraking.WholeBodyBudgetDeceleration +
                 ReverseGovernor.WholeBodyBudgetDeceleration,
             bArcade, BrakeProfile.HandbrakeActive});
@@ -1429,7 +1471,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(AssistedSteering),
             static_cast<double>(Mass),
             bArcade, Surface.OffPavement,
-            PhysicalBraking.DecelerationCmPerSecondSquared +
+            ContactBraking.WholeBodyBudgetDeceleration +
                 OpposingBraking.WholeBodyBudgetDeceleration +
                 ReverseGovernor.WholeBodyBudgetDeceleration,
             static_cast<double>(GarageGrip) *
@@ -1733,9 +1775,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // Physically sampled brake force, bounded to a credible approximate
         // contact-grip budget. This retains reverse braking and handbrake
         // slide handling but does not apply a speed-proportional hard stop.
-        Chassis->AddForce(Forward *
-            static_cast<float>(PhysicalBraking.ForwardForce) *
-            ContactTractionScale);
+        // Each share opposes its actual road-point motion and is capped
+        // by that corner's positive spring load. No COM fallback or second
+        // contact multiplier may bypass an unloaded/moving-backward corner.
+        for (unsigned Corner = 0; Corner < 4; ++Corner)
+        {
+            const double BrakeForce = ContactBraking.ForwardForces[Corner];
+            if (BrakeForce != 0.0)
+            {
+                Chassis->AddForceAtLocation(
+                    Forward * static_cast<float>(BrakeForce),
+                    WheelRoadContacts[Corner]);
+            }
+        }
     }
     // Neutral throttle COASTS under the progressive road load and Chaos
     // baseline damping. It is not an implicit service-brake command.
@@ -1806,8 +1858,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             ? OpposingBraking.ForwardForce : 0.0;
         const double SubmittedServiceForce =
             bEffectiveBraking && GroundContact.HasDriveContact
-            ? PhysicalBraking.ForwardForce *
-                static_cast<double>(ContactTractionScale) : 0.0;
+            ? ContactBraking.TotalForwardForce : 0.0;
         const double SubmittedLateralForce =
             LateralForce.RightForce *
             static_cast<double>(ContactTractionScale);

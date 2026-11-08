@@ -65,13 +65,13 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
             "else if (AxleBudget.RearDriveReady && !bEffectiveBraking)",
             "static_cast<float>(LateralForce.RightForce) *",
             "if (bEffectiveBraking && GroundContact.HasDriveContact)",
-            "static_cast<float>(PhysicalBraking.ForwardForce) *",
+            "ContactBraking.ForwardForces[Corner]",
             "TurnTorque * FrontSteeringTractionScale",
         ):
             self.assertIn(marker, tick)
         self.assertGreaterEqual(tick.count("ContactTractionScale"), 5)
         self.assertIn(
-            "static_cast<float>(PhysicalBraking.ForwardForce) *\n            ContactTractionScale);",
+            "PhysicalBraking.ForwardForce * GroundContact.ContactTractionScale,",
             tick,
         )
         self.assertIn(

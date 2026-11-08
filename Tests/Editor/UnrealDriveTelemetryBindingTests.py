@@ -66,7 +66,7 @@ class UnrealDriveTelemetryBindingTests(unittest.TestCase):
             "SubmittedMotorForce", "MotorTraction.ForwardForce",
             "SubmittedOpposingForce", "OpposingBraking.ForwardForce",
             "bEffectiveBraking && GroundContact.HasDriveContact",
-            "PhysicalBraking.ForwardForce", "ContactTractionScale",
+            "ContactBraking.TotalForwardForce", "ContactTractionScale",
             "LateralForce.RightForce", "TurnTorque",
             "FrontSteeringTractionScale", "CurrentDraftAppliedFraction",
             "AngularVelocity.Z", "LongitudinalSpeed", "LateralSpeed",

@@ -35,7 +35,7 @@ class UnrealLateralGripBindingTests(unittest.TestCase):
             "TireCondition.GripMultiplier() *",
             "Surface.LateralGripMultiplier *",
             "CollisionDamage.LateralGripMultiplier()",
-            "PhysicalBraking.DecelerationCmPerSecondSquared",
+            "ContactBraking.WholeBodyBudgetDeceleration",
             "bArcade, BrakeProfile.HandbrakeActive",
             "if (!LateralForce.Valid)",
             "RejectOptionalDriveAfterSpring(SpringResponse);",

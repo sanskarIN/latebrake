@@ -36,7 +36,7 @@ class UnrealGripLimitedBrakingBindingTests(unittest.TestCase):
             "if (!PhysicalBraking.Valid)",
             "RejectOptionalDriveAfterSpring(SpringResponse);",
             "Chassis->AddForce(Forward *",
-            "static_cast<float>(PhysicalBraking.ForwardForce)",
+            "ContactBraking.ForwardForces[Corner]",
         ):
             self.assertIn(marker, tick)
         self.assertLess(
@@ -55,7 +55,9 @@ class UnrealGripLimitedBrakingBindingTests(unittest.TestCase):
         braking = tick.split(
             "// Physically sampled brake force", 1
         )[1].split("// Neutral throttle COASTS", 1)[0]
-        self.assertIn("PhysicalBraking.ForwardForce", braking)
+        self.assertIn("ContactBraking.ForwardForces[Corner]", braking)
+        self.assertIn("Chassis->AddForceAtLocation(", braking)
+        self.assertIn("WheelRoadContacts[Corner]", braking)
         self.assertNotIn("FrameStableDampingRate(", braking)
         self.assertNotIn("SetPhysicsLinearVelocity(", braking)
         self.assertIn("if (bEffectiveBraking && GroundContact.HasDriveContact)", tick)
@@ -67,7 +69,7 @@ class UnrealGripLimitedBrakingBindingTests(unittest.TestCase):
         self.assertIn("RoadLoad.ForceX", tick)
         self.assertIn("RoadLoad.ForceY", tick)
         self.assertIn("latebrake::CalculateLateralGripForce({", tick)
-        self.assertIn("PhysicalBraking.DecelerationCmPerSecondSquared", tick)
+        self.assertIn("ContactBraking.WholeBodyBudgetDeceleration", tick)
         self.assertIn("Chassis->AddForce(Right *", tick)
         self.assertNotIn("Chassis->AddForce(-Right * LateralSpeed", tick)
         self.assertIn("HandbrakeDriveProfile BrakeProfile", tick)

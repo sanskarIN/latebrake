@@ -53,7 +53,7 @@ class OpposingThrottleBrakingBindingTests(unittest.TestCase):
                       "        !bEffectiveBraking &&\n"
                       "        !OpposingBraking.OpposingThrottle &&\n"
                       "        !ReverseGovernor.ReverseMotorBlocked)", self.tick)
-        self.assertIn("PhysicalBraking.DecelerationCmPerSecondSquared +\n"
+        self.assertIn("ContactBraking.WholeBodyBudgetDeceleration +\n"
                       "                OpposingBraking.WholeBodyBudgetDeceleration +\n"
                       "                ReverseGovernor.WholeBodyBudgetDeceleration,", self.tick)
         brake = self.tick.split(

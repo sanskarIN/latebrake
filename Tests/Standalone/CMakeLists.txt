@@ -2163,3 +2163,16 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SuspensionRayVelocity COMMAND latebrake_suspension_ray_velocity_tests)
+
+# Load-distributed brake forces and dissipative road-point moments.
+add_executable(latebrake_sprung_contact_braking_tests SprungContactBrakingTests.cpp)
+target_include_directories(latebrake_sprung_contact_braking_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_sprung_contact_braking_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_sprung_contact_braking_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_sprung_contact_braking_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SprungContactBraking COMMAND latebrake_sprung_contact_braking_tests)

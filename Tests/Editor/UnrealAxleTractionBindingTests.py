@@ -97,7 +97,7 @@ class UnrealAxleTractionBindingTests(unittest.TestCase):
             tick
         )
         self.assertIn(
-            "static_cast<float>(PhysicalBraking.ForwardForce) *\n            ContactTractionScale);",
+            "PhysicalBraking.ForwardForce * GroundContact.ContactTractionScale,",
             tick
         )
         self.assertIn(
