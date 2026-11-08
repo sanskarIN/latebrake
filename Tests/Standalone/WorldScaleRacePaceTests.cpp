@@ -100,7 +100,7 @@ int main()
                 "all 512 speed interpolation knots and start seam are continuous");
     }
     int projections=0;
-    for(unsigned i=0;i<1024;++i>
+    for(unsigned i=0;i<1024;++i)
     {
         const double s=WorldScaleCircuitLapCm*(i+0.31)/1024.0;
         const auto pose=WorldScaleCenterlineAt(s);
