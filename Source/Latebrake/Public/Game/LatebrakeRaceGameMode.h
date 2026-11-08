@@ -203,6 +203,10 @@ private:
     latebrake::RaceProgress Race{4, 3};
     // Race-scoped starter-map steward. Penalties use the same official race clock.
     latebrake::TrackLimitsSteward TrackLimits;
+    // Never stitch a violation across a new pawn, teleport or checkpoint epoch.
+    TWeakObjectPtr<ALatebrakeCarPawn> StewardTrackedPawn;
+    uint64 StewardTeleportRevision = 0;
+    uint64 StewardCheckpointSessionRevision = 0;
     // Explicit per-attempt start gate: no paid race clock or chassis force
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;

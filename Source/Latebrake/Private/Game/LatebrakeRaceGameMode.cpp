@@ -123,6 +123,9 @@ void ALatebrakeRaceGameMode::BeginPlay()
     BuildCircuit();
     Race.Reset();
     TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision = 0;
+    StewardCheckpointSessionRevision = 0;
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
@@ -243,7 +246,22 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     const bool bStewardReady = bStartQualified && StartLights.IsGreen() &&
         LiveDelta > 0.0 && HasLocalPlayerDriver() &&
         IsValid(StewardsDriver) && StewardsDriver->IsRacePhysicsReady();
-    if (bStewardReady)
+    // Source/vehicle continuity must match the EXACT active checkpoint
+    // epoch: no offroad exposure may survive an unknown engine teleport,
+    // replaced possessed pawn, pause/menu transition or race restart.
+    const bool bSameStewardSession = IsValid(StewardsDriver) &&
+        StewardTrackedPawn.Get() == StewardsDriver &&
+        StewardTeleportRevision == StewardsDriver->GetTeleportRevision() &&
+        StewardCheckpointSessionRevision == CheckpointSession.Current();
+    if (!bSameStewardSession)
+    {
+        TrackLimits.Suspend();
+        StewardTrackedPawn = const_cast<ALatebrakeCarPawn*>(StewardsDriver);
+        StewardTeleportRevision = IsValid(StewardsDriver)
+            ? StewardsDriver->GetTeleportRevision() : 0;
+        StewardCheckpointSessionRevision = CheckpointSession.Current();
+    }
+    if (bStewardReady && bSameStewardSession)
     {
         const FVector WorldPosition = StewardsDriver->GetActorLocation();
         const double ChassisSpeedKmH =
@@ -2345,6 +2363,9 @@ void ALatebrakeRaceGameMode::RestartRace()
     ManualPause.OnExplicitResume();
     Race.Reset();
     TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision = 0;
+    StewardCheckpointSessionRevision = 0;
     // A saved PB may change at finish; Results needs the previous record.
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     StartLights.Reset();

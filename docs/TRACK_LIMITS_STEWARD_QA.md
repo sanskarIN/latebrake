@@ -25,8 +25,11 @@ eligibility as the race, may accrue a track-limits violation.
 - Slow/stationary offroad frames do not accrue new exposure. Invalid
   location, velocity, delta time, giant >250ms frames, missing/unauthorized
   driver, countdown, results, pause, focus loss and teleport suspend active
-  exposure. Previously recorded race-local strikes persist until an
-  accepted RestartRace, and a latched excursion must still rejoin.
+  exposure. GameMode also checks actual pawn identity, the pawn's monotonic
+  teleport revision and the authoritative checkpoint-session epoch before
+  every update, skipping the first unmatched sample rather than stitching
+  exposure across a discontinuity. Previously recorded race-local strikes
+  persist until an accepted RestartRace; a latched excursion must rejoin.
 - The penalty callback is transactional: a refused five-second
   RaceProgress charge cannot be reported as an applied penalty or a
   recorded third violation. Every attempt is capped and deterministic.
