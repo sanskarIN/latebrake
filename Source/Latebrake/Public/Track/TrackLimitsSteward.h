@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Track/CircuitLayout.h"
+#include "Track/TrackLimitsFootprint.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,6 +44,7 @@ struct TrackLimitsSnapshot final
     bool Warning = false;
     bool OffPavement = false;
     bool PendingCleanRejoin = false;
+    int ProjectedWheelsNearPavement = 0;
 };
 
 // Race time is changed only by the GameMode through its existing guarded
@@ -68,12 +70,14 @@ public:
         CleanRejoinElapsed = 0.0;
         Warning = false;
         OffPavement = false;
+        ProjectedWheelsNearPavement = 0;
     }
 
     TrackLimitsSnapshot Snapshot() const noexcept
     {
         return {Violations, Penalties, OffPavementMovingSeconds,
-                Warning, OffPavement, Latched};
+                Warning, OffPavement, Latched,
+                ProjectedWheelsNearPavement};
     }
 
     // Caller must provide authenticated local-driver/GO/race-clock
@@ -82,6 +86,7 @@ public:
     // can be committed; failures cannot produce invented penalty credit.
     template <typename ChargePenalty>
     TrackLimitsEvent Update(CircuitPoint position,
+                            double headingDegrees,
                             double speedKmH,
                             double deltaSeconds,
                             bool raceAuthorized,
@@ -96,7 +101,17 @@ public:
             return TrackLimitsEvent::Suspended;
         }
 
-        const bool outside = !IsOnPavedSurface(position);
+        // Centre offroad alone cannot justify a strike if the car still
+        // overlaps pavement at any of its four shared visual wheels.
+        const TrackLimitsFootprint footprint =
+            ObserveStarterWheelFootprint(position, headingDegrees);
+        if (!footprint.Valid)
+        {
+            Suspend();
+            return TrackLimitsEvent::Suspended;
+        }
+        ProjectedWheelsNearPavement = footprint.WheelsNearPavement;
+        const bool outside = footprint.FullyOffPavement;
         OffPavement = outside;
         if (!outside)
         {
@@ -177,5 +192,6 @@ private:
     bool Warning = false;
     bool OffPavement = false;
     bool Latched = false;
+    int ProjectedWheelsNearPavement = 0;
 };
 } // namespace latebrake

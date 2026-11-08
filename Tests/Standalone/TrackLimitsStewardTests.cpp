@@ -1,5 +1,6 @@
 #include "Track/TrackLimitsSteward.h"
 #include "Racing/RaceProgress.h"
+#include "Track/TrackLimitsFootprint.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -40,9 +41,10 @@ struct Clock final
 
 TrackLimitsEvent Frame(TrackLimitsSteward& steward, Clock& clock,
                        CircuitPoint where, double speed = 90.0,
-                       double dt = 0.1, bool ready = true)
+                       double dt = 0.1, bool ready = true,
+                       double headingDegrees = 0.0)
 {
-    return steward.Update(where, speed, dt, ready,
+    return steward.Update(where, headingDegrees, speed, dt, ready,
         [&](double seconds) { return clock.Charge(seconds); });
 }
 
@@ -200,6 +202,69 @@ void TestFrameRatesAndReversedTravel()
 }
 }
 
+void TestWheelProjectionAndTrackLimitsFairness()
+{
+    using latebrake::ObserveStarterWheelFootprint;
+    const auto grid = ObserveStarterWheelFootprint(kRoad, 0.0);
+    Require(grid.Valid && grid.WheelsNearPavement == 4 &&
+            !grid.FullyOffPavement,
+            "all four visual wheels remain on starter asphalt at grid");
+    // Southern asphalt north edge is y=-1000; center-only check would
+    // wrongly charge a car whose negative-Y wheels still overlap it.
+    for (double heading : {0.0, 90.0, 360.0, -720.0})
+    {
+        const auto shoulder = ObserveStarterWheelFootprint(
+            {0.0, -930.0}, heading);
+        Require(shoulder.Valid && shoulder.WheelsNearPavement == 2 &&
+                !shoulder.FullyOffPavement,
+                "same wheel-overlap contract with wrapped/rotated yaw");
+    }
+    const auto grass = ObserveStarterWheelFootprint({0.0, -830.0}, 0.0);
+    Require(grass.Valid && grass.WheelsNearPavement == 0 &&
+            grass.FullyOffPavement,
+            "all projected wheels must clear road to count exposure");
+    const auto rotatedGrass =
+        ObserveStarterWheelFootprint({0.0, -800.0}, 90.0);
+    Require(rotatedGrass.Valid && rotatedGrass.FullyOffPavement,
+            "rotated body must also leave asphalt with all wheels");
+
+    const double invalid = std::numeric_limits<double>::quiet_NaN();
+    const double infinity = std::numeric_limits<double>::infinity();
+    for (const double bad : {invalid, infinity})
+    {
+        Require(!ObserveStarterWheelFootprint(kRoad, bad).Valid,
+                "nonfinite heading refuses road judgement");
+        Require(!ObserveStarterWheelFootprint({bad, 0.0}, 0.0).Valid,
+                "nonfinite actor position refuses road judgement");
+    }
+    Require(!ObserveStarterWheelFootprint(
+                {std::numeric_limits<double>::max(), 0.0}, 0.0).Valid,
+            "overflowed wheel projection refuses penalty");
+
+    TrackLimitsSteward referee;
+    Clock clock;
+    for (int i = 0; i < 80; ++i)
+        Require(Frame(referee, clock, {0.0, -930.0}) ==
+                TrackLimitsEvent::None,
+                "partially paved footprint must never accumulate exposure");
+    Require(referee.Snapshot().Violations == 0 &&
+            !referee.Snapshot().OffPavement &&
+            referee.Snapshot().ProjectedWheelsNearPavement == 2,
+            "referee preserves projected wheel contact evidence");
+    int warnings = 0;
+    for (int i = 0; i < 25; ++i)
+        warnings += Frame(referee, clock, {0.0, -830.0}) ==
+                    TrackLimitsEvent::WarningStarted;
+    Require(warnings == 1 && referee.Snapshot().Violations == 1 &&
+            referee.Snapshot().ProjectedWheelsNearPavement == 0,
+            "fully off-road footprint triggers exactly one violation");
+    Require(Frame(referee, clock, kGrass, 90.0, 0.1, true, invalid) ==
+            TrackLimitsEvent::Suspended,
+            "invalid heading suspends active exposure");
+    Require(referee.Snapshot().Violations == 1 && clock.Calls == 0,
+            "rejected position never invents a penalty");
+}
+
 // Uses the actual production RaceProgress implementation, not a fake
 // clock, so charged fees are verifiably included in lap and sector time.
 void TestActualRaceProgressClock()
@@ -211,7 +276,7 @@ void TestActualRaceProgressClock()
         return race.AddTimePenalty(seconds);
     };
     auto step = [&](CircuitPoint point) {
-        return steward.Update(point, 70.0, 0.1, true, charge);
+        return steward.Update(point, 0.0, 70.0, 0.1, true, charge);
     };
     for (int offense = 0; offense < 3; ++offense)
     {
@@ -255,6 +320,7 @@ int main()
     TestFailedPenaltyDoesNotInventCredit();
     TestSuspensionInvalidInputAndRejoin();
     TestFrameRatesAndReversedTravel();
+    TestWheelProjectionAndTrackLimitsFairness();
     TestActualRaceProgressClock();
     std::cout << "TrackLimitsSteward: warnings, atomic penalty, restarts, "
                  "30/60/120 FPS and input safety PASS (portable only).\n";

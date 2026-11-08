@@ -264,12 +264,15 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     if (bStewardReady && bSameStewardSession)
     {
         const FVector WorldPosition = StewardsDriver->GetActorLocation();
+        // Use the production speedometer's exact Chaos chassis velocity.
         const double ChassisSpeedKmH =
-            static_cast<double>(StewardsDriver->GetVelocity().Size2D()) * 0.036;
+            static_cast<double>(StewardsDriver->GetSpeedKmH());
+        const double ChassisHeadingDegrees =
+            static_cast<double>(StewardsDriver->GetActorRotation().Yaw);
         const auto Event = TrackLimits.Update(
             {static_cast<double>(WorldPosition.X),
              static_cast<double>(WorldPosition.Y)},
-            ChassisSpeedKmH, LiveDelta, true,
+            ChassisHeadingDegrees, ChassisSpeedKmH, LiveDelta, true,
             [this](double seconds) { return Race.AddTimePenalty(seconds); });
 #if !UE_BUILD_SHIPPING
         if (Event == latebrake::TrackLimitsEvent::ViolationRecorded ||

@@ -6,11 +6,19 @@ Win64 visual/physics test are still required by issue #148.
 
 ## Game behavior
 
-The existing starter circuit consists of four pavement rectangles. The new
-TrackLimitsSteward queries the same IsOnPavedSurface classifier used by the
-current vehicle/offroad logic. No new surface is fabricated or claimed.
-Only the actual local player chassis, under the same authorized GO/clock
-eligibility as the race, may accrue a track-limits violation.
+The starter circuit consists of four real paved rectangles. The steward
+now projects all four shared noncolliding visual-wheel positions from the
+player's real actor pose onto those rectangles. A one-visual-tire-radius
+allowance prevents an unfair centre-only call while any wheel still
+overlaps the asphalt. The offsets are identical to those used in the
+actual starter-car visual wheel construction, and the speed is read from
+the car's existing Chaos chassis speedometer.
+
+**Important:** wheel positions are conservative visual proxies, not
+genuine Chaos suspension or wheel-contact measurements. The prototype
+still uses a single rigid-body cube, not simulated physical tires. This
+rule is scoped only to the original four-strip circuit, not PR #316.
+Only the local authorized player under green lights can accrue strikes.
 
 - Driving off pavement at at least 8 km/h for 0.6 seconds triggers a
   warning. A continuing qualifying offroad excursion for 1.5 seconds
@@ -40,6 +48,10 @@ eligibility as the race, may accrue a track-limits violation.
 ## Current verification
 
 - Real production RaceProgress clock integration test: exactly one five-second fee on the third excursion, with sector, finished-lap and reset accounting.
+- Additional C++ source checks: original four wheel offsets, rotated yaw,
+  equivalent 360-degree headings, shoulder overlap, full exit from road,
+  invalid/overflowed pose refusal, and regression against centre-only false
+  positives. The actual UE5.8 renderer/driver still needs manual testing.
 - Standalone C++20 strict warnings-as-errors policy tests: 30/60/120
   Hz, reverse movement, disabled authorization, pause/reset, no double
   counting, clean rejoin, invalid numbers and atomic failed penalties.

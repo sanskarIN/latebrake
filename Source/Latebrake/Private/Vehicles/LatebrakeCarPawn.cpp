@@ -36,6 +36,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Vehicles/VehicleWheelLayout.h"
 #include "Components/PointLightComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -179,10 +180,22 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
 
     UStaticMeshComponent* Wheels[] = {FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel};
     UStaticMeshComponent* Spokes[] = {FrontLeftSpoke, FrontRightSpoke, RearLeftSpoke, RearRightSpoke};
+    // Share original visual wheel offsets with the starter-circuit
+    // track-limits referee. They never create physical tire contacts.
     const FVector Locations[] =
     {
-        FVector(122.f, -94.f, -22.f), FVector(122.f, 94.f, -22.f),
-        FVector(-122.f, -94.f, -22.f), FVector(-122.f, 94.f, -22.f)
+        FVector(latebrake::VehicleVisualWheelLocalXY[0].X,
+                latebrake::VehicleVisualWheelLocalXY[0].Y,
+                latebrake::VehicleVisualWheelLocalZCm),
+        FVector(latebrake::VehicleVisualWheelLocalXY[1].X,
+                latebrake::VehicleVisualWheelLocalXY[1].Y,
+                latebrake::VehicleVisualWheelLocalZCm),
+        FVector(latebrake::VehicleVisualWheelLocalXY[2].X,
+                latebrake::VehicleVisualWheelLocalXY[2].Y,
+                latebrake::VehicleVisualWheelLocalZCm),
+        FVector(latebrake::VehicleVisualWheelLocalXY[3].X,
+                latebrake::VehicleVisualWheelLocalXY[3].Y,
+                latebrake::VehicleVisualWheelLocalZCm)
     };
     for (int32 Index = 0; Index < 4; ++Index)
     {
