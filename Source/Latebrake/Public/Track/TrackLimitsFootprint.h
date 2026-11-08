@@ -36,8 +36,14 @@ struct TrackLimitsFootprint final
 inline TrackLimitsFootprint ObserveStarterWheelFootprint(
     CircuitPoint center, double headingDegrees) noexcept
 {
+    // The starter circuit fits inside a 100m-wide game region. Physics
+    // positions beyond 1km are not valid evidence for a racing violation;
+    // reject them instead of treating numeric extremes as grass.
+    constexpr double MaximumAuditDistanceCm = 100000.0;
     if (!std::isfinite(center.X) || !std::isfinite(center.Y) ||
-        !std::isfinite(headingDegrees)) return {};
+        !std::isfinite(headingDegrees) ||
+        std::abs(center.X) > MaximumAuditDistanceCm ||
+        std::abs(center.Y) > MaximumAuditDistanceCm) return {};
     constexpr double Pi = 3.14159265358979323846;
     const double yaw = std::remainder(headingDegrees, 360.0) * Pi / 180.0;
     const double cosine = std::cos(yaw);
