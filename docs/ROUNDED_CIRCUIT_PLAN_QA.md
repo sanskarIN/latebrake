@@ -475,3 +475,29 @@ playable Win64 racing game. Perform the separate 2,322-query
 **genuine Editor** audit on a licensed Unreal 5.8 workstation before
 treating the map as a viable static collision level; even an
 Editor PASS leaves real vehicle-driving and tire-contact gates open.
+
+
+## November 8: experimental full-lap braking and route progression reference
+
+This UNMERGED source-only candidate uses 512 nodes sampled from the real
+1.70-km rounded centreline, rather than the old 170m road. Curvature is
+derived from adjacent actual route headings. A first-pass 850 cm/s²
+lateral budget, 850 cm/s² braking limit and 380 cm/s² acceleration limit
+generate a closed-loop target speed that anticipates all four bends.
+No friction coefficient, vehicle test or real lap time has been measured.
+These numbers are strictly candidate AI coaching parameters.
+
+A separate O(512) polyline projection converts a hypothetical nearby
+vehicle position into wrapped lap distance, signed lateral offset,
+distance from centreline, geometric pace and physical-candidate-road
+membership. The physical road Boolean is sourced from the existing
+full-scale 9m union; projections and speeds NEVER award real gates,
+car grip, saved records, motor forces or track eligibility.
+
+Strict C++20 builds check 512 nodes, 8192 repeated-lap speed samples,
+3072 straight/curve/lateral positions, false infield/malformed locations,
+start/finish seam and per-segment braking/acceleration ceilings. The
+existing GameMode, old rectangular track, original AI and all releases
+remain unchanged. No licensed UE5.8 build or installed Win64 racer has
+been executed. A real smooth road and cars, AI/controller integration,
+Chaos tire tests and hardware handling are still required by issue #148.

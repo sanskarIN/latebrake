@@ -2155,3 +2155,17 @@ else()
 endif()
 add_test(NAME WorldScaleCollisionRayTriangleCoverage
     COMMAND latebrake_world_scale_collision_ray_triangle_tests)
+
+
+# Future 1.70km centreline curvature/AI pace and projection; source-only.
+add_executable(latebrake_world_scale_race_pace_tests WorldScaleRacePaceTests.cpp)
+target_include_directories(latebrake_world_scale_race_pace_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_race_pace_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_race_pace_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_race_pace_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleRacePacePlan COMMAND latebrake_world_scale_race_pace_tests)
