@@ -135,9 +135,22 @@ inline WorldScalePaceReference SampleWorldScalePace(
         WorldScalePaceStations - 1);
     const auto pose = WorldScaleCenterlineAt(wrapped);
     if (!pose.Valid) return {};
-    // Take the LOWER neighboring target: conservative within bends.
-    const double speed = std::min(plan.Nodes[i].TargetCmps,
-        plan.Nodes[(i + 1) % WorldScalePaceStations].TargetCmps);
+    // Interpolate squared speed between adjacent fully qualified nodes.
+    // This yields constant-distance acceleration within each interval and
+    // stays CONTINUOUS at node boundaries and across the lap seam. Taking
+    // the lower endpoint instead creates a false speed jump at each node,
+    // causing repeated-lap inputs to depend on floating-point fmod jitter.
+    const unsigned next = (i + 1) % WorldScalePaceStations;
+    const double fraction = std::clamp(
+        (wrapped - i * WorldScalePaceStepCm) /
+        WorldScalePaceStepCm, 0.0, 1.0);
+    const double startSquared =
+        plan.Nodes[i].TargetCmps * plan.Nodes[i].TargetCmps;
+    const double endSquared =
+        plan.Nodes[next].TargetCmps * plan.Nodes[next].TargetCmps;
+    const double speed = std::sqrt(
+        startSquared + fraction * (endSquared - startSquared));
+    if (!std::isfinite(speed)) return {};
     return {true, pose.Pose, wrapped, speed};
 }
 

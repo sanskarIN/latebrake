@@ -85,8 +85,22 @@ int main()
                 Close(a.Pose.Position.X,b.Pose.Position.X,1e-4),
                 "8192 repeated-lap speed samples remain wrap-safe");
     }
+    // The speed model is a continuous speed-vs-distance reference.
+    // Repeated laps and values one micrometre either side of each knot
+    // must never change the brake target abruptly due to rounding.
+    for (unsigned i = 0; i < WorldScalePaceStations; ++i)
+    {
+        const double knot = i * WorldScalePaceStepCm;
+        const auto before = SampleWorldScalePace(plan, knot - 1.0e-5);
+        const auto after = SampleWorldScalePace(plan, knot + 1.0e-5);
+        const auto exact = SampleWorldScalePace(plan, knot);
+        Require(before.Valid && after.Valid && exact.Valid &&
+                Close(before.TargetSpeedCmps, exact.TargetSpeedCmps, 0.001) &&
+                Close(after.TargetSpeedCmps, exact.TargetSpeedCmps, 0.001),
+                "all 512 speed interpolation knots and start seam are continuous");
+    }
     int projections=0;
-    for(unsigned i=0;i<1024;++i)
+    for(unsigned i=0;i<1024;++i>
     {
         const double s=WorldScaleCircuitLapCm*(i+0.31)/1024.0;
         const auto pose=WorldScaleCenterlineAt(s);

@@ -501,3 +501,17 @@ existing GameMode, old rectangular track, original AI and all releases
 remain unchanged. No licensed UE5.8 build or installed Win64 racer has
 been executed. A real smooth road and cars, AI/controller integration,
 Chaos tire tests and hardware handling are still required by issue #148.
+
+
+### November 8 — full-lap target-speed continuity correction
+
+The first portable C++ test exposed a discrete target lookup that took
+the minimum of adjacent speed nodes. Exactly at a 512-node boundary,
+floating-point repeated-lap inputs could select a different neighbor and
+cause an abrupt speed discontinuity, despite the brake envelopes passing
+at every stored node. The source candidate now interpolates **squared
+speed** between successive bounded nodes, yielding continuous targets and
+piecewise constant-distance acceleration. An explicit C++ regression
+checks both sides of ALL 512 knots including start/finish, and the original
+8192 repeated-lap samples. This is a mathematical source correction, not
+proof of real vehicle handling or Chaos tire adhesion.
