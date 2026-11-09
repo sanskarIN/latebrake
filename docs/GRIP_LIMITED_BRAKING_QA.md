@@ -141,6 +141,44 @@ bumps. Inspect pitch, wheel re-contact, yaw stability, reverse stops and
 handbrake-only rear contact, including an unloaded rear axle and both pedals.
 Verify no false local power sign from rapidly rotating bodies, no excessive
 pitch/roll contact oscillation, preserved pauses/restarts/countdown, and
-accurate `service_force` logs. A planar brake on a banked/sloped surface
-still approximates a tire force: this is not a road-tangent per-wheel tire
-solver or calibrated production handling. Gate #148 remains outstanding.
+accurate `service_force` logs. Gate #148 remains outstanding.
+
+## Measured road-tangent braking (v0.5.97 candidate)
+
+`BrakeRoadTangent.h` now constructs a unit brake direction from the same
+accepted road impact normal and the real planar chassis heading. It uses
+the intersection of the road plane and the heading's vertical plane.
+Consequently the force is tangent to the measured road and orthogonal to
+the existing body-right lateral correction; a bank or mixed grade cannot
+quietly introduce a sideways component outside the shared friction budget.
+A level road preserves the earlier brake direction exactly. An uphill
+brake has a downhill vertical component, with the sign reversed downhill.
+
+The point speed used for passive allocation is now the genuine full 3D
+Chaos point velocity dotted with that tangent. Pure road-normal bounce
+has zero longitudinal speed. Normal, direction and velocity observations
+are finite/unit/range checked before any optional braking dispatch. Missing,
+steep, inverted and unsupported corners never fabricate a brake direction.
+The existing ray, spring-load and rear-only handbrake rules remain.
+
+The friction budget spends the **sum of full 3D brake magnitudes**, while
+`service_force` in the unchanged `LATEBRAKE_DRIVE v=1` log reports the actual
+aggregate projection on planar chassis forward. The latter is smaller on
+a grade and must not be used as total tire-force magnitude. No second
+contact scale or division by the grade can amplify physical braking.
+
+`BrakeRoadTangentTests.cpp` adds 120,000 mixed-plane frames verified against
+an independent cross-product construction, coordinate rotations, road-normal
+orthogonality, full-vector nonpositive contact power and the shared 3D grip
+circle. Isolated forward/reverse stopping at 30/60/120 FPS on three grades
+agrees with the constant-deceleration analytic reference within 2cm over an
+88.9m numerical stop. Gravity, actual collision and the coupled Chaos spring
+solver are excluded from that reference; it is not measured game behavior.
+
+Real UE5.8/UHT, Win64 cooking and installed driving are still required.
+Test upward/downward grades and banks, reverse braking, crest landing,
+heave, spin contact velocities, partial support, both pedals and rear-only
+handbrake. Inspect the vertical tire-force component and spring pitch/roll
+response at 30/60/120 FPS, including loss/recovery of contact. Lateral and
+motor forces remain simplified planar controllers; no wheel rotational
+inertia, wheel-lock ABS, full tire model or calibrated handling is claimed.

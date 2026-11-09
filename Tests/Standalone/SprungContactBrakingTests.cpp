@@ -64,7 +64,7 @@ int main()
     Require(r.Valid && Near(r.TotalForwardForce, -990000.0) &&
             Near(r.WholeBodyBudgetDeceleration, 900.0),
             "flat service braking preserves accepted whole-chassis force");
-    for (double f : r.ForwardForces)
+    for (double f : r.TangentForces)
         Require(Near(f, -247500.0), "four equally loaded contacts share force");
     // Independent wrench: road is 59cm BELOW the COM. A COM force has no
     // pitch moment; real road-point braking must have positive Y moment.
@@ -73,8 +73,8 @@ int main()
     for (unsigned i = 0; i < 4; ++i)
     {
         const double y = i % 2 == 0 ? -94.0 : 94.0;
-        pitchMoment += -59.0 * r.ForwardForces[i];
-        yawMoment += -y * r.ForwardForces[i];
+        pitchMoment += -59.0 * r.TangentForces[i];
+        yawMoment += -y * r.TangentForces[i];
     }
     Require(Near(pitchMoment, 59.0 * 990000.0) && Near(yawMoment, 0.0),
             "balanced road forces produce braking pitch without artificial yaw");
@@ -85,8 +85,8 @@ int main()
     b = Sample();
     b.RearOnly = true;
     r = CalculateSprungContactBraking(b, ground, level);
-    Require(r.Valid && r.ForwardForces[0] == 0.0 &&
-            r.ForwardForces[1] == 0.0 && Near(r.TotalForwardForce, -495000.0),
+    Require(r.Valid && r.TangentForces[0] == 0.0 &&
+            r.TangentForces[1] == 0.0 && Near(r.TotalForwardForce, -495000.0),
             "handbrake alone spends rear shares without moving front allocation");
     const auto frontOnly = Loads({0.40, 0.40, 0.0, 0.0});
     auto g = Ground(frontOnly);
@@ -97,7 +97,7 @@ int main()
     b.RearOnly = false;
     r = CalculateSprungContactBraking(b, g, frontOnly);
     Require(r.Valid && r.TotalForwardForce < 0.0 &&
-            r.ForwardForces[2] == 0.0 && r.ForwardForces[3] == 0.0 &&
+            r.TangentForces[2] == 0.0 && r.TangentForces[3] == 0.0 &&
             Near(r.WholeBodyBudgetDeceleration, 900.0),
             "partial contact scaling is applied once, not squared");
     const auto flight = Loads({0.0, 0.0, 0.0, 0.0});
@@ -107,9 +107,9 @@ int main()
     b = Sample();
     b.ContactForwardCmPerSecond = {-100.0, 0.0, 1500.0, 6000.0};
     r = CalculateSprungContactBraking(b, ground, level);
-    Require(r.Valid && r.ForwardForces[0] == 0.0 &&
-            r.ForwardForces[1] == 0.0 && Near(r.ForwardForces[2], -123750.0) &&
-            Near(r.ForwardForces[3], -247500.0),
+    Require(r.Valid && r.TangentForces[0] == 0.0 &&
+            r.TangentForces[1] == 0.0 && Near(r.TangentForces[2], -123750.0) &&
+            Near(r.TangentForces[3], -247500.0),
             "spin suppresses energy-adding corners, fades slow contacts, never reallocates");
     auto malformed = level;
     malformed.TotalUpForce += 1.0;
@@ -172,7 +172,7 @@ int main()
         double power = 0.0;
         for (unsigned i = 0; i < 4; ++i)
         {
-            const double force = r.ForwardForces[i];
+            const double force = r.TangentForces[i];
             sum += force;
             power += force * b.ContactForwardCmPerSecond[i];
             Require(force * b.ContactForwardCmPerSecond[i] <= 1.0e-7,

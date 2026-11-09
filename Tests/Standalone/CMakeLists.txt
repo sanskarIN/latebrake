@@ -2190,3 +2190,16 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehicleRearLampLayout COMMAND latebrake_vehicle_rear_lamp_layout_tests)
+
+# Real measured road tangents; mixed-grade vector energy and grip contracts.
+add_executable(latebrake_brake_road_tangent_tests BrakeRoadTangentTests.cpp)
+target_include_directories(latebrake_brake_road_tangent_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_brake_road_tangent_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_brake_road_tangent_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_brake_road_tangent_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BrakeRoadTangent COMMAND latebrake_brake_road_tangent_tests)

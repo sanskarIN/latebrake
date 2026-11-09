@@ -10,6 +10,7 @@
 #include "Vehicles/OpposingThrottleBraking.h"
 #include "Vehicles/GripLimitedBraking.h"
 #include "Vehicles/SprungContactBraking.h"
+#include "Vehicles/BrakeRoadTangent.h"
 #include "Vehicles/LateralGripBudget.h"
 #include "Vehicles/TractionLimitedPropulsion.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
@@ -1000,6 +1001,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     GroundQuery.AddIgnoredActor(this);
     FVector WheelWorldAnchors[4];
     FVector WheelRoadContacts[4]{};
+    FVector RoadBrakeDirections[4]{};
+    std::array<double, 4> RoadBrakeForwardScales{1.0, 1.0, 1.0, 1.0};
     std::array<double, 4> RoadContactForwardSpeeds{};
     bool bRoadBrakeSamplesValid = true;
     for (int32 Index = 0; Index < 4; ++Index)
@@ -1031,7 +1034,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 Chassis->GetPhysicsLinearVelocityAtPoint(Origin);
             // Reuse the existing accepted trace, never a visual wheel pose
             // or a second ray. Brake moments belong at the actual road.
-            if (bEffectiveBraking)
+            if (bEffectiveBraking &&
+                Distance <= latebrake::SuspensionRestDistanceCm &&
+                NormalZ >= latebrake::SuspensionMinNormalZ)
             {
                 const FVector RoadPoint = Hit.ImpactPoint;
                 const bool bFinitePoint = FMath::IsFinite(RoadPoint.X) &&
@@ -1041,12 +1046,22 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                     WheelRoadContacts[Index] = RoadPoint;
                     const FVector RoadVelocity =
                         Chassis->GetPhysicsLinearVelocityAtPoint(RoadPoint);
-                    bRoadBrakeSamplesValid = bRoadBrakeSamplesValid &&
-                        FMath::IsFinite(RoadVelocity.X) &&
-                        FMath::IsFinite(RoadVelocity.Y) &&
-                        FMath::IsFinite(RoadVelocity.Z);
+                    const latebrake::BrakeRoadTangentOutput RoadTangent =
+                        latebrake::MeasureBrakeRoadTangent({
+                            static_cast<double>(Forward.X),
+                            static_cast<double>(Forward.Y),
+                            static_cast<double>(Hit.ImpactNormal.X),
+                            static_cast<double>(Hit.ImpactNormal.Y), NormalZ,
+                            static_cast<double>(RoadVelocity.X),
+                            static_cast<double>(RoadVelocity.Y),
+                            static_cast<double>(RoadVelocity.Z)});
+                    bRoadBrakeSamplesValid = bRoadBrakeSamplesValid && RoadTangent.Valid;
+                    RoadBrakeDirections[Index] = FVector(
+                        RoadTangent.DirectionX, RoadTangent.DirectionY, RoadTangent.DirectionZ);
                     RoadContactForwardSpeeds[static_cast<unsigned>(Index)] =
-                        static_cast<double>(FVector::DotProduct(RoadVelocity, Forward));
+                        RoadTangent.LongitudinalCmPerSecond;
+                    RoadBrakeForwardScales[static_cast<unsigned>(Index)] =
+                        RoadTangent.PlanarForwardScale;
                 }
                 else
                 {
@@ -1391,7 +1406,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(Mass), static_cast<double>(LongitudinalSpeed),
             PhysicalBraking.ForwardForce * GroundContact.ContactTractionScale,
             BrakeProfile.HandbrakeActive && !bServiceBraking,
-            bRoadBrakeSamplesValid, RoadContactForwardSpeeds},
+            bRoadBrakeSamplesValid, RoadContactForwardSpeeds, RoadBrakeForwardScales},
             GroundContact, SpringResponse);
     if (!ContactBraking.Valid)
     {
@@ -1800,11 +1815,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // contact multiplier may bypass an unloaded/moving-backward corner.
         for (unsigned Corner = 0; Corner < 4; ++Corner)
         {
-            const double BrakeForce = ContactBraking.ForwardForces[Corner];
+            const double BrakeForce = ContactBraking.TangentForces[Corner];
             if (BrakeForce != 0.0)
             {
                 Chassis->AddForceAtLocation(
-                    Forward * static_cast<float>(BrakeForce),
+                    RoadBrakeDirections[Corner] * static_cast<float>(BrakeForce),
                     WheelRoadContacts[Corner]);
             }
         }

@@ -18,14 +18,18 @@ struct SprungContactBrakeSample final
     bool RearOnly = false; // handbrake alone; service brake uses all corners
     bool ContactSamplesValid = false;
     // Actual Chaos velocity AT each accepted road impact point, projected
-    // onto the same planar forward axis as the force. FL, FR, RL, RR.
+    // onto each measured unit road tangent. FL, FR, RL, RR.
     std::array<double, 4> ContactForwardCmPerSecond{};
+    // Unit tangent's forward projection; default preserves level-road API.
+    std::array<double, 4> PlanarForwardScales{1.0, 1.0, 1.0, 1.0};
 };
 
 struct SprungContactBrakeOutput final
 {
     bool Valid = false;
-    std::array<double, 4> ForwardForces{};
+    // Signed magnitudes ALONG each unit road tangent, not world XY forces.
+    std::array<double, 4> TangentForces{};
+    double TotalBrakeForceMagnitude = 0.0;
     double TotalForwardForce = 0.0;
     // Same pre-contact units as LateralGripSample's longitudinal budget.
     // Dispatch already includes contact; this is never a force multiplier.
@@ -63,7 +67,10 @@ inline SprungContactBrakeOutput CalculateSprungContactBraking(
         // arbitrary stale sensor data for an absent corner.
         if (springs.Corners[i].Contact &&
             (!std::isfinite(sample.ContactForwardCmPerSecond[i]) ||
-             std::abs(sample.ContactForwardCmPerSecond[i]) > 100000.0))
+             std::abs(sample.ContactForwardCmPerSecond[i]) > 100000.0 ||
+             !std::isfinite(sample.PlanarForwardScales[i]) ||
+             sample.PlanarForwardScales[i] < SuspensionMinNormalZ - 1.0e-3 ||
+             sample.PlanarForwardScales[i] > 1.0))
         {
             return {};
         }
@@ -100,14 +107,16 @@ inline SprungContactBrakeOutput CalculateSprungContactBraking(
         }
         const double speedScale = std::min(1.0,
             std::abs(localSpeed / sample.ForwardCmPerSecond));
-        out.ForwardForces[i] = sample.RequestedForwardForce *
+        out.TangentForces[i] = sample.RequestedForwardForce *
             (corner.UpForce / springs.TotalUpForce) * speedScale;
-        out.TotalForwardForce += out.ForwardForces[i];
+        out.TotalForwardForce += out.TangentForces[i] * sample.PlanarForwardScales[i];
+        out.TotalBrakeForceMagnitude += std::abs(out.TangentForces[i]);
     }
     // Whole-body contact was applied exactly once before allocation. Feed
-    // the actual accepted sum back into the SAME lateral/yaw grip budget.
+    // the full 3D magnitude sum back into the SAME lateral/yaw grip budget.
+    // Spending only the XY projection would overgrant grip on a grade.
     out.WholeBodyBudgetDeceleration =
-        std::abs(out.TotalForwardForce) / sample.MassKg /
+        out.TotalBrakeForceMagnitude / sample.MassKg /
         ground.ContactTractionScale;
     return out;
 }
