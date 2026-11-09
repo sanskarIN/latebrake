@@ -1,8 +1,19 @@
-# v0.5.97 source-only release preparation
+# v0.5.97 source-only publication record
 
-**Prepared, not published by merging this workflow. No playable Windows EXE.**
-The latest published source snapshot remains v0.5.96 until a real GitHub
-release object for v0.5.97 has been created and independently read back.
+**Published source-only pre-release. No playable Windows executable.**
+The preparation was not published by merging its workflow. The owner
+subsequently dispatched the guarded publisher, which completed all source
+gates and verified the immutable release/tag/notes identity with zero assets.
+
+- [Published v0.5.97](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97).
+- [Publisher run #42588788912](https://github.com/sanskarIN/latebrake/actions/runs/42588788912).
+- Immutable source: `65ef6f2f192081b64f8256867403f40882cca462`.
+- No licensed Unreal/UHT compile, cooked Win64 game or installed QA is established.
+
+The operator procedure below is retained for audit. A replay deliberately
+refuses if the physics branch or protected main no longer matches its
+reviewed conditions. Never reset a development branch or retag the release
+to bypass that guard; use the read-only source-release audit for an older tag.
 
 ## Pinned candidate
 
@@ -17,9 +28,9 @@ release object for v0.5.97 has been created and independently read back.
   **19,124 nonblank noncomment lines**. The 200,000-line v0.6.0 target remains
   unmet. Source-only v0.5.97 is independent of that later quantity gate.
 
-## Manual publication
+## Historical manual publication procedure
 
-After this preparation is merged and reviewed, open GitHub Actions →
+The original procedure was: after preparation review, open GitHub Actions →
 **Publish prepared v0.5.97 SOURCE-ONLY prerelease (manual)**, select **main**,
 and run `.github/workflows/prepare-v0597-source.yml` as the repository owner.
 This action creates a public source-only pre-release after all its gates
