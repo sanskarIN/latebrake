@@ -10,7 +10,8 @@ on:
       - 'scripts/verify_docs_site.py'
       - '.github/workflows/docs-pages.yml'
   pull_request:
-    branches: [main]
+    # Stacked cosmetic drafts retain the full read-only source/docs gates.
+    branches: [main, feat/chaos-four-corner-suspension]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'

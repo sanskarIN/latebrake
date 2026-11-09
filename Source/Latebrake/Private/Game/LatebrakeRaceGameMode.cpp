@@ -894,9 +894,11 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             Block.Style == latebrake::CollisionBlockStyle::Ground ? GroundColor :
             Block.Style == latebrake::CollisionBlockStyle::Asphalt ? AsphaltColor :
             BarrierColor;
-        RecordBlock(Labels[Index],
+        AStaticMeshActor* PhysicalBlock = RecordBlock(Labels[Index],
             FVector(Block.Center.X, Block.Center.Y, Block.Height),
             FVector(Block.ScaleX, Block.ScaleY, Block.ScaleZ), Color);
+        if (PhysicalBlock && Block.Style == latebrake::CollisionBlockStyle::Asphalt)
+            PhysicalBlock->Tags.AddUnique(FName(TEXT("LatebrakePavedRoad")));
     }
 
     // All ninety-three collision-free decorative cubes now share one scene

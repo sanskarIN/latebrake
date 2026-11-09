@@ -1,4 +1,5 @@
 #include "Vehicles/LatebrakeCarPawn.h"
+#include "Vehicles/LatebrakeSkidTrailActor.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
@@ -301,6 +302,15 @@ void ALatebrakeCarPawn::BeginPlay()
     // Dynamic material instances belong to these mesh components, and are
     // initialized only when the actor is live (not in the CDO constructor).
     ApplyVehiclePaintRecipe(GarageVehicleId);
+    if (GetWorld())
+    {
+        FActorSpawnParameters EffectParameters;
+        EffectParameters.Owner = this;
+        EffectParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+        SkidTrails = GetWorld()->SpawnActor<ALatebrakeSkidTrailActor>(
+            ALatebrakeSkidTrailActor::StaticClass(), FVector::ZeroVector,
+            FRotator::ZeroRotator, EffectParameters);
+    }
     Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
@@ -323,6 +333,8 @@ void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
     FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
     TouchViewport.Reset();
     ClearDriverInputs();
+    if (IsValid(SkidTrails)) SkidTrails->Destroy();
+    SkidTrails = nullptr;
     Super::EndPlay(EndPlayReason);
 }
 
@@ -571,6 +583,7 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
                                      int32 VehicleId)
 {
     BrakeCapability.Invalidate();
+    if (IsValid(SkidTrails)) SkidTrails->BreakContinuity();
     // The garage uses bounded, engine-independent multipliers; defend the
     // physics integration from corrupt or nonfinite gameplay state anyway.
     GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
@@ -608,6 +621,7 @@ void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)
     BrakeHeat.Suspend();
     WheelBrakes.Reset();
     BrakeCapability.Invalidate();
+    if (IsValid(SkidTrails)) SkidTrails->BreakContinuity();
     EngineHeat.Suspend();
     Transmission.Suspend();
     LastGroundContact = {};
@@ -913,6 +927,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         BrakeHeat.Suspend();
         WheelBrakes.Reset();
         BrakeCapability.Invalidate();
+        if (IsValid(SkidTrails)) SkidTrails->BreakContinuity();
         EngineHeat.Suspend();
         CollisionDamage.Suspend();
         LastQualifiedPlanarSpeedCmPerSecond = 0.0;
@@ -1010,6 +1025,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     std::array<double, 4> RoadBrakeForwardScales{1.0, 1.0, 1.0, 1.0};
     std::array<double, 4> RoadContactForwardSpeeds{};
     std::array<double, 4> RoadBrakeNormalZ{};
+    std::array<latebrake::SkidVector, 4> SkidRoadNormals{};
+    std::array<std::uint64_t, 4> SkidSurfaceKeys{};
+    std::array<bool, 4> SkidPavedRoad{};
+    std::array<double, 4> SkidLateralSpeeds{};
     bool bRoadBrakeSamplesValid = true;
     for (int32 Index = 0; Index < 4; ++Index)
     {
@@ -1070,6 +1089,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                     RoadBrakeForwardScales[static_cast<unsigned>(Index)] =
                         RoadTangent.PlanarForwardScale;
                     RoadBrakeNormalZ[static_cast<unsigned>(Index)] = NormalZ;
+                    const unsigned CornerIndex = static_cast<unsigned>(Index);
+                    SkidRoadNormals[CornerIndex] = {
+                        static_cast<double>(Hit.ImpactNormal.X),
+                        static_cast<double>(Hit.ImpactNormal.Y), NormalZ};
+                    SkidSurfaceKeys[CornerIndex] = Hit.GetComponent()->GetUniqueID();
+                    static const FName PavedRoadTag(TEXT("LatebrakePavedRoad"));
+                    SkidPavedRoad[CornerIndex] = IsValid(Hit.GetActor()) &&
+                        Hit.GetActor()->ActorHasTag(PavedRoadTag);
+                    SkidLateralSpeeds[CornerIndex] = FVector::DotProduct(RoadVelocity, Right);
                 }
                 else
                 {
@@ -1935,6 +1963,34 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // It is an estimate for the next rival tick, not measured deceleration.
     BrakeCapability.Publish(BrakeCapabilityCandidate,
         static_cast<double>(DeltaSeconds), TeleportRevision);
+    if (IsValid(SkidTrails))
+    {
+        latebrake::SurfaceSkidFrame SkidFrame;
+        SkidFrame.DeltaSeconds = static_cast<double>(DeltaSeconds);
+        SkidFrame.TeleportRevision = TeleportRevision;
+        SkidFrame.DrivingAllowed = !bPreGreen;
+        const auto& DeliveredWheels = WheelBrakes.LastCommitted();
+        for (unsigned Corner = 0; Corner < 4; ++Corner)
+        {
+            auto& Contact = SkidFrame.Contacts[Corner];
+            Contact.Supported = SpringResponse.Corners[Corner].Contact &&
+                SpringResponse.Corners[Corner].UpForce > 0.0;
+            Contact.PavedRoad = SkidPavedRoad[Corner];
+            Contact.SurfaceKey = SkidSurfaceKeys[Corner];
+            Contact.Position = {WheelRoadContacts[Corner].X,
+                WheelRoadContacts[Corner].Y, WheelRoadContacts[Corner].Z};
+            Contact.Normal = SkidRoadNormals[Corner];
+            Contact.ForwardCmPerSecond = RoadContactForwardSpeeds[Corner];
+            Contact.LateralCmPerSecond = SkidLateralSpeeds[Corner];
+            Contact.NormalLoadNewtons = SpringResponse.Corners[Corner].UpForce *
+                RoadBrakeNormalZ[Corner] * 0.01;
+            Contact.ModeledSlipAvailable = DeliveredWheels.Valid &&
+                DeliveredWheels.Wheels[Corner].Available;
+            Contact.ModeledBrakingSlip = Contact.ModeledSlipAvailable
+                ? DeliveredWheels.Wheels[Corner].ModeledSlip : 0.0;
+        }
+        SkidTrails->Submit(SkidFrame);
+    }
 
 #if !UE_BUILD_SHIPPING
     // Real Development-build evidence for installed-handling QA only.
@@ -2072,6 +2128,11 @@ void ALatebrakeCarPawn::ApplySprungForces(
                 WorldAnchors[Index]);
         }
     }
+}
+
+void ALatebrakeCarPawn::ResetSurfaceSkidTrails()
+{
+    if (IsValid(SkidTrails)) SkidTrails->ResetTrails();
 }
 
 void ALatebrakeCarPawn::ApplyWheelVisualPose()
@@ -2239,6 +2300,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     BrakeHeat.Suspend();
     WheelBrakes.Reset();
     BrakeCapability.Invalidate();
+    if (IsValid(SkidTrails)) SkidTrails->BreakContinuity();
     EngineHeat.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
