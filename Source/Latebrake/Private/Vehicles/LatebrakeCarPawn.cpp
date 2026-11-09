@@ -1040,8 +1040,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 Chassis->GetPhysicsLinearVelocityAtPoint(Origin);
             // Reuse the existing accepted trace, never a visual wheel pose
             // or a second ray. Brake moments belong at the actual road.
-            if (bEffectiveBraking &&
-                Distance <= latebrake::SuspensionRestDistanceCm &&
+            // Capacity planning also needs this accepted road sample
+            // while coasting. This never applies a brake force by itself.
+            if (Distance <= latebrake::SuspensionRestDistanceCm &&
                 NormalZ >= latebrake::SuspensionMinNormalZ)
             {
                 const FVector RoadPoint = Hit.ImpactPoint;

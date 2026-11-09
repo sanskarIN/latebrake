@@ -32,6 +32,14 @@ class RivalBrakeCapabilityBindingTests(unittest.TestCase):
         self.assertIn('static_cast<double>(DeltaSeconds), TeleportRevision)', self.tick[publish:])
         self.assertIn('return BrakeCapability.Read();', self.header)
 
+    def test_road_samples_are_collected_while_coasting_as_well_as_braking(self):
+        sampling = self.tick.split('if (bGroundHit)', 1)[1].split(
+            '// Damping tracks ray-length change', 1)[0]
+        self.assertIn('Chassis->GetPhysicsLinearVelocityAtPoint(RoadPoint)', sampling)
+        self.assertIn('RoadBrakeNormalZ[static_cast<unsigned>(Index)] = NormalZ', sampling)
+        self.assertNotIn('bEffectiveBraking', sampling)
+        self.assertNotIn('Chassis->AddForce', sampling)
+
     def test_invalid_recovery_pause_and_garage_changes_invalidate_advisory_data(self):
         for begin, end in [('void ALatebrakeCarPawn::ClearDriverInputs(',
                            'void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring('),
