@@ -62,7 +62,7 @@ class WheelVisualBindingTests(unittest.TestCase):
         visual = self.pawn.split("void ALatebrakeCarPawn::ApplyWheelVisualPose()", 1)[1].split(
             "bool ALatebrakeCarPawn::IsRacePhysicsReady()", 1)[0]
         for token in (
-            "WheelMotion.Current()", "Base * Rolling", "Steering",
+            "WheelMotion.CurrentCorner(", "Base * Rolling", "Steering",
             "Index < 2", "SetRelativeRotation(", "WheelMotion.Advance({",
         ):
             self.assertIn(token, visual)

@@ -605,6 +605,7 @@ void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)
     SpinAssist.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
+    WheelBrakes.Reset();
     EngineHeat.Suspend();
     Transmission.Suspend();
     LastGroundContact = {};
@@ -908,6 +909,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SlipstreamBoost.Suspend();
         TireCondition.Suspend();
         BrakeHeat.Suspend();
+        WheelBrakes.Reset();
         EngineHeat.Suspend();
         CollisionDamage.Suspend();
         LastQualifiedPlanarSpeedCmPerSecond = 0.0;
@@ -1004,6 +1006,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     FVector RoadBrakeDirections[4]{};
     std::array<double, 4> RoadBrakeForwardScales{1.0, 1.0, 1.0, 1.0};
     std::array<double, 4> RoadContactForwardSpeeds{};
+    std::array<double, 4> RoadBrakeNormalZ{};
     bool bRoadBrakeSamplesValid = true;
     for (int32 Index = 0; Index < 4; ++Index)
     {
@@ -1062,6 +1065,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                         RoadTangent.LongitudinalCmPerSecond;
                     RoadBrakeForwardScales[static_cast<unsigned>(Index)] =
                         RoadTangent.PlanarForwardScale;
+                    RoadBrakeNormalZ[static_cast<unsigned>(Index)] = NormalZ;
                 }
                 else
                 {
@@ -1401,7 +1405,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     }
     // Whole-body contact is spent ONCE here. Brake-only rear shares cannot
     // migrate to the front when the rear axle is airborne or unloaded.
-    const latebrake::SprungContactBrakeOutput ContactBraking =
+    latebrake::SprungContactBrakeOutput ContactBraking =
         latebrake::CalculateSprungContactBraking({
             static_cast<double>(Mass), static_cast<double>(LongitudinalSpeed),
             PhysicalBraking.ForwardForce * GroundContact.ContactTractionScale,
@@ -1413,6 +1417,36 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
+    // Independent modeled rotors may only REDUCE the already admitted
+    // contact forces. Their proposed state is not committed until every
+    // road-point braking command has actually reached AddForceAtLocation.
+    latebrake::FourCornerWheelBrakeOutput WheelBrakePlan;
+    if (bUseWheelBrakeModel)
+    {
+        WheelBrakePlan = WheelBrakes.Propose({
+            static_cast<double>(DeltaSeconds), static_cast<double>(Mass),
+            Surface.LateralGripMultiplier * TireCondition.GripMultiplier() *
+                static_cast<double>(GarageGrip) *
+                CollisionDamage.LateralGripMultiplier(),
+            Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0,
+            bServiceBraking, BrakeProfile.HandbrakeActive,
+            GroundContact.Valid && SpringResponse.Valid && bRoadBrakeSamplesValid,
+            RoadContactForwardSpeeds, RoadBrakeNormalZ, RoadBrakeForwardScales},
+            latebrake::BrakeProfileForVehicle(GarageVehicleId, bArcade),
+            GroundContact, SpringResponse, ContactBraking);
+    }
+    else
+    {
+        WheelBrakes.Reset();
+        WheelBrakePlan.Valid = true;
+        WheelBrakePlan.Brakes = ContactBraking;
+    }
+    if (!WheelBrakePlan.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    ContactBraking = WheelBrakePlan.Brakes;
     // Opposing reverse/accelerator demand shares the same final throttle
     // classification as motor dispatch. Its actual rear-load-limited force
     // must also consume the same-frame cornering budget, not bypass it.
@@ -1823,6 +1857,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                     WheelRoadContacts[Corner]);
             }
         }
+        WheelBrakes.CommitDeliveredFrame(WheelBrakePlan.Receipt);
+    }
+    else
+    {
+        WheelBrakes.RejectUndeliveredFrame(WheelBrakePlan.Receipt);
     }
     // Neutral throttle COASTS under the progressive road load and Chaos
     // baseline damping. It is not an implicit service-brake command.
@@ -1920,6 +1959,41 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             SubmittedServiceForce, SubmittedLateralForce,
             SubmittedYawTorque,
             static_cast<double>(CurrentDraftAppliedFraction) * 100.0);
+        const auto& WheelFrame = WheelBrakes.LastCommitted();
+        if (WheelFrame.Valid)
+        {
+            unsigned activeMask = 0;
+            for (unsigned corner = 0; corner < 4; ++corner)
+                if (WheelFrame.Wheels[corner].Available) activeMask |= 1u << corner;
+            // Measured road speeds, spring-projected load estimates and
+            // explicitly MODELED rotors/pressure/slip. Commanded tire
+            // forces are not measurements from the Chaos contact solver.
+            UE_LOG(LogTemp, Display,
+                TEXT("LATEBRAKE_WHEEL_BRAKES v=1 driver=%s source=modeled actor_id=%u "
+                     "receipt=%llu steps=%u iterations=%u vehicle=%d active_mask=%u dt_s=%.6f "
+                     "road_fl_cmps=%.3f road_fr_cmps=%.3f road_rl_cmps=%.3f road_rr_cmps=%.3f "
+                     "omega_fl=%.6f omega_fr=%.6f omega_rl=%.6f omega_rr=%.6f "
+                     "slip_fl=%.6f slip_fr=%.6f slip_rl=%.6f slip_rr=%.6f "
+                     "pressure_fl=%.4f pressure_fr=%.4f pressure_rl=%.4f pressure_rr=%.4f "
+                     "normal_est_fl_n=%.4f normal_est_fr_n=%.4f normal_est_rl_n=%.4f normal_est_rr_n=%.4f "
+                     "command_fl_n=%.4f command_fr_n=%.4f command_rl_n=%.4f command_rr_n=%.4f"),
+                bLocalHuman ? TEXT("player") : TEXT("autonomous"), GetUniqueID(),
+                static_cast<unsigned long long>(WheelFrame.Receipt),
+                WheelFrame.InternalSteps, WheelFrame.SolverIterations, GarageVehicleId,
+                activeMask, static_cast<double>(DeltaSeconds),
+                RoadContactForwardSpeeds[0], RoadContactForwardSpeeds[1],
+                RoadContactForwardSpeeds[2], RoadContactForwardSpeeds[3],
+                WheelFrame.Wheels[0].ModeledRadiansPerSecond, WheelFrame.Wheels[1].ModeledRadiansPerSecond,
+                WheelFrame.Wheels[2].ModeledRadiansPerSecond, WheelFrame.Wheels[3].ModeledRadiansPerSecond,
+                WheelFrame.Wheels[0].ModeledSlip, WheelFrame.Wheels[1].ModeledSlip,
+                WheelFrame.Wheels[2].ModeledSlip, WheelFrame.Wheels[3].ModeledSlip,
+                WheelFrame.Wheels[0].Pressure, WheelFrame.Wheels[1].Pressure,
+                WheelFrame.Wheels[2].Pressure, WheelFrame.Wheels[3].Pressure,
+                WheelFrame.Wheels[0].NormalLoadNewtons, WheelFrame.Wheels[1].NormalLoadNewtons,
+                WheelFrame.Wheels[2].NormalLoadNewtons, WheelFrame.Wheels[3].NormalLoadNewtons,
+                WheelFrame.Wheels[0].AverageForceNewtons, WheelFrame.Wheels[1].AverageForceNewtons,
+                WheelFrame.Wheels[2].AverageForceNewtons, WheelFrame.Wheels[3].AverageForceNewtons);
+        }
     }
 #endif
 
@@ -1977,14 +2051,11 @@ void ALatebrakeCarPawn::ApplySprungForces(
 
 void ALatebrakeCarPawn::ApplyWheelVisualPose()
 {
-    const latebrake::WheelVisualPose Pose = WheelMotion.Current();
     // Cylinder spindle is local Z; first lay it along chassis Y, then
     // roll around spindle and yaw only the two front decorative wheels.
     constexpr double Pi = 3.14159265358979323846;
     const double Radians = Pi / 180.0;
     const FQuat Base(FRotator(0.f, 0.f, 90.f));
-    const FQuat Rolling(FVector::UpVector, Pose.RollDegrees * Radians);
-    const FQuat Steering(FVector::UpVector, Pose.FrontSteerDegrees * Radians);
     UStaticMeshComponent* Wheels[] = {
         FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel
     };
@@ -1992,6 +2063,10 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
     {
         if (IsValid(Wheels[Index]))
         {
+            const latebrake::WheelVisualPose Pose =
+                WheelMotion.CurrentCorner(static_cast<unsigned>(Index));
+            const FQuat Rolling(FVector::UpVector, Pose.RollDegrees * Radians);
+            const FQuat Steering(FVector::UpVector, Pose.FrontSteerDegrees * Radians);
             const FQuat Visual = (Index < 2 ? Steering : FQuat::Identity) *
                 Base * Rolling;
             Wheels[Index]->SetRelativeRotation(Visual.Rotator());
@@ -2019,6 +2094,19 @@ void ALatebrakeCarPawn::UpdateWheelVisuals(
     if (WheelMotion.Advance({
             DeltaSeconds, ForwardSpeedCmPerSecond, VisualSteering, 29.0}))
     {
+        const auto& BrakeFrame = WheelBrakes.LastCommitted();
+        if (BrakeFrame.Valid)
+        {
+            std::array<double, 4> rotation{};
+            unsigned mask = 0;
+            for (unsigned corner = 0; corner < 4; ++corner)
+                if (BrakeFrame.Wheels[corner].Available)
+                {
+                    mask |= 1u << corner;
+                    rotation[corner] = BrakeFrame.Wheels[corner].ModeledRotationRadians;
+                }
+            WheelMotion.ApplyCommittedBrakeRotation(BrakeFrame.Receipt, mask, rotation);
+        }
         ApplyWheelVisualPose();
     }
     else
@@ -2124,6 +2212,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     SlipAngleMeter.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
+    WheelBrakes.Reset();
     EngineHeat.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();

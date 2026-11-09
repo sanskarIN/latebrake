@@ -9,8 +9,7 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.96](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.96), **experimental source only**, immutable **unmerged rounded-circuit PR #316** commit `5bbea98bc085f1ab7f8a6dde0cf6b9f9d160bdd7`; **zero executable attachments** |
-| Prepared next source snapshot | [v0.5.97 road-tangent braking](https://github.com/sanskarIN/latebrake/blob/main/docs/V0597_SOURCE_RELEASE_PREPARATION.md), **not yet published**, no playable Windows executable |
+| Latest published GitHub pre-release | [v0.5.97](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97), experimental source only, unmerged physics PR #295 commit `65ef6f2f192081b64f8256867403f40882cca462`; **zero executable attachments** |
 | Latest source-development milestone | **v0.5.95 source-only:** original Unreal 3D starter-circuit straight-edge paint and 48 braking-zone rubber marks, all geometry bounded to the real asphalt collision blocks; optional Editor-authored PBR material tooling and SHA256-pinned candidate build source checks. [Draft PR #313](https://github.com/sanskarIN/latebrake/pull/313) remains unmerged; real authored materials, UE 5.8 Editor/UHT compile, Windows executable, 3D lighting and installed driving are still **unverified**. [Exact publisher verification](https://github.com/sanskarIN/latebrake/actions/runs/42339222627): **171 CTests on each Windows/Ubuntu/macOS and 621 Python source tests**, plus PowerShell policies and docs. Previous source-only snapshot: v0.5.94. |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |

@@ -1,25 +1,20 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.96**. It snapshots experimental source from unmerged rounded-circuit draft PR #316 and has zero executable attachments.
+    The independently verified latest published GitHub tag is **v0.5.97**. It freezes unmerged physics PR #295 and has zero executable attachments.
 
-**Current source release:** [v0.5.96](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.96)
-freezes source commit `5bbea98bc085f1ab7f8a6dde0cf6b9f9d160bdd7`. It contains a proposed 1.70265km
-circuit, original road geometry exports, editor-authoring source and collision
-candidates. These are not a verified cooked Unreal level or drivable road.
-See [release notes](releases/v0.5.96.md). The independent physics PR #295
-and [playable-game gate #148](https://github.com/sanskarIN/latebrake/issues/148)
-remain open; real Editor/UHT/Game compilation and installed Win64 driving
-are required before any playable claim.
+**Current source release:** [v0.5.97](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97) at
+`65ef6f2f192081b64f8256867403f40882cca462`. The [guarded publisher](https://github.com/sanskarIN/latebrake/actions/runs/42588788912)
+completed its exact-source tests and immutable tag/release readback. This
+snapshot includes load-distributed braking at measured road points and
+road-tangent force/energy bounds. It remains a rigid-body prototype with
+no verified Unreal build, cooked circuit or installed Windows gameplay.
 
-## Prepared next snapshot — not yet published
-
-[v0.5.97 preparation](https://github.com/sanskarIN/latebrake/blob/main/docs/V0597_SOURCE_RELEASE_PREPARATION.md) pins the
-load-distributed road-tangent braking source in draft PR #295. Merging its
-manual publisher does not publish a release, tag a new version or create
-executables. Public latest-release labels stay at v0.5.96 until publication
-is explicitly performed and its identity is read back. Prepared [source
-notes](releases/v0.5.97.md) describe its implementation and limitations.
+The [publication record](V0597_SOURCE_RELEASE_PREPARATION.md) preserves its
+source pin and manual workflow. The previous v0.5.96 rounded-circuit snapshot
+is an independent draft branch; source releases do not merge experiments
+into main. [Playable gate #148](https://github.com/sanskarIN/latebrake/issues/148)
+remains open.
 
 ## Published source previews
 
@@ -27,6 +22,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.97 | [Release notes](releases/v0.5.97.md) |
 | v0.5.96 | [Release notes](releases/v0.5.96.md) |
 | v0.5.95 | [Release notes](releases/v0.5.95.md) |
 | v0.5.94 | [Release notes](releases/v0.5.94.md) |

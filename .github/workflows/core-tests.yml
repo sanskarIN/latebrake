@@ -157,3 +157,13 @@ jobs:
         run: python3 scripts/MeasureSourceScale.py --json
       - name: Test editor map automation decisions with disposable stub (NO Unreal SDK)
         run: python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
+
+  source-release-policy:
+    name: Offline source-release publication guards (NO GitHub writes)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test Tests/Release/ExperimentalSourceReleaseTests.cjs

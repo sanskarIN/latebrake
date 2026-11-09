@@ -2,8 +2,7 @@
 
 **Race Beyond Limits.** An original, community-developed racing game built with Unreal Engine 5.8 and C++20.
 
-> **Latest published: [v0.5.96](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.96) — EXPERIMENTAL SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Immutable source commit `5bbea98bc085f1ab7f8a6dde0cf6b9f9d160bdd7` snapshots **unmerged [rounded-circuit draft PR #316](https://github.com/sanskarIN/latebrake/pull/316)**: a proposed 1.70265km centreline, original road-geometry exports and editor-authoring/collision candidates. It has **zero executable attachments** and does not establish actual UE5.8/UHT compilation, cooked road contact or installed Win64/Android gameplay. Source archives are **not installers**. [v0.5.96 source notes](docs/releases/v0.5.96.md).
-> **Next source preparation:** [v0.5.97 road-tangent braking](https://github.com/sanskarIN/latebrake/blob/main/docs/V0597_SOURCE_RELEASE_PREPARATION.md) is prepared from physics draft PR #295; it is not published by merging the preparation workflow and includes no playable Windows executable.
+> **Latest published: [v0.5.97](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97) — EXPERIMENTAL SOURCE-ONLY PRE-RELEASE, NOT A PLAYABLE GAME.** Immutable source `65ef6f2f192081b64f8256867403f40882cca462` snapshots **unmerged physics draft PR #295** with load-distributed road-tangent braking. The [guarded publisher](https://github.com/sanskarIN/latebrake/actions/runs/42588788912) passed its exact-source gates and read back the tag, notes and **zero executable assets**. No real UE5.8/UHT compilation, cooked circuit, installed Windows game or Android package is established. Source archives are **not installers**. [Source notes](docs/releases/v0.5.97.md).
 
 **v0.5.87 six-car 3D body-kit source work (preserved in v0.5.88):** the real Unreal car pawn
 now contains a per-car front splitter, two side skirts, rear diffuser,

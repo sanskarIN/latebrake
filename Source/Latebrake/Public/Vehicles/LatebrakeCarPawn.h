@@ -22,6 +22,7 @@
 #include "Vehicles/AutomaticTransmission.h"
 #include "Vehicles/ChassisContactReadout.h"
 #include "Vehicles/SprungChassisDynamics.h"
+#include "Vehicles/FourCornerWheelBrakes.h"
 #include "Vehicles/SprungGripReattachment.h"
 #include "Vehicles/SuspensionQaCadence.h"
 #include "Vehicles/ArcadeCollisionDamage.h"
@@ -76,7 +77,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; LastSuspension = {}; GripReattachment.Reset(); ResetSuspensionQa(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); WheelBrakes.Reset(); Transmission.Reset(); LastGroundContact = {}; LastSuspension = {}; GripReattachment.Reset(); ResetSuspensionQa(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -88,6 +89,12 @@ public:
     }
     const latebrake::ArcadeTireCondition& GetTireCondition() const noexcept { return TireCondition; }
     const latebrake::ArcadeBrakeHeat& GetBrakeHeat() const noexcept { return BrakeHeat; }
+    // Committed contact-phase model output only; rotor speed is modeled,
+    // never an actual Chaos wheel sensor or certified ABS measurement.
+    const latebrake::FourCornerWheelBrakeOutput& GetWheelBrakeState() const noexcept
+    {
+        return WheelBrakes.LastCommitted();
+    }
     const latebrake::ArcadeEngineHeat& GetEngineHeat() const noexcept { return EngineHeat; }
     latebrake::AutomaticTransmissionState GetTransmissionReadout() const noexcept { return Transmission.Readout(); }
     const latebrake::ArcadeCollisionDamage& GetCollisionDamage() const noexcept { return CollisionDamage; }
@@ -307,6 +314,7 @@ private:
     latebrake::ArcadeBrakeHeat BrakeHeat;
     latebrake::ArcadeEngineHeat EngineHeat;
     latebrake::AutomaticTransmission Transmission;
+    latebrake::FourCornerWheelBrakes WheelBrakes;
     latebrake::ChassisGroundContactOutput LastGroundContact{};
     // Actual world-contact spring force response for this Chaos frame.
     // Only the visual child wheels read this; saves and race authority do not.
@@ -340,4 +348,9 @@ private:
 
     UPROPERTY(EditAnywhere, Category = "Vehicle")
     ELatebrakeHandlingMode HandlingMode = ELatebrakeHandlingMode::Arcade;
+
+    // Editor lab A/B switch for unqualified candidate braking. The legacy
+    // road-tangent admission remains the hard ceiling in either mode.
+    UPROPERTY(EditAnywhere, Category = "Vehicle|Experimental")
+    bool bUseWheelBrakeModel = true;
 };

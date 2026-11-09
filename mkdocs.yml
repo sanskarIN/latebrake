@@ -113,6 +113,7 @@ nav:
       - Steering and handling stability QA: DRIVING_STABILITY_QA.md
       - Progressive road load and coast-down QA: PROGRESSIVE_ROAD_LOAD_QA.md
       - Grip-limited service and handbrake QA: GRIP_LIMITED_BRAKING_QA.md
+      - Contact-phase wheel brakes QA: WHEEL_BRAKE_MODEL_QA.md
       - Lateral grip and shared brake budget QA: LATERAL_GRIP_BUDGET_QA.md
       - Chassis ground-contact traction QA: CHASSIS_GROUND_CONTACT_QA.md
       - Four-corner sprung chassis QA: SPRUNG_CHASSIS_QA.md
@@ -174,6 +175,7 @@ nav:
       - Rival moving-stall recovery QA: RIVAL_NO_APPROACH_RECOVERY_QA.md
       - Save migration: SAVE_MIGRATION.md
   - Roadmap & history:
+      - v0.5.97 source publication record: V0597_SOURCE_RELEASE_PREPARATION.md
       - Roadmap: ROADMAP.md
       - Release history: release-history.md
       - Next pre-release plan (unpublished): releases/v0.5.92-plan.md
