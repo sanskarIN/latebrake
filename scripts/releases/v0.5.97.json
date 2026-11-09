@@ -1,0 +1,10 @@
+{
+  "tag": "v0.5.97",
+  "previousTag": "v0.5.96",
+  "previousSha": "5bbea98bc085f1ab7f8a6dde0cf6b9f9d160bdd7",
+  "sourceSha": "65ef6f2f192081b64f8256867403f40882cca462",
+  "prNumber": 295,
+  "branch": "feat/chaos-four-corner-suspension",
+  "notesPath": "docs/releases/v0.5.97.md",
+  "name": "LateBrake v0.5.97 \u2014 Load-Distributed Road-Tangent Braking (SOURCE-ONLY Pre-release)"
+}

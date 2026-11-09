@@ -1,13 +1,25 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.95**. It snapshots experimental **SOURCE-ONLY** Unreal circuit surface work from **unmerged draft PR #313**; it is NOT a Windows game, executable or installer.
+    The independently verified latest published GitHub tag is **v0.5.96**. It snapshots experimental source from unmerged rounded-circuit draft PR #316 and has zero executable attachments.
 
-**Current source release:** [v0.5.95](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95) freezes immutable source commit `45e62e2f9009741bf947019105708abe64f89c3f` with eight physically bounded 3D road-edge paint segments, 48 braking-zone rubber details, an original Unreal Editor PBR material authoring script and SHA256-pinned optional material provenance checks for future Win64 candidates. The old Win32 2D cartoon-like preview is **not** the Unreal game and is not included. The public release contains **zero executable assets**, does not merge PR #313 and does not demonstrate a cooked Unreal map/material, genuine car 3D visuals, compiled Windows 3D EXE or gameplay QA. [v0.5.94](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.94) remains the previous immutable source milestone.
+**Current source release:** [v0.5.96](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.96)
+freezes source commit `5bbea98bc085f1ab7f8a6dde0cf6b9f9d160bdd7`. It contains a proposed 1.70265km
+circuit, original road geometry exports, editor-authoring source and collision
+candidates. These are not a verified cooked Unreal level or drivable road.
+See [release notes](releases/v0.5.96.md). The independent physics PR #295
+and [playable-game gate #148](https://github.com/sanskarIN/latebrake/issues/148)
+remain open; real Editor/UHT/Game compilation and installed Win64 driving
+are required before any playable claim.
 
-**Pinned-source evidence:** The [v0.5.95 publication workflow](https://github.com/sanskarIN/latebrake/actions/runs/42339222627) passed **171 CTests per Windows, Ubuntu and macOS platform; 621 Python source tests; PowerShell build/safety fixtures and docs**. This is **not** an actual licensed UE 5.8 Editor/UHT or rendered/material/runtime game test.
+## Prepared next snapshot — not yet published
 
-**Next development priority:** compile the real UE 5.8 Editor/Game targets, cook the original circuit and qualify an installed Windows candidate. Android devices remain an independent gate. [Player QA guide](WINDOWS_PERSONAL_PLAYTEST.md).
+[v0.5.97 preparation](https://github.com/sanskarIN/latebrake/blob/main/docs/V0597_SOURCE_RELEASE_PREPARATION.md) pins the
+load-distributed road-tangent braking source in draft PR #295. Merging its
+manual publisher does not publish a release, tag a new version or create
+executables. Public latest-release labels stay at v0.5.96 until publication
+is explicitly performed and its identity is read back. Prepared [source
+notes](releases/v0.5.97.md) describe its implementation and limitations.
 
 ## Published source previews
 
@@ -15,6 +27,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.96 | [Release notes](releases/v0.5.96.md) |
 | v0.5.95 | [Release notes](releases/v0.5.95.md) |
 | v0.5.94 | [Release notes](releases/v0.5.94.md) |
 | v0.5.93 | [Release notes](releases/v0.5.93.md) |
