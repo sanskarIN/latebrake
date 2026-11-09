@@ -570,6 +570,7 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
                                      int32 VehicleId)
 {
+    BrakeCapability.Invalidate();
     // The garage uses bounded, engine-independent multipliers; defend the
     // physics integration from corrupt or nonfinite gameplay state anyway.
     GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
@@ -606,6 +607,7 @@ void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)
     TireCondition.Suspend();
     BrakeHeat.Suspend();
     WheelBrakes.Reset();
+    BrakeCapability.Invalidate();
     EngineHeat.Suspend();
     Transmission.Suspend();
     LastGroundContact = {};
@@ -910,6 +912,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         TireCondition.Suspend();
         BrakeHeat.Suspend();
         WheelBrakes.Reset();
+        BrakeCapability.Invalidate();
         EngineHeat.Suspend();
         CollisionDamage.Suspend();
         LastQualifiedPlanarSpeedCmPerSecond = 0.0;
@@ -1420,24 +1423,39 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Independent modeled rotors may only REDUCE the already admitted
     // contact forces. Their proposed state is not committed until every
     // road-point braking command has actually reached AddForceAtLocation.
+    const double WheelGripScale = Surface.LateralGripMultiplier *
+        TireCondition.GripMultiplier() * static_cast<double>(GarageGrip) *
+        CollisionDamage.LateralGripMultiplier();
+    const auto WheelBrakeSetup = latebrake::BrakeProfileForVehicle(GarageVehicleId, bArcade);
+    const auto BrakeCapabilityCandidate = latebrake::EstimateServiceBrakeCapability({
+        static_cast<double>(Mass), WheelGripScale,
+        Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0,
+        bArcade, bUseWheelBrakeModel, bRoadBrakeSamplesValid,
+        static_cast<double>(LongitudinalSpeed), RoadContactForwardSpeeds,
+        RoadBrakeNormalZ, RoadBrakeForwardScales},
+        GroundContact, SpringResponse, WheelBrakeSetup);
+    if (!BrakeCapabilityCandidate.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
     latebrake::FourCornerWheelBrakeOutput WheelBrakePlan;
     if (bUseWheelBrakeModel)
     {
         WheelBrakePlan = WheelBrakes.Propose({
             static_cast<double>(DeltaSeconds), static_cast<double>(Mass),
-            Surface.LateralGripMultiplier * TireCondition.GripMultiplier() *
-                static_cast<double>(GarageGrip) *
-                CollisionDamage.LateralGripMultiplier(),
+            WheelGripScale,
             Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0,
             bServiceBraking, BrakeProfile.HandbrakeActive,
             GroundContact.Valid && SpringResponse.Valid && bRoadBrakeSamplesValid,
             RoadContactForwardSpeeds, RoadBrakeNormalZ, RoadBrakeForwardScales},
-            latebrake::BrakeProfileForVehicle(GarageVehicleId, bArcade),
+            WheelBrakeSetup,
             GroundContact, SpringResponse, ContactBraking);
     }
     else
     {
         WheelBrakes.Reset();
+        BrakeCapability.Invalidate();
         WheelBrakePlan.Valid = true;
         WheelBrakePlan.Brakes = ContactBraking;
     }
@@ -1911,6 +1929,12 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<float>(ReverseGovernor.ForceY), 0.f));
     }
 
+    // Advisory capacity is visible only after this complete drive frame
+    // passed every source policy and all actual force commands were sent.
+    // It is an estimate for the next rival tick, not measured deceleration.
+    BrakeCapability.Publish(BrakeCapabilityCandidate,
+        static_cast<double>(DeltaSeconds), TeleportRevision);
+
 #if !UE_BUILD_SHIPPING
     // Real Development-build evidence for installed-handling QA only.
     // Use the SAME accepted suspension cadence as the existing v=1
@@ -2213,6 +2237,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     TireCondition.Suspend();
     BrakeHeat.Suspend();
     WheelBrakes.Reset();
+    BrakeCapability.Invalidate();
     EngineHeat.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();

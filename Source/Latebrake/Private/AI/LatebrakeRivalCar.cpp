@@ -26,6 +26,7 @@ void ALatebrakeRivalCar::ResetPilot()
     Route.Reset();
     RivalGateTrace.Reset();
     FollowingBrakeHold.Reset();
+    BrakeCapacityPace.Reset();
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
@@ -40,6 +41,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     Route.Configure(CheckpointCount, RequiredLaps);
     RivalGateTrace.Reset();
     FollowingBrakeHold.Reset();
+    BrakeCapacityPace.Reset();
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
@@ -64,6 +66,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
+        BrakeCapacityPace.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
@@ -84,6 +87,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         // circuit must not steer the rival toward the invalid {0,0} fallback.
         RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
+        BrakeCapacityPace.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
@@ -120,6 +124,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
+        BrakeCapacityPace.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
@@ -150,6 +155,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
+        BrakeCapacityPace.Reset();
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
@@ -181,6 +187,10 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GetTireCondition().HasValidSample() &&
         GetCollisionDamage().HasEligibleFrame() &&
         GetBrakeHeat().HasValidSample();
+    const auto CapacityPace = BrakeCapacityPace.Apply(Command, {
+        static_cast<double>(DeltaSeconds), GetTeleportRevision(),
+        bCornerPhysicsQualified, GetBrakeCapabilityEstimate()});
+    Command = CapacityPace.Command;
     const latebrake::RivalCornerBrakeResult BrakeForecast =
         latebrake::ApplyRivalCornerBrakeEnvelope(Command, {
             Route.GetNextWaypoint(),
@@ -192,7 +202,9 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             GetCollisionDamage().LateralGripMultiplier(),
             GetBrakeHeat().ServiceBrakeMultiplier(),
             GetHandlingMode() == ELatebrakeHandlingMode::Arcade,
-            bCornerPhysicsQualified});
+            bCornerPhysicsQualified && CapacityPace.Valid,
+            true, CapacityPace.DecelerationCeilingCmPerSecondSquared,
+            0.20 + static_cast<double>(DeltaSeconds)});
     Command = BrakeForecast.Command;
 
     // Apply selected Quick Race difficulty only to this already-valid

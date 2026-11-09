@@ -40,6 +40,43 @@ Invalid physics, unsupported gate index, unavailable prior qualified
 thermal/grip data or nonfinite speed/position fail closed with a safe
 brake command; they cannot authorize additional rival propulsion.
 
+## Contact-capacity extension after v0.5.97
+
+The current draft also limits this envelope by an advisory service-brake
+capacity estimate from the shared pawn's previous **accepted** drive frame.
+That estimate reuses the same spring loads, measured road tangents, garage
+profile, tire/surface/damage grip and heat as the actual brake path. It
+reserves 35% of available force, accounts for modeled rotor equivalent mass
+and subtracts a worst-direction grade allowance from the measured tangent.
+Opposing road-point motion cannot count as useful forward braking.
+
+This is an estimate of current source-level capacity, not measured
+deceleration, a future-grip prediction or proof that a corner can be made.
+It cannot submit Chaos forces. The source still needs real track tuning.
+
+The pawn publishes a monotonic identity only after the whole drive frame
+passes its policies and actual commands are sent. Pause, recovery, invalid
+physics and garage changes invalidate it. The rival rejects repeated or
+pre-teleport identities. A capacity loss is immediate; recovery grows by
+at most 360 cm/s³ over fresh accepted observations. The first new estimate
+starts at half capacity. This prevents one favorable crest/contact sample
+from instantly restoring an optimistic corner forecast.
+
+With this extension active, the target uses the smaller of the original
+forecast and current capacity, with a 0.20s plus one-frame reaction-distance
+allowance. The inbound window covers the actual incoming segment length;
+wrong-lane, crossed-gate and unrelated-road rejection remain. Zero capacity
+removes propulsion and keeps a brake request. The standalone legacy API
+retains its original default window when no contact ceiling is supplied.
+
+The new source regressions cover 25,000 varied capability frames, grade/SI
+references, low load, partial support, spin, receipt ordering and transient
+capacity loss/recovery. A 108-case flat prescribed-body harness composes the
+actual wheel model and capacity-aware corner envelope across six profiles,
+two handling modes, three grip/heat/load conditions and 30/60/120 FPS.
+Its motor/rolling-load integration is deliberately a toy harness. It is
+not a genuine rival lap, Chaos collision test or installed gameplay result.
+
 This controller does **not** steer the car, teleport the rival, grant a
 lap, overwrite the rival route, modify the player's recorded results,
 simulate independent wheel contact, claim an overtaking AI, or

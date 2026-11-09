@@ -24,6 +24,9 @@ struct RivalCornerBrakeSample final
     double BrakeHeatMultiplier = 1.0;
     bool ArcadeHandling = true;
     bool PriorPhysicsQualified = false;
+    bool UseContactCapacityCeiling = false;
+    double ContactDecelerationCeiling = 0.0;
+    double ReactionSeconds = 0.0;
 };
 
 struct RivalCornerBrakeResult final
@@ -66,6 +69,12 @@ inline RivalCornerBrakeResult ApplyRivalCornerBrakeEnvelope(
         !std::isfinite(sample.BrakeHeatMultiplier) ||
         sample.BrakeHeatMultiplier < 0.05 ||
         sample.BrakeHeatMultiplier > 1.0 ||
+        (sample.UseContactCapacityCeiling &&
+            (!std::isfinite(sample.ContactDecelerationCeiling) ||
+             sample.ContactDecelerationCeiling < 0.0 ||
+             sample.ContactDecelerationCeiling > 5000.0 ||
+             !std::isfinite(sample.ReactionSeconds) ||
+             sample.ReactionSeconds < 0.0 || sample.ReactionSeconds > 1.0)) ||
         !std::isfinite(command.Throttle) ||
         command.Throttle < 0.0 || command.Throttle > 1.0 ||
         !std::isfinite(command.Steering) ||
@@ -80,16 +89,24 @@ inline RivalCornerBrakeResult ApplyRivalCornerBrakeEnvelope(
     const double effectiveGrip = std::clamp(
         sample.SurfaceGrip * sample.TireGrip * sample.ImpactGrip,
         0.10, 2.0);
-    const double safeBrakeDeceleration =
+    const double nominalSafeDeceleration =
         (sample.ArcadeHandling ? ArcadeServiceBrakeDeceleration
                                : SimulationServiceBrakeDeceleration) *
         effectiveGrip * sample.BrakeHeatMultiplier *
         RivalBrakeForecastSafetyScale;
+    const double safeBrakeDeceleration = sample.UseContactCapacityCeiling
+        ? std::min(nominalSafeDeceleration, sample.ContactDecelerationCeiling)
+        : nominalSafeDeceleration;
     if (!std::isfinite(safeBrakeDeceleration))
     {
         return {};
     }
 
+    if (sample.UseContactCapacityCeiling && safeBrakeDeceleration <= 1.0e-6 && !command.Arrived)
+    {
+        command.Throttle = 0.0;
+        command.Brake = true;
+    }
     const auto ordinary = [&]() noexcept -> RivalCornerBrakeResult
     {
         return {command, true, false, false,
@@ -135,8 +152,10 @@ inline RivalCornerBrakeResult ApplyRivalCornerBrakeEnvelope(
     }
     // Never brake for a gate that was already crossed, a shoulder
     // or an unrelated road segment; preserve the existing AI controls.
+    const double maximumApproach = sample.UseContactCapacityCeiling
+        ? length : RivalEarlyBrakeMaximumApproachCm;
     if (inboundRemaining < RivalEarlyBrakeMinimumApproachCm ||
-        inboundRemaining > RivalEarlyBrakeMaximumApproachCm ||
+        inboundRemaining > maximumApproach ||
         crossTrack > RivalEarlyBrakeMaximumCrossTrackCm ||
         headingDot > 0.86)
     {
@@ -144,7 +163,9 @@ inline RivalCornerBrakeResult ApplyRivalCornerBrakeEnvelope(
     }
 
     const double runway = std::max(0.0,
-        inboundRemaining - RivalCornerRunThroughBufferCm);
+        inboundRemaining - RivalCornerRunThroughBufferCm -
+            (sample.UseContactCapacityCeiling ?
+                sample.PlanarSpeedCmPerSecond * sample.ReactionSeconds : 0.0));
     const double targetSpeed = std::sqrt(
         RivalCornerExitSpeedCmPerSecond * RivalCornerExitSpeedCmPerSecond +
         2.0 * safeBrakeDeceleration * runway);
