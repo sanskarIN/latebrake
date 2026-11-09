@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>LateBrake is <strong>not a verified playable release</strong>. The latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.96">v0.5.96</a> at <code>5bbea98bc085f1ab7f8a6dde0cf6b9f9d160bdd7</code>: an <strong>experimental SOURCE-ONLY snapshot from unmerged rounded-circuit PR #316 with zero executable attachments</strong>. It includes proposed 1.70265km circuit geometry and editor/collision candidates. Genuine Unreal compilation, cooked road contact, a Win64 EXE and installed gameplay remain unverified. Source archives are not installers. <a href="releases/v0.5.96/">Read source notes</a>. <a href="https://github.com/sanskarIN/latebrake/blob/main/docs/V0597_SOURCE_RELEASE_PREPARATION.md">v0.5.97 braking preparation is not yet published</a>.</p>
+  <p>LateBrake is <strong>not a verified playable release</strong>. The latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97">v0.5.97</a> at <code>65ef6f2f192081b64f8256867403f40882cca462</code>: an <strong>experimental SOURCE-ONLY snapshot of unmerged physics PR #295 with zero executable assets</strong>. It includes load-distributed road-tangent braking. The guarded source publisher completed, but actual Unreal compilation, a cooked circuit, installed Win64 driving and Android packages remain unverified. Source archives are not installers. <a href="releases/v0.5.97/">Read the source notes</a>.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
