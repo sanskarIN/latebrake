@@ -41,6 +41,7 @@ class USpringArmComponent;
 class UStaticMeshComponent;
 class UPointLightComponent;
 class UPrimitiveComponent;
+class ALatebrakeSkidTrailActor;
 struct FHitResult;
 
 UENUM(BlueprintType)
@@ -78,7 +79,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); WheelBrakes.Reset(); BrakeCapability.Invalidate(); Transmission.Reset(); LastGroundContact = {}; LastSuspension = {}; GripReattachment.Reset(); ResetSuspensionQa(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); WheelBrakes.Reset(); BrakeCapability.Invalidate(); Transmission.Reset(); LastGroundContact = {}; LastSuspension = {}; GripReattachment.Reset(); ResetSuspensionQa(); BrakeDistance.Reset(); NitroBoost.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); ResetSurfaceSkidTrails(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -248,6 +249,7 @@ private:
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);
     void ApplyWheelVisualPose();
+    void ResetSurfaceSkidTrails();
     void ApplyVehicleVisualRecipe(int32 VehicleId);
     void ApplyVehiclePaintRecipe(int32 VehicleId);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
@@ -321,6 +323,9 @@ private:
     latebrake::AutomaticTransmission Transmission;
     latebrake::FourCornerWheelBrakes WheelBrakes;
     latebrake::ServiceBrakeCapabilityLedger BrakeCapability;
+
+    UPROPERTY(Transient)
+    TObjectPtr<ALatebrakeSkidTrailActor> SkidTrails;
     latebrake::ChassisGroundContactOutput LastGroundContact{};
     // Actual world-contact spring force response for this Chaos frame.
     // Only the visual child wheels read this; saves and race authority do not.
