@@ -1,7 +1,8 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-07
-**Latest published milestone:** [v0.5.95 experimental SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95), immutable source commit `45e62e2f9009741bf947019105708abe64f89c3f`, **zero executable attachments**. It snapshots **unmerged draft PR #313** (physical-asphalt edge paint, braking rubber, author-only PBR material script and pinned authored-asset build gates). It does **not** include a cooked Unreal material or Windows executable. Exact-source publication passed 171 C++20 tests per Windows/Ubuntu/macOS and 621 Python source tests. Physical Unreal 5.8 Editor/UHT compilation, gameplay visuals, cooking and installed QA remain unverified; source publication does not merge PR #313.
+**Updated:** 2026-11-09
+**Latest published milestone:** [v0.5.96 experimental SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.96), immutable source commit `5bbea98bc085f1ab7f8a6dde0cf6b9f9d160bdd7`, **zero executable attachments**. It snapshots unmerged rounded-circuit PR #316, including a proposed 1.70265km circuit and source geometry/editor candidates. It does not qualify cooked Chaos road contact, genuine UE5.8/UHT compilation, installed gameplay or a Windows executable.
+**Prepared next snapshot:** [v0.5.97 road-tangent braking](https://github.com/sanskarIN/latebrake/blob/main/docs/V0597_SOURCE_RELEASE_PREPARATION.md), not yet published. Physics PR #295 remains draft pending real engine and installed driving qualification.
 **Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
 **Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
 

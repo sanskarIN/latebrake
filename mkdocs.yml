@@ -174,6 +174,7 @@ nav:
   - Roadmap & history:
       - Roadmap: ROADMAP.md
       - Release history: release-history.md
+      - v0.5.97 source preparation (unpublished): V0597_SOURCE_RELEASE_PREPARATION.md
       - Engineering status log: STATUS.md
 
 # The historical release Markdown is rendered and remains accessible by
