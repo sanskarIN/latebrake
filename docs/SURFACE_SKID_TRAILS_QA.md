@@ -34,9 +34,10 @@ reuses indices without removal/compaction or continued instance growth.
 Generation identities prevent old retirement work from hiding a reused
 slot. Expiry examines at most 64 slots per accepted game frame.
 
-Marks have a twelve-second accepted-game-time lifetime plus at most one
-scan cycle: up to 3.2 further seconds at 100ms frames. Pause freezes that
-clock. Restart clears the pool; recovery breaks continuity while preserving
+Expiry uses a twelve-second accepted-game-time lifetime plus at most one
+scan cycle: up to 3.2 further seconds at 100ms frames. A full ring can
+overwrite its oldest marks sooner. Pause freezes that clock. Restart clears
+the pool; recovery breaks continuity while preserving
 existing world marks. This is hard retirement, not opacity fading or a
 persistent physical rubber/grip simulation.
 
