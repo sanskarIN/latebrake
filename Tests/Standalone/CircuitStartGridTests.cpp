@@ -66,7 +66,7 @@ int main()
             "duplicate physical grid position is rejected with slot identities");
 
     changed = StartGridPoses;
-    changed[4].Position.Y = 0.0;
+    changed[4].Position = {0.0, 0.0};
     Require(ValidateStartGrid(changed).Failure == StartGridFailure::OffPavement,
             "center dirt cannot become a legal grid");
     changed = StartGridPoses;
