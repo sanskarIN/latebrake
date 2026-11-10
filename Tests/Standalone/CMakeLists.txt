@@ -1962,3 +1962,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehicleRearLampLayout COMMAND latebrake_vehicle_rear_lamp_layout_tests)
+
+# Human-only cosmetic chase-to-chase framing transition. No UE/Chaos
+# dependency and no movement, checkpoint or save authority.
+add_executable(latebrake_chase_camera_transition_tests
+    ChaseCameraTransitionTests.cpp)
+target_include_directories(latebrake_chase_camera_transition_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_chase_camera_transition_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_chase_camera_transition_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_chase_camera_transition_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ChaseCameraTransition
+    COMMAND latebrake_chase_camera_transition_tests)
