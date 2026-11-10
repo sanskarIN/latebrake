@@ -52,8 +52,12 @@ it is **not** a public feature or supported packaged game switch.
   are still present. A new fleet emergency brake is passed through the
   existing passing-abort + 0.18s brake-hold policies. Supplemental rivals
   do **not** run the speculative player-passing steer.
-- A stalled extra rival attempts recovery at its OWN fixed valid original
-  grid slot; a primary rival retains its original next-gate recovery.
+- A stalled extra rival attempts recovery at its OWN distinct
+  next-gate lane on one of the four true circuit segments, rather than
+  cutting diagonally across the circuit from its start. A new pure C++20
+  plan validates all **20** (four gates × five AI actors) candidate
+  landing footprints against asphalt, barriers and each other.
+  The primary rival keeps its original next-gate recovery unchanged.
   All physical vehicles (human plus remaining AI bodies) must provide
   valid obstacle observations for recovery clearance. A blocked/unknown
   landing consumes a **failed** already-issued recovery attempt, without
