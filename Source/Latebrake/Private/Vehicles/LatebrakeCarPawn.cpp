@@ -1717,9 +1717,27 @@ void ALatebrakeCarPawn::ChangeCamera()
 {
     const latebrake::CameraView Previous = CameraViews.Current();
     const latebrake::CameraView Next = CameraViews.Next();
+    const UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    // Preset switching remains available outside a race, but transition
+    // animation needs the exact same live human/physical driver authority.
+    // A menu or paused-world press snaps rather than freezing midway.
+    const bool bLiveHumanRace = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr &&
+        Mode && Mode->IsRaceStartGreen() &&
+        Mode->IsCircuitReadyForGameplay() &&
+        Mode->IsRestartPlacementReady() &&
+        !Mode->IsMenuOpen() &&
+        !Mode->IsFocusLossGuardActive() &&
+        !Mode->IsManualRacePauseActive() &&
+        !Mode->GetRace().IsFinished() &&
+        !UGameplayStatics::IsGamePaused(this) &&
+        IsRacePhysicsReady();
     // The hood's zero-length spring arm must NEVER pass through the car
     // on a blended camera path; rear view retains immediate priority.
     bBlendNextCameraPreset =
+        bLiveHumanRace &&
         Previous != latebrake::CameraView::Hood &&
         Next != latebrake::CameraView::Hood &&
         !LookBackCamera.IsHeld();
