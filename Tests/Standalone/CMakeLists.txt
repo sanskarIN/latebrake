@@ -1991,3 +1991,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GridRivalLedger COMMAND latebrake_grid_rival_ledger_tests)
+
+# Actual rival recovery preflight: continuous swept OBB player clearance
+# for a proposed physical teleport, separate from engine placement authority.
+add_executable(latebrake_rival_recovery_occupancy_tests RivalRecoveryOccupancyTests.cpp)
+target_include_directories(latebrake_rival_recovery_occupancy_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_recovery_occupancy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_recovery_occupancy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_recovery_occupancy_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalRecoveryOccupancy COMMAND latebrake_rival_recovery_occupancy_tests)
