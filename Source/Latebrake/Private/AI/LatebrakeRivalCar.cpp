@@ -11,6 +11,7 @@
 #include "AI/RivalDriveReadiness.h"
 #include "AI/RivalRecoveryOccupancy.h"
 #include "AI/RivalFleetTraffic.h"
+#include "AI/RivalRecoveryGrid.h"
 #include "Track/CircuitLayout.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -158,7 +159,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         const latebrake::CircuitPose LandingPose =
             GridSlot == latebrake::PrimaryRivalGridSlot
                 ? Pose
-                : latebrake::StartGridPoses[static_cast<std::size_t>(GridSlot)];
+                : latebrake::PlannedRivalRecoveryPose(RecoveryIndex, GridSlot);
         // Collect ACTUAL positions/velocities of the human and every
         // remaining physical AI actor. An absent or corrupt participant
         // cannot be silently removed from the candidate collision set.
