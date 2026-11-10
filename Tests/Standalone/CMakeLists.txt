@@ -2050,3 +2050,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PlayerFleetRecoveryClearance COMMAND latebrake_player_fleet_recovery_tests)
+
+# Pure six-car developer-opt-in start state: no silent fallback to
+# two rivals after a fatal spawn and no career/solo green-light freeze.
+add_executable(latebrake_experimental_fleet_start_policy_tests ExperimentalFleetStartPolicyTests.cpp)
+target_include_directories(latebrake_experimental_fleet_start_policy_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_experimental_fleet_start_policy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_experimental_fleet_start_policy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_experimental_fleet_start_policy_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ExperimentalFleetStartPolicy COMMAND latebrake_experimental_fleet_start_policy_tests)

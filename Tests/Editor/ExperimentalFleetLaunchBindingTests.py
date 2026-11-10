@@ -23,10 +23,13 @@ class ExperimentalFleetLaunchBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)", 1
         )[1].split("void ALatebrakeRaceGameMode::", 1)[0]
         for expected in (
-            "bExperimentalSixCarGrid && bCircuitReady && bLocalPlayerReady",
-            "!bInactive && !Race.IsFinished() && !StartLights.IsGreen()",
+            "bExperimentalSixCarGrid && !bCareerRace &&",
+            "SelectedEvent == latebrake::EventKind::Circuit",
+            "DecideExperimentalFleetStart({",
+            "bExperimentalFleetFaulted,",
+            "FleetStart.MayAttemptPhysicalSpawn",
             "RefreshExperimentalRivals();",
-            "const bool bFleetStartReady = !bExperimentalSixCarGrid ||",
+            "const bool bFleetStartReady = FleetStart.PermitCountdown ||",
             "IsExperimentalFleetReadyForStart()",
             "IsRestartPlacementReady() &&",
             "bFleetStartReady",
@@ -81,7 +84,9 @@ class ExperimentalFleetLaunchBindingTests(unittest.TestCase):
         self.assertLess(spawn.index("Actor->TryRecoverTo("),
                         spawn.index("GridRivals.Bind(Slot,"))
         self.assertIn("if (!bVerifiedPlacement", spawn)
-        self.assertIn("bExperimentalSixCarGrid = false;", spawn)
+        self.assertNotIn("bExperimentalSixCarGrid = false;", spawn)
+        self.assertIn("bExperimentalFleetFaulted = true;", spawn)
+        self.assertIn("if (bExperimentalFleetFaulted)", spawn)
 
     def test_missing_primary_is_never_ignored_by_traffic(self):
         collect = self.mode.split(

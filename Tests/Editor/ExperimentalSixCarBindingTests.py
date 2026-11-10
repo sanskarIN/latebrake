@@ -50,7 +50,7 @@ class ExperimentalSixCarBindingTests(unittest.TestCase):
             "GetWorld()->SpawnActor<ALatebrakeRivalCar>(",
             "Actor->AssignGridSlot(Slot)",
             "GridRivals.Bind(Slot",
-            "bExperimentalSixCarGrid = false",
+            "bExperimentalFleetFaulted = true",
         ):
             self.assertIn(marker, source)
         self.assertIn(
