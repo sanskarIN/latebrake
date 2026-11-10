@@ -1962,3 +1962,18 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehicleRearLampLayout COMMAND latebrake_vehicle_rear_lamp_layout_tests)
+
+# Six proposed original-circuit starting positions: actual player/rival
+# unchanged, four future slots validated with chassis footprint OBB SAT.
+# Source preflight cannot certify real Chaos collisions or spawn new AI.
+add_executable(latebrake_circuit_start_grid_tests CircuitStartGridTests.cpp)
+target_include_directories(latebrake_circuit_start_grid_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_circuit_start_grid_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_circuit_start_grid_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_circuit_start_grid_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CircuitStartGrid COMMAND latebrake_circuit_start_grid_tests)
