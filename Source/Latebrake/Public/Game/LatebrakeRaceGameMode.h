@@ -134,7 +134,11 @@ public:
         int32& OutCount) const;
     bool IsExperimentalSixCarGridEnabled() const
     {
-        return bExperimentalSixCarGrid;
+        // A command-line flag alone cannot modify solo, career or
+        // partially-spawned opponent sessions.
+        return bExperimentalSixCarGrid && !bCareerRace &&
+            SelectedEvent == latebrake::EventKind::Circuit &&
+            ExperimentalRivals.Num() == latebrake::StartGridCapacity - 2;
     }
     latebrake::GridRivalStatus GetGridRivalStatus(int32 Slot) const noexcept
     {
