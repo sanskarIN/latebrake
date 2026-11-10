@@ -10,7 +10,7 @@ on:
   pull_request:
     # Run read-only source verification for the stacked grid-identity PR.
     # Main-only push/release and Pages deployment permissions are unchanged.
-    branches: [main, feature/six-slot-start-grid-20261110]
+    branches: [main, feature/six-slot-start-grid-20261110, feature/grid-rival-identity-ledger-20261110]
   workflow_dispatch:
 
 permissions:
