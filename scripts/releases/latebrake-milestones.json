@@ -15,7 +15,8 @@
     332,
     333,
     334,
-    335
+    335,
+    336
   ],
   "checked_open_issues": [
     13,
@@ -99,6 +100,11 @@
       "number": 234,
       "kind": "issue",
       "reason": "Experimental Win32 2D preview is a separate product/QA lane, not the UE 3D racing game's release evidence."
+    },
+    {
+      "number": 336,
+      "kind": "pr",
+      "reason": "Administrative milestone guidance and read-only audit PR; its review must not gate the independent pinned v0.5.98 source release or real UE5.8 qualification."
     }
   ],
   "dependencies": [
