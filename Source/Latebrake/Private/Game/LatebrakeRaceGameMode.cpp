@@ -35,6 +35,7 @@
 #include "Racing/BestLapGhost.h"
 #include "Racing/GhostSeparation.h"
 #include "Track/CircuitLayout.h"
+#include "Track/CircuitStartGrid.h"
 #include "Track/PitBayPaintLayout.h"
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
@@ -71,13 +72,13 @@ ALatebrakeRaceGameMode::ALatebrakeRaceGameMode()
 
 FVector ALatebrakeRaceGameMode::GetStartPosition()
 {
-    return FVector(latebrake::PlayerStart.Position.X,
-                   latebrake::PlayerStart.Position.Y, 180.0);
+    return FVector(latebrake::StartGridPoses[latebrake::HumanGridSlot].Position.X,
+                   latebrake::StartGridPoses[latebrake::HumanGridSlot].Position.Y, 180.0);
 }
 
 FRotator ALatebrakeRaceGameMode::GetStartRotation()
 {
-    return FRotator(0.0, latebrake::PlayerStart.HeadingDegrees, 0.0);
+    return FRotator(0.0, latebrake::StartGridPoses[latebrake::HumanGridSlot].HeadingDegrees, 0.0);
 }
 
 AActor* ALatebrakeRaceGameMode::ChoosePlayerStart_Implementation(AController* Player)
@@ -2219,8 +2220,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
         FActorSpawnParameters Params;
         Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
         RivalCar = GetWorld()->SpawnActor<ALatebrakeRivalCar>(
-            ALatebrakeRivalCar::StaticClass(), FVector(latebrake::RivalStart.Position.X,
-                    latebrake::RivalStart.Position.Y, 180.0),
+            ALatebrakeRivalCar::StaticClass(), FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
+                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0),
             FRotator::ZeroRotator, Params);
         if (!IsValid(RivalCar))
         {
@@ -2229,8 +2230,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
     }
     else
     {
-        RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
-                    latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
+        RivalCar->RecoverTo(FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
+                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0), FRotator::ZeroRotator);
     }
     if (IsValid(RivalCar))
     {
@@ -2349,8 +2350,8 @@ void ALatebrakeRaceGameMode::RestartRace()
 #endif
     if (IsValid(RivalCar))
     {
-        RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
-                    latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
+        RivalCar->RecoverTo(FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
+                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0), FRotator::ZeroRotator);
         RivalCar->ResetDrivingStats();
         RivalCar->ResetPilot();
     }
