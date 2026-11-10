@@ -52,6 +52,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "AI/LatebrakeRivalCar.h"
+#include "AI/RivalRecoveryGrid.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -2461,7 +2462,9 @@ void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
     // event. The normal one-rival game stays untouched.
     if (!bExperimentalSixCarGrid || !bCircuitReady || bCareerRace ||
         SelectedEvent != latebrake::EventKind::Circuit ||
-        !IsPlannedStartGridSafe() || !IsValid(RivalCar) || !GetWorld())
+        !IsPlannedStartGridSafe() ||
+        !latebrake::ArePlannedRivalRecoveryLanesSafe() ||
+        !IsValid(RivalCar) || !GetWorld())
     {
         DestroyExperimentalRivals();
         return;
