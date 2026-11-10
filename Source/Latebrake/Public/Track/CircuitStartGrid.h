@@ -184,9 +184,20 @@ inline bool StartGridFootprintOnPavement(CircuitPose pose) noexcept
         return false;
     }
     const StartGridRect r = MakeStartGridRect(pose);
-    // Sampling four rectangle corners is conservative for the straight
-    // grid patches, but is not a general polygon-containment proof for
-    // arbitrary future curved / disjoint surfaces.
+    // This candidate is a SOUTH-STRAIGHT starting grid only. A rectangle
+    // is wholly contained in that one real rectangular asphalt slab iff
+    // its projected extents fit both axes. Corner-only tests against the
+    // *union* of four slabs could accept a car bridging unpaved interior.
+    const double entireX = std::abs(r.X) +
+        StartGridProjectionRadius(r, 1.0, 0.0);
+    const double entireSouthY = std::abs(r.Y - SouthY) +
+        StartGridProjectionRadius(r, 0.0, 1.0);
+    if (entireX > 4000.0 || entireSouthY > RoadHalfWidth)
+    {
+        return false;
+    }
+    // Retain independent exact-corner paved-surface verification against
+    // the same source consumed by live road-contact policies.
     for (const double lengthSign : {-1.0, 1.0})
     {
         for (const double widthSign : {-1.0, 1.0})
