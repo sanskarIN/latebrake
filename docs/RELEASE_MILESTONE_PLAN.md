@@ -1,7 +1,7 @@
 # LateBrake release milestones — owner setup and PR routing
 
 **Milestones proposed, NOT created by this file.** Live GitHub verification
-on **2026-11-10** found **zero existing milestones** and 15 open PRs (including this proposed audit PR) plus
+on **2026-11-10** found **zero existing milestones** and 16 open PRs (including this proposed audit PR and live-grid safety PR #337) plus
 four non-PR open issues. Do not mark anything assigned or complete until
 GitHub's real milestone and artifact evidence confirms it.
 
@@ -96,7 +96,8 @@ Android requirements and must not be inferred from Win64-only evidence.**
 [#330](https://github.com/sanskarIN/latebrake/pull/330),
 [#331](https://github.com/sanskarIN/latebrake/pull/331),
 [#332](https://github.com/sanskarIN/latebrake/pull/332),
-[#333](https://github.com/sanskarIN/latebrake/pull/333).
+[#333](https://github.com/sanskarIN/latebrake/pull/333),
+[#337](https://github.com/sanskarIN/latebrake/pull/337).
 
 **Exit:** real engine and installed driving qualification, meaningful
 source features, demonstrably better game feel/graphics, and independently
@@ -120,6 +121,11 @@ The ordered six-car branch chain is:
    candidate so the owner's strict Unreal workflow can review the entire
    source tree. Don't blindly merge the aggregate AND independently
    merge each component PR without a controlled integration strategy.
+
+PR #337 is separately stacked on #333 and adds real pre-GO physical
+slot pose/speed/overlap checks. It is NOT included in the frozen QA
+aggregation #335; test an updated approved integration SHA before
+claiming engine validation covers #337.
 
 PR #327 is stacked on the still-open physics draft #295. It should
 not be marked as an independently qualified retail effect or merged
