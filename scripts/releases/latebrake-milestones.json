@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "repository": "sanskarIN/latebrake",
+  "checked_open_prs": [
+    295,
+    297,
+    313,
+    316,
+    318,
+    327,
+    328,
+    329,
+    330,
+    331,
+    332,
+    333,
+    334,
+    335
+  ],
+  "checked_open_issues": [
+    13,
+    148,
+    233,
+    234
+  ],
+  "milestones": [
+    {
+      "title": "v0.5.98 — Source-Only Pre-release",
+      "purpose": "Publish the already-frozen independent-wheel-brake source preview with zero executable assets. This is NOT playable qualification.",
+      "pr": [
+        295,
+        334
+      ],
+      "issues": [],
+      "acceptance": [
+        "PR #295 remains open draft at immutable source bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37 and notes byte-match the source",
+        "PR #334 read-only exact-source release audit reviewed; must not publish on its own",
+        "Owner-operated guarded publisher requalifies exact source with 3-OS C++, Python, packaging-policy, Node guards, and docs",
+        "Release v0.5.98 tag points to frozen source and has zero attached executable/game assets",
+        "v0.5.97 predecessor remains immutable; no claim of UE5.8/UHT/Win64 gameplay"
+      ]
+    },
+    {
+      "title": "UE5.8 — Playable Evidence Gate",
+      "purpose": "Owner-built original Unreal circuit and real installed Win64 driving evidence. A necessary blocker before any playable claim.",
+      "pr": [
+        335
+      ],
+      "issues": [
+        148
+      ],
+      "acceptance": [
+        "Review whole main-targeted PR #335 aggregate diff and freeze its SHA before any trusted self-hosted execution",
+        "Real licensed UE5.8 Editor/UHT and Game compilation succeeds on an owner-controlled Windows runner",
+        "Original project-owned .umap exists and cooks correctly; source, engine, map, package and manifest hashes recorded",
+        "Real installed Win64 candidate completes actual races and handling/recovery/AI regression checks at 30/60/120 FPS",
+        "Close issue #148 only when its own complete Win64/Android requirements are met; partial Windows evidence is not issue closure"
+      ]
+    },
+    {
+      "title": "v0.6.0 — Racing Alpha & Source Quality",
+      "purpose": "Build a substantially more realistic 3D racing alpha without padding source volume; goal at least 200,000 qualifying production C++ lines before its pre-release, plus genuine play quality.",
+      "pr": [
+        297,
+        313,
+        316,
+        318,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333
+      ],
+      "issues": [],
+      "acceptance": [
+        "Milestone UE5.8 playable evidence is validated; do not merge source-only drafts on CI results alone",
+        "Resolve track quality and authored circuit, detailed collision/limits, responsive camera, skid rendering and proper vehicle physics",
+        "Test real six-car physical AI, start grid, per-actor identity, fleet collision, recoveries, gameplay scoring and fail-closed launch",
+        "Verify races/garage/events on installed Win64 build across 30/60/120 FPS without cartoon-quality placeholder claims",
+        "Measure at least 200,000 genuine nonblank/noncomment production C++ lines in one qualified source tree; exclude docs, tests, generated code, duplicates, vendored code and overlapping PR double-counts",
+        "Publish only a guarded, accurately labeled pre-release; do not imply first stable v1.0.0 is complete"
+      ]
+    }
+  ],
+  "backlog": [
+    {
+      "number": 13,
+      "kind": "issue",
+      "reason": "Android hardware qualification is still outstanding; schedule after genuine Win64/UE evidence and an Android-specific workstream."
+    },
+    {
+      "number": 233,
+      "kind": "issue",
+      "reason": "Multiplayer is future design; requires qualified offline single-player, authoritative networking and privacy/security first."
+    },
+    {
+      "number": 234,
+      "kind": "issue",
+      "reason": "Experimental Win32 2D preview is a separate product/QA lane, not the UE 3D racing game's release evidence."
+    }
+  ],
+  "dependencies": [
+    {
+      "pr": 327,
+      "requires": 295
+    },
+    {
+      "pr": 330,
+      "requires": 329
+    },
+    {
+      "pr": 331,
+      "requires": 330
+    },
+    {
+      "pr": 332,
+      "requires": 331
+    },
+    {
+      "pr": 333,
+      "requires": 332
+    },
+    {
+      "pr": 335,
+      "requires": 333
+    }
+  ],
+  "aggregation": {
+    "pr": 335,
+    "includes": [
+      329,
+      330,
+      331,
+      332,
+      333
+    ],
+    "note": "PR #335 aggregates the stacked six-car work for real UE build QA; do not independently merge it and all five component PRs without an explicit integration strategy."
+  }
+}
