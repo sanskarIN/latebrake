@@ -1717,7 +1717,7 @@ void ALatebrakeCarPawn::ChangeCamera()
 {
     const latebrake::CameraView Previous = CameraViews.Current();
     const latebrake::CameraView Next = CameraViews.Next();
-    const UWorld* World = GetWorld();
+    UWorld* World = GetWorld();
     const ALatebrakeRaceGameMode* Mode =
         World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     // Preset switching remains available outside a race, but transition
