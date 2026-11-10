@@ -70,6 +70,16 @@ int main()
     Require(ValidateStartGrid(changed).Failure == StartGridFailure::OffPavement,
             "center dirt cannot become a legal grid");
     changed = StartGridPoses;
+    changed[4].Position = {WestX, 0.0};
+    Require(IsOnPavedSurface(changed[4].Position) &&
+            ValidateStartGrid(changed).Failure == StartGridFailure::OffPavement,
+            "grid cannot migrate to a different asphalt slab");
+    changed = StartGridPoses;
+    changed[4].Position.Y = SouthY - 730.0;
+    Require(IsOnPavedSurface(changed[4].Position) &&
+            ValidateStartGrid(changed).Failure == StartGridFailure::OffPavement,
+            "paved centre cannot hide a body extending beyond south asphalt");
+    changed = StartGridPoses;
     changed[4].Position.X = -3700.0;
     Require(ValidateStartGrid(changed).Failure == StartGridFailure::BarrierOverlap,
             "car body footprint blocks a grid too close to west barrier");
