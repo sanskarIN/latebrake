@@ -158,6 +158,14 @@ and new PRs/issues created after the snapshot. It never auto-assigns
 GitHub milestones; the owner should confirm names and use each real
 PR/issue sidebar **Milestone** selector once those milestones exist.
 
+After this documentation/tooling PR is separately reviewed and merged
+to protected `main`, the owner may alternatively use **GitHub Actions →
+Audit LateBrake milestone assignments (READ-ONLY) → Run workflow**, with
+`main` selected. It runs the same validation using only repository/issue/
+pull-request **read** access and produces a human-readable Actions job
+summary. It does not create or assign anything; it does not issue a tag,
+compile Unreal, build packages or claim release qualification.
+
 **Live milestone audit is advisory.** It does not run UHT, build/cook
 Unreal, measure real vehicle dynamics, or certify a release.
 For genuine gameplay acceptance, keep
