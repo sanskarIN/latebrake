@@ -36,7 +36,7 @@ class MilestonePlanAuditTests(unittest.TestCase):
     def test_every_current_open_pr_and_issue_explained_once(self):
         summary = validate_plan(self.plan)
         self.assertEqual(summary["milestone_count"], 3)
-        self.assertEqual(summary["planned_prs"], 15)
+        self.assertEqual(summary["planned_prs"], 16)
         self.assertEqual(summary["planned_issues"], 4)
         self.assertEqual(summary["assigned"][("pr", 295)],
                          self.plan["milestones"][0]["title"])
@@ -49,6 +49,8 @@ class MilestonePlanAuditTests(unittest.TestCase):
         for number in range(329, 334):
             self.assertEqual(summary["assigned"][("pr", number)],
                              self.plan["milestones"][2]["title"])
+        self.assertEqual(summary["assigned"][("pr", 337)],
+                         self.plan["milestones"][2]["title"])
         self.assertEqual(summary["assigned"][("issues", 233)],
                          "Deferred — no active release milestone")
         self.assertEqual(summary["assigned"][("issues", 234)],
