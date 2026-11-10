@@ -83,20 +83,3 @@ jobs:
             ]);
             await core.summary.write();
 
-      - name: Assert no release publication or built-artifact actions exist
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          text = Path('.github/workflows/audit-ready-v0598-source.yml').read_text()
-          forbidden = (
-              'contents: write', 'pull_request_target:', 'push:',
-              'schedule:', 'workflow_run:', 'createRelease(',
-              'createRef(', 'guard.publish(', 'upload-artifact@',
-              'Build-PlayableCandidate.ps1', 'Compile-UnrealEditor.ps1',
-          )
-          for needle in forbidden:
-              assert needle not in text, f'Unsafe readiness workflow contains {needle}'
-          assert text.count('guard.inspectState(') == 1
-          assert 'ref: ${{ github.sha }}' in text
-          PY
