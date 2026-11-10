@@ -1977,3 +1977,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME CircuitStartGrid COMMAND latebrake_circuit_start_grid_tests)
+
+# Independent read-only per-actor slot tracking for future full grids.
+# This never spawns extra cars or replaces the existing player/rival clock.
+add_executable(latebrake_grid_rival_ledger_tests GridRivalLedgerTests.cpp)
+target_include_directories(latebrake_grid_rival_ledger_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_grid_rival_ledger_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_grid_rival_ledger_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_grid_rival_ledger_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GridRivalLedger COMMAND latebrake_grid_rival_ledger_tests)
