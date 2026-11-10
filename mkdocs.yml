@@ -102,6 +102,7 @@ nav:
       - Rival grid identity ledger QA: GRID_RIVAL_LEDGER_QA.md
       - Rival recovery traffic occupancy QA: RIVAL_RECOVERY_OCCUPANCY_QA.md
       - Experimental six-car physics QA: EXPERIMENTAL_SIX_CAR_QA.md
+      - Six-car launch & paid-recovery QA: FLEET_RECOVERY_LAUNCH_QA.md
       - Collision response QA: COLLISION_RESPONSE_QA.md
       - Collision setup QA: COLLISION_SETUP_QA.md
       - Checkpoint session QA: CHECKPOINT_SESSION_QA.md
