@@ -1669,11 +1669,6 @@ void ALatebrakeCarPawn::ResetCornerCameraYaw()
     {
         return;
     }
-    const latebrake::CameraPreset Requested =
-        latebrake::GetCameraPreset(CameraViews.Current());
-    const latebrake::CameraPreset View =
-        latebrake::IsSafeCameraPreset(Requested)
-            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
     // Restore the preset immediately when the race loses input ownership,
     // even if Chaos or the paused world never sends another Tick.
     const latebrake::ChaseCameraPose Pose = ChaseRigTransition.Pose();
@@ -1696,11 +1691,6 @@ void ALatebrakeCarPawn::UpdateCornerCameraYaw(
     }
     const bool bHumanPlayer = IsLocallyControlled() &&
         Cast<APlayerController>(GetController()) != nullptr;
-    const latebrake::CameraPreset Requested =
-        latebrake::GetCameraPreset(CameraViews.Current());
-    const latebrake::CameraPreset View =
-        latebrake::IsSafeCameraPreset(Requested)
-            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
     const double YawLead = CornerLookAhead.Sample(
         ForwardCmPerSecond, VisualSteering, FrameSeconds,
         bHumanPlayer, LookBackCamera.IsHeld(), CameraViews.Current());
