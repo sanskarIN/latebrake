@@ -112,8 +112,12 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         // Never bridge a frame sample across two different gate planes.
         RivalGateTrace.Reset();
-        // Only the physical directional gate trace can trigger this call.
-        Mode->ObserveRivalVerifiedGate();
+        // Only the primary physical rival owns the live one-rival HUD
+        // observations. Other future rival actors cannot impersonate it.
+        if (Mode->IsPrimaryRivalActor(this))
+        {
+            Mode->ObserveRivalVerifiedGate();
+        }
     }
 
     if (Observation.NeedsRecovery)
@@ -134,6 +138,10 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             FVector(Pose.Position.X, Pose.Position.Y, 180.0),
             FRotator(0.0, Pose.HeadingDegrees, 0.0));
         const bool bReported = Route.ReportRecoveryResult(bRecovered);
+        if (bReported)
+        {
+            Mode->ObserveRivalRecoveryResult(this, bRecovered);
+        }
         if (!bReported || !bRecovered)
         {
             UE_LOG(LogTemp, Warning,
