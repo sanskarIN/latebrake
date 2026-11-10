@@ -71,8 +71,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // A malformed rival Chaos body must neither accrue approximate route
     // progress nor receive another physics control update. The base pawn
     // independently neutralizes the chassis before it can apply forces.
-    if (!Mode || !Mode->IsRegisteredRivalActor(this) ||
-        !Mode->IsRaceStartGreen() ||
+    if (!Mode || !Mode->IsRaceStartGreen() ||
+        !Mode->IsRegisteredRivalActor(this) ||
         !IsRacePhysicsReady() || !latebrake::CanDriveRival(
             Mode->GetRace(), Mode->GetSelectedEvent(),
             Mode->IsCircuitReadyForGameplay(),
