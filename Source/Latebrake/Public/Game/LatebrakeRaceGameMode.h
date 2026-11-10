@@ -253,6 +253,10 @@ private:
     // Opt-in only via explicit non-shipping -LatebrakeExperimentalSixCarGrid.
     // The default retail game intentionally keeps its one actual AI rival.
     bool bExperimentalSixCarGrid = false;
+    // A failed collision-aware actor spawn, post-teleport verification or
+    // invalid grid geometry is terminal for THIS accepted race attempt.
+    // Never silently turn the requested six-car run into a two-car GO.
+    bool bExperimentalFleetFaulted = false;
     latebrake::RivalFinishClockReview RivalFinishClocks;
     latebrake::RivalFinishClockComparison LastRivalFinishClockComparison;
     // Only set at a player's timing-eligible final gate. Not a race rank,
