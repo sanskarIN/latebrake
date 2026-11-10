@@ -172,6 +172,7 @@ nav:
       - Rival moving-stall recovery QA: RIVAL_NO_APPROACH_RECOVERY_QA.md
       - Save migration: SAVE_MIGRATION.md
   - Roadmap & history:
+      - GitHub release milestone plan: RELEASE_MILESTONE_PLAN.md
       - v0.5.97 source publication record: V0597_SOURCE_RELEASE_PREPARATION.md
       - v0.5.98 source preparation: V0598_SOURCE_RELEASE_PREPARATION.md
       - Roadmap: ROADMAP.md
