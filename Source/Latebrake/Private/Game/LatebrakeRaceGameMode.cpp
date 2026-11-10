@@ -2296,6 +2296,143 @@ void ALatebrakeRaceGameMode::RefreshRival()
     RefreshExperimentalRivals();
 }
 
+void ALatebrakeRaceGameMode::RestartRace()
+{
+    GaragePurchaseConfirm.Reset(); // Race transitions invalidate pending spend approvals.
+    if (bCareerRace && Race.IsFinished())
+    {
+        // After a career finish the garage is editable. A new attempt
+        // needs a NEW starting-car identity; vehicle-required challenges
+        // must equip their owned required car *before* resetting the clock.
+        // A failed SaveGame write must leave the finished event and current
+        // garage/credits intact, including while the results menu is open.
+        latebrake::ProfileWriteCheckpoint ReplayWrite(
+            Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+            PersonalBestLapSeconds, BestTimeAttackSeconds);
+        const latebrake::CareerReplayPreparation Replay =
+            latebrake::StageCareerReplay(Career, Garage);
+        if (Replay.Status != latebrake::CareerLaunchStatus::Ready)
+        {
+            CareerFeedback = Replay.Status ==
+                latebrake::CareerLaunchStatus::RequiredVehicleNotOwned
+                ? TEXT("Replay rejected: required vehicle not owned.")
+                : TEXT("Replay rejected: career event unavailable.");
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: refusing invalid completed career replay"));
+            return;
+        }
+        if (Replay.NeedsSave)
+        {
+            SaveRecords();
+            if (bProgressSaveFailed)
+            {
+                ReplayWrite.Rollback();
+                CareerFeedback = TEXT("Replay NOT started: required vehicle selection could not be saved.");
+                GarageFeedback = TEXT("WARNING: replay selection save failed; previous car restored.");
+                UE_LOG(LogTemp, Warning,
+                    TEXT("Latebrake: career replay denied because required vehicle selection write failed"));
+                return;
+            }
+        }
+        ReplayWrite.Commit();
+        CareerStartedVehicleId = Replay.StartingVehicle;
+    }
+
+    // An approved restart invalidates every secondary physical AI actor.
+    // Destroy before resetting the per-actor ledger so no stale identity
+    // survives; only a new exact-slot spawn can enter this attempt.
+    DestroyExperimentalRivals();
+
+    // The new start position is not authoritative until Unreal confirms
+    // the actual chassis placement. Invalidate the previous race's
+    // authorization BEFORE any fallible pawn movement or world unpause.
+    RestartPlacement.OnRestartRequested();
+    VerifiedRestartPawn.Reset();
+
+    // Only unpause and reset AFTER career replay preparation succeeds.
+    // Restart invalidates sampled positions even if no pawn exists yet or
+    // its physics recovery is not observed until the next actor tick.
+    CheckpointSession.OnRaceRestart();
+    // Restarting from the mobile PAUSE screen must return to a live race.
+    if (UGameplayStatics::IsGamePaused(this))
+    {
+        UGameplayStatics::SetGamePaused(this, false);
+    }
+    AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
+    ManualPause.OnExplicitResume();
+    Race.Reset();
+    // A saved PB may change at finish; Results needs the previous record.
+    AttemptPreviousBestSeconds = GetEventBestSeconds();
+    StartLights.Reset();
+    UpdateStartGantryVisual();
+    // Only a new, accepted race attempt latches the pending preset.
+    // Career medals/challenges always use the existing Standard opponent.
+    ActiveRivalDifficulty = latebrake::EffectiveRivalDifficulty(
+        QuickRaceDifficultySelection, bCareerRace ||
+            SelectedEvent == latebrake::EventKind::TimeAttack);
+    RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    GridRivals.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    LastRivalFinishClockComparison = {};
+    LastRivalFinishObservation = {};
+    LaunchMeter.Reset();
+    GhostRecorder.ResetRun();
+    GhostTrackedPawn.Reset();
+    GhostTeleportRevision = 0;
+    GhostSessionRevision = CheckpointSession.Current();
+    if (IsValid(BestLapGhostMarker))
+    {
+        BestLapGhostMarker->SetActorHiddenInGame(true);
+    }
+    LastCareerAward = {};
+    ApplyGarageToPlayer();
+    LastRaceCredits = 0;
+    RecoveriesThisRace = 0;
+    ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    if (IsValid(Car))
+    {
+        Car->ResetDrivingStats();
+    }
+    const bool bPlacedOnGrid =
+        IsValid(Car) && Car->TryRecoverTo(GetStartPosition(), GetStartRotation());
+    RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);
+    VerifiedRestartPawn = bPlacedOnGrid ? Car : nullptr;
+    if (!bPlacedOnGrid)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: RESTART_GRID_UNVERIFIED - race clock, gates and driving blocked"));
+    }
+    UpdateStartGantryVisual();
+#if !UE_BUILD_SHIPPING
+    StartRaceAuditAttempt(bPlacedOnGrid ? 1 : 0);
+#endif
+    if (IsValid(RivalCar))
+    {
+        RivalCar->RecoverTo(FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
+                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0), FRotator::ZeroRotator);
+        RivalCar->ResetDrivingStats();
+        RivalCar->ResetPilot();
+        if (!GridRivals.Bind(latebrake::PrimaryRivalGridSlot,
+                            static_cast<uint64>(RivalCar->GetUniqueID())))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: restarted rival telemetry bind rejected"));
+        }
+    }
+    // The direct keyboard/gamepad/mobile RESTART binding does not go through
+    // MenuActivate(). Never leave an invisible open menu blocking race timing
+    // after an accepted restart has already unpaused the world.
+    if (Menu.IsOpen())
+    {
+        CloseMenuForRace();
+    }
+    if (bPlacedOnGrid)
+    {
+        RefreshExperimentalRivals();
+    }
+}
+
 void ALatebrakeRaceGameMode::DestroyExperimentalRivals()
 {
     for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)
@@ -2523,143 +2660,6 @@ void ALatebrakeRaceGameMode::ObserveAdditionalRivalRecoveryResult(
     {
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: additional rival recovery receipt rejected"));
-    }
-}
-
-void ALatebrakeRaceGameMode::RestartRace()
-{
-    GaragePurchaseConfirm.Reset(); // Race transitions invalidate pending spend approvals.
-    if (bCareerRace && Race.IsFinished())
-    {
-        // After a career finish the garage is editable. A new attempt
-        // needs a NEW starting-car identity; vehicle-required challenges
-        // must equip their owned required car *before* resetting the clock.
-        // A failed SaveGame write must leave the finished event and current
-        // garage/credits intact, including while the results menu is open.
-        latebrake::ProfileWriteCheckpoint ReplayWrite(
-            Garage, Career, CompletedRaceCount, PersonalBestSeconds,
-            PersonalBestLapSeconds, BestTimeAttackSeconds);
-        const latebrake::CareerReplayPreparation Replay =
-            latebrake::StageCareerReplay(Career, Garage);
-        if (Replay.Status != latebrake::CareerLaunchStatus::Ready)
-        {
-            CareerFeedback = Replay.Status ==
-                latebrake::CareerLaunchStatus::RequiredVehicleNotOwned
-                ? TEXT("Replay rejected: required vehicle not owned.")
-                : TEXT("Replay rejected: career event unavailable.");
-            UE_LOG(LogTemp, Warning,
-                TEXT("Latebrake: refusing invalid completed career replay"));
-            return;
-        }
-        if (Replay.NeedsSave)
-        {
-            SaveRecords();
-            if (bProgressSaveFailed)
-            {
-                ReplayWrite.Rollback();
-                CareerFeedback = TEXT("Replay NOT started: required vehicle selection could not be saved.");
-                GarageFeedback = TEXT("WARNING: replay selection save failed; previous car restored.");
-                UE_LOG(LogTemp, Warning,
-                    TEXT("Latebrake: career replay denied because required vehicle selection write failed"));
-                return;
-            }
-        }
-        ReplayWrite.Commit();
-        CareerStartedVehicleId = Replay.StartingVehicle;
-    }
-
-    // An approved restart invalidates every secondary physical AI actor.
-    // Destroy before resetting the per-actor ledger so no stale identity
-    // survives; only a new exact-slot spawn can enter this attempt.
-    DestroyExperimentalRivals();
-
-    // The new start position is not authoritative until Unreal confirms
-    // the actual chassis placement. Invalidate the previous race's
-    // authorization BEFORE any fallible pawn movement or world unpause.
-    RestartPlacement.OnRestartRequested();
-    VerifiedRestartPawn.Reset();
-
-    // Only unpause and reset AFTER career replay preparation succeeds.
-    // Restart invalidates sampled positions even if no pawn exists yet or
-    // its physics recovery is not observed until the next actor tick.
-    CheckpointSession.OnRaceRestart();
-    // Restarting from the mobile PAUSE screen must return to a live race.
-    if (UGameplayStatics::IsGamePaused(this))
-    {
-        UGameplayStatics::SetGamePaused(this, false);
-    }
-    AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
-    ManualPause.OnExplicitResume();
-    Race.Reset();
-    // A saved PB may change at finish; Results needs the previous record.
-    AttemptPreviousBestSeconds = GetEventBestSeconds();
-    StartLights.Reset();
-    UpdateStartGantryVisual();
-    // Only a new, accepted race attempt latches the pending preset.
-    // Career medals/challenges always use the existing Standard opponent.
-    ActiveRivalDifficulty = latebrake::EffectiveRivalDifficulty(
-        QuickRaceDifficultySelection, bCareerRace ||
-            SelectedEvent == latebrake::EventKind::TimeAttack);
-    RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
-    GridRivals.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
-    RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
-    LastRivalFinishClockComparison = {};
-    LastRivalFinishObservation = {};
-    LaunchMeter.Reset();
-    GhostRecorder.ResetRun();
-    GhostTrackedPawn.Reset();
-    GhostTeleportRevision = 0;
-    GhostSessionRevision = CheckpointSession.Current();
-    if (IsValid(BestLapGhostMarker))
-    {
-        BestLapGhostMarker->SetActorHiddenInGame(true);
-    }
-    LastCareerAward = {};
-    ApplyGarageToPlayer();
-    LastRaceCredits = 0;
-    RecoveriesThisRace = 0;
-    ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
-        UGameplayStatics::GetPlayerPawn(this, 0));
-    if (IsValid(Car))
-    {
-        Car->ResetDrivingStats();
-    }
-    const bool bPlacedOnGrid =
-        IsValid(Car) && Car->TryRecoverTo(GetStartPosition(), GetStartRotation());
-    RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);
-    VerifiedRestartPawn = bPlacedOnGrid ? Car : nullptr;
-    if (!bPlacedOnGrid)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("Latebrake: RESTART_GRID_UNVERIFIED - race clock, gates and driving blocked"));
-    }
-    UpdateStartGantryVisual();
-#if !UE_BUILD_SHIPPING
-    StartRaceAuditAttempt(bPlacedOnGrid ? 1 : 0);
-#endif
-    if (IsValid(RivalCar))
-    {
-        RivalCar->RecoverTo(FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
-                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0), FRotator::ZeroRotator);
-        RivalCar->ResetDrivingStats();
-        RivalCar->ResetPilot();
-        if (!GridRivals.Bind(latebrake::PrimaryRivalGridSlot,
-                            static_cast<uint64>(RivalCar->GetUniqueID())))
-        {
-            UE_LOG(LogTemp, Warning,
-                TEXT("Latebrake: restarted rival telemetry bind rejected"));
-        }
-    }
-    // The direct keyboard/gamepad/mobile RESTART binding does not go through
-    // MenuActivate(). Never leave an invisible open menu blocking race timing
-    // after an accepted restart has already unpaused the world.
-    if (Menu.IsOpen())
-    {
-        CloseMenuForRace();
-    }
-    if (bPlacedOnGrid)
-    {
-        RefreshExperimentalRivals();
     }
 }
 
