@@ -1,7 +1,7 @@
 # LateBrake release milestones — owner setup and PR routing
 
 **Milestones proposed, NOT created by this file.** Live GitHub verification
-on **2026-11-10** found **zero existing milestones** and 14 open PRs plus
+on **2026-11-10** found **zero existing milestones** and 15 open PRs (including this proposed audit PR) plus
 four non-PR open issues. Do not mark anything assigned or complete until
 GitHub's real milestone and artifact evidence confirms it.
 
@@ -139,6 +139,11 @@ without its actual physics dependency.
 - [#234](https://github.com/sanskarIN/latebrake/issues/234):
   Windows native **2D preview** QA is a separate optional experiment,
   not proof of a playable Unreal racing game.
+- [PR #336](https://github.com/sanskarIN/latebrake/pull/336):
+  this milestone-plan/audit tooling is administrative. It must not
+  become an artificial blocker to the source-only v0.5.98 publisher,
+  the UE5.8 engine build or game qualification. Review/merge it
+  independently when its read-only workflow checks are green.
 
 A future **v1.0.0 Stable** milestone should be created only when
 release-quality gameplay, packaging, accessibility, assets, performance,
