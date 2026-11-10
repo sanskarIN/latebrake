@@ -107,6 +107,11 @@ class ExperimentalSixCarBindingTests(unittest.TestCase):
             self.assertIn(marker, collector)
         self.assertIn("bool ALatebrakeRaceGameMode::IsRegisteredRivalActor(", self.mode)
         self.assertIn("GridRivals.Matches(Slot, Identity)", self.mode)
+        self.assertIn("ArePlannedRivalRecoveryLanesSafe()", self.mode)
+        self.assertIn("PlannedRivalRecoveryPose(RecoveryIndex, GridSlot)",
+                      self.rival)
+        self.assertIn("RivalRecoveryGridTests.cpp", self.cmake)
+        self.assertIn("NAME RivalRecoveryGrid", self.cmake)
         self.assertIn("bUseFleetTraffic ? FleetTraffic.Command : TrafficCommand",
                       self.rival)
         self.assertIn("Mode->IsExperimentalSixCarGridEnabled()", self.rival)
