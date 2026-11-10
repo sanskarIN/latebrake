@@ -109,7 +109,7 @@ int main()
             RecoveryClearanceReason::OffPavement,
         "centre dirt rejects entire recovery footprint");
     corrupt = target;
-    corrupt.Position.Y = SouthY + 720.0;
+    corrupt.Position = {0.0, SouthY + 720.0};
     Require(IsOnPavedSurface(corrupt.Position) &&
             EvaluateRivalRecoveryClearance(
                 corrupt, observed, 1).Reason ==
