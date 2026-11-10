@@ -148,6 +148,9 @@ public:
             SelectedEvent == latebrake::EventKind::Circuit &&
             ExperimentalRivals.Num() == latebrake::StartGridCapacity - 2;
     }
+    // GO is denied until ALL real extra actors are bound and their Chaos
+    // chassis are ready; source-only geometry never qualifies a launch.
+    bool IsExperimentalFleetReadyForStart() const;
     latebrake::GridRivalStatus GetGridRivalStatus(int32 Slot) const noexcept
     {
         return GridRivals.Snapshot(Slot);
