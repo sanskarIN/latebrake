@@ -155,7 +155,7 @@ def compare_live(plan: dict, milestones: list, prs: list, issues: list) -> dict:
             for number in milestone[kind]:
                 expected[(field, number)] = milestone["title"]
     open_prs = {p["number"]: p for p in prs}
-    open_issues = {i["number"]: i for i in issues if not i.get("pull_request")}
+    open_issues = {i["number"]: i for i in issues if "pull_request" not in i}
     mismatches = []
     for (kind, number), title in sorted(expected.items()):
         source = open_prs if kind == "pr" else open_issues
