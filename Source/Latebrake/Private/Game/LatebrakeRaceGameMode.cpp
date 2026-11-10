@@ -55,6 +55,7 @@
 #include "AI/RivalRecoveryGrid.h"
 #include "AI/PlayerFleetRecoveryClearance.h"
 #include "AI/ExperimentalFleetStartPolicy.h"
+#include "AI/LiveSixCarStartingGrid.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -2495,9 +2496,45 @@ void ALatebrakeRaceGameMode::DestroyExperimentalRivals()
 
 bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
 {
+    // A live physics actor that was correctly spawned earlier may have
+    // shifted out of its assigned row under gravity, contact or other
+    // real-world motion BEFORE GO. A valid chassis pointer is insufficient.
     if (!IsExperimentalSixCarGridEnabled() ||
+        !HasLocalPlayerDriver() ||
         !IsValid(RivalCar) || !IsRegisteredRivalActor(RivalCar) ||
         !RivalCar->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    const ALatebrakeCarPawn* Human = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    if (!IsValid(Human) || !Human->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    std::array<latebrake::RecoveryObstacle,
+               latebrake::StartGridCapacity> Observed{};
+    const auto CollectLive = [&Observed](
+        const ALatebrakeCarPawn* Car, int32 Slot) -> bool
+    {
+        if (!IsValid(Car) || !Car->IsRacePhysicsReady() ||
+            Slot < 0 || Slot >= latebrake::StartGridCapacity)
+        {
+            return false;
+        }
+        const FVector Position = Car->GetActorLocation();
+        const FVector Velocity = Car->GetVelocity();
+        Observed[static_cast<std::size_t>(Slot)] = {
+            true, Slot, static_cast<uint64>(Car->GetUniqueID()),
+            {{static_cast<double>(Position.X),
+              static_cast<double>(Position.Y)},
+             static_cast<double>(Car->GetActorRotation().Yaw)},
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y)};
+        return true;
+    };
+    if (!CollectLive(Human, latebrake::HumanGridSlot) ||
+        !CollectLive(RivalCar.Get(), latebrake::PrimaryRivalGridSlot))
     {
         return false;
     }
@@ -2506,12 +2543,20 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
         const ALatebrakeRivalCar* Actor = ExperimentalRivals[Index].Get();
         if (!IsValid(Actor) || Actor->GetGridSlot() != Index + 2 ||
             !IsRegisteredRivalActor(Actor) ||
-            !Actor->IsRacePhysicsReady())
+            !Actor->IsRacePhysicsReady() ||
+            !CollectLive(Actor, Index + 2))
         {
             return false;
         }
     }
-    return true;
+    // Every GO countdown frame receives a fresh, exact six-car snapshot.
+    // Fail closed if a car moved, rotated, gained unusual speed, or now
+    // overlaps another padded footprint. No steering/teleport/score
+    // authority is added to this defensive start-light read.
+    const latebrake::LiveGridValidation LiveGrid =
+        latebrake::EvaluateLiveSixCarStartingGrid(
+            Observed, latebrake::StartGridCapacity);
+    return LiveGrid.Safe();
 }
 
 void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
