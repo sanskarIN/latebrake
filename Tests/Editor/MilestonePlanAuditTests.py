@@ -97,7 +97,7 @@ class MilestonePlanAuditTests(unittest.TestCase):
         bad["milestones"][0]["pr"].append(335)
         with self.assertRaisesRegex(PlanError, "boundaries"):
             validate_plan(bad)
-        self.assertIn("zero attached executable", self.doc)
+        self.assertIn("zero attached executable", self.doc.replace("\n", " ").replace("**", ""))
         self.assertIn("200,000", self.doc)
         self.assertIn("PR #335", self.doc)
         self.assertIn("RELEASE_MILESTONE_PLAN.md", self.nav)
