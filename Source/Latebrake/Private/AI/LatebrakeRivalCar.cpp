@@ -360,25 +360,31 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // finite multi-car forecast now observes every *physically verified*
     // rival as well. It may only remove motor demand or add braking;
     // an unsafe/missing opponent sample is a safe hard brake.
+    // These extra sweeps are only run during a completely established
+    // opt-in physical fleet; default gameplay retains its old CPU path.
+    const bool bUseFleetTraffic =
+        Mode->IsExperimentalSixCarGridEnabled();
     std::array<latebrake::RecoveryObstacle,
                latebrake::MaxRecoveryObstacles> TrafficBlockers{};
     int32 TrafficBlockerCount = 0;
-    const bool bTrafficQualified = Mode->TryCollectPhysicalTraffic(
-        this, TrafficBlockers, TrafficBlockerCount);
+    const bool bTrafficQualified = bUseFleetTraffic &&
+        Mode->TryCollectPhysicalTraffic(
+            this, TrafficBlockers, TrafficBlockerCount);
     const latebrake::RivalFleetTrafficResult FleetTraffic =
-        latebrake::ApplyRivalFleetTraffic(TrafficCommand, {
+        bUseFleetTraffic
+            ? latebrake::ApplyRivalFleetTraffic(TrafficCommand, {
             {true, GridSlot, static_cast<uint64>(GetUniqueID()),
                 {{Position.X, Position.Y},
                  static_cast<double>(GetActorRotation().Yaw)},
                 Velocity.X, Velocity.Y},
             TrafficBlockers,
             bTrafficQualified ? TrafficBlockerCount : 0,
-            bTrafficQualified});
+            bTrafficQualified})
+            : latebrake::RivalFleetTrafficResult{
+                TrafficCommand, true, false, -1};
     // Preserve the established one-rival handling in normal launches.
     // The newly conservative fleet braking is dev-opt-in only and does
     // not silently change retail pace or primary rival difficulty.
-    const bool bUseFleetTraffic =
-        Mode->IsExperimentalSixCarGridEnabled();
     const latebrake::PilotCommand FleetTrafficCommand =
         bUseFleetTraffic ? FleetTraffic.Command : TrafficCommand;
     // A short, fail-closed hold prevents brake chatter near the
