@@ -108,6 +108,7 @@ inline RivalFleetTrafficResult ApplyRivalFleetTraffic(
         sample.Self.Pose.HeadingDegrees * (3.14159265358979323846 / 180.0);
     const double forwardX = std::cos(heading);
     const double forwardY = std::sin(heading);
+    int limitingSlot = -1;
     for (int i = 0; i < sample.BlockerCount; ++i)
     {
         const RecoveryObstacle& other =
@@ -163,10 +164,12 @@ inline RivalFleetTrafficResult ApplyRivalFleetTraffic(
             if (permitted < command.Throttle)
             {
                 command.Throttle = permitted;
-                return {command, true, false, other.Slot};
+                limitingSlot = other.Slot;
             }
         }
     }
-    return {command, true, false, -1};
+    // Never return early on a *soft* following cap. A later real car can
+    // still be on a swept collision path and must veto ALL propulsion.
+    return {command, true, false, limitingSlot};
 }
 } // namespace latebrake
