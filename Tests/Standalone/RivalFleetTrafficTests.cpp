@@ -120,10 +120,16 @@ int main()
     Require(ApplyRivalFleetTraffic(moving, traffic).Qualified &&
         !ApplyRivalFleetTraffic(moving, traffic).EmergencyBrake,
         "five well separated real cars do not trigger phantom collision");
+    // The first blocker imposes a *soft* follow cap, but a later car
+    // has an imminent collision. Soft caps must never early-return and
+    // conceal the more dangerous late observation.
+    traffic.Blockers[0].Pose.Position = {1200.0, -1800.0};
+    traffic.Blockers[0].VelocityX = 200.0;
     traffic.Blockers[4].Pose.Position = {600.0, -1800.0};
     auto fifthThreat = ApplyRivalFleetTraffic(moving, traffic);
-    Require(fifthThreat.EmergencyBrake && fifthThreat.LimitingSlot == 5,
-        "fifth physical blocker has full veto authority");
+    Require(fifthThreat.EmergencyBrake && fifthThreat.LimitingSlot == 5 &&
+            fifthThreat.Command.Brake && fifthThreat.Command.Throttle == 0.0,
+        "late physical emergency overrides earlier mild following cap");
     traffic.Blockers[4].ActorToken = traffic.Blockers[3].ActorToken;
     Require(!ApplyRivalFleetTraffic(moving, traffic).Qualified,
         "duplicate actor token cannot be used for safe driving");
