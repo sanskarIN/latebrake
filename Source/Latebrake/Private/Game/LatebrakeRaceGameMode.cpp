@@ -54,6 +54,7 @@
 #include "AI/LatebrakeRivalCar.h"
 #include "AI/RivalRecoveryGrid.h"
 #include "AI/PlayerFleetRecoveryClearance.h"
+#include "AI/ExperimentalFleetStartPolicy.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -181,14 +182,35 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // possessed, the original map exists and all critical physics are
     // ready. No new actor is made during menu/pause/focus loss or after
     // the start lights have already gone green.
-    if (bExperimentalSixCarGrid && bCircuitReady && bLocalPlayerReady &&
-        !bInactive && !Race.IsFinished() && !StartLights.IsGreen() &&
-        !IsExperimentalSixCarGridEnabled())
+    const bool bFleetRequiredForEvent =
+        bExperimentalSixCarGrid && !bCareerRace &&
+        SelectedEvent == latebrake::EventKind::Circuit;
+    const latebrake::ExperimentalFleetStartDecision FleetStart =
+        latebrake::DecideExperimentalFleetStart({
+            bExperimentalSixCarGrid,
+            SelectedEvent == latebrake::EventKind::Circuit,
+            bCareerRace,
+            bExperimentalFleetFaulted,
+            bFleetRequiredForEvent && IsExperimentalSixCarGridEnabled(),
+            bFleetRequiredForEvent && IsExperimentalFleetReadyForStart(),
+            bCircuitReady,
+            bLocalPlayerReady,
+            IsValid(RivalCar) && IsRegisteredRivalActor(RivalCar) &&
+                RivalCar->IsRacePhysicsReady(),
+            bInactive,
+            Race.IsFinished(),
+            StartLights.IsGreen()
+        });
+    if (FleetStart.MayAttemptPhysicalSpawn)
     {
         RefreshExperimentalRivals();
     }
-    const bool bFleetStartReady = !bExperimentalSixCarGrid ||
-        IsExperimentalFleetReadyForStart();
+    // A permanently failed requested physical grid must NEVER be treated
+    // as an ordinary two-car success, but career/solo events always retain
+    // their own independent one-rival start policy.
+    const bool bFleetStartReady = !FleetStart.RequiredForEvent ||
+        (!bExperimentalFleetFaulted &&
+         IsExperimentalFleetReadyForStart());
     const bool bStartQualified =
         bCircuitReady && bLocalPlayerReady && !bInactive &&
         !Race.IsFinished() && IsRestartPlacementReady() &&
@@ -2353,6 +2375,10 @@ void ALatebrakeRaceGameMode::RestartRace()
         CareerStartedVehicleId = Replay.StartingVehicle;
     }
 
+    // An explicitly approved restart begins a NEW physical launch attempt,
+    // so it alone may clear the previous terminal spawn/geometry fault.
+    // Merely changing to solo/career never disables the original dev flag.
+    bExperimentalFleetFaulted = false;
     // An approved restart invalidates every secondary physical AI actor.
     // Destroy before resetting the per-actor ledger so no stale identity
     // survives; only a new exact-slot spawn can enter this attempt.
@@ -2492,6 +2518,24 @@ void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
     DestroyExperimentalRivals();
     return;
 #else
+    // Once a real physics/spawn failure occurs, do not attempt spawning
+    // again every game tick; only an explicitly accepted RESTART resets
+    // this terminal fault for another attempted six-car launch.
+    if (bExperimentalFleetFaulted)
+    {
+        return;
+    }
+    if (bExperimentalSixCarGrid && !bCareerRace &&
+        SelectedEvent == latebrake::EventKind::Circuit &&
+        (!IsPlannedStartGridSafe() ||
+         !latebrake::ArePlannedRivalRecoveryLanesSafe()))
+    {
+        bExperimentalFleetFaulted = true;
+        DestroyExperimentalRivals();
+        UE_LOG(LogTemp, Error,
+            TEXT("Latebrake: EXPERIMENTAL_GRID_FAULT geometry invalid; six-car GO blocked until explicit RESTART"));
+        return;
+    }
     // An explicit developer-only command line does not override missing
     // original track geometry, unavailable primary AI or a solo/career
     // event. The normal one-rival game stays untouched.
@@ -2552,7 +2596,9 @@ void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
             UE_LOG(LogTemp, Warning,
                 TEXT("Latebrake: experimental grid slot %d failed physical spawn"), Slot);
             DestroyExperimentalRivals();
-            bExperimentalSixCarGrid = false;
+            bExperimentalFleetFaulted = true;
+            UE_LOG(LogTemp, Error,
+                TEXT("Latebrake: EXPERIMENTAL_GRID_FAULT physical spawn/verification failed; six-car GO blocked until explicit RESTART"));
             return;
         }
         ExperimentalRivals[Slot - 2] = Actor;
@@ -2570,7 +2616,9 @@ void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
             UE_LOG(LogTemp, Warning,
                 TEXT("Latebrake: experimental grid slot %d rejected identity"), Slot);
             DestroyExperimentalRivals();
-            bExperimentalSixCarGrid = false;
+            bExperimentalFleetFaulted = true;
+            UE_LOG(LogTemp, Error,
+                TEXT("Latebrake: EXPERIMENTAL_GRID_FAULT physical spawn/verification failed; six-car GO blocked until explicit RESTART"));
             return;
         }
         Actor->ResetDrivingStats();
