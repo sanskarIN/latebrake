@@ -56,6 +56,12 @@ class ChaseCameraTransitionBindingTests(unittest.TestCase):
         self.assertIn("Previous != latebrake::CameraView::Hood", change)
         self.assertIn("Next != latebrake::CameraView::Hood", change)
         self.assertIn("!LookBackCamera.IsHeld()", change)
+        for guard in ("bLiveHumanRace", "!Mode->IsMenuOpen()",
+                      "!Mode->IsFocusLossGuardActive()",
+                      "!Mode->IsManualRacePauseActive()",
+                      "!UGameplayStatics::IsGamePaused(this)",
+                      "IsRacePhysicsReady()"):
+            self.assertIn(guard, change)
         self.assertIn("ApplyCameraPreset();", change)
         reset = self.pawn.split(
             "void ALatebrakeCarPawn::ResetCornerCameraYaw()", 1)[1].split(
