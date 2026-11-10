@@ -9,6 +9,7 @@
 #include "AI/RivalPassTrafficResolution.h"
 #include "AI/RivalEngineHeatPace.h"
 #include "AI/RivalDriveReadiness.h"
+#include "AI/RivalRecoveryOccupancy.h"
 #include "Track/CircuitLayout.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -112,8 +113,12 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         // Never bridge a frame sample across two different gate planes.
         RivalGateTrace.Reset();
-        // Only the physical directional gate trace can trigger this call.
-        Mode->ObserveRivalVerifiedGate();
+        // Only the primary physical rival owns the live one-rival HUD
+        // observations. Other future rival actors cannot impersonate it.
+        if (Mode->IsPrimaryRivalActor(this))
+        {
+            Mode->ObserveRivalVerifiedGate();
+        }
     }
 
     if (Observation.NeedsRecovery)
@@ -126,14 +131,56 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
-        // Record a recovery outcome only after the same verified engine
-        // placement policy used by the local player's paid RECOVER runs.
+        // Before a physical teleport, reject any target occupied by the
+        // real player's padded chassis or its short measured swept path.
+        // Missing/unverified player physics is NEVER an empty safe road.
+        // This is a conservative source preflight; real Chaos placement
+        // verification below remains mandatory.
+        std::array<latebrake::RecoveryObstacle,
+                   latebrake::MaxRecoveryObstacles> Blockers{};
+        const ALatebrakeCarPawn* Human =
+            Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
+        const bool bHumanObserved =
+            IsValid(Human) && Human->IsRacePhysicsReady();
+        if (bHumanObserved)
+        {
+            const FVector HumanPosition = Human->GetActorLocation();
+            const FVector HumanVelocity = Human->GetVelocity();
+            Blockers[0] = {true, latebrake::HumanGridSlot,
+                static_cast<uint64>(Human->GetUniqueID()),
+                {{static_cast<double>(HumanPosition.X),
+                  static_cast<double>(HumanPosition.Y)},
+                 static_cast<double>(Human->GetActorRotation().Yaw)},
+                static_cast<double>(HumanVelocity.X),
+                static_cast<double>(HumanVelocity.Y)};
+        }
+        const latebrake::RecoveryClearanceResult Clearance =
+            latebrake::EvaluateRivalRecoveryClearance(
+                Pose, Blockers, bHumanObserved ? 1 : 0);
+        if (!Clearance.Safe())
+        {
+            // A rejected occupancy check is a FAILED recovery attempt,
+            // not a successful (or free) teleport. Honor the route budget.
+            const bool bReported = Route.ReportRecoveryResult(false);
+            if (bReported)
+            {
+                Mode->ObserveRivalRecoveryResult(this, false);
+            }
+            SetAutonomousControls(0.f, 0.f, true);
+            Super::Tick(DeltaSeconds);
+            return;
+        }
+        // Actual pawn recovery remains the final collision/physics gate.
         // A rejected/misplaced/unstable teleport is a failed ATTEMPT, not a
         // successful recovery. The finite attempt budget is never refunded.
         const bool bRecovered = TryRecoverTo(
             FVector(Pose.Position.X, Pose.Position.Y, 180.0),
             FRotator(0.0, Pose.HeadingDegrees, 0.0));
         const bool bReported = Route.ReportRecoveryResult(bRecovered);
+        if (bReported)
+        {
+            Mode->ObserveRivalRecoveryResult(this, bRecovered);
+        }
         if (!bReported || !bRecovered)
         {
             UE_LOG(LogTemp, Warning,
