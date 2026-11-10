@@ -8,6 +8,7 @@
 #include "Racing/RivalFinishObservation.h"
 #include "Racing/RivalFinishClockReview.h"
 #include "AI/RivalDifficultyPreset.h"
+#include "AI/GridRivalLedger.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -111,6 +112,18 @@ public:
     bool TryGetRivalCreditedGateGap(latebrake::RivalGateGap& OutGap) const;
     // Called only after the physical rival's existing directional gate pass.
     void ObserveRivalVerifiedGate();
+    // Independent read-only ledger receives only verified physical rival
+    // recovery outcomes. No clock, scoring or movement authority.
+    void ObserveRivalRecoveryResult(const ALatebrakeRivalCar* Actor,
+                                   bool bEnginePlacementVerified);
+    bool IsPrimaryRivalActor(const ALatebrakeRivalCar* Actor) const
+    {
+        return IsValid(RivalCar) && RivalCar.Get() == Actor;
+    }
+    latebrake::GridRivalStatus GetGridRivalStatus(int32 Slot) const noexcept
+    {
+        return GridRivals.Snapshot(Slot);
+    }
     bool TryGetLatestRivalMatchedGateSplit(
         latebrake::RivalMatchedGateSplit& OutSplit) const;
 
@@ -203,6 +216,7 @@ private:
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
     latebrake::RivalMatchedGateSplits RivalSplits;
+    latebrake::GridRivalLedger GridRivals;
     latebrake::RivalFinishClockReview RivalFinishClocks;
     latebrake::RivalFinishClockComparison LastRivalFinishClockComparison;
     // Only set at a player's timing-eligible final gate. Not a race rank,
