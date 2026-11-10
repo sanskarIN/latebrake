@@ -29,6 +29,9 @@ class MilestonePlanAuditTests(unittest.TestCase):
             encoding="utf-8"
         )
         cls.nav = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+        cls.workflow = (
+            ROOT / ".github/workflows/audit-milestones.yml"
+        ).read_text(encoding="utf-8")
 
     def test_every_current_open_pr_and_issue_explained_once(self):
         summary = validate_plan(self.plan)
@@ -128,6 +131,28 @@ class MilestonePlanAuditTests(unittest.TestCase):
         out = compare_live(self.plan, [], [], [])
         self.assertEqual(out["assignment_changes_needed"], [])
         self.assertEqual(len(out["missing_proposed_milestones"]), 3)
+
+    def test_actions_is_owner_dispatched_read_only_no_release(self):
+        w = self.workflow
+        for required in (
+            "workflow_dispatch:",
+            "contents: read",
+            "issues: read",
+            "pull-requests: read",
+            "github.actor == 'sanskarIN'",
+            "github.ref == 'refs/heads/main'",
+            "persist-credentials: false",
+            "AuditMilestonePlan.py --live --json",
+            "GITHUB_STEP_SUMMARY",
+        ):
+            self.assertIn(required, w)
+        for forbidden in (
+            "contents: write", "issues: write", "pull-requests: write",
+            "pull_request_target:", "schedule:", "upload-artifact@",
+            "createRelease(", "createRef(", "Build-PlayableCandidate",
+            "Compile-UnrealEditor", "update_issue(",
+        ):
+            self.assertNotIn(forbidden, w)
 
     def test_get_only_never_mutate_api_or_write_back(self):
         for forbidden in (
