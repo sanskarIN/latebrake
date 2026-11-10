@@ -126,6 +126,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    GridRivals.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LastRivalFinishClockComparison = {};
     LastRivalFinishObservation = {};
@@ -1929,6 +1930,16 @@ void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
     {
         const double ActiveSeconds =
             Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds();
+        // Observe the genuine primary actor only. This does not certify
+        // more rivals, affect player scoring or replace RivalSplits.
+        if (!GridRivals.RecordAcceptedGate(
+                latebrake::PrimaryRivalGridSlot,
+                static_cast<uint64>(RivalCar->GetUniqueID()),
+                static_cast<int32>(RivalGateOrdinal), ActiveSeconds))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: rival grid gate observation rejected"));
+        }
         const bool bAcceptedSplit = RivalSplits.RecordRival(
             static_cast<int32>(RivalGateOrdinal), ActiveSeconds);
         if (bAcceptedSplit && !bCareerRace &&
@@ -1938,6 +1949,26 @@ void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
             RivalFinishClocks.RecordRivalAcceptedGate(
                 static_cast<int32>(RivalGateOrdinal), ActiveSeconds, true);
         }
+    }
+}
+
+void ALatebrakeRaceGameMode::ObserveRivalRecoveryResult(
+    const ALatebrakeRivalCar* Actor, bool bEnginePlacementVerified)
+{
+    // Fail closed on stale actor pointers or a future additional rival:
+    // only the real primary actor is currently permitted to report to
+    // the sole live two-car race. All grid entries remain read-only.
+    if (!IsPrimaryRivalActor(Actor))
+    {
+        return;
+    }
+    if (!GridRivals.RecordRecoveryResult(
+            latebrake::PrimaryRivalGridSlot,
+            static_cast<uint64>(Actor->GetUniqueID()),
+            Actor->GetPilotRecoveries(), bEnginePlacementVerified))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: stale/nonsequential rival recovery observation rejected"));
     }
 }
 
@@ -2240,6 +2271,14 @@ void ALatebrakeRaceGameMode::RefreshRival()
         // route-completion HUD incorrect for those races.
         RivalCar->ResetDrivingStats();
         RivalCar->ConfigurePilot(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+        // Bind only the actual physical primary rival actor in slot 1.
+        // The other four proposed slots are NOT spawned by this change.
+        if (!GridRivals.Bind(latebrake::PrimaryRivalGridSlot,
+                            static_cast<uint64>(RivalCar->GetUniqueID())))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: primary rival grid telemetry bind rejected"));
+        }
     }
 }
 
@@ -2313,6 +2352,7 @@ void ALatebrakeRaceGameMode::RestartRace()
         QuickRaceDifficultySelection, bCareerRace ||
             SelectedEvent == latebrake::EventKind::TimeAttack);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    GridRivals.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LastRivalFinishClockComparison = {};
     LastRivalFinishObservation = {};
@@ -2354,6 +2394,12 @@ void ALatebrakeRaceGameMode::RestartRace()
                     latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0), FRotator::ZeroRotator);
         RivalCar->ResetDrivingStats();
         RivalCar->ResetPilot();
+        if (!GridRivals.Bind(latebrake::PrimaryRivalGridSlot,
+                            static_cast<uint64>(RivalCar->GetUniqueID())))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: restarted rival telemetry bind rejected"));
+        }
     }
     // The direct keyboard/gamepad/mobile RESTART binding does not go through
     // MenuActivate(). Never leave an invisible open menu blocking race timing
