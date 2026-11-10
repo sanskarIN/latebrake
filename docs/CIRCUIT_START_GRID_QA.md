@@ -16,9 +16,11 @@ verified physical spacing or a playable release.
 - Four **future** positions are arranged two-abreast behind the existing
   pair, still on the physical four-asphalt-slab south straight.
 - A fail-closed, allocation-free portable preflight uses stock chassis
-  dimensions 380 x 180 cm plus 45 cm per side. Four padded chassis corners
-  must be on the original paved surface; rotated-rectangle separating-axis
-  checks must clear the original physical barriers and other proposed slots.
+  dimensions 380 x 180 cm plus 45 cm per side. The **entire** oriented
+  padded footprint must fit the original SouthStraight collision slab by
+  projected extents (not just a paved centre or four paved corners).
+  Rotated-rectangle separating-axis checks also clear the original physical
+  barriers and every other proposed slot.
 - Invalid slots, NaN/infinite coordinates and impossible rotations are
   rejected; touching safety margins are conservatively rejected.
 - The new tests exercise the actual geometry and native GameMode's
