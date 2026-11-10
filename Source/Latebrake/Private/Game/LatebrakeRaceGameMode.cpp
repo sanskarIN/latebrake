@@ -208,8 +208,12 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // A permanently failed requested physical grid must NEVER be treated
     // as an ordinary two-car success, but career/solo events always retain
     // their own independent one-rival start policy.
-    const bool bFleetStartReady = !FleetStart.RequiredForEvent ||
-        (!bExperimentalFleetFaulted &&
+    // The first policy decision may request a spawn within this same
+    // pre-GO tick. Recheck physical readiness only when that spawn was
+    // actually permitted; other events use the pure decision directly.
+    const bool bFleetStartReady = FleetStart.PermitCountdown ||
+        (FleetStart.MayAttemptPhysicalSpawn &&
+         !bExperimentalFleetFaulted &&
          IsExperimentalFleetReadyForStart());
     const bool bStartQualified =
         bCircuitReady && bLocalPlayerReady && !bInactive &&
