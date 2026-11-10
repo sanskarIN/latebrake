@@ -100,6 +100,7 @@ nav:
       - Circuit startup audit: CIRCUIT_STARTUP_AUDIT.md
       - Six-slot starting grid QA: CIRCUIT_START_GRID_QA.md
       - Rival grid identity ledger QA: GRID_RIVAL_LEDGER_QA.md
+      - Rival recovery traffic occupancy QA: RIVAL_RECOVERY_OCCUPANCY_QA.md
       - Collision response QA: COLLISION_RESPONSE_QA.md
       - Collision setup QA: COLLISION_SETUP_QA.md
       - Checkpoint session QA: CHECKPOINT_SESSION_QA.md
