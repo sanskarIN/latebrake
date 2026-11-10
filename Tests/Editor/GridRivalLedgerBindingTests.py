@@ -55,7 +55,12 @@ class GridRivalLedgerBindingTests(unittest.TestCase):
         self.assertIn("const ALatebrakeRivalCar* Actor, bool bEnginePlacementVerified",
                       self.mode)
         self.assertIn("if (!IsPrimaryRivalActor(Actor))", self.mode)
-        self.assertNotIn("TArray<TObjectPtr<ALatebrakeRivalCar>>", self.header)
+        # The new fleet owns a bounded *transient* extra-rival array,
+        # but only behind a non-shipping opt-in. The fixed-capacity ledger
+        # remains the only source of unofficial per-actor observations.
+        self.assertIn("TArray<TObjectPtr<ALatebrakeRivalCar>> ExperimentalRivals;", self.header)
+        self.assertIn("bool bExperimentalSixCarGrid = false;", self.header)
+        self.assertIn("GridRivals.Matches(Slot, Identity)", self.mode)
 
     def test_no_progress_awards_or_teleport_authority(self):
         for forbidden in ("AddForce(", "AddTorque(", "SaveRecords(",

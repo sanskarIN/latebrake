@@ -16,6 +16,7 @@ class RivalRecoveryOccupancyBindingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rival = read("Source/Latebrake/Private/AI/LatebrakeRivalCar.cpp")
+        cls.mode = read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
         cls.header = read("Source/Latebrake/Public/AI/RivalRecoveryOccupancy.h")
         cls.cmake = read("Tests/Standalone/CMakeLists.txt")
         cls.tests = read("Tests/Standalone/RivalRecoveryOccupancyTests.cpp")
@@ -25,12 +26,8 @@ class RivalRecoveryOccupancyBindingTests(unittest.TestCase):
             "if (Observation.Completed)", 1)[0]
         markers = (
             "const latebrake::CircuitPose Pose = latebrake::RivalRecovery(",
-            "UGameplayStatics::GetPlayerPawn(this, 0)",
-            "Human->IsRacePhysicsReady()",
-            "Human->GetActorLocation()",
-            "Human->GetVelocity()",
-            "Human->GetUniqueID()",
-            "Human->GetActorRotation().Yaw",
+            "const latebrake::CircuitPose LandingPose =",
+            "Mode->TryCollectPhysicalTraffic(",
             "latebrake::EvaluateRivalRecoveryClearance(",
             "if (!Clearance.Safe())",
             "Route.ReportRecoveryResult(false)",
@@ -39,7 +36,22 @@ class RivalRecoveryOccupancyBindingTests(unittest.TestCase):
         )
         positions = [recovery.index(v) for v in markers]
         self.assertEqual(positions, sorted(positions))
-        self.assertIn("Blockers, bHumanObserved ? 1 : 0", recovery)
+        self.assertIn("LandingPose, Blockers, bFleetObserved ? BlockerCount : 0", recovery)
+        observed = self.mode.split(
+            "bool ALatebrakeRaceGameMode::TryCollectPhysicalTraffic(", 1
+        )[1].split(
+            "void ALatebrakeRaceGameMode::ObserveAdditionalRivalVerifiedGate(", 1
+        )[0]
+        for sample in (
+            "UGameplayStatics::GetPlayerPawn(this, 0)",
+            "Human->IsRacePhysicsReady()",
+            "Actor->GetActorLocation()",
+            "Actor->GetVelocity()",
+            "Actor->GetUniqueID()",
+            "Actor->GetActorRotation().Yaw",
+            "for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)",
+        ):
+            self.assertIn(sample, observed)
         self.assertIn("Mode->ObserveRivalRecoveryResult(this, false)", recovery)
         self.assertIn("SetAutonomousControls(0.f, 0.f, true);", recovery)
         self.assertIn("SetAutonomousControls(0.f, 0.f, !bRecovered);", recovery)

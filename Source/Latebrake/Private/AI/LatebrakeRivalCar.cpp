@@ -10,6 +10,8 @@
 #include "AI/RivalEngineHeatPace.h"
 #include "AI/RivalDriveReadiness.h"
 #include "AI/RivalRecoveryOccupancy.h"
+#include "AI/RivalFleetTraffic.h"
+#include "AI/RivalRecoveryGrid.h"
 #include "Track/CircuitLayout.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -20,6 +22,21 @@ ALatebrakeRivalCar::ALatebrakeRivalCar()
 {
     PrimaryActorTick.bCanEverTick = true;
     AutoPossessPlayer = EAutoReceiveInput::Disabled;
+}
+
+bool ALatebrakeRivalCar::AssignGridSlot(int32 NewSlot)
+{
+    if (NewSlot < latebrake::PrimaryRivalGridSlot ||
+        NewSlot >= latebrake::StartGridCapacity)
+    {
+        return false;
+    }
+    if (NewSlot != GridSlot)
+    {
+        ResetPilot(); // A different actor identity starts from no prior route.
+        GridSlot = NewSlot;
+    }
+    return true;
 }
 
 void ALatebrakeRivalCar::ResetPilot()
@@ -56,6 +73,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // progress nor receive another physics control update. The base pawn
     // independently neutralizes the chassis before it can apply forces.
     if (!Mode || !Mode->IsRaceStartGreen() ||
+        !Mode->IsRegisteredRivalActor(this) ||
         !IsRacePhysicsReady() || !latebrake::CanDriveRival(
             Mode->GetRace(), Mode->GetSelectedEvent(),
             Mode->IsCircuitReadyForGameplay(),
@@ -119,6 +137,10 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         {
             Mode->ObserveRivalVerifiedGate();
         }
+        else
+        {
+            Mode->ObserveAdditionalRivalVerifiedGate(this);
+        }
     }
 
     if (Observation.NeedsRecovery)
@@ -131,32 +153,25 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
-        // Before a physical teleport, reject any target occupied by the
-        // real player's padded chassis or its short measured swept path.
-        // Missing/unverified player physics is NEVER an empty safe road.
-        // This is a conservative source preflight; real Chaos placement
-        // verification below remains mandatory.
+        // The legacy primary uses the original next-gate recovery pose.
+        // Additional test cars return to their own already-audited grid
+        // lane, never all teleport onto the same rival recovery point.
+        const latebrake::CircuitPose LandingPose =
+            GridSlot == latebrake::PrimaryRivalGridSlot
+                ? Pose
+                : latebrake::PlannedRivalRecoveryPose(RecoveryIndex, GridSlot);
+        // Collect ACTUAL positions/velocities of the human and every
+        // remaining physical AI actor. An absent or corrupt participant
+        // cannot be silently removed from the candidate collision set.
+        // Only a fully observed fleet may authorize a physical teleport.
         std::array<latebrake::RecoveryObstacle,
                    latebrake::MaxRecoveryObstacles> Blockers{};
-        const ALatebrakeCarPawn* Human =
-            Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this, 0));
-        const bool bHumanObserved =
-            IsValid(Human) && Human->IsRacePhysicsReady();
-        if (bHumanObserved)
-        {
-            const FVector HumanPosition = Human->GetActorLocation();
-            const FVector HumanVelocity = Human->GetVelocity();
-            Blockers[0] = {true, latebrake::HumanGridSlot,
-                static_cast<uint64>(Human->GetUniqueID()),
-                {{static_cast<double>(HumanPosition.X),
-                  static_cast<double>(HumanPosition.Y)},
-                 static_cast<double>(Human->GetActorRotation().Yaw)},
-                static_cast<double>(HumanVelocity.X),
-                static_cast<double>(HumanVelocity.Y)};
-        }
+        int32 BlockerCount = 0;
+        const bool bFleetObserved = Mode->TryCollectPhysicalTraffic(
+            this, Blockers, BlockerCount);
         const latebrake::RecoveryClearanceResult Clearance =
             latebrake::EvaluateRivalRecoveryClearance(
-                Pose, Blockers, bHumanObserved ? 1 : 0);
+                LandingPose, Blockers, bFleetObserved ? BlockerCount : 0);
         if (!Clearance.Safe())
         {
             // A rejected occupancy check is a FAILED recovery attempt,
@@ -164,7 +179,14 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             const bool bReported = Route.ReportRecoveryResult(false);
             if (bReported)
             {
-                Mode->ObserveRivalRecoveryResult(this, false);
+                if (Mode->IsPrimaryRivalActor(this))
+                {
+                    Mode->ObserveRivalRecoveryResult(this, false);
+                }
+                else
+                {
+                    Mode->ObserveAdditionalRivalRecoveryResult(this, false);
+                }
             }
             SetAutonomousControls(0.f, 0.f, true);
             Super::Tick(DeltaSeconds);
@@ -174,12 +196,19 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         // A rejected/misplaced/unstable teleport is a failed ATTEMPT, not a
         // successful recovery. The finite attempt budget is never refunded.
         const bool bRecovered = TryRecoverTo(
-            FVector(Pose.Position.X, Pose.Position.Y, 180.0),
-            FRotator(0.0, Pose.HeadingDegrees, 0.0));
+            FVector(LandingPose.Position.X, LandingPose.Position.Y, 180.0),
+            FRotator(0.0, LandingPose.HeadingDegrees, 0.0));
         const bool bReported = Route.ReportRecoveryResult(bRecovered);
         if (bReported)
         {
-            Mode->ObserveRivalRecoveryResult(this, bRecovered);
+            if (Mode->IsPrimaryRivalActor(this))
+            {
+                Mode->ObserveRivalRecoveryResult(this, bRecovered);
+            }
+            else
+            {
+                Mode->ObserveAdditionalRivalRecoveryResult(this, bRecovered);
+            }
         }
         if (!bReported || !bRecovered)
         {
@@ -305,7 +334,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // Passing only changes bounded STEERING on a paved, away-from-corners
     // straight. The independent traffic-brake guard still runs afterward.
     const latebrake::RivalPassOutput Passing =
-        StraightPassAssist.Apply(Command, {
+        Mode->IsPrimaryRivalActor(this)
+            ? StraightPassAssist.Apply(Command, {
             static_cast<double>(DeltaSeconds),
             Route.GetNextWaypoint(),
             {Position.X, Position.Y},
@@ -317,7 +347,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 GetTireCondition().HasValidSample() &&
                 GetCollisionDamage().HasEligibleFrame(),
             GetSurfaceTraction().HasValidSample() &&
-                !GetSurfaceTraction().IsOffPavement()});
+                !GetSurfaceTraction().IsOffPavement()})
+            : latebrake::RivalPassOutput{Command, false, 0.0};
     const latebrake::PilotCommand SafePassCommand = Passing.Command;
     const latebrake::PilotCommand TrafficCommand =
         latebrake::YieldRivalToPlayer(SafePassCommand, {
@@ -326,12 +357,44 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady,
             Velocity.X, Velocity.Y
         });
+    // Existing player courtesy-braking remains, but an independent
+    // finite multi-car forecast now observes every *physically verified*
+    // rival as well. It may only remove motor demand or add braking;
+    // an unsafe/missing opponent sample is a safe hard brake.
+    // These extra sweeps are only run during a completely established
+    // opt-in physical fleet; default gameplay retains its old CPU path.
+    const bool bUseFleetTraffic =
+        Mode->IsExperimentalSixCarGridEnabled();
+    std::array<latebrake::RecoveryObstacle,
+               latebrake::MaxRecoveryObstacles> TrafficBlockers{};
+    int32 TrafficBlockerCount = 0;
+    const bool bTrafficQualified = bUseFleetTraffic &&
+        Mode->TryCollectPhysicalTraffic(
+            this, TrafficBlockers, TrafficBlockerCount);
+    const latebrake::RivalFleetTrafficResult FleetTraffic =
+        bUseFleetTraffic
+            ? latebrake::ApplyRivalFleetTraffic(TrafficCommand, {
+            {true, GridSlot, static_cast<uint64>(GetUniqueID()),
+                {{Position.X, Position.Y},
+                 static_cast<double>(GetActorRotation().Yaw)},
+                Velocity.X, Velocity.Y},
+            TrafficBlockers,
+            bTrafficQualified ? TrafficBlockerCount : 0,
+            bTrafficQualified})
+            : latebrake::RivalFleetTrafficResult{
+                TrafficCommand, true, false, -1};
+    // Preserve the established one-rival handling in normal launches.
+    // The newly conservative fleet braking is dev-opt-in only and does
+    // not silently change retail pace or primary rival difficulty.
+    const latebrake::PilotCommand FleetTrafficCommand =
+        bUseFleetTraffic ? FleetTraffic.Command : TrafficCommand;
     // A short, fail-closed hold prevents brake chatter near the
     // projected contact boundary; it cannot re-route or score a rival.
     const latebrake::PilotCommand HeldTrafficCommand =
         FollowingBrakeHold.Apply(
-            TrafficCommand, static_cast<double>(DeltaSeconds),
-            bPlayerReady, TrafficCommand.Brake && !SafePassCommand.Brake);
+            FleetTrafficCommand, static_cast<double>(DeltaSeconds),
+            bUseFleetTraffic ? bTrafficQualified : bPlayerReady,
+            FleetTrafficCommand.Brake && !SafePassCommand.Brake);
     // An emergency following-brake decision may legitimately arrive
     // before the rival has physically completed its passing lane shift.
     // Braking with the passing steer still active can direct the car
