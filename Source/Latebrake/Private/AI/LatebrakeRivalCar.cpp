@@ -374,14 +374,19 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             TrafficBlockers,
             bTrafficQualified ? TrafficBlockerCount : 0,
             bTrafficQualified});
+    // Preserve the established one-rival handling in normal launches.
+    // The newly conservative fleet braking is dev-opt-in only and does
+    // not silently change retail pace or primary rival difficulty.
+    const bool bUseFleetTraffic =
+        Mode->IsExperimentalSixCarGridEnabled();
     const latebrake::PilotCommand FleetTrafficCommand =
-        FleetTraffic.Command;
+        bUseFleetTraffic ? FleetTraffic.Command : TrafficCommand;
     // A short, fail-closed hold prevents brake chatter near the
     // projected contact boundary; it cannot re-route or score a rival.
     const latebrake::PilotCommand HeldTrafficCommand =
         FollowingBrakeHold.Apply(
             FleetTrafficCommand, static_cast<double>(DeltaSeconds),
-            bTrafficQualified,
+            bUseFleetTraffic ? bTrafficQualified : bPlayerReady,
             FleetTrafficCommand.Brake && !SafePassCommand.Brake);
     // An emergency following-brake decision may legitimately arrive
     // before the rival has physically completed its passing lane shift.
