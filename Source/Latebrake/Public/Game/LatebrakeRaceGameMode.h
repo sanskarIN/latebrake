@@ -132,6 +132,14 @@ public:
         std::array<latebrake::RecoveryObstacle,
                    latebrake::MaxRecoveryObstacles>& Out,
         int32& OutCount) const;
+    // Player recovery uses five distinct physical rival blockers rather
+    // than the AI collector, which requires a subject AI actor.
+    // Always initializes outputs and refuses incomplete/anonymous grids.
+    bool TryCollectPlayerRecoveryTraffic(
+        const ALatebrakeCarPawn* Player,
+        std::array<latebrake::RecoveryObstacle,
+                   latebrake::MaxRecoveryObstacles>& Out,
+        int32& OutCount) const;
     bool IsExperimentalSixCarGridEnabled() const
     {
         // A command-line flag alone cannot modify solo, career or
@@ -140,6 +148,9 @@ public:
             SelectedEvent == latebrake::EventKind::Circuit &&
             ExperimentalRivals.Num() == latebrake::StartGridCapacity - 2;
     }
+    // GO is denied until ALL real extra actors are bound and their Chaos
+    // chassis are ready; source-only geometry never qualifies a launch.
+    bool IsExperimentalFleetReadyForStart() const;
     latebrake::GridRivalStatus GetGridRivalStatus(int32 Slot) const noexcept
     {
         return GridRivals.Snapshot(Slot);

@@ -53,6 +53,7 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "AI/LatebrakeRivalCar.h"
 #include "AI/RivalRecoveryGrid.h"
+#include "AI/PlayerFleetRecoveryClearance.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -176,9 +177,22 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     const bool bInactive =
         UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
+    // An opt-in fleet can be spawned only after the REAL player is
+    // possessed, the original map exists and all critical physics are
+    // ready. No new actor is made during menu/pause/focus loss or after
+    // the start lights have already gone green.
+    if (bExperimentalSixCarGrid && bCircuitReady && bLocalPlayerReady &&
+        !bInactive && !Race.IsFinished() && !StartLights.IsGreen() &&
+        !IsExperimentalSixCarGridEnabled())
+    {
+        RefreshExperimentalRivals();
+    }
+    const bool bFleetStartReady = !bExperimentalSixCarGrid ||
+        IsExperimentalFleetReadyForStart();
     const bool bStartQualified =
         bCircuitReady && bLocalPlayerReady && !bInactive &&
-        !Race.IsFinished() && IsRestartPlacementReady();
+        !Race.IsFinished() && IsRestartPlacementReady() &&
+        bFleetStartReady;
     // The countdown consumes ready, unpaused frames only. On the first
     // GO frame it returns JUST the residual frame time after green.
     // Keep authoritative timing and checkpoint-scoring on one light gate.
@@ -2449,6 +2463,27 @@ void ALatebrakeRaceGameMode::DestroyExperimentalRivals()
     ExperimentalRivals.Reset();
 }
 
+bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
+{
+    if (!IsExperimentalSixCarGridEnabled() ||
+        !IsValid(RivalCar) || !IsRegisteredRivalActor(RivalCar) ||
+        !RivalCar->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)
+    {
+        const ALatebrakeRivalCar* Actor = ExperimentalRivals[Index].Get();
+        if (!IsValid(Actor) || Actor->GetGridSlot() != Index + 2 ||
+            !IsRegisteredRivalActor(Actor) ||
+            !Actor->IsRacePhysicsReady())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
 {
 #if UE_BUILD_SHIPPING
@@ -2467,6 +2502,16 @@ void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
         !IsValid(RivalCar) || !GetWorld())
     {
         DestroyExperimentalRivals();
+        return;
+    }
+    // Engine may not yet have possessed the human during BeginPlay, even
+    // though the original circuit and source grid already exist. Defer
+    // full-grid spawning to a later safe pre-GO GameMode tick instead of
+    // silently spawning a fleet around a nonexistent player.
+    if (!HasLocalPlayerDriver() ||
+        !IsRegisteredRivalActor(RivalCar) ||
+        !RivalCar->IsRacePhysicsReady())
+    {
         return;
     }
     if (ExperimentalRivals.Num() == latebrake::StartGridCapacity - 2)
@@ -2511,7 +2556,14 @@ void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
             return;
         }
         ExperimentalRivals[Slot - 2] = Actor;
-        if (!Actor->AssignGridSlot(Slot) ||
+        // Actor creation alone does not prove that the Chaos chassis is
+        // correctly installed at the planned pose. Verify the real
+        // post-move transform and body before binding its race identity.
+        const bool bVerifiedPlacement = Actor->TryRecoverTo(
+            FVector(Pose.Position.X, Pose.Position.Y, 180.0),
+            FRotator(0.0, Pose.HeadingDegrees, 0.0));
+        if (!bVerifiedPlacement || !Actor->IsRacePhysicsReady() ||
+            !Actor->AssignGridSlot(Slot) ||
             !GridRivals.Bind(Slot,
                 static_cast<uint64>(Actor->GetUniqueID())))
         {
@@ -2594,10 +2646,16 @@ bool ALatebrakeRaceGameMode::TryCollectPhysicalTraffic(
     {
         return false;
     }
-    if (IsValid(RivalCar) && RivalCar.Get() != Subject &&
-        !Add(RivalCar.Get(), latebrake::PrimaryRivalGridSlot))
+    // For a secondary physical rival the PRIMARY must also be observed.
+    // An absent primary is not an empty lane even though the extra actors
+    // themselves still have valid ledger identities.
+    if (RivalCar.Get() != Subject)
     {
-        return false;
+        if (!IsValid(RivalCar) || !IsRegisteredRivalActor(RivalCar) ||
+            !Add(RivalCar.Get(), latebrake::PrimaryRivalGridSlot))
+        {
+            return false;
+        }
     }
     for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)
     {
@@ -2613,6 +2671,50 @@ bool ALatebrakeRaceGameMode::TryCollectPhysicalTraffic(
         }
     }
     return OutCount >= 1;
+}
+
+bool ALatebrakeRaceGameMode::TryCollectPlayerRecoveryTraffic(
+    const ALatebrakeCarPawn* Player,
+    std::array<latebrake::RecoveryObstacle,
+               latebrake::MaxRecoveryObstacles>& Out,
+    int32& OutCount) const
+{
+    Out.fill({});
+    OutCount = 0;
+    if (!IsExperimentalSixCarGridEnabled() || !IsValid(Player) ||
+        Player != UGameplayStatics::GetPlayerPawn(this, 0) ||
+        !HasLocalPlayerDriver() || !IsValid(RivalCar) ||
+        !IsRegisteredRivalActor(RivalCar))
+    {
+        return false;
+    }
+    // In this specific opt-in race the primary rival + four extras MUST
+    // all be physically present. A missing slot or failed Chaos body is
+    // unknown traffic, not an assumed safe road for a paid teleport.
+    for (int32 Slot = latebrake::PrimaryRivalGridSlot;
+         Slot < latebrake::StartGridCapacity; ++Slot)
+    {
+        const ALatebrakeRivalCar* Actor = Slot == latebrake::PrimaryRivalGridSlot
+            ? RivalCar.Get() : ExperimentalRivals[Slot - 2].Get();
+        if (!IsValid(Actor) || Actor->GetGridSlot() != Slot ||
+            !IsRegisteredRivalActor(Actor) || !Actor->IsRacePhysicsReady())
+        {
+            Out.fill({});
+            OutCount = 0;
+            return false;
+        }
+        const FVector Position = Actor->GetActorLocation();
+        const FVector Velocity = Actor->GetVelocity();
+        Out[static_cast<std::size_t>(OutCount)] = {
+            true, Slot, static_cast<uint64>(Actor->GetUniqueID()),
+            {{static_cast<double>(Position.X),
+              static_cast<double>(Position.Y)},
+             static_cast<double>(Actor->GetActorRotation().Yaw)},
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y)};
+        ++OutCount;
+    }
+    return OutCount == latebrake::PlayerFleetRecoveryRequiredRivals;
 }
 
 void ALatebrakeRaceGameMode::ObserveAdditionalRivalVerifiedGate(
@@ -2685,6 +2787,36 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
     const latebrake::CircuitPose Pose =
         latebrake::PlayerRecovery(Race.GetNextCheckpoint());
+    // Only the explicitly requested non-career six-car experiment uses
+    // this additional physical preflight. Normal one-rival recovery and
+    // its existing paid transaction are unchanged.
+    //
+    // Guard on the *requested* mode rather than "complete fleet": if an
+    // actor disappeared after launch, an incomplete grid must NEVER
+    // fall back to a paid teleport into an unknown occupied cell.
+    if (bExperimentalSixCarGrid && !bCareerRace &&
+        SelectedEvent == latebrake::EventKind::Circuit)
+    {
+        std::array<latebrake::RecoveryObstacle,
+                   latebrake::MaxRecoveryObstacles> PhysicalRivals{};
+        int32 ObservedRivalCount = 0;
+        const bool bObservedAll = TryCollectPlayerRecoveryTraffic(
+            Car, PhysicalRivals, ObservedRivalCount);
+        const latebrake::RecoveryClearanceResult Clearance =
+            latebrake::EvaluatePlayerFleetRecoveryClearance(
+                Pose, PhysicalRivals,
+                bObservedAll ? ObservedRivalCount : 0);
+        if (!Clearance.Safe())
+        {
+            // No engine move, no attempt fee, no callback, no checkpoint
+            // or ghost reset. Recheck on a later explicit RECOVER press.
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: PLAYER_FLEET_RECOVER_BLOCKED reason=%d blocker=%d"),
+                static_cast<int32>(Clearance.Reason),
+                static_cast<int32>(Clearance.ObstacleSlot));
+            return;
+        }
+    }
     const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
     const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
     if (!latebrake::TryChargePlayerRecoveryAfterVerifiedTeleport(

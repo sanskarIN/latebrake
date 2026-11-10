@@ -2033,3 +2033,20 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalRecoveryGrid COMMAND latebrake_rival_recovery_grid_tests)
+
+# Opt-in six-car player RECOVER: all five real rival identities must be
+# observed, and a denied physical landing cannot commit a recovery fee.
+add_executable(latebrake_player_fleet_recovery_tests
+    PlayerFleetRecoveryClearanceTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_player_fleet_recovery_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_player_fleet_recovery_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_player_fleet_recovery_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_player_fleet_recovery_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PlayerFleetRecoveryClearance COMMAND latebrake_player_fleet_recovery_tests)
