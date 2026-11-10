@@ -1,0 +1,102 @@
+name: Audit prepared v0.5.98 source prerelease (READ-ONLY)
+
+# A safe owner-operated dry run BEFORE using prepare-v0598-source.yml.
+# This workflow NEVER tags, publishes, merges, cooks or uploads binaries.
+# The separate owner publisher still rebuilds every exact-source gate.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: latebrake-v0598-read-only-source-audit
+  cancel-in-progress: false
+
+env:
+  RELEASE_COMMIT: bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37
+
+jobs:
+  source-readiness:
+    name: Authenticate current v0.5.98 plan and immutable source (NO writes)
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main' && github.actor == 'sanskarIN' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout protected main only — no candidate code executed
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Run offline release-guard state-machine tests (NO API writes)
+        run: node --test Tests/Release/ExperimentalSourceReleaseTests.cjs
+
+      - name: Read-only authenticate exact v0.5.98 source and predecessor
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const guard = require('./scripts/ExperimentalSourceRelease.cjs');
+            const plan = require('./scripts/releases/v0.5.98.json');
+            if (plan.tag !== 'v0.5.98' ||
+                plan.previousTag !== 'v0.5.97' ||
+                plan.sourceSha !== process.env.RELEASE_COMMIT ||
+                plan.prNumber !== 295) {
+              throw Error('Prepared release tag, predecessor, source pin or PR drifted');
+            }
+            const notes = fs.readFileSync(plan.notesPath, 'utf8');
+            // The shared production guard checks protected main identity,
+            // owner-created OPEN DRAFT PR #295 at its exact pinned SHA,
+            // equal source/main release-note bytes, v0.5.97 immutable tag,
+            // previous SOURCE-ONLY zero-asset release and any existing
+            // v0.5.98 tag/release. inspectState makes NO mutations.
+            const state = await guard.inspectState({
+              github, context, plan, notes,
+            });
+            if ((state.tag === null) !== (state.release === null)) {
+              // Guard permits an existing exact tag with no release after
+              // interrupted publication; record that separately below.
+              if (state.tag === null || state.release !== null) {
+                throw Error('Unexpected inconsistent tag/release state');
+              }
+            }
+            const currentState = state.release
+              ? 'Already published exactly at immutable pin'
+              : state.tag
+                ? 'Exact source tag exists; release still unpublished'
+                : 'Source pin qualified; no v0.5.98 tag or release exists';
+            core.notice('Read-only v0.5.98 release readiness: ' + currentState);
+            core.summary.addHeading('LateBrake v0.5.98 — READ-ONLY source readiness');
+            core.summary.addTable([
+              [{data:'Check',header:true},{data:'Result',header:true}],
+              ['Protected-main owner dispatch','Verified'],
+              ['Open owner-created draft PR #295','Verified'],
+              ['Exact candidate source SHA', plan.sourceSha],
+              ['Previous immutable source tag/release', plan.previousTag],
+              ['Source release note bytes and source-only warnings','Verified'],
+              ['New tag / release status', currentState],
+              ['Publication / attached binaries','None created by this workflow'],
+              ['Unreal 5.8 / Cooked Win64 / Installed gameplay','NOT checked'],
+            ]);
+            await core.summary.write();
+
+      - name: Assert no release publication or built-artifact actions exist
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/audit-ready-v0598-source.yml').read_text()
+          forbidden = (
+              'contents: write', 'pull_request_target:', 'push:',
+              'schedule:', 'workflow_run:', 'createRelease(',
+              'createRef(', 'guard.publish(', 'upload-artifact@',
+              'Build-PlayableCandidate.ps1', 'Compile-UnrealEditor.ps1',
+          )
+          for needle in forbidden:
+              assert needle not in text, f'Unsafe readiness workflow contains {needle}'
+          assert text.count('guard.inspectState(') == 1
+          assert 'ref: ${{ github.sha }}' in text
+          PY
