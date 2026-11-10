@@ -53,6 +53,7 @@
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "AI/LatebrakeRivalCar.h"
 #include "AI/RivalRecoveryGrid.h"
+#include "AI/PlayerFleetRecoveryClearance.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -2615,6 +2616,50 @@ bool ALatebrakeRaceGameMode::TryCollectPhysicalTraffic(
     return OutCount >= 1;
 }
 
+bool ALatebrakeRaceGameMode::TryCollectPlayerRecoveryTraffic(
+    const ALatebrakeCarPawn* Player,
+    std::array<latebrake::RecoveryObstacle,
+               latebrake::MaxRecoveryObstacles>& Out,
+    int32& OutCount) const
+{
+    Out.fill({});
+    OutCount = 0;
+    if (!IsExperimentalSixCarGridEnabled() || !IsValid(Player) ||
+        Player != UGameplayStatics::GetPlayerPawn(this, 0) ||
+        !HasLocalPlayerDriver() || !IsValid(RivalCar) ||
+        !IsRegisteredRivalActor(RivalCar))
+    {
+        return false;
+    }
+    // In this specific opt-in race the primary rival + four extras MUST
+    // all be physically present. A missing slot or failed Chaos body is
+    // unknown traffic, not an assumed safe road for a paid teleport.
+    for (int32 Slot = latebrake::PrimaryRivalGridSlot;
+         Slot < latebrake::StartGridCapacity; ++Slot)
+    {
+        const ALatebrakeRivalCar* Actor = Slot == latebrake::PrimaryRivalGridSlot
+            ? RivalCar.Get() : ExperimentalRivals[Slot - 2].Get();
+        if (!IsValid(Actor) || Actor->GetGridSlot() != Slot ||
+            !IsRegisteredRivalActor(Actor) || !Actor->IsRacePhysicsReady())
+        {
+            Out.fill({});
+            OutCount = 0;
+            return false;
+        }
+        const FVector Position = Actor->GetActorLocation();
+        const FVector Velocity = Actor->GetVelocity();
+        Out[static_cast<std::size_t>(OutCount)] = {
+            true, Slot, static_cast<uint64>(Actor->GetUniqueID()),
+            {{static_cast<double>(Position.X),
+              static_cast<double>(Position.Y)},
+             static_cast<double>(Actor->GetActorRotation().Yaw)},
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y)};
+        ++OutCount;
+    }
+    return OutCount == latebrake::PlayerFleetRecoveryRequiredRivals;
+}
+
 void ALatebrakeRaceGameMode::ObserveAdditionalRivalVerifiedGate(
     const ALatebrakeRivalCar* Actor)
 {
@@ -2685,6 +2730,36 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
     const latebrake::CircuitPose Pose =
         latebrake::PlayerRecovery(Race.GetNextCheckpoint());
+    // Only the explicitly requested non-career six-car experiment uses
+    // this additional physical preflight. Normal one-rival recovery and
+    // its existing paid transaction are unchanged.
+    //
+    // Guard on the *requested* mode rather than "complete fleet": if an
+    // actor disappeared after launch, an incomplete grid must NEVER
+    // fall back to a paid teleport into an unknown occupied cell.
+    if (bExperimentalSixCarGrid && !bCareerRace &&
+        SelectedEvent == latebrake::EventKind::Circuit)
+    {
+        std::array<latebrake::RecoveryObstacle,
+                   latebrake::MaxRecoveryObstacles> PhysicalRivals{};
+        int32 ObservedRivalCount = 0;
+        const bool bObservedAll = TryCollectPlayerRecoveryTraffic(
+            Car, PhysicalRivals, ObservedRivalCount);
+        const latebrake::RecoveryClearanceResult Clearance =
+            latebrake::EvaluatePlayerFleetRecoveryClearance(
+                Pose, PhysicalRivals,
+                bObservedAll ? ObservedRivalCount : 0);
+        if (!Clearance.Safe())
+        {
+            // No engine move, no attempt fee, no callback, no checkpoint
+            // or ghost reset. Recheck on a later explicit RECOVER press.
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: PLAYER_FLEET_RECOVER_BLOCKED reason=%d blocker=%d"),
+                static_cast<int32>(Clearance.Reason),
+                static_cast<int32>(Clearance.ObstacleSlot));
+            return;
+        }
+    }
     const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
     const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
     if (!latebrake::TryChargePlayerRecoveryAfterVerifiedTeleport(
