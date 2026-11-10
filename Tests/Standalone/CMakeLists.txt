@@ -2019,3 +2019,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalFleetTraffic COMMAND latebrake_rival_fleet_traffic_tests)
+
+# Four original track next-gate segments x five physical AI recovery slots.
+# Strict portable geometry; does not teleport any Unreal/Chaos actor.
+add_executable(latebrake_rival_recovery_grid_tests RivalRecoveryGridTests.cpp)
+target_include_directories(latebrake_rival_recovery_grid_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_recovery_grid_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_recovery_grid_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_recovery_grid_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalRecoveryGrid COMMAND latebrake_rival_recovery_grid_tests)
