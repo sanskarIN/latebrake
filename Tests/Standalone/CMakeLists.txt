@@ -2251,3 +2251,15 @@ else()
     target_compile_options(latebrake_brake_pressure_coherence_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME BrakePressureCoherence COMMAND latebrake_brake_pressure_coherence_tests)
+
+
+# Steering wheel physics, physical gamepad input, six-car merge and passing.
+add_executable(latebrake_driver_input_traffic_tests DrivingInputsAndTrafficTests.cpp)
+target_include_directories(latebrake_driver_input_traffic_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driver_input_traffic_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_driver_input_traffic_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driver_input_traffic_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingInputsAndTraffic COMMAND latebrake_driver_input_traffic_tests)
