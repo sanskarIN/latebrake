@@ -74,6 +74,11 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
                 self.assertNotIn(forbidden, source)
         for marker in (
             "sample.BlockerCount != MaxRecoveryObstacles",
+            "FleetBodyInsideAuthoredAsphalt(",
+            "StartGridFootprintTouchesBarrier(pose)",
+            "CircuitCollisionBlockCount",
+            "CollisionBlockStyle::Asphalt",
+            "StartGridProjectionRadius(body, 1.0, 0.0)",
             "std::all_of(roster.begin(), roster.end()",
             "ForecastFleetContact(",
             "FleetForecastHorizonSeconds",
@@ -103,6 +108,9 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         self.assertIn("-Wall -Wextra -Wpedantic -Werror", self.cmake)
         self.assertIn("i < 30000", self.tests)
         self.assertIn("TestObservedBrakeCapacity()", self.tests)
+        self.assertIn("off-road padded body denies motor", self.tests)
+        self.assertIn("barrier-overlapping body is not qualified paved traffic",
+                      self.tests)
         self.assertIn("for (int fps : {30, 60, 120})", self.tests)
         self.assertIn("FLEET_PREDICTIVE_SAFETY_QA.md", self.nav)
         self.assertIn("UE5.8", self.docs)

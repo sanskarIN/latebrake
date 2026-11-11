@@ -25,9 +25,15 @@ progress, lap awards, penalty fees, credit balance or SaveGame files.
 ## Independent portable policies
 
 - `RivalFleetCollisionForecast.h` validates six actor identity tokens,
-  exact grid slots, all five physical blockers, road footprint XY safety,
-  finite real-world body positions and velocities. Partial or duplicate
-  rosters fail closed, even when the nearest obstacle looks safe.
+  exact grid slots, all five physical blockers, and finite world-space
+  body positions and velocities. Partial or duplicate rosters fail closed.
+  **Actual footprint restriction:** each fully padded, rotated chassis
+  must fit in one of the four original collision-bearing asphalt slabs
+  without intersecting any authored wall. Paved *centre only* is no
+  longer enough; a physical margin over road edges rejects propulsion.
+  Because these slabs join as a union, the conservative one-slab proof
+  can reject a legal diagonal junction pose. Verify real corner driving
+  and adjust only on licensed engine evidence, never by assuming safety.
 - Continuous separating-axis intersection checks all four body axes,
   constant relative measured velocity and conservative uncertainty
   padding for the next 1.4 seconds. It does not falsely assume vehicles

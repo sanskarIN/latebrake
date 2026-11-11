@@ -80,6 +80,34 @@ void TestExactPhysicalRoster()
     bad.Blockers[3].Verified = false;
     Require(!ValidateSixCarFleet(bad, tokens),
             "physically unverified blocker is never an empty lane");
+    // Valid centre coordinates can still expose the padded chassis beyond
+    // actual asphalt or into a genuine original circuit wall.
+    bad = s;
+    bad.Blockers[0].Pose.Position = {
+        0.0, SouthY - RoadHalfWidth + 60.0};
+    Require(IsOnPavedSurface(bad.Blockers[0].Pose.Position) &&
+            !FleetBodyInsideAuthoredAsphalt(bad.Blockers[0].Pose) &&
+            !ValidateSixCarFleet(bad, tokens),
+            "off-road padded body denies motor despite paved centre");
+    bad = s;
+    bad.Self.Pose.Position = {
+        0.0, SouthY + RoadHalfWidth - 60.0};
+    Require(IsOnPavedSurface(bad.Self.Pose.Position) &&
+            !FleetBodyInsideAuthoredAsphalt(bad.Self.Pose) &&
+            !ValidateSixCarFleet(bad, tokens),
+            "self chassis straddling inner road edge fails closed");
+    bad = s;
+    bad.Blockers[0].Pose.Position = {3680.0, SouthY};
+    Require(IsOnPavedSurface(bad.Blockers[0].Pose.Position) &&
+            StartGridFootprintTouchesBarrier(bad.Blockers[0].Pose) &&
+            !FleetBodyInsideAuthoredAsphalt(bad.Blockers[0].Pose) &&
+            !ValidateSixCarFleet(bad, tokens),
+            "barrier-overlapping body is not qualified paved traffic");
+    bad = s;
+    bad.Blockers[2].Pose = {{EastX, -950.0}, 45.0};
+    Require(FleetBodyInsideAuthoredAsphalt(bad.Blockers[2].Pose) &&
+            ValidateSixCarFleet(bad, tokens),
+            "rotated chassis fully inside east slab remains qualified");
     bad = s;
     bad.Blockers[3].Pose.Position = {0.0, 0.0};
     Require(!ValidateSixCarFleet(bad, tokens),
@@ -210,9 +238,9 @@ void TestDistanceAndPriority()
     auto predicted = ForecastSixCarRisk(s);
     Require(predicted.Emergency(),
             "close stopped traffic exceeds conservative stopping capacity");
-    s.Blockers[0].Pose.Position = {2000.0, -1000.0};
+    s.Blockers[0].Pose.Position = {2000.0, SouthY + 550.0};
     Require(ForecastSixCarRisk(s).Kind == FleetRiskKind::Clear,
-            "large lateral separation cannot trigger same-lane stop demand");
+            "fully-paved lateral separation is not same-lane danger");
 
     RivalFleetRiskSupervisor director;
     const FleetRiskSupervision capped =
