@@ -216,9 +216,9 @@ static void TestVehicleEngineering()
 static void TestTrafficSafetyAndEvidence()
 {
     FollowingObservation input;
-    input.Self.Body.Identity=RealActor(1).Identity;
-    input.Self.Body.Pose={{-1700.0,-1800.0},0.0};
-    input.Self.Body.VelocityCmS={2000.0,0.0};
+    input.Self.Identity=RealActor(1).Identity;
+    input.Self.Pose={{-1700.0,-1800.0},0.0};
+    input.Self.VelocityCmS={2000.0,0.0};
     input.OpponentCount=1;
     input.Opponents[0]=input.Self;
     input.Opponents[0].Identity=RealActor(0).Identity;
@@ -234,7 +234,7 @@ static void TestTrafficSafetyAndEvidence()
           follow.VerifiedOpponents==1,
           "one actual slower car limits rival throttle");
     input.Opponents[0].Identity.Actor=
-        input.Self.Body.Identity.Actor;
+        input.Self.Identity.Actor;
     Check(!RestrictPhysicalCarFollowing(input).Valid,
           "fabricated duplicate actor is rejected");
     PhysicalRaceMarshal marshal;

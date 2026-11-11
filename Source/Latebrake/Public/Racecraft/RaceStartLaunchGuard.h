@@ -302,7 +302,7 @@ public:
             ++FalseStartFrames;
         result.CountdownFullyVerified=
             CountdownFrames>=
-            Settings.MinimumConsecutivePhysicalFrames;
+            static_cast<std::uint64_t>(Settings.MinimumConsecutivePhysicalFrames);
         ++QualifiedFrames;
         Last=result;
         return Last;
