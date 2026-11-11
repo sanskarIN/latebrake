@@ -4,7 +4,7 @@ The [manual draft-PR validation workflow](https://github.com/sanskarIN/latebrake
 is **not a GitHub-hosted Unreal build service**. It executes only when an
 owner-controlled, real Windows x64 GitHub Actions self-hosted runner is
 registered, online, available, accessible to this repository, and has the
-custom label \`unreal-5-8\`.
+custom label `unreal-5-8`.
 
 A queued workflow with zero started job steps does **not** mean Unreal
 compiled, that the selected pull request was authenticated, or that
@@ -16,18 +16,18 @@ provide the Epic Engine, Editor/UHT, cooked .umap or installed gameplay.
 
 1. Open the [manual workflow runs](https://github.com/sanskarIN/latebrake/actions/workflows/validate-draft-unreal-pr.yml)
    and select the run. Inspect the *job* as well as the workflow. Distinguish
-   \`queued\`, \`in_progress\` and \`completed\`; don't infer an outcome from
+   `queued`, `in_progress` and `completed`; don't infer an outcome from
    a workflow_dispatch timestamp.
 2. Open the repository **Settings → Actions → Runners**, or the **Actions →
    Management → Runners** page if that is how GitHub presents runner access.
    Verify a real Windows x64 runner is listed, **Online** and **Idle**.
    An offline, busy or missing runner cannot pick up this job.
 3. The runner must match every required label, without dropping the
-   trust boundary: \`self-hosted\`, \`Windows\`, \`X64\`, \`unreal-5-8\`.
+   trust boundary: `self-hosted`, `Windows`, `X64`, `unreal-5-8`.
    The last label is **custom**, not automatically provided by GitHub.
    Configure it on an existing authorized runner in its GitHub labels.
    Do **not** replace the workflow's self-hosted requirement with
-   \`windows-latest\` just to unblock the queue; public runners lack
+   `windows-latest` just to unblock the queue; public runners lack
    the protected licensed UE toolchain and cannot verify this engine.
 4. If no runner exists, use the official repository **New self-hosted
    runner** wizard (Windows x64) on an isolated machine you manage.
@@ -36,20 +36,20 @@ provide the Epic Engine, Editor/UHT, cooked .umap or installed gameplay.
    token or runner credentials in a repository, chat message, CI log
    or PR. Use a dedicated non-admin runner account where practical.
 5. Ensure the runner application/service is running. GitHub's runner
-   terminal normally reports \`Connected to GitHub\` and \`Listening for Jobs\`.
+   terminal normally reports `Connected to GitHub` and `Listening for Jobs`.
    When using Windows runner-as-a-service, the service runs under its
    configured **service account**; installing Unreal for one interactive
    Windows user does not automatically install it for that service.
-   PowerShell's read-only \`Get-Service 'actions.runner.*'\` may help on
+   PowerShell's read-only `Get-Service 'actions.runner.*'` may help on
    a Windows machine with runner services installed. Interactive runners
    won't appear as a running service and instead need their console open.
-6. Set the environment variable \`LATEBRAKE_UNREAL_ROOT\` **on the
+6. Set the environment variable `LATEBRAKE_UNREAL_ROOT` **on the
    actual runner process/service**, pointing to the owned UE **5.8**
    installation. Do not confuse it with the GitHub-hosted portable
    CI machine's variables. Confirm Windows PowerShell **7**, Git,
    MSVC/Visual Studio C++ tools, Windows SDK and sufficient free disk
    exist on the runner. The existing read-only source script
-   \`scripts/Test-UnrealWorkstationPrerequisites.ps1\` checks only basic
+   `scripts/Test-UnrealWorkstationPrerequisites.ps1` checks only basic
    engine/project paths and the UE Build.version metadata; it does
    **not** prove UHT, C++, UAT or hardware readiness.
 7. If a runner appears Online/Idle but the job is still queued,
@@ -65,13 +65,13 @@ provide the Epic Engine, Editor/UHT, cooked .umap or installed gameplay.
    [draft PR #341](https://github.com/sanskarIN/latebrake/pull/341).
    Review the *current head* before dispatching; do not assume any
    SHA printed in old documentation is still correct. Select
-   \`validation=Editor\` first. The workflow checks the PR number,
+   `validation=Editor` first. The workflow checks the PR number,
    base and commit **after the runner accepts the job**; a queue is
    not evidence that these inputs were valid.
 9. If an Editor run actually finishes successfully, review the real
    UHT/Editor logs and exact checked-out source hash before manually
-   requesting \`Win64\`. Even a successfully uploaded artifact is
-   explicitly \`UNVERIFIED\` until a real installed Windows driving
+   requesting `Win64`. Even a successfully uploaded artifact is
+   explicitly `UNVERIFIED` until a real installed Windows driving
    test qualifies gameplay and the original cooked circuit.
 
 ## Invariants and evidence
@@ -81,10 +81,10 @@ provide the Epic Engine, Editor/UHT, cooked .umap or installed gameplay.
 - Do not edit the in-progress or queued pinned candidate branch, invent
   an executable link, use fallback asset stubs, or publish a release.
 - Keep owner review, PR head pinning and main-only workflow dispatch.
-  Do not enable automatic \`pull_request\` jobs on a trusted private
+  Do not enable automatic `pull_request` jobs on a trusted private
   machine, run unreviewed forks, or share registration tokens.
 - After genuine engine execution, keep separate evidence for
-  UE Editor/UHT, native Win64 cook, original \`.umap\`, installed
+  UE Editor/UHT, native Win64 cook, original `.umap`, installed
   gameplay, six-car AI/physics and 30/60/120 FPS. Issue
   [#148](https://github.com/sanskarIN/latebrake/issues/148) remains
   open until all required gameplay gates are met.

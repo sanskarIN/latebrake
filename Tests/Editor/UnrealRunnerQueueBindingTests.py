@@ -30,7 +30,8 @@ class UnrealRunnerQueueBindingTests(unittest.TestCase):
         for label in ("self-hosted", "Windows", "X64", "unreal-5-8"):
             self.assertIn(label, self.queue)
         self.assertIn("windows-latest", self.queue)
-        self.assertIn("do **not** replace", self.queue)
+        self.assertIn("Do **not** replace", self.queue)
+        self.assertNotIn("\\`", self.queue)
         self.assertIn("Online", self.queue)
         self.assertIn("Idle", self.queue)
 
