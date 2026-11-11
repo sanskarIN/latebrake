@@ -176,6 +176,7 @@ inline bool ValidSafetyControlFrame(
         std::abs(s.DriverSteering)>p.MaximumSteeringInput ||
         s.Confidence<p.MinimumControlConfidence ||
         s.Confidence>1.0 ||
+        s.Corner.Identity.Frame==0 ||
         !SameSourceActor(s.Corner.Identity,
                          s.Following.Self.Identity) ||
         s.Corner.Identity.Slot==0 ||
@@ -205,6 +206,18 @@ inline bool ValidSafetyControlFrame(
         s.Following.Self.GripG<0.15 ||
         s.Following.Self.GripG>2.5)
         return false;
+    // All five independently observed actors must belong to the same
+    // physical frame and recovery epoch as the controlled rival.
+    // A stale opponent still has valid coordinates, but cannot be used
+    // to relax live traffic braking.
+    for (int i=0;i<s.Following.OpponentCount;++i)
+    {
+        const RaceIdentity& other=s.Following.Opponents[
+            static_cast<std::size_t>(i)].Identity;
+        if (other.Frame!=s.Corner.Identity.Frame ||
+            other.SessionRevision!=s.Corner.Identity.SessionRevision)
+            return false;
+    }
     if (s.StabilitySensorAvailable)
     {
         if (!s.Stability.Valid ||
@@ -365,10 +378,16 @@ public:
     {
         SafetyControlOutput decision=
             ResolveSafetyControl(sample,Settings);
-        if (!decision.Valid ||
-            (HasRoster &&
-             SameSourceActor(
-                 LastIdentity,sample.Corner.Identity)))
+        // Reject any repeated OR out-of-order sample in the same
+        // physical actor epoch. Merely resetting the roster and
+        // braking would still falsely mark old telemetry as valid.
+        const RaceIdentity& incoming=sample.Corner.Identity;
+        const bool staleSameEpoch=HasRoster &&
+            incoming.Session==LastIdentity.Session &&
+            incoming.SessionRevision==LastIdentity.SessionRevision &&
+            incoming.Actor==LastIdentity.Actor &&
+            incoming.Frame<=LastIdentity.Frame;
+        if (!decision.Valid || staleSameEpoch)
         {
             ++Rejected;
             Last={};
@@ -394,8 +413,7 @@ public:
              sample.Corner.Identity.Session!=
                  LastIdentity.Session ||
              sample.Corner.Identity.SessionRevision!=
-                 LastIdentity.SessionRevision ||
-             sample.Corner.Identity.Frame<=LastIdentity.Frame);
+                 LastIdentity.SessionRevision);
         if (changed)
         {
             ++RosterChangeFrames;
