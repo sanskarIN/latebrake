@@ -72,6 +72,7 @@ static void PitCrewEvidence()
     frame.DeltaSeconds=0.016;
     frame.ActualBrakeFraction=1.0;
     frame.CurrentVehicleSpeedCmS=0.0;
+    frame.OriginalVehicleStationary=true;
     frame.CrewAreaClearanceCm=220.0;
     frame.MeasuredJackSupportLoadN=3500.0;
     frame.JackHeightCm=15.0;
