@@ -353,9 +353,6 @@ inline OvertakeDecision ProposeOvertake(
         static_cast<std::size_t>(target)];
     const auto& contact=s.Occupancy.Contacts[
         static_cast<std::size_t>(target)];
-    const double speed=ForwardSpeed(
-        s.Traffic.Self.VelocityCmS,
-        s.Traffic.Self.Pose.HeadingRadians);
     out.TargetActor=rival.Identity.Actor;
     out.TargetActorSlot=rival.Identity.Slot;
     out.PhysicalLeadingGapCm=
