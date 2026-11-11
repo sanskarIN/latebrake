@@ -30,6 +30,9 @@ struct DamperValveParameters final
     double TopOutStiffnessNPerCm=1000.0;
     double CoilSpringStiffnessNPerCm=330.0;
     double SpringPreloadCm=5.0;
+    double WheelbaseCm=270.0;
+    double FrontTrackCm=160.0;
+    double RearTrackCm=158.0;
     double AntiRollStiffnessNPerCm=120.0;
     double MaximumDamperForceN=12000.0;
     double MaximumSpringForceN=22000.0;
