@@ -168,6 +168,7 @@ static void TestDriverControls()
                 bad,settings).Valid,
             "stale gamepad event cannot apply throttle");
     bad=original;
+    ++bad.Identity.Frame;
     bad.WindowHasFocus=false;
     Require(!supervisor.Step(bad).Valid &&
             supervisor.FocusLossEvents()==1,
