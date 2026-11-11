@@ -88,7 +88,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
-    FleetRiskSupervisor.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -109,7 +109,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
-    FleetRiskSupervisor.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -154,7 +154,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
-    FleetRiskSupervisor.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
@@ -234,7 +234,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
-    FleetRiskSupervisor.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);

@@ -30,7 +30,8 @@ class RivalTrafficBindingTests(unittest.TestCase):
             "YieldRivalToPlayer(SafePassCommand, {",
             "Position.X, Position.Y, Heading, FlatSpeed",
             "PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady",
-            "TrafficCommand.Brake",
+            "RiskSupervision.Command.Brake",
+            "latebrake::ApplyRivalFleetTraffic(TrafficCommand, FleetSnapshot)",
             "Super::Tick(DeltaSeconds);",
         ):
             self.assertIn(token, tick)

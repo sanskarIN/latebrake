@@ -116,8 +116,14 @@ class ExperimentalSixCarBindingTests(unittest.TestCase):
                       self.rival)
         self.assertIn("Mode->IsExperimentalSixCarGridEnabled()", self.rival)
         self.assertIn("Mode->TryCollectPhysicalTraffic(", self.rival)
-        self.assertIn("latebrake::ApplyRivalFleetTraffic(TrafficCommand, {",
+        self.assertIn("latebrake::ApplyRivalFleetTraffic(TrafficCommand, FleetSnapshot)",
                       self.rival)
+        self.assertIn("const latebrake::RivalFleetTrafficSample FleetSnapshot{",
+                      self.rival)
+        self.assertIn("FleetRiskSupervisor.Apply(", self.rival)
+        self.assertLess(
+            self.rival.index("latebrake::ApplyRivalFleetTraffic(TrafficCommand, FleetSnapshot)"),
+            self.rival.index("FleetRiskSupervisor.Apply("))
 
     def test_recovery_and_traffic_remain_non_authoritative(self):
         for forbidden in (
