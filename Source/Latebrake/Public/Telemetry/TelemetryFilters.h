@@ -280,12 +280,20 @@ public:
             return 0.0;
         }
         std::array<double, Capacity> sorted{};
+        // The fixed ring is often smaller than the standard library's
+        // insertion-sort threshold. Keep the sort bounded to actual
+        // samples to avoid GCC 15 -Warray-bounds in std::sort internals.
         for (std::size_t i = 0; i < Count; ++i)
         {
-            sorted[i] = AtFromOldest(i);
+            const double current = AtFromOldest(i);
+            std::size_t j = i;
+            while (j > 0 && sorted[j - 1] > current)
+            {
+                sorted[j] = sorted[j - 1];
+                --j;
+            }
+            sorted[j] = current;
         }
-        std::sort(sorted.begin(), sorted.begin() +
-                  static_cast<std::ptrdiff_t>(Count));
         const double rank = Clamp01(fraction) *
             static_cast<double>(Count - 1);
         const std::size_t lower = static_cast<std::size_t>(

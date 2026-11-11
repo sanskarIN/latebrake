@@ -105,10 +105,16 @@ void TestFrameGateAndMotion()
     stale.Identity.FrameOrdinal = 2;
     Require(!gate.Observe(stale).Accepted,
             "stale ordinal cannot reuse the same engine sample");
-    auto jump = Frame(3, 2.0, 12000.0);
+    // After a stale frame the gate intentionally invalidates old
+    // temporal state. Establish a NEW accepted baseline before testing
+    // that a later large gap cannot bridge the fresh segment.
+    auto recovered = Frame(3, 1.05, 30.0);
+    Require(gate.Observe(recovered).Accepted,
+            "after stale data only a fresh segment may resume");
+    auto jump = Frame(4, 2.0, 12000.0);
     Require(!gate.Observe(jump).Accepted,
-            "huge time jump is rejected by frame clock");
-    auto corrupt = Frame(4, 2.1, 0.0);
+            "huge time jump is rejected against new qualified baseline");
+    auto corrupt = Frame(5, 2.1, 0.0);
     corrupt.Controls.Throttle =
         std::numeric_limits<double>::quiet_NaN();
     Require(!gate.Observe(corrupt).Accepted,
