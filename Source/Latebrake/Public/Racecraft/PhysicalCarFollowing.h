@@ -201,13 +201,17 @@ inline bool ValidFollowingObservation(
         input.OpponentCount<1 ||
         input.OpponentCount>5 ||
         !ValidFollowingActor(input.Self,s) ||
-        input.Self.Identity.Slot==0)
+        input.Self.Identity.Slot==0 ||
+        input.Self.Identity.Frame==0)
         return false;
     for (int i=0;i<input.OpponentCount;++i)
     {
         const auto& opponent=input.Opponents[
             static_cast<std::size_t>(i)];
         if (!ValidFollowingActor(opponent,s) ||
+            opponent.Identity.Frame!=input.Self.Identity.Frame ||
+            opponent.Identity.SessionRevision!=
+                input.Self.Identity.SessionRevision ||
             opponent.Identity.Actor==input.Self.Identity.Actor ||
             opponent.Identity.Slot==input.Self.Identity.Slot ||
             (s.RequireSameSession &&
@@ -235,6 +239,9 @@ inline FollowingThreat EvaluateFollowingThreat(
         !ValidFollowingActor(other,p) ||
         self.Identity.Actor==other.Identity.Actor ||
         self.Identity.Slot==other.Identity.Slot ||
+        self.Identity.Frame==0 ||
+        self.Identity.Frame!=other.Identity.Frame ||
+        self.Identity.SessionRevision!=other.Identity.SessionRevision ||
         (p.RequireSameSession &&
          self.Identity.Session!=other.Identity.Session))
         return out;
@@ -412,7 +419,9 @@ public:
         PreviousBrake=0.0;
         HoldSeconds=0.0;
         Session=0;
+        Revision=0;
         Actor=0;
+        LastFrame=0;
         Accepted=0;
         Rejected=0;
         EmergencyFrames=0;
@@ -426,10 +435,23 @@ public:
     {
         FollowingDecision decision=
             RestrictPhysicalCarFollowing(input,Settings);
-        if (!decision.Valid)
+        const bool sameActorEpoch=Session!=0 &&
+            Session==input.Self.Identity.Session &&
+            Revision==input.Self.Identity.SessionRevision &&
+            Actor==input.Self.Identity.Actor;
+        const bool replay=sameActorEpoch &&
+            input.Self.Identity.Frame<=LastFrame;
+        if (!decision.Valid || replay)
         {
+            // No old valid command may survive a malformed or replayed
+            // physical frame. Retain the last accepted frame high-water
+            // mark even though the roster must be reauthenticated.
             ++Rejected;
             HasRoster=false;
+            Previous={};
+            PreviousThrottle=0.0;
+            PreviousBrake=1.0;
+            HoldSeconds=Settings.RecoveryHazardHoldSeconds;
             return {};
         }
         std::array<std::uint64_t,PhysicalFleetCapacity> now{};
@@ -450,12 +472,15 @@ public:
         }
         if (HasRoster &&
             (Session!=input.Self.Identity.Session ||
+             Revision!=input.Self.Identity.SessionRevision ||
              Actor!=input.Self.Identity.Actor))
             HoldSeconds=Settings.RecoveryHazardHoldSeconds;
         Roster=now;
         HasRoster=true;
         Session=input.Self.Identity.Session;
+        Revision=input.Self.Identity.SessionRevision;
         Actor=input.Self.Identity.Actor;
+        LastFrame=input.Self.Identity.Frame;
         if (decision.EmergencyBrake)
             HoldSeconds=std::max(
                 HoldSeconds,Settings.RecoveryHazardHoldSeconds);
@@ -507,7 +532,9 @@ private:
     FollowingDecision Previous{};
     std::array<std::uint64_t,PhysicalFleetCapacity> Roster{};
     std::uint64_t Session=0;
+    std::uint32_t Revision=0;
     std::uint64_t Actor=0;
+    std::uint64_t LastFrame=0;
     std::uint64_t Accepted=0;
     std::uint64_t Rejected=0;
     std::uint64_t EmergencyFrames=0;
