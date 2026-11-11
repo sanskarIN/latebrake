@@ -277,7 +277,7 @@ static void RivalPaceEvidence()
     const auto first=controller.Step(s);
     Check(first.Valid && first.SourceOnly &&
           first.CommandThrottle<=s.CurrentThrottle &&
-          !first.OriginalRaceClockUnchanged==false,
+          first.OriginalRaceClockUnchanged,
           "unproven history cannot invent acceleration");
     Check(!controller.Step(s).Valid &&
           controller.Rejections()==1,
@@ -326,7 +326,7 @@ static void VisibilityEvidence()
     PhysicalVisibilityFrame frame;
     frame.Identity=RealActor();
     frame.RayCount=4;
-    frame.VelocityCmS={3400.0,0.0};
+    frame.VelocityCmS={2000.0,0.0};
     frame.CurrentRoadGripG=1.0;
     frame.MeasuredRoadHalfWidthCm=800.0;
     frame.PhysicsClockSeconds=5.0;
