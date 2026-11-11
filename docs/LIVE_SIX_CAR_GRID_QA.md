@@ -29,11 +29,24 @@ A start is denied if any actual car:
 - drifted farther than **125 cm** from its own authored slot;
 - rotated beyond **18 degrees** from its own slot heading (modulo 360);
 - moves in the XY plane faster than **250 cm/s (9 km/h)** before GO;
+- falls/rises faster than **100 cm/s** vertically, or has a chassis centre
+  more than **45 cm** from the flat prototype's actual south-asphalt
+  top plus its **32.5 cm** physical half-height;
+- lacks **three of four freshly sampled, near-horizontal WorldStatic
+  chassis-ground traces** within the existing **115 cm** contact height,
+  or has an invalid/overlong physics-frame delta;
 - has a padded rotated chassis footprint off the original physical
   south-straight pavement or overlapping any actual barrier; or
 - touches another car's rotated padded footprint, even when each car
   is *individually* close to its intended slot.
 
+The pre-GO probe collector deliberately performs fresh WorldStatic
+line traces on every eligible countdown tick, because the ordinary pawn
+contact readout is unavailable before green and MUST NOT be reused.
+It uses the existing 122/68 cm chassis-corner probe offsets, 280 cm
+trace length and ground-normal/contact evaluator. A WorldStatic trace
+is **not** proof that the hit belongs to a cooked original asphalt asset;
+real-world surface identity and engine contact must still be verified.
 These are **experimental conservative pre-start thresholds**, not
 measured car specifications or production race regulations. Failure
 does not teleport actors, invent a fallback car, reset race state,
@@ -57,7 +70,9 @@ python3 -m unittest discover -s Tests/Editor -p 'LiveSixCarStartingGridBindingTe
 The new strict portable C++20 test checks all six actual physical-slot
 snapshots, each missing/invalid identity, duplicate live actor token,
 nonfinite values, physically wrong car location/heading, fast pre-GO
-car motion, heading wrap and **pairwise overlap within individual slot
+car motion, heading wrap, fresh four-probe WorldStatic support, unrealistically
+high/low chassis Z, vertical motion, stale contact frames, steep normals,
+missing or distant supports and **pairwise overlap within individual slot
 tolerances**. It also exercises 4,096 bounded grid-jitter combinations.
 The Python test inspects the *real GameMode callsite* and verifies the
 live Unreal samples reach this pure policy before GO.
@@ -82,13 +97,19 @@ Editor/UHT/Game build or genuine Chaos vehicle behavior.
    padded overlap while all actors remain otherwise physics-ready.
    Verify countdown refuses GO and does not invent an unofficial
    finish, lap, recovery fee or result.
-4. Restore valid positions using an accepted new race restart.
+4. Test a hovering, falling, sunken or half-supported physical chassis
+   while its XY/yaw remains valid. Confirm the original 3/2/1/GO lights
+   cannot advance until a new frame has three valid real ground supports,
+   safe chassis centre height and low vertical speed. Profile the 24
+   additional WorldStatic line traces per countdown frame and confirm
+   they do not create a hitch or ambiguous collision-surface hit.
+5. Restore valid positions using an accepted new race restart.
    Verify physics then permits a genuine six-car countdown, and
    all actors can drive rather than merely being rendered.
-5. Repeat ordinary one-rival Circuit, Time Attack and career both with
+6. Repeat ordinary one-rival Circuit, Time Attack and career both with
    and without the developer flag. Confirm unchanged retail starts,
    physics, clock and checkpoint scoring.
-6. Measure 30/60/120 FPS pre-GO costs and inspect real collision/
+7. Measure 30/60/120 FPS pre-GO costs and inspect real collision/
    movement logs and any apparent jitter thresholds on Windows.
 
 Keep [playable release issue #148](https://github.com/sanskarIN/latebrake/issues/148)

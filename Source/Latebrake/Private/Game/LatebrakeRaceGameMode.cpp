@@ -56,6 +56,7 @@
 #include "AI/PlayerFleetRecoveryClearance.h"
 #include "AI/ExperimentalFleetStartPolicy.h"
 #include "AI/LiveSixCarStartingGrid.h"
+#include "CollisionQueryParams.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -2512,9 +2513,16 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
     {
         return false;
     }
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return false;
+    }
     std::array<latebrake::RecoveryObstacle,
                latebrake::StartGridCapacity> Observed{};
-    const auto CollectLive = [&Observed](
+    std::array<latebrake::LiveGridVerticalSample,
+               latebrake::StartGridCapacity> Vertical{};
+    const auto CollectLive = [World, &Observed, &Vertical](
         const ALatebrakeCarPawn* Car, int32 Slot) -> bool
     {
         if (!IsValid(Car) || !Car->IsRacePhysicsReady() ||
@@ -2531,6 +2539,49 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
              static_cast<double>(Car->GetActorRotation().Yaw)},
             static_cast<double>(Velocity.X),
             static_cast<double>(Velocity.Y)};
+        // Ground-contact HUD samples are intentionally unavailable before
+        // GO, so the start gate must NOT reuse a cached pawn readout.
+        // Take four NEW WorldStatic chassis-centre traces on this tick;
+        // their result is read-only and cannot change Chaos or gameplay.
+        latebrake::LiveGridVerticalSample& Height =
+            Vertical[static_cast<std::size_t>(Slot)];
+        Height.ChassisWorldZCm = static_cast<double>(Position.Z);
+        Height.Ground.PhysicsReady = true; // verified at entry
+        Height.Ground.DeltaSeconds =
+            static_cast<double>(World->GetDeltaSeconds());
+        Height.Ground.ChassisVerticalSpeedCmPerSecond =
+            static_cast<double>(Velocity.Z);
+        const FVector Forward = Car->GetActorForwardVector();
+        const FVector Right = Car->GetActorRightVector();
+        constexpr float ForwardCm = 122.f;
+        constexpr float SideCm = 68.f;
+        const float ProbeForward[] = {
+            ForwardCm, ForwardCm, -ForwardCm, -ForwardCm};
+        const float ProbeSide[] = {
+            -SideCm, SideCm, -SideCm, SideCm};
+        FCollisionQueryParams Query(
+            SCENE_QUERY_STAT(LatebrakeLiveSixCarGridContact), false);
+        Query.AddIgnoredActor(Car);
+        for (int32 Index = 0; Index < 4; ++Index)
+        {
+            const FVector Origin = Position +
+                Forward * ProbeForward[Index] + Right * ProbeSide[Index];
+            const FVector End = Origin -
+                FVector(0.f, 0.f,
+                    static_cast<float>(
+                        latebrake::ChassisContactProbeTraceLengthCm));
+            FHitResult Hit;
+            if (World->LineTraceSingleByChannel(
+                    Hit, Origin, End, ECC_WorldStatic, Query) &&
+                Hit.bBlockingHit && IsValid(Hit.GetComponent()) &&
+                Hit.GetComponent()->GetCollisionObjectType() ==
+                    ECC_WorldStatic)
+            {
+                Height.Ground.Probes[static_cast<std::size_t>(Index)] = {
+                    true, static_cast<double>(Hit.Distance),
+                    static_cast<double>(Hit.ImpactNormal.Z)};
+            }
+        }
         return true;
     };
     if (!CollectLive(Human, latebrake::HumanGridSlot) ||
@@ -2555,7 +2606,7 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
     // authority is added to this defensive start-light read.
     const latebrake::LiveGridValidation LiveGrid =
         latebrake::EvaluateLiveSixCarStartingGrid(
-            Observed, latebrake::StartGridCapacity);
+            Observed, Vertical, latebrake::StartGridCapacity);
     return LiveGrid.Safe();
 }
 

@@ -43,6 +43,14 @@ class LiveSixCarStartingGridBindingTests(unittest.TestCase):
             "Car->GetActorRotation().Yaw",
             "Car->GetVelocity()",
             "Car->GetUniqueID()",
+            "latebrake::LiveGridVerticalSample",
+            "Height.ChassisWorldZCm",
+            "World->GetDeltaSeconds()",
+            "Height.Ground.ChassisVerticalSpeedCmPerSecond",
+            "LineTraceSingleByChannel(",
+            "ECC_WorldStatic",
+            "Height.Ground.Probes[static_cast<std::size_t>(Index)]",
+            "Observed, Vertical, latebrake::StartGridCapacity",
             "CollectLive(Human, latebrake::HumanGridSlot)",
             "CollectLive(RivalCar.Get(), latebrake::PrimaryRivalGridSlot)",
             "Actor->GetGridSlot() != Index + 2",
@@ -57,6 +65,11 @@ class LiveSixCarStartingGridBindingTests(unittest.TestCase):
             qualify.index("GetPlayerPawn(this, 0)"),
             qualify.index("latebrake::EvaluateLiveSixCarStartingGrid(")
         )
+        self.assertLess(qualify.index("LineTraceSingleByChannel("),
+                        qualify.index("latebrake::EvaluateLiveSixCarStartingGrid("))
+        self.assertIn("Query.AddIgnoredActor(Car)", qualify)
+        self.assertIn("Index < 4", qualify)
+        self.assertNotIn("GetGroundContactReadout()", qualify)
         self.assertEqual(qualify.count("return LiveGrid.Safe();"), 1)
         self.assertIn("bool IsExperimentalFleetReadyForStart() const;", self.mode_h)
 
@@ -84,7 +97,15 @@ class LiveSixCarStartingGridBindingTests(unittest.TestCase):
             self.assertNotIn(forbidden, self.policy)
         for marker in (
             "LiveGridMaxPoseErrorCm", "LiveGridMaxHeadingErrorDegrees",
-            "LiveGridMaxPlanarSpeedCmS", "observedCount != StartGridCapacity",
+            "LiveGridMaxPlanarSpeedCmS",
+            "LiveGridExpectedChassisCenterZCm",
+            "LiveGridMaxVerticalDisplacementCm",
+            "LiveGridMaxVerticalSpeedCmS",
+            "LiveGridMinimumGroundProbes",
+            "EvaluateChassisGroundContact(",
+            "LiveGridFailure::UnsafeVerticalPosition",
+            "LiveGridFailure::InsufficientGroundSupport",
+            "observedCount != StartGridCapacity",
             "actor.Slot != slot", "actor.ActorToken == 0",
             "std::isfinite(actor.VelocityX)",
             "std::hypot(", "std::remainder(",
@@ -102,6 +123,10 @@ class LiveSixCarStartingGridBindingTests(unittest.TestCase):
         self.assertIn("NAME LiveSixCarStartingGrid", self.cmake)
         self.assertIn("/W4 /WX", self.cmake)
         self.assertIn("trial < 4096", self.tests)
+        self.assertIn("GoodVertical()", self.tests)
+        self.assertIn("vChanged[5].Ground.Probes[0].Hit = false", self.tests)
+        self.assertIn("ChassisContactMaximumSupportedHeightCm", self.tests)
+        self.assertIn("std::numeric_limits<double>::infinity()", self.tests)
         self.assertIn("LIVE_SIX_CAR_GRID_QA.md", self.nav)
         self.assertIn("UE5.8", self.docs)
 

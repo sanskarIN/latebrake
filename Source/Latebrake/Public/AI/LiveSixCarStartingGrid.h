@@ -1,11 +1,14 @@
 #pragma once
 
 #include "AI/RivalRecoveryOccupancy.h"
+#include "Vehicles/ChassisGroundContactTraction.h"
+#include "Vehicles/VehicleRearLampLayout.h"
 
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace latebrake
 {
@@ -16,6 +19,24 @@ namespace latebrake
 inline constexpr double LiveGridMaxPoseErrorCm = 125.0;
 inline constexpr double LiveGridMaxHeadingErrorDegrees = 18.0;
 inline constexpr double LiveGridMaxPlanarSpeedCmS = 250.0;
+// The south straight is the only authored six-car launch lane. Its live
+// road top and the actual prototype rigid cube half-height form a narrow,
+// auditable vertical envelope, not an invented tire/suspension dimension.
+inline constexpr double LiveGridSouthRoadTopCm =
+    CircuitCollisionBlocks[1].Height + 50.0 * CircuitCollisionBlocks[1].ScaleZ;
+inline constexpr double LiveGridExpectedChassisCenterZCm =
+    LiveGridSouthRoadTopCm + VehicleChassisHalfHeightCm;
+inline constexpr double LiveGridMaxVerticalDisplacementCm = 45.0;
+inline constexpr double LiveGridMaxVerticalSpeedCmS = 100.0;
+inline constexpr int LiveGridMinimumGroundProbes = 3;
+
+// Independent, fresh engine-observed vertical/WorldStatic state for each
+// existing physical car. A default-constructed entry can NEVER authorize GO.
+struct LiveGridVerticalSample final
+{
+    double ChassisWorldZCm = std::numeric_limits<double>::quiet_NaN();
+    ChassisGroundContactSample Ground{};
+};
 
 enum class LiveGridFailure
 {
@@ -25,6 +46,8 @@ enum class LiveGridFailure
     DuplicateActorIdentity,
     DisplacedFromAssignedSlot,
     MovingBeforeGo,
+    UnsafeVerticalPosition,
+    InsufficientGroundSupport,
     OffPavement,
     BarrierOverlap,
     CarOverlap
@@ -49,6 +72,7 @@ struct LiveGridValidation final
 // Never move cars, steer, brake, score laps, charge recoveries or save.
 inline LiveGridValidation EvaluateLiveSixCarStartingGrid(
     const std::array<RecoveryObstacle, StartGridCapacity>& observed,
+    const std::array<LiveGridVerticalSample, StartGridCapacity>& vertical,
     int observedCount) noexcept
 {
     if (observedCount != StartGridCapacity)
@@ -69,6 +93,38 @@ inline LiveGridValidation EvaluateLiveSixCarStartingGrid(
             !std::isfinite(actor.VelocityY))
         {
             return {LiveGridFailure::InvalidPhysics, slot, -1};
+        }
+        // XY occupancy alone cannot prove six cars are actually standing
+        // on the original circuit: a body can hover, fall or sit on debris.
+        // Use THIS frame's vertical transform and real WorldStatic traces;
+        // reject stale, missing or malformed evidence rather than guessing.
+        const LiveGridVerticalSample& height =
+            vertical[static_cast<std::size_t>(slot)];
+        if (!std::isfinite(height.ChassisWorldZCm) ||
+            !std::isfinite(height.Ground.ChassisVerticalSpeedCmPerSecond))
+        {
+            return {LiveGridFailure::InvalidPhysics, slot, -1};
+        }
+        if (std::abs(height.ChassisWorldZCm -
+                     LiveGridExpectedChassisCenterZCm) >
+            LiveGridMaxVerticalDisplacementCm)
+        {
+            return {LiveGridFailure::UnsafeVerticalPosition, slot, -1};
+        }
+        if (std::abs(height.Ground.ChassisVerticalSpeedCmPerSecond) >
+            LiveGridMaxVerticalSpeedCmS)
+        {
+            return {LiveGridFailure::MovingBeforeGo, slot, -1};
+        }
+        const ChassisGroundContactOutput support =
+            EvaluateChassisGroundContact(height.Ground);
+        if (!support.Valid)
+        {
+            return {LiveGridFailure::InvalidPhysics, slot, -1};
+        }
+        if (support.SupportingProbes < LiveGridMinimumGroundProbes)
+        {
+            return {LiveGridFailure::InsufficientGroundSupport, slot, -1};
         }
         for (int other = 0; other < slot; ++other)
         {
