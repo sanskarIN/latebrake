@@ -487,7 +487,7 @@ public:
         Audit[Head]=result;
         Head=(Head+1)%TelemetrySensorWindow;
         Size=std::min(
-            Size+1,TelemetrySensorWindow);
+            Size+1,static_cast<std::size_t>(TelemetrySensorWindow));
         Identity=frame.Identity;
         HasFrame=true;
         ++Accepted;
