@@ -228,6 +228,22 @@ static void TestTrafficSafetyAndEvidence()
     input.ProposedThrottle=0.85;
     input.EnginePhysicsQualified=true;
     input.RaceRunning=true;
+    const auto closingThreat=EvaluateFollowingThreat(
+        input.Self,input.Opponents[0],{});
+    Check(closingThreat.Valid &&
+          std::abs(closingThreat.RelativeForwardSpeedCmS+1700.0)<1.0e-9 &&
+          std::abs(closingThreat.ClosingSpeedCmS-1700.0)<1.0e-9 &&
+          closingThreat.PhysicallyClosing,
+          "slower leading car has negative relative speed and positive closing speed");
+    auto fasterLeader=input.Opponents[0];
+    fasterLeader.VelocityCmS={2600.0,0.0};
+    const auto openingThreat=EvaluateFollowingThreat(
+        input.Self,fasterLeader,{});
+    Check(openingThreat.Valid &&
+          std::abs(openingThreat.RelativeForwardSpeedCmS-600.0)<1.0e-9 &&
+          openingThreat.ClosingSpeedCmS==0.0 &&
+          !openingThreat.PhysicallyClosing,
+          "faster leading car has positive relative speed and no closing risk");
     const auto follow=RestrictPhysicalCarFollowing(input);
     Check(follow.Valid &&
           follow.ProposedThrottle<=input.ProposedThrottle &&
