@@ -249,6 +249,69 @@ static void TestTrafficSafetyAndEvidence()
           follow.ProposedThrottle<=input.ProposedThrottle &&
           follow.VerifiedOpponents==1,
           "one actual slower car limits rival throttle");
+    auto unrelatedSession=input.Opponents[0];
+    ++unrelatedSession.Identity.Session;
+    Check(!EvaluateFollowingThreat(
+            input.Self,unrelatedSession,{}).Valid,
+          "following cannot trust a rival from another race session");
+    FollowingParameters crossSessionSettings;
+    crossSessionSettings.RequireSameSession=false;
+    Check(EvaluateFollowingThreat(
+            input.Self,unrelatedSession,crossSessionSettings).Valid,
+          "cross-session diagnostics require explicit opt-in");
+    FollowingParameters invalidSettings;
+    invalidSettings.RecoveryHazardHoldSeconds=-0.25;
+    Check(!ValidFollowingParameters(invalidSettings) &&
+          !EvaluateFollowingThreat(
+              input.Self,input.Opponents[0],invalidSettings).Valid,
+          "negative emergency safety hold is invalid");
+    invalidSettings={};
+    invalidSettings.LaneWidthCm=0.0;
+    Check(!ValidFollowingParameters(invalidSettings),
+          "missing physical lane geometry is rejected");
+    invalidSettings={};
+    invalidSettings.ClosingSeverityGain=0.0;
+    Check(!ValidFollowingParameters(invalidSettings),
+          "closing risk cannot silently be disabled");
+    invalidSettings={};
+    invalidSettings.MaximumRelativeVelocityCmS=1000.0;
+    Check(ValidFollowingParameters(invalidSettings) &&
+          !EvaluateFollowingThreat(
+              input.Self,input.Opponents[0],invalidSettings).Valid,
+          "out-of-envelope closing speed fails closed");
+    invalidSettings={};
+    invalidSettings.MaximumRelativeVelocityCmS=0.0;
+    Check(!ValidFollowingParameters(invalidSettings),
+          "nonpositive relative velocity limit rejected");
+    auto laneNeighbor=input.Opponents[0];
+    laneNeighbor.Pose.Position.Y+=300.0;
+    FollowingParameters narrowLane;
+    narrowLane.LaneWidthCm=200.0;
+    Check(EvaluateFollowingThreat(
+              input.Self,laneNeighbor,{}).SameLane &&
+          !EvaluateFollowingThreat(
+              input.Self,laneNeighbor,narrowLane).SameLane,
+          "lane-width setting changes which physical vehicles interact");
+    FollowingObservation safeFollow=input;
+    safeFollow.Opponents[0].VelocityCmS={2200.0,0.0};
+    safeFollow.Opponents[0].Pose.Position={-100.0,-1800.0};
+    safeFollow.ProposedThrottle=0.5;
+    PhysicalFollowingSupervisor supervisor;
+    Check(supervisor.Configure({}),
+          "physical following supervisor configuration");
+    const auto firstSafe=supervisor.Step(safeFollow);
+    const auto secondSafe=supervisor.Step(safeFollow);
+    Check(firstSafe.Valid && secondSafe.Valid &&
+          !firstSafe.HoldingForRosterChange &&
+          !secondSafe.HoldingForRosterChange,
+          "stable roster does not invent a safety hold");
+    safeFollow.Opponents[0].Identity.Actor+=100;
+    const auto rosterSwap=supervisor.Step(safeFollow);
+    Check(rosterSwap.Valid &&
+          rosterSwap.HoldingForRosterChange &&
+          rosterSwap.ProposedThrottle==0.0 &&
+          rosterSwap.ProposedBrake==1.0,
+          "changed verified actor triggers fail-safe hold");
     input.Opponents[0].Identity.Actor=
         input.Self.Identity.Actor;
     Check(!RestrictPhysicalCarFollowing(input).Valid,
