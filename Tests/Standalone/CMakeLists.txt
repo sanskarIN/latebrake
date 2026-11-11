@@ -2120,3 +2120,15 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME FleetRoadUnionCoverage COMMAND latebrake_fleet_road_union_tests)
+
+# Run-local engineering telemetry and deterministic original-circuit audit.
+# These source-only tests cannot qualify UE5.8 or installed Win64 gameplay.
+add_executable(latebrake_race_engineer_telemetry_tests RaceEngineerTelemetryTests.cpp)
+target_include_directories(latebrake_race_engineer_telemetry_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_engineer_telemetry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_engineer_telemetry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_engineer_telemetry_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceEngineerTelemetry COMMAND latebrake_race_engineer_telemetry_tests)
