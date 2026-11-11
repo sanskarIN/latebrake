@@ -78,7 +78,10 @@ static void FailureDetections()
 {
     auto sample=ObservedBrake();
     sample.Circuits[1].MeasuredLinePressureBar=0.0;
-    const auto leak=EvaluateBrakePressureCoherence(sample);
+    BrakeCoherenceParameters sensitiveLeakTest;
+    sensitiveLeakTest.MaximumWheelPressureMismatchBar=15.0;
+    const auto leak=EvaluateBrakePressureCoherence(
+        sample,sensitiveLeakTest);
     Check(leak.Valid && leak.LeakingCircuits==1 &&
           leak.Fault==BrakePressureFault::HydraulicLeak &&
           leak.MayRequirePitInspection,
