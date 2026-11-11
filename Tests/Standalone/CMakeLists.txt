@@ -2239,3 +2239,15 @@ else()
     target_compile_options(latebrake_physical_ride_contact_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PhysicalRideAndContact COMMAND latebrake_physical_ride_contact_tests)
+
+
+# Physical hydraulic brake circuits and measured pedal consistency.
+add_executable(latebrake_brake_pressure_coherence_tests BrakePressureCoherenceTests.cpp)
+target_include_directories(latebrake_brake_pressure_coherence_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_brake_pressure_coherence_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_brake_pressure_coherence_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_brake_pressure_coherence_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BrakePressureCoherence COMMAND latebrake_brake_pressure_coherence_tests)
