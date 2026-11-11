@@ -89,6 +89,7 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
             "sample.BrakeObservationQualified",
             "sample.ConservativeBrakeScale",
             "conservativeDeceleration",
+            "ceiling < result.ThrottleCeiling",
         ):
             self.assertIn(marker, self.forecast)
         for marker in (
@@ -108,6 +109,8 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         self.assertIn("-Wall -Wextra -Wpedantic -Werror", self.cmake)
         self.assertIn("i < 30000", self.tests)
         self.assertIn("TestObservedBrakeCapacity()", self.tests)
+        self.assertIn("TestStrongestFollowingLimitWinsAnyRosterOrder()",
+                      self.tests)
         self.assertIn("off-road padded body denies motor", self.tests)
         self.assertIn("barrier-overlapping body is not qualified paved traffic",
                       self.tests)

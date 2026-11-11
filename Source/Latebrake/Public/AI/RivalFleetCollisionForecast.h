@@ -346,12 +346,28 @@ inline FleetRiskReport ForecastSixCarRisk(
         }
         const int priority = FleetRiskPriority(kind);
         const int previous = FleetRiskPriority(result.Kind);
-        const bool replace =
-            priority > previous ||
-            (priority == previous &&
-             (contactTime < result.TimeToContactSeconds ||
-              (contactTime == result.TimeToContactSeconds &&
-               other.Slot < result.LimitingSlot)));
+        // Physical emergencies sort by severity, then earliest contact.
+        // Two SOFT following risks have infinite contact time, so sorting
+        // those by slot BEFORE the throttle limit could replace a stronger
+        // restriction with a weaker one when the blocker array is reordered.
+        // Always choose the lower safe motor ceiling first for Following;
+        // only identical ceilings may use the stable slot as a tie-break.
+        bool replace = priority > previous;
+        if (priority == previous)
+        {
+            if (kind == FleetRiskKind::Following)
+            {
+                replace = ceiling < result.ThrottleCeiling ||
+                    (ceiling == result.ThrottleCeiling &&
+                     other.Slot < result.LimitingSlot);
+            }
+            else
+            {
+                replace = contactTime < result.TimeToContactSeconds ||
+                    (contactTime == result.TimeToContactSeconds &&
+                     other.Slot < result.LimitingSlot);
+            }
+        }
         if (replace)
         {
             result.Kind = kind;
@@ -360,19 +376,6 @@ inline FleetRiskReport ForecastSixCarRisk(
             result.ForwardGapCm = ahead;
             result.ClosingSpeedCmS = closing;
             result.ThrottleCeiling = ceiling;
-        }
-        else if (result.Kind == FleetRiskKind::Following &&
-                 kind == FleetRiskKind::Following &&
-                 ceiling < result.ThrottleCeiling)
-        {
-            // Two slower cars may demand different soft caps. Attribute
-            // the selected limit to the actual stricter physical actor,
-            // never a prior object that merely appeared first in TArray.
-            result.ThrottleCeiling = ceiling;
-            result.LimitingSlot = other.Slot;
-            result.ForwardGapCm = ahead;
-            result.ClosingSpeedCmS = closing;
-            result.TimeToContactSeconds = contactTime;
         }
     }
     return result;

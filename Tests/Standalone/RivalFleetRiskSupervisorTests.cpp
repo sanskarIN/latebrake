@@ -172,7 +172,9 @@ void TestContinuousSweptGeometry()
     other.VelocityY = 0.0;
     Require(!ForecastFleetContact(self, other).Intersects,
             "separated side-by-side lanes do not create ghost contact");
-    other.Pose.Position = {-3500.0, SouthY};
+    // The prior -3500cm rear fixture's padded body touched the real
+    // west barrier, so it is not a qualified road-only traffic sample.
+    other.Pose.Position = {-3150.0, SouthY};
     other.VelocityX = 2400.0;
     Require(ForecastSixCarRisk(
         [&]() { auto x = s; x.Blockers[0] = other; return x; }()).Kind ==
@@ -249,6 +251,44 @@ void TestDistanceAndPriority()
             Near(capped.Command.Steering, moving.Steering) &&
             !capped.Command.Brake,
             "clean forecast never adds throttle or changes steering");
+}
+
+void TestStrongestFollowingLimitWinsAnyRosterOrder()
+{
+    using namespace latebrake;
+    auto scene = ValidSixCars();
+    scene.Self.VelocityX = 350.0;
+    // Blocker slot 5, farther back, needs a tighter cap than slot 0.
+    // They are both genuinely on the original south road.
+    scene.Blockers[0].Pose.Position = {-400.0, SouthY};
+    scene.Blockers[0].VelocityX = 100.0;
+    scene.Blockers[4].Pose.Position = {-900.0, SouthY};
+    scene.Blockers[4].VelocityX = 100.0;
+    Require(FleetBodyInsideAuthoredAsphalt(scene.Blockers[0].Pose) &&
+            FleetBodyInsideAuthoredAsphalt(scene.Blockers[4].Pose),
+            "both following risk candidates have valid full road bodies");
+    const auto risk = ForecastSixCarRisk(scene);
+    Require(risk.Kind == FleetRiskKind::Following &&
+            risk.LimitingSlot == 5 &&
+            risk.ThrottleCeiling > 0.0 &&
+            risk.ThrottleCeiling < 0.6,
+            "closer slot-5 traffic imposes the tightest throttle ceiling");
+
+    std::swap(scene.Blockers[0], scene.Blockers[4]);
+    const auto reversed = ForecastSixCarRisk(scene);
+    Require(reversed.Kind == FleetRiskKind::Following &&
+            reversed.LimitingSlot == 5 &&
+            Near(reversed.ThrottleCeiling, risk.ThrottleCeiling),
+            "lower slot cannot override a stricter later soft cap");
+
+    RivalFleetRiskSupervisor supervisor;
+    const PilotCommand plan{0.95, 0.25, false, false};
+    const auto applied = supervisor.Apply(plan, scene, 1.0 / 60.0);
+    Require(applied.Qualified &&
+            !applied.HoldingBrake &&
+            applied.Command.Throttle <= risk.ThrottleCeiling &&
+            applied.Command.Steering == plan.Steering,
+            "actual multi-actor supervisor respects selected lower limit");
 }
 
 void TestObservedBrakeCapacity()
@@ -474,6 +514,7 @@ int main()
     TestExactPhysicalRoster();
     TestContinuousSweptGeometry();
     TestDistanceAndPriority();
+    TestStrongestFollowingLimitWinsAnyRosterOrder();
     TestObservedBrakeCapacity();
     TestTemporalHoldAndReacquisition();
     TestRouteAuthorityAndFrameRates();

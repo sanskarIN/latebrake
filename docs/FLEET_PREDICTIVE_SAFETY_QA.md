@@ -47,7 +47,10 @@ progress, lap awards, penalty fees, credit balance or SaveGame files.
   physical ABS simulation or certified real-world braking.
 - All five threats are inspected; physical overlap is higher priority
   than swept contact, which is higher priority than stopping-distance
-  concerns. Stable actor slots settle ties without order-dependent output.
+  concerns. Among two lower-severity following risks, the smallest
+  permitted throttle wins **regardless of actor observation order**;
+  only otherwise-identical risks use stable actor-slot tie-breaking.
+  No weaker cap may overwrite a stricter one when samples reorder.
 - `RivalFleetRiskSupervisor.h` binds the decision to the current six
   actual actor tokens. Missing actors, malformed frame time or invalid
   driver output clear every old safe observation. Actor replacement
