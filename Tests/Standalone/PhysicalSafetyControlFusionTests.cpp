@@ -188,6 +188,19 @@ static void RejectUnqualified()
     Check(!ResolveSafetyControl(sample).Valid,
           "duplicate physical opponent fails closed");
     sample=PhysicalFleetFrame();
+    sample.Following.Self.GripG=2.3;
+    Check(!ResolveSafetyControl(sample).Valid,
+          "optimistic traffic grip conflicts with real four-wheel evidence");
+    sample=PhysicalFleetFrame();
+    for(auto& wheel:sample.Corner.Wheels)
+        wheel.SurfaceGrip=0.35;
+    Check(!ResolveSafetyControl(sample).Valid,
+          "wet four-wheel contact cannot be overridden by dry traffic grip");
+    sample=PhysicalFleetFrame();
+    sample.Following.Self.GripG=1.38;
+    Check(ResolveSafetyControl(sample).Valid,
+          "small physical tire and chassis grip differences are tolerated");
+    sample=PhysicalFleetFrame();
     sample.EngineAuthorityQualified=false;
     Check(!ResolveSafetyControl(sample).Valid,
           "source-only controller needs actual engine authority");
