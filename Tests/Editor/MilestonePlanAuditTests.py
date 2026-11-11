@@ -36,11 +36,10 @@ class MilestonePlanAuditTests(unittest.TestCase):
     def test_every_current_open_pr_and_issue_explained_once(self):
         summary = validate_plan(self.plan)
         self.assertEqual(summary["milestone_count"], 3)
-        self.assertEqual(summary["planned_prs"], 16)
+        self.assertEqual(summary["planned_prs"], 15)
+        self.assertNotIn(334, self.plan["checked_open_prs"])
         self.assertEqual(summary["planned_issues"], 4)
         self.assertEqual(summary["assigned"][("pr", 295)],
-                         self.plan["milestones"][0]["title"])
-        self.assertEqual(summary["assigned"][("pr", 334)],
                          self.plan["milestones"][0]["title"])
         self.assertEqual(summary["assigned"][("issues", 148)],
                          self.plan["milestones"][1]["title"])
@@ -109,7 +108,7 @@ class MilestonePlanAuditTests(unittest.TestCase):
         milestones = [{"title": source_only["title"]}, {"title": engine["title"]}]
         prs = [
             {"number": 295, "milestone": {"title": source_only["title"]}},
-            {"number": 334, "milestone": None},
+            {"number": 328, "milestone": None},
             {"number": 335, "milestone": {"title": engine["title"]}},
             {"number": 333, "milestone": {"title": alpha["title"]}},
             {"number": 800, "milestone": None},
@@ -124,7 +123,7 @@ class MilestonePlanAuditTests(unittest.TestCase):
         self.assertEqual(result["missing_proposed_milestones"], [alpha["title"]])
         self.assertEqual(
             {(x["kind"], x["number"]) for x in result["assignment_changes_needed"]},
-            {("pr", 334), ("issue", 148)},
+            {("pr", 328), ("issue", 148)},
         )
         self.assertEqual(result["new_open_items_since_snapshot"],
                          {"prs": [800], "issues": [900]})

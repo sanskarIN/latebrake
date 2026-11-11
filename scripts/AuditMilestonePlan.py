@@ -111,8 +111,7 @@ def validate_plan(plan: dict) -> dict:
     if not isinstance(aggregation, dict) or aggregation.get("pr") != 335 or \
             sorted(aggregation.get("includes", [])) != [329, 330, 331, 332, 333]:
         raise PlanError("Combined real-UE candidate must retain exact component list")
-    if assigned.get(("pr", 334)) != entries[0]["title"] or \
-            assigned.get(("pr", 295)) != entries[0]["title"] or \
+    if assigned.get(("pr", 295)) != entries[0]["title"] or \
             assigned.get(("pr", 335)) != entries[1]["title"] or \
             assigned.get(("issues", 148)) != entries[1]["title"]:
         raise PlanError("Source publisher/real-UE evidence boundaries must not drift")

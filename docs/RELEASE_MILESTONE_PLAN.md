@@ -1,8 +1,10 @@
 # LateBrake release milestones — owner setup and PR routing
 
 **Milestones proposed, NOT created by this file.** Live GitHub verification
-on **2026-11-10** found **zero existing milestones** and 16 open PRs (including this proposed audit PR and live-grid safety PR #337) plus
-four non-PR open issues. Do not mark anything assigned or complete until
+on **2026-11-10** found **zero existing milestones** and 16 open PRs.
+On **2026-11-11**, PR #334 merged, leaving 15 open PRs in this refreshed
+snapshot (including #336 and #337) and four non-PR open issues.
+The milestone list must be rechecked live before making assignments. Do not mark anything assigned or complete until
 GitHub's real milestone and artifact evidence confirms it.
 
 The machine-readable source of this planning snapshot is
@@ -29,7 +31,7 @@ not a made-up calendar deadline.
 > Braking and Rival Capacity preview with ZERO attached executable assets.
 > Draft PR #295 remains at exact SHA
 > `bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37` and is NOT merged
-> merely to publish the source archive. PR #334 provides a read-only
+> merely to publish the source archive. Merged PR #334 provides a read-only
 > milestone-independent publisher audit. The owner-only separate release
 > workflow must recheck that source, notes, previous v0.5.97 immutable
 > zero-asset tag, strict C++20 CTests on Windows/Ubuntu/macOS, Python
@@ -37,8 +39,9 @@ not a made-up calendar deadline.
 > installer/APK. Real UE5.8/UHT/Game builds and installed gameplay remain
 > outside this SOURCE-ONLY release; never mark it playable.
 
-**Assign PRs:** [#295](https://github.com/sanskarIN/latebrake/pull/295),
-[#334](https://github.com/sanskarIN/latebrake/pull/334).
+**Assign the open PR:** [#295](https://github.com/sanskarIN/latebrake/pull/295).
+[PR #334](https://github.com/sanskarIN/latebrake/pull/334) has already
+merged; do not treat it as an open assignable PR.
 
 **Exit:** v0.5.98 tag/release genuinely exists at its original frozen
 source SHA, satisfies exactly the source-only plan and has **zero
