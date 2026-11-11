@@ -271,6 +271,10 @@ private:
     uint64 GhostTeleportRevision = 0;
     uint64 GhostSessionRevision = 0;
     bool bCircuitReady = false;
+    // The original south-straight collision actor, not arbitrary
+    // WorldStatic ground or another mesh, is the only permitted pre-GO
+    // six-car support. Weak identity expires if the level actor disappears.
+    TWeakObjectPtr<AStaticMeshActor> SouthStraightCollisionActor;
     // Every menu pause/resume invalidates pre-transition gate positions.
     latebrake::RaceSessionEpoch CheckpointSession;
     latebrake::RestartPlacementGuard RestartPlacement;

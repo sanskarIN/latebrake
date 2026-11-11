@@ -2064,3 +2064,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ExperimentalFleetStartPolicy COMMAND latebrake_experimental_fleet_start_policy_tests)
+
+# Require all six ACTUAL pre-GO Chaos bodies to retain distinct actor
+# identity, safe physical yaw/velocity, separation and assigned grid pose.
+add_executable(latebrake_live_six_car_start_grid_tests LiveSixCarStartingGridTests.cpp)
+target_include_directories(latebrake_live_six_car_start_grid_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_live_six_car_start_grid_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_live_six_car_start_grid_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_live_six_car_start_grid_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME LiveSixCarStartingGrid COMMAND latebrake_live_six_car_start_grid_tests)

@@ -104,6 +104,7 @@ nav:
       - Experimental six-car physics QA: EXPERIMENTAL_SIX_CAR_QA.md
       - Six-car launch & paid-recovery QA: FLEET_RECOVERY_LAUNCH_QA.md
       - Experimental fleet terminal start-fault QA: EXPERIMENTAL_FLEET_START_FAULT_QA.md
+      - Live six-car grid pose/speed QA: LIVE_SIX_CAR_GRID_QA.md
       - Collision response QA: COLLISION_RESPONSE_QA.md
       - Collision setup QA: COLLISION_SETUP_QA.md
       - Checkpoint session QA: CHECKPOINT_SESSION_QA.md

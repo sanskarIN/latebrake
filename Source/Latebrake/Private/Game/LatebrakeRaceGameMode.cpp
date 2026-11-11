@@ -55,6 +55,8 @@
 #include "AI/RivalRecoveryGrid.h"
 #include "AI/PlayerFleetRecoveryClearance.h"
 #include "AI/ExperimentalFleetStartPolicy.h"
+#include "AI/LiveSixCarStartingGrid.h"
+#include "CollisionQueryParams.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -902,6 +904,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
     bCircuitReady = false;
+    SouthStraightCollisionActor.Reset();
     // Spawning an Actor does not prove rendering or collision on installed
     // devices, but failed block creation must never be hidden by the
     // four-checkpoint startup success marker.
@@ -945,9 +948,13 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             Block.Style == latebrake::CollisionBlockStyle::Ground ? GroundColor :
             Block.Style == latebrake::CollisionBlockStyle::Asphalt ? AsphaltColor :
             BarrierColor;
-        RecordBlock(Labels[Index],
+        AStaticMeshActor* PhysicalBlock = RecordBlock(Labels[Index],
             FVector(Block.Center.X, Block.Center.Y, Block.Height),
             FVector(Block.ScaleX, Block.ScaleY, Block.ScaleZ), Color);
+        if (Index == 1) // Exactly the original physical SouthStraight.
+        {
+            SouthStraightCollisionActor = PhysicalBlock;
+        }
     }
 
     // All ninety-three collision-free decorative cubes now share one scene
@@ -2495,9 +2502,107 @@ void ALatebrakeRaceGameMode::DestroyExperimentalRivals()
 
 bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
 {
+    // A live physics actor that was correctly spawned earlier may have
+    // shifted out of its assigned row under gravity, contact or other
+    // real-world motion BEFORE GO. A valid chassis pointer is insufficient.
     if (!IsExperimentalSixCarGridEnabled() ||
+        !HasLocalPlayerDriver() ||
         !IsValid(RivalCar) || !IsRegisteredRivalActor(RivalCar) ||
         !RivalCar->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    const ALatebrakeCarPawn* Human = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    if (!IsValid(Human) || !Human->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    UWorld* World = GetWorld();
+    if (!World || !SouthStraightCollisionActor.IsValid())
+    {
+        return false;
+    }
+    const AStaticMeshActor* SouthStraight =
+        SouthStraightCollisionActor.Get();
+    const UStaticMeshComponent* Asphalt = IsValid(SouthStraight)
+        ? SouthStraight->GetStaticMeshComponent() : nullptr;
+    if (!IsValid(Asphalt) ||
+        Asphalt->GetCollisionEnabled() !=
+            ECollisionEnabled::QueryAndPhysics ||
+        Asphalt->GetCollisionObjectType() != ECC_WorldStatic)
+    {
+        return false;
+    }
+    std::array<latebrake::RecoveryObstacle,
+               latebrake::StartGridCapacity> Observed{};
+    std::array<latebrake::LiveGridVerticalSample,
+               latebrake::StartGridCapacity> Vertical{};
+    const auto CollectLive = [World, SouthStraight, &Observed, &Vertical](
+        const ALatebrakeCarPawn* Car, int32 Slot) -> bool
+    {
+        if (!IsValid(Car) || !Car->IsRacePhysicsReady() ||
+            Slot < 0 || Slot >= latebrake::StartGridCapacity)
+        {
+            return false;
+        }
+        const FVector Position = Car->GetActorLocation();
+        const FVector Velocity = Car->GetVelocity();
+        Observed[static_cast<std::size_t>(Slot)] = {
+            true, Slot, static_cast<uint64>(Car->GetUniqueID()),
+            {{static_cast<double>(Position.X),
+              static_cast<double>(Position.Y)},
+             static_cast<double>(Car->GetActorRotation().Yaw)},
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y)};
+        // Ground-contact HUD samples are intentionally unavailable before
+        // GO, so the start gate must NOT reuse a cached pawn readout.
+        // Take four NEW WorldStatic chassis-centre traces on this tick;
+        // their result is read-only and cannot change Chaos or gameplay.
+        latebrake::LiveGridVerticalSample& Height =
+            Vertical[static_cast<std::size_t>(Slot)];
+        Height.ChassisWorldZCm = static_cast<double>(Position.Z);
+        Height.Ground.PhysicsReady = true; // verified at entry
+        Height.Ground.DeltaSeconds =
+            static_cast<double>(World->GetDeltaSeconds());
+        Height.Ground.ChassisVerticalSpeedCmPerSecond =
+            static_cast<double>(Velocity.Z);
+        const FVector Forward = Car->GetActorForwardVector();
+        const FVector Right = Car->GetActorRightVector();
+        constexpr float ForwardCm = 122.f;
+        constexpr float SideCm = 68.f;
+        const float ProbeForward[] = {
+            ForwardCm, ForwardCm, -ForwardCm, -ForwardCm};
+        const float ProbeSide[] = {
+            -SideCm, SideCm, -SideCm, SideCm};
+        FCollisionQueryParams Query(
+            SCENE_QUERY_STAT(LatebrakeLiveSixCarGridContact), false);
+        Query.AddIgnoredActor(Car);
+        for (int32 Index = 0; Index < 4; ++Index)
+        {
+            const FVector Origin = Position +
+                Forward * ProbeForward[Index] + Right * ProbeSide[Index];
+            const FVector End = Origin -
+                FVector(0.f, 0.f,
+                    static_cast<float>(
+                        latebrake::ChassisContactProbeTraceLengthCm));
+            FHitResult Hit;
+            if (World->LineTraceSingleByChannel(
+                    Hit, Origin, End, ECC_WorldStatic, Query) &&
+                Hit.bBlockingHit && IsValid(Hit.GetComponent()) &&
+                Hit.GetComponent()->GetCollisionObjectType() ==
+                    ECC_WorldStatic &&
+                Hit.GetActor() == SouthStraight)
+            {
+                Height.Ground.Probes[static_cast<std::size_t>(Index)] = {
+                    true, static_cast<double>(Hit.Distance),
+                    static_cast<double>(Hit.ImpactNormal.Z)};
+            }
+        }
+        return true;
+    };
+    if (!CollectLive(Human, latebrake::HumanGridSlot) ||
+        !CollectLive(RivalCar.Get(), latebrake::PrimaryRivalGridSlot))
     {
         return false;
     }
@@ -2506,12 +2611,20 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
         const ALatebrakeRivalCar* Actor = ExperimentalRivals[Index].Get();
         if (!IsValid(Actor) || Actor->GetGridSlot() != Index + 2 ||
             !IsRegisteredRivalActor(Actor) ||
-            !Actor->IsRacePhysicsReady())
+            !Actor->IsRacePhysicsReady() ||
+            !CollectLive(Actor, Index + 2))
         {
             return false;
         }
     }
-    return true;
+    // Every GO countdown frame receives a fresh, exact six-car snapshot.
+    // Fail closed if a car moved, rotated, gained unusual speed, or now
+    // overlaps another padded footprint. No steering/teleport/score
+    // authority is added to this defensive start-light read.
+    const latebrake::LiveGridValidation LiveGrid =
+        latebrake::EvaluateLiveSixCarStartingGrid(
+            Observed, Vertical, latebrake::StartGridCapacity);
+    return LiveGrid.Safe();
 }
 
 void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
