@@ -2178,3 +2178,15 @@ else()
     target_compile_options(latebrake_extended_racecraft_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RacecraftExtendedSystems COMMAND latebrake_extended_racecraft_tests)
+
+
+# Six physical actor aerodynamic wake, source-only with no invented Chaos forces.
+add_executable(latebrake_aerodynamic_wake_traffic_tests AerodynamicWakeTrafficTests.cpp)
+target_include_directories(latebrake_aerodynamic_wake_traffic_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_aerodynamic_wake_traffic_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_aerodynamic_wake_traffic_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_aerodynamic_wake_traffic_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AerodynamicWakeTraffic COMMAND latebrake_aerodynamic_wake_traffic_tests)
