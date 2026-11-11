@@ -58,7 +58,7 @@ static void TestPhysicalMathAndCircuit()
             "Euclidean plan length");
     Require(std::abs(WrappedAngle(3.0 * Pi) - Pi) < 1.e-10,
             "wrapped angle stable");
-    Require(std::abs(Dot({1.0, 0.0}, {0.0, 1.0})) < 1.e-10,
+    Require(std::abs(Dot(Vec2{1.0, 0.0}, Vec2{0.0, 1.0})) < 1.e-10,
             "orthogonal axes");
     const SegmentProjection projection = ProjectToSegment(
         {50.0, 10.0}, {{0.0, 0.0}, {100.0, 0.0}});
