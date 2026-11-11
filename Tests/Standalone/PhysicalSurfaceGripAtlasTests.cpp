@@ -250,7 +250,12 @@ static void WetnessAndBraking()
         const auto result=atlas.Record(frame);
         Check(result.Qualified,
               "actual wet readings are not invented");
-        if(i==0)firstTransition=result.ChangedWetnessClass;
+        if(i==0)
+        {
+            firstTransition=result.ChangedWetnessClass;
+            Check(result.NewGrip<=0.68*0.65+1e-9,
+                  "new wet-road sensor reading cuts grip without lag");
+        }
         MoveForward(frame);
     }
     const auto wet=atlas.Query(15.0,frame.RaceClockSeconds);
@@ -281,6 +286,19 @@ static void WetnessAndBraking()
           predicted.PlannedEntrySpeedCmS<=
               baseline.PlannedEntrySpeedCmS,
           "wet grip atlas never makes a previously safer corner faster");
+    // The first reported dry measurement cannot immediately restore the
+    // earlier high-grip braking budget; only recovery is smoothed.
+    frame.MeasuredMaterial=ContactSurface::Asphalt;
+    frame.ActualWetnessFraction=0.0;
+    frame.RoadFrictionScale=1.0;
+    for(auto& wheel:frame.Wheels)
+        wheel.SurfaceGrip=1.15;
+    const auto recovering=atlas.Record(frame);
+    Check(recovering.Qualified &&
+          recovering.ChangedWetnessClass &&
+          recovering.NewGrip>=wet.MeasuredGripScale &&
+          recovering.NewGrip<1.15,
+          "road grip recovery is gradual despite improved sensor input");
     Check(atlas.BeginSession(94,0) &&
           !atlas.Query(15.0,frame.RaceClockSeconds).Valid,
           "new session clears all prior grip telemetry");
