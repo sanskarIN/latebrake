@@ -171,6 +171,14 @@ static void RejectUnqualified()
     Check(!ResolveSafetyControl(sample).Valid,
           "different wheel and traffic chassis velocities rejected");
     sample=PhysicalFleetFrame();
+    ++sample.Following.Opponents[1].Identity.SessionRevision;
+    Check(!ResolveSafetyControl(sample).Valid,
+          "opponent from previous recovery revision cannot qualify");
+    sample=PhysicalFleetFrame();
+    --sample.Following.Opponents[2].Identity.Frame;
+    Check(!ResolveSafetyControl(sample).Valid,
+          "one stale rival frame invalidates all traffic grants");
+    sample=PhysicalFleetFrame();
     sample.Following.OpponentCount=4;
     Check(!ResolveSafetyControl(sample).Valid,
           "missing fifth rival never becomes clear road");
@@ -211,6 +219,17 @@ static void MonotonicSupervisor()
     Check(!controller.Step(sample).Valid &&
           controller.Rejections()==1,
           "same frame cannot be replayed into an engine command");
+    // A smaller ordinal in the identical actor epoch is also a replay,
+    // not a valid recovery requiring only a short safety hold.
+    auto rolledBack=sample;
+    --rolledBack.Corner.Identity.Frame;
+    --rolledBack.Following.Self.Identity.Frame;
+    for(auto& opponent:rolledBack.Following.Opponents)
+        --opponent.Identity.Frame;
+    Check(!controller.Step(rolledBack).Valid &&
+          controller.Rejections()==2 &&
+          controller.Frames()==1,
+          "older coherent input frame cannot pass as fresh evidence");
     ++sample.Corner.Identity.Frame;
     ++sample.Following.Self.Identity.Frame;
     for(auto& rival:sample.Following.Opponents)
