@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Telemetry/TelemetryTypes.h"
+#include "Telemetry/TelemetryKinematics.h"
 #include "Telemetry/TelemetryValidation.h"
 
 #include <algorithm>
