@@ -2214,3 +2214,15 @@ else()
     target_compile_options(latebrake_physical_safety_fusion_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PhysicalSafetyControlFusion COMMAND latebrake_physical_safety_fusion_tests)
+
+
+# Original asphalt-only, physical four-wheel grip atlas and preview integration.
+add_executable(latebrake_physical_surface_grip_atlas_tests PhysicalSurfaceGripAtlasTests.cpp)
+target_include_directories(latebrake_physical_surface_grip_atlas_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_surface_grip_atlas_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_surface_grip_atlas_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_surface_grip_atlas_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalSurfaceGripAtlas COMMAND latebrake_physical_surface_grip_atlas_tests)
