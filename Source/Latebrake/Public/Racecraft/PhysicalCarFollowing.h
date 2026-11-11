@@ -238,8 +238,7 @@ inline FollowingThreat EvaluateFollowingThreat(
     out.Actor=other.Identity.Actor;
     out.LongitudinalGapCm=bodyGap;
     out.LateralSeparationCm=lateral;
-    out.RelativeForwardSpeedCmS=-
-        closing;
+    out.RelativeForwardSpeedCmS = -closing;
     out.ClosingSpeedCmS=std::max(0.0,closing);
     out.SameLane=std::abs(lateral)<
         p.MaximumLateralInteractionCm+
