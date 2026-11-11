@@ -426,11 +426,11 @@ public:
             decision.ExactFrameDuplicate ? 1 : 0;
         Report.AverageFrameGapSeconds = SafeRatio(
             Report.TotalQualifiedSeconds,
-            Report.AcceptedFrames);
+            static_cast<double>(Report.AcceptedFrames));
         Report.QualityFraction = SafeRatio(
-            Report.AcceptedFrames,
-            Report.AcceptedFrames +
-            Report.RejectedFrames);
+            static_cast<double>(Report.AcceptedFrames),
+            static_cast<double>(Report.AcceptedFrames) +
+            static_cast<double>(Report.RejectedFrames));
         Report.OfficialTimeAuthority = false;
         return decision;
     }
