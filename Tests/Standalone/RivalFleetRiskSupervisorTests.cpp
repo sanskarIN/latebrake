@@ -133,7 +133,7 @@ void TestContinuousSweptGeometry()
     Require(overlap.Kind == FleetRiskKind::Touching &&
             Near(overlap.TimeToContactSeconds, 0.0),
             "current padded chassis intersection is most urgent");
-    other.Pose.Position = {-1400.0, -1000.0};
+    other.Pose.Position = {-1850.0, -1000.0};
     other.VelocityX = 0.0;
     other.VelocityY = -2500.0;
     Require(ForecastFleetContact(self, other).Intersects,
