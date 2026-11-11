@@ -20,6 +20,17 @@ forecast. Its road-point samples are collected during coasting as well as
 braking. [Current-source CI](https://github.com/sanskarIN/latebrake/actions/runs/42630895071)
 must complete successfully; older passing source revisions are historical.
 
+## Optional read-only readiness check (NO tag, NO release)
+
+Before considering publication, the owner can run the separate
+[read-only v0.5.98 audit](V0598_SOURCE_READINESS_QA.md) from protected
+`main` **after its own reviewed workflow PR is merged**. It checks
+the exact source PR, immutable predecessor, byte-matched notes and
+current tag/release state without creating a tag or publishing anything.
+It is not the strict source test matrix, real UE5.8 compilation or
+installed-game QA; the publisher below independently performs source
+qualification.
+
 ## Manual publication
 
 The repository owner can open [the prepared workflow](https://github.com/sanskarIN/latebrake/actions/workflows/prepare-v0598-source.yml),
