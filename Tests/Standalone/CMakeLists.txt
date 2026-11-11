@@ -2263,3 +2263,16 @@ else()
     target_compile_options(latebrake_driver_input_traffic_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME DrivingInputsAndTraffic COMMAND latebrake_driver_input_traffic_tests)
+
+
+# Real-actor-only pit, sector, weather, incident, telemetry and visibility
+# evidence. Includes every new pure C++20 subsystem on all desktop compilers.
+add_executable(latebrake_physical_race_operations_tests PhysicalRaceOperationsEvidenceTests.cpp)
+target_include_directories(latebrake_physical_race_operations_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_race_operations_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_race_operations_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_race_operations_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalRaceOperationsEvidence COMMAND latebrake_physical_race_operations_tests)
