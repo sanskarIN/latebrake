@@ -143,7 +143,22 @@ inline bool ValidFollowingParameters(FollowingParameters s) noexcept
         Finite(s.RateLimitedThrottleRecoveryPerSecond) &&
         s.RateLimitedThrottleRecoveryPerSecond>0.0 &&
         Finite(s.BrakeReleasePerSecond) &&
-        s.BrakeReleasePerSecond>0.0;
+        s.BrakeReleasePerSecond>0.0 &&
+        Finite(s.MinimumApproachSpeedCmS) &&
+        s.MinimumApproachSpeedCmS>=0.0 &&
+        Finite(s.MaximumRelativeVelocityCmS) &&
+        s.MaximumRelativeVelocityCmS>s.MinimumApproachSpeedCmS &&
+        Finite(s.ClosingSeverityGain) &&
+        s.ClosingSeverityGain>0.0 &&
+        Finite(s.StoppingSafetyMarginCm) &&
+        s.StoppingSafetyMarginCm>=0.0 &&
+        Finite(s.LaneWidthCm) &&
+        s.LaneWidthCm>0.0 &&
+        Finite(s.MinimumOverlapFraction) &&
+        s.MinimumOverlapFraction>=0.0 &&
+        s.MinimumOverlapFraction<=1.0 &&
+        Finite(s.RecoveryHazardHoldSeconds) &&
+        s.RecoveryHazardHoldSeconds>=0.0;
 }
 
 inline bool ValidFollowingActor(
@@ -215,10 +230,13 @@ inline FollowingThreat EvaluateFollowingThreat(
     FollowingParameters p) noexcept
 {
     FollowingThreat out;
-    if (!ValidFollowingActor(self,p) ||
+    if (!ValidFollowingParameters(p) ||
+        !ValidFollowingActor(self,p) ||
         !ValidFollowingActor(other,p) ||
         self.Identity.Actor==other.Identity.Actor ||
-        self.Identity.Slot==other.Identity.Slot)
+        self.Identity.Slot==other.Identity.Slot ||
+        (p.RequireSameSession &&
+         self.Identity.Session!=other.Identity.Session))
         return out;
     const Vec2 longitudinal=
         HeadingVector(self.Pose.HeadingRadians);
@@ -232,6 +250,9 @@ inline FollowingThreat EvaluateFollowingThreat(
         longitudinal,relativePosition);
     const double closing=-
         Dot(relativeVelocity,longitudinal);
+    if (!Finite(closing) ||
+        std::abs(closing)>p.MaximumRelativeVelocityCmS)
+        return out;
     const double bodyGap=along-
         self.HalfLengthCm-other.HalfLengthCm;
     out.Slot=other.Identity.Slot;
@@ -241,7 +262,8 @@ inline FollowingThreat EvaluateFollowingThreat(
     out.RelativeForwardSpeedCmS = -closing;
     out.ClosingSpeedCmS=std::max(0.0,closing);
     out.SameLane=std::abs(lateral)<
-        p.MaximumLateralInteractionCm+
+        std::min(p.MaximumLateralInteractionCm,
+                 p.LaneWidthCm*0.5)+
         self.HalfWidthCm+other.HalfWidthCm;
     out.PhysicallyClosing=closing>
         p.MinimumApproachSpeedCmS;
@@ -281,7 +303,8 @@ inline FollowingThreat EvaluateFollowingThreat(
         0.0;
     const double gapFraction=Clamp01(
         SafeDivision(bodyGap,out.DesiredGapCm));
-    const double closeness=1.0-gapFraction;
+    const double closeness=Clamp01(
+        (1.0-gapFraction)*p.ClosingSeverityGain);
     const double brakeRisk=Clamp01(
         SafeDivision(out.RequiredDecelerationCmS2,
                      deceleration));
@@ -410,7 +433,9 @@ public:
             return {};
         }
         std::array<std::uint64_t,PhysicalFleetCapacity> now{};
-        now[0]=input.Self.Identity.Actor;
+        now[static_cast<std::size_t>(
+            input.Self.Identity.Slot)]=
+            input.Self.Identity.Actor;
         for (int i=0;i<input.OpponentCount;++i)
         {
             const auto& other=input.Opponents[
