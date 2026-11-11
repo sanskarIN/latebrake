@@ -1,0 +1,75 @@
+name: Audit LateBrake milestone assignments (READ-ONLY)
+
+# Operator-invoked read-only bookkeeping, never a release, merge, issue
+# mutation or gameplay QA. Only protected main code is executed.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: latebrake-manual-milestone-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Inspect proposed milestones and current PR/issue assignments
+    if: github.repository == 'sanskarIN/latebrake' && github.ref == 'refs/heads/main' && github.actor == 'sanskarIN' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout reviewed main source only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate offline milestone plan before API calls
+        run: python3 scripts/AuditMilestonePlan.py --json
+      - name: Inspect GitHub milestone, open PR and issue status (GET only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/AuditMilestonePlan.py --live --json > "$RUNNER_TEMP/latebrake-milestone-report.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          report = json.loads((Path(os.environ["RUNNER_TEMP"]) /
+                               "latebrake-milestone-report.json").read_text())
+          live = report["live"]
+          summary = [
+              "# LateBrake GitHub milestone audit (READ-ONLY)",
+              "",
+              "**No milestones, issues, PRs, tags or releases were changed.**",
+              "**No Unreal Engine compilation, cooked map or gameplay was checked.**",
+              "",
+              f"Open PRs: {live['open_pr_count']}; issues: {live['open_issue_count']}",
+              f"Existing milestones: {len(live['existing_milestones'])}",
+              "",
+              "## Milestones missing from GitHub",
+          ]
+          summary += [f"- {title}" for title in live["missing_proposed_milestones"]] or ["- None"]
+          summary += ["", "## PR/issue assignments that need manual review"]
+          for item in live["assignment_changes_needed"]:
+              summary.append(
+                  f"- {item['kind']} #{item['number']}: "
+                  f"{item['current'] or '(unassigned)'} → {item['expected']}"
+              )
+          if not live["assignment_changes_needed"]:
+              summary.append("- None")
+          summary += ["", "## New open PRs/issues not yet triaged"]
+          for kind in ("prs", "issues"):
+              summary.append(
+                  f"- {kind}: {', '.join(map(str, live['new_open_items_since_snapshot'][kind])) or 'none'}"
+              )
+          summary.append("")
+          summary.append(
+              "Missing items are recommendations only. Create GitHub milestones "
+              "and assign issues/PRs in the GitHub UI after reviewing scope."
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as file:
+              file.write("\n".join(summary) + "\n")
+          PY
