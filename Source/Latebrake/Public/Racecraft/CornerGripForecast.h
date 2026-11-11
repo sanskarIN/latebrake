@@ -272,7 +272,17 @@ inline bool ValidCornerForecastObservation(
          !Finite(sample.Wake.CombinedWakeFraction)))
         return false;
     if (sample.Wake.Valid &&
-        !sample.WakeRosterMatchesIdentity)
+        (!sample.WakeRosterMatchesIdentity ||
+         sample.Wake.FollowingIdentity.Session!=
+             sample.Identity.Session ||
+         sample.Wake.FollowingIdentity.SessionRevision!=
+             sample.Identity.SessionRevision ||
+         sample.Wake.FollowingIdentity.Actor!=
+             sample.Identity.Actor ||
+         sample.Wake.FollowingIdentity.Slot!=
+             sample.Identity.Slot ||
+         sample.Wake.FollowingIdentity.Frame!=
+             sample.Identity.Frame))
         return false;
     double normalSum=0.0;
     for (const WheelObservation& wheel:sample.Wheels)
