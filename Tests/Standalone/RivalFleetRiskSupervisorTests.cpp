@@ -178,6 +178,14 @@ void TestDistanceAndPriority()
             follow.ThrottleCeiling > 0.0 &&
             follow.LimitingSlot == 0,
             "measured closing speed makes a gradual follow cap");
+    s.Blockers[4].Pose.Position = {-800.0, SouthY};
+    s.Blockers[4].VelocityX = 150.0;
+    const auto stricter = ForecastSixCarRisk(s);
+    Require(stricter.Kind == FleetRiskKind::Following &&
+            stricter.LimitingSlot == 5 &&
+            stricter.ThrottleCeiling < follow.ThrottleCeiling,
+            "later stronger soft cap reports its real physical actor slot");
+    s.Blockers[4] = ValidSixCars().Blockers[4];
     s.Blockers[0].VelocityX = 350.0;
     Require(ForecastSixCarRisk(s).Kind == FleetRiskKind::Clear,
             "matching forward speed cannot produce fake braking distance");

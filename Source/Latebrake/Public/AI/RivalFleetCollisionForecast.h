@@ -307,13 +307,18 @@ inline FleetRiskReport ForecastSixCarRisk(
             result.ClosingSpeedCmS = closing;
             result.ThrottleCeiling = ceiling;
         }
-        else if (!result.Emergency() &&
-                 kind == FleetRiskKind::Following)
+        else if (result.Kind == FleetRiskKind::Following &&
+                 kind == FleetRiskKind::Following &&
+                 ceiling < result.ThrottleCeiling)
         {
-            // If two opponents both warrant a soft cap, honor the tighter
-            // cap rather than trusting only the first to be visited.
-            result.ThrottleCeiling =
-                std::min(result.ThrottleCeiling, ceiling);
+            // Two slower cars may demand different soft caps. Attribute
+            // the selected limit to the actual stricter physical actor,
+            // never a prior object that merely appeared first in TArray.
+            result.ThrottleCeiling = ceiling;
+            result.LimitingSlot = other.Slot;
+            result.ForwardGapCm = ahead;
+            result.ClosingSpeedCmS = closing;
+            result.TimeToContactSeconds = contactTime;
         }
     }
     return result;
