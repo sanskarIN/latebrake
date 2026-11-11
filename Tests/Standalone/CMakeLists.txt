@@ -2190,3 +2190,15 @@ else()
     target_compile_options(latebrake_aerodynamic_wake_traffic_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME AerodynamicWakeTraffic COMMAND latebrake_aerodynamic_wake_traffic_tests)
+
+
+# Brake-before-corner profile from measured four-wheel grip and real aero wake.
+add_executable(latebrake_corner_grip_forecast_tests CornerGripForecastTests.cpp)
+target_include_directories(latebrake_corner_grip_forecast_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_corner_grip_forecast_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_corner_grip_forecast_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_corner_grip_forecast_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CornerGripForecast COMMAND latebrake_corner_grip_forecast_tests)
