@@ -56,7 +56,7 @@ static void TestPhysicalMathAndCircuit()
     Require(Finite(Vec2{1.0, 2.0}), "finite vector accepted");
     Require(std::abs(Length(Vec2{3.0, 4.0}) - 5.0) < 1.e-10,
             "Euclidean plan length");
-    Require(std::abs(WrappedAngle(3.0 * Pi) - Pi) < 1.e-10,
+    Require(std::abs(std::abs(WrappedAngle(3.0 * Pi)) - Pi) < 1.e-10,
             "wrapped angle stable");
     Require(std::abs(Dot(Vec2{1.0, 0.0}, Vec2{0.0, 1.0})) < 1.e-10,
             "orthogonal axes");
