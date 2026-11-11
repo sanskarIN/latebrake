@@ -44,9 +44,13 @@ The pre-GO probe collector deliberately performs fresh WorldStatic
 line traces on every eligible countdown tick, because the ordinary pawn
 contact readout is unavailable before green and MUST NOT be reused.
 It uses the existing 122/68 cm chassis-corner probe offsets, 280 cm
-trace length and ground-normal/contact evaluator. A WorldStatic trace
-is **not** proof that the hit belongs to a cooked original asphalt asset;
-real-world surface identity and engine contact must still be verified.
+trace length and ground-normal/contact evaluator. Only traces whose
+`Hit.GetActor()` is the exact **SouthStraight collision Actor** created
+by `BuildCircuit` are admitted. An unrelated floor, a barrier, a
+WorldStatic obstacle or a stale/missing road actor cannot impersonate
+the intended original asphalt. This is source-level actor binding, **not**
+evidence that a real cooked Unreal .umap or installed contact is correct;
+live-world collision behavior still needs actual engine testing.
 These are **experimental conservative pre-start thresholds**, not
 measured car specifications or production race regulations. Failure
 does not teleport actors, invent a fallback car, reset race state,
@@ -103,6 +107,9 @@ Editor/UHT/Game build or genuine Chaos vehicle behavior.
    safe chassis centre height and low vertical speed. Profile the 24
    additional WorldStatic line traces per countdown frame and confirm
    they do not create a hitch or ambiguous collision-surface hit.
+   In an isolated development test, remove/disable SouthStraight while
+   leaving generic WorldStatic ground or another collider: the six-car
+   countdown must fail closed instead of admitting that false support.
 5. Restore valid positions using an accepted new race restart.
    Verify physics then permits a genuine six-car countdown, and
    all actors can drive rather than merely being rendered.

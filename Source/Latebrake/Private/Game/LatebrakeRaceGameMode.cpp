@@ -904,6 +904,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
     bCircuitReady = false;
+    SouthStraightCollisionActor.Reset();
     // Spawning an Actor does not prove rendering or collision on installed
     // devices, but failed block creation must never be hidden by the
     // four-checkpoint startup success marker.
@@ -947,9 +948,13 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             Block.Style == latebrake::CollisionBlockStyle::Ground ? GroundColor :
             Block.Style == latebrake::CollisionBlockStyle::Asphalt ? AsphaltColor :
             BarrierColor;
-        RecordBlock(Labels[Index],
+        AStaticMeshActor* PhysicalBlock = RecordBlock(Labels[Index],
             FVector(Block.Center.X, Block.Center.Y, Block.Height),
             FVector(Block.ScaleX, Block.ScaleY, Block.ScaleZ), Color);
+        if (Index == 1) // Exactly the original physical SouthStraight.
+        {
+            SouthStraightCollisionActor = PhysicalBlock;
+        }
     }
 
     // All ninety-three collision-free decorative cubes now share one scene
@@ -2514,7 +2519,18 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
         return false;
     }
     UWorld* World = GetWorld();
-    if (!World)
+    if (!World || !SouthStraightCollisionActor.IsValid())
+    {
+        return false;
+    }
+    const AStaticMeshActor* SouthStraight =
+        SouthStraightCollisionActor.Get();
+    const UStaticMeshComponent* Asphalt = IsValid(SouthStraight)
+        ? SouthStraight->GetStaticMeshComponent() : nullptr;
+    if (!IsValid(Asphalt) ||
+        Asphalt->GetCollisionEnabled() !=
+            ECollisionEnabled::QueryAndPhysics ||
+        Asphalt->GetCollisionObjectType() != ECC_WorldStatic)
     {
         return false;
     }
@@ -2522,7 +2538,7 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
                latebrake::StartGridCapacity> Observed{};
     std::array<latebrake::LiveGridVerticalSample,
                latebrake::StartGridCapacity> Vertical{};
-    const auto CollectLive = [World, &Observed, &Vertical](
+    const auto CollectLive = [World, SouthStraight, &Observed, &Vertical](
         const ALatebrakeCarPawn* Car, int32 Slot) -> bool
     {
         if (!IsValid(Car) || !Car->IsRacePhysicsReady() ||
@@ -2575,7 +2591,8 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
                     Hit, Origin, End, ECC_WorldStatic, Query) &&
                 Hit.bBlockingHit && IsValid(Hit.GetComponent()) &&
                 Hit.GetComponent()->GetCollisionObjectType() ==
-                    ECC_WorldStatic)
+                    ECC_WorldStatic &&
+                Hit.GetActor() == SouthStraight)
             {
                 Height.Ground.Probes[static_cast<std::size_t>(Index)] = {
                     true, static_cast<double>(Hit.Distance),

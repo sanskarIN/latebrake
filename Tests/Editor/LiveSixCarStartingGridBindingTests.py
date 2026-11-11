@@ -48,6 +48,10 @@ class LiveSixCarStartingGridBindingTests(unittest.TestCase):
             "World->GetDeltaSeconds()",
             "Height.Ground.ChassisVerticalSpeedCmPerSecond",
             "LineTraceSingleByChannel(",
+            "SouthStraightCollisionActor.IsValid()",
+            "Asphalt->GetCollisionEnabled()",
+            "Asphalt->GetCollisionObjectType()",
+            "Hit.GetActor() == SouthStraight",
             "ECC_WorldStatic",
             "Height.Ground.Probes[static_cast<std::size_t>(Index)]",
             "Observed, Vertical, latebrake::StartGridCapacity",
@@ -68,6 +72,17 @@ class LiveSixCarStartingGridBindingTests(unittest.TestCase):
         self.assertLess(qualify.index("LineTraceSingleByChannel("),
                         qualify.index("latebrake::EvaluateLiveSixCarStartingGrid("))
         self.assertIn("Query.AddIgnoredActor(Car)", qualify)
+        self.assertIn(
+            "TWeakObjectPtr<AStaticMeshActor> SouthStraightCollisionActor;",
+            self.mode_h)
+        build = self.mode.split(
+            "void ALatebrakeRaceGameMode::BuildCircuit()", 1)[1].split(
+            "void ALatebrakeRaceGameMode::", 1)[0]
+        self.assertIn("SouthStraightCollisionActor.Reset()", build)
+        self.assertIn("SouthStraightCollisionActor = PhysicalBlock;", build)
+        self.assertIn("if (Index == 1)", build)
+        self.assertLess(qualify.index("SouthStraightCollisionActor.IsValid()"),
+                        qualify.index("LineTraceSingleByChannel("))
         self.assertIn("Index < 4", qualify)
         self.assertNotIn("GetGroundContactReadout()", qualify)
         self.assertEqual(qualify.count("return LiveGrid.Safe();"), 1)
