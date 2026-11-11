@@ -300,11 +300,15 @@ static void TestTrafficSafetyAndEvidence()
     Check(supervisor.Configure({}),
           "physical following supervisor configuration");
     const auto firstSafe=supervisor.Step(safeFollow);
+    ++safeFollow.Self.Identity.Frame;
+    ++safeFollow.Opponents[0].Identity.Frame;
     const auto secondSafe=supervisor.Step(safeFollow);
     Check(firstSafe.Valid && secondSafe.Valid &&
           !firstSafe.HoldingForRosterChange &&
           !secondSafe.HoldingForRosterChange,
           "stable roster does not invent a safety hold");
+    ++safeFollow.Self.Identity.Frame;
+    ++safeFollow.Opponents[0].Identity.Frame;
     safeFollow.Opponents[0].Identity.Actor+=100;
     const auto rosterSwap=supervisor.Step(safeFollow);
     Check(rosterSwap.Valid &&
@@ -312,6 +316,28 @@ static void TestTrafficSafetyAndEvidence()
           rosterSwap.ProposedThrottle==0.0 &&
           rosterSwap.ProposedBrake==1.0,
           "changed verified actor triggers fail-safe hold");
+    Check(!supervisor.Step(safeFollow).Valid &&
+          supervisor.RejectedFrames()==1 &&
+          !supervisor.Snapshot().Valid,
+          "repeated physical observation cannot reuse a throttle decision");
+    auto reverseFrame=safeFollow;
+    --reverseFrame.Self.Identity.Frame;
+    --reverseFrame.Opponents[0].Identity.Frame;
+    Check(!supervisor.Step(reverseFrame).Valid &&
+          supervisor.RejectedFrames()==2,
+          "out-of-order observation cannot count as a recovery frame");
+    ++safeFollow.Self.Identity.Frame;
+    ++safeFollow.Opponents[0].Identity.Frame;
+    Check(supervisor.Step(safeFollow).Valid,
+          "fresh verified frame recovers without restoring stale throttle");
+    auto staleRival=safeFollow;
+    --staleRival.Opponents[0].Identity.Frame;
+    Check(!RestrictPhysicalCarFollowing(staleRival).Valid,
+          "old rival frame cannot falsely clear traffic");
+    staleRival=safeFollow;
+    ++staleRival.Opponents[0].Identity.SessionRevision;
+    Check(!RestrictPhysicalCarFollowing(staleRival).Valid,
+          "cross-recovery rival cannot qualify traffic");
     input.Opponents[0].Identity.Actor=
         input.Self.Identity.Actor;
     Check(!RestrictPhysicalCarFollowing(input).Valid,
