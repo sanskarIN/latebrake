@@ -445,21 +445,31 @@ public:
         double filtered=measured;
         if (cell.Samples>0)
         {
-            const double elapsed=std::max(
-                Settings.MinimumClockAdvanceSeconds,
-                frame.RaceClockSeconds-cell.LastClockSeconds);
-            const double maximumStep=
-                Settings.MaximumRoadVariationPerSecond*
-                elapsed+
-                0.10*std::abs(frame.ActualWetnessFraction-
-                              cell.WetnessFraction);
-            const double permitted=std::clamp(
-                measured,cell.MeasuredGrip-maximumStep,
-                         cell.MeasuredGrip+maximumStep);
-            filtered=ExponentialResponse(
-                cell.MeasuredGrip,permitted,
-                Settings.ExponentialFilterTimeSeconds,
-                frame.DeltaSeconds);
+            if (measured<cell.MeasuredGrip)
+            {
+                // Sudden rain, oil or physical loss of tire traction must
+                // lower the braking envelope immediately. Smoothing this
+                // direction would grant unsafe grip that sensors no longer
+                // support. Only a measured improvement can be filtered.
+                filtered=measured;
+            }
+            else
+            {
+                const double elapsed=std::max(
+                    Settings.MinimumClockAdvanceSeconds,
+                    frame.RaceClockSeconds-cell.LastClockSeconds);
+                const double maximumStep=
+                    Settings.MaximumRoadVariationPerSecond*
+                    elapsed+
+                    0.10*std::abs(frame.ActualWetnessFraction-
+                                  cell.WetnessFraction);
+                const double permitted=std::min(
+                    measured,cell.MeasuredGrip+maximumStep);
+                filtered=ExponentialResponse(
+                    cell.MeasuredGrip,permitted,
+                    Settings.ExponentialFilterTimeSeconds,
+                    frame.DeltaSeconds);
+            }
         }
         const double previousMean=cell.MeanGrip;
         const std::uint64_t count=cell.Samples+1;
