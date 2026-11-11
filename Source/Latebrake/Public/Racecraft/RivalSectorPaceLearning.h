@@ -19,7 +19,7 @@ enum class RivalPaceDecisionClass : std::uint8_t
 struct RivalPaceParameters final
 {
     double CircuitLengthCm=250000.0;
-    double MaximumPhysicalSpeedCmS=MaximumPhysicalSpeedCmS;
+    double MaximumPhysicalSpeedCmS=18000.0;
     double MinimumMeasuredSpeedCmS=200.0;
     double MaximumSectorSpeedCmS=14000.0;
     double MinimumRoadGripG=0.15;
