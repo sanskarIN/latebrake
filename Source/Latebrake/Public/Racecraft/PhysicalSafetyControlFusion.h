@@ -30,7 +30,7 @@ struct SafetyControlSettings final
     double MaximumVelocityDisagreementCmS=30.0;
     double MaximumYawDisagreementRadians=0.03;
     double MaximumDeltaDisagreementSeconds=0.0001;
-    double MaximumGripDisagreementG=1.5;
+    double MaximumGripDisagreementG=0.50;
     double MaximumThrottleRecoveryPerSecond=1.0;
     double MaximumBrakeReleasePerSecond=2.0;
     double MaximumSteeringInput=1.0;
@@ -205,6 +205,14 @@ inline bool ValidSafetyControlFrame(
                 p.MaximumYawDisagreementRadians ||
         s.Following.Self.GripG<0.15 ||
         s.Following.Self.GripG>2.5)
+        return false;
+    // The traffic model cannot use optimistic grip that contradicts
+    // independently observed wheel contacts for the same rigid body.
+    const double measuredTireGrip=
+        ObservedTireGrip(s.Corner,{});
+    if (!Finite(measuredTireGrip) ||
+        std::abs(s.Following.Self.GripG-measuredTireGrip)>
+            p.MaximumGripDisagreementG)
         return false;
     // All five independently observed actors must belong to the same
     // physical frame and recovery epoch as the controlled rival.
