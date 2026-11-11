@@ -486,17 +486,26 @@ inline PitCrewServiceReview EvaluatePhysicalPitService(
     out.ServiceReadinessFraction=Clamp01(SafeDivision(
         static_cast<double>(out.TasksPhysicallyComplete),
         static_cast<double>(PitCrewTaskCapacity)));
-    const bool lifted=f.JackHeightCm>p.MinimumLiftSeconds &&
-        f.MeasuredJackSupportLoadN>=p.MinimumJackSupportLoadN;
+    const bool liftAcknowledged=f.CrewTaskAcknowledged[
+        static_cast<std::size_t>(PitCrewTask::Lift)];
+    const bool jackCurrentlySupporting=
+        f.JackHeightCm>
+            p.MaximumHydraulicJackTravelCm*0.25 &&
+        f.MeasuredJackSupportLoadN>=
+            p.MinimumJackSupportLoadN;
+    const bool jackPhysicallyLowered=
+        f.CrewTaskAcknowledged[
+            static_cast<std::size_t>(PitCrewTask::ReleaseJack)] &&
+        f.JackHeightCm<=PhysicsEpsilon &&
+        f.MeasuredJackSupportLoadN<=PhysicsEpsilon;
     const bool wheelsReplaced=
         out.WheelsActuallyReplaced==PhysicalWheelCount;
     const bool torqueCertified=
         out.WheelsTorqueQualified==PhysicalWheelCount;
-    const bool ready=lifted &&
+    const bool ready=liftAcknowledged &&
+        jackPhysicallyLowered &&
         wheelsReplaced && torqueCertified &&
-        out.TasksPhysicallyComplete>=out.TasksRequired &&
-        f.CrewTaskAcknowledged[
-            static_cast<std::size_t>(PitCrewTask::ReleaseJack)];
+        out.TasksPhysicallyComplete>=out.TasksRequired;
     if (ready)
     {
         out.Phase=f.PitReleaseAuthorized ?
@@ -504,11 +513,12 @@ inline PitCrewServiceReview EvaluatePhysicalPitService(
             PitCrewPhase::SafetyInspection;
         out.Fault=PitCrewFault::None;
         out.PhysicalReleaseClear=f.PitReleaseAuthorized &&
-            f.JackHeightCm<=PhysicsEpsilon &&
-            f.MeasuredJackSupportLoadN<=PhysicsEpsilon &&
+            jackPhysicallyLowered &&
             f.CrewAreaClearanceCm>=p.RequiredCollisionClearanceCm;
     }
-    else if(!lifted)
+    else if(!liftAcknowledged ||
+            (!jackCurrentlySupporting &&
+             !jackPhysicallyLowered))
     {
         out.Phase=PitCrewPhase::JackUp;
         out.Fault=PitCrewFault::MissingJacks;
