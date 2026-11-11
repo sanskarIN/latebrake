@@ -513,8 +513,10 @@ public:
         Last={};
         SmoothStrength=0.0;
         SourceSession=0;
+        SourceRevision=0;
         SourceActor=0;
         LastFrame=0;
+        LastClockSeconds=0.0;
         Roster.fill(0);
         HasRoster=false;
         QualifiedFrames=0;
@@ -528,7 +530,19 @@ public:
     {
         const WakeSnapshot target=
             EvaluateAerodynamicWake(sample,Settings);
-        if (!target.Valid)
+        // Reject replayed or reversed engine observations even after a
+        // malformed sample cleared the visual wake. A roster change may
+        // reset the filter, but never converts old physics into evidence.
+        const bool sameActorEpoch=
+            SourceSession!=0 &&
+            SourceSession==sample.FollowingCar.Identity.Session &&
+            SourceRevision==
+                sample.FollowingCar.Identity.SessionRevision &&
+            SourceActor==sample.FollowingCar.Identity.Actor;
+        const bool staleFrame=sameActorEpoch &&
+            (sample.FollowingCar.Identity.Frame<=LastFrame ||
+             sample.FollowingCar.ClockSeconds<=LastClockSeconds);
+        if (!target.Valid || staleFrame)
         {
             ++RejectedFrames;
             HasRoster=false;
@@ -551,8 +565,9 @@ public:
         const bool changed=HasRoster &&
             (now!=Roster ||
              SourceSession!=sample.FollowingCar.Identity.Session ||
-             SourceActor!=sample.FollowingCar.Identity.Actor ||
-             sample.FollowingCar.Identity.Frame<=LastFrame);
+             SourceRevision!=
+                 sample.FollowingCar.Identity.SessionRevision ||
+             SourceActor!=sample.FollowingCar.Identity.Actor);
         if (changed)
         {
             ++RosterResetFrames;
@@ -561,8 +576,11 @@ public:
         Roster=now;
         HasRoster=true;
         SourceSession=sample.FollowingCar.Identity.Session;
+        SourceRevision=
+            sample.FollowingCar.Identity.SessionRevision;
         SourceActor=sample.FollowingCar.Identity.Actor;
         LastFrame=sample.FollowingCar.Identity.Frame;
+        LastClockSeconds=sample.FollowingCar.ClockSeconds;
         const double tau=target.CombinedWakeFraction>SmoothStrength ?
             Settings.WakeBuildSeconds:Settings.WakeDecaySeconds;
         SmoothStrength=ExponentialResponse(
@@ -621,8 +639,10 @@ private:
     WakeSnapshot Last{};
     std::array<std::uint64_t,PhysicalFleetCapacity> Roster{};
     std::uint64_t SourceSession=0;
+    std::uint32_t SourceRevision=0;
     std::uint64_t SourceActor=0;
     std::uint64_t LastFrame=0;
+    double LastClockSeconds=0.0;
     std::uint64_t QualifiedFrames=0;
     std::uint64_t RejectedFrames=0;
     std::uint64_t RosterResetFrames=0;
