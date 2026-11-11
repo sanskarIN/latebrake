@@ -40,7 +40,7 @@ class RivalRacecraftCompositionBindingTests(unittest.TestCase):
             "GetTireCondition().HasValidSample()",
             "Velocity, GetActorRightVector()",
             "Player->GetVelocity()",
-            "TrafficCommand.Brake && !SafePassCommand.Brake",
+            "RiskSupervision.Command.Brake && !SafePassCommand.Brake",
             "SafeSpinCommand.Steering",
         ):
             self.assertIn(statement, RIVAL)

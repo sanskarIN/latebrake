@@ -32,6 +32,10 @@ struct RivalFleetTrafficSample final
     std::array<RecoveryObstacle, MaxRecoveryObstacles> Blockers{};
     int BlockerCount = 0;
     bool SessionQualified = false;
+    // Additional prior-Chaos-frame physics for predictive braking only.
+    // Legacy immediate traffic does not consume these trailing fields.
+    bool BrakeObservationQualified = false;
+    double ConservativeBrakeScale = 0.0;
 };
 
 struct RivalFleetTrafficResult final

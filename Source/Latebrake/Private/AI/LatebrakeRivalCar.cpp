@@ -47,6 +47,7 @@ void ALatebrakeRivalCar::ResetPilot()
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
+    FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
@@ -61,6 +62,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
+    FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
@@ -86,6 +88,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -106,6 +109,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -150,6 +154,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
@@ -229,6 +234,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GripPace.Reset();
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
+        FleetRiskSupervisor.Reset();
         StraightPassAssist.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -371,16 +377,31 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const bool bTrafficQualified = bUseFleetTraffic &&
         Mode->TryCollectPhysicalTraffic(
             this, TrafficBlockers, TrafficBlockerCount);
+    // Real previous accepted chassis observations constrain additional
+    // predictive stopping distance; unknown physics cannot grant throttle.
+    const bool bPredictiveBrakeQualified =
+        bUseFleetTraffic && bCornerPhysicsQualified;
+    const double BrakeCapabilityScale = bPredictiveBrakeQualified
+        ? GetTireCondition().GripMultiplier() *
+          GetBrakeHeat().ServiceBrakeMultiplier() *
+          GetCollisionDamage().LateralGripMultiplier() *
+          (bOffPavement
+              ? latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier
+              : 1.0)
+        : 0.0;
+    const latebrake::RivalFleetTrafficSample FleetSnapshot{
+        {true, GridSlot, static_cast<uint64>(GetUniqueID()),
+            {{Position.X, Position.Y},
+             static_cast<double>(GetActorRotation().Yaw)},
+            Velocity.X, Velocity.Y},
+        TrafficBlockers,
+        bTrafficQualified ? TrafficBlockerCount : 0,
+        bTrafficQualified,
+        bPredictiveBrakeQualified,
+        BrakeCapabilityScale};
     const latebrake::RivalFleetTrafficResult FleetTraffic =
         bUseFleetTraffic
-            ? latebrake::ApplyRivalFleetTraffic(TrafficCommand, {
-            {true, GridSlot, static_cast<uint64>(GetUniqueID()),
-                {{Position.X, Position.Y},
-                 static_cast<double>(GetActorRotation().Yaw)},
-                Velocity.X, Velocity.Y},
-            TrafficBlockers,
-            bTrafficQualified ? TrafficBlockerCount : 0,
-            bTrafficQualified})
+            ? latebrake::ApplyRivalFleetTraffic(TrafficCommand, FleetSnapshot)
             : latebrake::RivalFleetTrafficResult{
                 TrafficCommand, true, false, -1};
     // Preserve the established one-rival handling in normal launches.
@@ -388,13 +409,30 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // not silently change retail pace or primary rival difficulty.
     const latebrake::PilotCommand FleetTrafficCommand =
         bUseFleetTraffic ? FleetTraffic.Command : TrafficCommand;
+    // Additional longer-lookahead, six-actor identity-checked predictive
+    // braking runs only in the explicit non-shipping fleet. It may LOWER
+    // motor demand or ADD a brake, but never steer, move or score a car.
+    // Independent existing short-horizon fleet and corner limits win.
+    if (!bUseFleetTraffic && FleetRiskSupervisor.HasPhysicalRoster())
+    {
+        FleetRiskSupervisor.Reset();
+    }
+    const latebrake::FleetRiskSupervision RiskSupervision =
+        bUseFleetTraffic
+            ? FleetRiskSupervisor.Apply(
+                FleetTrafficCommand, FleetSnapshot,
+                static_cast<double>(DeltaSeconds))
+            : latebrake::FleetRiskSupervision{
+                FleetTrafficCommand, {}, true, false, false, 0.0, 1.0};
     // A short, fail-closed hold prevents brake chatter near the
     // projected contact boundary; it cannot re-route or score a rival.
     const latebrake::PilotCommand HeldTrafficCommand =
         FollowingBrakeHold.Apply(
-            FleetTrafficCommand, static_cast<double>(DeltaSeconds),
-            bUseFleetTraffic ? bTrafficQualified : bPlayerReady,
-            FleetTrafficCommand.Brake && !SafePassCommand.Brake);
+            RiskSupervision.Command, static_cast<double>(DeltaSeconds),
+            bUseFleetTraffic
+                ? (bTrafficQualified && RiskSupervision.Qualified)
+                : bPlayerReady,
+            RiskSupervision.Command.Brake && !SafePassCommand.Brake);
     // An emergency following-brake decision may legitimately arrive
     // before the rival has physically completed its passing lane shift.
     // Braking with the passing steer still active can direct the car
