@@ -2144,3 +2144,15 @@ else()
     target_compile_options(latebrake_advanced_telemetry_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME TelemetryAdvancedAnalytics COMMAND latebrake_advanced_telemetry_tests)
+
+# All remaining run-local race engineer headers must compile with strict
+# C++20 on Windows, Ubuntu and macOS; no licensed engine is inferred.
+add_executable(latebrake_extended_telemetry_tests TelemetryExtendedSubsystemTests.cpp)
+target_include_directories(latebrake_extended_telemetry_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_extended_telemetry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_extended_telemetry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_extended_telemetry_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TelemetryExtendedSubsystem COMMAND latebrake_extended_telemetry_tests)
