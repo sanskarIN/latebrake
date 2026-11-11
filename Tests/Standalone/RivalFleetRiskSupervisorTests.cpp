@@ -80,6 +80,34 @@ void TestExactPhysicalRoster()
     bad.Blockers[3].Verified = false;
     Require(!ValidateSixCarFleet(bad, tokens),
             "physically unverified blocker is never an empty lane");
+    // Valid centre coordinates can still expose the padded chassis beyond
+    // actual asphalt or into a genuine original circuit wall.
+    bad = s;
+    bad.Blockers[0].Pose.Position = {
+        0.0, SouthY - RoadHalfWidth + 60.0};
+    Require(IsOnPavedSurface(bad.Blockers[0].Pose.Position) &&
+            !FleetBodyInsideAuthoredAsphalt(bad.Blockers[0].Pose) &&
+            !ValidateSixCarFleet(bad, tokens),
+            "off-road padded body denies motor despite paved centre");
+    bad = s;
+    bad.Self.Pose.Position = {
+        0.0, SouthY + RoadHalfWidth - 60.0};
+    Require(IsOnPavedSurface(bad.Self.Pose.Position) &&
+            !FleetBodyInsideAuthoredAsphalt(bad.Self.Pose) &&
+            !ValidateSixCarFleet(bad, tokens),
+            "self chassis straddling inner road edge fails closed");
+    bad = s;
+    bad.Blockers[0].Pose.Position = {3680.0, SouthY};
+    Require(IsOnPavedSurface(bad.Blockers[0].Pose.Position) &&
+            StartGridFootprintTouchesBarrier(bad.Blockers[0].Pose) &&
+            !FleetBodyInsideAuthoredAsphalt(bad.Blockers[0].Pose) &&
+            !ValidateSixCarFleet(bad, tokens),
+            "barrier-overlapping body is not qualified paved traffic");
+    bad = s;
+    bad.Blockers[2].Pose = {{EastX, -950.0}, 45.0};
+    Require(FleetBodyInsideAuthoredAsphalt(bad.Blockers[2].Pose) &&
+            ValidateSixCarFleet(bad, tokens),
+            "rotated chassis fully inside east slab remains qualified");
     bad = s;
     bad.Blockers[3].Pose.Position = {0.0, 0.0};
     Require(!ValidateSixCarFleet(bad, tokens),
@@ -144,7 +172,9 @@ void TestContinuousSweptGeometry()
     other.VelocityY = 0.0;
     Require(!ForecastFleetContact(self, other).Intersects,
             "separated side-by-side lanes do not create ghost contact");
-    other.Pose.Position = {-3500.0, SouthY};
+    // The prior -3500cm rear fixture's padded body touched the real
+    // west barrier, so it is not a qualified road-only traffic sample.
+    other.Pose.Position = {-3150.0, SouthY};
     other.VelocityX = 2400.0;
     Require(ForecastSixCarRisk(
         [&]() { auto x = s; x.Blockers[0] = other; return x; }()).Kind ==
@@ -210,9 +240,9 @@ void TestDistanceAndPriority()
     auto predicted = ForecastSixCarRisk(s);
     Require(predicted.Emergency(),
             "close stopped traffic exceeds conservative stopping capacity");
-    s.Blockers[0].Pose.Position = {2000.0, -1000.0};
+    s.Blockers[0].Pose.Position = {2000.0, SouthY + 550.0};
     Require(ForecastSixCarRisk(s).Kind == FleetRiskKind::Clear,
-            "large lateral separation cannot trigger same-lane stop demand");
+            "fully-paved lateral separation is not same-lane danger");
 
     RivalFleetRiskSupervisor director;
     const FleetRiskSupervision capped =
@@ -221,6 +251,44 @@ void TestDistanceAndPriority()
             Near(capped.Command.Steering, moving.Steering) &&
             !capped.Command.Brake,
             "clean forecast never adds throttle or changes steering");
+}
+
+void TestStrongestFollowingLimitWinsAnyRosterOrder()
+{
+    using namespace latebrake;
+    auto scene = ValidSixCars();
+    scene.Self.VelocityX = 350.0;
+    // Blocker slot 5, farther back, needs a tighter cap than slot 0.
+    // They are both genuinely on the original south road.
+    scene.Blockers[0].Pose.Position = {-400.0, SouthY};
+    scene.Blockers[0].VelocityX = 100.0;
+    scene.Blockers[4].Pose.Position = {-900.0, SouthY};
+    scene.Blockers[4].VelocityX = 100.0;
+    Require(FleetBodyInsideAuthoredAsphalt(scene.Blockers[0].Pose) &&
+            FleetBodyInsideAuthoredAsphalt(scene.Blockers[4].Pose),
+            "both following risk candidates have valid full road bodies");
+    const auto risk = ForecastSixCarRisk(scene);
+    Require(risk.Kind == FleetRiskKind::Following &&
+            risk.LimitingSlot == 5 &&
+            risk.ThrottleCeiling > 0.0 &&
+            risk.ThrottleCeiling < 0.6,
+            "closer slot-5 traffic imposes the tightest throttle ceiling");
+
+    std::swap(scene.Blockers[0], scene.Blockers[4]);
+    const auto reversed = ForecastSixCarRisk(scene);
+    Require(reversed.Kind == FleetRiskKind::Following &&
+            reversed.LimitingSlot == 5 &&
+            Near(reversed.ThrottleCeiling, risk.ThrottleCeiling),
+            "lower slot cannot override a stricter later soft cap");
+
+    RivalFleetRiskSupervisor supervisor;
+    const PilotCommand plan{0.95, 0.25, false, false};
+    const auto applied = supervisor.Apply(plan, scene, 1.0 / 60.0);
+    Require(applied.Qualified &&
+            !applied.HoldingBrake &&
+            applied.Command.Throttle <= risk.ThrottleCeiling &&
+            applied.Command.Steering == plan.Steering,
+            "actual multi-actor supervisor respects selected lower limit");
 }
 
 void TestObservedBrakeCapacity()
@@ -446,6 +514,7 @@ int main()
     TestExactPhysicalRoster();
     TestContinuousSweptGeometry();
     TestDistanceAndPriority();
+    TestStrongestFollowingLimitWinsAnyRosterOrder();
     TestObservedBrakeCapacity();
     TestTemporalHoldAndReacquisition();
     TestRouteAuthorityAndFrameRates();

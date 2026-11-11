@@ -2106,3 +2106,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SixCarAggregateSafety COMMAND latebrake_six_car_aggregate_safety_tests)
+
+# Exact bounded four-slab asphalt union for rotated padded rival bodies.
+# Source-only C++20 regression; no Unreal runtime/cooked map implied.
+add_executable(latebrake_fleet_road_union_tests FleetRoadUnionCoverageTests.cpp)
+target_include_directories(latebrake_fleet_road_union_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_fleet_road_union_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_fleet_road_union_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_fleet_road_union_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FleetRoadUnionCoverage COMMAND latebrake_fleet_road_union_tests)

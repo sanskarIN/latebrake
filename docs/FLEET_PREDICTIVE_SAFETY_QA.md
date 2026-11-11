@@ -25,9 +25,19 @@ progress, lap awards, penalty fees, credit balance or SaveGame files.
 ## Independent portable policies
 
 - `RivalFleetCollisionForecast.h` validates six actor identity tokens,
-  exact grid slots, all five physical blockers, road footprint XY safety,
-  finite real-world body positions and velocities. Partial or duplicate
-  rosters fail closed, even when the nearest obstacle looks safe.
+  exact grid slots, all five physical blockers, and finite world-space
+  body positions and velocities. Partial or duplicate rosters fail closed.
+  **Actual footprint restriction:** each fully padded, rotated chassis
+  must fit on the **union of four original collision-bearing asphalt
+  slabs** without intersecting any authored physical barrier. Paved
+  *centre only* is insufficient. A single-slab projection supplies the
+  fast path on straights; a true seam invokes a fixed 15-subset
+  inclusion/exclusion area calculation with Sutherland-Hodgman clipping.
+  Legitimate bodies spanning two joined corner slabs stay driveable,
+  while bodies hanging over the central unpaved gap or road edge fail
+  closed. The absolute 0.000001 cm² tolerance is strictly numerical.
+  This verifies source-plan XY geometry, NOT true UE/Chaos contact,
+  3D chassis support or tested physical handling.
 - Continuous separating-axis intersection checks all four body axes,
   constant relative measured velocity and conservative uncertainty
   padding for the next 1.4 seconds. It does not falsely assume vehicles
@@ -41,7 +51,10 @@ progress, lap awards, penalty fees, credit balance or SaveGame files.
   physical ABS simulation or certified real-world braking.
 - All five threats are inspected; physical overlap is higher priority
   than swept contact, which is higher priority than stopping-distance
-  concerns. Stable actor slots settle ties without order-dependent output.
+  concerns. Among two lower-severity following risks, the smallest
+  permitted throttle wins **regardless of actor observation order**;
+  only otherwise-identical risks use stable actor-slot tie-breaking.
+  No weaker cap may overwrite a stricter one when samples reorder.
 - `RivalFleetRiskSupervisor.h` binds the decision to the current six
   actual actor tokens. Missing actors, malformed frame time or invalid
   driver output clear every old safe observation. Actor replacement
@@ -58,7 +71,7 @@ progress, lap awards, penalty fees, credit balance or SaveGame files.
 ```bash
 cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
 cmake --build Tests/Standalone/build --parallel 4
-ctest --test-dir Tests/Standalone/build -R '^RivalFleetRiskSupervisor$' --output-on-failure
+ctest --test-dir Tests/Standalone/build -R '^(RivalFleetRiskSupervisor|FleetRoadUnionCoverage)
 python3 -m unittest discover -s Tests/Editor -p 'RivalFleetRiskSupervisorBindingTests.py' -v
 ```
 
@@ -98,3 +111,53 @@ perturbation sweep validates no extra throttle or arbitrary steering.
 The numerical v0.6.0 **200,000 nonblank/noncomment production-C++ line**
 goal remains separate from gameplay correctness. Do not count tests,
 documentation, workflow code, generated files or overlapping PRs.
+ --output-on-failure
+python3 -m unittest discover -s Tests/Editor -p 'RivalFleetRiskSupervisorBindingTests.py' -v
+```
+
+Test scenarios include complete roster permutation, missing/duplicated
+identity, anonymous actor, stale session, malformed velocities, the
+unpaved centre, head-on and right-angle relative motion, false rear
+braking, adjacent-lane separation, immediate chassis overlap, late
+emergencies overriding earlier mild following caps, true stopping distance,
+throttle invariants, frame-time rejection, actor replacement, restart
+resets and 30/60/120 FPS hold consistency. A fixed-seed 30,000-frame
+perturbation sweep validates no extra throttle or arbitrary steering.
+
+## Real licensed Unreal acceptance before any merge
+
+1. Freeze the **exact approved aggregated head** containing this new PR,
+   with all six real actors. Existing frozen #335 lacks this feature.
+   Review the complete diff before a trusted self-hosted UE5.8 build.
+2. On original owner-authored cooked asphalt, compile Editor/UHT/Game,
+   then drive a real six-car session at 30/60/120 FPS. Confirm honest
+   tracker identity and no extra vehicles silently disappear.
+3. Measure position, velocity, input and actual stopping behavior for
+   frontal approaches, lateral crossings, high-closing-speed straights,
+   slow side-by-side passes and near-wall traffic. Ensure route and
+   checkpoint steering are not hijacked by the safety guard.
+4. Destroy/replace a rival mid-session and verify the actual fleet
+   identity sample rejects the prior roster and holds brake.
+5. Compare the real CPU cost of up to five continuous swept OBB tests
+   per rival on the actual target hardware. Verify bounded work and
+   no hitch from the full physical six-car traffic collection.
+6. Regress one-rival Quick Race, Time Attack, career, retry, pause,
+   focus loss, recovery and full races. Verify default sessions do
+   not enter the new experimental traffic path.
+7. Keep issue #148 open until source, licensed engine, cooked map,
+   real installed Win64 gameplay and platform-specific requirements
+   have their own complete evidence.
+
+The numerical v0.6.0 **200,000 nonblank/noncomment production-C++ line**
+goal remains separate from gameplay correctness. Do not count tests,
+documentation, workflow code, generated files or overlapping PRs.
+
+## Bounded asphalt-union regression
+
+The separate `FleetRoadUnionCoverage` portable C++ target includes
+all four asphalt corner seams, axis-aligned straights, true concave
+inner-hole and exterior edge exclusions, physical wall vetoes,
+independent convex polygon clipping/area tests and 16,000 fixed-seed
+cornering poses. It inspects sample points on every accepted padded
+OBB perimeter. Passing source geometry is NOT a substitute for
+running the actual six-car UE5.8 game through the same corners.
