@@ -4,6 +4,8 @@
 #include "Telemetry/TelemetryVehicleHealth.h"
 #include "Telemetry/TelemetryFuelStrategy.h"
 #include "Telemetry/TelemetryOpponents.h"
+#include "Telemetry/TelemetryBraking.h"
+#include "Telemetry/TelemetryCornering.h"
 
 #include <algorithm>
 #include <array>

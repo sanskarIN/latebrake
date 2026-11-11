@@ -632,7 +632,6 @@ void TestFailureInputs()
     Require(!journal.Append(
         event, EventSource::NativePhysics, 18, 1, 1),
             "events without actual source actor never look qualified");
-    ReplayRecorder replay;
     ReplaySample sample;
     sample.Valid = true;
     sample.NativeObserved = false;

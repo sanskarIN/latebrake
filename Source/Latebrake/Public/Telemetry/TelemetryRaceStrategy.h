@@ -446,7 +446,7 @@ public:
         assessment.CurrentWearFraction = input.CurrentTireWear;
         assessment.CurrentDamageFraction = input.CurrentDamageFraction;
         assessment.UnderCaution = input.CurrentCaution;
-        assessment.NeedFuelReview = input.Fuel.Valid &&
+        assessment.NeedFuelReview = input.Fuel.Qualified &&
             input.Fuel.FuelSavingLikelyNeeded;
         assessment.NeedTireReview =
             input.CurrentTireWear >= Settings.TireRiskWear;

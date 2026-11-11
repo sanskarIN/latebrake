@@ -261,7 +261,7 @@ public:
         SourceSession = 0;
         SourceActor = 0;
         QualifiedFrames = 0;
-        RejectedFrames = 0;
+        RejectedFrameCount = 0;
         ThreatHoldSeconds = 0.0;
         HasPrevious = false;
     }
@@ -283,7 +283,7 @@ public:
             (HasPrevious &&
              sources.SnapshotSeconds < PreviousSnapshotSeconds))
         {
-            RejectedFrames = SaturatingIncrement(RejectedFrames);
+            RejectedFrameCount = SaturatingIncrement(RejectedFrameCount);
             return false;
         }
         if (SourceSession != 0 &&
@@ -300,7 +300,7 @@ public:
             frameAge < 0.0 ||
             frameAge > Settings.MaximumStaleSeconds)
         {
-            RejectedFrames = SaturatingIncrement(RejectedFrames);
+            RejectedFrameCount = SaturatingIncrement(RejectedFrameCount);
             return false;
         }
         const bool native =
@@ -511,7 +511,7 @@ public:
     }
     std::uint64_t RejectedFrames() const noexcept
     {
-        return RejectedFrames;
+        return RejectedFrameCount;
     }
     bool CanDisplayNativeRaceView() const noexcept
     {
@@ -525,7 +525,7 @@ private:
     std::uint64_t SourceSession = 0;
     std::uint64_t SourceActor = 0;
     std::uint64_t QualifiedFrames = 0;
-    std::uint64_t RejectedFrames = 0;
+    std::uint64_t RejectedFrameCount = 0;
     double PreviousSnapshotSeconds = 0.0;
     double ThreatHoldSeconds = 0.0;
     bool HasPrevious = false;
