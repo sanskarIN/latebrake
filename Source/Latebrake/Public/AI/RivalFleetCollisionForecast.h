@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AI/RivalFleetTraffic.h"
+#include "AI/FleetRoadUnionCoverage.h"
 
 #include <algorithm>
 #include <array>
@@ -105,7 +106,11 @@ inline bool FleetBodyInsideAuthoredAsphalt(CircuitPose pose) noexcept
             return true;
         }
     }
-    return false;
+    // Keep constant-time single-slab checks on long straights; a corner
+    // chassis bridging two connected physical slabs needs exact union
+    // containment before the AI can safely maintain throttle.
+    // The physical wall SAT veto above remains unchanged.
+    return FleetBodyCoveredByAsphaltUnion(body);
 }
 
 // All six actor tokens must be unique, the slot inventory exact, and all

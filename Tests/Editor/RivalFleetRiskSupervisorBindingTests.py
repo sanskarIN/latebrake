@@ -19,6 +19,8 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         cls.rival_h = text("Source/Latebrake/Public/AI/LatebrakeRivalCar.h")
         cls.rival = text("Source/Latebrake/Private/AI/LatebrakeRivalCar.cpp")
         cls.forecast = text("Source/Latebrake/Public/AI/RivalFleetCollisionForecast.h")
+        cls.coverage = text("Source/Latebrake/Public/AI/FleetRoadUnionCoverage.h")
+        cls.corner_tests = text("Tests/Standalone/FleetRoadUnionCoverageTests.cpp")
         cls.supervisor = text("Source/Latebrake/Public/AI/RivalFleetRiskSupervisor.h")
         cls.tests = text("Tests/Standalone/RivalFleetRiskSupervisorTests.cpp")
         cls.cmake = text("Tests/Standalone/CMakeLists.txt")
@@ -75,6 +77,7 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         for marker in (
             "sample.BlockerCount != MaxRecoveryObstacles",
             "FleetBodyInsideAuthoredAsphalt(",
+            "FleetBodyCoveredByAsphaltUnion(body)",
             "StartGridFootprintTouchesBarrier(pose)",
             "CircuitCollisionBlockCount",
             "CollisionBlockStyle::Asphalt",
@@ -93,6 +96,14 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         ):
             self.assertIn(marker, self.forecast)
         for marker in (
+            "FleetRoadMaximumAsphaltSlabs",
+            "FleetClippedBodyArea(",
+            "ClipFleetRoadHalfplane(",
+            "std::popcount(mask)",
+            "FleetRoadAreaToleranceCm2",
+        ):
+            self.assertIn(marker, self.coverage)
+        for marker in (
             "Roster.fill(0)",
             "observed != Roster",
             "FleetRiskRosterChangeHoldSeconds",
@@ -108,6 +119,11 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         self.assertIn("/W4 /WX", self.cmake)
         self.assertIn("-Wall -Wextra -Wpedantic -Werror", self.cmake)
         self.assertIn("i < 30000", self.tests)
+        self.assertIn("trial < 16000", self.corner_tests)
+        self.assertIn("TestSafeCornerUnions()", self.corner_tests)
+        self.assertIn("TestRealOffRoadAndWallsRemainRejected()",
+                      self.corner_tests)
+        self.assertIn("NAME FleetRoadUnionCoverage", self.cmake)
         self.assertIn("TestObservedBrakeCapacity()", self.tests)
         self.assertIn("TestStrongestFollowingLimitWinsAnyRosterOrder()",
                       self.tests)
