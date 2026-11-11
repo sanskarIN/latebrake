@@ -2226,3 +2226,16 @@ else()
     target_compile_options(latebrake_physical_surface_grip_atlas_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PhysicalSurfaceGripAtlas COMMAND latebrake_physical_surface_grip_atlas_tests)
+
+
+# Physics-observed road vertical traces, four adaptive dampers and tread
+# contact patches. Portable C++ evidence, never actual Chaos actuation.
+add_executable(latebrake_physical_ride_contact_tests PhysicalRideAndContactTests.cpp)
+target_include_directories(latebrake_physical_ride_contact_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_ride_contact_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_ride_contact_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_ride_contact_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalRideAndContact COMMAND latebrake_physical_ride_contact_tests)
