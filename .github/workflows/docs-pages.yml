@@ -12,7 +12,7 @@ on:
   pull_request:
     # Run read-only source verification for the stacked grid-identity PR.
     # Main-only push/release and Pages deployment permissions are unchanged.
-    branches: [main, feature/six-slot-start-grid-20261110, feature/grid-rival-identity-ledger-20261110, feature/experimental-six-car-traffic-20261110, feature/fleet-recovery-launch-gates-20261110, feature/experimental-fleet-start-fault-gate-20261110, feature/six-car-live-grid-launch-alignment-20261110]
+    branches: [main, feature/six-slot-start-grid-20261110, feature/grid-rival-identity-ledger-20261110, feature/experimental-six-car-traffic-20261110, feature/fleet-recovery-launch-gates-20261110, feature/experimental-fleet-start-fault-gate-20261110, feature/six-car-live-grid-launch-alignment-20261110, integration/six-car-qa-aggregate-20261111]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'

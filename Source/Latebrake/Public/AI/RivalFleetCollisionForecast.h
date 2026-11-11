@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AI/RivalFleetTraffic.h"
+#include "AI/FleetRoadUnionCoverage.h"
 
 #include <algorithm>
 #include <array>
@@ -63,8 +64,57 @@ struct FleetRiskReport final
     }
 };
 
+// The physical actor centre being on road is insufficient: its padded
+// rotated chassis may still hang over unpaved terrain or intersect a wall.
+// Certify full OBB containment in ONE original collision-bearing asphalt
+// slab and exact SAT clearance from all original physical barriers.
+// At a junction two slabs form a union; one-slab proof intentionally
+// fails closed for some legal diagonal poses until real UE driving QA.
+inline bool FleetBodyInsideAuthoredAsphalt(CircuitPose pose) noexcept
+{
+    if (!IsValidStartGridPose(pose) ||
+        !IsOnPavedSurface(pose.Position) ||
+        StartGridFootprintTouchesBarrier(pose))
+    {
+        return false;
+    }
+    const StartGridRect body = MakeStartGridRect(pose);
+    const double projectedX =
+        StartGridProjectionRadius(body, 1.0, 0.0);
+    const double projectedY =
+        StartGridProjectionRadius(body, 0.0, 1.0);
+    if (!std::isfinite(projectedX) ||
+        !std::isfinite(projectedY))
+    {
+        return false;
+    }
+    for (int index = 0; index < CircuitCollisionBlockCount; ++index)
+    {
+        const CircuitCollisionBlock slab = PlannedCollisionBlock(index);
+        if (slab.Style != CollisionBlockStyle::Asphalt ||
+            !IsValidCollisionBlock(slab))
+        {
+            continue;
+        }
+        // Original UE cube mesh is 100cm wide. Its scaled X/Y half-size
+        // is 50cm times the authored block's individual axis scale.
+        const double halfX = 50.0 * slab.ScaleX;
+        const double halfY = 50.0 * slab.ScaleY;
+        if (std::abs(body.X - slab.Center.X) + projectedX <= halfX &&
+            std::abs(body.Y - slab.Center.Y) + projectedY <= halfY)
+        {
+            return true;
+        }
+    }
+    // Keep constant-time single-slab checks on long straights; a corner
+    // chassis bridging two connected physical slabs needs exact union
+    // containment before the AI can safely maintain throttle.
+    // The physical wall SAT veto above remains unchanged.
+    return FleetBodyCoveredByAsphaltUnion(body);
+}
+
 // All six actor tokens must be unique, the slot inventory exact, and all
-// observed bodies must lie on a genuine currently-authored paved XY region.
+// observed padded chassis must be inside original asphalt and clear walls.
 // This intentionally does NOT assume the sorted order of Unreal's TArray.
 // A missing fifth rival is NOT an empty drivable road.
 inline bool ValidateSixCarFleet(
@@ -76,7 +126,7 @@ inline bool ValidateSixCarFleet(
         sample.BlockerCount != MaxRecoveryObstacles ||
         !ValidFleetPhysicalObservation(sample.Self) ||
         sample.Self.Slot == HumanGridSlot ||
-        !IsOnPavedSurface(sample.Self.Pose.Position))
+        !FleetBodyInsideAuthoredAsphalt(sample.Self.Pose))
     {
         return false;
     }
@@ -88,7 +138,7 @@ inline bool ValidateSixCarFleet(
         const RecoveryObstacle& other =
             sample.Blockers[static_cast<std::size_t>(i)];
         if (!ValidFleetPhysicalObservation(other) ||
-            !IsOnPavedSurface(other.Pose.Position) ||
+            !FleetBodyInsideAuthoredAsphalt(other.Pose) ||
             other.Slot == sample.Self.Slot ||
             roster[static_cast<std::size_t>(other.Slot)] != 0)
         {
@@ -301,12 +351,28 @@ inline FleetRiskReport ForecastSixCarRisk(
         }
         const int priority = FleetRiskPriority(kind);
         const int previous = FleetRiskPriority(result.Kind);
-        const bool replace =
-            priority > previous ||
-            (priority == previous &&
-             (contactTime < result.TimeToContactSeconds ||
-              (contactTime == result.TimeToContactSeconds &&
-               other.Slot < result.LimitingSlot)));
+        // Physical emergencies sort by severity, then earliest contact.
+        // Two SOFT following risks have infinite contact time, so sorting
+        // those by slot BEFORE the throttle limit could replace a stronger
+        // restriction with a weaker one when the blocker array is reordered.
+        // Always choose the lower safe motor ceiling first for Following;
+        // only identical ceilings may use the stable slot as a tie-break.
+        bool replace = priority > previous;
+        if (priority == previous)
+        {
+            if (kind == FleetRiskKind::Following)
+            {
+                replace = ceiling < result.ThrottleCeiling ||
+                    (ceiling == result.ThrottleCeiling &&
+                     other.Slot < result.LimitingSlot);
+            }
+            else
+            {
+                replace = contactTime < result.TimeToContactSeconds ||
+                    (contactTime == result.TimeToContactSeconds &&
+                     other.Slot < result.LimitingSlot);
+            }
+        }
         if (replace)
         {
             result.Kind = kind;
@@ -315,19 +381,6 @@ inline FleetRiskReport ForecastSixCarRisk(
             result.ForwardGapCm = ahead;
             result.ClosingSpeedCmS = closing;
             result.ThrottleCeiling = ceiling;
-        }
-        else if (result.Kind == FleetRiskKind::Following &&
-                 kind == FleetRiskKind::Following &&
-                 ceiling < result.ThrottleCeiling)
-        {
-            // Two slower cars may demand different soft caps. Attribute
-            // the selected limit to the actual stricter physical actor,
-            // never a prior object that merely appeared first in TArray.
-            result.ThrottleCeiling = ceiling;
-            result.LimitingSlot = other.Slot;
-            result.ForwardGapCm = ahead;
-            result.ClosingSpeedCmS = closing;
-            result.TimeToContactSeconds = contactTime;
         }
     }
     return result;
