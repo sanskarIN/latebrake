@@ -301,7 +301,8 @@ inline PitScenario AssessPitScenario(
     }
     result.ExpectedTireWearAtFinish =
         changeTires ? 0.0 :
-        e.Tire.HighestWear + e.Tire.MaxMeanWearPerLap() *
+        e.Tire.HighestWear + *std::max_element(
+            e.Tire.WearPerLap.begin(), e.Tire.WearPerLap.end()) *
             static_cast<double>(e.RemainingLaps);
     result.WeatherAppropriateTireChange =
         changeTires && e.Weather.Valid &&
