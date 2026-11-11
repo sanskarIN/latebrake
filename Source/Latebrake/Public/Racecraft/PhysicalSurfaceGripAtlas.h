@@ -138,6 +138,28 @@ struct GripAtlasQuery final
     bool Valid=false;
 };
 
+struct GripRoadAheadReview final
+{
+    double StartingDistanceCm=0.0;
+    double LookaheadCm=0.0;
+    double NearestPhysicalHazardCm=0.0;
+    double MinimumMeasuredGrip=0.0;
+    double MaximumMeasuredWetness=0.0;
+    double MinimumConfidence=0.0;
+    double OldestEvidenceSeconds=0.0;
+    double VerifiedAheadCm=0.0;
+    double UnknownAheadCm=0.0;
+    int NearestHazardCell=-1;
+    int VerifiedCells=0;
+    int UnknownCells=0;
+    int HazardCells=0;
+    int RoadCellsEncountered=0;
+    bool WetHazardSeen=false;
+    bool LowGripHazardSeen=false;
+    bool FullRoadEvidence=false;
+    bool NeverInferredUnobservedGrip=true;
+    bool Valid=false;
+};
 struct GripAtlasProgress final
 {
     int ConfirmedCells=0;
@@ -613,6 +635,120 @@ public:
             knot.RealFrictionQualified=true;
         }
         return true;
+    }
+    GripRoadAheadReview ReviewRoadAhead(
+        double startDistanceCm,double lookaheadCm,
+        double nowSeconds) const noexcept
+    {
+        GripRoadAheadReview out;
+        if (!Started ||
+            !Finite(startDistanceCm) ||
+            startDistanceCm<0.0 ||
+            startDistanceCm>=Settings.CircuitLengthCm ||
+            !Finite(lookaheadCm) ||
+            lookaheadCm<=0.0 ||
+            lookaheadCm>Settings.MaximumPredictionDistanceCm ||
+            !Finite(nowSeconds) ||
+            nowSeconds<LastClock)
+            return out;
+        out.StartingDistanceCm=startDistanceCm;
+        out.LookaheadCm=lookaheadCm;
+        out.MinimumMeasuredGrip=
+            std::numeric_limits<double>::infinity();
+        out.MinimumConfidence=1.0;
+        out.NearestPhysicalHazardCm=
+            std::numeric_limits<double>::infinity();
+        const double cellWidth=
+            Settings.CircuitLengthCm/GripAtlasCells;
+        // Traverse actual occupied spatial buckets; never fill unmeasured
+        // gaps by extrapolating the previous good wet or dry sample.
+        double distance=0.0;
+        int index=GripAtlasIndex(startDistanceCm,Settings);
+        if (index<0)return out;
+        for(int traversed=0;
+            traversed<=GripAtlasCells &&
+            distance<lookaheadCm;
+            ++traversed)
+        {
+            const double cellStart=
+                static_cast<double>(index)*cellWidth;
+            const double cellEnd=cellStart+cellWidth;
+            const double position=WrapDistance(
+                startDistanceCm+distance,
+                Settings.CircuitLengthCm);
+            const double remainingInCell=std::max(
+                0.0,cellEnd-position);
+            const double extent=std::min(
+                lookaheadCm-distance,
+                remainingInCell);
+            const double queryDistance=std::min(
+                Settings.CircuitLengthCm-PhysicsEpsilon,
+                cellStart+cellWidth*0.5);
+            const GripAtlasQuery evidence=
+                Query(queryDistance,nowSeconds);
+            ++out.RoadCellsEncountered;
+            if (evidence.Valid &&
+                evidence.ReadyForPlanning)
+            {
+                ++out.VerifiedCells;
+                out.VerifiedAheadCm+=extent;
+                out.MinimumMeasuredGrip=std::min(
+                    out.MinimumMeasuredGrip,
+                    evidence.MeasuredGripScale);
+                out.MaximumMeasuredWetness=std::max(
+                    out.MaximumMeasuredWetness,
+                    evidence.FilteredWetness);
+                out.MinimumConfidence=std::min(
+                    out.MinimumConfidence,
+                    evidence.Confidence);
+                out.OldestEvidenceSeconds=std::max(
+                    out.OldestEvidenceSeconds,
+                    evidence.SensorAgeSeconds);
+                if (evidence.HazardousLowGrip ||
+                    evidence.StandingWaterHazard)
+                {
+                    ++out.HazardCells;
+                    out.LowGripHazardSeen |=
+                        evidence.HazardousLowGrip;
+                    out.WetHazardSeen |=
+                        evidence.StandingWaterHazard;
+                    if (distance<
+                        out.NearestPhysicalHazardCm)
+                    {
+                        out.NearestPhysicalHazardCm=distance;
+                        out.NearestHazardCell=index;
+                    }
+                }
+            }
+            else
+            {
+                ++out.UnknownCells;
+                out.UnknownAheadCm+=extent;
+            }
+            // Advance to the next physical cell. A zero-length portion
+            // at a floating-point boundary still progresses one cell.
+            distance+=extent;
+            if (extent<=PhysicsEpsilon)
+                distance+=std::min(
+                    PhysicsEpsilon*1000.0,
+                    lookaheadCm-distance);
+            index=(index+1)%GripAtlasCells;
+        }
+        if (out.VerifiedCells==0)
+        {
+            out.MinimumMeasuredGrip=0.0;
+            out.MinimumConfidence=0.0;
+        }
+        out.FullRoadEvidence=
+            out.UnknownCells==0 &&
+            out.VerifiedCells>0 &&
+            out.VerifiedAheadCm>=lookaheadCm-
+                PhysicsEpsilon*1000.0;
+        out.Valid=Finite(out.MinimumMeasuredGrip) &&
+            Finite(out.MaximumMeasuredWetness) &&
+            Finite(out.UnknownAheadCm) &&
+            Finite(out.VerifiedAheadCm);
+        return out;
     }
     GripAtlasProgress Progress(
         double nowSeconds) const noexcept
