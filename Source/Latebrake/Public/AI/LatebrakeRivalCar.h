@@ -8,6 +8,7 @@
 #include "AI/RivalSurfaceDamagePace.h"
 #include "AI/RivalSpinThrottleGuard.h"
 #include "AI/RivalStraightPassAssist.h"
+#include "AI/RivalFleetRiskSupervisor.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -52,4 +53,7 @@ private:
     latebrake::RivalSurfaceDamagePace SurfaceDamagePace;
     latebrake::RivalSpinThrottleGuard SpinThrottleGuard;
     latebrake::RivalStraightPassAssist StraightPassAssist;
+    // Experimental six-car physical traffic only: identity-bound temporal
+    // braking and throttle recovery, never authority for laps or rewards.
+    latebrake::RivalFleetRiskSupervisor FleetRiskSupervisor;
 };

@@ -2064,3 +2064,18 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME ExperimentalFleetStartPolicy COMMAND latebrake_experimental_fleet_start_policy_tests)
+
+# Six actual physical fleet actor identities, continuous OBB time-to-contact,
+# braking distance and frame-rate-stable temporal release for dev-only AI.
+# No Unreal physics or runnable Win64 game is claimed by this source target.
+add_executable(latebrake_fleet_risk_supervisor_tests RivalFleetRiskSupervisorTests.cpp)
+target_include_directories(latebrake_fleet_risk_supervisor_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_fleet_risk_supervisor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_fleet_risk_supervisor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_fleet_risk_supervisor_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalFleetRiskSupervisor COMMAND latebrake_fleet_risk_supervisor_tests)
