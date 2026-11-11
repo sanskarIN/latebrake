@@ -327,6 +327,7 @@ struct TelemetryLap final
     int RecoveryCount = 0;
     int SectorCount = 0;
     TelemetryQuality Quality = TelemetryQuality::Missing;
+    bool Completed = false;
     std::array<double, MaximumTelemetrySectors> SectorTimes{};
 };
 
