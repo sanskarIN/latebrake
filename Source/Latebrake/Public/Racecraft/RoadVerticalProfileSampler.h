@@ -281,7 +281,6 @@ inline VerticalProfileKnot EvaluateVerticalKnot(
         current.LeftHeightCm-previous.LeftHeightCm;
     const double rightRise=
         current.RightHeightCm-previous.RightHeightCm;
-    const double bankDifference=rightRise-leftRise;
     const double travelTime=
         SafeDivision(distance,std::max(100.0,forwardSpeed));
     result.ForwardDistanceCm=current.ForwardDistanceCm;
