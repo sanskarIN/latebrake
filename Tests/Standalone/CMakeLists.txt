@@ -2092,3 +2092,17 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME RivalFleetRiskSupervisor COMMAND latebrake_fleet_risk_supervisor_tests)
+
+# Combined experimental six-body start and after-green traffic authority
+# contract. Portable source-only bridge; never a substitute for UE/Chaos.
+add_executable(latebrake_six_car_aggregate_safety_tests SixCarAggregateSafetyTests.cpp)
+target_include_directories(latebrake_six_car_aggregate_safety_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_six_car_aggregate_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_six_car_aggregate_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_six_car_aggregate_safety_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SixCarAggregateSafety COMMAND latebrake_six_car_aggregate_safety_tests)
