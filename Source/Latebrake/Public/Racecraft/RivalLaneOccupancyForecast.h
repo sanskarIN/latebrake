@@ -23,7 +23,7 @@ enum class RivalLaneHazard : std::uint8_t
 };
 struct RivalLaneSettings final
 {
-    double LaneCenterOffsetCm=220.0;
+    double LaneCenterOffsetCm=400.0;
     double LaneHalfWidthCm=155.0;
     double MaximumLaneOffsetCm=480.0;
     double MinimumRoadHalfWidthCm=450.0;
