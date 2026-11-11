@@ -96,6 +96,7 @@ nav:
       - Manual real UE draft PR validation: UNREAL_DRAFT_PR_VALIDATION.md
       - Testing & QA: TESTING.md
       - Race engineer telemetry (source-only) QA: RACE_ENGINEER_TELEMETRY_QA.md
+      - Advanced race engineering analytics QA: RACE_ENGINEER_ADVANCED_ANALYTICS_QA.md
       - Executable build pipeline: EXECUTABLE_BUILD_PIPELINE.md
       - Published source release audit: PUBLISHED_SOURCE_RELEASE_AUDIT.md
       - Circuit startup audit: CIRCUIT_STARTUP_AUDIT.md
