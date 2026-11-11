@@ -95,6 +95,8 @@ struct WakeContribution final
 
 struct WakeSnapshot final
 {
+    RaceIdentity FollowingIdentity{};
+    double ObservationClockSeconds=0.0;
     std::array<WakeContribution,PhysicalFleetCapacity-1> Contributions{};
     double CombinedWakeFraction=0.0;
     double DragReliefFraction=0.0;
@@ -177,6 +179,7 @@ inline bool ValidWakeParameters(WakeParameters s) noexcept
 inline bool ValidWakeActor(WakeActor actor,WakeParameters p) noexcept
 {
     return PhysicalActorIdentityValid(actor.Identity) &&
+        actor.Identity.Frame>0 &&
         (!p.RequireOriginalRoad || actor.OriginalAsphaltQualified) &&
         (!p.RequireSimulatingBodies || actor.ContactPhysicsQualified) &&
         Finite(actor.Pose) && Finite(actor.VelocityCmS) &&
@@ -344,6 +347,9 @@ inline WakeSnapshot EvaluateAerodynamicWake(
     if (!ValidateWakeFleet(input,p))
         return out;
     out.ProvenOriginalRoster=true;
+    out.FollowingIdentity=input.FollowingCar.Identity;
+    out.ObservationClockSeconds=
+        input.FollowingCar.ClockSeconds;
     double complement=1.0;
     double best=-1.0;
     for (int i=0;i<input.OtherCount;++i)
@@ -562,8 +568,32 @@ public:
         SmoothStrength=ExponentialResponse(
             SmoothStrength,target.CombinedWakeFraction,
             tau,sample.DeltaSeconds);
-        Last=ScaleWake(target,SafeDivision(
-            SmoothStrength,target.CombinedWakeFraction));
+        Last=target;
+        Last.CombinedWakeFraction=Clamp01(SmoothStrength);
+        Last.DragReliefFraction=
+            Settings.MaximumDragReliefFraction*
+            Last.CombinedWakeFraction;
+        Last.FrontDownforceLoss=
+            Settings.MaximumFrontDownforceLoss*
+            Last.CombinedWakeFraction;
+        Last.RearDownforceLoss=
+            Settings.MaximumRearDownforceLoss*
+            Last.CombinedWakeFraction;
+        Last.BrakeCoolingLoss=
+            Settings.MaximumBrakeCoolingLoss*
+            Last.CombinedWakeFraction;
+        Last.EngineCoolingLoss=
+            Settings.MaximumEngineCoolingLoss*
+            Last.CombinedWakeFraction;
+        Last.TireCoolingLoss=
+            Settings.MaximumTireCoolingLoss*
+            Last.CombinedWakeFraction;
+        Last.PredictedSideForceFraction*=
+            Clamp01(SafeDivision(
+                Last.CombinedWakeFraction,
+                target.CombinedWakeFraction));
+        Last.HasUsableWake=
+            Last.CombinedWakeFraction>PhysicsEpsilon;
         // On departure, the target has zero wake: aerodynamic benefit
         // must be removed immediately; no fictitious persistent draft.
         if (!target.HasUsableWake)
