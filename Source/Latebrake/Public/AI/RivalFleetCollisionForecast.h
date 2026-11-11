@@ -196,8 +196,14 @@ inline FleetRiskReport ForecastSixCarRisk(
     const RivalFleetTrafficSample& sample) noexcept
 {
     std::array<std::uint64_t, StartGridCapacity> roster{};
-    if (!ValidateSixCarFleet(sample, roster))
+    if (!ValidateSixCarFleet(sample, roster) ||
+        !sample.BrakeObservationQualified ||
+        !std::isfinite(sample.ConservativeBrakeScale) ||
+        sample.ConservativeBrakeScale < 0.15 ||
+        sample.ConservativeBrakeScale > 1.0)
     {
+        // Never infer maximum deceleration without a qualified real
+        // prior driving frame. Missing or excessive grip fails closed.
         return {};
     }
     FleetRiskReport result;
@@ -261,13 +267,16 @@ inline FleetRiskReport ForecastSixCarRisk(
                  lateral < FleetForecastLaneHalfWidthCm &&
                  closing > FleetForecastMinimumClosingCmS)
         {
-            // Braking capacity is an engineering assumption used ONLY to
-            // produce an additional conservative stop decision. It is
-            // not a measured Chaos tire coefficient or actual ABS state.
+            // Estimated baseline is discounted by actual accepted prior
+            // tire wear, heat, surface and damage; never scaled upward.
+            // This is not measured Chaos stopping distance or ABS proof.
+            const double conservativeDeceleration =
+                FleetForecastDecelerationCmS2 *
+                sample.ConservativeBrakeScale;
             const double brakingDistance =
                 closing * FleetForecastReactionSeconds +
                 (closing * closing) /
-                    (2.0 * FleetForecastDecelerationCmS2) +
+                    (2.0 * conservativeDeceleration) +
                 FleetForecastClearanceCm;
             if (ahead <= brakingDistance)
             {

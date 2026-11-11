@@ -377,6 +377,18 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const bool bTrafficQualified = bUseFleetTraffic &&
         Mode->TryCollectPhysicalTraffic(
             this, TrafficBlockers, TrafficBlockerCount);
+    // Real previous accepted chassis observations constrain additional
+    // predictive stopping distance; unknown physics cannot grant throttle.
+    const bool bPredictiveBrakeQualified =
+        bUseFleetTraffic && bCornerPhysicsQualified;
+    const double BrakeCapabilityScale = bPredictiveBrakeQualified
+        ? GetTireCondition().GripMultiplier() *
+          GetBrakeHeat().ServiceBrakeMultiplier() *
+          GetCollisionDamage().LateralGripMultiplier() *
+          (bOffPavement
+              ? latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier
+              : 1.0)
+        : 0.0;
     const latebrake::RivalFleetTrafficSample FleetSnapshot{
         {true, GridSlot, static_cast<uint64>(GetUniqueID()),
             {{Position.X, Position.Y},
@@ -384,7 +396,9 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Velocity.X, Velocity.Y},
         TrafficBlockers,
         bTrafficQualified ? TrafficBlockerCount : 0,
-        bTrafficQualified};
+        bTrafficQualified,
+        bPredictiveBrakeQualified,
+        BrakeCapabilityScale};
     const latebrake::RivalFleetTrafficResult FleetTraffic =
         bUseFleetTraffic
             ? latebrake::ApplyRivalFleetTraffic(TrafficCommand, FleetSnapshot)

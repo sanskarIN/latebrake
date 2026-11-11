@@ -32,10 +32,13 @@ progress, lap awards, penalty fees, credit balance or SaveGame files.
   constant relative measured velocity and conservative uncertainty
   padding for the next 1.4 seconds. It does not falsely assume vehicles
   stop, steer or rotate on command.
-- A conservative 520 cm/s² braking assumption, 0.24-second reaction
-  allowance and 500-cm physical separation adds longer stopping-distance
-  protection for a genuinely closing, same-lane car. These are development
-  tuning assumptions, **not** measured Chaos stopping ability.
+- A conservative 520 cm/s² *baseline* brake assumption, 0.24-second
+  reaction allowance and 500-cm separation adds stopping-distance
+  protection. The baseline is discounted by the **actual prior accepted**
+  tire grip, service-brake heat, road traction and impact-damage policies.
+  Missing/invalid observations reject predictive propulsion; no scale
+  above 1.0 is admitted. This is **not** measured Chaos deceleration,
+  physical ABS simulation or certified real-world braking.
 - All five threats are inspected; physical overlap is higher priority
   than swept contact, which is higher priority than stopping-distance
   concerns. Stable actor slots settle ties without order-dependent output.

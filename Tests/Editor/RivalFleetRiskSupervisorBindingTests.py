@@ -40,6 +40,9 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         for marker in (
             "Mode->TryCollectPhysicalTraffic(",
             "const latebrake::RivalFleetTrafficSample FleetSnapshot{",
+            "bPredictiveBrakeQualified",
+            "BrakeCapabilityScale",
+            "GetBrakeHeat().ServiceBrakeMultiplier()",
             "latebrake::ApplyRivalFleetTraffic(TrafficCommand, FleetSnapshot)",
             "const latebrake::FleetRiskSupervision RiskSupervision =",
             "FleetRiskSupervisor.Apply(",
@@ -78,6 +81,9 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
             "StartGridProjectionRadius(",
             "FleetRiskKind::SweptContact",
             "FleetRiskKind::StoppingDistance",
+            "sample.BrakeObservationQualified",
+            "sample.ConservativeBrakeScale",
+            "conservativeDeceleration",
         ):
             self.assertIn(marker, self.forecast)
         for marker in (
@@ -96,6 +102,7 @@ class RivalFleetRiskSupervisorBindingTests(unittest.TestCase):
         self.assertIn("/W4 /WX", self.cmake)
         self.assertIn("-Wall -Wextra -Wpedantic -Werror", self.cmake)
         self.assertIn("i < 30000", self.tests)
+        self.assertIn("TestObservedBrakeCapacity()", self.tests)
         self.assertIn("for (int fps : {30, 60, 120})", self.tests)
         self.assertIn("FLEET_PREDICTIVE_SAFETY_QA.md", self.nav)
         self.assertIn("UE5.8", self.docs)

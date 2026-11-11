@@ -30,6 +30,8 @@ latebrake::RivalFleetTrafficSample ValidSixCars()
     RivalFleetTrafficSample s{};
     s.SessionQualified = true;
     s.BlockerCount = MaxRecoveryObstacles;
+    s.BrakeObservationQualified = true;
+    s.ConservativeBrakeScale = 1.0;
     s.Self = {true, 1, 1001, {{-2500.0, SouthY}, 0.0}, 1100.0, 0.0};
     s.Blockers[0] = {true, 0, 1000, {{2000.0, SouthY}, 0.0}, 0.0, 0.0};
     s.Blockers[1] = {true, 2, 1002, {{2800.0, SouthY}, 0.0}, 0.0, 0.0};
@@ -221,6 +223,42 @@ void TestDistanceAndPriority()
             "clean forecast never adds throttle or changes steering");
 }
 
+void TestObservedBrakeCapacity()
+{
+    using namespace latebrake;
+    auto s = ValidSixCars();
+    s.Self.VelocityX = 900.0;
+    s.Blockers[0].Pose.Position = {-700.0, SouthY};
+    Require(ForecastSixCarRisk(s).Kind == FleetRiskKind::Following,
+            "nominal qualified braking can follow at measured separation");
+    s.ConservativeBrakeScale = 0.30;
+    const auto reduced = ForecastSixCarRisk(s);
+    Require(reduced.Kind == FleetRiskKind::StoppingDistance &&
+            reduced.LimitingSlot == 0 && reduced.Emergency(),
+            "prior worn/hot grip moves conservative stop upstream");
+    s.ConservativeBrakeScale = 0.15;
+    Require(ForecastSixCarRisk(s).Emergency(),
+            "lowest admitted brake capacity cannot grant false clearance");
+    for (const double invalid : {
+             0.0, 1.01, std::numeric_limits<double>::infinity(),
+             std::numeric_limits<double>::quiet_NaN()})
+    {
+        s.ConservativeBrakeScale = invalid;
+        Require(!ForecastSixCarRisk(s).Qualified(),
+                "missing/inflated/nonfinite capacity fails closed");
+    }
+    s.ConservativeBrakeScale = 1.0;
+    s.BrakeObservationQualified = false;
+    Require(!ForecastSixCarRisk(s).Qualified(),
+            "unaccepted real physics frame cannot authorize throttle");
+    RivalFleetRiskSupervisor supervisor;
+    const auto blocked = supervisor.Apply(
+        {0.7, 0.1, false, false}, s, 1.0 / 60.0);
+    Require(!blocked.Qualified && blocked.Command.Brake &&
+            blocked.Command.Throttle == 0.0,
+            "broken prior brake observations stop predictive fleet control");
+}
+
 void TestTemporalHoldAndReacquisition()
 {
     using namespace latebrake;
@@ -408,6 +446,7 @@ int main()
     TestExactPhysicalRoster();
     TestContinuousSweptGeometry();
     TestDistanceAndPriority();
+    TestObservedBrakeCapacity();
     TestTemporalHoldAndReacquisition();
     TestRouteAuthorityAndFrameRates();
     TestDeterministicPerturbations();
