@@ -143,7 +143,7 @@ static void SteeringPhysics()
     Require(!EstimateRackFeedback(sample).Valid,
             "lost front contact invalidates rack feedback");
 }
-static void DriverControls()
+static void TestDriverControls()
 {
     DriverInputSettings settings;
     settings.Axes[static_cast<std::size_t>(
@@ -242,7 +242,7 @@ static void OvertakePolicy()
 int main()
 {
     SteeringPhysics();
-    DriverControls();
+    TestDriverControls();
     TrafficSafety();
     OvertakePolicy();
     std::cout<<"DrivingInputsAndTraffic OK\n";
