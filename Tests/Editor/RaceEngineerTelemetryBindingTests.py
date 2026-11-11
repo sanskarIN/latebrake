@@ -74,7 +74,9 @@ class RaceEngineerTelemetryBindingTests(unittest.TestCase):
         self.assertIn("SaturatingIncrement", self.sources["TelemetryMath.h"])
         self.assertIn("latebrake::EastX", self.sources["TelemetryTrack.h"])
         self.assertIn("StartNewSegment", self.sources["TelemetryTypes.h"])
-        self.assertIn("Throttle", self.sources["TelemetryBraking.h"])
+        self.assertIn("frame.Controls.Brake", self.sources["TelemetryBraking.h"])
+        self.assertIn("frame.Controls.Throttle",
+                      self.sources["TelemetryCornering.h"])
         self.assertIn("WheelContactFraction", self.sources["TelemetryTypes.h"])
         self.assertIn("DetermineCornerDirection", self.sources["TelemetryCornering.h"])
         self.assertIn("EvaluateGripTelemetry", self.sources["TelemetryGrip.h"])
@@ -88,8 +90,8 @@ class RaceEngineerTelemetryBindingTests(unittest.TestCase):
         self.assertIn('"game_source"', counter)
         self.assertIn('"test_code"', counter)
         self.assertIn("nonblank_noncomment_lines", counter)
-        self.assertIn("174,840", self.doc)
-        self.assertIn("+5,359", self.doc)
+        self.assertIn("174,835", self.doc)
+        self.assertIn("+5,364", self.doc)
 
 
 if __name__ == "__main__":

@@ -57,12 +57,12 @@ python3 scripts/MeasureSourceScale.py --json
 
 The reference integrated six-car candidate PR #341 has **19,801**
 qualifying nonblank/noncomment production game C++ lines. This
-telemetry development branch was measured at **25,160**, or **+5,359**
+telemetry development branch was measured at **25,165**, or **+5,364**
 qualifying production lines. The new headers contain real validation,
 geometry, filters and stateful analysis, rather than inflated tables
 or generated test scaffolding. Test files, docs and CI are excluded.
 The full 200,000-line v0.6.0 quantity objective still requires
-**174,840** more qualifying lines. This is a source inventory
+**174,835** more qualifying lines. This is a source inventory
 only, never a shipping quality certification.
 
 ## Regression commands
