@@ -126,6 +126,23 @@ static void ProvenPhysicalCoverage()
           cell.MeasuredGripScale>1.0 &&
           cell.Confidence>=settings.MinimumSensorConfidence,
           "three samples qualify one original asphalt cell");
+    const auto provenAhead=atlas.ReviewRoadAhead(
+        15.0,120.0,frame.RaceClockSeconds);
+    Check(provenAhead.Valid &&
+          provenAhead.FullRoadEvidence &&
+          provenAhead.VerifiedCells==1 &&
+          provenAhead.UnknownCells==0 &&
+          provenAhead.NeverInferredUnobservedGrip,
+          "short lookahead within measured physical road is fully proven");
+    const double boundary=settings.CircuitLengthCm/GripAtlasCells;
+    const auto unobservedAhead=atlas.ReviewRoadAhead(
+        boundary-25.0,125.0,frame.RaceClockSeconds);
+    Check(unobservedAhead.Valid &&
+          !unobservedAhead.FullRoadEvidence &&
+          unobservedAhead.VerifiedCells==1 &&
+          unobservedAhead.UnknownCells>=1 &&
+          unobservedAhead.UnknownAheadCm>0.0,
+          "lookahead crossing an unmeasured cell reports exact missing coverage");
     const auto progress=atlas.Progress(frame.RaceClockSeconds);
     Check(progress.ConfirmedCells==1 &&
           progress.FreshCells==1 &&
@@ -242,6 +259,15 @@ static void WetnessAndBraking()
           wet.StandingWaterHazard &&
           wet.MeasuredGripScale<dry.MeasuredGripScale,
           "observed wet road reduces projected physical grip");
+    const auto wetRoadAhead=atlas.ReviewRoadAhead(
+        15.0,100.0,frame.RaceClockSeconds);
+    Check(wetRoadAhead.Valid &&
+          wetRoadAhead.FullRoadEvidence &&
+          wetRoadAhead.WetHazardSeen &&
+          wetRoadAhead.HazardCells==1 &&
+          wetRoadAhead.NearestHazardCell==0 &&
+          wetRoadAhead.NearestPhysicalHazardCm==0.0,
+          "physical wet-road warning is grounded in a measured cell");
     const auto progress=atlas.Progress(frame.RaceClockSeconds);
     Check(progress.RealWetTransitions>=1 &&
           progress.ConfirmedCells==1,
