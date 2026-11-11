@@ -230,9 +230,49 @@ static void TemporalAndRecovery()
             reset.CombinedWakeFraction<
                 supervisor.PeakDraftFraction(),
             "changed actor identity restarts the wake transition");
-    observation.EngineRaceRunning=false;
+    // A changed recovery revision must clear the previous aero filter.
+    ++observation.FollowingCar.Identity.SessionRevision;
+    ++observation.FollowingCar.Identity.Frame;
+    observation.FollowingCar.ClockSeconds+=0.016;
+    for(auto& car:observation.OtherCars)
+    {
+        ++car.Identity.SessionRevision;
+        ++car.Identity.Frame;
+        car.ClockSeconds+=0.016;
+    }
+    const auto newRevision=supervisor.Step(observation);
+    Require(newRevision.Valid &&
+            supervisor.RosterResets()==2 &&
+            newRevision.CombinedWakeFraction<
+                supervisor.PeakDraftFraction(),
+            "recovery revision cannot inherit old slipstream");
     Require(!supervisor.Step(observation).Valid &&
             supervisor.Rejects()==1,
+            "replayed engine frame cannot count as fresh drafting");
+    ++observation.FollowingCar.Identity.Frame;
+    observation.FollowingCar.ClockSeconds+=0.016;
+    for(auto& car:observation.OtherCars)
+    {
+        ++car.Identity.Frame;
+        car.ClockSeconds+=0.016;
+    }
+    Require(supervisor.Step(observation).Valid,
+            "fresh frame can recover from a rejected replay");
+    // Even with a new ordinal, an unchanged race clock is stale.
+    ++observation.FollowingCar.Identity.Frame;
+    for(auto& car:observation.OtherCars)
+        ++car.Identity.Frame;
+    Require(!supervisor.Step(observation).Valid &&
+            supervisor.Rejects()==2,
+            "new frame with repeated clock must not renew wake");
+    observation.FollowingCar.ClockSeconds+=0.016;
+    for(auto& car:observation.OtherCars)
+        car.ClockSeconds+=0.016;
+    Require(supervisor.Step(observation).Valid,
+            "fresh consistent clock permits new aerodynamic evidence");
+    observation.EngineRaceRunning=false;
+    Require(!supervisor.Step(observation).Valid &&
+            supervisor.Rejects()==3,
             "paused or unqualified race immediately loses wake");
     WakeParameters invalid;
     invalid.MaximumDragReliefFraction=1.0;
