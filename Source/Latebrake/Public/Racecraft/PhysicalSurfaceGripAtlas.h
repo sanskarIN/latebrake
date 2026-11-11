@@ -30,7 +30,7 @@ struct GripAtlasSettings final
     double MinimumTotalNormalLoadN=6000.0;
     double MaximumTotalNormalLoadN=80000.0;
     double MinimumPhysicalSpeedCmS=300.0;
-    double MaximumPhysicalSpeedCmS=MaximumPhysicalSpeedCmS;
+    double MaximumTrustedSpeedCmS=MaximumPhysicalSpeedCmS;
     double MinimumRoadGrip=0.15;
     double MaximumRoadGrip=2.5;
     double MinimumFrictionScale=0.15;
@@ -181,10 +181,10 @@ inline bool ValidGripAtlasSettings(
             p.MinimumTotalNormalLoadN &&
         Finite(p.MinimumPhysicalSpeedCmS) &&
         p.MinimumPhysicalSpeedCmS>=0.0 &&
-        Finite(p.MaximumPhysicalSpeedCmS) &&
-        p.MaximumPhysicalSpeedCmS>
+        Finite(p.MaximumTrustedSpeedCmS) &&
+        p.MaximumTrustedSpeedCmS>
             p.MinimumPhysicalSpeedCmS &&
-        p.MaximumPhysicalSpeedCmS<=MaximumPhysicalSpeedCmS &&
+        p.MaximumTrustedSpeedCmS<=MaximumPhysicalSpeedCmS &&
         Finite(p.MinimumRoadGrip) &&
         p.MinimumRoadGrip>0.0 &&
         Finite(p.MaximumRoadGrip) &&
@@ -255,7 +255,7 @@ inline bool ValidGripContactFrame(
         sample.MeasuredForwardSpeedCmS<
             p.MinimumPhysicalSpeedCmS ||
         sample.MeasuredForwardSpeedCmS>
-            p.MaximumPhysicalSpeedCmS ||
+            p.MaximumTrustedSpeedCmS ||
         !Finite(sample.RoadFrictionScale) ||
         sample.RoadFrictionScale<p.MinimumFrictionScale ||
         sample.RoadFrictionScale>p.MaximumFrictionScale ||
