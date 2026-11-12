@@ -395,7 +395,7 @@ static void PhysicalCameraShotReview()
 {
     auto traffic=CompleteSixCars();
     const auto frame=CameraFrame(traffic);
-    Check(ValidCameraFrame(frame),
+    Check(ValidCameraFrame(frame,{}),
           "all six camera chassis match exact real traffic frame");
     for(int kind=0;kind<5;++kind)
     {
