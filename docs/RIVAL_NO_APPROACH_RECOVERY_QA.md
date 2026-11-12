@@ -73,6 +73,14 @@ Otherwise no route observation would occur during pause and 7.9 seconds
 of earlier stationary or moving stall could carry into the first
 resumed frame. The suspension preserves previously verified gate and
 lap counts, recovery budget and any pending issued teleport ledger.
+On a fully paused Unreal world, the actor Tick may not run at all.
+The first resumed qualified rival Tick therefore also compares
+`Mode->GetCheckpointSessionRevision()` against its last seen
+GameMode session epoch, which is incremented by actual pause, menu,
+focus and restart transitions. A changed epoch re-baselines the real
+3D gate trace and clears both rival stall windows and short-lived
+AI controls BEFORE any physics observation can advance the route.
+This preserves already credited gates and the teleport audit.
 Native UE behavior remains unverified.
 Unreal compilation and actual stalled-car recovery remain unverified
 until native self-hosted UE5.8 playtesting.
