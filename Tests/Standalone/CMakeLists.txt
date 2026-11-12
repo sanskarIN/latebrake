@@ -1538,6 +1538,18 @@ else()
 endif()
 add_test(NAME StuckRecoveryHint COMMAND latebrake_stuck_recovery_hint_tests)
 
+# Offline lap-time-only pit forecast; no Unreal tire/pit/reward authority.
+add_executable(latebrake_portable_pit_window_tests PortablePitWindowForecastTests.cpp)
+target_include_directories(latebrake_portable_pit_window_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_portable_pit_window_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_portable_pit_window_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_portable_pit_window_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PortablePitWindowForecast COMMAND latebrake_portable_pit_window_tests)
+
+
 # Production Unreal game pit service: engine-free geometry, timing and
 # single-stop latch semantics. This does not prove editor or packaged QA.
 add_executable(latebrake_race_pit_service_tests RacePitServiceTests.cpp)
