@@ -3,6 +3,7 @@
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
+#include "Vehicles/OriginalVehicleUnrealPreviewBridge.h"
 #include "Vehicles/VehicleRearLampLayout.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
@@ -23,6 +24,8 @@
 #include "Vehicles/DriveAxisDeadzone.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
+#include "Vehicles/OriginalChaosSuspensionPreview.h"
+#include "Vehicles/ChassisWheelAnchors.h"
 #include "Racing/RecoveryTeleportVerification.h"
 #include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
@@ -38,6 +41,7 @@
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Game/LatebrakeRaceGameMode.h"
@@ -47,6 +51,8 @@
 #include "CollisionQueryParams.h"
 #include "Misc/CoreDelegates.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "UObject/ConstructorHelpers.h"
 #include <limits>
 
@@ -105,6 +111,19 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         static_cast<float>(latebrake::VehicleRootScaleY),
         static_cast<float>(latebrake::VehicleRootScaleZ));
     Chassis->SetRelativeScale3D(RootScale);
+
+    // Optional native mesh preview inherits rigid-body motion but never
+    // contributes mass, contact shape, overlap or engine-frame feedback.
+    OriginalBodyPreview = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalBodyPreview"));
+    OriginalBodyPreview->SetupAttachment(Chassis);
+    OriginalBodyPreview->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalBodyPreview->SetGenerateOverlapEvents(false);
+    OriginalBodyPreview->SetVisibility(false);
+    OriginalBodyPreview->SetRelativeScale3D(FVector(
+        1.0 / RootScale.X, 1.0 / RootScale.Y, 1.0 / RootScale.Z));
+    OriginalBodyPreview->SetRelativeLocation(
+        FVector(0.f,0.f,-50.f) / RootScale);
 
     Cabin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Cabin"));
     Cabin->SetupAttachment(Chassis);
@@ -280,6 +299,7 @@ void ALatebrakeCarPawn::BeginPlay()
     // Dynamic material instances belong to these mesh components, and are
     // initialized only when the actor is live (not in the CDO constructor).
     ApplyVehiclePaintRecipe(GarageVehicleId);
+    RefreshOriginalBodyPreview();
     Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
@@ -498,6 +518,65 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         Kit.HasRearFins);
 }
 
+void ALatebrakeCarPawn::RefreshOriginalBodyPreview()
+{
+    if (!IsValid(OriginalBodyPreview) || !IsValid(Chassis))
+        return;
+
+    bool bShowProcedural = false;
+    bool bRequestedPreview = false;
+#if !UE_BUILD_SHIPPING
+    bRequestedPreview = bEnableOriginalProceduralPreview ||
+        FParse::Param(FCommandLine::Get(), TEXT("LatebrakeExperimentalCarMesh"));
+#endif
+    if (bRequestedPreview &&
+        latebrake::GarageState::IsVehicle(GarageVehicleId))
+    {
+        bShowProcedural =
+            latebrake::vehiclemesh::CreateOriginalVehicleVisualSections(
+                OriginalBodyPreview, Chassis, GarageVehicleId);
+    }
+    if (!bShowProcedural)
+    {
+        OriginalBodyPreview->ClearAllMeshSections();
+    }
+    OriginalBodyPreview->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalBodyPreview->SetGenerateOverlapEvents(false);
+    OriginalBodyPreview->SetVisibility(bShowProcedural);
+
+    // A preview failure restores the original complete driving vehicle.
+    // Neither code path changes the rigid body's collision or simulation.
+    Chassis->SetVisibility(!bShowProcedural, false);
+    UStaticMeshComponent* GeneralParts[] = {
+        Cabin, Hood, RearDeck,
+        FrontSplitter, LeftSideSkirt, RightSideSkirt, RearDiffuser,
+        FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel,
+        FrontLeftSpoke, FrontRightSpoke, RearLeftSpoke, RearRightSpoke
+    };
+    for (UStaticMeshComponent* Part : GeneralParts)
+    {
+        if (IsValid(Part))
+            Part->SetVisibility(!bShowProcedural, false);
+    }
+    const auto Recipe = latebrake::VisualRecipeForVehicle(GarageVehicleId);
+    const auto Kit = latebrake::BodyKitForVehicle(GarageVehicleId);
+    for (UStaticMeshComponent* Part : {
+             SpoilerWing.Get(), SpoilerSupportLeft.Get(),
+             SpoilerSupportRight.Get()})
+    {
+        if (IsValid(Part))
+            Part->SetVisibility(!bShowProcedural && Recipe.HasRearWing, false);
+    }
+    if (IsValid(HoodScoop))
+        HoodScoop->SetVisibility(!bShowProcedural && Kit.HasHoodScoop, false);
+    for (UStaticMeshComponent* Part : {
+             LeftRearFin.Get(), RightRearFin.Get()})
+    {
+        if (IsValid(Part))
+            Part->SetVisibility(!bShowProcedural && Kit.HasRearFins, false);
+    }
+}
+
 void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
 {
     // These are cosmetic colors only. Retain each built-in mesh's original
@@ -556,6 +635,7 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
     // New garage IDs are append-only. A corrupt/future ID falls back to the
     // free starter instead of silently showing another purchased car.
+    const int32 PreviousVisualId = GarageVehicleId;
     const int32 SafeId = latebrake::GarageState::IsVehicle(VehicleId)
         ? VehicleId : 0;
     if (SafeId != GarageVehicleId)
@@ -568,10 +648,14 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
         if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId);
     }
     GarageVehicleId = SafeId;
+    if (HasActorBegunPlay() && SafeId != PreviousVisualId)
+        RefreshOriginalBodyPreview();
 }
 
 void ALatebrakeCarPawn::ClearDriverInputs()
 {
+    bHasSprungWheelVisualSource=false;
+    SprungWheelVisualTravelCm.fill(0.0);
     Throttle = 0.f;
     Steering = 0.f;
     SmoothedThrottle = 0.f;
@@ -606,6 +690,8 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
     ApplySignalLights(false, false, 0.0);
+    bHasSprungWheelVisualSource=false;
+    SprungWheelVisualTravelCm.fill(0.0);
     WheelMotion.Suspend();
     ApplyWheelVisualPose();
     DrivingStats.Suspend();
@@ -802,6 +888,28 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         return;
     }
 
+#if !UE_BUILD_SHIPPING
+    // Opt-in physics experiment only: actual road rays and four-corner
+    // spring forces on the existing Chaos cube. NoChaosWheelSolver is used.
+    // Keep the default car completely unchanged until trusted native QA.
+    if (FParse::Param(FCommandLine::Get(),
+                      TEXT("LatebrakeExperimentalSprungChassis")) &&
+        IsRacePhysicsReady())
+    {
+        const auto Spring =
+            latebrake::vehiclepreview::ApplyOriginalChaosSprungPreview(
+                this,Chassis.Get(),DeltaSeconds);
+        bHasSprungWheelVisualSource=Spring.Valid;
+        if(Spring.Valid)
+        {
+            SprungWheelVisualTravelCm=Spring.WheelVisualTravelCm;
+        }
+        else
+        {
+            SprungWheelVisualTravelCm.fill(0.0);
+        }
+    }
+#endif
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
     SmoothedThrottle = static_cast<float>(latebrake::SmoothThrottle(
         SmoothedThrottle, TouchDrive.ThrottleActive() ? 1.0 : static_cast<double>(Throttle),
@@ -1377,6 +1485,19 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
             const FQuat Visual = (Index < 2 ? Steering : FQuat::Identity) *
                 Base * Rolling;
             Wheels[Index]->SetRelativeRotation(Visual.Rotator());
+            const auto& Mount=latebrake::ChassisWheelAnchors[
+                static_cast<std::size_t>(Index)];
+            const double travel=bHasSprungWheelVisualSource
+                ? SprungWheelVisualTravelCm[
+                    static_cast<std::size_t>(Index)] : 0.0;
+            // Render-only pose: original rigid-body collider never moves.
+            // The old resting spindle remains Z=-22 cm when not sampled.
+            const FVector WorldAuthored(
+                Mount.ForwardCm,Mount.RightCm,-22.0+travel);
+            Wheels[Index]->SetRelativeLocation(FVector(
+                WorldAuthored.X/latebrake::VehicleRootScaleX,
+                WorldAuthored.Y/latebrake::VehicleRootScaleY,
+                WorldAuthored.Z/latebrake::VehicleRootScaleZ));
         }
     }
 }
@@ -1490,6 +1611,8 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     SlipstreamBoost.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
+    bHasSprungWheelVisualSource=false;
+    SprungWheelVisualTravelCm.fill(0.0);
     ApplyWheelVisualPose();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())

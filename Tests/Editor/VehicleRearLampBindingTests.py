@@ -13,7 +13,14 @@ class VehicleRearLampBindingTests(unittest.TestCase):
     def test_root_and_all_attached_visuals_share_one_scale(self):
         self.assertIn('#include "Vehicles/VehicleRearLampLayout.h"',self.pawn)
         for axis in "XYZ":
-            self.assertEqual(self.pawn.count("latebrake::VehicleRootScale"+axis),4)
+            # Every newly authored cosmetic transform must compensate for
+            # the original nonuniform collision-bearing chassis scale.
+            self.assertGreaterEqual(
+                self.pawn.count("latebrake::VehicleRootScale"+axis),4)
+            self.assertIn(
+                "WorldAuthored."+axis+
+                "/latebrake::VehicleRootScale"+axis,
+                self.pawn)
         self.assertIn("Chassis->SetRelativeScale3D(RootScale);",self.pawn)
         self.assertIn("Component->SetRelativeLocation(RelativeLocation / RootScale);",self.pawn)
         self.assertNotIn("FVector(-385.f",self.pawn)

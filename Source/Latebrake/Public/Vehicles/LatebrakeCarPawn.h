@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <array>
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
@@ -34,6 +35,7 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class UProceduralMeshComponent;
 class UPointLightComponent;
 class UPrimitiveComponent;
 struct FHitResult;
@@ -132,6 +134,15 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Chassis;
 
+    // Deliberately disabled unless enabled in an editor Blueprint subclass.
+    // The old Chaos chassis remains the sole contact and physics body.
+    UPROPERTY(EditDefaultsOnly, Category = "Vehicle|Experimental Preview")
+    bool bEnableOriginalProceduralPreview = false;
+
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Experimental Preview")
+    TObjectPtr<UProceduralMeshComponent> OriginalBodyPreview;
+
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Cabin;
 
@@ -222,6 +233,7 @@ private:
                             double VisualSteering);
     void ApplyWheelVisualPose();
     void ApplyVehicleVisualRecipe(int32 VehicleId);
+    void RefreshOriginalBodyPreview();
     void ApplyVehiclePaintRecipe(int32 VehicleId);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
                            double SignedForwardSpeedCmPerSecond);
@@ -301,6 +313,10 @@ private:
     latebrake::RacePitService PitService;
     latebrake::SlipstreamDraftBoost SlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
+    // Nonshipping ray-spring experiment reads actual wheel travel.
+    // Does not change original collision or official wheel-physics status.
+    std::array<double,4> SprungWheelVisualTravelCm{};
+    bool bHasSprungWheelVisualSource = false;
     latebrake::TouchDriveState TouchDrive;
     latebrake::TouchPitHold TouchPit;
     latebrake::TouchPressTracker TouchPresses;
