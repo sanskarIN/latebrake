@@ -2289,3 +2289,16 @@ else()
     target_compile_options(latebrake_physical_six_car_trace_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PhysicalSixCarRaceTrace COMMAND latebrake_physical_six_car_trace_tests)
+
+
+# Source-qualified all-six-car telemetry window; read-only, never actual
+# Unreal race classification or a substitute for native Chaos playtesting.
+add_executable(latebrake_six_car_replay_analytics_tests PhysicalSixCarRaceReplayAnalyticsTests.cpp)
+target_include_directories(latebrake_six_car_replay_analytics_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_six_car_replay_analytics_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_six_car_replay_analytics_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_six_car_replay_analytics_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalSixCarRaceReplayAnalytics COMMAND latebrake_six_car_replay_analytics_tests)
