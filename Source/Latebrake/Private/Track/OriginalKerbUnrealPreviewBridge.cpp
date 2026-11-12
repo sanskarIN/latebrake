@@ -1,5 +1,7 @@
 #include "Track/OriginalKerbUnrealPreviewBridge.h"
 #include "Track/OriginalCircuitKerbMesh.h"
+#include "Visual/OriginalPreviewMaterials.h"
+
 #include "Components/SceneComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
@@ -74,7 +76,10 @@ bool SpawnOriginalKerbPreview(UWorld* world,UStaticMesh* engineCube)
 {
     if(!IsValid(world) || !IsValid(engineCube))
         return false;
-    UMaterialInterface* material=engineCube->GetMaterial(0);
+    UMaterialInterface* material=
+        latebrake::visual::FindOriginalPreviewMaterial(
+            latebrake::visual::OriginalPreviewMaterialKind::Road,
+            engineCube->GetMaterial(0));
     if(!IsValid(material))
         return false;
     OriginalCircuitKerbComposer builder;

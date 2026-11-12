@@ -1,6 +1,8 @@
 #include "Track/OriginalArmcoUnrealPreviewBridge.h"
 
 #include "Track/OriginalArmcoBarrierMesh.h"
+#include "Visual/OriginalPreviewMaterials.h"
+
 #include "Components/SceneComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
@@ -103,7 +105,9 @@ bool SpawnOriginalArmcoPreview(
     if(!IsValid(world) || !IsValid(sourceMesh))
         return false;
     UMaterialInterface* materialTemplate=
-        sourceMesh->GetMaterial(0);
+        latebrake::visual::FindOriginalPreviewMaterial(
+            latebrake::visual::OriginalPreviewMaterialKind::Steel,
+            sourceMesh->GetMaterial(0));
     if(!IsValid(materialTemplate))
         return false;
     OriginalArmcoBarrierMeshBuilder builder;

@@ -1,6 +1,8 @@
 #include "Track/OriginalAsphaltUnrealPreviewBridge.h"
 
 #include "Track/OriginalPhysicalAsphaltSkin.h"
+#include "Visual/OriginalPreviewMaterials.h"
+
 #include "Components/SceneComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
@@ -105,7 +107,10 @@ bool SpawnOriginalAsphaltSkinPreview(
 {
     if(!IsValid(world) || !IsValid(sourceMesh))
         return false;
-    UMaterialInterface* templateMaterial=sourceMesh->GetMaterial(0);
+    UMaterialInterface* templateMaterial=
+        latebrake::visual::FindOriginalPreviewMaterial(
+            latebrake::visual::OriginalPreviewMaterialKind::Road,
+            sourceMesh->GetMaterial(0));
     if(!IsValid(templateMaterial))
         return false;
     const OriginalPhysicalAsphaltSkin author{};

@@ -2,6 +2,8 @@
 
 #include "Vehicles/OriginalVehicleSurfaceMesh.h"
 #include "Vehicles/VehiclePaintRecipe.h"
+#include "Visual/OriginalPreviewMaterials.h"
+
 #include "Components/StaticMeshComponent.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -23,6 +25,32 @@ struct UnrealOriginalSection final
     TArray<FLinearColor> Colors;
     TArray<FProcMeshTangent> Tangents;
 };
+latebrake::visual::OriginalPreviewMaterialKind
+OriginalVehiclePreviewMaterial(OriginalVehicleMaterial material) noexcept
+{
+    using latebrake::visual::OriginalPreviewMaterialKind;
+    switch(material)
+    {
+    case OriginalVehicleMaterial::BodyPaint:
+    case OriginalVehicleMaterial::Accent:
+        return OriginalPreviewMaterialKind::CarPaint;
+    case OriginalVehicleMaterial::ClearGlass:
+        return OriginalPreviewMaterialKind::Glass;
+    case OriginalVehicleMaterial::Rubber:
+    case OriginalVehicleMaterial::Intake:
+    case OriginalVehicleMaterial::CarbonTrim:
+        return OriginalPreviewMaterialKind::Rubber;
+    case OriginalVehicleMaterial::Alloy:
+    case OriginalVehicleMaterial::BrakeRotor:
+        return OriginalPreviewMaterialKind::Steel;
+    case OriginalVehicleMaterial::Headlamp:
+    case OriginalVehicleMaterial::Taillamp:
+        return OriginalPreviewMaterialKind::Emissive;
+    case OriginalVehicleMaterial::Count:
+        break;
+    }
+    return OriginalPreviewMaterialKind::CarPaint;
+}
 FLinearColor SectionColor(
     OriginalVehicleMaterial material,
     const latebrake::VehiclePaintRecipe& paint) noexcept
@@ -159,7 +187,10 @@ bool CreateOriginalVehicleVisualSections(
             section.Tangents,
             false, // No runtime collision mesh, ever.
             false);
-        preview->SetMaterial(sectionId,base);
+        preview->SetMaterial(sectionId,
+            latebrake::visual::FindOriginalPreviewMaterial(
+                OriginalVehiclePreviewMaterial(
+                    static_cast<OriginalVehicleMaterial>(i)),base));
         if(UMaterialInstanceDynamic* material=
                preview->CreateDynamicMaterialInstance(sectionId))
         {
