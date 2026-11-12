@@ -16,6 +16,8 @@ class OriginalVehicleProceduralPreviewBindingTests(unittest.TestCase):
         self.assertIn("Chassis->SetSimulatePhysics(true)", pawn_cpp)
         self.assertIn("OriginalBodyPreview->SetCollisionEnabled(ECollisionEnabled::NoCollision)", pawn_cpp)
         self.assertIn("CreateOriginalVehicleVisualSections(", pawn_cpp)
+        self.assertIn("LatebrakeExperimentalCarMesh", pawn_cpp)
+        self.assertIn("#if !UE_BUILD_SHIPPING", pawn_cpp)
 
     def test_bridge_creates_10_cosmetic_sections_no_physics(self):
         bridge = (PRIVATE / "OriginalVehicleUnrealPreviewBridge.cpp").read_text(encoding="utf-8")

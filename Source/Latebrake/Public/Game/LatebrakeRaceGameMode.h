@@ -207,6 +207,7 @@ private:
     void BuildCircuit();
     void BuildBrakingReferenceBoards(UStaticMesh* Mesh);
     void BuildCornerApproachChevrons(UStaticMesh* Mesh);
+    void BuildOriginalCircuitPaintPreview(UStaticMesh* Mesh);
     void BuildStartGantry();
     void UpdateStartGantryVisual();
     AStaticMeshActor* SpawnBlock(const TCHAR* Label, const FVector& Position,

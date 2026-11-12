@@ -45,6 +45,8 @@
 #include "Track/CornerApproachChevrons.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
+#include "Track/RacingLineLayout.h"
+#include "Track/CircuitSurfaceDetail.h"
 #include "Track/CollisionBlockSetup.h"
 #include "Track/CollisionResponsePolicy.h"
 #include "Track/CircuitSpawnSafety.h"
@@ -900,6 +902,164 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
     }
 }
 
+
+void ALatebrakeRaceGameMode::BuildOriginalCircuitPaintPreview(
+    UStaticMesh* CubeMesh)
+{
+#if !UE_BUILD_SHIPPING
+    // Deliberately not on during normal or shipping game sessions.
+    // A visual stripe only appears where physical WorldStatic asphalt
+    // has independently passed full-footprint/union validation.
+    if (!CubeMesh || !GetWorld() ||
+        !FParse::Param(FCommandLine::Get(),
+                       TEXT("LatebrakeExperimentalCircuitPaint")))
+        return;
+
+    FActorSpawnParameters Parameters;
+    Parameters.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AActor* Holder = GetWorld()->SpawnActor<AActor>(
+        AActor::StaticClass(),FVector::ZeroVector,
+        FRotator::ZeroRotator,Parameters);
+    if (!Holder)
+        return;
+#if WITH_EDITOR
+    Holder->SetActorLabel(TEXT("LatebrakeOriginalAsphaltPaintPreview"));
+#endif
+    USceneComponent* Root=NewObject<USceneComponent>(
+        Holder,TEXT("PaintPreviewRoot"));
+    if (!Root)
+    {
+        Holder->Destroy();
+        return;
+    }
+    Root->SetMobility(EComponentMobility::Static);
+    Holder->SetRootComponent(Root);
+    Holder->AddInstanceComponent(Root);
+    Root->RegisterComponent();
+
+    const auto MakeGroup=[Holder,Root,CubeMesh](
+        const TCHAR* Name,int32 ReserveCount,FLinearColor Color)
+        ->UInstancedStaticMeshComponent*
+    {
+        UInstancedStaticMeshComponent* Group =
+            NewObject<UInstancedStaticMeshComponent>(
+                Holder,FName(Name));
+        if (!Group)
+            return nullptr;
+        Group->SetupAttachment(Root);
+        Group->SetMobility(EComponentMobility::Static);
+        Group->SetStaticMesh(CubeMesh);
+        Group->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Group->SetGenerateOverlapEvents(false);
+        Group->SetCanEverAffectNavigation(false);
+        Group->SetCastShadow(false);
+        Group->PreAllocateInstancesMemory(ReserveCount);
+        Holder->AddInstanceComponent(Group);
+        Group->RegisterComponent();
+        if (UMaterialInstanceDynamic* Material=
+                Group->CreateAndSetMaterialInstanceDynamic(0))
+        {
+            Material->SetVectorParameterValue(TEXT("Color"),Color);
+        }
+        return Group;
+    };
+    UInstancedStaticMeshComponent* Guide=MakeGroup(
+        TEXT("PhysicallyBackedRacingLine"),
+        latebrake::RacingLineMarkCount,
+        FLinearColor(0.28f,0.78f,0.84f));
+    UInstancedStaticMeshComponent* Edge=MakeGroup(
+        TEXT("PhysicalAsphaltEdgePaint"),
+        latebrake::CircuitSurfaceEdgeCount,
+        FLinearColor(0.90f,0.91f,0.84f));
+    UInstancedStaticMeshComponent* Rubber=MakeGroup(
+        TEXT("PhysicalAsphaltRubberMarks"),
+        latebrake::CircuitRubberCount,
+        FLinearColor(0.027f,0.029f,0.031f));
+    if (!Guide || !Edge || !Rubber)
+    {
+        Holder->Destroy();
+        return;
+    }
+    int32 Guides=0;
+    int32 Edges=0;
+    int32 RubberMarks=0;
+    bool bAllFootprintsValid=true;
+    for (int32 Index=0;Index<latebrake::RacingLineMarkCount;++Index)
+    {
+        const auto Mark=latebrake::PlannedRacingLineMark(Index);
+        if (!latebrake::IsValidRacingLinePaintFootprint(Mark))
+        {
+            bAllFootprintsValid=false;
+            break;
+        }
+        const FTransform Transform(
+            FRotator(0.0,Mark.HeadingDegrees,0.0),
+            FVector(Mark.Center.X,Mark.Center.Y,
+                    latebrake::RacingLinePaintCenterZCm),
+            FVector(Mark.LengthCm/latebrake::RacingLineCubeSizeCm,
+                    latebrake::RacingLinePaintWidthCm/
+                        latebrake::RacingLineCubeSizeCm,
+                    latebrake::RacingLinePaintThicknessCm/
+                        latebrake::RacingLineCubeSizeCm));
+        if (Guide->AddInstance(Transform,false)<0)
+        {
+            bAllFootprintsValid=false;
+            break;
+        }
+        ++Guides;
+    }
+    if (bAllFootprintsValid)
+    {
+        for (int32 Index=0;
+             Index<latebrake::CircuitSurfaceDetailCount;++Index)
+        {
+            const auto Detail=latebrake::PlannedCircuitSurfaceDetail(Index);
+            if (!latebrake::IsSurfaceDetailOnPhysicalAsphalt(Detail))
+            {
+                bAllFootprintsValid=false;
+                break;
+            }
+            UInstancedStaticMeshComponent* Group =
+                Detail.Style==latebrake::CircuitSurfaceStyle::EdgePaint
+                    ? Edge : Rubber;
+            const FTransform Transform(
+                FRotator::ZeroRotator,
+                FVector(Detail.Center.X,Detail.Center.Y,Detail.Height),
+                FVector(Detail.ScaleX,Detail.ScaleY,Detail.ScaleZ));
+            if (Group->AddInstance(Transform,false)<0)
+            {
+                bAllFootprintsValid=false;
+                break;
+            }
+            if (Detail.Style==latebrake::CircuitSurfaceStyle::EdgePaint)
+                ++Edges;
+            else
+                ++RubberMarks;
+        }
+    }
+    // Never show a partial, disconnected or unbacked racing line.
+    // These decorations are purely optical: the nine required physical
+    // collision actors and checkpoint ownership are unchanged.
+    if (!bAllFootprintsValid ||
+        Guides!=latebrake::RacingLineMarkCount ||
+        Edges!=latebrake::CircuitSurfaceEdgeCount ||
+        RubberMarks!=latebrake::CircuitRubberCount)
+    {
+        Holder->Destroy();
+        UE_LOG(LogLatebrakeStartup,Warning,
+            TEXT("LATEBRAKE_PAINT_PREVIEW_REJECTED marks=%d edges=%d rubber=%d"),
+            Guides,Edges,RubberMarks);
+        return;
+    }
+    UE_LOG(LogLatebrakeStartup,Display,
+        TEXT("LATEBRAKE_PAINT_PREVIEW_READY marks=%d edges=%d rubber=%d collision=off"),
+        Guides,Edges,RubberMarks);
+#else
+    (void)CubeMesh;
+#endif
+}
+
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
@@ -1091,6 +1251,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     // nine-block/four-checkpoint collision and startup readiness audit.
     BuildBrakingReferenceBoards(DecorationMesh);
     BuildCornerApproachChevrons(DecorationMesh);
+    BuildOriginalCircuitPaintPreview(DecorationMesh);
 
     // Visual-only pit beacon near the inside edge of the southern road.
     // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is

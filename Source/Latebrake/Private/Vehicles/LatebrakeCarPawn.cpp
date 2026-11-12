@@ -49,6 +49,8 @@
 #include "CollisionQueryParams.h"
 #include "Misc/CoreDelegates.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "UObject/ConstructorHelpers.h"
 #include <limits>
 
@@ -520,7 +522,12 @@ void ALatebrakeCarPawn::RefreshOriginalBodyPreview()
         return;
 
     bool bShowProcedural = false;
-    if (bEnableOriginalProceduralPreview &&
+    bool bRequestedPreview = false;
+#if !UE_BUILD_SHIPPING
+    bRequestedPreview = bEnableOriginalProceduralPreview ||
+        FParse::Param(FCommandLine::Get(), TEXT("LatebrakeExperimentalCarMesh"));
+#endif
+    if (bRequestedPreview &&
         latebrake::GarageState::IsVehicle(GarageVehicleId))
     {
         bShowProcedural =
