@@ -26,6 +26,9 @@ struct PitServiceObservation final
     bool NitroHeld = false;
     bool Authorized = false;
     bool MaintenanceNeeded = false;
+    // Measured separately from driver authorization so HUD can explain
+    // unstable contact without pretending a service was authorized.
+    bool StableGround = false;
 };
 
 inline bool IsInRacePitBay(double x, double y) noexcept
@@ -52,6 +55,7 @@ enum class PitServiceGuidance
     SlowDown,
     ReleaseThrottle,
     ReleaseNitro,
+    SettleChassis,
     HoldButton,
     Servicing,
     Completed
@@ -85,6 +89,8 @@ inline PitServiceGuidance DiagnosePitService(
         return PitServiceGuidance::ReleaseThrottle;
     if (sample.NitroHeld)
         return PitServiceGuidance::ReleaseNitro;
+    if (!sample.StableGround)
+        return PitServiceGuidance::SettleChassis;
     if (!sample.ButtonHeld)
         return PitServiceGuidance::HoldButton;
     return PitServiceGuidance::Servicing;
@@ -134,7 +140,7 @@ public:
             return false;
         }
         if (!Armed || !sample.ButtonHeld || sample.NitroHeld ||
-            !sample.MaintenanceNeeded ||
+            !sample.MaintenanceNeeded || !sample.StableGround ||
             sample.PlanarSpeedCmPerSecond > 120.0 ||
             std::abs(sample.RequestedThrottle) > 0.05)
         {
