@@ -90,6 +90,44 @@ int main()
     Check(!EvaluateChassisGroundContact(invalid).Valid,
           "untrusted vertical chassis velocity cannot grant motor force");
 
+    // Both actual cars need at least three sound contact traces to
+    // exchange arcade drafting force; pit service is still stricter
+    // (four supports and a nearly stationary vertical chassis).
+    for (int n = 0; n <= 4; ++n)
+    {
+        const auto contact = EvaluateChassisGroundContact(Sample(n));
+        Check(HasQualifiedDraftGroundSupport(contact) == (n >= 3),
+              "draft requires three or four real grounded corners");
+        Check(contact.HasDriveContact == (n >= 2),
+              "drafting never changes the normal drive-contact policy");
+    }
+    auto invalidDraft = EvaluateChassisGroundContact(Sample(4));
+    invalidDraft.Valid = false;
+    Check(!HasQualifiedDraftGroundSupport(invalidDraft),
+          "unset physics cannot authorize ghost drafting");
+    invalidDraft = EvaluateChassisGroundContact(Sample(4));
+    invalidDraft.ContactTractionScale = 0.75;
+    Check(!HasQualifiedDraftGroundSupport(invalidDraft),
+          "fabricated full-support traction never grants arcade boost");
+    invalidDraft = EvaluateChassisGroundContact(Sample(3));
+    invalidDraft.ContactTractionScale = 1.0;
+    Check(!HasQualifiedDraftGroundSupport(invalidDraft),
+          "three supports cannot claim four-corner road grip");
+    invalidDraft = EvaluateChassisGroundContact(Sample(4));
+    invalidDraft.HasDriveContact = false;
+    Check(!HasQualifiedDraftGroundSupport(invalidDraft),
+          "inconsistent physical drive contact fails closed");
+    const auto unsafeGround = EvaluateChassisGroundContact(Sample(4, 180.0));
+    Check(!HasQualifiedDraftGroundSupport(unsafeGround),
+          "a genuinely airborne car cannot supply a drafting target");
+    for (int i = 0; i < 25000; ++i)
+    {
+        const auto s = Sample(i % 5);
+        const auto contact = EvaluateChassisGroundContact(s);
+        Check(HasQualifiedDraftGroundSupport(contact) == (i % 5 >= 3),
+              "25k physical support states preserve deterministic draft policy");
+    }
+
     // Four trusted supports and a nearly settled body are needed for
     // an actual pit service; normal drive remains eligible at two.
     for (int n = 0; n <= 4; ++n)
