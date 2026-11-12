@@ -1831,8 +1831,11 @@ bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
     // Source-only physics observation: a stale, missing, finished-route or
     // unhealthy rival is never a valid aerodynamic target.
     if (!IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady() ||
+        !RivalCar->HasQualifiedDraftRoadSupport() ||
         RivalCar->HasCompletedRoute() || Race.IsFinished())
     {
+        // An airborne or barely supported physical rival cannot give a
+        // human an aerodynamic bonus by leaving a stale position behind.
         return false;
     }
     const FVector Position = RivalCar->GetActorLocation();
