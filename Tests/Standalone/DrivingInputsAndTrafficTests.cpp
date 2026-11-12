@@ -420,6 +420,20 @@ static void RejectUnsafeOvertakeChanges()
                 controller.AbortedPasses()==1 &&
                 controller.ClearedPasses()==0,
                 "real local yellow vetoes already committed overtaking");
+        sample.LocalYellowActive=false;
+        for(int frame=0;frame<24;++frame)
+        {
+            AdvancePassingFrame(sample,0.0);
+            const auto recovering=controller.Step(sample);
+            Require(recovering.Valid &&
+                    !recovering.UnrealSteeringApplied &&
+                    controller.AbortedPasses()==1 &&
+                    controller.ClearedPasses()==0,
+                    "yellow abort recovers without phantom overtake credit");
+        }
+        Require(controller.CurrentState()==OvertakeState::Following &&
+                controller.TrackedTargetActor()==0,
+                "aborted passing recovers without a new target");
     }
     {
         auto sample=PassingFixture();
