@@ -81,6 +81,26 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         return;
     }
 
+    // A manually ticked/unusually stalled Unreal world may deliver a
+    // nonfinite, zero or >0.10-second DeltaSeconds. Reject it BEFORE
+    // CheckpointMotionTrace::Sample updates its position baseline,
+    // not only after the route controller has refused a gate credit.
+    // Stop propulsion and rebase both physical observation windows.
+    if (!latebrake::RivalRouteProgress::HasQualifiedFrameTime(
+            static_cast<double>(DeltaSeconds)))
+    {
+        Route.SuspendObservation();
+        RivalGateTrace.Reset();
+        FollowingBrakeHold.Reset();
+        GripPace.Reset();
+        SurfaceDamagePace.Reset();
+        SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
+        SetAutonomousControls(0.f, 0.f, true);
+        Super::Tick(DeltaSeconds);
+        return;
+    }
+
     // Unreal may skip all rival ticks during actual OS/world pause. The
     // shared GameMode epoch changes on pause/menu/focus/restart regardless,
     // so the FIRST resumed qualified frame must rebase both a possible
