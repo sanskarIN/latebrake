@@ -125,8 +125,15 @@ inline PilotCommand YieldRivalToPlayer(
     const bool occupiedFootprint =
         forwardDistance < EmergencyFootprintDistanceCm &&
         rivalForwardSpeed > 1.0;
+    // The 65m cap applies to *gentle throttle awareness*, not to a
+    // physically required brake: a badly faded car may require much
+    // longer than 65m to decelerate at the observed closing speed.
+    // Rejecting it solely on the awareness cap would be unsafe.
+    const bool insufficientBrakingRunway =
+        closingSpeed >= 500.0 && forwardDistance <= stoppingDistance;
     if (forwardDistance <= 0.0 ||
-        forwardDistance >= awarenessDistance ||
+        (forwardDistance >= awarenessDistance &&
+         !insufficientBrakingRunway) ||
         lateralDistance >= LaneCorridorCm ||
         (sample.RivalPlanarSpeedCmPerSecond < 450.0 &&
          !occupiedFootprint) ||
@@ -144,8 +151,6 @@ inline PilotCommand YieldRivalToPlayer(
     const bool predictedEmergency = closingSpeed >= 500.0 &&
         timeToContact >= 0.0 &&
         timeToContact <= CriticalTimeToContactSeconds;
-    const bool insufficientBrakingRunway =
-        closingSpeed >= 500.0 && forwardDistance <= stoppingDistance;
     if (occupiedFootprint || nearEmergency || predictedEmergency ||
         insufficientBrakingRunway)
     {
