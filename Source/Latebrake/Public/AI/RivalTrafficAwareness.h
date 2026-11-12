@@ -26,6 +26,10 @@ struct RivalTrafficObservation final
     // Planar speed magnitude alone overestimates contact during lateral slip.
     double RivalWorldVelocityX = 0.0;
     double RivalWorldVelocityY = 0.0;
+    // Previous qualified physical chassis sample: the SAME grip, tire,
+    // damage, brake-fade and handling forecast used by rival corner braking.
+    // Zero means missing authority, never an invented dry-road brake.
+    double QualifiedBrakeDecelerationCmPerSecondSquared = 0.0;
 };
 
 inline PilotCommand YieldRivalToPlayer(
@@ -55,7 +59,10 @@ inline PilotCommand YieldRivalToPlayer(
             15000.0 ||
         std::abs(std::hypot(sample.RivalWorldVelocityX,
                             sample.RivalWorldVelocityY) -
-                 sample.RivalPlanarSpeedCmPerSecond) > 1.0)
+                 sample.RivalPlanarSpeedCmPerSecond) > 1.0 ||
+        !std::isfinite(sample.QualifiedBrakeDecelerationCmPerSecondSquared) ||
+        sample.QualifiedBrakeDecelerationCmPerSecondSquared < 1.0 ||
+        sample.QualifiedBrakeDecelerationCmPerSecondSquared > 3000.0)
     {
         return {}; // default PilotCommand brakes and has no throttle
     }
@@ -87,50 +94,73 @@ inline PilotCommand YieldRivalToPlayer(
         return {};
     }
 
-    // Fail benignly when the player is behind, beside, stopped far away,
-    // in another lane, or not being caught. Keep the rival's existing
-    // corner and checkpoint steering: no off-track evasive lunges.
+    // Use real prior-frame grip/brake-fade authority for early following
+    // assessment, not a fixed 14.5-metre range at every closing velocity.
+    // This is a deliberately bounded 1-D lane policy, NOT a guarantee
+    // against collision or a replacement for Chaos contact resolution.
     constexpr double LaneCorridorCm = 225.0;
     constexpr double MaxAwarenessDistanceCm = 1450.0;
+    constexpr double MaximumPredictiveAwarenessCm = 6500.0;
     constexpr double EmergencyDistanceCm = 600.0;
+    constexpr double ConservativeContactClearanceCm = 380.0;
+    constexpr double EmergencyFootprintDistanceCm = 280.0;
+    constexpr double CriticalTimeToContactSeconds = 0.75;
+    constexpr double ReactionReserveSeconds = 0.50;
+    constexpr double PredictiveThrottleBufferCm = 500.0;
+
+    // Model the closing velocity rather than total chassis speed to
+    // preserve legitimate following/passing at nearly matching speeds.
+    // A suddenly stationary or reversing player increases measured
+    // closing speed and the required runway at the next physics sample.
+    const double closing = std::max(0.0, closingSpeed);
+    const double stoppingDistance =
+        ConservativeContactClearanceCm +
+        closing * ReactionReserveSeconds +
+        closing * closing /
+            (2.0 * sample.QualifiedBrakeDecelerationCmPerSecondSquared);
+    const double awarenessDistance = std::clamp(
+        std::max(MaxAwarenessDistanceCm,
+                 stoppingDistance + PredictiveThrottleBufferCm),
+        MaxAwarenessDistanceCm, MaximumPredictiveAwarenessCm);
+    const bool occupiedFootprint =
+        forwardDistance < EmergencyFootprintDistanceCm &&
+        rivalForwardSpeed > 1.0;
     if (forwardDistance <= 0.0 ||
-        forwardDistance >= MaxAwarenessDistanceCm ||
+        forwardDistance >= awarenessDistance ||
         lateralDistance >= LaneCorridorCm ||
-        sample.RivalPlanarSpeedCmPerSecond < 450.0 ||
-        closingSpeed < 130.0)
+        (sample.RivalPlanarSpeedCmPerSecond < 450.0 &&
+         !occupiedFootprint) ||
+        (closingSpeed < 130.0 && !occupiedFootprint))
     {
         return command;
     }
 
-    // Strong approach to an occupied lane: prioritize slowing over
-    // simulated contact. This is not collision prediction: moving cars,
-    // walls, track curvature and overtakes still need Unreal playtests.
-    // Distance alone is too late for high closing speeds: a rival moving
-    // much faster than the player may traverse the remaining gap before
-    // the next ordinary near-distance brake threshold. The projection is
-    // deliberately conservative and valid ONLY inside the same-lane,
-    // positive-forward, finite-velocity guards above.
-    constexpr double ConservativeContactClearanceCm = 380.0;
-    constexpr double CriticalTimeToContactSeconds = 0.75;
     const double availableGap = std::max(
         0.0, forwardDistance - ConservativeContactClearanceCm);
-    const double timeToContact = availableGap / closingSpeed;
+    const double timeToContact = closingSpeed > 0.0
+        ? availableGap / closingSpeed : -1.0;
     const bool nearEmergency =
         forwardDistance < EmergencyDistanceCm && closingSpeed >= 230.0;
-    const bool predictedEmergency =
-        closingSpeed >= 500.0 &&
+    const bool predictedEmergency = closingSpeed >= 500.0 &&
+        timeToContact >= 0.0 &&
         timeToContact <= CriticalTimeToContactSeconds;
-    if (nearEmergency || predictedEmergency)
+    const bool insufficientBrakingRunway =
+        closingSpeed >= 500.0 && forwardDistance <= stoppingDistance;
+    if (occupiedFootprint || nearEmergency || predictedEmergency ||
+        insufficientBrakingRunway)
     {
         command.Throttle = 0.0;
         command.Brake = true;
         return command;
     }
 
-    // Smooth distance-based motor reduction across the remaining zone;
-    // never creates extra throttle, brake false, reverse, or steering.
-    const double scaled = (forwardDistance - 110.0) /
-        (MaxAwarenessDistanceCm - 110.0);
+    // Back off throttle across the approach band before the physical
+    // stopping envelope. Keep the planner's original steering/corner
+    // brake, and never create extra throttle or motor input.
+    const double throttleStart = std::min(
+        stoppingDistance, MaxAwarenessDistanceCm - 110.0);
+    const double scaled = (forwardDistance - throttleStart) /
+        std::max(1.0, awarenessDistance - throttleStart);
     const double permittedThrottle = std::clamp(
         0.15 + 0.55 * scaled, 0.15, 0.70);
     command.Throttle = std::min(command.Throttle, permittedThrottle);
