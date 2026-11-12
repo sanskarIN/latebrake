@@ -356,7 +356,8 @@ inline bool PhysicalTraceContiguous(
     const double interval=newer.PhysicsClockSeconds-
         older.PhysicsClockSeconds;
     if(interval<=0.0 ||
-       interval>settings.MaximumFrameSeconds ||
+       interval>settings.MaximumFrameSeconds+
+           settings.MaximumSourceClockSkewSeconds ||
        std::abs(interval-newer.DeltaSeconds)>
            settings.MaximumSourceClockSkewSeconds)
         return false;
@@ -400,7 +401,8 @@ inline PhysicalTraceReplayPose InterpolatePhysicalTrace(
         return out;
     const double interval=newer.PhysicsClockSeconds-
         older.PhysicsClockSeconds;
-    if(interval>settings.MaximumReplayInterpolationSeconds)
+    if(interval>settings.MaximumReplayInterpolationSeconds+
+            settings.MaximumSourceClockSkewSeconds)
         return out;
     const double alpha=(requestedClockSeconds-
         older.PhysicsClockSeconds)/interval;
