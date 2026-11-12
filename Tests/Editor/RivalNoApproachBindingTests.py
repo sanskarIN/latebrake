@@ -52,7 +52,7 @@ class RivalNoApproachBindingTests(unittest.TestCase):
             "NoApproachMaxFrameSeconds = 0.10",
             "MaxQualifiedWaypointDistanceCm = 50000.0",
             "ApproachReferenceDistanceCm - MeaningfulApproachCm",
-            "StationarySeconds >= 8.0 || noApproachStall",
+            "StationarySeconds >= 8.0 - 1.0e-9 || noApproachStall",
             "ResetApproachWindow();",
             "if (RecoveryPending || IsFinished()",
         ):
