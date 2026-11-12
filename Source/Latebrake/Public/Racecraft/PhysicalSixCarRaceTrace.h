@@ -19,7 +19,7 @@ struct PhysicalTraceSettings final
     double MaximumSourceClockSkewSeconds=0.02;
     double MaximumReplayInterpolationSeconds=0.10;
     double MaximumVehicleTravelCm=1800.0;
-    double MaximumRelativeMovementCm=2400.0;
+    double MaximumRelativeMovementCm=100.0;
     double MinimumSensorConfidence=0.80;
     double NearMissLateralClearanceCm=120.0;
     double NearMissLongitudinalClearanceCm=220.0;
@@ -136,6 +136,8 @@ inline bool ValidPhysicalTraceSettings(PhysicalTraceSettings p) noexcept
         p.MaximumReplayInterpolationSeconds<=p.MaximumFrameSeconds &&
         Finite(p.MaximumVehicleTravelCm) &&
         p.MaximumVehicleTravelCm>0.0 &&
+        Finite(p.MaximumRelativeMovementCm) &&
+        p.MaximumRelativeMovementCm>=0.0 &&
         Finite(p.MaximumRelativeMovementCm) &&
         p.MaximumRelativeMovementCm>0.0 &&
         Finite(p.MinimumSensorConfidence) &&
@@ -362,8 +364,18 @@ inline bool PhysicalTraceContiguous(
     {
         const auto& first=older.Actors[static_cast<std::size_t>(i)];
         const auto& second=newer.Actors[static_cast<std::size_t>(i)];
-        if(Distance(first.Pose.Position,second.Pose.Position)>
-            settings.MaximumVehicleTravelCm)
+        // A source frame cannot jump hundreds of centimeters farther
+        // than either real chassis velocity could plausibly transport it
+        // during this measured engine tick. Retain a bounded allowance
+        // for imperfect collision/pose-sensor sampling.
+        const double displacement=Distance(
+            first.Pose.Position,second.Pose.Position);
+        const double physicalTravelCm=std::max(
+            Length(first.VelocityCmS),
+            Length(second.VelocityCmS))*interval+
+                settings.MaximumRelativeMovementCm;
+        if(displacement>std::min(
+                settings.MaximumVehicleTravelCm,physicalTravelCm))
             return false;
         if(!Finite(second.Pose) ||
            !Finite(second.VelocityCmS) ||
