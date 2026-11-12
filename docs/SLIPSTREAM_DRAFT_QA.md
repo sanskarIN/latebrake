@@ -13,6 +13,15 @@ multiplayer positioning or a source of official race results.
   moving rival; time attack (without rival), a missing/finished AI car,
   pause, menu, invalid placement, race finish, focus loss and invalid
   rigid-body physics never create phantom draft bonuses.
+- Both the actual human and the actual rival need **at least three
+  independently qualified WorldStatic chassis-corner contacts** on
+  a recent accepted physics frame. Two-corner precarious support,
+  airborne travel and absent ground samples cannot grant the optional
+  arcade drafting bonus, even when the two cars' last sampled
+  positions, headings and speeds appear aligned. The same pure
+  qualifier is called by the player Tick and the rival sampling
+  GameMode method. Normal two-corner driving traction and four-corner
+  stationary PIT repair remain separate.
 - The player and rival must travel forward at least 12 m/s and 10 m/s
   respectively. The relative geometry must be within **7–38 m ahead**,
   less than **3.8 m lateral** and **2.3 m vertical** separation, with
@@ -55,7 +64,9 @@ python3 -m unittest discover -s Tests/Editor -p SlipstreamDraftBindingTests.py -
 Tests reject malformed/time-hitch samples, NaN/Infinity position and
 motion, reverse/too-distant/oncoming rival, wrong lane, vertical
 separation, denied driver states, braking, low speeds, invalid headings,
-and over-fast approach. They also check a 5,000-run stress sample, all
+and over-fast approach. Separate exact traction tests reject fabricated
+contact, 0–2 supporting corners and unsupported/airborne lead/follower
+states; Python source assertions verify both real Unreal bindings. They also check a 5,000-run stress sample, all
 real racer/unreal binding guards and reset paths. This verifies only
 portable logic and static Unreal-source wiring.
 
