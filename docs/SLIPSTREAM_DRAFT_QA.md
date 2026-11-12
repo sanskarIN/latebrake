@@ -30,9 +30,18 @@ multiplayer positioning or a source of official race results.
   an engine-free production C++20 policy. If the player closes more
   than 10 m/s faster than the rival, or either brakes/reverses/moves
   improperly, boost immediately clears.
+- The existing actual-chassis velocity vectors also constrain both
+  cars' **lateral sliding**: each measured right-axis travel component
+  must remain at or below **25% of that car's own forward speed** and
+  at or below **5 m/s**, whichever is smaller. Identically facing but
+  broadside-sliding cars no longer qualify as an aerodynamic pair.
+  Both measurements are supplied directly from the human's Chaos body
+  and the rival's real world velocity, not inferred from heading
+  or a frozen HUD reading. Reverse slip sign has no effect on the cap.
 - Drafting must remain continuously eligible for **0.18 seconds** before
-  granting help; an invalid frame, stale/missing rival, teleport or
-  input interruption clears the entire confirmation window.
+  granting help; an invalid frame, stale/missing rival, teleport,
+  sideways-slide excess or input interruption clears the entire
+  confirmation window.
 - A qualified position yields at most **+6% additive motor force**.
   Greater distance or lateral separation reduces the benefit. The
   existing baseline motor force, frame-stable damping, top-speed cap,
@@ -64,6 +73,8 @@ python3 -m unittest discover -s Tests/Editor -p SlipstreamDraftBindingTests.py -
 Tests reject malformed/time-hitch samples, NaN/Infinity position and
 motion, reverse/too-distant/oncoming rival, wrong lane, vertical
 separation, denied driver states, braking, low speeds, invalid headings,
+measured excessive left/right chassis sliding on either vehicle,
+nonfinite lateral movement and 40,000 varying-speed sideways-motion cases,
 and over-fast approach. Separate exact traction tests reject fabricated
 contact, 0–2 supporting corners and unsupported/airborne lead/follower
 states; Python source assertions verify both real Unreal bindings. They also check a 5,000-run stress sample, all
