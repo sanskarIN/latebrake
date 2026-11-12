@@ -72,6 +72,10 @@ int main()
     Require(longRangeCatch.Brake && longRangeCatch.Throttle == 0.0 &&
             longRangeCatch.Steering == cruise.Steering,
             "measured fast closing begins braking at fifty metres, not fourteen");
+    const auto beyondThrottleCap = YieldRivalToPlayer(
+        cruise, Traffic(7000, 0, 3400.0, 500.0));
+    Require(beyondThrottleCap.Brake && beyondThrottleCap.Throttle == 0.0,
+            "physical braking deficit must override the 65-metre throttle cap");
     const auto ordinaryCatch = YieldRivalToPlayer(
         cruise, Traffic(1800, 0, 2200.0, 900.0));
     Require(ordinaryCatch.Brake && ordinaryCatch.Throttle == 0.0,
@@ -83,6 +87,11 @@ int main()
     Require(!healthyBrakes.Brake && healthyBrakes.Throttle == cruise.Throttle &&
             weakBrakes.Brake && weakBrakes.Throttle == 0.0,
             "real low-grip/faded brake forecast expands the stopping decision");
+    const auto farDistantLane = YieldRivalToPlayer(
+        cruise, Traffic(7000, 250.0, 3400.0, 500.0));
+    Require(!farDistantLane.Brake &&
+            farDistantLane.Throttle == cruise.Throttle,
+            "emergency beyond cap still respects true other-lane clearance");
     const auto distantLane = YieldRivalToPlayer(
         cruise, Traffic(5000, 250.0, 3400.0, 500.0));
     Require(!distantLane.Brake && distantLane.Throttle == cruise.Throttle,
