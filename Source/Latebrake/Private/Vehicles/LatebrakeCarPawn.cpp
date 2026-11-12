@@ -3,6 +3,7 @@
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
+#include "Vehicles/OriginalVehicleUnrealPreviewBridge.h"
 #include "Vehicles/VehicleRearLampLayout.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
@@ -38,6 +39,7 @@
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Game/LatebrakeRaceGameMode.h"
@@ -105,6 +107,19 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         static_cast<float>(latebrake::VehicleRootScaleY),
         static_cast<float>(latebrake::VehicleRootScaleZ));
     Chassis->SetRelativeScale3D(RootScale);
+
+    // Optional native mesh preview inherits rigid-body motion but never
+    // contributes mass, contact shape, overlap or engine-frame feedback.
+    OriginalBodyPreview = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalBodyPreview"));
+    OriginalBodyPreview->SetupAttachment(Chassis);
+    OriginalBodyPreview->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalBodyPreview->SetGenerateOverlapEvents(false);
+    OriginalBodyPreview->SetVisibility(false);
+    OriginalBodyPreview->SetRelativeScale3D(FVector(
+        1.0 / RootScale.X, 1.0 / RootScale.Y, 1.0 / RootScale.Z));
+    OriginalBodyPreview->SetRelativeLocation(
+        FVector(0.f,0.f,-50.f) / RootScale);
 
     Cabin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Cabin"));
     Cabin->SetupAttachment(Chassis);
@@ -280,6 +295,7 @@ void ALatebrakeCarPawn::BeginPlay()
     // Dynamic material instances belong to these mesh components, and are
     // initialized only when the actor is live (not in the CDO constructor).
     ApplyVehiclePaintRecipe(GarageVehicleId);
+    RefreshOriginalBodyPreview();
     Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
@@ -498,6 +514,60 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         Kit.HasRearFins);
 }
 
+void ALatebrakeCarPawn::RefreshOriginalBodyPreview()
+{
+    if (!IsValid(OriginalBodyPreview) || !IsValid(Chassis))
+        return;
+
+    bool bShowProcedural = false;
+    if (bEnableOriginalProceduralPreview &&
+        latebrake::GarageState::IsVehicle(GarageVehicleId))
+    {
+        bShowProcedural =
+            latebrake::vehiclemesh::CreateOriginalVehicleVisualSections(
+                OriginalBodyPreview, Chassis, GarageVehicleId);
+    }
+    if (!bShowProcedural)
+    {
+        OriginalBodyPreview->ClearAllMeshSections();
+    }
+    OriginalBodyPreview->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalBodyPreview->SetGenerateOverlapEvents(false);
+    OriginalBodyPreview->SetVisibility(bShowProcedural);
+
+    // A preview failure restores the original complete driving vehicle.
+    // Neither code path changes the rigid body's collision or simulation.
+    Chassis->SetVisibility(!bShowProcedural, false);
+    UStaticMeshComponent* GeneralParts[] = {
+        Cabin, Hood, RearDeck,
+        FrontSplitter, LeftSideSkirt, RightSideSkirt, RearDiffuser,
+        FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel,
+        FrontLeftSpoke, FrontRightSpoke, RearLeftSpoke, RearRightSpoke
+    };
+    for (UStaticMeshComponent* Part : GeneralParts)
+    {
+        if (IsValid(Part))
+            Part->SetVisibility(!bShowProcedural, false);
+    }
+    const auto Recipe = latebrake::VisualRecipeForVehicle(GarageVehicleId);
+    const auto Kit = latebrake::BodyKitForVehicle(GarageVehicleId);
+    for (UStaticMeshComponent* Part : {
+             SpoilerWing.Get(), SpoilerSupportLeft.Get(),
+             SpoilerSupportRight.Get()})
+    {
+        if (IsValid(Part))
+            Part->SetVisibility(!bShowProcedural && Recipe.HasRearWing, false);
+    }
+    if (IsValid(HoodScoop))
+        HoodScoop->SetVisibility(!bShowProcedural && Kit.HasHoodScoop, false);
+    for (UStaticMeshComponent* Part : {
+             LeftRearFin.Get(), RightRearFin.Get()})
+    {
+        if (IsValid(Part))
+            Part->SetVisibility(!bShowProcedural && Kit.HasRearFins, false);
+    }
+}
+
 void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
 {
     // These are cosmetic colors only. Retain each built-in mesh's original
@@ -556,6 +626,7 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
     // New garage IDs are append-only. A corrupt/future ID falls back to the
     // free starter instead of silently showing another purchased car.
+    const int32 PreviousVisualId = GarageVehicleId;
     const int32 SafeId = latebrake::GarageState::IsVehicle(VehicleId)
         ? VehicleId : 0;
     if (SafeId != GarageVehicleId)
@@ -568,6 +639,8 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
         if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId);
     }
     GarageVehicleId = SafeId;
+    if (HasActorBegunPlay() && SafeId != PreviousVisualId)
+        RefreshOriginalBodyPreview();
 }
 
 void ALatebrakeCarPawn::ClearDriverInputs()
