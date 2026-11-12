@@ -101,6 +101,43 @@ class ProductionNoncommentMilestoneTests(SourceScaleFixture):
         self.assertEqual(result['categories']['unreal_build_rules']['nonblank_noncomment_lines'], 1)
         self.assertEqual(result['excluded_exact_duplicate_game_source_files'], 1)
 
+    def test_duplicate_source_with_crlf_cr_or_bom_counts_only_once(self):
+        original = (self.root / 'Source/MyCar.cpp').read_text()
+        self.write('Source/LineEndingClone.cpp',
+                   '\ufeff' + original.replace('\n', '\r\n'))
+        self.write('Source/LegacyCRClone.cpp',
+                   original.replace('\n', '\r'))
+        self.stage()
+        result = metrics(self.root)
+        game = result['categories']['game_source']
+        self.assertEqual(game['files'], 2)
+        self.assertEqual(game['nonblank_noncomment_lines'], 3)
+        self.assertEqual(result['excluded_exact_duplicate_game_source_files'], 2)
+        self.assertEqual(result['remaining_game_source_lines'], 199_997)
+
+    def test_changed_source_content_is_not_treated_as_duplicate(self):
+        original = (self.root / 'Source/MyCar.cpp').read_text()
+        self.write('Source/ChangedCar.cpp',
+                   '\ufeff' + original.replace(
+                       'int main()', 'int other()').replace('\n', '\r\n'))
+        self.stage()
+        result = metrics(self.root)
+        game = result['categories']['game_source']
+        self.assertEqual(game['files'], 3)
+        self.assertEqual(game['nonblank_noncomment_lines'], 4)
+        self.assertEqual(result['excluded_exact_duplicate_game_source_files'], 0)
+
+    def test_canonical_duplicate_check_does_not_change_lexical_cpp_count(self):
+        original = (self.root / 'Source/MyCar.cpp').read_text()
+        self.write('Source/LineEndingClone.cpp',
+                   '\ufeff' + original.replace('\n', '\r\n'))
+        self.stage()
+        self.assertEqual(count_code_lines(original), 1)
+        self.assertEqual(count_code_lines(
+            '\ufeff' + original.replace('\n', '\r\n')), 1)
+        self.assertEqual(metrics(self.root)['categories'][
+            'game_source']['physical_lines'], 5)
+
     def test_lexical_comments_do_not_erase_literal_content(self):
         cases = [
             ('// comment\n/* block\n comment */\n', 0),

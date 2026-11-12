@@ -198,7 +198,18 @@ def metrics(root: Path) -> dict:
         raw = path.read_bytes()
         text = raw.decode("utf-8")
         if group == "game_source":
-            digest = hashlib.sha256(raw).digest()
+            # The same authored C++ copied with Windows CRLF, legacy CR
+            # line endings or a UTF-8 BOM is still the same implementation.
+            # Hash the canonical Unicode text instead of raw bytes so
+            # platform-specific copies cannot inflate the source milestone.
+            # Do NOT strip intra-line whitespace or comments: those can
+            # change macro and literal semantics and need human review.
+            canonical = (
+                text.removeprefix("\ufeff")
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+            )
+            digest = hashlib.sha256(canonical.encode("utf-8")).digest()
             if digest in source_digests:
                 duplicate_game_source_files += 1
                 continue
