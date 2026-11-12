@@ -21,6 +21,18 @@ endif()
 
 add_test(NAME RaceProgress COMMAND latebrake_race_tests)
 
+# New source-only bounded replay timing; does not play ghost frames in Unreal.
+add_executable(latebrake_portable_replay_delta_tests PortableReplayDeltaTraceTests.cpp)
+target_include_directories(latebrake_portable_replay_delta_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_portable_replay_delta_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_portable_replay_delta_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_portable_replay_delta_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PortableReplayDeltaTrace COMMAND latebrake_portable_replay_delta_tests)
+
+
 # Actual shared player/rival arcade brake thermal response, independent
 # of Unreal Engine runtime and vehicle physics packaging.
 add_executable(latebrake_arcade_brake_heat_tests ArcadeBrakeHeatTests.cpp)
