@@ -57,6 +57,13 @@ class RivalDirectionalGateBindingTests(unittest.TestCase):
         self.assertIn("requiresPlaneCrossing && forwardPlaneCrossed", self.route)
         self.assertIn("!requiresPlaneCrossing && distanceCm <= 440.0", self.route)
         self.assertIn("if (RecoveryPending || IsFinished()", self.route)
+        self.assertIn("requiresPlaneCrossing &&", self.route)
+        self.assertIn("deltaSeconds > NoApproachMaxFrameSeconds", self.route)
+        self.assertIn("if (requiresPlaneCrossing) StationarySeconds = 0.0;", self.route)
+        self.assertLess(
+            self.route.index("deltaSeconds > NoApproachMaxFrameSeconds"),
+            self.route.index("++NextWaypoint;"),
+        )
         self.assertIn("++NextWaypoint;", self.route)
         self.assertIn("RecoveryPending = true;", self.route)
         self.assertIn("ReportRecoveryResult(bool enginePlacementVerified)", self.route)
