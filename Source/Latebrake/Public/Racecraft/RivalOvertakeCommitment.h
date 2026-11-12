@@ -690,7 +690,23 @@ public:
             decision.PlannedSafetyMarginCm>=
                 Settings.MinimumRoadEdgeCm &&
             decision.RiskScore<=Settings.RiskScoreThreshold;
-        if (!viable)
+        // Recovery is independent of whether a NEW passing target is
+        // available. Otherwise the acquisition-only lead-gap test can
+        // strand a completed or aborted pass in its terminal state forever.
+        if(State==OvertakeState::Aborted ||
+           State==OvertakeState::Clearing)
+        {
+            RecoverySeconds=std::max(
+                0.0,RecoverySeconds-dt);
+            if(RecoverySeconds<=0.0)
+            {
+                State=OvertakeState::Following;
+                TargetActor=0;
+                TargetSlot=-1;
+                CommittedTrackOffsetCm=0.0;
+            }
+        }
+        else if (!viable)
         {
             if(activePass)
             {
@@ -780,19 +796,6 @@ public:
                 State=OvertakeState::Clearing;
                 RecoverySeconds=Settings.MaximumRecoverySeconds;
                 ++Completed;
-            }
-        }
-        else if(State==OvertakeState::Aborted ||
-                State==OvertakeState::Clearing)
-        {
-            RecoverySeconds=std::max(
-                0.0,RecoverySeconds-dt);
-            if(RecoverySeconds<=0.0)
-            {
-                State=OvertakeState::Following;
-                TargetActor=0;
-                TargetSlot=-1;
-                CommittedTrackOffsetCm=0.0;
             }
         }
         const bool laneAuthorized=
