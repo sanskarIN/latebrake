@@ -22,6 +22,10 @@ struct DraftingSample final
     double ForwardThrottle = 0.0;
     bool Braking = false;
     bool EligibleHumanRace = false;
+    // World-planar velocity projected onto each body's physical right
+    // direction. Heading alignment alone cannot qualify a sliding car.
+    double FollowerLateralSpeedCmPerSecond = 0.0;
+    double LeadLateralSpeedCmPerSecond = 0.0;
 };
 
 class SlipstreamDraftBoost final
@@ -37,6 +41,10 @@ public:
     static constexpr double MaxElevationDistance = 230.0;
     static constexpr double MinimumHeadingAlignment = 0.94;
     static constexpr double MaximumClosingSpeed = 1000.0;
+    // Prototype aerodynamic help requires predominantly forward motion,
+    // not a handbrake drift or rival travelling broadside to the lane.
+    static constexpr double MaximumLateralSlipFraction = 0.25;
+    static constexpr double MaximumLateralSpeedCmPerSecond = 500.0;
     static constexpr double ConfirmSeconds = 0.18;
     static constexpr double MaxForceExtraFraction = 0.06;
 
@@ -61,6 +69,9 @@ public:
         const double dx = sample.LeadOffsetX;
         const double dy = sample.LeadOffsetY;
         const double dz = sample.LeadOffsetZ;
+        const double followerLateral =
+            sample.FollowerLateralSpeedCmPerSecond;
+        const double leadLateral = sample.LeadLateralSpeedCmPerSecond;
         const double throttle = sample.ForwardThrottle;
         if (!sample.EligibleHumanRace || sample.Braking ||
             !std::isfinite(dt) || dt < MinFrameSeconds ||
@@ -72,6 +83,8 @@ public:
             !std::isfinite(bx) || !std::isfinite(by) ||
             !std::isfinite(dx) || !std::isfinite(dy) ||
             !std::isfinite(dz) || !std::isfinite(throttle) ||
+            !std::isfinite(followerLateral) ||
+            !std::isfinite(leadLateral) ||
             throttle < 0.30 || throttle > 1.0)
         {
             Reset();
@@ -82,6 +95,21 @@ public:
         if (followerNorm < 0.95 || followerNorm > 1.05 ||
             leadNorm < 0.95 || leadNorm > 1.05 ||
             ax * bx + ay * by < MinimumHeadingAlignment)
+        {
+            Reset();
+            return 0.0;
+        }
+        // Both chassis must travel primarily FORWARD rather than merely
+        // point in the same direction while sliding sideways. These are
+        // actual per-body world velocity projections, not yaw estimates.
+        // Qualification is revoked immediately; prior charge cannot
+        // survive a single unqualified sideways-slipping physics frame.
+        if (std::abs(followerLateral) >
+                std::min(MaximumLateralSpeedCmPerSecond,
+                         MaximumLateralSlipFraction * follower) ||
+            std::abs(leadLateral) >
+                std::min(MaximumLateralSpeedCmPerSecond,
+                         MaximumLateralSlipFraction * lead))
         {
             Reset();
             return 0.0;
