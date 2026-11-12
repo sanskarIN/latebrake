@@ -48,6 +48,7 @@
 #include "Track/RacingLineLayout.h"
 #include "Track/CircuitSurfaceDetail.h"
 #include "Track/OriginalAsphaltUnrealPreviewBridge.h"
+#include "Track/OriginalArmcoUnrealPreviewBridge.h"
 #include "Track/CollisionBlockSetup.h"
 #include "Track/CollisionResponsePolicy.h"
 #include "Track/CircuitSpawnSafety.h"
@@ -1253,6 +1254,20 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     BuildBrakingReferenceBoards(DecorationMesh);
     BuildCornerApproachChevrons(DecorationMesh);
     BuildOriginalCircuitPaintPreview(DecorationMesh);
+#if !UE_BUILD_SHIPPING
+    // Optional visual W-profile guardrail on original four barriers.
+    // All original collision-bearing BlockAll walls stay intact.
+    if (FParse::Param(FCommandLine::Get(),
+                      TEXT("LatebrakeExperimentalArmco")))
+    {
+        const bool bGuardrailAdded=
+            latebrake::armco::SpawnOriginalArmcoPreview(
+                GetWorld(),DecorationMesh);
+        UE_LOG(LogLatebrakeStartup,Display,
+            TEXT("LATEBRAKE_ARMORED_BARRIER_PREVIEW ready=%d collision=off"),
+            bGuardrailAdded?1:0);
+    }
+#endif
 #if !UE_BUILD_SHIPPING
     // Original noncollision road texture; never an alternative asphalt.
     if (FParse::Param(FCommandLine::Get(),
