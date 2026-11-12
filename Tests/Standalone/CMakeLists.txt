@@ -33,6 +33,18 @@ else()
 endif()
 add_test(NAME ArcadeBrakeHeat COMMAND latebrake_arcade_brake_heat_tests)
 
+# Read-only rotor thermal inertia diagnostic, not native Chaos brake force.
+add_executable(latebrake_portable_brake_thermal_tests PortableBrakeThermalInertiaTests.cpp)
+target_include_directories(latebrake_portable_brake_thermal_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_portable_brake_thermal_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_portable_brake_thermal_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_portable_brake_thermal_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PortableBrakeThermalInertia COMMAND latebrake_portable_brake_thermal_tests)
+
+
 # Race-local hard wall/vehicle contacts; conservative bounded player/rival
 # damage arithmetic runs in C++20 without licensed Unreal components.
 add_executable(latebrake_arcade_collision_damage_tests ArcadeCollisionDamageTests.cpp)
