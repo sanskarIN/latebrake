@@ -99,6 +99,13 @@ nav:
       - Executable build pipeline: EXECUTABLE_BUILD_PIPELINE.md
       - Published source release audit: PUBLISHED_SOURCE_RELEASE_AUDIT.md
       - Circuit startup audit: CIRCUIT_STARTUP_AUDIT.md
+      - Six-slot starting grid QA: CIRCUIT_START_GRID_QA.md
+      - Rival grid identity ledger QA: GRID_RIVAL_LEDGER_QA.md
+      - Rival recovery traffic occupancy QA: RIVAL_RECOVERY_OCCUPANCY_QA.md
+      - Experimental six-car physics QA: EXPERIMENTAL_SIX_CAR_QA.md
+      - Six-car launch & paid-recovery QA: FLEET_RECOVERY_LAUNCH_QA.md
+      - Experimental fleet terminal start-fault QA: EXPERIMENTAL_FLEET_START_FAULT_QA.md
+      - Live six-car grid pose/speed QA: LIVE_SIX_CAR_GRID_QA.md
       - Collision response QA: COLLISION_RESPONSE_QA.md
       - Collision setup QA: COLLISION_SETUP_QA.md
       - Checkpoint session QA: CHECKPOINT_SESSION_QA.md
@@ -146,6 +153,8 @@ nav:
       - Gear-aware motor power QA: GEAR_AWARE_MOTOR_POWER_QA.md
       - Automatic transmission and RPM QA: AUTOMATIC_TRANSMISSION_QA.md
       - Rival player-traffic awareness QA: RIVAL_TRAFFIC_QA.md
+      - Experimental fleet predictive traffic QA: FLEET_PREDICTIVE_SAFETY_QA.md
+      - Six-car source aggregate QA: SIX_CAR_AGGREGATE_QA.md
       - Rival straight-line passing QA: RIVAL_STRAIGHT_PASS_QA.md
       - Rival passing and emergency braking QA: RIVAL_PASS_TRAFFIC_QA.md
       - Rival tire/grip corner-pace QA: RIVAL_GRIP_PACE_QA.md

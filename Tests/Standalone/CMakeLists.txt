@@ -1962,3 +1962,161 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehicleRearLampLayout COMMAND latebrake_vehicle_rear_lamp_layout_tests)
+
+# Six proposed original-circuit starting positions: actual player/rival
+# unchanged, four future slots validated with chassis footprint OBB SAT.
+# Source preflight cannot certify real Chaos collisions or spawn new AI.
+add_executable(latebrake_circuit_start_grid_tests CircuitStartGridTests.cpp)
+target_include_directories(latebrake_circuit_start_grid_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_circuit_start_grid_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_circuit_start_grid_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_circuit_start_grid_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CircuitStartGrid COMMAND latebrake_circuit_start_grid_tests)
+
+# Independent read-only per-actor slot tracking for future full grids.
+# This never spawns extra cars or replaces the existing player/rival clock.
+add_executable(latebrake_grid_rival_ledger_tests GridRivalLedgerTests.cpp)
+target_include_directories(latebrake_grid_rival_ledger_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_grid_rival_ledger_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_grid_rival_ledger_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_grid_rival_ledger_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GridRivalLedger COMMAND latebrake_grid_rival_ledger_tests)
+
+# Actual rival recovery preflight: continuous swept OBB player clearance
+# for a proposed physical teleport, separate from engine placement authority.
+add_executable(latebrake_rival_recovery_occupancy_tests RivalRecoveryOccupancyTests.cpp)
+target_include_directories(latebrake_rival_recovery_occupancy_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_recovery_occupancy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_recovery_occupancy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_recovery_occupancy_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalRecoveryOccupancy COMMAND latebrake_rival_recovery_occupancy_tests)
+
+# Up to five independently sampled physical obstacles, continuous swept
+# braking envelope, invalid/rear samples, no engine or player scoring.
+add_executable(latebrake_rival_fleet_traffic_tests RivalFleetTrafficTests.cpp)
+target_include_directories(latebrake_rival_fleet_traffic_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_fleet_traffic_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_fleet_traffic_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_fleet_traffic_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalFleetTraffic COMMAND latebrake_rival_fleet_traffic_tests)
+
+# Four original track next-gate segments x five physical AI recovery slots.
+# Strict portable geometry; does not teleport any Unreal/Chaos actor.
+add_executable(latebrake_rival_recovery_grid_tests RivalRecoveryGridTests.cpp)
+target_include_directories(latebrake_rival_recovery_grid_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_recovery_grid_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_recovery_grid_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_recovery_grid_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalRecoveryGrid COMMAND latebrake_rival_recovery_grid_tests)
+
+# Opt-in six-car player RECOVER: all five real rival identities must be
+# observed, and a denied physical landing cannot commit a recovery fee.
+add_executable(latebrake_player_fleet_recovery_tests
+    PlayerFleetRecoveryClearanceTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp
+)
+target_include_directories(latebrake_player_fleet_recovery_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_player_fleet_recovery_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_player_fleet_recovery_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_player_fleet_recovery_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PlayerFleetRecoveryClearance COMMAND latebrake_player_fleet_recovery_tests)
+
+# Pure six-car developer-opt-in start state: no silent fallback to
+# two rivals after a fatal spawn and no career/solo green-light freeze.
+add_executable(latebrake_experimental_fleet_start_policy_tests ExperimentalFleetStartPolicyTests.cpp)
+target_include_directories(latebrake_experimental_fleet_start_policy_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_experimental_fleet_start_policy_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_experimental_fleet_start_policy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_experimental_fleet_start_policy_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ExperimentalFleetStartPolicy COMMAND latebrake_experimental_fleet_start_policy_tests)
+
+# Require all six ACTUAL pre-GO Chaos bodies to retain distinct actor
+# identity, safe physical yaw/velocity, separation and assigned grid pose.
+add_executable(latebrake_live_six_car_start_grid_tests LiveSixCarStartingGridTests.cpp)
+target_include_directories(latebrake_live_six_car_start_grid_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_live_six_car_start_grid_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_live_six_car_start_grid_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_live_six_car_start_grid_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME LiveSixCarStartingGrid COMMAND latebrake_live_six_car_start_grid_tests)
+# Six actual physical fleet actor identities, continuous OBB time-to-contact,
+# braking distance and frame-rate-stable temporal release for dev-only AI.
+# No Unreal physics or runnable Win64 game is claimed by this source target.
+add_executable(latebrake_fleet_risk_supervisor_tests RivalFleetRiskSupervisorTests.cpp)
+target_include_directories(latebrake_fleet_risk_supervisor_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_fleet_risk_supervisor_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_fleet_risk_supervisor_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_fleet_risk_supervisor_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalFleetRiskSupervisor COMMAND latebrake_fleet_risk_supervisor_tests)
+
+# Combined experimental six-body start and after-green traffic authority
+# contract. Portable source-only bridge; never a substitute for UE/Chaos.
+add_executable(latebrake_six_car_aggregate_safety_tests SixCarAggregateSafetyTests.cpp)
+target_include_directories(latebrake_six_car_aggregate_safety_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_six_car_aggregate_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_six_car_aggregate_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_six_car_aggregate_safety_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME SixCarAggregateSafety COMMAND latebrake_six_car_aggregate_safety_tests)
+
+# Exact bounded four-slab asphalt union for rotated padded rival bodies.
+# Source-only C++20 regression; no Unreal runtime/cooked map implied.
+add_executable(latebrake_fleet_road_union_tests FleetRoadUnionCoverageTests.cpp)
+target_include_directories(latebrake_fleet_road_union_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_fleet_road_union_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_fleet_road_union_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_fleet_road_union_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FleetRoadUnionCoverage COMMAND latebrake_fleet_road_union_tests)
