@@ -1207,6 +1207,9 @@ void ALatebrakeRaceHUD::DrawHUD()
                 case latebrake::PitServiceGuidance::ReleaseNitro:
                     Line(TEXT("PIT: RELEASE NITRO"), Accent);
                     break;
+                case latebrake::PitServiceGuidance::SettleChassis:
+                    Line(TEXT("PIT: SETTLE CHASSIS ON ROAD"), Accent);
+                    break;
                 case latebrake::PitServiceGuidance::HoldButton:
                     Line(TEXT("PIT: HOLD P / Y FOR 2.5 SECONDS"), Accent);
                     break;
@@ -1994,6 +1997,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                 ? FString(TEXT("LIFT GAS"))
             : PitGuidance == latebrake::PitServiceGuidance::ReleaseNitro
                 ? FString(TEXT("NO NITRO"))
+            : PitGuidance == latebrake::PitServiceGuidance::SettleChassis
+                ? FString(TEXT("SETTLE CAR"))
             : PitGuidance == latebrake::PitServiceGuidance::NoMaintenance
                 ? FString(TEXT("PIT OK"))
             : Car->IsTouchPitHeld() && MobilePit.IsInBay() &&
