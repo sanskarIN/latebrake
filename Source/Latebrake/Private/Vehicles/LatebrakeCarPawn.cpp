@@ -972,7 +972,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         IsLocallyControlled() &&
             Cast<APlayerController>(GetController()) != nullptr &&
             Mode->HasLocalPlayerDriver() &&
-                GroundContact.HasDriveContact,
+                latebrake::HasStablePitGroundSupport(
+                    GroundContact, static_cast<double>(Velocity.Z)),
         bPitNeedsService}))
     {
         CollisionDamage.RepairAtPit();
