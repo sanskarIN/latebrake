@@ -1,4 +1,4 @@
-#include "Racecraft/PhysicalSixCarRaceTrace.h"
+#include "Racecraft/PhysicalSixCarReplayArchive.h"
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -227,11 +227,146 @@ static void BoundedWrapAndFaults()
     Check(!trace.Configure(settings),
           "nonphysical sensor confidence settings fail configuration");
 }
+static PhysicalReplayArchiveBytes ArchiveFixture()
+{
+    auto frame=CompleteSixCars();
+    PhysicalSixCarRaceTrace trace;
+    Check(trace.Configure({}) &&
+          trace.Append(frame)==PhysicalTraceFault::None,
+          "physical replay export must start with real six-car trace");
+    for(int k=0;k<8;++k)
+    {
+        RealNextFrame(frame);
+        Check(trace.Append(frame)==PhysicalTraceFault::None,
+              "all pre-export engine frames must be physically qualified");
+    }
+    return ExportPhysicalReplayArchive(trace);
+}
+static void RepairTestChecksum(std::vector<std::uint8_t>& bytes)
+{
+    Check(bytes.size()>=4,"test archive needs trailing CRC32");
+    const auto body=std::span<const std::uint8_t>(
+        bytes.data(),bytes.size()-4);
+    const std::uint32_t checksum=PhysicalReplayChecksum(body);
+    for(int i=0;i<4;++i)
+        bytes[bytes.size()-4+static_cast<std::size_t>(i)]=
+            static_cast<std::uint8_t>(checksum>>(8*i));
+}
+static void ArchiveRoundTrip()
+{
+    auto encoded=ArchiveFixture();
+    Check(encoded.Valid &&
+          encoded.Fault==PhysicalReplayArchiveFault::None &&
+          encoded.Version==PhysicalReplayVersion &&
+          encoded.RecordedFrames==9 &&
+          encoded.Bytes.size()<PhysicalReplayMaxBytes &&
+          !encoded.Bytes.empty(),
+          "nine exact six-car physics frames fit a small versioned archive");
+    PhysicalReplayArchiveReader reader;
+    Check(reader.Import(encoded.Bytes)==PhysicalReplayArchiveFault::None &&
+          reader.Size()==9 && reader.SourceSession()==700 &&
+          reader.SourceRevision()==1 &&
+          reader.SourceSlot()==1 &&
+          reader.Checksum()==encoded.Checksum,
+          "read-only archive reconstructs source provenance without authority");
+    const auto view=reader.Preview(10.024);
+    Check(view.Valid && view.ImportIsUntrusted &&
+          !view.MayDriveChaosBody &&
+          !view.MayCreditRaceResults &&
+          view.EarlierFrame==2 && view.LaterFrame==3 &&
+          std::abs(view.Actors[1].PositionCm.X-76.8)<0.10 &&
+          view.Actors[2].Actor==1002,
+          "camera-only interpolation remains bounded and carries no actuation");
+    Check(!reader.Preview(9.0).Valid &&
+          !reader.Preview(12.0).Valid &&
+          reader.Get(1000)==nullptr &&
+          reader.Get(8)!=nullptr,
+          "outside archived time span no fabricated replay frame is returned");
+    const auto reexport=ArchiveFixture();
+    Check(encoded.Bytes==reexport.Bytes,
+          "same original physics samples encode deterministic identical bytes");
+}
+static void RejectMalformedArchives()
+{
+    const auto source=ArchiveFixture();
+    Check(source.Valid,"invalid archive fixture must not mask decode failure");
+    auto expectFault=[&](std::vector<std::uint8_t> mutated,
+                         PhysicalReplayArchiveFault expected,
+                         const char* message)
+    {
+        PhysicalReplayArchiveReader reader;
+        Check(reader.Import(mutated)==expected &&
+              reader.Size()==0 &&
+              !reader.Preview(10.0).Valid,
+              message);
+    };
+    auto bad=source.Bytes;
+    bad[20]^=0x80;
+    expectFault(bad,PhysicalReplayArchiveFault::ChecksumMismatch,
+          "single-bit corrupted archive fails checksum before any replay");
+    bad=source.Bytes;
+    bad[0]=0;
+    RepairTestChecksum(bad);
+    expectFault(bad,PhysicalReplayArchiveFault::InvalidMagic,
+          "wrong magic cannot impersonate LateBrake replay format");
+    bad=source.Bytes;
+    bad[4]=2;
+    RepairTestChecksum(bad);
+    expectFault(bad,PhysicalReplayArchiveFault::InvalidVersion,
+          "unknown future replay schema is rejected, never guessed");
+    bad=source.Bytes;
+    bad[6]=5;
+    RepairTestChecksum(bad);
+    expectFault(bad,PhysicalReplayArchiveFault::UnsupportedHeader,
+          "an archive claiming fewer than six source cars is invalid");
+    bad=source.Bytes;
+    bad[8]=0xff;
+    RepairTestChecksum(bad);
+    expectFault(bad,PhysicalReplayArchiveFault::UnsupportedHeader,
+          "unbounded archive frame count cannot allocate a phantom fleet");
+    bad=source.Bytes;
+    // Header is 69 bytes, then 28-byte frame prefix; first real Actor ID.
+    bad[69+28]^=0x40;
+    RepairTestChecksum(bad);
+    expectFault(bad,PhysicalReplayArchiveFault::InvalidIdentity,
+          "serialized chassis identity must match fixed six-slot roster");
+    bad=source.Bytes;
+    // A record is exactly 28 + 6*(8 + 10*4) = 316 bytes.
+    // The second recorded source frame must be the successor of frame 1.
+    bad[69+316]=1;
+    RepairTestChecksum(bad);
+    expectFault(bad,PhysicalReplayArchiveFault::TemporalDiscontinuity,
+          "non-monotonic imported source frame cannot be interpolated");
+    bad=source.Bytes;
+    bad.pop_back();
+    {
+        PhysicalReplayArchiveReader reader;
+        Check(reader.Import(bad)!=PhysicalReplayArchiveFault::None &&
+              reader.Size()==0,
+              "truncated archive cannot publish partially decoded physical data");
+    }
+    bad=source.Bytes;
+    bad.insert(bad.end()-4,0x7a);
+    RepairTestChecksum(bad);
+    expectFault(bad,PhysicalReplayArchiveFault::TrailingBytes,
+          "extra authenticated payload cannot silently alter replay schema");
+    PhysicalReplayArchiveReader reader;
+    Check(reader.Import(source.Bytes)==PhysicalReplayArchiveFault::None,
+          "valid import before rejection has actual source frames");
+    bad=source.Bytes;
+    bad[20]^=0x02;
+    Check(reader.Import(bad)==PhysicalReplayArchiveFault::ChecksumMismatch &&
+          reader.Size()==0 &&
+          !reader.Preview(10.024).Valid,
+          "bad later import clears all previously decoded replay authority");
+}
 int main()
 {
     DirectPhysicalEvidence();
     ContinuousReplay();
     RosterAndSessionIsolation();
     BoundedWrapAndFaults();
+    ArchiveRoundTrip();
+    RejectMalformedArchives();
     std::cout << "PhysicalSixCarRaceTrace OK\n";
 }
