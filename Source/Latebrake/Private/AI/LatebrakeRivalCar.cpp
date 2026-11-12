@@ -272,12 +272,16 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             GetSurfaceTraction().HasValidSample() &&
                 !GetSurfaceTraction().IsOffPavement()});
     const latebrake::PilotCommand SafePassCommand = Passing.Command;
+    // Reuse the previous qualified physical grip/heat braking forecast.
+    // The lane policy fails closed if this becomes invalid or unavailable;
+    // it must not assume perfect dry-road braking after a damaged chassis.
     const latebrake::PilotCommand TrafficCommand =
         latebrake::YieldRivalToPlayer(SafePassCommand, {
             Position.X, Position.Y, Heading, FlatSpeed,
             PlayerPosition.X, PlayerPosition.Y,
             PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady,
-            Velocity.X, Velocity.Y
+            Velocity.X, Velocity.Y,
+            BrakeForecast.SafeDecelerationCmPerSecondSquared
         });
     // A short, fail-closed hold prevents brake chatter near the
     // projected contact boundary; it cannot re-route or score a rival.
