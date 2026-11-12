@@ -1,5 +1,6 @@
 #include "Visual/OriginalPreviewMaterials.h"
 
+#include "CoreMinimal.h"
 #include "Materials/MaterialInterface.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -39,8 +40,13 @@ UMaterialInterface* FindOriginalPreviewMaterial(
     if(UMaterialInterface* material=LoadObject<UMaterialInterface>(
         nullptr,path))
         return material;
-    // The engine cube fallback may not consume vertex color, so fallback
-    // must NEVER be reported as PBR preview proof by native QA.
+    // The engine cube fallback may not consume vertex color. Emit a
+    // persistent owner-visible diagnostic at scene construction rather
+    // than silently claiming accurate colored car/kerb/track materials.
+    // This cannot be a runtime shipping / verified-renderer test.
+    UE_LOG(LogTemp,Warning,
+        TEXT("LATEBRAKE_PREVIEW_PBR_MISSING asset=%s fallback=unverified"),
+        path);
     return fallback;
 }
 }

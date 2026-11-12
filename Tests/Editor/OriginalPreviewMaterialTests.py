@@ -29,6 +29,8 @@ class OriginalPreviewMaterialTests(unittest.TestCase):
         self.assertIn('LoadObject<UMaterialInterface>',code)
         for name in ("Road","Steel","CarPaint","Glass","Rubber","Emission"):
             self.assertIn('M_Latebrake'+name+'Pbr.',code)
+        self.assertIn("LATEBRAKE_PREVIEW_PBR_MISSING",code)
+        self.assertIn("fallback=unverified",code)
         self.assertNotIn("SetSimulatePhysics",code)
         self.assertNotIn("SetCollisionEnabled",code)
         self.assertNotIn("SetPhysicsLinearVelocity",code)
