@@ -275,6 +275,42 @@ inline bool ValidPitCrewWheel(
         (!p.RequirePhysicalWheelRemoval ||
          w.OriginalChaosWheelComponent);
 }
+// A crew checkbox is not evidence that a real Chaos wheel has been
+// removed and a different one fitted. Require distinct physical timestamps,
+// original wheel ownership, fitment latency and measured tire condition.
+inline bool PitCrewWheelPhysicallyServiced(
+    PitCrewWheelObservation wheel,
+    double currentEngineClockSeconds,
+    PitCrewServiceParameters p) noexcept
+{
+    return ValidPitCrewWheel(wheel,p) &&
+        wheel.ActualWheelRemoved &&
+        wheel.ActualNewWheelInstalled &&
+        wheel.WheelRemovalClockSeconds>0.0 &&
+        wheel.WheelInstallationClockSeconds>=
+            wheel.WheelRemovalClockSeconds+
+            p.MinimumWheelRemovalSeconds &&
+        currentEngineClockSeconds>=
+            wheel.WheelInstallationClockSeconds+
+            p.MinimumWheelInstallationSeconds &&
+        wheel.MeasuredTirePressureKpa>=p.MinimumTirePressureKpa &&
+        wheel.MeasuredTirePressureKpa<=p.MaximumTirePressureKpa;
+}
+inline bool PitCrewWheelTorquePhysicallyVerified(
+    PitCrewWheelObservation wheel,
+    double currentEngineClockSeconds,
+    PitCrewServiceParameters p) noexcept
+{
+    return PitCrewWheelPhysicallyServiced(
+        wheel,currentEngineClockSeconds,p) &&
+        wheel.WheelTorqueVerified &&
+        wheel.MeasuredWheelBoltTorqueNm>=p.MinimumWheelTorqueNm &&
+        wheel.MeasuredWheelBoltTorqueNm<=p.MaximumWheelTorqueNm &&
+        currentEngineClockSeconds>=
+            wheel.WheelInstallationClockSeconds+
+            p.MinimumWheelInstallationSeconds+
+            p.MinimumWheelTorqueInspectionSeconds;
+}
 inline bool ValidPitCrewServiceFrame(
     const PitCrewServiceFrame& f,
     PitCrewServiceParameters p) noexcept
@@ -338,8 +374,22 @@ inline bool ValidPitCrewServiceFrame(
         f.ReservationToken==0)
         return false;
     for(const auto& wheel:f.Wheels)
-        if (!ValidPitCrewWheel(wheel,p))
+    {
+        if (!ValidPitCrewWheel(wheel,p) ||
+            (wheel.ActualWheelRemoved &&
+             (wheel.WheelRemovalClockSeconds<=0.0 ||
+              wheel.WheelRemovalClockSeconds>f.PhysicsClockSeconds)) ||
+            (wheel.ActualNewWheelInstalled &&
+             (!wheel.ActualWheelRemoved ||
+              wheel.WheelInstallationClockSeconds<
+                wheel.WheelRemovalClockSeconds+
+                    p.MinimumWheelRemovalSeconds ||
+              wheel.WheelInstallationClockSeconds>
+                f.PhysicsClockSeconds)) ||
+            (wheel.WheelTorqueVerified &&
+             !wheel.ActualNewWheelInstalled))
             return false;
+    }
     return true;
 }
 inline bool PitCrewCarSafelyStationary(
@@ -369,8 +419,43 @@ inline PitCrewTaskReview ReviewPitCrewTask(
         return out;
     out.Task=task;
     const auto index=static_cast<std::size_t>(task);
-    out.PhysicallyObserved=
-        f.CrewTaskAcknowledged[index];
+    out.PhysicallyObserved=f.CrewTaskAcknowledged[index];
+    const int removeIndex=static_cast<int>(task)-
+        static_cast<int>(PitCrewTask::RemoveFrontLeft);
+    const int installIndex=static_cast<int>(task)-
+        static_cast<int>(PitCrewTask::InstallFrontLeft);
+    if(removeIndex>=0 && removeIndex<PhysicalWheelCount)
+    {
+        const auto& wheel=f.Wheels[
+            static_cast<std::size_t>(removeIndex)];
+        out.PhysicallyObserved=out.PhysicallyObserved &&
+            wheel.ActualWheelRemoved &&
+            wheel.WheelRemovalClockSeconds>0.0 &&
+            wheel.WheelRemovalClockSeconds<=f.PhysicsClockSeconds;
+    }
+    else if(installIndex>=0 && installIndex<PhysicalWheelCount)
+    {
+        out.PhysicallyObserved=out.PhysicallyObserved &&
+            PitCrewWheelPhysicallyServiced(
+                f.Wheels[static_cast<std::size_t>(installIndex)],
+                f.PhysicsClockSeconds,p);
+    }
+    else if(task==PitCrewTask::InspectWheelTorque)
+    {
+        out.PhysicallyObserved=out.PhysicallyObserved &&
+            std::all_of(f.Wheels.begin(),f.Wheels.end(),
+                [&](const PitCrewWheelObservation& w)
+                {
+                    return PitCrewWheelTorquePhysicallyVerified(
+                        w,f.PhysicsClockSeconds,p);
+                });
+    }
+    else if(task==PitCrewTask::ReleaseJack)
+    {
+        out.PhysicallyObserved=out.PhysicallyObserved &&
+            f.JackHeightCm<=PhysicsEpsilon &&
+            f.MeasuredJackSupportLoadN<=PhysicsEpsilon;
+    }
     out.RequiredForService=
         task==PitCrewTask::Lift ||
         task==PitCrewTask::InspectWheelTorque ||
@@ -440,13 +525,11 @@ inline PitCrewServiceReview EvaluatePhysicalPitService(
     for(std::size_t i=0;i<PhysicalWheelCount;++i)
     {
         const auto& wheel=f.Wheels[i];
-        if (wheel.ActualNewWheelInstalled)
+        if (PitCrewWheelPhysicallyServiced(
+                wheel,f.PhysicsClockSeconds,p))
             ++out.WheelsActuallyReplaced;
-        if (wheel.WheelTorqueVerified &&
-            wheel.MeasuredWheelBoltTorqueNm>=
-                p.MinimumWheelTorqueNm &&
-            wheel.MeasuredWheelBoltTorqueNm<=
-                p.MaximumWheelTorqueNm)
+        if (PitCrewWheelTorquePhysicallyVerified(
+                wheel,f.PhysicsClockSeconds,p))
             ++out.WheelsTorqueQualified;
         out.MaximumReportedWheelTorqueNm=std::max(
             out.MaximumReportedWheelTorqueNm,
@@ -466,7 +549,7 @@ inline PitCrewServiceReview EvaluatePhysicalPitService(
         out.Tasks[i]=review;
         if (review.RequiredForService)
             ++out.TasksRequired;
-        if (review.Complete)
+        if (review.RequiredForService && review.Complete)
             ++out.TasksPhysicallyComplete;
         if (review.RequiredForService &&
             !review.Complete)
@@ -485,7 +568,7 @@ inline PitCrewServiceReview EvaluatePhysicalPitService(
                     task.ExpectedRemainingSeconds);
     out.ServiceReadinessFraction=Clamp01(SafeDivision(
         static_cast<double>(out.TasksPhysicallyComplete),
-        static_cast<double>(PitCrewTaskCapacity)));
+        static_cast<double>(out.TasksRequired)));
     const bool liftAcknowledged=f.CrewTaskAcknowledged[
         static_cast<std::size_t>(PitCrewTask::Lift)];
     const bool jackCurrentlySupporting=
@@ -505,16 +588,15 @@ inline PitCrewServiceReview EvaluatePhysicalPitService(
     const bool ready=liftAcknowledged &&
         jackPhysicallyLowered &&
         wheelsReplaced && torqueCertified &&
-        out.TasksPhysicallyComplete>=out.TasksRequired;
+        out.TasksPhysicallyComplete==out.TasksRequired;
     if (ready)
     {
-        out.Phase=f.PitReleaseAuthorized ?
-            PitCrewPhase::ReadyForRelease:
-            PitCrewPhase::SafetyInspection;
+        // A single frame proves component state, NOT the chronology of
+        // lifting, removal, fitment, torque and safe lowering. Only the
+        // stateful supervisor may certify physical release clearance.
+        out.Phase=PitCrewPhase::SafetyInspection;
         out.Fault=PitCrewFault::None;
-        out.PhysicalReleaseClear=f.PitReleaseAuthorized &&
-            jackPhysicallyLowered &&
-            f.CrewAreaClearanceCm>=p.RequiredCollisionClearanceCm;
+        out.PhysicalReleaseClear=false;
     }
     else if(!liftAcknowledged ||
             (!jackCurrentlySupporting &&
