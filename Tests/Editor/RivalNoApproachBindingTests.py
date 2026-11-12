@@ -67,6 +67,26 @@ class RivalNoApproachBindingTests(unittest.TestCase):
         self.assertNotIn("AwardCredits", self.route)
         self.assertNotIn("GetRace(", self.route)
 
+    def test_pause_menu_focus_interruptions_clear_stalled_time(self):
+        tick = self.rival.split("void ALatebrakeRivalCar::Tick(", 1)[1]
+        before_physics = tick.split(
+            "const FVector Position = GetActorLocation();", 1)[0]
+        self.assertIn("Mode->IsFocusLossGuardActive()", before_physics)
+        self.assertIn("Mode->IsManualRacePauseActive()", before_physics)
+        self.assertIn("Mode->IsMenuOpen()", before_physics)
+        self.assertIn("Route.SuspendObservation();", before_physics)
+        self.assertLess(before_physics.index("Route.SuspendObservation();"),
+                        before_physics.index("RivalGateTrace.Reset();"))
+        self.assertIn("void SuspendObservation() noexcept", self.route)
+        suspend = self.route.split(
+            "void SuspendObservation() noexcept", 1
+        )[1].split("RouteObservation Observe(", 1)[0]
+        self.assertIn("StationarySeconds = 0.0;", suspend)
+        self.assertIn("ResetApproachWindow();", suspend)
+        for forbidden in ("NextWaypoint = ", "CompletedLaps = ",
+                          "Recoveries = ", "RecoveryPending = "):
+            self.assertNotIn(forbidden, suspend)
+
     def test_resets_and_invalid_samples_cannot_carry_teleport_authority(self):
         for marker in (
             "void Reset() noexcept", "ResetApproachWindow();",
