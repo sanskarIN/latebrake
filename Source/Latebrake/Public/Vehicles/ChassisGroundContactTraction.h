@@ -83,6 +83,21 @@ inline ChassisGroundContactOutput EvaluateChassisGroundContact(
     return {true, supporting, scale, supporting >= 2};
 }
 
+// Arcade aerodynamic drafting needs sustained, physically supported
+// road travel from BOTH real chassis bodies. Two-corner contact is enough
+// for reduced propulsion, but not evidence of a stable leader/follower
+// on the same road. Never use an old HUD readout or invent wheel loads.
+// This does not alter driving traction, pit repair or vehicle physics.
+inline bool HasQualifiedDraftGroundSupport(
+    const ChassisGroundContactOutput& contact) noexcept
+{
+    return contact.Valid && contact.HasDriveContact &&
+        ((contact.SupportingProbes == 3 &&
+          contact.ContactTractionScale == 0.75) ||
+         (contact.SupportingProbes == 4 &&
+          contact.ContactTractionScale == 1.0));
+}
+
 // Pit repair is more sensitive than ordinary vehicle drive input:
 // touching the road at only two corners must not award a stationary
 // service while the body is tipping or bouncing. Use ONLY the current
