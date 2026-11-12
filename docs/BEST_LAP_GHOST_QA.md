@@ -30,6 +30,12 @@ existing car pawn, RaceProgress and guarded race-start clock.
   could bypass the motion check, letting a brief out-and-back teleport
   disappear between recorded keys. The fixed check rejects that trace
   without raising keyframe memory use or deleting the previous best.
+  A further consecutive-frame check now compares each accepted live
+  observation with the last physically observed pose, not merely the
+  last retained keyframe. Thus rapid opposite-direction movements and
+  duplicate timestamps at 60/120 FPS cannot pass inside a generous
+  10Hz replay window. These intermediate samples are never recorded
+  as extra keyframes, rendered, or used for scoring.
 - Pawn replacement, focus/menu/pause session changes and the pawn's
   teleport/recovery revision invalidate that lap. The best completed
   lap may still be displayed after a later resumed clock, without
