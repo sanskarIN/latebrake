@@ -88,6 +88,24 @@ private:
             !std::isfinite(speedCmPerSecond) || speedCmPerSecond < 0.0 ||
             !std::isfinite(deltaSeconds) || deltaSeconds <= 0.0)
         {
+            // Invalid real physics cannot be evidence of continuous
+            // stationary or moving observation across the interruption.
+            if (requiresPlaneCrossing) StationarySeconds = 0.0;
+            ResetApproachWindow();
+            return {};
+        }
+
+        // The actual Unreal rival uses ObserveVerifiedGate, not the old
+        // offline distance-only Observe API. Both real checkpoint credit
+        // AND recovery require bounded consecutive physics samples.
+        // In particular, an 8-second renderer hitch must NEVER count as
+        // eight seconds of physical stall, nor award a crossed gate.
+        // Keep legacy Observe behavior for backwards-compatible replay
+        // of historical synthetic route tests, not production scoring.
+        if (requiresPlaneCrossing &&
+            deltaSeconds > NoApproachMaxFrameSeconds)
+        {
+            StationarySeconds = 0.0;
             ResetApproachWindow();
             return {};
         }
