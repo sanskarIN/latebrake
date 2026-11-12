@@ -137,6 +137,43 @@ int main()
           g.IsCandidateAllowed() && g.GetCandidateCount() == 2,
           "short subframe road motion remains accepted but unstored");
 
+    // Each accepted high-FPS sample must also constrain the next one:
+    // individually both 200 cm offsets are well inside the wider 10Hz
+    // keyframe envelope, but switching +200 to -200 cm in 10ms is not.
+    g.StartLap();
+    Check(g.Record(Pose(0.10, 0.0), true), "consecutive-frame baseline");
+    Check(g.Record(Pose(0.11, 200.0), true) &&
+          g.GetCandidateCount() == 1,
+          "first sub-keyframe motion lies inside the real-frame limit");
+    Check(!g.Record(Pose(0.12, -200.0), true) &&
+          !g.IsCandidateAllowed() && g.GetCandidateCount() == 0,
+          "an implausible direction reversal cannot hide inside 10Hz keys");
+    Check(!g.Record(Pose(0.20, 0.0), true),
+          "an invalid live motion frame poisons remaining lap samples");
+
+    // Duplicate timestamps between keyframes previously passed because
+    // only the distance from the last stored key was considered.
+    g.StartLap();
+    Check(g.Record(Pose(0.10, 0.0), true), "start duplicate-time case");
+    Check(g.Record(Pose(0.11, 10.0), true),
+          "first unstored intermediate sample is accepted");
+    Check(!g.Record(Pose(0.11, 12.0), true) &&
+          !g.IsCandidateAllowed(),
+          "repeated live clock sample must not masquerade as real travel");
+
+    for (int round = 0; round < 20000; ++round)
+    {
+        g.StartLap();
+        Check(g.Record(Pose(0.10, 0.0), true),
+              "repeatable 10Hz reference pose");
+        Check(g.Record(Pose(0.11, 200.0), true) &&
+              g.GetCandidateCount() == 1,
+              "live intermediate sample remains sparse");
+        Check(!g.Record(Pose(0.12, -200.0), true) &&
+              !g.IsCandidateAllowed() && g.GetCandidateCount() == 0,
+              "20k hidden opposite-direction subframes are rejected");
+    }
+
     // Rapidly repeated tiny-time samples cannot hide an impossible
     // teleport behind the last accepted 10Hz keyframe. No heap, file,
     // clock or scoring authority is involved in this stress check.
