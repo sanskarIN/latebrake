@@ -159,6 +159,18 @@ static void ContinuousReplay()
     Check(trace.Append(teleport)==PhysicalTraceFault::DiscontinuousMovement &&
           trace.Size()==2,
           "unobserved 50m rival teleport invalidates replay continuity");
+    auto shorterTeleport=f;
+    RealNextFrame(shorterTeleport);
+    shorterTeleport.Others[0].Pose.Position.X+=550.0;
+    Check(trace.Append(shorterTeleport)==
+              PhysicalTraceFault::DiscontinuousMovement &&
+          trace.Size()==2,
+          "six-car replay detects jump below coarse cap but beyond measured speed");
+    PhysicalTraceSettings unbounded;
+    unbounded.MaximumRelativeMovementCm=
+        std::numeric_limits<double>::infinity();
+    Check(!ValidPhysicalTraceSettings(unbounded),
+          "nonfinite measured-motion allowance cannot bypass source guard");
     auto incorrectClock=f;
     RealNextFrame(incorrectClock);
     for(auto& car:incorrectClock.Others)
