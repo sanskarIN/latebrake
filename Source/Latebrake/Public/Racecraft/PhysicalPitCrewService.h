@@ -373,8 +373,15 @@ inline bool ValidPitCrewServiceFrame(
         f.PitBoxComponentToken==0 ||
         f.ReservationToken==0)
         return false;
-    for(const auto& wheel:f.Wheels)
+    for(std::size_t i=0;i<f.Wheels.size();++i)
     {
+        const auto& wheel=f.Wheels[i];
+        // Four acknowledged operations must refer to four different
+        // real Chaos wheel components, never four aliases of one sensor.
+        for(std::size_t j=0;j<i;++j)
+            if(f.Wheels[j].WheelComponentToken==
+               wheel.WheelComponentToken)
+                return false;
         if (!ValidPitCrewWheel(wheel,p) ||
             (wheel.ActualWheelRemoved &&
              (wheel.WheelRemovalClockSeconds<=0.0 ||
@@ -640,6 +647,8 @@ public:
         Last={};
         Source={};
         ReservationToken=0;
+        PitBoxComponentToken=0;
+        WheelComponentTokens.fill(0);
         Qualified=0;
         Rejected=0;
         WheelServiceFrames=0;
@@ -658,11 +667,33 @@ public:
             Source.SessionRevision==
                 sample.Identity.SessionRevision &&
             Source.Actor==sample.Identity.Actor;
+        const double observedDeltaSeconds=
+            sample.PhysicsClockSeconds-LastClockSeconds;
+        const bool coherentSourceClock=
+            observedDeltaSeconds>0.0 &&
+            observedDeltaSeconds<=Settings.MaximumFrameSeconds+
+                Settings.MaximumSourceClockSkewSeconds &&
+            std::abs(observedDeltaSeconds-sample.DeltaSeconds)<=
+                Settings.MaximumSourceClockSkewSeconds;
+        // A signed reservation does not authorize a different actual pit
+        // box, and a new wheel-component identity is a different physical
+        // service session. Never inherit completion from either swap.
+        const bool stablePhysicalSource=!sameEpoch ||
+            (PitBoxComponentToken==sample.PitBoxComponentToken &&
+             std::equal(WheelComponentTokens.begin(),
+                WheelComponentTokens.end(),
+                sample.Wheels.begin(),
+                [](std::uint64_t token,
+                   const PitCrewWheelObservation& wheel)
+                {
+                    return token==wheel.WheelComponentToken;
+                }));
         if (!result.Valid ||
             (sameEpoch &&
              (sample.Identity.Frame<=Source.Frame ||
-              sample.PhysicsClockSeconds<=LastClockSeconds ||
-              ReservationToken!=sample.ReservationToken)))
+              !coherentSourceClock ||
+              ReservationToken!=sample.ReservationToken ||
+              !stablePhysicalSource)))
         {
             ++Rejected;
             Last={};
@@ -670,7 +701,13 @@ public:
             return {};
         }
         if (!sameEpoch)
+        {
             ResetSequence();
+            PitBoxComponentToken=sample.PitBoxComponentToken;
+            for(std::size_t i=0;i<WheelComponentTokens.size();++i)
+                WheelComponentTokens[i]=
+                    sample.Wheels[i].WheelComponentToken;
+        }
         result.PhysicalReleaseClear=false;
         if (!result.ServiceCanProceed)
         {
@@ -931,6 +968,9 @@ private:
     PitCrewServiceReview Last{};
     RaceIdentity Source{};
     std::uint64_t ReservationToken=0;
+    std::uint64_t PitBoxComponentToken=0;
+    std::array<std::uint64_t,PhysicalWheelCount>
+        WheelComponentTokens{};
     std::uint64_t Qualified=0;
     std::uint64_t Rejected=0;
     std::uint64_t WheelServiceFrames=0;
