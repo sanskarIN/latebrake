@@ -42,9 +42,11 @@ of inventing dry-road grip.
 
 The new conservative relative-speed stopping approximation uses
 `closing_speed * 0.50 s + closing_speed² / (2 * measured_braking)`,
-plus the existing **380 cm** clearance margin. Early awareness scales
-with that distance, capped at **6,500 cm**; the old 1,450 cm band
-remains the minimum for throttle tapering. Within the observed same-lane
+plus the existing **380 cm** clearance margin. Gentle throttle
+awareness scales with that distance, capped at **6,500 cm**; the old
+1,450 cm band remains its minimum. A genuine emergency stopping
+shortfall **overrides the 6,500 cm awareness cap** rather than
+permitting acceleration when faded brakes require greater runway. Within the observed same-lane
 corridor, near bumper overlap can request braking even if both cars have
 similar speed. Pre-existing emergency time-to-contact and brake-hold
 hysteresis remain active. The driver, route, waypoint, steering, race
