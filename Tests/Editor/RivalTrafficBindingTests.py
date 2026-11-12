@@ -31,6 +31,7 @@ class RivalTrafficBindingTests(unittest.TestCase):
             "Position.X, Position.Y, Heading, FlatSpeed",
             "PlayerVelocity.X, PlayerVelocity.Y, bPlayerReady",
             "TrafficCommand.Brake",
+            "BrakeForecast.SafeDecelerationCmPerSecondSquared",
             "Super::Tick(DeltaSeconds);",
         ):
             self.assertIn(token, tick)
@@ -39,6 +40,21 @@ class RivalTrafficBindingTests(unittest.TestCase):
                         tick.index("FollowingBrakeHold.Apply("))
         self.assertLess(tick.index("FollowingBrakeHold.Apply("),
                         tick.index("SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)"))
+
+    def test_braking_authority_is_shared_with_real_corner_forecast(self):
+        forecast = self.source.index(
+            "const latebrake::RivalCornerBrakeResult BrakeForecast =")
+        passed = self.source.index(
+            "BrakeForecast.SafeDecelerationCmPerSecondSquared")
+        traffic = self.source.index(
+            "latebrake::YieldRivalToPlayer(SafePassCommand, {")
+        self.assertLess(forecast, traffic)
+        self.assertLess(traffic, passed)
+        self.assertIn("!std::isfinite(sample.QualifiedBrakeDecelerationCmPerSecondSquared)", self.policy)
+        self.assertIn("sample.QualifiedBrakeDecelerationCmPerSecondSquared < 1.0", self.policy)
+        self.assertIn("closing * closing /", self.policy)
+        self.assertIn("const bool occupiedFootprint =", self.policy)
+        self.assertIn("const bool insufficientBrakingRunway =", self.policy)
 
     def test_never_mutates_race_or_player_control(self):
         for forbidden in (
@@ -64,6 +80,10 @@ class RivalTrafficBindingTests(unittest.TestCase):
             "forwardDistance", "lateralDistance", "closingSpeed",
             "LaneCorridorCm = 225.0", "MaxAwarenessDistanceCm = 1450.0",
             "EmergencyDistanceCm = 600.0", "closingSpeed >= 230.0",
+            "MaximumPredictiveAwarenessCm = 6500.0",
+            "ReactionReserveSeconds = 0.50",
+            "insufficientBrakingRunway",
+            "sample.QualifiedBrakeDecelerationCmPerSecondSquared",
             "!sample.PlayerReady",
         ):
             self.assertIn(marker, self.policy)
