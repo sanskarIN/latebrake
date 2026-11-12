@@ -24,6 +24,7 @@
 #include "Vehicles/DriveAxisDeadzone.h"
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
+#include "Vehicles/OriginalChaosSuspensionPreview.h"
 #include "Racing/RecoveryTeleportVerification.h"
 #include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
@@ -882,6 +883,24 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         return;
     }
 
+#if !UE_BUILD_SHIPPING
+    // Opt-in physics experiment only: actual road rays and four-corner
+    // spring forces on the existing Chaos cube. NoChaosWheelSolver is used.
+    // Keep the default car completely unchanged until trusted native QA.
+    if (FParse::Param(FCommandLine::Get(),
+                      TEXT("LatebrakeExperimentalSprungChassis")) &&
+        IsRacePhysicsReady())
+    {
+        const auto Spring =
+            latebrake::vehiclepreview::ApplyOriginalChaosSprungPreview(
+                this,Chassis,DeltaSeconds);
+        if (!Spring.Valid)
+        {
+            // Bad spring provenance cannot silently authorize new forces.
+            // Existing arcade drive remains active for valid base physics.
+        }
+    }
+#endif
     const bool bArcade = HandlingMode == ELatebrakeHandlingMode::Arcade;
     SmoothedThrottle = static_cast<float>(latebrake::SmoothThrottle(
         SmoothedThrottle, TouchDrive.ThrottleActive() ? 1.0 : static_cast<double>(Throttle),
