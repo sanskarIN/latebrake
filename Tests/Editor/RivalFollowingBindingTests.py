@@ -36,13 +36,17 @@ class RivalFollowingBindingTests(unittest.TestCase):
             "AnticipateRivalCorner(",
             "YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
-            "bPlayerReady, TrafficCommand.Brake && !SafePassCommand.Brake",
+            "bUseFleetTraffic ? bTrafficQualified : bPlayerReady",
+            "FleetTrafficCommand.Brake && !SafePassCommand.Brake",
             "SafeSpinCommand.Throttle",
             "SafeSpinCommand.Steering",
             "SafeSpinCommand.Brake",
             "Super::Tick(DeltaSeconds);",
         ):
             self.assertIn(marker, tick)
+        self.assertIn(
+            "bUseFleetTraffic ? FleetTraffic.Command : TrafficCommand", tick
+        )
         self.assertLess(tick.index("YieldRivalToPlayer("),
                         tick.index("FollowingBrakeHold.Apply("))
         self.assertLess(tick.index("FollowingBrakeHold.Apply("),

@@ -26,6 +26,8 @@
 #include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
 #include "HAL/PlatformTime.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
 #include "Racing/FinishTimingEligibility.h"
@@ -35,6 +37,7 @@
 #include "Racing/BestLapGhost.h"
 #include "Racing/GhostSeparation.h"
 #include "Track/CircuitLayout.h"
+#include "Track/CircuitStartGrid.h"
 #include "Track/PitBayPaintLayout.h"
 #include "Track/TrackDecorations.h"
 #include "Track/DecorationBatchPlan.h"
@@ -49,6 +52,9 @@
 #include "UI/LatebrakeRaceHUD.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "AI/LatebrakeRivalCar.h"
+#include "AI/RivalRecoveryGrid.h"
+#include "AI/PlayerFleetRecoveryClearance.h"
+#include "AI/ExperimentalFleetStartPolicy.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogLatebrakeStartup, Log, All);
 #if !UE_BUILD_SHIPPING
@@ -71,13 +77,13 @@ ALatebrakeRaceGameMode::ALatebrakeRaceGameMode()
 
 FVector ALatebrakeRaceGameMode::GetStartPosition()
 {
-    return FVector(latebrake::PlayerStart.Position.X,
-                   latebrake::PlayerStart.Position.Y, 180.0);
+    return FVector(latebrake::StartGridPoses[latebrake::HumanGridSlot].Position.X,
+                   latebrake::StartGridPoses[latebrake::HumanGridSlot].Position.Y, 180.0);
 }
 
 FRotator ALatebrakeRaceGameMode::GetStartRotation()
 {
-    return FRotator(0.0, latebrake::PlayerStart.HeadingDegrees, 0.0);
+    return FRotator(0.0, latebrake::StartGridPoses[latebrake::HumanGridSlot].HeadingDegrees, 0.0);
 }
 
 AActor* ALatebrakeRaceGameMode::ChoosePlayerStart_Implementation(AController* Player)
@@ -118,6 +124,12 @@ bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const
 void ALatebrakeRaceGameMode::BeginPlay()
 {
     Super::BeginPlay();
+#if !UE_BUILD_SHIPPING
+    // Local opt-in only; never enable experimental physical fleet in
+    // retail, a public source-only preview or a normal desktop launch.
+    bExperimentalSixCarGrid = FParse::Param(
+        FCommandLine::Get(), TEXT("LatebrakeExperimentalSixCarGrid"));
+#endif
     LoadRecords();
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
@@ -125,6 +137,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    GridRivals.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LastRivalFinishClockComparison = {};
     LastRivalFinishObservation = {};
@@ -165,9 +178,47 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     const bool bInactive =
         UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
+    // An opt-in fleet can be spawned only after the REAL player is
+    // possessed, the original map exists and all critical physics are
+    // ready. No new actor is made during menu/pause/focus loss or after
+    // the start lights have already gone green.
+    const bool bFleetRequiredForEvent =
+        bExperimentalSixCarGrid && !bCareerRace &&
+        SelectedEvent == latebrake::EventKind::Circuit;
+    const latebrake::ExperimentalFleetStartDecision FleetStart =
+        latebrake::DecideExperimentalFleetStart({
+            bExperimentalSixCarGrid,
+            SelectedEvent == latebrake::EventKind::Circuit,
+            bCareerRace,
+            bExperimentalFleetFaulted,
+            bFleetRequiredForEvent && IsExperimentalSixCarGridEnabled(),
+            bFleetRequiredForEvent && IsExperimentalFleetReadyForStart(),
+            bCircuitReady,
+            bLocalPlayerReady,
+            IsValid(RivalCar) && IsRegisteredRivalActor(RivalCar) &&
+                RivalCar->IsRacePhysicsReady(),
+            bInactive,
+            Race.IsFinished(),
+            StartLights.IsGreen()
+        });
+    if (FleetStart.MayAttemptPhysicalSpawn)
+    {
+        RefreshExperimentalRivals();
+    }
+    // A permanently failed requested physical grid must NEVER be treated
+    // as an ordinary two-car success, but career/solo events always retain
+    // their own independent one-rival start policy.
+    // The first policy decision may request a spawn within this same
+    // pre-GO tick. Recheck physical readiness only when that spawn was
+    // actually permitted; other events use the pure decision directly.
+    const bool bFleetStartReady = FleetStart.PermitCountdown ||
+        (FleetStart.MayAttemptPhysicalSpawn &&
+         !bExperimentalFleetFaulted &&
+         IsExperimentalFleetReadyForStart());
     const bool bStartQualified =
         bCircuitReady && bLocalPlayerReady && !bInactive &&
-        !Race.IsFinished() && IsRestartPlacementReady();
+        !Race.IsFinished() && IsRestartPlacementReady() &&
+        bFleetStartReady;
     // The countdown consumes ready, unpaused frames only. On the first
     // GO frame it returns JUST the residual frame time after green.
     // Keep authoritative timing and checkpoint-scoring on one light gate.
@@ -1928,6 +1979,16 @@ void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
     {
         const double ActiveSeconds =
             Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds();
+        // Observe the genuine primary actor only. This does not certify
+        // more rivals, affect player scoring or replace RivalSplits.
+        if (!GridRivals.RecordAcceptedGate(
+                latebrake::PrimaryRivalGridSlot,
+                static_cast<uint64>(RivalCar->GetUniqueID()),
+                static_cast<int32>(RivalGateOrdinal), ActiveSeconds))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: rival grid gate observation rejected"));
+        }
         const bool bAcceptedSplit = RivalSplits.RecordRival(
             static_cast<int32>(RivalGateOrdinal), ActiveSeconds);
         if (bAcceptedSplit && !bCareerRace &&
@@ -1937,6 +1998,26 @@ void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
             RivalFinishClocks.RecordRivalAcceptedGate(
                 static_cast<int32>(RivalGateOrdinal), ActiveSeconds, true);
         }
+    }
+}
+
+void ALatebrakeRaceGameMode::ObserveRivalRecoveryResult(
+    const ALatebrakeRivalCar* Actor, bool bEnginePlacementVerified)
+{
+    // Fail closed on stale actor pointers or a future additional rival:
+    // only the real primary actor is currently permitted to report to
+    // the sole live two-car race. All grid entries remain read-only.
+    if (!IsPrimaryRivalActor(Actor))
+    {
+        return;
+    }
+    if (!GridRivals.RecordRecoveryResult(
+            latebrake::PrimaryRivalGridSlot,
+            static_cast<uint64>(Actor->GetUniqueID()),
+            Actor->GetPilotRecoveries(), bEnginePlacementVerified))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: stale/nonsequential rival recovery observation rejected"));
     }
 }
 
@@ -2206,6 +2287,7 @@ void ALatebrakeRaceGameMode::RefreshRival()
     const bool bNeedsRival = latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
     if (!bNeedsRival)
     {
+        DestroyExperimentalRivals();
         if (IsValid(RivalCar))
         {
             RivalCar->Destroy();
@@ -2219,8 +2301,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
         FActorSpawnParameters Params;
         Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
         RivalCar = GetWorld()->SpawnActor<ALatebrakeRivalCar>(
-            ALatebrakeRivalCar::StaticClass(), FVector(latebrake::RivalStart.Position.X,
-                    latebrake::RivalStart.Position.Y, 180.0),
+            ALatebrakeRivalCar::StaticClass(), FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
+                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0),
             FRotator::ZeroRotator, Params);
         if (!IsValid(RivalCar))
         {
@@ -2229,8 +2311,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
     }
     else
     {
-        RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
-                    latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
+        RivalCar->RecoverTo(FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
+                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0), FRotator::ZeroRotator);
     }
     if (IsValid(RivalCar))
     {
@@ -2239,7 +2321,20 @@ void ALatebrakeRaceGameMode::RefreshRival()
         // route-completion HUD incorrect for those races.
         RivalCar->ResetDrivingStats();
         RivalCar->ConfigurePilot(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+        if (!RivalCar->AssignGridSlot(latebrake::PrimaryRivalGridSlot))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Latebrake: primary AI slot rejected"));
+        }
+        // Bind the actual physical primary rival actor in slot 1.
+        // The other four proposed slots are NOT spawned by this change.
+        if (!GridRivals.Bind(latebrake::PrimaryRivalGridSlot,
+                            static_cast<uint64>(RivalCar->GetUniqueID())))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: primary rival grid telemetry bind rejected"));
+        }
     }
+    RefreshExperimentalRivals();
 }
 
 void ALatebrakeRaceGameMode::RestartRace()
@@ -2284,6 +2379,15 @@ void ALatebrakeRaceGameMode::RestartRace()
         CareerStartedVehicleId = Replay.StartingVehicle;
     }
 
+    // An explicitly approved restart begins a NEW physical launch attempt,
+    // so it alone may clear the previous terminal spawn/geometry fault.
+    // Merely changing to solo/career never disables the original dev flag.
+    bExperimentalFleetFaulted = false;
+    // An approved restart invalidates every secondary physical AI actor.
+    // Destroy before resetting the per-actor ledger so no stale identity
+    // survives; only a new exact-slot spawn can enter this attempt.
+    DestroyExperimentalRivals();
+
     // The new start position is not authoritative until Unreal confirms
     // the actual chassis placement. Invalidate the previous race's
     // authorization BEFORE any fallible pawn movement or world unpause.
@@ -2312,6 +2416,7 @@ void ALatebrakeRaceGameMode::RestartRace()
         QuickRaceDifficultySelection, bCareerRace ||
             SelectedEvent == latebrake::EventKind::TimeAttack);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
+    GridRivals.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     LastRivalFinishClockComparison = {};
     LastRivalFinishObservation = {};
@@ -2349,10 +2454,16 @@ void ALatebrakeRaceGameMode::RestartRace()
 #endif
     if (IsValid(RivalCar))
     {
-        RivalCar->RecoverTo(FVector(latebrake::RivalStart.Position.X,
-                    latebrake::RivalStart.Position.Y, 180.0), FRotator::ZeroRotator);
+        RivalCar->RecoverTo(FVector(latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.X,
+                    latebrake::StartGridPoses[latebrake::PrimaryRivalGridSlot].Position.Y, 180.0), FRotator::ZeroRotator);
         RivalCar->ResetDrivingStats();
         RivalCar->ResetPilot();
+        if (!GridRivals.Bind(latebrake::PrimaryRivalGridSlot,
+                            static_cast<uint64>(RivalCar->GetUniqueID())))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: restarted rival telemetry bind rejected"));
+        }
     }
     // The direct keyboard/gamepad/mobile RESTART binding does not go through
     // MenuActivate(). Never leave an invisible open menu blocking race timing
@@ -2360,6 +2471,352 @@ void ALatebrakeRaceGameMode::RestartRace()
     if (Menu.IsOpen())
     {
         CloseMenuForRace();
+    }
+    if (bPlacedOnGrid)
+    {
+        RefreshExperimentalRivals();
+    }
+}
+
+void ALatebrakeRaceGameMode::DestroyExperimentalRivals()
+{
+    for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)
+    {
+        ALatebrakeRivalCar* Actor = ExperimentalRivals[Index].Get();
+        if (IsValid(Actor))
+        {
+            GridRivals.Release(Index + 2,
+                static_cast<uint64>(Actor->GetUniqueID()));
+            Actor->Destroy();
+        }
+    }
+    ExperimentalRivals.Reset();
+}
+
+bool ALatebrakeRaceGameMode::IsExperimentalFleetReadyForStart() const
+{
+    if (!IsExperimentalSixCarGridEnabled() ||
+        !IsValid(RivalCar) || !IsRegisteredRivalActor(RivalCar) ||
+        !RivalCar->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)
+    {
+        const ALatebrakeRivalCar* Actor = ExperimentalRivals[Index].Get();
+        if (!IsValid(Actor) || Actor->GetGridSlot() != Index + 2 ||
+            !IsRegisteredRivalActor(Actor) ||
+            !Actor->IsRacePhysicsReady())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void ALatebrakeRaceGameMode::RefreshExperimentalRivals()
+{
+#if UE_BUILD_SHIPPING
+    // Compile-time retail gate: no command-line override can create a
+    // second physical opponent in a shipping package.
+    DestroyExperimentalRivals();
+    return;
+#else
+    // Once a real physics/spawn failure occurs, do not attempt spawning
+    // again every game tick; only an explicitly accepted RESTART resets
+    // this terminal fault for another attempted six-car launch.
+    if (bExperimentalFleetFaulted)
+    {
+        return;
+    }
+    if (bExperimentalSixCarGrid && !bCareerRace &&
+        SelectedEvent == latebrake::EventKind::Circuit &&
+        (!IsPlannedStartGridSafe() ||
+         !latebrake::ArePlannedRivalRecoveryLanesSafe()))
+    {
+        bExperimentalFleetFaulted = true;
+        DestroyExperimentalRivals();
+        UE_LOG(LogTemp, Error,
+            TEXT("Latebrake: EXPERIMENTAL_GRID_FAULT geometry invalid; six-car GO blocked until explicit RESTART"));
+        return;
+    }
+    // An explicit developer-only command line does not override missing
+    // original track geometry, unavailable primary AI or a solo/career
+    // event. The normal one-rival game stays untouched.
+    if (!bExperimentalSixCarGrid || !bCircuitReady || bCareerRace ||
+        SelectedEvent != latebrake::EventKind::Circuit ||
+        !IsPlannedStartGridSafe() ||
+        !latebrake::ArePlannedRivalRecoveryLanesSafe() ||
+        !IsValid(RivalCar) || !GetWorld())
+    {
+        DestroyExperimentalRivals();
+        return;
+    }
+    // Engine may not yet have possessed the human during BeginPlay, even
+    // though the original circuit and source grid already exist. Defer
+    // full-grid spawning to a later safe pre-GO GameMode tick instead of
+    // silently spawning a fleet around a nonexistent player.
+    if (!HasLocalPlayerDriver() ||
+        !IsRegisteredRivalActor(RivalCar) ||
+        !RivalCar->IsRacePhysicsReady())
+    {
+        return;
+    }
+    if (ExperimentalRivals.Num() == latebrake::StartGridCapacity - 2)
+    {
+        bool bComplete = true;
+        for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)
+        {
+            ALatebrakeRivalCar* Actor = ExperimentalRivals[Index].Get();
+            bComplete = bComplete && IsValid(Actor) &&
+                Actor->GetGridSlot() == Index + 2 &&
+                GridRivals.Matches(Index + 2,
+                    static_cast<uint64>(Actor->GetUniqueID()));
+        }
+        if (bComplete)
+        {
+            return;
+        }
+    }
+    DestroyExperimentalRivals();
+    ExperimentalRivals.SetNum(latebrake::StartGridCapacity - 2);
+    for (int32 Slot = 2; Slot < latebrake::StartGridCapacity; ++Slot)
+    {
+        const latebrake::CircuitPose Pose =
+            latebrake::StartGridPoses[static_cast<std::size_t>(Slot)];
+        FActorSpawnParameters Params;
+        // Unlike the existing preview rival's AlwaysSpawn, all NEW
+        // experimental rivals must fail rather than spawn inside world
+        // collision. Never quietly move them to an unknown grid pose.
+        Params.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::DontSpawnIfColliding;
+        ALatebrakeRivalCar* Actor =
+            GetWorld()->SpawnActor<ALatebrakeRivalCar>(
+                ALatebrakeRivalCar::StaticClass(),
+                FVector(Pose.Position.X, Pose.Position.Y, 180.0),
+                FRotator(0.0, Pose.HeadingDegrees, 0.0), Params);
+        if (!IsValid(Actor))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: experimental grid slot %d failed physical spawn"), Slot);
+            DestroyExperimentalRivals();
+            bExperimentalFleetFaulted = true;
+            UE_LOG(LogTemp, Error,
+                TEXT("Latebrake: EXPERIMENTAL_GRID_FAULT physical spawn/verification failed; six-car GO blocked until explicit RESTART"));
+            return;
+        }
+        ExperimentalRivals[Slot - 2] = Actor;
+        // Actor creation alone does not prove that the Chaos chassis is
+        // correctly installed at the planned pose. Verify the real
+        // post-move transform and body before binding its race identity.
+        const bool bVerifiedPlacement = Actor->TryRecoverTo(
+            FVector(Pose.Position.X, Pose.Position.Y, 180.0),
+            FRotator(0.0, Pose.HeadingDegrees, 0.0));
+        if (!bVerifiedPlacement || !Actor->IsRacePhysicsReady() ||
+            !Actor->AssignGridSlot(Slot) ||
+            !GridRivals.Bind(Slot,
+                static_cast<uint64>(Actor->GetUniqueID())))
+        {
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: experimental grid slot %d rejected identity"), Slot);
+            DestroyExperimentalRivals();
+            bExperimentalFleetFaulted = true;
+            UE_LOG(LogTemp, Error,
+                TEXT("Latebrake: EXPERIMENTAL_GRID_FAULT physical spawn/verification failed; six-car GO blocked until explicit RESTART"));
+            return;
+        }
+        Actor->ResetDrivingStats();
+        Actor->ConfigurePilot(Race.GetCheckpointCount(),
+                               Race.GetRequiredLaps());
+    }
+    UE_LOG(LogTemp, Warning,
+        TEXT("Latebrake: EXPERIMENTAL 6-car physical grid created: NOT qualified for rank, release or packaged play"));
+#endif
+}
+
+bool ALatebrakeRaceGameMode::IsRegisteredRivalActor(
+    const ALatebrakeRivalCar* Actor) const
+{
+    if (!IsValid(Actor))
+    {
+        return false;
+    }
+    const int32 Slot = Actor->GetGridSlot();
+    const uint64 Identity = static_cast<uint64>(Actor->GetUniqueID());
+    if (Slot == latebrake::PrimaryRivalGridSlot)
+    {
+        return IsPrimaryRivalActor(Actor) &&
+            GridRivals.Matches(Slot, Identity);
+    }
+    const int32 Index = Slot - 2;
+    return bExperimentalSixCarGrid &&
+        Index >= 0 && Index < ExperimentalRivals.Num() &&
+        IsValid(ExperimentalRivals[Index]) &&
+        ExperimentalRivals[Index].Get() == Actor &&
+        GridRivals.Matches(Slot, Identity);
+}
+
+bool ALatebrakeRaceGameMode::TryCollectPhysicalTraffic(
+    const ALatebrakeRivalCar* Subject,
+    std::array<latebrake::RecoveryObstacle,
+               latebrake::MaxRecoveryObstacles>& Out,
+    int32& OutCount) const
+{
+    Out.fill({});
+    OutCount = 0;
+    if (!IsRegisteredRivalActor(Subject) || !HasLocalPlayerDriver())
+    {
+        return false;
+    }
+    const ALatebrakeCarPawn* Human = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    if (!IsValid(Human) || !Human->IsRacePhysicsReady())
+    {
+        return false;
+    }
+    const auto Add = [&Out, &OutCount](
+        const ALatebrakeCarPawn* Actor, int32 Slot) -> bool
+    {
+        if (!IsValid(Actor) || !Actor->IsRacePhysicsReady() ||
+            OutCount >= latebrake::MaxRecoveryObstacles)
+        {
+            return false;
+        }
+        const FVector Position = Actor->GetActorLocation();
+        const FVector Velocity = Actor->GetVelocity();
+        Out[static_cast<std::size_t>(OutCount)] = {
+            true, Slot, static_cast<uint64>(Actor->GetUniqueID()),
+            {{static_cast<double>(Position.X),
+              static_cast<double>(Position.Y)},
+             static_cast<double>(Actor->GetActorRotation().Yaw)},
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y)};
+        ++OutCount;
+        return true;
+    };
+    if (!Add(Human, latebrake::HumanGridSlot))
+    {
+        return false;
+    }
+    // For a secondary physical rival the PRIMARY must also be observed.
+    // An absent primary is not an empty lane even though the extra actors
+    // themselves still have valid ledger identities.
+    if (RivalCar.Get() != Subject)
+    {
+        if (!IsValid(RivalCar) || !IsRegisteredRivalActor(RivalCar) ||
+            !Add(RivalCar.Get(), latebrake::PrimaryRivalGridSlot))
+        {
+            return false;
+        }
+    }
+    for (int32 Index = 0; Index < ExperimentalRivals.Num(); ++Index)
+    {
+        ALatebrakeRivalCar* Actor = ExperimentalRivals[Index].Get();
+        if (!IsValid(Actor) ||
+            !IsRegisteredRivalActor(Actor))
+        {
+            return false; // Missing registered physical AI is unknown road.
+        }
+        if (Actor != Subject && !Add(Actor, Index + 2))
+        {
+            return false;
+        }
+    }
+    return OutCount >= 1;
+}
+
+bool ALatebrakeRaceGameMode::TryCollectPlayerRecoveryTraffic(
+    const ALatebrakeCarPawn* Player,
+    std::array<latebrake::RecoveryObstacle,
+               latebrake::MaxRecoveryObstacles>& Out,
+    int32& OutCount) const
+{
+    Out.fill({});
+    OutCount = 0;
+    if (!IsExperimentalSixCarGridEnabled() || !IsValid(Player) ||
+        Player != UGameplayStatics::GetPlayerPawn(this, 0) ||
+        !HasLocalPlayerDriver() || !IsValid(RivalCar) ||
+        !IsRegisteredRivalActor(RivalCar))
+    {
+        return false;
+    }
+    // In this specific opt-in race the primary rival + four extras MUST
+    // all be physically present. A missing slot or failed Chaos body is
+    // unknown traffic, not an assumed safe road for a paid teleport.
+    for (int32 Slot = latebrake::PrimaryRivalGridSlot;
+         Slot < latebrake::StartGridCapacity; ++Slot)
+    {
+        const ALatebrakeRivalCar* Actor = Slot == latebrake::PrimaryRivalGridSlot
+            ? RivalCar.Get() : ExperimentalRivals[Slot - 2].Get();
+        if (!IsValid(Actor) || Actor->GetGridSlot() != Slot ||
+            !IsRegisteredRivalActor(Actor) || !Actor->IsRacePhysicsReady())
+        {
+            Out.fill({});
+            OutCount = 0;
+            return false;
+        }
+        const FVector Position = Actor->GetActorLocation();
+        const FVector Velocity = Actor->GetVelocity();
+        Out[static_cast<std::size_t>(OutCount)] = {
+            true, Slot, static_cast<uint64>(Actor->GetUniqueID()),
+            {{static_cast<double>(Position.X),
+              static_cast<double>(Position.Y)},
+             static_cast<double>(Actor->GetActorRotation().Yaw)},
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y)};
+        ++OutCount;
+    }
+    return OutCount == latebrake::PlayerFleetRecoveryRequiredRivals;
+}
+
+void ALatebrakeRaceGameMode::ObserveAdditionalRivalVerifiedGate(
+    const ALatebrakeRivalCar* Actor)
+{
+    if (!IsRegisteredRivalActor(Actor) ||
+        IsPrimaryRivalActor(Actor) ||
+        !bExperimentalSixCarGrid ||
+        !bCircuitReady || !StartLights.IsGreen() ||
+        !HasLocalPlayerDriver() || Race.IsFinished() ||
+        Menu.IsOpen() || UGameplayStatics::IsGamePaused(this) ||
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended() ||
+        !Actor->IsRacePhysicsReady() ||
+        Actor->GetExpectedLaps() != Race.GetRequiredLaps() ||
+        Actor->GetVerifiedGateCount() != Race.GetCheckpointCount())
+    {
+        return;
+    }
+    const int64 Ordinal =
+        static_cast<int64>(Actor->GetApproximateLaps()) *
+            Race.GetCheckpointCount() + Actor->GetNextVerifiedGate();
+    if (Ordinal < 1 || Ordinal > 25600)
+    {
+        return;
+    }
+    const double ActiveSeconds =
+        Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds();
+    if (!GridRivals.RecordAcceptedGate(
+        Actor->GetGridSlot(), static_cast<uint64>(Actor->GetUniqueID()),
+        static_cast<int32>(Ordinal), ActiveSeconds))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: additional rival verified gate rejected"));
+    }
+}
+
+void ALatebrakeRaceGameMode::ObserveAdditionalRivalRecoveryResult(
+    const ALatebrakeRivalCar* Actor, bool bEnginePlacementVerified)
+{
+    if (!IsRegisteredRivalActor(Actor) ||
+        IsPrimaryRivalActor(Actor) || !bExperimentalSixCarGrid)
+    {
+        return;
+    }
+    if (!GridRivals.RecordRecoveryResult(
+        Actor->GetGridSlot(), static_cast<uint64>(Actor->GetUniqueID()),
+        Actor->GetPilotRecoveries(), bEnginePlacementVerified))
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: additional rival recovery receipt rejected"));
     }
 }
 
@@ -2382,6 +2839,36 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
     const latebrake::CircuitPose Pose =
         latebrake::PlayerRecovery(Race.GetNextCheckpoint());
+    // Only the explicitly requested non-career six-car experiment uses
+    // this additional physical preflight. Normal one-rival recovery and
+    // its existing paid transaction are unchanged.
+    //
+    // Guard on the *requested* mode rather than "complete fleet": if an
+    // actor disappeared after launch, an incomplete grid must NEVER
+    // fall back to a paid teleport into an unknown occupied cell.
+    if (bExperimentalSixCarGrid && !bCareerRace &&
+        SelectedEvent == latebrake::EventKind::Circuit)
+    {
+        std::array<latebrake::RecoveryObstacle,
+                   latebrake::MaxRecoveryObstacles> PhysicalRivals{};
+        int32 ObservedRivalCount = 0;
+        const bool bObservedAll = TryCollectPlayerRecoveryTraffic(
+            Car, PhysicalRivals, ObservedRivalCount);
+        const latebrake::RecoveryClearanceResult Clearance =
+            latebrake::EvaluatePlayerFleetRecoveryClearance(
+                Pose, PhysicalRivals,
+                bObservedAll ? ObservedRivalCount : 0);
+        if (!Clearance.Safe())
+        {
+            // No engine move, no attempt fee, no callback, no checkpoint
+            // or ghost reset. Recheck on a later explicit RECOVER press.
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: PLAYER_FLEET_RECOVER_BLOCKED reason=%d blocker=%d"),
+                static_cast<int32>(Clearance.Reason),
+                static_cast<int32>(Clearance.ObstacleSlot));
+            return;
+        }
+    }
     const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
     const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
     if (!latebrake::TryChargePlayerRecoveryAfterVerifiedTeleport(

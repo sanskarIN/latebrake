@@ -8,6 +8,8 @@
 #include "Racing/RivalFinishObservation.h"
 #include "Racing/RivalFinishClockReview.h"
 #include "AI/RivalDifficultyPreset.h"
+#include "AI/GridRivalLedger.h"
+#include "AI/RivalRecoveryOccupancy.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -111,6 +113,48 @@ public:
     bool TryGetRivalCreditedGateGap(latebrake::RivalGateGap& OutGap) const;
     // Called only after the physical rival's existing directional gate pass.
     void ObserveRivalVerifiedGate();
+    // Independent read-only ledger receives only verified physical rival
+    // recovery outcomes. No clock, scoring or movement authority.
+    void ObserveRivalRecoveryResult(const ALatebrakeRivalCar* Actor,
+                                   bool bEnginePlacementVerified);
+    bool IsPrimaryRivalActor(const ALatebrakeRivalCar* Actor) const
+    {
+        return IsValid(RivalCar) && RivalCar.Get() == Actor;
+    }
+    // The extra four experimental rivals NEVER replace the primary
+    // opponent's official HUD, finish comparison or scoring.
+    bool IsRegisteredRivalActor(const ALatebrakeRivalCar* Actor) const;
+    void ObserveAdditionalRivalVerifiedGate(const ALatebrakeRivalCar* Actor);
+    void ObserveAdditionalRivalRecoveryResult(
+        const ALatebrakeRivalCar* Actor, bool bEnginePlacementVerified);
+    bool TryCollectPhysicalTraffic(
+        const ALatebrakeRivalCar* Subject,
+        std::array<latebrake::RecoveryObstacle,
+                   latebrake::MaxRecoveryObstacles>& Out,
+        int32& OutCount) const;
+    // Player recovery uses five distinct physical rival blockers rather
+    // than the AI collector, which requires a subject AI actor.
+    // Always initializes outputs and refuses incomplete/anonymous grids.
+    bool TryCollectPlayerRecoveryTraffic(
+        const ALatebrakeCarPawn* Player,
+        std::array<latebrake::RecoveryObstacle,
+                   latebrake::MaxRecoveryObstacles>& Out,
+        int32& OutCount) const;
+    bool IsExperimentalSixCarGridEnabled() const
+    {
+        // A command-line flag alone cannot modify solo, career or
+        // partially-spawned opponent sessions.
+        return bExperimentalSixCarGrid && !bCareerRace &&
+            SelectedEvent == latebrake::EventKind::Circuit &&
+            ExperimentalRivals.Num() == latebrake::StartGridCapacity - 2;
+    }
+    // GO is denied until ALL real extra actors are bound and their Chaos
+    // chassis are ready; source-only geometry never qualifies a launch.
+    bool IsExperimentalFleetReadyForStart() const;
+    latebrake::GridRivalStatus GetGridRivalStatus(int32 Slot) const noexcept
+    {
+        return GridRivals.Snapshot(Slot);
+    }
     bool TryGetLatestRivalMatchedGateSplit(
         latebrake::RivalMatchedGateSplit& OutSplit) const;
 
@@ -170,6 +214,8 @@ private:
     void LoadRecords();
     void SaveRecords();
     void RefreshRival();
+    void RefreshExperimentalRivals();
+    void DestroyExperimentalRivals();
     void ApplyGarageToPlayer();
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
@@ -203,6 +249,14 @@ private:
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
     latebrake::RivalMatchedGateSplits RivalSplits;
+    latebrake::GridRivalLedger GridRivals;
+    // Opt-in only via explicit non-shipping -LatebrakeExperimentalSixCarGrid.
+    // The default retail game intentionally keeps its one actual AI rival.
+    bool bExperimentalSixCarGrid = false;
+    // A failed collision-aware actor spawn, post-teleport verification or
+    // invalid grid geometry is terminal for THIS accepted race attempt.
+    // Never silently turn the requested six-car run into a two-car GO.
+    bool bExperimentalFleetFaulted = false;
     latebrake::RivalFinishClockReview RivalFinishClocks;
     latebrake::RivalFinishClockComparison LastRivalFinishClockComparison;
     // Only set at a player's timing-eligible final gate. Not a race rank,
@@ -245,6 +299,11 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<ALatebrakeRivalCar> RivalCar;
+
+    // Up to four non-shipping additional physical AI actors, each assigned
+    // a unique real grid slot. They can never own primary rival rewards.
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<ALatebrakeRivalCar>> ExperimentalRivals;
 
     // Decorative asset-free fixture. Components belong to its Actor and
     // never participate in gate overlap or physics. No replicated state.
