@@ -22,7 +22,7 @@ enum class PitCrewFault : std::uint8_t
     WrongServiceBox, DriverBrakeReleased, UnsafeCrewArea,
     MissingJacks, MissingWheelCrew, FuelCapacityExceeded,
     InsufficientElapsedTime, IncorrectServiceOrder,
-    BrakeOrTireNotVerified, StaleEngineFrame
+    BrakeOrTireNotVerified, StaleEngineFrame, ServiceExpired
 };
 enum class PitCrewTask : std::uint8_t
 {
@@ -719,10 +719,20 @@ public:
         }
         else if (!SequenceStarted)
         {
-            if(sample.JackHeightCm<=PhysicsEpsilon &&
-               sample.MeasuredJackSupportLoadN<=PhysicsEpsilon &&
-               !sample.CrewTaskAcknowledged[
-                    static_cast<std::size_t>(PitCrewTask::Lift)])
+            const bool validFuelCapacity=
+                sample.MeasuredFuelTankLiters+
+                    sample.RequestedFuelLiters<=
+                Settings.MaximumFuelTankLiters+
+                    Settings.MaximumFuelDisagreementLiters;
+            if (!validFuelCapacity)
+            {
+                result.Phase=PitCrewPhase::Unprepared;
+                result.Fault=PitCrewFault::FuelCapacityExceeded;
+            }
+            else if(sample.JackHeightCm<=PhysicsEpsilon &&
+                    sample.MeasuredJackSupportLoadN<=PhysicsEpsilon &&
+                    !sample.CrewTaskAcknowledged[
+                        static_cast<std::size_t>(PitCrewTask::Lift)])
             {
                 SequenceStarted=true;
                 ServiceStartClockSeconds=sample.PhysicsClockSeconds;
@@ -731,11 +741,23 @@ public:
                 EvidencePhase=PitCrewPhase::StationaryVerified;
                 result.Fault=PitCrewFault::None;
             }
-            else
+            else if(validFuelCapacity)
             {
                 result.Fault=PitCrewFault::IncorrectServiceOrder;
             }
-            result.Phase=EvidencePhase;
+            if(validFuelCapacity)
+                result.Phase=EvidencePhase;
+        }
+        else if(sample.PhysicsClockSeconds-
+                    ServiceStartClockSeconds>
+                std::min(Settings.MaximumPitServiceSeconds,
+                         Settings.MaximumReservationSeconds))
+        {
+            // An expired reservation cannot be resurrected by a late
+            // all-true crew frame. Force a new stopped-car reservation.
+            ResetSequence();
+            result.Phase=PitCrewPhase::Aborted;
+            result.Fault=PitCrewFault::ServiceExpired;
         }
         else
         {
@@ -788,6 +810,27 @@ private:
         JackLoweredClockSeconds=0.0;
         InitialFuelLiters=0.0;
         RequestedFuelLiters=0.0;
+    }
+    bool FuelGoalPhysicallyMet(
+        const PitCrewServiceFrame& frame) const noexcept
+    {
+        return RequestedFuelLiters<=0.0 ||
+            (frame.EngineFuelProbeQualified &&
+             frame.CrewTaskAcknowledged[
+                 static_cast<std::size_t>(PitCrewTask::Refuel)] &&
+             frame.MeasuredFuelTankLiters+
+                 Settings.MaximumFuelDisagreementLiters>=
+                    InitialFuelLiters+RequestedFuelLiters &&
+             frame.MeasuredFuelTankLiters<=
+                 Settings.MaximumFuelTankLiters);
+    }
+    bool DamageWithinSafeReleaseLimit(
+        const PitCrewServiceFrame& frame) const noexcept
+    {
+        return frame.CurrentBodyDamageFraction<=
+                Settings.MaximumDamageAfterServiceFraction &&
+            frame.CurrentSuspensionDamageFraction<=
+                Settings.MaximumDamageAfterServiceFraction;
     }
     bool AllWheelsRemoved(
         const PitCrewServiceFrame& frame) const noexcept
@@ -913,14 +956,7 @@ private:
         case PitCrewPhase::JackDown:
         {
             const bool fuelPhysicallyQualified=
-                RequestedFuelLiters<=0.0 ||
-                (frame.EngineFuelProbeQualified &&
-                 frame.CrewTaskAcknowledged[
-                     static_cast<std::size_t>(
-                         PitCrewTask::Refuel)] &&
-                 frame.MeasuredFuelTankLiters+
-                     Settings.MaximumFuelDisagreementLiters>=
-                        InitialFuelLiters+RequestedFuelLiters);
+                FuelGoalPhysicallyMet(frame);
             const bool elapsedQualified=
                 now-ServiceStartClockSeconds>=
                     Settings.MinimumPitServiceSeconds &&
@@ -932,6 +968,7 @@ private:
                AllWheelTorqueInspections(frame) &&
                out.TasksPhysicallyComplete==out.TasksRequired &&
                fuelPhysicallyQualified &&
+               DamageWithinSafeReleaseLimit(frame) &&
                elapsedQualified)
             {
                 EvidencePhase=PitCrewPhase::ReadyForRelease;
@@ -953,7 +990,17 @@ private:
                 frame.PitReleaseAuthorized &&
                 jackLowered &&
                 AllWheelsInstalled(frame) &&
-                AllWheelTorqueInspections(frame);
+                AllWheelTorqueInspections(frame) &&
+                out.TasksPhysicallyComplete==out.TasksRequired &&
+                FuelGoalPhysicallyMet(frame) &&
+                DamageWithinSafeReleaseLimit(frame);
+            if (!out.PhysicalReleaseClear)
+            {
+                // Release authority is continuously contingent on all
+                // physical evidence, not a one-time latched approval.
+                EvidencePhase=PitCrewPhase::SafetyInspection;
+                out.Fault=PitCrewFault::IncorrectServiceOrder;
+            }
             break;
         default:
             break;
