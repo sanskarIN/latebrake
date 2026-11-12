@@ -49,6 +49,7 @@
 #include "Track/CircuitSurfaceDetail.h"
 #include "Track/OriginalAsphaltUnrealPreviewBridge.h"
 #include "Track/OriginalArmcoUnrealPreviewBridge.h"
+#include "Track/OriginalKerbUnrealPreviewBridge.h"
 #include "Track/CollisionBlockSetup.h"
 #include "Track/CollisionResponsePolicy.h"
 #include "Track/CircuitSpawnSafety.h"
@@ -1254,6 +1255,20 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     BuildBrakingReferenceBoards(DecorationMesh);
     BuildCornerApproachChevrons(DecorationMesh);
     BuildOriginalCircuitPaintPreview(DecorationMesh);
+#if !UE_BUILD_SHIPPING
+    // No new collision or road authority. The visual-only curb is
+    // explicitly enabled by a trusted native experiment.
+    if (FParse::Param(FCommandLine::Get(),
+                      TEXT("LatebrakeExperimentalKerbs")))
+    {
+        const bool bKerbVisible=
+            latebrake::kerbing::SpawnOriginalKerbPreview(
+                GetWorld(),DecorationMesh);
+        UE_LOG(LogLatebrakeStartup,Display,
+            TEXT("LATEBRAKE_KERB_PREVIEW visual=%d collision=off"),
+            bKerbVisible?1:0);
+    }
+#endif
 #if !UE_BUILD_SHIPPING
     // Optional visual W-profile guardrail on original four barriers.
     // All original collision-bearing BlockAll walls stay intact.
