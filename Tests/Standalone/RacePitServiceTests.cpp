@@ -30,7 +30,7 @@ int main()
 
     RacePitService pit;
     PitServiceObservation input{
-        0.05, 0.0, -1300.0, 0.0, 0.0, true, false, true, true};
+        0.05, 0.0, -1300.0, 0.0, 0.0, true, false, true, true, true};
     Check(pit.StopCount() == 0 && pit.IsArmed(), "initial arm");
 
     // Fail closed on official countdown/pause/menu/restart unavailability.
@@ -89,6 +89,11 @@ int main()
     Check(pit.ProgressFraction() == 0.0, "release is not resume-able");
     input.ButtonHeld = true;
     for (int i = 0; i < 20; ++i) Check(!pit.Observe(input), "hold begins");
+    input.StableGround = false;
+    Check(!pit.Observe(input), "lost stable support cancels the held service");
+    Check(pit.ProgressFraction() == 0.0, "no partial repair credit after bounce");
+    input.StableGround = true;
+    Check(!pit.Observe(input), "ground settles but hold restarts from zero");
     input.DeltaSeconds = 0.4;
     Check(!pit.Observe(input), "large frame refuses credit");
     Check(pit.ProgressFraction() == 0.0, "long frame resets hold");

@@ -971,10 +971,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         (bPitServiceHeld || TouchPit.IsHeld()), NitroBoost.IsHeld(),
         IsLocallyControlled() &&
             Cast<APlayerController>(GetController()) != nullptr &&
-            Mode->HasLocalPlayerDriver() &&
-                latebrake::HasStablePitGroundSupport(
-                    GroundContact, static_cast<double>(Velocity.Z)),
-        bPitNeedsService}))
+            Mode->HasLocalPlayerDriver(),
+        bPitNeedsService,
+        latebrake::HasStablePitGroundSupport(
+            GroundContact, static_cast<double>(Velocity.Z))}))
     {
         CollisionDamage.RepairAtPit();
         TireCondition.ReplaceAtPit();

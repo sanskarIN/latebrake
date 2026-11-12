@@ -21,7 +21,7 @@ int main()
     using latebrake::RacePitService;
 
     PitServiceObservation sample{0.05, 0.0, -1300.0, 0.0, 0.0,
-                                 true, false, true, true};
+                                 true, false, true, true, true};
     Require(DiagnosePitService(sample, true) ==
                 PitServiceGuidance::Servicing,
             "valid held physical pit input reports servicing");
@@ -74,6 +74,11 @@ int main()
                 PitServiceGuidance::HoldButton,
             "eligible stopped car receives instruction to hold");
     sample.ButtonHeld = true;
+    sample.StableGround = false;
+    Require(DiagnosePitService(sample, true) ==
+                PitServiceGuidance::SettleChassis,
+            "partial ground contact and bouncing get specific guidance");
+    sample.StableGround = true;
     Require(DiagnosePitService(sample, true) ==
                 PitServiceGuidance::Servicing,
             "valid PIT hold reports progress-ready state");
@@ -107,6 +112,17 @@ int main()
     Require(!pit.Observe(sample) &&
                 pit.Guidance() == PitServiceGuidance::Servicing,
             "exact 120 cm/s threshold is valid and begins hold");
+    sample.StableGround = false;
+    Require(!pit.Observe(sample) &&
+                pit.Guidance() == PitServiceGuidance::SettleChassis &&
+                pit.IsInBay() && pit.ProgressFraction() == 0.0,
+            "unstable physical contact resets accrued service progress");
+    sample.StableGround = true;
+    Require(!pit.Observe(sample) &&
+                pit.Guidance() == PitServiceGuidance::Servicing &&
+                pit.ProgressFraction() > 0.0 &&
+                pit.ProgressFraction() < 0.03,
+            "settled chassis must restart the hold from zero");
     sample.Authorized = false;
     Require(!pit.Observe(sample) &&
                 pit.Guidance() == PitServiceGuidance::Unavailable &&
