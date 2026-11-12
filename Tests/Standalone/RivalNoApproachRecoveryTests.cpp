@@ -109,6 +109,34 @@ int main()
     Check(frameHitch.Observe(4000.0, 1400.0, 0.05).NeedsRecovery,
           "clean continuous observation eventually permits recovery");
 
+    // The production-only verified path is stricter than historical
+    // synthetic Observe calls: no moving/stationary recovery via a hitch.
+    RivalRouteProgress verifiedHitch;
+    Check(!verifiedHitch.ObserveVerifiedGate(
+                3000.0, 0.0, 20.0, false).NeedsRecovery &&
+          verifiedHitch.GetRecoveryCount() == 0,
+          "one giant physical frame never earns a rival recovery");
+    for (int i = 0; i < 79; ++i)
+    {
+        Check(!verifiedHitch.ObserveVerifiedGate(
+                    3000.0, 0.0, 0.10, false).NeedsRecovery,
+              "stationary physical observation requires a clean eight seconds");
+    }
+    Check(!verifiedHitch.ObserveVerifiedGate(
+                3000.0, 0.0, 0.12, false).NeedsRecovery &&
+          verifiedHitch.GetRecoveryCount() == 0,
+          "late stationary-frame hitch discards old recovery credit");
+    for (int i = 0; i < 79; ++i)
+    {
+        Check(!verifiedHitch.ObserveVerifiedGate(
+                    3000.0, 0.0, 0.10, false).NeedsRecovery,
+              "fresh stationary observation cannot inherit pre-hitch frames");
+    }
+    Check(verifiedHitch.ObserveVerifiedGate(
+              3000.0, 0.0, 0.10, false).NeedsRecovery &&
+          verifiedHitch.GetRecoveryCount() == 1,
+          "only eighty new qualified frames authorize a stationary recovery");
+
     RivalRouteProgress marginal;
     for (int i = 0; i < 500; ++i)
     {
