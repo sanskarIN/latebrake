@@ -40,6 +40,10 @@ public:
     bool HasCompletedRoute() const { return Route.IsFinished(); }
 
 private:
+    // Read the GameMode's authoritative pause/menu/restart epoch even
+    // when paused Unreal actor ticks never executed the not-ready guard.
+    uint64 LastQualifiedSessionRevision = 0;
+    bool bHasQualifiedSessionRevision = false;
     latebrake::RivalRouteProgress Route{4, 3};
     latebrake::CheckpointMotionTrace RivalGateTrace;
     latebrake::RivalFollowingBrakeHold FollowingBrakeHold;
