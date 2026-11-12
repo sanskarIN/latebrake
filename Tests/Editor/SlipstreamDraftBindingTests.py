@@ -31,6 +31,39 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             self.assertIn(required, block)
         self.assertIn("TryGetRivalDraftingState(FVector& OutPosition,", self.mode_h)
 
+    def test_draft_requires_both_actual_road_supported_chassis(self):
+        traction = read(
+            "Source/Latebrake/Public/Vehicles/ChassisGroundContactTraction.h")
+        self.assertIn("HasQualifiedDraftGroundSupport(", traction)
+        self.assertIn("contact.SupportingProbes == 3", traction)
+        self.assertIn("contact.SupportingProbes == 4", traction)
+        self.assertIn("contact.HasDriveContact", traction)
+        self.assertIn("HasQualifiedDraftRoadSupport() const noexcept",
+                      self.pawn_h)
+        self.assertIn("HasQualifiedDraftGroundSupport(LastGroundContact)",
+                      self.pawn_h)
+        state = self.mode.split(
+            "bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(", 1
+        )[1].split(
+            "int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps()", 1
+        )[0]
+        self.assertIn("RivalCar->HasQualifiedDraftRoadSupport()", state)
+        self.assertLess(
+            state.index("RivalCar->HasQualifiedDraftRoadSupport()"),
+            state.index("OutPosition = Position;"))
+        tick = self.pawn.split(
+            "void ALatebrakeCarPawn::Tick(", 1
+        )[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1
+        )[0]
+        self.assertIn(
+            "latebrake::HasQualifiedDraftGroundSupport(GroundContact)", tick)
+        self.assertLess(
+            tick.index("HasQualifiedDraftGroundSupport(GroundContact)"),
+            tick.index("SlipstreamBoost.Observe({"))
+        self.assertIn("SlipstreamBoost.Suspend();", tick)
+        self.assertIn("ChassisGroundContactTractionTests.cpp", self.cmake)
+
     def test_human_only_after_real_physics_and_race_authority(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
