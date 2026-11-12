@@ -103,6 +103,18 @@ else()
 endif()
 add_test(NAME RivalPilot COMMAND latebrake_pilot_tests)
 
+# Read-only, finite, non-commanding two-car following envelope.
+add_executable(latebrake_portable_following_gap_tests PortableFollowingGapEnvelopeTests.cpp)
+target_include_directories(latebrake_portable_following_gap_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_portable_following_gap_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_portable_following_gap_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_portable_following_gap_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PortableFollowingGap COMMAND latebrake_portable_following_gap_tests)
+
+
 add_executable(latebrake_rewards_tests RaceRewardsTests.cpp)
 target_include_directories(latebrake_rewards_tests PRIVATE ../../Source/Latebrake/Public)
 target_compile_features(latebrake_rewards_tests PRIVATE cxx_std_20)
