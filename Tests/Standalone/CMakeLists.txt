@@ -1962,3 +1962,21 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME VehicleRearLampLayout COMMAND latebrake_vehicle_rear_lamp_layout_tests)
+
+
+# Actual starter-map track-limit game rules; charges only through GameMode's
+# authoritative RaceProgress clock. Strict cross-platform source contract,
+# NOT an Unreal Editor or installed Win64 gameplay qualification.
+add_executable(latebrake_track_limits_steward_tests
+    TrackLimitsStewardTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
+target_include_directories(latebrake_track_limits_steward_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_track_limits_steward_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_track_limits_steward_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_track_limits_steward_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TrackLimitsSteward COMMAND latebrake_track_limits_steward_tests)

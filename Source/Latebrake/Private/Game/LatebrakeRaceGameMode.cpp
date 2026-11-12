@@ -122,6 +122,10 @@ void ALatebrakeRaceGameMode::BeginPlay()
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
     Race.Reset();
+    TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision = 0;
+    StewardCheckpointSessionRevision = 0;
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
@@ -233,6 +237,61 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
                 Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds(),
                 static_cast<double>(Car->GetForwardSpeedKmH()), bStartQualified);
         }
+    }
+    // Only the real possessed chassis, under the same GO/restart/focus
+    // restrictions as the authoritative race clock, can incur a penalty.
+    // A stale, paused or missing pawn cannot accumulate exposure.
+    const ALatebrakeCarPawn* StewardsDriver = Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    const bool bStewardReady = bStartQualified && StartLights.IsGreen() &&
+        LiveDelta > 0.0 && HasLocalPlayerDriver() &&
+        IsValid(StewardsDriver) && StewardsDriver->IsRacePhysicsReady();
+    // Source/vehicle continuity must match the EXACT active checkpoint
+    // epoch: no offroad exposure may survive an unknown engine teleport,
+    // replaced possessed pawn, pause/menu transition or race restart.
+    const bool bSameStewardSession = IsValid(StewardsDriver) &&
+        StewardTrackedPawn.Get() == StewardsDriver &&
+        StewardTeleportRevision == StewardsDriver->GetTeleportRevision() &&
+        StewardCheckpointSessionRevision == CheckpointSession.Current();
+    if (!bSameStewardSession)
+    {
+        TrackLimits.Suspend();
+        StewardTrackedPawn = const_cast<ALatebrakeCarPawn*>(StewardsDriver);
+        StewardTeleportRevision = IsValid(StewardsDriver)
+            ? StewardsDriver->GetTeleportRevision() : 0;
+        StewardCheckpointSessionRevision = CheckpointSession.Current();
+    }
+    if (bStewardReady && bSameStewardSession)
+    {
+        const FVector WorldPosition = StewardsDriver->GetActorLocation();
+        // Use the production speedometer's exact Chaos chassis velocity.
+        const double ChassisSpeedKmH =
+            static_cast<double>(StewardsDriver->GetSpeedKmH());
+        const double ChassisHeadingDegrees =
+            static_cast<double>(StewardsDriver->GetActorRotation().Yaw);
+        const auto Event = TrackLimits.Update(
+            {static_cast<double>(WorldPosition.X),
+             static_cast<double>(WorldPosition.Y)},
+            ChassisHeadingDegrees, ChassisSpeedKmH, LiveDelta, true,
+            [this](double seconds) { return Race.AddTimePenalty(seconds); });
+#if !UE_BUILD_SHIPPING
+        if (Event == latebrake::TrackLimitsEvent::ViolationRecorded ||
+            Event == latebrake::TrackLimitsEvent::PenaltyApplied ||
+            Event == latebrake::TrackLimitsEvent::PenaltyRefused)
+        {
+            UE_LOG(LogLatebrakeRaceAudit, Display,
+                TEXT("LATEBRAKE_TRACK_LIMITS event=%d violations=%d charged=%d"),
+                static_cast<int32>(Event),
+                TrackLimits.Snapshot().Violations,
+                TrackLimits.Snapshot().Penalties);
+        }
+#else
+        (void)Event;
+#endif
+    }
+    else
+    {
+        TrackLimits.Suspend();
     }
     ApplyGarageToPlayer();
 }
@@ -1442,6 +1501,7 @@ void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()
 void ALatebrakeRaceGameMode::CloseMenuForRace()
 {
     GaragePurchaseConfirm.Reset();
+    TrackLimits.Suspend();
     if (!Menu.IsOpen())
     {
         return;
@@ -1466,6 +1526,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
     GaragePurchaseConfirm.Reset();
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     Menu.Toggle();
     if (!Menu.IsOpen())
@@ -1489,6 +1550,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
 
 void ALatebrakeRaceGameMode::ToggleRacePause()
 {
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     // Standalone keyboard/gamepad/touch PAUSE does not open the menu.
     // An engine-world pause may fail, so the *player's requested pause*
@@ -1556,6 +1618,7 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
         return;
     }
 
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     // A fresh focus interruption invalidates pre-loss motion regardless of
     // whether Unreal/OS already paused the world before our callback.
@@ -2302,6 +2365,10 @@ void ALatebrakeRaceGameMode::RestartRace()
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     ManualPause.OnExplicitResume();
     Race.Reset();
+    TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision = 0;
+    StewardCheckpointSessionRevision = 0;
     // A saved PB may change at finish; Results needs the previous record.
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     StartLights.Reset();
@@ -2399,6 +2466,7 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     }
     // A real paid teleport cannot be mistaken for a grid launch. A rejected
     // recovery above returns without erasing an otherwise valid sample.
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     LaunchMeter.Invalidate();
 }

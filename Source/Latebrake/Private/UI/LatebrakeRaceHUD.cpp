@@ -1455,6 +1455,22 @@ void ALatebrakeRaceHUD::DrawHUD()
                 ToRoad.DistanceMeters, ReturnDirection), Accent);
         }
     }
+    // Track limits are adjudicated in GameMode on the existing race clock;
+    // this UI only reads the current attempt's accepted violation counts.
+    const latebrake::TrackLimitsSnapshot TrackLimitReport =
+        Mode->GetTrackLimits().Snapshot();
+    if (bWayfindingEligible && TrackLimitReport.Warning)
+    {
+        Line(bCompact
+            ? TEXT("TRACK LIMIT WARNING")
+            : TEXT("TRACK LIMIT WARNING - RETURN TO PAVEMENT"), Accent);
+    }
+    if (!bCompact && TrackLimitReport.Violations > 0)
+    {
+        Line(FString::Printf(TEXT("TRACK LIMITS  %d | PENALTIES %d (5s EACH)"),
+            TrackLimitReport.Violations, TrackLimitReport.Penalties), Primary);
+    }
+
     // Guidance is projected from the actual next authoritative gate;
     // the direct-line range is NOT a track distance or a scoring shortcut.
     const latebrake::CircuitRouteAdvice RouteAdvice =
