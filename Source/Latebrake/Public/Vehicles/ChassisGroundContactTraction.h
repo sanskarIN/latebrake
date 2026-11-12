@@ -82,4 +82,22 @@ inline ChassisGroundContactOutput EvaluateChassisGroundContact(
         supporting == 2 ? 0.45 : 0.0;
     return {true, supporting, scale, supporting >= 2};
 }
+
+// Pit repair is more sensitive than ordinary vehicle drive input:
+// touching the road at only two corners must not award a stationary
+// service while the body is tipping or bouncing. Use ONLY the current
+// frame's verified four-corner WorldStatic observations and measured
+// chassis vertical speed. This does not affect traction or suspension.
+inline constexpr double PitServiceMaximumVerticalSpeedCmPerSecond = 80.0;
+
+inline bool HasStablePitGroundSupport(
+    const ChassisGroundContactOutput& contact,
+    double verticalSpeedCmPerSecond) noexcept
+{
+    return contact.Valid && contact.SupportingProbes == 4 &&
+        contact.HasDriveContact && contact.ContactTractionScale == 1.0 &&
+        std::isfinite(verticalSpeedCmPerSecond) &&
+        std::abs(verticalSpeedCmPerSecond) <=
+            PitServiceMaximumVerticalSpeedCmPerSecond;
+}
 } // namespace latebrake
