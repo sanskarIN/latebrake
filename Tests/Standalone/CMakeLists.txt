@@ -2106,3 +2106,173 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME SixCarAggregateSafety COMMAND latebrake_six_car_aggregate_safety_tests)
+
+# Exact bounded four-slab asphalt union for rotated padded rival bodies.
+# Source-only C++20 regression; no Unreal runtime/cooked map implied.
+add_executable(latebrake_fleet_road_union_tests FleetRoadUnionCoverageTests.cpp)
+target_include_directories(latebrake_fleet_road_union_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_fleet_road_union_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_fleet_road_union_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_fleet_road_union_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FleetRoadUnionCoverage COMMAND latebrake_fleet_road_union_tests)
+
+# Run-local engineering telemetry and deterministic original-circuit audit.
+# These source-only tests cannot qualify UE5.8 or installed Win64 gameplay.
+add_executable(latebrake_race_engineer_telemetry_tests RaceEngineerTelemetryTests.cpp)
+target_include_directories(latebrake_race_engineer_telemetry_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_engineer_telemetry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_engineer_telemetry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_engineer_telemetry_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceEngineerTelemetry COMMAND latebrake_race_engineer_telemetry_tests)
+
+# Read-only replay, lap/sector, distance-domain pace and pedal trace QA.
+# No Epic SDK, generated game map, runtime authority or credential access.
+add_executable(latebrake_advanced_telemetry_tests TelemetryAdvancedAnalyticsTests.cpp)
+target_include_directories(latebrake_advanced_telemetry_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_advanced_telemetry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_advanced_telemetry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_advanced_telemetry_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TelemetryAdvancedAnalytics COMMAND latebrake_advanced_telemetry_tests)
+
+# All remaining run-local race engineer headers must compile with strict
+# C++20 on Windows, Ubuntu and macOS; no licensed engine is inferred.
+add_executable(latebrake_extended_telemetry_tests TelemetryExtendedSubsystemTests.cpp)
+target_include_directories(latebrake_extended_telemetry_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_extended_telemetry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_extended_telemetry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_extended_telemetry_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME TelemetryExtendedSubsystem COMMAND latebrake_extended_telemetry_tests)
+
+# Engine-neutral original track and full six-car physical source evidence.
+add_executable(latebrake_racecraft_foundations_tests RacecraftFoundationsTests.cpp)
+target_include_directories(latebrake_racecraft_foundations_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_racecraft_foundations_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_racecraft_foundations_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_racecraft_foundations_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RacecraftFoundations COMMAND latebrake_racecraft_foundations_tests)
+
+# Actual-sensor-gated racecraft physics/race rules; UE5.8 remains owner-only.
+add_executable(latebrake_extended_racecraft_tests RacecraftExtendedSystemsTests.cpp)
+target_include_directories(latebrake_extended_racecraft_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_extended_racecraft_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_extended_racecraft_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_extended_racecraft_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RacecraftExtendedSystems COMMAND latebrake_extended_racecraft_tests)
+
+
+# Six physical actor aerodynamic wake, source-only with no invented Chaos forces.
+add_executable(latebrake_aerodynamic_wake_traffic_tests AerodynamicWakeTrafficTests.cpp)
+target_include_directories(latebrake_aerodynamic_wake_traffic_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_aerodynamic_wake_traffic_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_aerodynamic_wake_traffic_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_aerodynamic_wake_traffic_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME AerodynamicWakeTraffic COMMAND latebrake_aerodynamic_wake_traffic_tests)
+
+
+# Brake-before-corner profile from measured four-wheel grip and real aero wake.
+add_executable(latebrake_corner_grip_forecast_tests CornerGripForecastTests.cpp)
+target_include_directories(latebrake_corner_grip_forecast_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_corner_grip_forecast_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_corner_grip_forecast_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_corner_grip_forecast_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CornerGripForecast COMMAND latebrake_corner_grip_forecast_tests)
+
+
+# Identity-coherent racecraft corner/traffic/stability policy (no Chaos forces).
+add_executable(latebrake_physical_safety_fusion_tests PhysicalSafetyControlFusionTests.cpp)
+target_include_directories(latebrake_physical_safety_fusion_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_safety_fusion_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_safety_fusion_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_safety_fusion_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalSafetyControlFusion COMMAND latebrake_physical_safety_fusion_tests)
+
+
+# Original asphalt-only, physical four-wheel grip atlas and preview integration.
+add_executable(latebrake_physical_surface_grip_atlas_tests PhysicalSurfaceGripAtlasTests.cpp)
+target_include_directories(latebrake_physical_surface_grip_atlas_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_surface_grip_atlas_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_surface_grip_atlas_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_surface_grip_atlas_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalSurfaceGripAtlas COMMAND latebrake_physical_surface_grip_atlas_tests)
+
+
+# Physics-observed road vertical traces, four adaptive dampers and tread
+# contact patches. Portable C++ evidence, never actual Chaos actuation.
+add_executable(latebrake_physical_ride_contact_tests PhysicalRideAndContactTests.cpp)
+target_include_directories(latebrake_physical_ride_contact_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_ride_contact_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_ride_contact_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_ride_contact_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalRideAndContact COMMAND latebrake_physical_ride_contact_tests)
+
+
+# Physical hydraulic brake circuits and measured pedal consistency.
+add_executable(latebrake_brake_pressure_coherence_tests BrakePressureCoherenceTests.cpp)
+target_include_directories(latebrake_brake_pressure_coherence_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_brake_pressure_coherence_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_brake_pressure_coherence_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_brake_pressure_coherence_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BrakePressureCoherence COMMAND latebrake_brake_pressure_coherence_tests)
+
+
+# Steering wheel physics, physical gamepad input, six-car merge and passing.
+add_executable(latebrake_driver_input_traffic_tests DrivingInputsAndTrafficTests.cpp)
+target_include_directories(latebrake_driver_input_traffic_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driver_input_traffic_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_driver_input_traffic_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driver_input_traffic_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingInputsAndTraffic COMMAND latebrake_driver_input_traffic_tests)
+
+
+# Real-actor-only pit, sector, weather, incident, telemetry and visibility
+# evidence. Includes every new pure C++20 subsystem on all desktop compilers.
+add_executable(latebrake_physical_race_operations_tests PhysicalRaceOperationsEvidenceTests.cpp)
+target_include_directories(latebrake_physical_race_operations_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_race_operations_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_race_operations_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_race_operations_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalRaceOperationsEvidence COMMAND latebrake_physical_race_operations_tests)
