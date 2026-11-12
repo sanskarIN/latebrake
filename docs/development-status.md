@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.97](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97), experimental source only, unmerged physics PR #295 commit `65ef6f2f192081b64f8256867403f40882cca462`; **zero executable attachments** |
-| Latest source-development milestone | **v0.5.95 source-only:** original Unreal 3D starter-circuit straight-edge paint and 48 braking-zone rubber marks, all geometry bounded to the real asphalt collision blocks; optional Editor-authored PBR material tooling and SHA256-pinned candidate build source checks. [Draft PR #313](https://github.com/sanskarIN/latebrake/pull/313) remains unmerged; real authored materials, UE 5.8 Editor/UHT compile, Windows executable, 3D lighting and installed driving are still **unverified**. [Exact publisher verification](https://github.com/sanskarIN/latebrake/actions/runs/42339222627): **171 CTests on each Windows/Ubuntu/macOS and 621 Python source tests**, plus PowerShell policies and docs. Previous source-only snapshot: v0.5.94. |
+| Latest published GitHub pre-release | [v0.5.98](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98), experimental **SOURCE-ONLY**, unmerged draft PR #295 commit `bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37`; independently [published and verified](https://github.com/sanskarIN/latebrake/actions/runs/43232929038) with **zero executable attachments** |
+| Latest source-development milestone | Active [main `b47091f4`](https://github.com/sanskarIN/latebrake/commit/b47091f49bf541c6b9d5277cf603089339ea2c95) passed portable C++20, Python bindings and documentation CI after rival physics, traffic, pit, drafting and replay-integrity fixes. The latest audited main contains **18,214 qualifying game-source C++ lines**, not the 200,000 target. The independent v0.5.98 tag captures unmerged draft physics, **not** those active-main changes. |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.95).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.
