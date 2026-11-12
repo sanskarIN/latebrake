@@ -23,6 +23,8 @@ ALatebrakeRivalCar::ALatebrakeRivalCar()
 
 void ALatebrakeRivalCar::ResetPilot()
 {
+    LastQualifiedSessionRevision = 0;
+    bHasQualifiedSessionRevision = false;
     Route.Reset();
     RivalGateTrace.Reset();
     FollowingBrakeHold.Reset();
@@ -37,6 +39,8 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
 {
     // Do not preserve approximation/recovery history from a different
     // event or replay. The RaceProgress clock remains player-authoritative.
+    LastQualifiedSessionRevision = 0;
+    bHasQualifiedSessionRevision = false;
     Route.Configure(CheckpointCount, RequiredLaps);
     RivalGateTrace.Reset();
     FollowingBrakeHold.Reset();
@@ -75,6 +79,26 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
+    }
+
+    // Unreal may skip all rival ticks during actual OS/world pause. The
+    // shared GameMode epoch changes on pause/menu/focus/restart regardless,
+    // so the FIRST resumed qualified frame must rebase both a possible
+    // checkpoint trace and any 7.9s stationary/moving stall evidence.
+    // Keep previously verified route gates and the audited teleport ledger.
+    const uint64 CurrentSessionRevision = Mode->GetCheckpointSessionRevision();
+    if (!bHasQualifiedSessionRevision ||
+        CurrentSessionRevision != LastQualifiedSessionRevision)
+    {
+        Route.SuspendObservation();
+        RivalGateTrace.Reset();
+        FollowingBrakeHold.Reset();
+        GripPace.Reset();
+        SurfaceDamagePace.Reset();
+        SpinThrottleGuard.Reset();
+        StraightPassAssist.Reset();
+        LastQualifiedSessionRevision = CurrentSessionRevision;
+        bHasQualifiedSessionRevision = true;
     }
 
     const FVector Position = GetActorLocation();
