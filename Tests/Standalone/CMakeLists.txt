@@ -214,6 +214,18 @@ else()
 endif()
 add_test(NAME CircuitMap COMMAND latebrake_circuit_map_tests)
 
+# Experimental authored grip route: no engine collision/material changes.
+add_executable(latebrake_portable_circuit_grip_tests PortableCircuitGripProfileTests.cpp)
+target_include_directories(latebrake_portable_circuit_grip_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_portable_circuit_grip_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_portable_circuit_grip_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_portable_circuit_grip_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PortableCircuitGripProfile COMMAND latebrake_portable_circuit_grip_tests)
+
+
 add_executable(latebrake_touch_layout_tests TouchControlLayoutTests.cpp)
 target_include_directories(latebrake_touch_layout_tests PRIVATE ../../Source/Latebrake/Public)
 target_compile_features(latebrake_touch_layout_tests PRIVATE cxx_std_20)
