@@ -240,22 +240,24 @@ inline bool ValidOvertakeObservation(
         Finite(s.DriverSkill) &&
         s.DriverSkill>=0.0 &&
         s.DriverSkill<=1.0 &&
-        std::all_of(
-            s.Occupancy.Contacts.begin(),
-            s.Occupancy.Contacts.end(),
-            [&](const RivalLaneContact& contact)
+        [&]()
+        {
+            for(int i=0;i<s.Traffic.OtherCount;++i)
             {
-                for(int i=0;i<s.Traffic.OtherCount;++i)
-                {
-                    const auto& actor=s.Traffic.Others[
-                        static_cast<std::size_t>(i)];
-                    if(contact.Actor==actor.Identity.Actor &&
-                       contact.Slot==actor.Identity.Slot &&
-                       contact.PhysicallyQualified)
-                        return true;
-                }
-                return false;
-            });
+                const auto& actor=s.Traffic.Others[
+                    static_cast<std::size_t>(i)];
+                const auto& contact=s.Occupancy.Contacts[
+                    static_cast<std::size_t>(i)];
+                // The topology of a six-car sensor frame is positional,
+                // not an unordered set: swapping two contact records
+                // must never redirect the overtake target silently.
+                if(contact.Actor!=actor.Identity.Actor ||
+                   contact.Slot!=actor.Identity.Slot ||
+                   !contact.PhysicallyQualified)
+                    return false;
+            }
+            return true;
+        }();
 }
 inline OvertakeVeto EvaluateOvertakeVeto(
     const OvertakeObservation& s,
