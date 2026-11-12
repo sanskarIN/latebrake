@@ -60,7 +60,7 @@ class UnrealAndroidPitTouchBindingTests(unittest.TestCase):
         self.assertIn("latebrake::NeutralizeTouchOnViewportChange(", tick_android)
         self.assertIn("TouchPit.Clear();", tick_android)
         self.assertIn("PitService.Suspend();", tick_android)
-        clear = self.car.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.car.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::", 1)[0]
         self.assertIn("TouchPit.Clear();", clear)
         self.assertIn("PitService.Suspend();", clear)

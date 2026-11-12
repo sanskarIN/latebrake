@@ -53,6 +53,80 @@ reverse, low throttle, brake priority, player-only press admission,
 thermal shutdown, cooldown, regeneration, stale press release and
 5,000 repeated simulation cycles. These are **not** UE runtime tests.
 
+## Actual bonus-force delivery must pay for nitro
+
+A qualified held B/gamepad press first produces a **candidate** boost. The
+real shared Unreal pawn still has to pass the final rear-drive spring load,
+automatic gearbox, engine/collision derate and shared tire-friction circle
+before submitting the additional nitro `Chassis->AddForce`. Previously,
+the nitro meter could drain charge and generate nitro heat when these
+downstream physics gates delivered *zero* positive bonus thrust.
+
+The real pawn now records actual positive nitro-force submission. If
+none was dispatched, `RejectUndeliveredFrame()` restores **only this
+sample's provisional charge debit and nitro-meter heat exactly once**,
+leaves the real key hold eligible for a future traction-ready racing
+frame, and clears the ACTIVE meter flag. A rejected later gear/traction
+frame also refunds the candidate before invalidating driver inputs.
+The temporary boosted speed-cap interpolation returns toward the
+neutral target without any direct change to Chaos chassis velocity.
+Delivered positive nitro force retains existing allocation and tuning;
+there is no extra charge, cooldown bypass, race reward or save effect.
+
+**Exhaustion and heat cutoff now settle transactionally.** The
+candidate frame that would drop charge to zero or cross 95% nitro heat
+remains provisional: only a *confirmed positive motor bonus* invokes
+`CommitDeliveredFrame()`, finalizes the payment and starts the 2.5s
+cooldown with a fresh-key requirement. Rejected terminal candidates
+restore the previous meter state, keep the real held input and cannot
+trigger cooldown without actual acceleration. Focus loss, pause, race
+reset and key release clear any pending receipt. The separate engine-nitro heat proposal is held outside public heat
+until `ArcadeEngineHeat::SettleNitroDelivery(true)` confirms real bonus
+force. A rejected or missing delivery simply discards that proposal;
+*ordinary engine throttle heat* remains valid.
+Rejected nitro cap interpolation reuses the original start-of-frame
+scale to avoid a second artificial interpolation this tick.
+
+The standalone tests verify one-frame debit/refund, double-refund
+rejection, 250 consecutive held frames with no delivered boost,
+120 repeatedly rejected thermal-cutoff candidates, the last-charge
+depletion boundary, delivered terminal-frame cooldown, and
+release/reset behavior.
+The Unreal source test binds the actual positive bonus `AddForce` to
+this settlement path, including rejection before early-return cleanup.
+The separate **approximate engine heat** controller still samples
+pre-dispatch normal engine demand, but keeps **incremental nitro
+engine heat** uncommitted until real bonus force is confirmed. No
+bonus force means no extra heat is added. Ordinary engine
+throttle/airflow heating is preserved. This remains an arcade
+estimate, not a calibrated engine temperature measurement.
+
+Manual UE5.8 Win64 QA must exercise nitro during gear shifts, no-rear
+contact, grip-saturated slides, damage/thermal power loss, full-speed
+cap transitions, braking, reverse and recovered traction at 30/60/120
+FPS. Verify the real HUD charge/heat and acceleration, rather than
+assuming source CI establishes delivered game physics.
+
+## Unanswered same-frame delivery and interrupt safety
+
+On draft PR #295, `Step` treats a charge/heat debit as a **provisional
+receipt**, not physical delivery. The real pawn must explicitly commit
+it only after a positive nitro `AddForce`, or reject it when traction,
+gearbox or other safety policy blocks that force. If the caller aborts
+before either verdict, the **next** `Step`, `Press`, `Release` or
+`Suspend` first refunds that still-pending debit. These paths never
+manufacture an extra cooldown or treat an unanswered press as a
+delivered boost. A completed commit is not refundable later.
+
+Portable regressions exercise a lost delivery verdict followed by a
+new physics tick, key release, disallowed press, pause/suspension and
+a repeated terminal thermal sample. They additionally check that
+legitimate delivered boost remains charged once. This is protection
+against dropped source-level receipts, **not** evidence of runtime
+Unreal Engine verification. Real Win64 testing should intentionally
+interrupt held boost during low-grip transitions and pause/resume,
+then verify the charge/heat HUD against actual motor response.
+
 ## Required manual real-game test (still open)
 
 1. Build the actual UE 5.8 editor/game targets and cook the circuit.

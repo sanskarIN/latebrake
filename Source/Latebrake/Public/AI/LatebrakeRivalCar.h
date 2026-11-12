@@ -4,6 +4,7 @@
 #include "AI/RivalRouteProgress.h"
 #include "Racing/CheckpointMotionTrace.h"
 #include "AI/RivalFollowingBrakeHold.h"
+#include "AI/RivalBrakeCapacityPace.h"
 #include "AI/RivalGripPace.h"
 #include "AI/RivalSurfaceDamagePace.h"
 #include "AI/RivalSpinThrottleGuard.h"
@@ -43,6 +44,7 @@ private:
     latebrake::RivalRouteProgress Route{4, 3};
     latebrake::CheckpointMotionTrace RivalGateTrace;
     latebrake::RivalFollowingBrakeHold FollowingBrakeHold;
+    latebrake::RivalBrakeCapacityPace BrakeCapacityPace;
     latebrake::RivalGripPace GripPace;
     latebrake::RivalSurfaceDamagePace SurfaceDamagePace;
     latebrake::RivalSpinThrottleGuard SpinThrottleGuard;

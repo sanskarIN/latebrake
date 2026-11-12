@@ -88,6 +88,27 @@ int main()
             0.001 * 0.8 / (1.0 / 60.0),
             "creeping movement receives continuous non-reversing road load");
 
+    // Existing six-input callers still default to fully supported tires,
+    // but the real Unreal pawn supplies measured positive spring load.
+    const auto fullLoad = CalculateProgressiveRoadLoad(
+        {1.0 / 60.0, 3000.0, 0.0, 1100.0, true, true, 1.0});
+    const auto noLoad = CalculateProgressiveRoadLoad(
+        {1.0 / 60.0, 3000.0, 0.0, 1100.0, true, true, 0.0});
+    Require(fullLoad.Valid && noLoad.Valid &&
+            Near(fullLoad.DecelerationCmPerSecondSquared,
+                 grass.DecelerationCmPerSecondSquared) &&
+            Near(noLoad.DecelerationCmPerSecondSquared,
+                 3000.0 * 3000.0 * RoadLoadArcadeQuadraticDrag),
+            "in flight, only aero drag remains, never rolling or shoulder resistance");
+    Require(!CalculateProgressiveRoadLoad(
+        {1.0 / 60.0, 3000.0, 0.0, 1100.0, true, false, -0.01}).Valid &&
+        !CalculateProgressiveRoadLoad(
+        {1.0 / 60.0, 3000.0, 0.0, 1100.0, true, false, 1.01}).Valid &&
+        !CalculateProgressiveRoadLoad(
+        {1.0 / 60.0, 3000.0, 0.0, 1100.0, true, false,
+         std::numeric_limits<double>::quiet_NaN()}).Valid,
+            "impossible wheel load fractions must fail closed");
+
     const auto highFrame = sample(10.0, 0.0, true, true, 0.1);
     Require(highFrame.Valid &&
             highFrame.DecelerationCmPerSecondSquared <= 80.0 + 1e-9,

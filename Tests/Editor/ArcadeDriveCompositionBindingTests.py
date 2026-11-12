@@ -59,7 +59,7 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertIn("TireCondition.GripMultiplier() *", tick)
         self.assertIn("latebrake::CalculateLateralGripForce({", tick)
         self.assertIn("LateralForce.RightForce", tick)
-        self.assertIn("PhysicalBraking.DecelerationCmPerSecondSquared", tick)
+        self.assertIn("ContactBraking.WholeBodyBudgetDeceleration", tick)
         self.assertNotIn("FrameStableDampingRate(GripRate, DeltaSeconds)", tick)
         # The old speed-proportional hard-stop is intentionally replaced
         # by a physically capped service/handbrake force. Neutral throttle
@@ -69,7 +69,9 @@ class ArcadeDriveCompositionBindingTests(unittest.TestCase):
         self.assertIn("RoadLoad.ForceX", tick)
         self.assertNotIn("FrameStableDampingRate(EffectiveBrakeRate, DeltaSeconds)", tick)
         self.assertIn("Thermal.ServiceBrakeMultiplier", tick)
-        self.assertIn("if (GroundContact.HasDriveContact &&", tick)
+        self.assertIn("if (AxleBudget.RearDriveReady &&", tick)
+        self.assertIn("RearDriveTractionScale", tick)
+        self.assertIn("if (bEffectiveBraking && GroundContact.HasDriveContact)", tick)
         self.assertIn("ContactTractionScale", tick)
 
     def test_portable_budget_covers_heat_and_gear_fade(self):

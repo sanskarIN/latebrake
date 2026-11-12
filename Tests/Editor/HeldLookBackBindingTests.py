@@ -48,7 +48,7 @@ class HeldLookBackBindingTests(unittest.TestCase):
 
     def test_all_input_interruptions_clear_held_camera(self):
         clear = self.car.split(
-            "void ALatebrakeCarPawn::ClearDriverInputs()", 1
+            "void ALatebrakeCarPawn::ClearDriverInputs(", 1
         )[1].split("void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("LookBackReleased();", clear)
         self.assertIn("ClearDriverInputs();", self.car.split(

@@ -42,6 +42,23 @@ lock, suspension, braking certification, or calibrated stopping
 distance. The input numbers must be tested and adjusted with a
 real Unreal physics/gameplay build before release.
 
+## Opposing accelerator / reverse-pedal braking
+
+The suspension draft also replaces the remaining uncapped direction-change
+engine-brake branch (`3 × abs(forward speed)`, about 20g at 6500 cm/s).
+The actual shared pawn uses `OpposingThrottleBraking.h` with candidate
+650/750 cm/s² Arcade/Simulation Inspired ceilings, analog pedal magnitude,
+surface/tire/garage/damage grip and measured rear-axle reattachment.
+Service/handbrake takes precedence; no extra engine force stacks on it.
+Front-only or absent rear support gives no drivetrain braking.
+
+The rear-limited output force is applied once. Its whole-body-equivalent
+deceleration is included in the same-frame lateral friction-circle request
+before the existing contact scale. Neutral throttle coasts and the original
+near-stop direction-change threshold remains. This is still simplified
+rigid-body physics requiring real UE5.8 Win64 deceleration, cornering,
+reverse, road-edge and airborne tests; see [suspension QA](SPRUNG_CHASSIS_QA.md).
+
 ## Automated validation
 
 - `Tests/Standalone/GripLimitedBrakingTests.cpp`: cold/hot service
@@ -56,6 +73,11 @@ real Unreal physics/gameplay build before release.
   assertion to enforce **new** bounded-brake and road-load pathways
   rather than the removed instantaneous rate-based service-brake
   behavior.
+- `OpposingThrottleBrakingTests.cpp` exercises the actual spring/contact/
+  axle/reattachment/lateral policies over 120,000 varying frames, signed
+  braking, pedal strength, partial/absent rear support and malformed input.
+  Source contracts bind the new brake force, shared motor classification
+  and actual lateral budget to the Unreal pawn.
 
 These are portable C++20 + source-binding tests. They DO NOT compile
 or execute Unreal, and do not certify actual car feel.
@@ -86,3 +108,77 @@ or execute Unreal, and do not certify actual car feel.
 Physical installed QA and wheel/contact modeling remain major
 blockers under [playable release gate
 #148](https://github.com/sanskarIN/latebrake/issues/148).
+
+## Load-distributed road-point braking (unmerged physics draft)
+
+`SprungContactBraking.h` now allocates the already contact-scaled bounded
+service-brake request over the four accepted positive spring loads. The
+shared player/rival pawn reuses each existing `WorldStatic` ray's actual
+`ImpactPoint` and Chaos velocity at that point. It applies each accepted
+planar share with `AddForceAtLocation`, allowing genuine rigid-body pitch
+and asymmetric yaw moments. Spring forces remain submitted exactly once.
+No additional collision trace or runtime allocation is needed.
+
+A contact travelling against the chassis's forward motion receives no
+COM-signed brake share: that would add local mechanical energy during a
+spin. Slower contacts fade their share; rejected shares are never reassigned.
+The handbrake alone uses only rear shares, so flat braking is weaker than
+the previous whole-chassis approximation and an airborne rear axle cannot
+brake through the front. Service plus handbrake retains one service request.
+Lateral/yaw grip and drive telemetry use the accepted aggregate, with no
+second contact multiplier. Reverse travel follows the same signed rules.
+
+The portable regression verifies independent road-force pitch/yaw moments,
+150,000 deterministic rigid-body point-velocity/load cases with nonpositive
+local mechanical power, missing/corrupt contacts, reverse/handbrake behavior
+and flat 30/60/120 FPS stopping against the analytic constant-deceleration
+reference (within 0.6 cm in that isolated model). This is not measured Chaos
+stopping distance, a coupled body solver or wheel-lock/ABS validation.
+
+Before merge, compile actual UE5.8 Editor/UHT and Win64 Game and perform
+installed 30/60/120 FPS braking on level road, grades, split support and
+bumps. Inspect pitch, wheel re-contact, yaw stability, reverse stops and
+handbrake-only rear contact, including an unloaded rear axle and both pedals.
+Verify no false local power sign from rapidly rotating bodies, no excessive
+pitch/roll contact oscillation, preserved pauses/restarts/countdown, and
+accurate `service_force` logs. Gate #148 remains outstanding.
+
+## Measured road-tangent braking (v0.5.97 candidate)
+
+`BrakeRoadTangent.h` now constructs a unit brake direction from the same
+accepted road impact normal and the real planar chassis heading. It uses
+the intersection of the road plane and the heading's vertical plane.
+Consequently the force is tangent to the measured road and orthogonal to
+the existing body-right lateral correction; a bank or mixed grade cannot
+quietly introduce a sideways component outside the shared friction budget.
+A level road preserves the earlier brake direction exactly. An uphill
+brake has a downhill vertical component, with the sign reversed downhill.
+
+The point speed used for passive allocation is now the genuine full 3D
+Chaos point velocity dotted with that tangent. Pure road-normal bounce
+has zero longitudinal speed. Normal, direction and velocity observations
+are finite/unit/range checked before any optional braking dispatch. Missing,
+steep, inverted and unsupported corners never fabricate a brake direction.
+The existing ray, spring-load and rear-only handbrake rules remain.
+
+The friction budget spends the **sum of full 3D brake magnitudes**, while
+`service_force` in the unchanged `LATEBRAKE_DRIVE v=1` log reports the actual
+aggregate projection on planar chassis forward. The latter is smaller on
+a grade and must not be used as total tire-force magnitude. No second
+contact scale or division by the grade can amplify physical braking.
+
+`BrakeRoadTangentTests.cpp` adds 120,000 mixed-plane frames verified against
+an independent cross-product construction, coordinate rotations, road-normal
+orthogonality, full-vector nonpositive contact power and the shared 3D grip
+circle. Isolated forward/reverse stopping at 30/60/120 FPS on three grades
+agrees with the constant-deceleration analytic reference within 2cm over an
+88.9m numerical stop. Gravity, actual collision and the coupled Chaos spring
+solver are excluded from that reference; it is not measured game behavior.
+
+Real UE5.8/UHT, Win64 cooking and installed driving are still required.
+Test upward/downward grades and banks, reverse braking, crest landing,
+heave, spin contact velocities, partial support, both pedals and rear-only
+handbrake. Inspect the vertical tire-force component and spring pitch/roll
+response at 30/60/120 FPS, including loss/recovery of contact. Lateral and
+motor forces remain simplified planar controllers; no wheel rotational
+inertia, wheel-lock ABS, full tire model or calibrated handling is claimed.

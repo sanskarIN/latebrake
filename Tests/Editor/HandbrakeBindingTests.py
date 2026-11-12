@@ -59,8 +59,46 @@ class HandbrakeBindingTests(unittest.TestCase):
         self.assertIn('NAME HandbrakeDrivePolicy', self.cmake)
         self.assertIn('HandbrakeDrivePolicyTests.cpp', self.cmake)
 
+    def test_real_handbrake_yaw_follows_measured_signed_chaos_speed(self):
+        tick = self.pawn.split(
+            "void ALatebrakeCarPawn::Tick(", 1
+        )[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1
+        )[0]
+        for token in (
+            "latebrake::SignedHandbrakeYawAuthority(",
+            "static_cast<double>(LongitudinalSpeed)",
+            "AssistedSteering * HandbrakeYawAuthority",
+            "BrakeProfile.HandbrakeActive",
+            "TurnTorque * FrontSteeringTractionScale",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, tick)
+        self.assertLess(tick.index("SignedHandbrakeYawAuthority("),
+                        tick.index("const float TurnTorque ="))
+        self.assertLess(tick.index("const float TurnTorque ="),
+                        tick.index("Chassis->AddTorqueInRadians("))
+        self.assertNotIn(
+            "LongitudinalSpeed < -75.f ? -1.f : 1.f", tick
+        )
+        self.assertNotIn(
+            "AssistedSteering * SteeringAuthority * SteerDirection", tick
+        )
+        self.assertIn("HandbrakeYawFullAuthorityCmPerSecond = 900.0",
+                      self.policy)
+        self.assertIn("HandbrakeYawMaximumMeasuredCmPerSecond = 15000.0",
+                      self.policy)
+        self.assertIn("std::isfinite(signedForwardCmPerSecond)",
+                      self.policy)
+        self.assertIn("std::clamp(signedForwardCmPerSecond /",
+                      self.policy)
+        self.assertNotIn("SetPhysicsLinearVelocity", self.policy)
+        test_cpp = source("Tests/Standalone/HandbrakeDrivePolicyTests.cpp")
+        self.assertIn("SignedHandbrakeYawAuthority(-74.999)", test_cpp)
+        self.assertIn("dense signed-speed sweep", test_cpp)
+
     def test_pause_recovery_restart_clear_transient_brake(self):
-        clear = self.pawn.split('void ALatebrakeCarPawn::ClearDriverInputs()', 1)[1].split(
+        clear = self.pawn.split('void ALatebrakeCarPawn::ClearDriverInputs(', 1)[1].split(
             'void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()', 1)[0]
         self.assertIn('bHandbrakeHeld = false;', clear)
         for method, next_method in (

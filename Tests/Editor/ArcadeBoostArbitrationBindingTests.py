@@ -37,7 +37,9 @@ class ArcadeBoostArbitrationBindingTests(unittest.TestCase):
             "AllocateArcadeBoost(", "NitroDrive.ForceMultiplier",
             "DraftExtraForce, NitroDrive.Active",
             "DraftExtraForce = CombinedBoost.DraftExtra;",
-            "CurrentDraftAppliedFraction = static_cast<float>(DraftExtraForce)",
+            "CurrentDraftAppliedFraction = 0.f;",
+            "latebrake::CalculateDeliveredDraftFraction(",
+            "DeliveredMotorScale",
             "Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *",
             "static_cast<float>(CombinedBoost.NitroExtra)",
             "static_cast<float>(DraftExtraForce)",
@@ -50,6 +52,21 @@ class ArcadeBoostArbitrationBindingTests(unittest.TestCase):
                         tick.index("AllocateArcadeBoost("))
         self.assertLess(tick.index("AllocateArcadeBoost("),
                         tick.index("Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *"))
+        self.assertLess(tick.index("CalculateTractionLimitedPropulsion({"),
+                        tick.index("CalculateDeliveredDraftFraction("))
+        # A source-only award is never enough: the report is assigned
+        # only under the actual AddForce branch after all drive limits.
+        live = tick.split("if (DraftExtraForce > 0.0)", 1)[1].split(
+            "\n        }", 1)[0]
+        self.assertLess(live.index("Chassis->AddForce("),
+                        live.index("CalculateDeliveredDraftFraction("))
+        for source in (
+            "Surface.MotorMultiplier", "ImpactMotorScale",
+            "EngineMotorScale", "GearPowerFactor"):
+            self.assertIn(source, live)
+        self.assertNotIn(
+            "CurrentDraftAppliedFraction = static_cast<float>(DraftExtraForce)",
+            tick)
 
     def test_report_only_actual_force_allocation_and_clear_on_reset(self):
         self.assertIn("GetAppliedDraftBoostFraction() const", self.pawn_h)
@@ -57,7 +74,7 @@ class ArcadeBoostArbitrationBindingTests(unittest.TestCase):
         self.assertIn("GetAppliedDraftBoostFraction()", self.hud)
         self.assertIn("GetAppliedDraftBoostFraction() > 0.f", self.hud)
         self.assertNotIn("GetSlipstreamBoost().ExtraForce() * 100.0", self.hud)
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("CurrentDraftAppliedFraction = 0.f;", clear)
         self.assertIn("NAME ArcadeBoostArbitration", self.cmake)

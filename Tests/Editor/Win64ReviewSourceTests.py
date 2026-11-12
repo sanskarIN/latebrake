@@ -661,5 +661,153 @@ class Win64ReviewSourceTests(unittest.TestCase):
 
 
 
+
+    def synthetic_drive_log(self, human=True, with_brake=False):
+        """Synthetic text fixtures, not actual Unreal gameplay."""
+        driver = "player" if human else "autonomous"
+        normal = (
+            "LogTemp: Display: LATEBRAKE_DRIVE v=1 "
+            f"driver={driver} mode=arcade "
+            "forward_cmps=2800.0 lateral_cmps=120.0 yaw_radps=0.120 "
+            "throttle=0.800 steer=0.300 contact=1.000 rear=1.000 "
+            "front=1.000 motor_force=1250000.0 opposing_force=0.0 "
+            "service_force=0.0 lateral_force=-80000.0 "
+            # Only a possessed human can earn delivered slipstream motor
+            # boost. Keep the rival-only fixture physically consistent so
+            # --require-player, not a fake drafting record, is the failure.
+            f"yaw_torque=1600000.0 draft_pct={'2.500' if human else '0.000'}"
+        )
+        brake = (
+            "LogTemp: Display: LATEBRAKE_DRIVE v=1 "
+            "driver=player mode=simulation "
+            "forward_cmps=1800.0 lateral_cmps=-180.0 yaw_radps=-0.220 "
+            "throttle=0.000 steer=-0.400 contact=0.450 rear=0.200 "
+            "front=0.250 motor_force=0.0 opposing_force=0.0 "
+            "service_force=-250000.0 lateral_force=75000.0 "
+            "yaw_torque=-900000.0 draft_pct=0.000"
+        )
+        return ("LogInit: fabricated test log only\n" + normal +
+                ("\n" + brake if with_brake else "") + "\n").encode("utf-8")
+
+    def drive_audit(self, *extra):
+        return self.invoke("drive-audit", "--receipt", self.receipt,
+                           "--output", self.evaluation, *extra)
+
+    def test_hash_bound_drive_review_preserves_full_session_identity(self):
+        log = self.set_schema2_log(self.synthetic_drive_log(with_brake=True))
+        self.receipt_data["candidate_integrity_at_exit_pass"] = True
+        self.receipt_data["candidate_integrity_at_exit_error"] = None
+        self.write_receipt()
+        result = self.drive_audit("--require-player")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        review = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertEqual(review["status"], "HASH_BOUND_SOURCE_DRIVE_AUDIT_UNVERIFIED")
+        self.assertEqual(review["receipt_sha256"], sha(self.receipt.read_bytes()))
+        self.assertEqual(review["runtime_log_sha256"], sha(log.read_bytes()))
+        self.assertEqual(review["executable_sha256"], sha(self.exe.read_bytes()))
+        self.assertEqual(review["source_commit"], "a" * 40)
+        self.assertEqual(review["unreal_engine_build_sha256"], "b" * 64)
+        self.assertEqual(review["starter_map_sha256"], "c" * 64)
+        self.assertEqual(review["candidate_file_count"], 1)
+        self.assertEqual(review["drive_audit"]["samples"], 2)
+        self.assertEqual(review["drive_audit"]["drivers"]["player"], 2)
+        self.assertEqual(
+            review["drive_audit"]["flagged_samples"]["service_braking_samples"], 1)
+        self.assertTrue(review["candidate_integrity_at_exit_verified"])
+        self.assertFalse(review["source_authenticity_verified"])
+        self.assertFalse(review["gameplay_verified"])
+        self.assertFalse(review["ready_for_release"])
+
+    def test_drive_review_requires_version_two_hash_bound_runtime_log(self):
+        denied = self.drive_audit()
+        self.assertEqual(denied.returncode, 2)
+        self.assertIn("schema-2 receipt", denied.stderr)
+        self.set_schema2_log(None)
+        denied = self.drive_audit()
+        self.assertEqual(denied.returncode, 2)
+        self.assertIn("present, hashed runtime log", denied.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_drive_review_rejects_unrelated_unreal_log(self):
+        self.set_schema2_log(self.synthetic_race_log())
+        result = self.drive_audit()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("No LATEBRAKE_DRIVE v=1", result.stderr)
+
+    def test_drive_review_optional_human_gate_rejects_rival_only(self):
+        self.set_schema2_log(self.synthetic_drive_log(human=False))
+        denied = self.drive_audit("--require-player")
+        self.assertEqual(denied.returncode, 2)
+        self.assertIn("human-player", denied.stderr)
+        allowed = self.drive_audit()
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+        review = json.loads(self.evaluation.read_text(encoding="utf-8"))
+        self.assertEqual(review["drive_audit"]["drivers"]["player"], 0)
+        self.assertFalse(review["ready_for_release"])
+
+    def test_drive_review_rejects_swapped_or_modified_log_bytes(self):
+        logfile = self.set_schema2_log(self.synthetic_drive_log())
+        logfile.write_bytes(logfile.read_bytes() + b"\nadded after session")
+        rejected = self.drive_audit()
+        self.assertEqual(rejected.returncode, 2)
+        self.assertIn("Runtime log changed", rejected.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_drive_review_detects_invalid_force_even_if_hashes_match(self):
+        invalid = self.synthetic_drive_log().replace(
+            b"motor_force=1250000.0", b"motor_force=1250000.0 opposing_force=-800000.0"
+        )
+        self.set_schema2_log(invalid)
+        result = self.drive_audit()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Drive audit rejected", result.stderr)
+        self.assertFalse(self.evaluation.exists())
+        invalid = self.synthetic_drive_log().replace(b"rear=1.000", b"rear=0.000")
+        self.set_schema2_log(invalid)
+        result = self.drive_audit()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("unloaded rear axle", result.stderr)
+
+    def test_drive_review_rejects_drifted_cooked_archive(self):
+        cooked = self.add_synthetic_cooked_file()
+        self.set_schema2_log(self.synthetic_drive_log())
+        cooked.write_bytes(cooked.read_bytes() + b"TAMPER")
+        result = self.drive_audit()
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("file length or SHA256 mismatch", result.stderr)
+
+    def test_drive_review_refuses_overwrite_or_internal_archive_output(self):
+        self.set_schema2_log(self.synthetic_drive_log())
+        internal = self.candidate / "handling-review.json"
+        denied = self.invoke("drive-audit", "--receipt", self.receipt,
+                             "--output", internal)
+        self.assertEqual(denied.returncode, 2)
+        self.assertIn("OUTSIDE", denied.stderr)
+        self.assertFalse(internal.exists())
+        self.assertEqual(self.drive_audit().returncode, 0)
+        denied = self.drive_audit()
+        self.assertEqual(denied.returncode, 2)
+        self.assertIn("Refusing to overwrite", denied.stderr)
+
+    def test_drive_review_hashes_exact_log_and_manifest_bytes_it_parses(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        block = source.split("def audit_drive(", 1)[1].split("def main()", 1)[0]
+        for fragment in (
+            "candidate_context(args.receipt)",
+            "log_bytes = raw_log.read_bytes()",
+            "hashlib.sha256(log_bytes).hexdigest()",
+            'log_bytes.decode("utf-8-sig")',
+            "manifest_bytes = manifest.read_bytes()",
+            "hashlib.sha256(manifest_bytes).hexdigest()",
+            'metadata["source_commit"]',
+            "sha256(args.receipt) != receipt_hash",
+            "source_authenticity_verified",
+        ):
+            self.assertIn(fragment, block)
+        self.assertLess(block.index("hashlib.sha256(log_bytes).hexdigest()"),
+                        block.index("summarize_drive_log(log_bytes.decode"))
+        self.assertLess(block.index("hashlib.sha256(manifest_bytes).hexdigest()"),
+                        block.index("metadata = json.loads("))
+
 if __name__ == "__main__":
     unittest.main()

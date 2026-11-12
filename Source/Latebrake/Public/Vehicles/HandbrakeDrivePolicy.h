@@ -7,6 +7,29 @@ namespace latebrake
 {
 // Prototype rigid-body parking-brake behavior, not a simulated wheel-lock or
 // hydraulic/ABS system. Both player brake inputs remain independent.
+// The held handbrake's deliberately simple yaw torque still needs a
+// continuous physical travel direction. An old +/-75 cm/s threshold made
+// the car briefly steer as if moving FORWARD while slowly reversing, then
+// snapped to reverse steering at -75 cm/s. Use the same measured signed
+// longitudinal speed as ordinary yaw control instead; the authority is
+// zero at rest, changes sign smoothly, and reaches its former full strength
+// at +/-900 cm/s. No tire contact or extra torque is invented here.
+inline constexpr double HandbrakeYawFullAuthorityCmPerSecond = 900.0;
+inline constexpr double HandbrakeYawMaximumMeasuredCmPerSecond = 15000.0;
+inline double SignedHandbrakeYawAuthority(
+    double signedForwardCmPerSecond) noexcept
+{
+    if (!std::isfinite(signedForwardCmPerSecond) ||
+        std::abs(signedForwardCmPerSecond) >
+            HandbrakeYawMaximumMeasuredCmPerSecond)
+    {
+        return 0.0;
+    }
+    return std::clamp(signedForwardCmPerSecond /
+                          HandbrakeYawFullAuthorityCmPerSecond,
+                      -1.0, 1.0);
+}
+
 struct HandbrakeDriveProfile final
 {
     double LateralGripRate;

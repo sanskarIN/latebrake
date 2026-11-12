@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Vehicles/LateralGripBudget.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -20,6 +22,12 @@ struct SpeedAwareYawSample final
     double MassKg = 0.0;
     bool ArcadeHandling = true;
     bool OffPavement = false;
+    // Actual same-frame requested longitudinal brake from the EXISTING
+    // shared lateral-grip budget: service/handbrake, opposite pedal or
+    // rear reverse overspeed, as applicable. The default preserves
+    // older unbraked source fixtures; Unreal must supply real values.
+    double BrakeDecelerationCmPerSecondSquared = 0.0;
+    double GripScale = 1.0; // surface * tire * garage * collision grip
 };
 
 struct SpeedAwareYawOutput final
@@ -54,7 +62,12 @@ inline SpeedAwareYawOutput CalculateSpeedAwareYawTorque(
         s.PlanarSpeedCmPerSecond > 15000.0 ||
         std::abs(s.ForwardSpeedCmPerSecond) > s.PlanarSpeedCmPerSecond + 1.0 ||
         std::abs(s.YawRadiansPerSecond) > 12.0 ||
-        std::abs(s.SteeringAxis) > 1.0)
+        std::abs(s.SteeringAxis) > 1.0 ||
+        !std::isfinite(s.BrakeDecelerationCmPerSecondSquared) ||
+        s.BrakeDecelerationCmPerSecondSquared < 0.0 ||
+        s.BrakeDecelerationCmPerSecondSquared > 5000.0 ||
+        !std::isfinite(s.GripScale) ||
+        s.GripScale < 0.05 || s.GripScale > 4.0)
     {
         return {};
     }
@@ -76,7 +89,23 @@ inline SpeedAwareYawOutput CalculateSpeedAwareYawTorque(
     const double maximumYaw = std::min(
         s.ArcadeHandling ? 1.4 : 1.05,
         lateralLimit / std::max(200.0, s.PlanarSpeedCmPerSecond));
-    const double target = std::clamp(geometricYaw, -maximumYaw, maximumYaw);
+    // Steering asks for lateral contact grip even when the braking
+    // policy is already using part of the same finite friction circle.
+    // A hard service/reverse brake must therefore reduce fresh turn-in,
+    // not create an identical steering impulse as an unbraked car.
+    // Reuse the exact unscaled whole-body brake request and same physical
+    // tire/surface/grip budget as CalculateLateralGripForce. The real
+    // sprung contact still gates final front steering torque separately.
+    const double totalGrip = (s.ArcadeHandling
+        ? ArcadeCombinedGripBudget : SimulationCombinedGripBudget) *
+        s.GripScale;
+    const double usedBrake = std::min(
+        s.BrakeDecelerationCmPerSecondSquared, totalGrip);
+    const double brakingFraction = usedBrake / totalGrip;
+    const double steeringGripFraction = std::sqrt(std::max(
+        0.0, 1.0 - brakingFraction * brakingFraction));
+    const double target = std::clamp(
+        geometricYaw * steeringGripFraction, -maximumYaw, maximumYaw);
 
     // Approximate yaw inertia of a rigid car body with 380x180 cm plan.
     // This estimate is deliberately explicit until true UE chassis/tire

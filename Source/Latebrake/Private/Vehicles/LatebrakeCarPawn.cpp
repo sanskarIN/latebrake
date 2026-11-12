@@ -7,16 +7,25 @@
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
-#include "Vehicles/FrameStableDamping.h"
+#include "Vehicles/OpposingThrottleBraking.h"
 #include "Vehicles/GripLimitedBraking.h"
+#include "Vehicles/SprungContactBraking.h"
+#include "Vehicles/BrakeRoadTangent.h"
 #include "Vehicles/LateralGripBudget.h"
+#include "Vehicles/TractionLimitedPropulsion.h"
 #include "Vehicles/ChassisGroundContactTraction.h"
+#include "Vehicles/SprungChassisDynamics.h"
+#include "Vehicles/SuspensionRayVelocity.h"
+#include "Vehicles/ChassisWheelAnchors.h"
+#include "Vehicles/MeasuredPlanarForwardSpeed.h"
+#include "Vehicles/AxleTractionBudget.h"
 #include "Vehicles/ProgressiveRoadLoad.h"
 #include "Vehicles/SpeedAwareYawTorque.h"
 #include "Vehicles/HandbrakeDrivePolicy.h"
 #include "Vehicles/ArcadeBoostArbitration.h"
-#include "Vehicles/ArcadeReverseSpeedLimit.h"
+#include "Vehicles/ReverseSpeedGovernor.h"
 #include "Vehicles/GearAwareMotorPower.h"
+#include "Vehicles/PlanarSpeedGovernor.h"
 #include "Vehicles/AutomaticTransmission.h"
 #include "Vehicles/TouchCameraCyclePolicy.h"
 #include "Vehicles/DriverInputSafety.h"
@@ -89,9 +98,12 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     Chassis->SetAngularDamping(
         static_cast<float>(latebrake::SteeringChassisAngularDamping));
     Chassis->SetMassOverrideInKg(NAME_None, 1100.f);
-    // Pitch/roll constraints keep this early driving prototype accessible.
-    Chassis->BodyInstance.bLockXRotation = true;
-    Chassis->BodyInstance.bLockYRotation = true;
+    // Four genuine road-contact spring forces now act at four separate
+    // chassis corners. Pitch and roll must be free for independent wheel
+    // forces to respond to bumps and asymmetric road contact.
+    // This is a source-only experimental Chaos model pending UE playtesting.
+    Chassis->BodyInstance.bLockXRotation = false;
+    Chassis->BodyInstance.bLockYRotation = false;
 
     static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(TEXT("/Engine/BasicShapes/Cube.Cube"));
     static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
@@ -187,17 +199,20 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
 
     UStaticMeshComponent* Wheels[] = {FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel};
     UStaticMeshComponent* Spokes[] = {FrontLeftSpoke, FrontRightSpoke, RearLeftSpoke, RearRightSpoke};
-    const FVector Locations[] =
-    {
-        FVector(122.f, -94.f, -22.f), FVector(122.f, 94.f, -22.f),
-        FVector(-122.f, -94.f, -22.f), FVector(-122.f, 94.f, -22.f)
-    };
     for (int32 Index = 0; Index < 4; ++Index)
     {
+        // Visual mesh placement, physical trace origins and returned spring
+        // corner order share one immutable authored centimeter layout.
+        const auto& Anchor =
+            latebrake::ChassisWheelAnchors[static_cast<unsigned>(Index)];
+        const FVector Location(
+            static_cast<float>(Anchor.ForwardCm),
+            static_cast<float>(Anchor.RightCm),
+            static_cast<float>(Anchor.SpindleHeightCm));
         Wheels[Index]->SetupAttachment(Chassis);
         if (Cylinder.Succeeded())
         {
-            ConfigureDecorativeMesh(Wheels[Index], Cylinder.Object, Locations[Index], FVector(0.58f, 0.58f, 0.25f));
+            ConfigureDecorativeMesh(Wheels[Index], Cylinder.Object, Location, FVector(0.58f, 0.58f, 0.25f));
             // Align the cylinder's original Z axis with the car's Y axis:
             // this is a *wheel spindle*, not a tire facing nose-to-tail.
             Wheels[Index]->SetRelativeRotation(FRotator(0.f, 0.f, 90.f));
@@ -213,7 +228,7 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
             Spokes[Index]->SetStaticMesh(Cube.Object);
             // Position on the outward-facing cylinder cap of each side.
             Spokes[Index]->SetRelativeLocation(FVector(
-                28.f, 0.f, Locations[Index].Y < 0.f ? 51.5f : -51.5f));
+                28.f, 0.f, Anchor.RightCm < 0.0 ? 51.5f : -51.5f));
             Spokes[Index]->SetRelativeScale3D(FVector(0.14f, 0.24f, 0.09f));
         }
     }
@@ -264,6 +279,12 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     CameraBoom->TargetArmLength = 560.f;
     CameraBoom->SocketOffset = FVector(0.f, 0.f, 120.f);
     CameraBoom->bUsePawnControlRotation = false;
+    // The new sprung chassis pitches and rolls independently over bumps.
+    // Keep yaw follow, but do not inherit violent body pitch/roll into
+    // the driver's chase horizon. CameraPresets still own the pitch angle.
+    CameraBoom->bInheritPitch = false;
+    CameraBoom->bInheritRoll = false;
+    CameraBoom->bInheritYaw = true;
     CameraBoom->bEnableCameraLag = true;
     CameraBoom->CameraLagSpeed = 7.f;
 
@@ -549,6 +570,7 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
                                      int32 VehicleId)
 {
+    BrakeCapability.Invalidate();
     // The garage uses bounded, engine-independent multipliers; defend the
     // physics integration from corrupt or nonfinite gameplay state anyway.
     GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
@@ -570,7 +592,7 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
     GarageVehicleId = SafeId;
 }
 
-void ALatebrakeCarPawn::ClearDriverInputs()
+void ALatebrakeCarPawn::ClearDriverInputs(bool bResetGripAuthority)
 {
     Throttle = 0.f;
     Steering = 0.f;
@@ -584,9 +606,19 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     SpinAssist.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
+    WheelBrakes.Reset();
+    BrakeCapability.Invalidate();
     EngineHeat.Suspend();
     Transmission.Suspend();
     LastGroundContact = {};
+    LastSuspension = {};
+    // The grid calls this each Tick: only true lifecycle breaks must
+    // discard the valid spring-load authority already accumulated there.
+    if (bResetGripAuthority)
+    {
+        GripReattachment.Reset();
+        ResetSuspensionQa();
+    }
     CollisionDamage.Suspend();
     LastQualifiedPlanarSpeedCmPerSecond = 0.0;
     SurfaceTraction.Suspend();
@@ -603,8 +635,37 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     ResetCornerCameraYaw();
 }
 
+void ALatebrakeCarPawn::RejectOptionalDriveAfterSpring(
+    const latebrake::SuspensionResponse& AcceptedSprings)
+{
+    // At entry the real four measured spring forces have been submitted,
+    // but no motor, tire-force correction or yaw-driving torque has been.
+    // A rejected optional surface/gear/grip policy is NOT a failed Chaos
+    // body, pause or race-control gate. Preserve natural gravity/velocity.
+    // The engine-heat estimate and nitro meter are provisional until
+    // the shared real motor force is submitted. Reject BOTH bonus
+    // receipts before driver reset discards their frame state.
+    NitroBoost.RejectUndeliveredFrame();
+    EngineHeat.SettleNitroDelivery(false);
+    ClearDriverInputs();
+    ApplySignalLights(false, false, 0.0);
+    WheelMotion.Suspend();
+    // ClearDriverInputs deliberately invalidates last HUD contact. The
+    // decorative spindle may still show only this validated spring frame.
+    LastSuspension = AcceptedSprings;
+    ApplyWheelVisualPose();
+    DrivingStats.Suspend();
+    DriftMeter.Suspend();
+    GForceMeter.Suspend();
+    SlipAngleMeter.Suspend();
+}
+
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
+    // A pause, focus loss, failed race gate or malformed physics observation
+    // must not preserve earlier grip for the first resumed driving frame.
+    GripReattachment.Reset();
+    ResetSuspensionQa();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Suspend();
     ApplyWheelVisualPose();
@@ -723,7 +784,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     UWorld* World = GetWorld();
     const ALatebrakeRaceGameMode* Mode =
         World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
-    if (!Mode || !Mode->IsRaceStartGreen() ||
+    const bool bPreGreen = Mode && !Mode->IsRaceStartGreen();
+    if (!Mode ||
         !latebrake::CanApplyPlayerDrive({
             true,
             Mode->IsCircuitReadyForGameplay(),
@@ -776,11 +838,67 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     }
 #endif
 
+    // Before GO, let only the real four-corner suspension settle under
+    // gravity. Never run throttle, braking, AI, nitro, tire wear or timed
+    // checkpoint logic during the countdown.
+    if (bPreGreen)
+    {
+        // Every countdown frame neutralizes driving input, without
+        // repeatedly resetting the gradually recovered axle authority.
+        // No motor/yaw force is applied until the authoritative GO gate.
+        ClearDriverInputs(false);
+        const FVector GridVelocity = Chassis->GetPhysicsLinearVelocity();
+        const FVector GridAngular = Chassis->GetPhysicsAngularVelocityInRadians();
+        if (!FMath::IsFinite(GridVelocity.Z) ||
+            !FMath::IsFinite(GridAngular.X) ||
+            !FMath::IsFinite(GridAngular.Y))
+        {
+            NeutralizeMotionWhenDrivingBlocked();
+            return;
+        }
+        Chassis->SetPhysicsLinearVelocity(
+            FVector(0.f, 0.f, GridVelocity.Z));
+        Chassis->SetPhysicsAngularVelocityInRadians(
+            FVector(GridAngular.X, GridAngular.Y, 0.f));
+    }
+
+    // A long *finite* game frame is not an OS pause or a broken Chaos
+    // body. The spring and grip policies correctly reject >100ms samples,
+    // but routing that rejection through NeutralizeMotionWhenDrivingBlocked
+    // would zero both physical velocities. On a slow machine it could stop
+    // the car in mid-air or repeatedly freeze normal corner recovery.
+    // Stop stale driver/AI force authority and observations for this frame,
+    // while Chaos collision/gravity and already measured momentum continue
+    // naturally. Invalid bodies and actual race/menu pauses still use the
+    // strong velocity-neutralization gate above.
+    //
+    // This follows the pre-green XY/yaw lock so a frame hitch never lets
+    // a grid car roll forward before the authoritative GO transition.
+    if (FMath::IsFinite(DeltaSeconds) &&
+        static_cast<double>(DeltaSeconds) >
+            latebrake::SuspensionMaximumFrameSeconds)
+    {
+        ClearDriverInputs();
+        ApplySignalLights(false, false, 0.0);
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
+        DrivingStats.Suspend();
+        DriftMeter.Suspend();
+        GForceMeter.Suspend();
+        SlipAngleMeter.Suspend();
+        // ClearDriverInputs suspends the rest of the transient drive,
+        // service, surface, tire and HUD state; no force is sent to Chaos.
+        return;
+    }
+
     if (!Chassis->IsSimulatingPhysics() || !FMath::IsFinite(DeltaSeconds) || DeltaSeconds <= 0.f)
     {
         // A rejected physics frame must not leave last tick's full road
         // contact displayed after simulation stops or frame validity fails.
         LastGroundContact = {};
+        LastSuspension = {};
+        GripReattachment.Reset();
+        ResetSuspensionQa();
         ResetSpeedCameraFov();
         ResetCornerCameraYaw();
         ApplySignalLights(false, false, 0.0);
@@ -793,6 +911,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SlipstreamBoost.Suspend();
         TireCondition.Suspend();
         BrakeHeat.Suspend();
+        WheelBrakes.Reset();
+        BrakeCapability.Invalidate();
         EngineHeat.Suspend();
         CollisionDamage.Suspend();
         LastQualifiedPlanarSpeedCmPerSecond = 0.0;
@@ -826,8 +946,17 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float DriveForce = (bArcade ? 1500000.f : 1030000.f) * GarageAcceleration;
     const float MaxSpeed = (bArcade ? 6500.f : 5400.f) * GarageTopSpeed; // cm/s
 
-    const FVector Forward = GetActorForwardVector();
-    const FVector Right = GetActorRightVector();
+    // With pitch and roll unlocked, the physical wheel anchors follow the
+    // full 3D chassis basis. Engine, brake, grip and yaw-driving directions
+    // must stay PLANAR: acceleration must never lift a pitching/rolling car.
+    const FVector ChassisForward = GetActorForwardVector();
+    const FVector ChassisRight = GetActorRightVector();
+    const FVector Forward =
+        FVector(ChassisForward.X, ChassisForward.Y, 0.f).GetSafeNormal();
+    const FVector Right(-Forward.Y, Forward.X, 0.f);
+    // A car nearly standing on its nose can have no usable planar heading.
+    // Do not freeze Chaos here: genuine wheel support and gravity must still
+    // be applied later in this Tick, so the chassis can naturally settle.
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
     if (!FMath::IsFinite(Velocity.X) || !FMath::IsFinite(Velocity.Y) ||
         !FMath::IsFinite(Velocity.Z))
@@ -850,34 +979,48 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     const float LongitudinalSpeed = FVector::DotProduct(FlatVelocity, Forward);
     const float LateralSpeed = FVector::DotProduct(FlatVelocity, Right);
     const float Mass = Chassis->GetMass();
-    // REAL Unreal WorldStatic ground queries near the four measured chassis
-    // corners, not the procedural XY road mask alone. The vehicle remains
-    // a single pitch/roll-locked Chaos rigid body: these are limited
-    // contact observations, NOT sprung wheels or suspension physics.
-    // Ignoring this actor prevents a ray from treating its own chassis
-    // as a supporting road surface.
+    // The actual Chaos body has four independent world-space wheel anchors.
+    // Each corner samples blocking WorldStatic road with a true Unreal trace.
+    // Point speed is taken at THAT corner, not inferred from chassis COM:
+    // asymmetric compression can therefore damp pitch/roll naturally.
+    // These are still vertical ray springs on a rigid body, not a licensed
+    // Chaos Vehicles wheel solver or a finished sprung skeletal mesh.
     latebrake::ChassisGroundContactSample GroundSample{};
     GroundSample.DeltaSeconds = static_cast<double>(DeltaSeconds);
     GroundSample.ChassisVerticalSpeedCmPerSecond =
         static_cast<double>(Velocity.Z);
     GroundSample.PhysicsReady = World != nullptr && IsRacePhysicsReady();
+    latebrake::SuspensionFrame SpringSample{};
+    SpringSample.DeltaSeconds = static_cast<double>(DeltaSeconds);
+    SpringSample.MassKg = static_cast<double>(Mass);
+    SpringSample.GravityCmPerSecondSquared =
+        -static_cast<double>(World->GetGravityZ());
+    SpringSample.PhysicsReady = GroundSample.PhysicsReady;
+    // Real Chaos component orientation, not screen camera or flat heading.
+    // Prevent world-down spring probes from propping up an inverted car.
+    SpringSample.ChassisUpZ =
+        static_cast<double>(Chassis->GetUpVector().Z);
     const FVector GroundOrigin = Chassis->GetComponentLocation();
     FCollisionQueryParams GroundQuery(
         SCENE_QUERY_STAT(LatebrakeChassisGroundContact), false);
     GroundQuery.AddIgnoredActor(this);
-    constexpr float ProbeForwardCm = 122.f;
-    constexpr float ProbeSideCm = 68.f;
-    const float ProbeX[] = {
-        ProbeForwardCm, ProbeForwardCm,
-        -ProbeForwardCm, -ProbeForwardCm
-    };
-    const float ProbeY[] = {
-        -ProbeSideCm, ProbeSideCm, -ProbeSideCm, ProbeSideCm
-    };
+    FVector WheelWorldAnchors[4];
+    FVector WheelRoadContacts[4]{};
+    FVector RoadBrakeDirections[4]{};
+    std::array<double, 4> RoadBrakeForwardScales{1.0, 1.0, 1.0, 1.0};
+    std::array<double, 4> RoadContactForwardSpeeds{};
+    std::array<double, 4> RoadBrakeNormalZ{};
+    bool bRoadBrakeSamplesValid = true;
     for (int32 Index = 0; Index < 4; ++Index)
     {
+        // The physical ray follows the same x/y layout as the visible
+        // wheel. Never include suspension visual travel in physics probes.
+        const auto Probe = latebrake::ChassisProbeOffset(
+            static_cast<unsigned>(Index));
         const FVector Origin = GroundOrigin +
-            Forward * ProbeX[Index] + Right * ProbeY[Index];
+            ChassisForward * static_cast<float>(Probe.ForwardCm) +
+            ChassisRight * static_cast<float>(Probe.RightCm);
+        WheelWorldAnchors[Index] = Origin;
         const FVector End = Origin -
             FVector(0.f, 0.f,
                 static_cast<float>(
@@ -886,29 +1029,242 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         const bool bGroundHit = World &&
             World->LineTraceSingleByChannel(
                 Hit, Origin, End, ECC_WorldStatic, GroundQuery) &&
-            Hit.bBlockingHit &&
+            Hit.bBlockingHit && !Hit.bStartPenetrating &&
             IsValid(Hit.GetComponent()) &&
             Hit.GetComponent()->GetCollisionObjectType() == ECC_WorldStatic;
         if (bGroundHit)
         {
+            const double Distance = static_cast<double>(Hit.Distance);
+            const double NormalZ = static_cast<double>(Hit.ImpactNormal.Z);
+            const FVector PointVelocity =
+                Chassis->GetPhysicsLinearVelocityAtPoint(Origin);
+            // Reuse the existing accepted trace, never a visual wheel pose
+            // or a second ray. Brake moments belong at the actual road.
+            // Capacity planning also needs this accepted road sample
+            // while coasting. This never applies a brake force by itself.
+            if (Distance <= latebrake::SuspensionRestDistanceCm &&
+                NormalZ >= latebrake::SuspensionMinNormalZ)
+            {
+                const FVector RoadPoint = Hit.ImpactPoint;
+                const bool bFinitePoint = FMath::IsFinite(RoadPoint.X) &&
+                    FMath::IsFinite(RoadPoint.Y) && FMath::IsFinite(RoadPoint.Z);
+                if (bFinitePoint)
+                {
+                    WheelRoadContacts[Index] = RoadPoint;
+                    const FVector RoadVelocity =
+                        Chassis->GetPhysicsLinearVelocityAtPoint(RoadPoint);
+                    const latebrake::BrakeRoadTangentOutput RoadTangent =
+                        latebrake::MeasureBrakeRoadTangent({
+                            static_cast<double>(Forward.X),
+                            static_cast<double>(Forward.Y),
+                            static_cast<double>(Hit.ImpactNormal.X),
+                            static_cast<double>(Hit.ImpactNormal.Y), NormalZ,
+                            static_cast<double>(RoadVelocity.X),
+                            static_cast<double>(RoadVelocity.Y),
+                            static_cast<double>(RoadVelocity.Z)});
+                    bRoadBrakeSamplesValid = bRoadBrakeSamplesValid && RoadTangent.Valid;
+                    RoadBrakeDirections[Index] = FVector(
+                        RoadTangent.DirectionX, RoadTangent.DirectionY, RoadTangent.DirectionZ);
+                    RoadContactForwardSpeeds[static_cast<unsigned>(Index)] =
+                        RoadTangent.LongitudinalCmPerSecond;
+                    RoadBrakeForwardScales[static_cast<unsigned>(Index)] =
+                        RoadTangent.PlanarForwardScale;
+                    RoadBrakeNormalZ[static_cast<unsigned>(Index)] = NormalZ;
+                }
+                else
+                {
+                    bRoadBrakeSamplesValid = false;
+                }
+            }
+            // Damping tracks ray-length change relative to this genuine
+            // static road plane, not uphill/downhill world vertical travel.
+            const latebrake::SuspensionRayVelocityOutput RayVelocity =
+                latebrake::MeasureSuspensionRayVelocity({
+                    static_cast<double>(PointVelocity.X),
+                    static_cast<double>(PointVelocity.Y),
+                    static_cast<double>(PointVelocity.Z),
+                    static_cast<double>(Hit.ImpactNormal.X),
+                    static_cast<double>(Hit.ImpactNormal.Y), NormalZ});
+            if (!RayVelocity.Valid)
+            {
+                // A corrupt physical observation cannot authorize ANY
+                // corner force. The independent spring guard below rejects
+                // this whole frame before the single force submission.
+                SpringSample.PhysicsReady = false;
+            }
             GroundSample.Probes[static_cast<unsigned>(Index)] = {
-                true, static_cast<double>(Hit.Distance),
-                static_cast<double>(Hit.ImpactNormal.Z)
+                true, Distance, NormalZ
+            };
+            SpringSample.Corners[static_cast<unsigned>(Index)] = {
+                true, Distance, NormalZ,
+                RayVelocity.DistanceSpeedCmPerSecond
             };
         }
     }
-    const latebrake::ChassisGroundContactOutput GroundContact =
+    latebrake::ChassisGroundContactOutput GroundContact =
         latebrake::EvaluateChassisGroundContact(GroundSample);
-    if (!GroundContact.Valid)
+    const latebrake::SuspensionResponse SpringResponse =
+        latebrake::CalculateSprungChassis(SpringSample);
+    // Actual road support is authoritative once the independent spring
+    // policy validates its measured Chaos frame. Submit exactly once,
+    // before any optional road/grip/axle authority can fail closed.
+    // Failed driver policies below must NOT cancel lift or freeze momentum.
+    if (!SpringResponse.Valid)
     {
         NeutralizeMotionWhenDrivingBlocked();
         return;
     }
+    ApplySprungForces(SpringResponse, WheelWorldAnchors);
+    if (!GroundContact.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // No 115 cm coarse trace may still claim drive grip while its physical
+    // spring is out of reach (82 cm). HUD and motor use the SAME accepted
+    // set of four engaged road corners, including partial support.
+    GroundContact = latebrake::ConstrainGroundContactToSuspension(
+        GroundContact, SpringResponse);
+    if (!GroundContact.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // A production racer must not power the rear axle from a front-only
+    // contact or apply front steering torque while only the rear wheels
+    // are physically loaded. Reuse this exact accepted spring sample,
+    // never a second fictitious wheel ray or a HUD-only road mask.
+    const latebrake::AxleTractionBudget MeasuredAxleBudget =
+        latebrake::CalculateAxleTractionBudget(GroundContact, SpringResponse);
+    if (!MeasuredAxleBudget.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // Real spring forces and instant physically limited service braking
+    // remain unchanged. Only rear motor and front yaw authority regain
+    // their measured grip gradually after a real re-contact. Loss is
+    // immediate, never retaining stale motor force on an airborne axle.
+    const latebrake::GripReattachmentFrame GripFrame =
+        GripReattachment.Advance(
+            static_cast<double>(DeltaSeconds), GroundContact, MeasuredAxleBudget);
+    if (!GripFrame.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    GroundContact = GripFrame.Ground;
+    const latebrake::AxleTractionBudget AxleBudget = GripFrame.Axles;
+    // A valid spring observation is useful even while a wheel hangs in air.
+    // Keep this run-local visual sample only after both policies accepted it.
+    LastSuspension = SpringResponse;
+#if !UE_BUILD_SHIPPING
+    // Genuine development-build QA evidence, NOT automatic driving proof.
+    // Record first frame, supported-load/phase transitions (max 5 Hz)
+    // and a 2-second heartbeat. Existing strict v=1 schema is preserved.
+    // This only examines already measured springs: no additional ray
+    // traces, motor correction, score changes or network/file writes.
+    unsigned LoadedCornerMask = 0u;
+    for (unsigned Corner = 0; Corner < 4; ++Corner)
+    {
+        const auto& Wheel = SpringResponse.Corners[Corner];
+        if (Wheel.Contact &&
+            Wheel.UpForce > SpringResponse.WeightForce * 1.0e-6)
+        {
+            LoadedCornerMask |= 1u << Corner;
+        }
+    }
+    // Reuse this existing at-most-5-Hz, 2-second-heartbeat decision for
+    // BOTH the unchanged suspension v=1 record and the new GO-only drive
+    // evidence. No second sampling clock, road query or shipping overhead.
+    const bool bReportSuspensionDriveEvidence =
+        SuspensionQaSchedule.ShouldReport(
+            static_cast<double>(DeltaSeconds), LoadedCornerMask, bPreGreen);
+    if (bReportSuspensionDriveEvidence)
+    {
+        const auto MeasuredRay = [&SpringSample](int32 Index) -> double
+        {
+            const auto& Corner =
+                SpringSample.Corners[static_cast<unsigned>(Index)];
+            return Corner.Hit ? Corner.DistanceCm : -1.0;
+        };
+        const FRotator BodyAttitude = Chassis->GetComponentRotation();
+        const bool bLocalHuman =
+            IsLocallyControlled() &&
+            Cast<APlayerController>(GetController()) != nullptr;
+        UE_LOG(LogTemp, Display,
+            TEXT("LATEBRAKE_SUSPENSION v=1 driver=%s phase=%s "
+                 "contacts=%d weight_ratio=%.3f traction=%.3f "
+                 "drive_rear=%.3f steer_front=%.3f "
+                 "front_load=%.3f rear_load=%.3f "
+                 "arb_front_pct=%.2f arb_rear_pct=%.2f "
+                 "body_z_cm=%.1f vz_cmps=%.1f pitch_deg=%.1f roll_deg=%.1f "
+                 "fl_cm=%.1f fr_cm=%.1f rl_cm=%.1f rr_cm=%.1f"),
+            bLocalHuman ? TEXT("player") : TEXT("autonomous"),
+            bPreGreen ? TEXT("grid") : TEXT("go"),
+            SpringResponse.ContactCount,
+            SpringResponse.TotalUpForce / SpringResponse.WeightForce,
+            GroundContact.ContactTractionScale,
+            AxleBudget.RearDriveTractionScale,
+            AxleBudget.FrontSteeringTractionScale,
+            AxleBudget.FrontAxleLoadRatio,
+            AxleBudget.RearAxleLoadRatio,
+            100.0 * SpringResponse.AntiRollTransfer[0] /
+                SpringResponse.WeightForce,
+            100.0 * SpringResponse.AntiRollTransfer[1] /
+                SpringResponse.WeightForce,
+            Chassis->GetComponentLocation().Z,
+            Velocity.Z, BodyAttitude.Pitch, BodyAttitude.Roll,
+            MeasuredRay(0), MeasuredRay(1),
+            MeasuredRay(2), MeasuredRay(3));
+    }
+#endif
+    if (bPreGreen)
+    {
+        // Keep the grid still in XY/yaw while genuine spring/gravity
+        // forces bring the body to its supported ride height before GO.
+        // This branch never reaches motor, grip, race telemetry or awards.
+        LastGroundContact = GroundContact;
+        // Physical support was already submitted before optional policies.
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
+        return;
+    }
+    // The same single four-corner spring dispatch serves grid settling,
+    // live driving and subsequent optional-policy recovery. No second
+    // force submission occurs on any path through this frame.
+
+    // A nose-up/nose-down chassis may have an almost zero XY heading.
+    // Its REAL springs have already been submitted. Never send a motor,
+    // steering or skid correction through an undefined horizontal axis;
+    // equally, never zero Chaos linear/angular velocity here, since doing
+    // so every frame could prevent the body from tipping back onto the road.
+    if (Forward.IsNearlyZero())
+    {
+        // Force support was computed from this exact measured spring
+        // frame. Discard stale driving input, stored motor grip and HUD
+        // contact authority, but keep the visual spindle pose matched
+        // to the REAL suspension that just received Chaos force.
+        // This is a continuing Chaos physical pose, not an app pause.
+        // Keep QA rate limiting across near-vertical frames, while
+        // immediately withdrawing any stored motor/steering grip.
+        ClearDriverInputs(false);
+        GripReattachment.Reset();
+        LastSuspension = SpringResponse;
+        WheelMotion.Suspend();
+        ApplyWheelVisualPose();
+        return;
+    }
+
     // One accepted physics frame only: the HUD never repeats a stale
     // ground observation after pause, lost input or failed recovery.
     LastGroundContact = GroundContact;
     const float ContactTractionScale =
         static_cast<float>(GroundContact.ContactTractionScale);
+    const float RearDriveTractionScale =
+        static_cast<float>(AxleBudget.RearDriveTractionScale);
+    const float FrontSteeringTractionScale =
+        static_cast<float>(AxleBudget.FrontSteeringTractionScale);
     // Finite velocity components alone do not ensure that derived speed
     // and directional projections stay representable in float precision.
     if (!FMath::IsFinite(Speed) || !FMath::IsFinite(LongitudinalSpeed) ||
@@ -930,22 +1286,25 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(SurfacePosition.Y), true});
     if (!Surface.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
-    // Resist actual planar motion, including reverse/sliding, rather than
-    // permanently damping all speeds by the same strong Chaos constant.
-    // Validate the proposed load BEFORE any motor/nitro/AI force this tick.
+    // Keep aerodynamic drag even in the air, but no tire rolling/shoulder
+    // force unless the SAME real four-spring frame supports body weight.
+    // WorldStatic ray hits with unloaded springs or an inverted chassis
+    // can never masquerade as a tire actually rolling on pavement.
+    const double SprungRoadLoadFraction = FMath::Clamp(
+        SpringResponse.TotalUpForce / SpringResponse.WeightForce, 0.0, 1.0);
     const latebrake::ProgressiveRoadLoadOutput RoadLoad =
         latebrake::CalculateProgressiveRoadLoad({
             static_cast<double>(DeltaSeconds),
             static_cast<double>(Velocity.X),
             static_cast<double>(Velocity.Y),
             static_cast<double>(Mass),
-            bArcade, Surface.OffPavement});
+            bArcade, Surface.OffPavement, SprungRoadLoadFraction});
     if (!RoadLoad.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // Only a finite, source-authorized live chassis tick can arm actual
@@ -1009,6 +1368,26 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
         bServiceBraking && GroundContact.HasDriveContact, true});
+    // Apply the same bounded corner-assist policy to controller, touch
+    // and rival throttle. Brake/reverse demand is never reduced by it.
+    const float CornerThrottle = static_cast<float>(
+        latebrake::StabilizeCornerThrottle(
+            BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
+    // This is a *second* Arcade-only human safeguard. It observes actual
+    // Chaos yaw rate and signed chassis slip. The rival keeps its independent
+    // AI spin guard;
+    // Simulation Inspired and an intentional handbrake drift are unchanged.
+    const bool bHumanDriver = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr;
+    const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();
+    const float AssistedSteering = static_cast<float>(
+        latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
+    const float EffectiveThrottle = static_cast<float>(
+        latebrake::ModerateHumanSpinThrottle(
+            CornerThrottle, static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(LateralSpeed),
+            static_cast<double>(AngularVelocity.Z),
+            bArcade, bHumanDriver, BrakeProfile.HandbrakeActive));
     // Ordinary service/handbrake braking now uses an explicit finite
     // longitudinal deceleration budget, not a huge speed-proportional
     // resistance that stops a racing car almost instantaneously.
@@ -1025,7 +1404,108 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0});
     if (!PhysicalBraking.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // Whole-body contact is spent ONCE here. Brake-only rear shares cannot
+    // migrate to the front when the rear axle is airborne or unloaded.
+    latebrake::SprungContactBrakeOutput ContactBraking =
+        latebrake::CalculateSprungContactBraking({
+            static_cast<double>(Mass), static_cast<double>(LongitudinalSpeed),
+            PhysicalBraking.ForwardForce * GroundContact.ContactTractionScale,
+            BrakeProfile.HandbrakeActive && !bServiceBraking,
+            bRoadBrakeSamplesValid, RoadContactForwardSpeeds, RoadBrakeForwardScales},
+            GroundContact, SpringResponse);
+    if (!ContactBraking.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // Independent modeled rotors may only REDUCE the already admitted
+    // contact forces. Their proposed state is not committed until every
+    // road-point braking command has actually reached AddForceAtLocation.
+    const double WheelGripScale = Surface.LateralGripMultiplier *
+        TireCondition.GripMultiplier() * static_cast<double>(GarageGrip) *
+        CollisionDamage.LateralGripMultiplier();
+    const auto WheelBrakeSetup = latebrake::BrakeProfileForVehicle(GarageVehicleId, bArcade);
+    const auto BrakeCapabilityCandidate = latebrake::EstimateServiceBrakeCapability({
+        static_cast<double>(Mass), WheelGripScale,
+        Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0,
+        bArcade, bUseWheelBrakeModel, bRoadBrakeSamplesValid,
+        static_cast<double>(LongitudinalSpeed), RoadContactForwardSpeeds,
+        RoadBrakeNormalZ, RoadBrakeForwardScales},
+        GroundContact, SpringResponse, WheelBrakeSetup);
+    if (!BrakeCapabilityCandidate.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    latebrake::FourCornerWheelBrakeOutput WheelBrakePlan;
+    if (bUseWheelBrakeModel)
+    {
+        WheelBrakePlan = WheelBrakes.Propose({
+            static_cast<double>(DeltaSeconds), static_cast<double>(Mass),
+            WheelGripScale,
+            Thermal.Valid ? Thermal.ServiceBrakeMultiplier : 1.0,
+            bServiceBraking, BrakeProfile.HandbrakeActive,
+            GroundContact.Valid && SpringResponse.Valid && bRoadBrakeSamplesValid,
+            RoadContactForwardSpeeds, RoadBrakeNormalZ, RoadBrakeForwardScales},
+            WheelBrakeSetup,
+            GroundContact, SpringResponse, ContactBraking);
+    }
+    else
+    {
+        WheelBrakes.Reset();
+        BrakeCapability.Invalidate();
+        WheelBrakePlan.Valid = true;
+        WheelBrakePlan.Brakes = ContactBraking;
+    }
+    if (!WheelBrakePlan.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    ContactBraking = WheelBrakePlan.Brakes;
+    // Opposing reverse/accelerator demand shares the same final throttle
+    // classification as motor dispatch. Its actual rear-load-limited force
+    // must also consume the same-frame cornering budget, not bypass it.
+    const latebrake::OpposingThrottleBrakeOutput OpposingBraking =
+        latebrake::CalculateOpposingThrottleBraking({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(LongitudinalSpeed),
+            static_cast<double>(Speed), static_cast<double>(Mass),
+            static_cast<double>(EffectiveThrottle),
+            Surface.LateralGripMultiplier * TireCondition.GripMultiplier() *
+                static_cast<double>(GarageGrip) *
+                CollisionDamage.LateralGripMultiplier(),
+            AxleBudget.RearDriveReady ? AxleBudget.RearDriveTractionScale : 0.0,
+            GroundContact.ContactTractionScale, bEffectiveBraking, bArcade});
+    if (!OpposingBraking.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // Unlike the original hard reverse-velocity snap, overspeed now
+    // submits a finite forward-axis force on the real Chaos chassis.
+    // Brake and opposite-pedal policies take precedence; the true rear
+    // contact caps force and its equivalent request joins the SAME
+    // frame's cornering budget. An upside-down/airborne car gets no
+    // imaginary brake or artificial instantaneous horizontal velocity.
+    const latebrake::ReverseSpeedGovernorOutput ReverseGovernor =
+        latebrake::CalculateReverseSpeedGovernor({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(Velocity.X), static_cast<double>(Velocity.Y),
+            static_cast<double>(Forward.X), static_cast<double>(Forward.Y),
+            static_cast<double>(Mass), static_cast<double>(EffectiveThrottle),
+            Surface.LateralGripMultiplier * TireCondition.GripMultiplier() *
+                static_cast<double>(GarageGrip) *
+                CollisionDamage.LateralGripMultiplier(),
+            AxleBudget.RearDriveReady ? AxleBudget.RearDriveTractionScale : 0.0,
+            GroundContact.ContactTractionScale, bArcade,
+            bEffectiveBraking || OpposingBraking.OpposingThrottle});
+    if (!ReverseGovernor.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // A shared friction-circle budget prevents arbitrary 20g+ lateral
@@ -1042,11 +1522,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 TireCondition.GripMultiplier() *
                 Surface.LateralGripMultiplier *
                 CollisionDamage.LateralGripMultiplier(),
-            PhysicalBraking.DecelerationCmPerSecondSquared,
+            ContactBraking.WholeBodyBudgetDeceleration +
+                OpposingBraking.WholeBodyBudgetDeceleration +
+                ReverseGovernor.WholeBodyBudgetDeceleration,
             bArcade, BrakeProfile.HandbrakeActive});
     if (!LateralForce.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
     // Advisory, from actual consecutive signed-forward chassis motion
@@ -1061,23 +1543,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     ApplySignalLights(true, bEffectiveBraking,
         static_cast<double>(LongitudinalSpeed));
 
-    // Apply the same bounded corner-assist policy to controller, touch
-    // and rival throttle. Brake/reverse demand is never reduced by it.
-    const float CornerThrottle = static_cast<float>(
-        latebrake::StabilizeCornerThrottle(
-            BrakeProfile.Throttle, LongitudinalSpeed, LateralSpeed, bArcade));
-    // This is a *second* Arcade-only human safeguard. It observes actual
-    // Chaos yaw rate and signed chassis slip after the existing lateral
-    // traction policy. The rival keeps its independent AI spin guard;
-    // Simulation Inspired and an intentional handbrake drift are unchanged.
-    const bool bHumanDriver = IsLocallyControlled() &&
-        Cast<APlayerController>(GetController()) != nullptr;
-    const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();
-    const float AssistedSteering = static_cast<float>(
-        latebrake::LimitSteeringAtSpeed(SmoothedSteering, Speed, bArcade));
     // Replace the rigid fixed steering impulse with a measured-yaw
     // target. Both player and AI use exactly the same bounded controller.
     // Handbrake slides retain their original, intentionally loose torque.
+    // Normal player/rival yaw now shares the SAME frame's qualified
+    // longitudinal brake request and grip product as lateral tire forces.
+    // Heavy braking reduces NEW requested corner yaw; measured-yaw
+    // correction still damps a genuine spin instead of freezing physics.
     const latebrake::SpeedAwareYawOutput PlannedYaw =
         latebrake::CalculateSpeedAwareYawTorque({
             static_cast<double>(DeltaSeconds),
@@ -1086,18 +1558,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(AngularVelocity.Z),
             static_cast<double>(AssistedSteering),
             static_cast<double>(Mass),
-            bArcade, Surface.OffPavement});
+            bArcade, Surface.OffPavement,
+            ContactBraking.WholeBodyBudgetDeceleration +
+                OpposingBraking.WholeBodyBudgetDeceleration +
+                ReverseGovernor.WholeBodyBudgetDeceleration,
+            static_cast<double>(GarageGrip) *
+                TireCondition.GripMultiplier() *
+                Surface.LateralGripMultiplier *
+                CollisionDamage.LateralGripMultiplier()});
     if (!PlannedYaw.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
-    const float EffectiveThrottle = static_cast<float>(
-        latebrake::ModerateHumanSpinThrottle(
-            CornerThrottle, static_cast<double>(LongitudinalSpeed),
-            static_cast<double>(LateralSpeed),
-            static_cast<double>(AngularVelocity.Z),
-            bArcade, bHumanDriver, BrakeProfile.HandbrakeActive));
     // Observational only: classify the reduction ACTUALLY applied to the
     // shared base/nitro/draft throttle, never the driver's requested axis.
     // This meter cannot alter physics, race progress or stored rewards.
@@ -1109,22 +1582,30 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // A finite, player-only boost modifies existing acceleration and speed
     // cap; it never modifies checkpoints, rivals, rewards or race records.
     // Steady-speed cap ramps avoid a velocity snap when a held boost ends.
+    // Preserve the starting cap for a rejected candidate: one interpolation
+    // per physical frame, not a second artificial speed-cap step.
+    const float PreviousNitroSpeedCapScale = CurrentNitroSpeedCapScale;
     const latebrake::NitroDriveOutput NitroDrive = NitroBoost.Step(
         static_cast<double>(DeltaSeconds),
-        bHumanDriver && GroundContact.HasDriveContact,
+        bHumanDriver && AxleBudget.RearDriveReady,
         bEffectiveBraking, static_cast<double>(EffectiveThrottle),
         static_cast<double>(LongitudinalSpeed));
     CurrentNitroSpeedCapScale = FMath::FInterpConstantTo(
         CurrentNitroSpeedCapScale,
         static_cast<float>(NitroDrive.SpeedCapMultiplier),
         FMath::Min(DeltaSeconds, 0.1f), 0.24f);
-    // Race-local heat uses real signed chassis speed, effective propulsion
-    // after spin moderation, and qualified nitro; service braking does not
-    // generate motor heat. Player and rival share the same policy.
+    // Race-local heat must measure the propulsion that can ACTUALLY reach
+    // the motor path. Opposite-pedal deceleration is an engine-brake command,
+    // not propulsive work: otherwise a long reverse/forward direction change
+    // heats and derates the engine while motor thrust is explicitly denied.
+    // Preserve cooling during braking, and heat genuine forward/reverse
+    // driving only with qualified rear contact. Player and rival share this.
     const latebrake::EngineHeatOutput EngineThermal = EngineHeat.Observe({
         static_cast<double>(DeltaSeconds),
         static_cast<double>(LongitudinalSpeed),
-        bEffectiveBraking || !GroundContact.HasDriveContact
+        bEffectiveBraking || OpposingBraking.OpposingThrottle ||
+            ReverseGovernor.ReverseMotorBlocked ||
+            !AxleBudget.RearDriveReady
             ? 0.0 : static_cast<double>(EffectiveThrottle),
         NitroDrive.Active, true});
     // Drafting must observe an actual ahead, aligned, moving rival and a
@@ -1140,7 +1621,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         Mode->TryGetRivalDraftingState(
             RivalPosition, RivalForward, RivalVelocity);
     double DraftExtraForce = 0.0;
-    if (bDraftTargetReady && GroundContact.HasDriveContact)
+    if (bDraftTargetReady && AxleBudget.RearDriveReady)
     {
         const FVector Position = GetActorLocation();
         const FVector Offset = RivalPosition - Position;
@@ -1169,7 +1650,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         latebrake::AllocateArcadeBoost(
             NitroDrive.ForceMultiplier, DraftExtraForce, NitroDrive.Active);
     DraftExtraForce = CombinedBoost.DraftExtra;
-    CurrentDraftAppliedFraction = static_cast<float>(DraftExtraForce);
+    // Allocation is not physically applied motor thrust. Clear the HUD
+    // until the final shared grip/gear/heat/damage limits and the actual
+    // drafting AddForce branch have all executed this frame.
+    CurrentDraftAppliedFraction = 0.f;
     // Advisory metrics only: no scoring, lap records or tire-forces use
     // these values. Invalid long frames are rejected by the policy.
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),
@@ -1210,21 +1694,84 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             bArcade, true});
     if (!TransmissionFrame.Valid)
     {
-        NeutralizeMotionWhenDrivingBlocked();
+        RejectOptionalDriveAfterSpring(SpringResponse);
         return;
     }
-    const float GearPowerFactor = static_cast<float>(
+    const float AxleGearPowerFactor = static_cast<float>(
         latebrake::GearAwareMotorPowerFactor(
             static_cast<double>(EffectiveThrottle),
             static_cast<double>(LongitudinalSpeed),
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
             bArcade) * TransmissionFrame.PropulsionFactor *
-            ContactTractionScale);
-    if (GroundContact.HasDriveContact &&
+            RearDriveTractionScale);
+    // A cap change after nitro must not instantly overwrite world XY
+    // velocity. Plan a finite, physically applied opposing force before
+    // ANY optional motor/handling forces are submitted this frame.
+    // This is the same true Chaos XY velocity used by road drag, for
+    // the same player/rival chassis, and has no race-clock authority.
+    // Unlike aerodynamic road load, this additional arcade speed-cap
+    // brake requires the SAME accepted sprung contact as tire grip.
+    // Airborne/unloaded chassis keeps true momentum until it lands.
+    // Actual lateral skid force competes for the same vector grip budget;
+    // deliberate service/opposing/reverse brakes take precedence.
+    const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
+    const latebrake::PlanarSpeedGovernorOutput SpeedGovernor =
+        latebrake::CalculatePlanarSpeedGovernor({
+            static_cast<double>(DeltaSeconds),
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y),
+            static_cast<double>(Mass),
+            static_cast<double>(ActiveSpeedCap), bArcade,
+            GroundContact.ContactTractionScale,
+            static_cast<double>(GarageGrip) * TireCondition.GripMultiplier() *
+                Surface.LateralGripMultiplier *
+                CollisionDamage.LateralGripMultiplier(),
+            static_cast<double>(LateralSpeed),
+            LateralForce.RightForce * static_cast<double>(ContactTractionScale),
+            bEffectiveBraking || OpposingBraking.OpposingThrottle ||
+                ReverseGovernor.Active});
+    if (!SpeedGovernor.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    // Base, nitro and draft share the remaining tire-force allowance after
+    // this same frame's actual lateral correction. Earlier gear/heat/axle
+    // reductions remain ceilings; this final factor can only reduce thrust.
+    const double AuthorizedMotorThrottle = ReverseGovernor.ReverseMotorBlocked
+        ? 0.0 : static_cast<double>(EffectiveThrottle);
+    const double AllocatedMotorForce =
+        static_cast<double>(DriveForce) * AuthorizedMotorThrottle *
+        Surface.MotorMultiplier * static_cast<double>(ImpactMotorScale) *
+        static_cast<double>(EngineMotorScale) *
+        static_cast<double>(AxleGearPowerFactor) *
+        (1.0 + CombinedBoost.NitroExtra + DraftExtraForce);
+    const latebrake::TractionLimitedPropulsionOutput MotorTraction =
+        latebrake::CalculateTractionLimitedPropulsion({
+            static_cast<double>(DeltaSeconds), static_cast<double>(Mass),
+            AllocatedMotorForce,
+            LateralForce.RightForce * static_cast<double>(ContactTractionScale),
+            static_cast<double>(GarageGrip) * TireCondition.GripMultiplier() *
+                Surface.LateralGripMultiplier *
+                CollisionDamage.LateralGripMultiplier(),
+            GroundContact.ContactTractionScale,
+            AxleBudget.RearDriveTractionScale, bArcade});
+    if (!MotorTraction.Valid)
+    {
+        RejectOptionalDriveAfterSpring(SpringResponse);
+        return;
+    }
+    const float GearPowerFactor = AxleGearPowerFactor *
+        static_cast<float>(MotorTraction.ForceScale);
+    // Spring support was already submitted after independent spring
+    // validation; never double-apply it along the motor path.
+    // Candidate nitro consumption must be settled using the real
+    // post-traction AddForce decision, never an input or HUD guess.
+    bool bNitroBonusDispatched = false;
+    if (AxleBudget.RearDriveReady &&
         !bEffectiveBraking &&
-        (FMath::Abs(EffectiveThrottle) < 0.01f ||
-         FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) ||
-         Speed < 100.f))
+        !OpposingBraking.OpposingThrottle &&
+        !ReverseGovernor.ReverseMotorBlocked)
     {
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
             static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
@@ -1232,9 +1779,21 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // adds at most 38% bounded arcade acceleration on this same frame.
         if (NitroDrive.Active)
         {
-            Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
-                static_cast<float>(CombinedBoost.NitroExtra) *
-                static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
+            // Compute the positive delivered bonus from the SAME final
+            // post-friction total motor force. Avoid a second independent
+            // boost/tire budget and retain the original explicit 3-path
+            // motor force expression for auditable source equality.
+            const double DeliveredNitroBonusForce =
+                MotorTraction.ForwardForce * CombinedBoost.NitroExtra /
+                (1.0 + CombinedBoost.NitroExtra + DraftExtraForce);
+            if (std::isfinite(DeliveredNitroBonusForce) &&
+                DeliveredNitroBonusForce > 0.01)
+            {
+                Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
+                    static_cast<float>(CombinedBoost.NitroExtra) *
+                    static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
+                bNitroBonusDispatched = true;
+            }
         }
         // Preserve the unmodified base acceleration contract; bonus is
         // additive and never exceeds six percent of positive motor demand.
@@ -1243,15 +1802,47 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
                 static_cast<float>(DraftExtraForce) *
                 static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
+            // The only truth for the bonus displayed in the HUD is the
+            // same complete scale used by the real physics force above.
+            // Report zero when gear/rear contact/traction removes thrust;
+            // never advertise an unspent geometric eligibility bonus.
+            const double DeliveredMotorScale =
+                static_cast<double>(Surface.MotorMultiplier) *
+                static_cast<double>(ImpactMotorScale) *
+                static_cast<double>(EngineMotorScale) *
+                static_cast<double>(GearPowerFactor);
+            CurrentDraftAppliedFraction = static_cast<float>(
+                latebrake::CalculateDeliveredDraftFraction(
+                    DraftExtraForce, DeliveredMotorScale));
         }
     }
-    else if (GroundContact.HasDriveContact && !bEffectiveBraking)
+    else if (AxleBudget.RearDriveReady && !bEffectiveBraking)
     {
-        // Opposite throttle acts as engine braking until the car slows.
-        Chassis->AddForce(-Forward * LongitudinalSpeed * Mass *
-            static_cast<float>(latebrake::FrameStableDampingRate(3.0, DeltaSeconds)) *
-            ContactTractionScale);
+        // This force already includes the same-frame rear traction once.
+        // It is grip/pedal/frame bounded and included in LateralForce above.
+        Chassis->AddForce(Forward *
+            static_cast<float>(OpposingBraking.ForwardForce));
     }
+
+    // The last charge/heat threshold frame is an ACTIVE candidate
+    // until real positive nitro AddForce is submitted. Commit it only
+    // after delivery; a rejected terminal candidate must NOT start
+    // cooldown or demand a new physical key press.
+    if (NitroDrive.Active && bNitroBonusDispatched)
+    {
+        NitroBoost.CommitDeliveredFrame();
+    }
+    else if (NitroDrive.Active && !bNitroBonusDispatched &&
+             NitroBoost.RejectUndeliveredFrame())
+    {
+        CurrentNitroSpeedCapScale = PreviousNitroSpeedCapScale;
+        CurrentNitroSpeedCapScale = FMath::FInterpConstantTo(
+            CurrentNitroSpeedCapScale, 1.f,
+            FMath::Min(DeltaSeconds, 0.1f), 0.24f);
+    }
+    // Engine nitro-only heat uses the SAME delivery verdict; ordinary
+    // propulsion-demand/airflow engine heat remains independently valid.
+    EngineHeat.SettleNitroDelivery(bNitroBonusDispatched);
 
     // Real planar resistance: low-speed coasting, increasing aero drag
     // toward top speed, and additional grass/shoulder rolling loss. Applied
@@ -1272,22 +1863,42 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // Physically sampled brake force, bounded to a credible approximate
         // contact-grip budget. This retains reverse braking and handbrake
         // slide handling but does not apply a speed-proportional hard stop.
-        Chassis->AddForce(Forward *
-            static_cast<float>(PhysicalBraking.ForwardForce) *
-            ContactTractionScale);
+        // Each share opposes its actual road-point motion and is capped
+        // by that corner's positive spring load. No COM fallback or second
+        // contact multiplier may bypass an unloaded/moving-backward corner.
+        for (unsigned Corner = 0; Corner < 4; ++Corner)
+        {
+            const double BrakeForce = ContactBraking.TangentForces[Corner];
+            if (BrakeForce != 0.0)
+            {
+                Chassis->AddForceAtLocation(
+                    RoadBrakeDirections[Corner] * static_cast<float>(BrakeForce),
+                    WheelRoadContacts[Corner]);
+            }
+        }
+        WheelBrakes.CommitDeliveredFrame(WheelBrakePlan.Receipt);
+    }
+    else
+    {
+        WheelBrakes.RejectUndeliveredFrame(WheelBrakePlan.Receipt);
     }
     // Neutral throttle COASTS under the progressive road load and Chaos
     // baseline damping. It is not an implicit service-brake command.
 
-    const float SteeringAuthority = FMath::Clamp(FMath::Abs(LongitudinalSpeed) / 900.f, 0.f, 1.f);
-    const float SteerDirection = LongitudinalSpeed < -75.f ? -1.f : 1.f;
+    // The deliberate handbrake torque uses true signed longitudinal
+    // movement, not a discontinuous -75 cm/s reverse classifier. At a
+    // reversing crawl its yaw direction must already be reversed, fade
+    // continuously to zero at rest, and remain bounded at racing speed.
+    const float HandbrakeYawAuthority = static_cast<float>(
+        latebrake::SignedHandbrakeYawAuthority(
+            static_cast<double>(LongitudinalSpeed)));
     // Speed-sensitive steering is already evaluated before the motor
     // forces. Prefer a real measured yaw-rate response with lateral
     // acceleration limits; preserve the original yaw authority only
     // during deliberate human handbrake slides.
     const float TurnTorque = BrakeProfile.HandbrakeActive
         ? (bArcade ? 21000000.f : 14000000.f) *
-              AssistedSteering * SteeringAuthority * SteerDirection
+              AssistedSteering * HandbrakeYawAuthority
         : static_cast<float>(PlannedYaw.TorqueZ);
     // Decorative wheels track real forward chassis motion, including
     // reverse, using the same bounded speed-sensitive visual steering.
@@ -1295,38 +1906,122 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         static_cast<double>(LongitudinalSpeed),
         static_cast<double>(AssistedSteering));
     Chassis->AddTorqueInRadians(FVector(
-        0.f, 0.f, TurnTorque * ContactTractionScale));
+        0.f, 0.f, TurnTorque * FrontSteeringTractionScale));
 
-    const float ActiveSpeedCap = MaxSpeed * CurrentNitroSpeedCapScale;
-    if (Speed > ActiveSpeedCap)
+    // A bounded drag force replaces the old per-frame XY velocity snap.
+    // In particular a nitro cap falling back toward its normal ceiling
+    // cannot teleport physical motion, remove sideways momentum by fiat
+    // or touch vertical spring/gravity velocity. The existing gradual
+    // gearbox power taper prevents new thrust into this soft limit.
+    if (SpeedGovernor.Active)
     {
-        const FVector Limited = FlatVelocity.GetClampedToMaxSize(ActiveSpeedCap);
-        Chassis->SetPhysicsLinearVelocity(FVector(Limited.X, Limited.Y, Velocity.Z));
+        Chassis->AddForce(FVector(
+            static_cast<float>(SpeedGovernor.ForceX),
+            static_cast<float>(SpeedGovernor.ForceY), 0.f));
+    }
+    // Reversing beyond the signed gear target now settles under finite
+    // physical force. Never replace world/sideways/vertical Chaos velocity.
+    // Service/opposing braking already holds priority and the available
+    // rear contact is accounted for by the shared cornering budget.
+    if (ReverseGovernor.Active)
+    {
+        Chassis->AddForce(FVector(
+            static_cast<float>(ReverseGovernor.ForceX),
+            static_cast<float>(ReverseGovernor.ForceY), 0.f));
     }
 
-    // Real signed chassis motion, not requested reverse throttle, drives
-    // the backward gear limit for player and autonomous rival alike. Leave
-    // lateral slides and Chaos vertical velocity untouched, including after
-    // the existing forward/nitro maximum-speed budget has been enforced.
-    const FVector PostCapVelocity = Chassis->GetPhysicsLinearVelocity();
-    const latebrake::ReverseSpeedLimitOutput ReverseLimit =
-        latebrake::LimitPlanarReverseSpeed(
-            static_cast<double>(PostCapVelocity.X),
-            static_cast<double>(PostCapVelocity.Y),
-            static_cast<double>(Forward.X),
-            static_cast<double>(Forward.Y), bArcade);
-    if (!ReverseLimit.Valid)
+    // Advisory capacity is visible only after this complete drive frame
+    // passed every source policy and all actual force commands were sent.
+    // It is an estimate for the next rival tick, not measured deceleration.
+    BrakeCapability.Publish(BrakeCapabilityCandidate,
+        static_cast<double>(DeltaSeconds), TeleportRevision);
+
+#if !UE_BUILD_SHIPPING
+    // Real Development-build evidence for installed-handling QA only.
+    // Use the SAME accepted suspension cadence as the existing v=1
+    // record (including grid->GO transitions). The values below are
+    // signed planned contributions from the just-submitted motor, brake,
+    // lateral and yaw paths, NOT measured acceleration. Chaos collision,
+    // road load, governor, float rounding and physics substeps can change
+    // the resulting vehicle motion. No gameplay or release authority.
+    if (bReportSuspensionDriveEvidence)
     {
-        NeutralizeMotionWhenDrivingBlocked();
-        return;
+        const bool bMotorSubmitted = AxleBudget.RearDriveReady &&
+            !bEffectiveBraking && !OpposingBraking.OpposingThrottle &&
+            !ReverseGovernor.ReverseMotorBlocked;
+        const bool bOpposingSubmitted = AxleBudget.RearDriveReady &&
+            !bEffectiveBraking && OpposingBraking.OpposingThrottle;
+        const double SubmittedMotorForce = bMotorSubmitted
+            ? MotorTraction.ForwardForce : 0.0;
+        const double SubmittedOpposingForce = bOpposingSubmitted
+            ? OpposingBraking.ForwardForce : 0.0;
+        const double SubmittedServiceForce =
+            bEffectiveBraking && GroundContact.HasDriveContact
+            ? ContactBraking.TotalForwardForce : 0.0;
+        const double SubmittedLateralForce =
+            LateralForce.RightForce *
+            static_cast<double>(ContactTractionScale);
+        const double SubmittedYawTorque =
+            static_cast<double>(TurnTorque) *
+            static_cast<double>(FrontSteeringTractionScale);
+        const bool bLocalHuman = IsLocallyControlled() &&
+            Cast<APlayerController>(GetController()) != nullptr;
+        UE_LOG(LogTemp, Display,
+            TEXT("LATEBRAKE_DRIVE v=1 driver=%s mode=%s "
+                 "forward_cmps=%.1f lateral_cmps=%.1f yaw_radps=%.3f "
+                 "throttle=%.3f steer=%.3f contact=%.3f "
+                 "rear=%.3f front=%.3f motor_force=%.1f "
+                 "opposing_force=%.1f service_force=%.1f "
+                 "lateral_force=%.1f yaw_torque=%.1f draft_pct=%.3f"),
+            bLocalHuman ? TEXT("player") : TEXT("autonomous"),
+            bArcade ? TEXT("arcade") : TEXT("simulation"),
+            LongitudinalSpeed, LateralSpeed, AngularVelocity.Z,
+            EffectiveThrottle, AssistedSteering,
+            GroundContact.ContactTractionScale,
+            AxleBudget.RearDriveTractionScale,
+            AxleBudget.FrontSteeringTractionScale,
+            SubmittedMotorForce, SubmittedOpposingForce,
+            SubmittedServiceForce, SubmittedLateralForce,
+            SubmittedYawTorque,
+            static_cast<double>(CurrentDraftAppliedFraction) * 100.0);
+        const auto& WheelFrame = WheelBrakes.LastCommitted();
+        if (WheelFrame.Valid)
+        {
+            unsigned activeMask = 0;
+            for (unsigned corner = 0; corner < 4; ++corner)
+                if (WheelFrame.Wheels[corner].Available) activeMask |= 1u << corner;
+            // Measured road speeds, spring-projected load estimates and
+            // explicitly MODELED rotors/pressure/slip. Commanded tire
+            // forces are not measurements from the Chaos contact solver.
+            UE_LOG(LogTemp, Display,
+                TEXT("LATEBRAKE_WHEEL_BRAKES v=1 driver=%s source=modeled actor_id=%u "
+                     "receipt=%llu steps=%u iterations=%u vehicle=%d active_mask=%u dt_s=%.6f "
+                     "road_fl_cmps=%.3f road_fr_cmps=%.3f road_rl_cmps=%.3f road_rr_cmps=%.3f "
+                     "omega_fl=%.6f omega_fr=%.6f omega_rl=%.6f omega_rr=%.6f "
+                     "slip_fl=%.6f slip_fr=%.6f slip_rl=%.6f slip_rr=%.6f "
+                     "pressure_fl=%.4f pressure_fr=%.4f pressure_rl=%.4f pressure_rr=%.4f "
+                     "normal_est_fl_n=%.4f normal_est_fr_n=%.4f normal_est_rl_n=%.4f normal_est_rr_n=%.4f "
+                     "command_fl_n=%.4f command_fr_n=%.4f command_rl_n=%.4f command_rr_n=%.4f"),
+                bLocalHuman ? TEXT("player") : TEXT("autonomous"), GetUniqueID(),
+                static_cast<unsigned long long>(WheelFrame.Receipt),
+                WheelFrame.InternalSteps, WheelFrame.SolverIterations, GarageVehicleId,
+                activeMask, static_cast<double>(DeltaSeconds),
+                RoadContactForwardSpeeds[0], RoadContactForwardSpeeds[1],
+                RoadContactForwardSpeeds[2], RoadContactForwardSpeeds[3],
+                WheelFrame.Wheels[0].ModeledRadiansPerSecond, WheelFrame.Wheels[1].ModeledRadiansPerSecond,
+                WheelFrame.Wheels[2].ModeledRadiansPerSecond, WheelFrame.Wheels[3].ModeledRadiansPerSecond,
+                WheelFrame.Wheels[0].ModeledSlip, WheelFrame.Wheels[1].ModeledSlip,
+                WheelFrame.Wheels[2].ModeledSlip, WheelFrame.Wheels[3].ModeledSlip,
+                WheelFrame.Wheels[0].Pressure, WheelFrame.Wheels[1].Pressure,
+                WheelFrame.Wheels[2].Pressure, WheelFrame.Wheels[3].Pressure,
+                WheelFrame.Wheels[0].NormalLoadNewtons, WheelFrame.Wheels[1].NormalLoadNewtons,
+                WheelFrame.Wheels[2].NormalLoadNewtons, WheelFrame.Wheels[3].NormalLoadNewtons,
+                WheelFrame.Wheels[0].AverageForceNewtons, WheelFrame.Wheels[1].AverageForceNewtons,
+                WheelFrame.Wheels[2].AverageForceNewtons, WheelFrame.Wheels[3].AverageForceNewtons);
+        }
     }
-    if (ReverseLimit.Limited)
-    {
-        Chassis->SetPhysicsLinearVelocity(FVector(
-            static_cast<float>(ReverseLimit.VelocityX),
-            static_cast<float>(ReverseLimit.VelocityY),
-            PostCapVelocity.Z));
-    }
+#endif
+
 }
 
 void ALatebrakeCarPawn::ApplySignalLights(
@@ -1357,16 +2052,35 @@ void ALatebrakeCarPawn::ApplySignalLights(
     }
 }
 
+void ALatebrakeCarPawn::ApplySprungForces(
+    const latebrake::SuspensionResponse& Response,
+    const FVector (&WorldAnchors)[4])
+{
+    if (!Response.Valid || !IsValid(Chassis) ||
+        !Chassis->IsSimulatingPhysics())
+    {
+        return;
+    }
+    for (int32 Index = 0; Index < 4; ++Index)
+    {
+        const double Lift =
+            Response.Corners[static_cast<unsigned>(Index)].UpForce;
+        if (Lift > 0.0 && FMath::IsFinite(Lift))
+        {
+            Chassis->AddForceAtLocation(
+                FVector(0.f, 0.f, static_cast<float>(Lift)),
+                WorldAnchors[Index]);
+        }
+    }
+}
+
 void ALatebrakeCarPawn::ApplyWheelVisualPose()
 {
-    const latebrake::WheelVisualPose Pose = WheelMotion.Current();
     // Cylinder spindle is local Z; first lay it along chassis Y, then
     // roll around spindle and yaw only the two front decorative wheels.
     constexpr double Pi = 3.14159265358979323846;
     const double Radians = Pi / 180.0;
     const FQuat Base(FRotator(0.f, 0.f, 90.f));
-    const FQuat Rolling(FVector::UpVector, Pose.RollDegrees * Radians);
-    const FQuat Steering(FVector::UpVector, Pose.FrontSteerDegrees * Radians);
     UStaticMeshComponent* Wheels[] = {
         FrontLeftWheel, FrontRightWheel, RearLeftWheel, RearRightWheel
     };
@@ -1374,9 +2088,27 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
     {
         if (IsValid(Wheels[Index]))
         {
+            const latebrake::WheelVisualPose Pose =
+                WheelMotion.CurrentCorner(static_cast<unsigned>(Index));
+            const FQuat Rolling(FVector::UpVector, Pose.RollDegrees * Radians);
+            const FQuat Steering(FVector::UpVector, Pose.FrontSteerDegrees * Radians);
             const FQuat Visual = (Index < 2 ? Steering : FQuat::Identity) *
                 Base * Rolling;
             Wheels[Index]->SetRelativeRotation(Visual.Rotator());
+            // The spoke/cylinder remains a non-colliding visual attached to
+            // the simulated chassis. Move its spindle with observed spring
+            // travel so the wheel follows actual road-height changes.
+            const double Travel = LastSuspension.Valid
+                ? LastSuspension.Corners[static_cast<unsigned>(Index)].WheelTravelCm
+                : latebrake::SuspensionVisualMinTravelCm;
+            const auto Position = latebrake::ChassisVisualOffset(
+                static_cast<unsigned>(Index), Travel);
+            const FVector RootScale(3.8f, 1.8f, 0.65f);
+            Wheels[Index]->SetRelativeLocation(
+                FVector(static_cast<float>(Position.ForwardCm),
+                        static_cast<float>(Position.RightCm),
+                        static_cast<float>(Position.SpindleHeightCm))
+                    / RootScale);
         }
     }
 }
@@ -1387,6 +2119,19 @@ void ALatebrakeCarPawn::UpdateWheelVisuals(
     if (WheelMotion.Advance({
             DeltaSeconds, ForwardSpeedCmPerSecond, VisualSteering, 29.0}))
     {
+        const auto& BrakeFrame = WheelBrakes.LastCommitted();
+        if (BrakeFrame.Valid)
+        {
+            std::array<double, 4> rotation{};
+            unsigned mask = 0;
+            for (unsigned corner = 0; corner < 4; ++corner)
+                if (BrakeFrame.Wheels[corner].Available)
+                {
+                    mask |= 1u << corner;
+                    rotation[corner] = BrakeFrame.Wheels[corner].ModeledRotationRadians;
+                }
+            WheelMotion.ApplyCommittedBrakeRotation(BrakeFrame.Receipt, mask, rotation);
+        }
         ApplyWheelVisualPose();
     }
     else
@@ -1448,9 +2193,16 @@ float ALatebrakeCarPawn::GetForwardSpeedKmH() const
     {
         return std::numeric_limits<float>::quiet_NaN();
     }
+    // Real Chaos pitches and rolls while supported by independent wheel
+    // springs. Use only XY road motion; vertical landing velocity must not
+    // manufacture a quick 0–5 km/h launch or shorten signed road speed.
     const FVector Velocity = Chassis->GetPhysicsLinearVelocity();
     const FVector Forward = GetActorForwardVector();
-    const double ForwardKmH = FVector::DotProduct(Velocity, Forward) * 0.036;
+    const double ForwardKmH = latebrake::MeasuredPlanarForwardSpeedKmh(
+        static_cast<double>(Velocity.X),
+        static_cast<double>(Velocity.Y),
+        static_cast<double>(Forward.X),
+        static_cast<double>(Forward.Y));
     if (!FMath::IsFinite(ForwardKmH) ||
         ForwardKmH > static_cast<double>(std::numeric_limits<float>::max()) ||
         ForwardKmH < -static_cast<double>(std::numeric_limits<float>::max()))
@@ -1485,12 +2237,15 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     SlipAngleMeter.Suspend();
     TireCondition.Suspend();
     BrakeHeat.Suspend();
+    WheelBrakes.Reset();
+    BrakeCapability.Invalidate();
     EngineHeat.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
     ApplyWheelVisualPose();
+    GripReattachment.Reset();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())
     {
@@ -1740,6 +2495,8 @@ void ALatebrakeCarPawn::ToggleBestLapGhost()
 
 void ALatebrakeCarPawn::TogglePause()
 {
+    GripReattachment.Reset();
+    ResetSuspensionQa();
     NitroReleased();
     // The world may stop ticking immediately: clear the held brake before
     // GameMode attempts to pause or resume engine time.

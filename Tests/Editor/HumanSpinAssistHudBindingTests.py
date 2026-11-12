@@ -32,7 +32,7 @@ class HumanSpinAssistHudBindingTests(unittest.TestCase):
             "!IsRacePhysicsReady()",
             "const FVector Velocity = Chassis->GetPhysicsLinearVelocity();",
             "StabilizeCornerThrottle(",
-            "GetPhysicsAngularVelocityInRadians()",
+            "const FVector AngularVelocity = Chassis->GetPhysicsAngularVelocityInRadians();",
             "ModerateHumanSpinThrottle(",
             "SpinAssist.Observe({",
             "NitroBoost.Step(",
@@ -50,7 +50,7 @@ class HumanSpinAssistHudBindingTests(unittest.TestCase):
         self.assertIn("latebrake::HumanSpinAssistMeter SpinAssist;", self.pawn_h)
 
     def test_pawn_interruption_and_race_restart_reset_live_display(self):
-        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs()", 1)[1].split(
+        clear = self.pawn.split("void ALatebrakeCarPawn::ClearDriverInputs(", 1)[1].split(
             "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()", 1)[0]
         self.assertIn("SpinAssist.Suspend();", clear)
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(

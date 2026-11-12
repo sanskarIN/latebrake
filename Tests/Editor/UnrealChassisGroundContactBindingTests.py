@@ -23,8 +23,9 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
             "GroundSample.ChassisVerticalSpeedCmPerSecond =",
             "Chassis->GetComponentLocation()",
             "GroundQuery.AddIgnoredActor(this);",
-            "constexpr float ProbeForwardCm = 122.f;",
-            "constexpr float ProbeSideCm = 68.f;",
+            "latebrake::ChassisProbeOffset(",
+            "ChassisForward * static_cast<float>(Probe.ForwardCm)",
+            "ChassisRight * static_cast<float>(Probe.RightCm)",
             "for (int32 Index = 0; Index < 4; ++Index)",
             "World->LineTraceSingleByChannel(",
             "Hit, Origin, End, ECC_WorldStatic, GroundQuery",
@@ -50,20 +51,37 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
             "GroundContact.HasDriveContact",
             "TireCondition.Observe({",
             "bServiceBraking && GroundContact.HasDriveContact",
-            "bHumanDriver && GroundContact.HasDriveContact",
-            "bEffectiveBraking || !GroundContact.HasDriveContact",
-            "bDraftTargetReady && GroundContact.HasDriveContact",
+            "bHumanDriver && AxleBudget.RearDriveReady",
+            "bEffectiveBraking || OpposingBraking.OpposingThrottle ||\n"
+            "            ReverseGovernor.ReverseMotorBlocked ||\n"
+            "            !AxleBudget.RearDriveReady",
+            "bDraftTargetReady && AxleBudget.RearDriveReady",
             "TransmissionFrame.PropulsionFactor *",
+            "RearDriveTractionScale",
+            "FrontSteeringTractionScale",
+            "latebrake::CalculateAxleTractionBudget(GroundContact, SpringResponse)",
             "ContactTractionScale);",
-            "if (GroundContact.HasDriveContact &&",
-            "else if (GroundContact.HasDriveContact && !bEffectiveBraking)",
+            "if (AxleBudget.RearDriveReady &&",
+            "else if (AxleBudget.RearDriveReady && !bEffectiveBraking)",
             "static_cast<float>(LateralForce.RightForce) *",
             "if (bEffectiveBraking && GroundContact.HasDriveContact)",
-            "static_cast<float>(PhysicalBraking.ForwardForce) *",
-            "TurnTorque * ContactTractionScale",
+            "ContactBraking.TangentForces[Corner]",
+            "TurnTorque * FrontSteeringTractionScale",
         ):
             self.assertIn(marker, tick)
-        self.assertGreaterEqual(tick.count("ContactTractionScale"), 6)
+        self.assertGreaterEqual(tick.count("ContactTractionScale"), 5)
+        self.assertIn(
+            "PhysicalBraking.ForwardForce * GroundContact.ContactTractionScale,",
+            tick,
+        )
+        self.assertIn(
+            "0.f, 0.f, TurnTorque * FrontSteeringTractionScale));",
+            tick,
+        )
+        self.assertIn(
+            "bArcade) * TransmissionFrame.PropulsionFactor *\n            RearDriveTractionScale);",
+            tick,
+        )
 
     def test_physics_geometry_avoids_fake_wheel_rig_and_ground_invention(self):
         for marker in (
