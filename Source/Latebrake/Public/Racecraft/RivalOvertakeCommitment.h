@@ -32,7 +32,10 @@ struct OvertakeCommitmentSettings final
     double MaximumLeadGapCm=2800.0;
     double MinimumAdjacentGapCm=250.0;
     double MinimumRearGapCm=600.0;
-    double MinimumRoadEdgeCm=220.0;
+    // Additional reserve AFTER the lane planner's 140-cm edge margin.
+    // The default 800-cm road accepts a 400-cm passing lane only when
+    // its combined 290-cm-plus clearance is physically measured.
+    double MinimumRoadEdgeCm=150.0;
     double MinimumGripG=0.45;
     double MaximumYawRateRadS=2.2;
     double MaximumHeadingErrorRadians=0.30;
