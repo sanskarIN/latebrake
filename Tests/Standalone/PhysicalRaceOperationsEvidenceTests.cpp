@@ -189,6 +189,49 @@ static void PitCrewEvidence()
               !tamper.Snapshot().PhysicalReleaseClear,
               "physical pit identity, reservation and clock faults deny release");
     }
+    {
+        auto overfilled=originalStart;
+        overfilled.MeasuredFuelTankLiters=100.0;
+        overfilled.RequestedFuelLiters=30.0;
+        PhysicalPitCrewSupervisor fuelCapacity;
+        Check(fuelCapacity.Configure({}),
+              "overfilled pit-service fixture has valid settings");
+        const auto refused=fuelCapacity.Step(overfilled);
+        Check(refused.Valid &&
+              refused.Fault==PitCrewFault::FuelCapacityExceeded &&
+              refused.Phase==PitCrewPhase::Unprepared &&
+              !refused.PhysicalReleaseClear,
+              "pit cannot accept physically impossible fuel tank request");
+    }
+    for(int timeoutCase=0;timeoutCase<2;++timeoutCase)
+    {
+        auto timed=originalStart;
+        timed.PitReleaseAuthorized=false;
+        PitCrewServiceParameters budget;
+        if(timeoutCase==0)
+            budget.MaximumPitServiceSeconds=3.0;
+        else
+            budget.MaximumReservationSeconds=1.5;
+        PhysicalPitCrewSupervisor watchdog;
+        Check(watchdog.Configure(budget) &&
+              watchdog.Step(timed).Valid,
+              "pit-service expiration fixture starts at real clock");
+        const int endingTick=timeoutCase==0?31:16;
+        PitCrewServiceReview status{};
+        for(int tick=1;tick<=endingTick;++tick)
+        {
+            ++timed.Identity.Frame;
+            timed.PhysicsClockSeconds=100.0+tick*0.1;
+            timed.DeltaSeconds=0.1;
+            status=watchdog.Step(timed);
+            Check(status.Valid,
+                  "expired pit-service sequence still accepts source clock");
+        }
+        Check(status.Phase==PitCrewPhase::Aborted &&
+              status.Fault==PitCrewFault::ServiceExpired &&
+              !status.PhysicalReleaseClear,
+              "maximum service and reservation budgets both deny late release");
+    }
     PhysicalPitCrewSupervisor supervisor;
     Check(supervisor.Configure({}),
           "physical pit service state machine configured");
@@ -293,6 +336,16 @@ static void PitCrewEvidence()
           !released.OfficialRaceResultModified &&
           supervisor.CertifiedReleaseFrames()==1,
           "only chronological original-wheel service can certify release");
+    stage.CurrentBodyDamageFraction=1.0;
+    ++stage.Identity.Frame;
+    stage.PhysicsClockSeconds=107.1;
+    stage.DeltaSeconds=0.1;
+    const auto withdrawn=supervisor.Step(stage);
+    Check(withdrawn.Valid &&
+          withdrawn.Phase==PitCrewPhase::SafetyInspection &&
+          !withdrawn.PhysicalReleaseClear &&
+          supervisor.CertifiedReleaseFrames()==1,
+          "new physical chassis damage revokes previously qualified release");
     const auto replay=supervisor.Step(stage);
     Check(!replay.Valid && supervisor.Rejections()==1,
           "the same physical pit frame cannot release twice");
