@@ -333,7 +333,7 @@ static void RejectMalformedArchives()
     // For slot 0 the identity is 1000, encoded in 8 little-endian bytes.
     constexpr std::array<std::uint8_t,8> recordedFirstActor{
         0xe8U,0x03U,0U,0U,0U,0U,0U,0U};
-    constexpr std::size_t archiveHeaderBytes=69;
+    constexpr std::size_t archiveHeaderBytes=73;
     const std::size_t recordBytes=(source.Bytes.size()-4-
         archiveHeaderBytes)/source.RecordedFrames;
     std::size_t actorOffset=bad.size();
@@ -358,7 +358,7 @@ static void RejectMalformedArchives()
     bad=source.Bytes;
     // A record is exactly 28 + 6*(8 + 10*4) = 316 bytes.
     // The second recorded source frame must be the successor of frame 1.
-    bad[69+316]=1;
+    bad[archiveHeaderBytes+recordBytes]=1;
     RepairTestChecksum(bad);
     expectFault(bad,PhysicalReplayArchiveFault::TemporalDiscontinuity,
           "non-monotonic imported source frame cannot be interpolated");
