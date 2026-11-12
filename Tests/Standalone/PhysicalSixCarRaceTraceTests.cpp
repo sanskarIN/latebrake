@@ -329,8 +329,29 @@ static void RejectMalformedArchives()
     expectFault(bad,PhysicalReplayArchiveFault::UnsupportedHeader,
           "unbounded archive frame count cannot allocate a phantom fleet");
     bad=source.Bytes;
-    // Header is 69 bytes, then 28-byte frame prefix; first real Actor ID.
-    bad[69+28]^=0x40;
+    // Locate the actual first-frame actor token, never an unrelated byte.
+    // For slot 0 the identity is 1000, encoded in 8 little-endian bytes.
+    constexpr std::array<std::uint8_t,8> recordedFirstActor{
+        0xe8U,0x03U,0U,0U,0U,0U,0U,0U};
+    constexpr std::size_t archiveHeaderBytes=69;
+    const std::size_t recordBytes=(source.Bytes.size()-4-
+        archiveHeaderBytes)/source.RecordedFrames;
+    std::size_t actorOffset=bad.size();
+    for(std::size_t i=archiveHeaderBytes;
+        i+recordedFirstActor.size()<=
+            archiveHeaderBytes+recordBytes;++i)
+    {
+        if(std::equal(recordedFirstActor.begin(),
+                      recordedFirstActor.end(),bad.begin()+
+                          static_cast<std::ptrdiff_t>(i)))
+        {
+            actorOffset=i;
+            break;
+        }
+    }
+    Check(actorOffset<archiveHeaderBytes+recordBytes,
+          "first recorded physical actor token exists in wire payload");
+    bad[actorOffset]^=0x40;
     RepairTestChecksum(bad);
     expectFault(bad,PhysicalReplayArchiveFault::InvalidIdentity,
           "serialized chassis identity must match fixed six-slot roster");
