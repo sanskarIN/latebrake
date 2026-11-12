@@ -15,16 +15,54 @@ observed speed.
 - The rule only activates when the rival is moving and genuinely
   **closing** on the player, not merely when cars are parked nearby,
   in adjacent lanes or traveling the same direction at similar speeds.
-- Between approximately 600 and 1,450 cm ahead the rival reduces
-  its existing positive throttle, proportionately to distance.
-- Under 600 cm of ahead distance, sufficiently strong closing motion
-  requests ordinary braking. The rule does **not** deliberately
+- The base 600–1,450 cm throttle/reaction policy is retained, but
+  **qualified measured braking capability** can extend anticipation
+  smoothly to a maximum of 6,500 cm for rapidly closing cars.
+- A nonzero estimated stopping shortfall now requests early normal
+  braking even before the old fixed 1,450 cm cutoff. Under 600 cm,
+  strong closing motion still requests braking. The rule does **not** deliberately
   swerve out of lane, reverse, accelerate to pass or choose a
   different waypoint.
 - Existing corner braking, route arrival, checkpoint progress, racing
   time, rewards and career rules are never overwritten or promoted
   to official rival race placement. A missing/unready player or
   malformed physics sample blocks rival motor output.
+
+## Live measured-brake stopping envelope (subsequent source fix)
+
+The fixed 14.5-metre courtesy awareness distance did not leave enough
+room when the physical rival was closing much faster than the player.
+The rival now forwards the **already qualified** physical brake
+deceleration from `RivalCornerBrakeResult` into its existing
+`RivalTrafficAwareness` policy. That forecast derives from previously
+measured tire grip, road surface, collision damage, brake heat and
+arcade/simulation brake mode. Invalid, missing, negative or nonfinite
+braking evidence produces neutral steering and active braking instead
+of inventing dry-road grip.
+
+The new conservative relative-speed stopping approximation uses
+`closing_speed * 0.50 s + closing_speed² / (2 * measured_braking)`,
+plus the existing **380 cm** clearance margin. Early awareness scales
+with that distance, capped at **6,500 cm**; the old 1,450 cm band
+remains the minimum for throttle tapering. Within the observed same-lane
+corridor, near bumper overlap can request braking even if both cars have
+similar speed. Pre-existing emergency time-to-contact and brake-hold
+hysteresis remain active. The driver, route, waypoint, steering, race
+clock and savegame are unchanged.
+
+Portable tests include low-brake-grip versus healthy braking on the
+same actual speed/gap, 50-metre high closing cases, missing brake
+telemetry, alternate lanes, matched speeds, and a deterministic
+16,000+ sample parameter sweep. A low-grip car must never be permitted
+to accelerate at an observed gap that already required braking when
+the identical car had stronger brakes.
+
+This is a **source-only safety estimate**, not a validated
+collision-avoidance system. It assumes linear same-lane approach and
+does not predict steering cuts, another car suddenly changing lanes,
+current ABS slip or future Chaos contact. The Unreal 5.8 self-hosted
+physics validation remains required before approving the richer
+six-car integration, a playable release or safety claims.
 
 ## Data origin and ordering
 
