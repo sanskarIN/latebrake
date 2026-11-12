@@ -1,4 +1,4 @@
-#include "Racecraft/PhysicalSixCarReplayArchive.h"
+#include "Racecraft/PhysicalSixCarCameraRig.h"
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -295,7 +295,11 @@ static void RejectMalformedArchives()
                          const char* message)
     {
         PhysicalReplayArchiveReader reader;
-        Check(reader.Import(mutated)==expected &&
+        const auto observed=reader.Import(mutated);
+        if(observed!=expected)
+            std::cerr << "Archive fault expected=" << static_cast<int>(expected)
+                      << " got=" << static_cast<int>(observed) << '\n';
+        Check(observed==expected &&
               reader.Size()==0 &&
               !reader.Preview(10.0).Valid,
               message);
@@ -360,6 +364,157 @@ static void RejectMalformedArchives()
           !reader.Preview(10.024).Valid,
           "bad later import clears all previously decoded replay authority");
 }
+static PhysicalCameraFrame CameraFrame(const RivalLaneTrafficFrame& traffic)
+{
+    PhysicalCameraFrame frame;
+    frame.Fleet=ReviewPhysicalTraceFrame(traffic);
+    frame.OriginalCircuitCollisionReady=true;
+    frame.SpectatorCameraPermitted=true;
+    for(int slot=0;slot<PhysicalFleetCapacity;++slot)
+    {
+        const auto index=static_cast<std::size_t>(slot);
+        const auto& actor=frame.Fleet.Actors[index];
+        auto& sensor=frame.Chassis[index];
+        sensor.Identity=actor.Identity;
+        sensor.ChaosBodyComponentToken=4000+
+            static_cast<std::uint64_t>(slot);
+        sensor.PositionCm={actor.Pose.Position.X,
+            actor.Pose.Position.Y,150.0};
+        sensor.VelocityCmS={actor.VelocityCmS.X,
+            actor.VelocityCmS.Y,0.0};
+        sensor.YawRadians=actor.Pose.HeadingRadians;
+        sensor.RoadHeightCm=0.0;
+        sensor.SensorClockSeconds=frame.Fleet.PhysicsClockSeconds;
+        sensor.ActualEngineTransformObserved=true;
+        sensor.OriginalCollisionBody=true;
+        sensor.OriginalTrackSurfaceObserved=true;
+    }
+    return frame;
+}
+static void PhysicalCameraShotReview()
+{
+    auto traffic=CompleteSixCars();
+    const auto frame=CameraFrame(traffic);
+    Check(ValidCameraFrame(frame),
+          "all six camera chassis match exact real traffic frame");
+    for(int kind=0;kind<5;++kind)
+    {
+        const auto shot=static_cast<PhysicalCameraShot>(kind);
+        const auto camera=PlanPhysicalCamera(frame,1,shot);
+        Check(camera.Valid &&
+              camera.Fault==PhysicalCameraFault::None &&
+              camera.FocusSlot==1 &&
+              camera.VerifiedRivalCount==5 &&
+              camera.EyeGroundClearanceCm>=55.0 &&
+              camera.FieldOfViewDegrees>=43.0 &&
+              camera.FieldOfViewDegrees<=91.0 &&
+              !camera.UnrealCameraCommandIssued &&
+              !camera.VehicleControlsModified &&
+              !camera.OfficialRaceClockModified,
+              "camera composition is physically bounded and read-only");
+    }
+    const auto chase=PlanPhysicalCamera(
+        frame,1,PhysicalCameraShot::ChaseNear);
+    Check(chase.Valid &&
+          std::abs(chase.EyeCm.X+620.0)<0.001 &&
+          std::abs(chase.EyeCm.Z-370.0)<0.001,
+          "near chase camera uses actual chassis pose and authored offset");
+    Check(!PlanPhysicalCamera(frame,6,
+          PhysicalCameraShot::ChaseNear).Valid,
+          "out-of-roster camera slot cannot spawn phantom car");
+    Check(!PlanPhysicalCamera(frame,1,
+          PhysicalCameraShot::Trackside).Valid,
+          "an invented broadcast marker cannot impersonate original world");
+    auto marker=frame;
+    marker.Trackside.PositionCm={2000.0,3000.0,800.0};
+    marker.Trackside.LookAtCm={0.0,0.0,0.0};
+    marker.Trackside.OriginalCameraMarkerToken=191;
+    marker.Trackside.OriginalTrackCameraMarker=true;
+    const auto trackside=PlanPhysicalCamera(
+        marker,1,PhysicalCameraShot::Trackside);
+    Check(trackside.Valid &&
+          trackside.EyeCm.X==2000.0 &&
+          trackside.EyeCm.Y==3000.0,
+          "original trackside camera comes only from authenticated marker");
+    auto invalid=frame;
+    invalid.Chassis[2].ChaosBodyComponentToken=
+        invalid.Chassis[1].ChaosBodyComponentToken;
+    Check(!ValidCameraFrame(invalid,{}),
+          "duplicate original Chaos camera chassis tokens are rejected");
+    invalid=frame;
+    invalid.Chassis[3].SensorClockSeconds+=0.5;
+    Check(!ValidCameraFrame(invalid,{}),
+          "misaligned real chassis timestamp cannot update spectator view");
+    invalid=frame;
+    invalid.Chassis[4].PositionCm.Y+=30.0;
+    Check(!ValidCameraFrame(invalid,{}),
+          "camera sensor cannot spoof a different world body location");
+}
+static void OriginalCameraCollisionAndState()
+{
+    auto traffic=CompleteSixCars();
+    auto frame=CameraFrame(traffic);
+    frame.ObstacleCount=1;
+    auto& wall=frame.Obstacles[0];
+    wall.BoundsMinimumCm={-470.0,-180.0,0.0};
+    wall.BoundsMaximumCm={-320.0,180.0,800.0};
+    wall.OriginalCollisionComponentToken=5001;
+    wall.ActualEngineObstacleObserved=true;
+    wall.OriginalTrackGeometry=true;
+    const auto clipped=PlanPhysicalCamera(
+        frame,1,PhysicalCameraShot::ChaseNear);
+    Check(clipped.Valid &&
+          clipped.ObstructionDistanceCm<620.0 &&
+          clipped.EyeCm.X>-620.0 &&
+          clipped.EyeCm.X<0.0 &&
+          clipped.MeasuredObstacleCount==1,
+          "original world obstacle shortens unsafe chase-camera ray");
+    wall.BoundsMinimumCm={-100.0,-180.0,0.0};
+    wall.BoundsMaximumCm={-30.0,180.0,800.0};
+    const auto blocked=PlanPhysicalCamera(
+        frame,1,PhysicalCameraShot::ChaseNear);
+    Check(!blocked.Valid &&
+          blocked.Fault==PhysicalCameraFault::CameraOccluded,
+          "camera cannot hide inside near-chassis physical wall");
+    wall.OriginalTrackGeometry=false;
+    Check(!ValidCameraFrame(frame,{}),
+          "unknown authored obstacle cannot certify collision avoidance");
+    frame=CameraFrame(traffic);
+    PhysicalSixCarCameraRig controller;
+    Check(controller.Configure({}),
+          "physical six-car camera supervisor can configure");
+    const auto first=controller.Step(
+        frame,1,PhysicalCameraShot::ChaseNear);
+    Check(first.Valid && controller.Accepted()==1,
+          "real six-car fleet frame starts camera-supervisor state");
+    Check(!controller.Step(frame,1,
+            PhysicalCameraShot::ChaseNear).Valid &&
+          controller.Rejected()==1,
+          "same observed frame cannot advance moving camera twice");
+    RealNextFrame(traffic);
+    frame=CameraFrame(traffic);
+    const auto next=controller.Step(
+        frame,1,PhysicalCameraShot::ChaseFar);
+    Check(next.Valid && controller.Changes()==1 &&
+          controller.Accepted()==2 &&
+          !next.UnrealCameraCommandIssued,
+          "camera shot change does not change source collision or race state");
+    RealNextFrame(traffic);
+    frame=CameraFrame(traffic);
+    const auto smooth=controller.Step(
+        frame,1,PhysicalCameraShot::ChaseFar);
+    Check(smooth.Valid &&
+          smooth.EyeCm.X>next.EyeCm.X &&
+          smooth.EyeCm.X<frame.Chassis[1].PositionCm.X,
+          "continuous actual engine frames smooth bounded spectator camera");
+    RealNextFrame(traffic);
+    traffic.Others[2].Identity.Actor+=9000;
+    frame=CameraFrame(traffic);
+    Check(!controller.Step(frame,1,
+              PhysicalCameraShot::ChaseFar).Valid &&
+          controller.Rejected()==2,
+          "changed original six-car roster revokes smooth camera session");
+}
 int main()
 {
     DirectPhysicalEvidence();
@@ -368,5 +523,7 @@ int main()
     BoundedWrapAndFaults();
     ArchiveRoundTrip();
     RejectMalformedArchives();
+    PhysicalCameraShotReview();
+    OriginalCameraCollisionAndState();
     std::cout << "PhysicalSixCarRaceTrace OK\n";
 }
