@@ -2302,3 +2302,17 @@ else()
     target_compile_options(latebrake_six_car_replay_analytics_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PhysicalSixCarRaceReplayAnalytics COMMAND latebrake_six_car_replay_analytics_tests)
+
+
+# Isolated, source-only original race-engineer strategy features imported
+# from prior exact-head validated draft PR #344; keep incompatible old
+# pit-strategy observation distinct from current telemetry pit review.
+add_executable(latebrake_race_engineer_strategy_tests RaceEngineerStrategyTests.cpp)
+target_include_directories(latebrake_race_engineer_strategy_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_engineer_strategy_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_race_engineer_strategy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_engineer_strategy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceEngineerStrategy COMMAND latebrake_race_engineer_strategy_tests)
