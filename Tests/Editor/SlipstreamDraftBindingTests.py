@@ -88,6 +88,41 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertLess(tick.index("if (!FMath::IsFinite(Speed)"),
                         tick.index("SlipstreamBoost.Observe({"))
 
+    def test_both_real_cars_have_measured_lateral_slip_qualification(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        self.assertIn("const float LateralSpeed =", tick)
+        self.assertIn("FVector::DotProduct(FlatVelocity, Right)", tick)
+        draft = tick.split("const bool bDraftTargetReady =", 1)[1].split(
+            "SlipstreamBoost.Suspend();", 1
+        )[0]
+        for required in (
+            "FVector::DotProduct(RivalVelocity, RivalForward)",
+            "const double RivalLateralSpeed = FVector::DotProduct(",
+            "FVector(-RivalForward.Y, RivalForward.X, 0.f)",
+            "static_cast<double>(LateralSpeed)",
+            "RivalLateralSpeed",
+        ):
+            self.assertIn(required, draft)
+        self.assertLess(
+            draft.index("const double RivalLateralSpeed ="),
+            draft.index("SlipstreamBoost.Observe({"))
+        self.assertLess(
+            draft.index("static_cast<double>(LateralSpeed)"),
+            draft.index("RivalLateralSpeed\n        });"))
+        for required in (
+            "FollowerLateralSpeedCmPerSecond",
+            "LeadLateralSpeedCmPerSecond",
+            "MaximumLateralSlipFraction = 0.25",
+            "MaximumLateralSpeedCmPerSecond = 500.0",
+            "!std::isfinite(followerLateral)",
+            "!std::isfinite(leadLateral)",
+            "std::abs(followerLateral)",
+            "std::abs(leadLateral)",
+            "Reset();",
+        ):
+            self.assertIn(required, self.policy)
+
     def test_base_motor_and_brakes_remain_authoritative(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
