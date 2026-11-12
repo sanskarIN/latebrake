@@ -115,6 +115,18 @@ class BestLapGhostBindingTests(unittest.TestCase):
         self.assertLess(source.index("distance > dt * 15000.0 + 200.0"),
                         source.index("if (dt < 0.09)"))
         self.assertIn("InvalidateCurrentLap();", source)
+        # Observed frames are denser than stored 10Hz keyframes. Both
+        # consecutive live samples and sparse recorded keys must be checked.
+        self.assertIn("if (HaveLastObservedPose)", source)
+        self.assertIn("pose.Seconds - LastObservedPose.Seconds", source)
+        self.assertIn("frameDt <= 0.0", source)
+        self.assertIn("frameDistance > frameDt * 15000.0 + 200.0",
+                      source)
+        self.assertLess(
+            source.index("frameDistance > frameDt * 15000.0 + 200.0"),
+            source.index("if (dt < 0.09)"))
+        self.assertGreaterEqual(source.count("LastObservedPose = pose;"), 2)
+        self.assertIn("HaveLastObservedPose = false;", self.policy)
         self.assertNotIn("AddForce(", source)
         self.assertNotIn("AwardCredits(", source)
 
