@@ -108,6 +108,49 @@ int main()
     Check(!g.Record(Pose(0.20, 4000.0), true),
           "unexplained teleport-sized spatial jump is rejected");
 
+    // The previous 10Hz recorder skipped the displacement check when
+    // a valid Unreal tick arrived less than 0.09 seconds after a key.
+    // A very short-lived teleport could escape into a later clean key.
+    g.StartLap();
+    Check(g.Record(Pose(0.10, 0.0), true), "subframe ghost baseline");
+    Check(!g.Record(Pose(0.14, 3000.0), true) &&
+          !g.IsCandidateAllowed() && g.GetCandidateCount() == 0,
+          "sub-10Hz teleport cannot bypass physical pose validation");
+    Check(!g.Record(Pose(0.20, 0.0), true),
+          "returning to the former key cannot rehabilitate poisoned lap");
+    Check(!g.FinishLap(8.0, true, true),
+          "a hidden out-and-back teleport never earns a clean lap");
+
+    g.StartLap();
+    Check(g.Record(Pose(0.10, 0.0), true), "begin ordinary high-FPS lap");
+    for (int frame = 1; frame <= 8; ++frame)
+    {
+        const double t = 0.10 + frame * 0.01;
+        Check(g.Record(Pose(t, frame * 10.0), true) &&
+              g.IsCandidateAllowed() && g.GetCandidateCount() == 1,
+              "valid short-time Unreal frames preserve 10Hz keyframe budget");
+    }
+    Check(g.Record(Pose(0.20, 100.0), true) &&
+          g.GetCandidateCount() == 2,
+          "normal high refresh rate still stores sparse ghost keyframes");
+    Check(g.Record(Pose(0.21, 115.0), true) &&
+          g.IsCandidateAllowed() && g.GetCandidateCount() == 2,
+          "short subframe road motion remains accepted but unstored");
+
+    // Rapidly repeated tiny-time samples cannot hide an impossible
+    // teleport behind the last accepted 10Hz keyframe. No heap, file,
+    // clock or scoring authority is involved in this stress check.
+    for (int round = 0; round < 20000; ++round)
+    {
+        g.StartLap();
+        Check(g.Record(Pose(0.10, 0.0), true),
+              "deterministic subframe spatial baseline");
+        const double t = 0.11 + 0.001 * (round % 50);
+        Check(!g.Record(Pose(t, 6000.0), true) &&
+              !g.IsCandidateAllowed() && g.GetCandidateCount() == 0,
+              "20k sub-10Hz spatial jumps must invalidate candidates");
+    }
+
     for (const LapGhostPose& invalid : {
         Pose(0.1, std::numeric_limits<double>::quiet_NaN()),
         Pose(0.1, std::numeric_limits<double>::infinity()),
