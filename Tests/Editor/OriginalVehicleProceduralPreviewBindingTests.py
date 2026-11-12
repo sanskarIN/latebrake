@@ -29,6 +29,8 @@ class OriginalVehicleProceduralPreviewBindingTests(unittest.TestCase):
         self.assertIn("SetGenerateOverlapEvents(false)", bridge)
         self.assertIn("OriginalVehicleSurfaceComposer builder", bridge)
         self.assertIn("builder.ValidateMesh", bridge)
+        self.assertNotIn("preview==originalChassis", bridge)
+        self.assertNotIn("const_cast", bridge)
         self.assertIn("CreateDynamicMaterialInstance", bridge)
         self.assertNotIn("SetSimulatePhysics(true)", bridge)
         self.assertNotIn("CreateMeshSection_LinearColor(", header)

@@ -110,7 +110,6 @@ bool CreateOriginalVehicleVisualSections(
     int vehicleId)
 {
     if(!IsValid(preview) || !IsValid(originalChassis) ||
-       preview==originalChassis ||
        vehicleId<0 || vehicleId>=6 ||
        !originalChassis->GetStaticMesh())
         return false;
@@ -120,7 +119,7 @@ bool CreateOriginalVehicleVisualSections(
     const OriginalVehicleMeshResult result=builder.Build(vehicleId);
     if(!result.Valid || !builder.ValidateMesh(result.Mesh))
         return false;
-    const UMaterialInterface* base=originalChassis->GetMaterial(0);
+    UMaterialInterface* base=originalChassis->GetMaterial(0);
     if(!IsValid(base))
         return false;
     std::array<UnrealOriginalSection,
@@ -160,8 +159,7 @@ bool CreateOriginalVehicleVisualSections(
             section.Tangents,
             false, // No runtime collision mesh, ever.
             false);
-        preview->SetMaterial(sectionId,
-                             const_cast<UMaterialInterface*>(base));
+        preview->SetMaterial(sectionId,base);
         if(UMaterialInstanceDynamic* material=
                preview->CreateDynamicMaterialInstance(sectionId))
         {
