@@ -90,6 +90,41 @@ int main()
     Check(!EvaluateChassisGroundContact(invalid).Valid,
           "untrusted vertical chassis velocity cannot grant motor force");
 
+    // Four trusted supports and a nearly settled body are needed for
+    // an actual pit service; normal drive remains eligible at two.
+    for (int n = 0; n <= 4; ++n)
+    {
+        const auto contact = EvaluateChassisGroundContact(Sample(n));
+        Check(HasStablePitGroundSupport(contact, 0.0) == (n == 4),
+              "pit service demands all four measured road supports");
+    }
+    const auto settled = EvaluateChassisGroundContact(Sample(4));
+    for (const double vertical : {-80.0, 0.0, 80.0})
+    {
+        Check(HasStablePitGroundSupport(settled, vertical),
+              "settled chassis accepts pit service at boundary");
+    }
+    for (const double vertical : {-80.001, 80.001,
+        std::numeric_limits<double>::quiet_NaN(),
+        std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity()})
+    {
+        Check(!HasStablePitGroundSupport(settled, vertical),
+              "bounce or nonfinite vertical movement denies service");
+    }
+    auto fabricated = settled;
+    fabricated.Valid = false;
+    Check(!HasStablePitGroundSupport(fabricated, 0.0),
+          "invalid contact may not authorize repairs");
+    fabricated = settled;
+    fabricated.HasDriveContact = false;
+    Check(!HasStablePitGroundSupport(fabricated, 0.0),
+          "missing actual drive contact may not authorize repairs");
+    fabricated = settled;
+    fabricated.ContactTractionScale = 0.45;
+    Check(!HasStablePitGroundSupport(fabricated, 0.0),
+          "partial contact traction may not authorize full pit repair");
+
     for (int i=0;i<80000;++i)
     {
         const int n=i%5;
