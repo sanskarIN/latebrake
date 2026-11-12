@@ -24,7 +24,7 @@ latebrake::RivalTrafficObservation Traffic(
 {
     return {
         0.0, 0.0, 0.0, rivalSpeed, ahead, lateral,
-        playerForward, 0.0, playerReady, rivalSpeed, 0.0
+        playerForward, 0.0, playerReady, rivalSpeed, 0.0, 684.0
     };
 }
 

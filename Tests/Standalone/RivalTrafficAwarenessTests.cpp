@@ -20,7 +20,7 @@ latebrake::RivalTrafficObservation Traffic(
     double playerSpeed = 900.0)
 {
     return {0.0, 0.0, 0.0, rivalSpeed, distance, side,
-            playerSpeed, 0.0, true, rivalSpeed, 0.0};
+            playerSpeed, 0.0, true, rivalSpeed, 0.0, 684.0};
 }
 }
 
@@ -33,14 +33,14 @@ int main()
             close.Steering == cruise.Steering && !close.Arrived,
             "closing on a player in the same lane triggers courtesy braking");
 
-    const auto approach = YieldRivalToPlayer(cruise, Traffic(1400, 0));
+    const auto approach = YieldRivalToPlayer(cruise, Traffic(2500, 0));
     Require(!approach.Brake && approach.Throttle >= 0.15 &&
             approach.Throttle < cruise.Throttle &&
             approach.Steering == cruise.Steering,
             "a distant approach reduces rival motor power without stealing steering");
 
     for (const auto& observation : {
-        Traffic(-300, 0), Traffic(0, 0), Traffic(1800, 0),
+        Traffic(-300, 0), Traffic(0, 0), Traffic(7000, 0),
         Traffic(500, 250), Traffic(500, -250),
         Traffic(400, 10, 350.0, 0.0),
         Traffic(400, 0, 1800.0, 1700.0),
@@ -67,6 +67,43 @@ int main()
         cruise, Traffic(1400, 0, 3400.0, 500.0));
     Require(fastCatch.Brake && fastCatch.Throttle == 0.0,
             "high closing speed triggers early braking even at fourteen meters");
+    const auto longRangeCatch = YieldRivalToPlayer(
+        cruise, Traffic(5000, 0, 3400.0, 500.0));
+    Require(longRangeCatch.Brake && longRangeCatch.Throttle == 0.0 &&
+            longRangeCatch.Steering == cruise.Steering,
+            "measured fast closing begins braking at fifty metres, not fourteen");
+    const auto beyondThrottleCap = YieldRivalToPlayer(
+        cruise, Traffic(7000, 0, 3400.0, 500.0));
+    Require(beyondThrottleCap.Brake && beyondThrottleCap.Throttle == 0.0,
+            "physical braking deficit must override the 65-metre throttle cap");
+    const auto ordinaryCatch = YieldRivalToPlayer(
+        cruise, Traffic(1800, 0, 2200.0, 900.0));
+    Require(ordinaryCatch.Brake && ordinaryCatch.Throttle == 0.0,
+            "predicted stopping distance now brakes before the old fixed cutoff");
+    auto faded = Traffic(1800, 0, 2500.0, 2000.0);
+    const auto healthyBrakes = YieldRivalToPlayer(cruise, faded);
+    faded.QualifiedBrakeDecelerationCmPerSecondSquared = 80.0;
+    const auto weakBrakes = YieldRivalToPlayer(cruise, faded);
+    Require(!healthyBrakes.Brake && healthyBrakes.Throttle == cruise.Throttle &&
+            weakBrakes.Brake && weakBrakes.Throttle == 0.0,
+            "real low-grip/faded brake forecast expands the stopping decision");
+    const auto farDistantLane = YieldRivalToPlayer(
+        cruise, Traffic(7000, 250.0, 3400.0, 500.0));
+    Require(!farDistantLane.Brake &&
+            farDistantLane.Throttle == cruise.Throttle,
+            "emergency beyond cap still respects true other-lane clearance");
+    const auto distantLane = YieldRivalToPlayer(
+        cruise, Traffic(5000, 250.0, 3400.0, 500.0));
+    Require(!distantLane.Brake && distantLane.Throttle == cruise.Throttle,
+            "farther same-straight prediction never brakes another lane");
+    const auto matchedSpeed = YieldRivalToPlayer(
+        cruise, Traffic(3500, 0, 2200.0, 2150.0));
+    Require(!matchedSpeed.Brake && matchedSpeed.Throttle == cruise.Throttle,
+            "nearly equal physical speed at safe gap does not invent a collision");
+    const auto bumperOverlap = YieldRivalToPlayer(
+        cruise, Traffic(150, 0, 1700.0, 1700.0));
+    Require(bumperOverlap.Brake && bumperOverlap.Throttle == 0.0,
+            "genuine near bumper occupancy brakes even without relative closing");
     const auto slowCatch = YieldRivalToPlayer(
         cruise, Traffic(1050, 0, 1500.0, 900.0));
     Require(!slowCatch.Brake && slowCatch.Throttle > 0.0 &&
@@ -99,7 +136,7 @@ int main()
     constexpr double HalfPi = 1.57079632679489661923;
     const RivalTrafficObservation ninety{
         1200.0, -700.0, HalfPi, 2000.0,
-        1190.0, -300.0, 0.0, 900.0, true, 0.0, 2000.0
+        1190.0, -300.0, 0.0, 900.0, true, 0.0, 2000.0, 684.0
     };
     const auto rotating = YieldRivalToPlayer(cruise, ninety);
     Require(rotating.Brake && rotating.Throttle == 0.0 &&
@@ -145,11 +182,29 @@ int main()
     };
     for (const auto& corrupt : invalid)
     {
-        const auto result = YieldRivalToPlayer(cruise, corrupt);
+        auto independentlyCorrupt = corrupt;
+        independentlyCorrupt.QualifiedBrakeDecelerationCmPerSecondSquared =
+            684.0;
+        const auto result = YieldRivalToPlayer(cruise, independentlyCorrupt);
         Require(result.Throttle == 0.0 && result.Brake &&
                 result.Steering == 0.0 && !result.Arrived,
                 "missing player or invalid physics must fail closed to no motor");
     }
+    auto noBrakeAuthority = Traffic(5000, 0, 3400.0, 500.0);
+    noBrakeAuthority.QualifiedBrakeDecelerationCmPerSecondSquared = 0.0;
+    const auto noAuthority = YieldRivalToPlayer(cruise, noBrakeAuthority);
+    Require(noAuthority.Brake && noAuthority.Throttle == 0.0 &&
+            noAuthority.Steering == 0.0,
+            "missing measured grip/braking forecast fails closed to neutral brake");
+    noBrakeAuthority.QualifiedBrakeDecelerationCmPerSecondSquared = nan;
+    Require(YieldRivalToPlayer(cruise, noBrakeAuthority).Brake,
+            "nonfinite braking forecast fails closed");
+    noBrakeAuthority.QualifiedBrakeDecelerationCmPerSecondSquared = inf;
+    Require(YieldRivalToPlayer(cruise, noBrakeAuthority).Brake,
+            "infinite braking forecast fails closed");
+    noBrakeAuthority.QualifiedBrakeDecelerationCmPerSecondSquared = -10.0;
+    Require(YieldRivalToPlayer(cruise, noBrakeAuthority).Brake,
+            "negative braking forecast cannot authorize propulsion");
     const auto badPilot = YieldRivalToPlayer(
         {nan, 0, false, false}, Traffic(400, 0));
     Require(badPilot.Brake && badPilot.Throttle == 0.0,
@@ -162,6 +217,33 @@ int main()
                 output.Throttle >= 0 && output.Throttle <= cruise.Throttle &&
                 output.Steering == cruise.Steering && !output.Arrived,
                 "every observed distance retains safe bounded speed and steering");
+    }
+    // Large deterministic sweep: worse physical stopping capability
+    // cannot turn a required brake into permission to accelerate.
+    for (int distance = 250; distance <= 6500; distance += 25)
+    {
+        for (int closing = 150; closing <= 3500; closing += 50)
+        {
+            auto physicallyHealthy = Traffic(
+                distance, 0, 3600.0, 3600.0 - closing);
+            auto physicallyWeak = physicallyHealthy;
+            physicallyWeak.QualifiedBrakeDecelerationCmPerSecondSquared = 80.0;
+            const auto withHealthyBrakes =
+                YieldRivalToPlayer(cruise, physicallyHealthy);
+            const auto withWeakBrakes =
+                YieldRivalToPlayer(cruise, physicallyWeak);
+            Require(std::isfinite(withHealthyBrakes.Throttle) &&
+                    std::isfinite(withWeakBrakes.Throttle) &&
+                    withHealthyBrakes.Throttle >= 0.0 &&
+                    withWeakBrakes.Throttle >= 0.0 &&
+                    withHealthyBrakes.Throttle <= cruise.Throttle &&
+                    withWeakBrakes.Throttle <= cruise.Throttle &&
+                    withHealthyBrakes.Steering == cruise.Steering &&
+                    withWeakBrakes.Steering == cruise.Steering,
+                    "all speeds, grip states and gaps keep bounded safe commands");
+            Require(!withHealthyBrakes.Brake || withWeakBrakes.Brake,
+                    "weaker measured brakes never dismiss a healthy-brake stop");
+        }
     }
     std::cout << "Rival lane-approach safety policy passed.\n";
     return EXIT_SUCCESS;

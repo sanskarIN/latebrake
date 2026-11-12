@@ -21,8 +21,10 @@ latebrake::RivalTrafficObservation Traffic(
     double distance, double side, double rivalSpeed = 2000.0,
     double playerSpeed = 1500.0)
 {
+    // Match the qualified previous-tick brake estimate supplied by
+    // the physical rival's corner-forecast pipeline in Unreal.
     return {0, 0, 0, rivalSpeed, distance, side, playerSpeed, 0,
-            true, rivalSpeed, 0};
+            true, rivalSpeed, 0, 684.0};
 }
 }
 
