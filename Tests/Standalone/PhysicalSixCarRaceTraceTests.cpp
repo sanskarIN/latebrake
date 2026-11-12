@@ -42,7 +42,7 @@ static RivalLaneTrafficFrame CompleteSixCars()
     {
         if(slot==1)continue;
         f.Others[static_cast<std::size_t>(i++)]=
-            RealActor(slot,-7000.0-slot*100.0);
+            RealActor(slot,-10000.0-slot*1800.0);
     }
     f.Others[1]=RealActor(2,2000.0);
     f.OtherCount=RivalTrafficCount;
