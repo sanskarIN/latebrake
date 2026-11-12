@@ -151,11 +151,57 @@ int main()
                 "failed or spoofed crossings leave current rival gate unchanged");
     }
 
+    // A genuinely verified Unreal tick may never advance a gate or
+    // accumulate a full recovery window from one oversized engine frame.
+    RivalRouteProgress frameGuard(4, 3);
+    Require(!frameGuard.ObserveVerifiedGate(
+                200.0, 1800.0, 8.0, true).Advanced &&
+            frameGuard.GetNextWaypoint() == 0 &&
+            frameGuard.GetRecoveryCount() == 0,
+            "8-second hitch cannot become a verified checkpoint");
+    Require(!frameGuard.ObserveVerifiedGate(
+                3000.0, 0.0, 8.0, false).NeedsRecovery &&
+            frameGuard.GetRecoveryCount() == 0,
+            "8-second hitch cannot become a stationary teleport");
+    for (int i = 0; i < 79; ++i)
+    {
+        Require(!frameGuard.ObserveVerifiedGate(
+                    3000.0, 0.0, 0.1, false).NeedsRecovery,
+                "physical recovery requires eight seconds of good frames");
+    }
+    Require(!frameGuard.ObserveVerifiedGate(
+                3000.0, 0.0, 0.101, false).NeedsRecovery &&
+            frameGuard.GetRecoveryCount() == 0,
+            "one bad frame must discard almost-complete stall progress");
+    for (int i = 0; i < 79; ++i)
+    {
+        Require(!frameGuard.ObserveVerifiedGate(
+                    3000.0, 0.0, 0.1, false).NeedsRecovery,
+                "recovery must wait for a fresh uninterrupted interval");
+    }
+    Require(frameGuard.ObserveVerifiedGate(
+                3000.0, 0.0, 0.1, false).NeedsRecovery &&
+            frameGuard.HasPendingRecovery() &&
+            frameGuard.GetRecoveryCount() == 1,
+            "eighty consecutive valid physical frames can request recovery");
+    Require(frameGuard.ReportRecoveryResult(true),
+            "verified physical engine outcome clears the pending request");
+    Require(!frameGuard.ObserveVerifiedGate(
+                200.0, 1500.0, std::numeric_limits<double>::infinity(),
+                true).Advanced && frameGuard.GetNextWaypoint() == 0,
+            "infinite physics frame cannot become a checkpoint");
+
     // A verified crossing cannot fabricate progression while the recovery
     // request is awaiting the actual engine move result.
     RivalRouteProgress pending(4, 3);
     CheckpointMotionTrace pendingTrace;
-    Require(pending.ObserveVerifiedGate(3000.0, 0.0, 8.0, false).NeedsRecovery,
+    for (int i = 0; i < 79; ++i)
+    {
+        Require(!pending.ObserveVerifiedGate(
+                    3000.0, 0.0, 0.1, false).NeedsRecovery,
+                "pending setup uses real 0.1-second qualified frames");
+    }
+    Require(pending.ObserveVerifiedGate(3000.0, 0.0, 0.1, false).NeedsRecovery,
             "existing physical stall requests bounded recovery");
     Require(!pending.ObserveVerifiedGate(0.0, 600.0, 0.05, true).Advanced,
             "pending teleport blocks even a purported valid directional gate");

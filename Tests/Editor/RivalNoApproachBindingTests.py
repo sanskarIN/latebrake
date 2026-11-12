@@ -52,7 +52,7 @@ class RivalNoApproachBindingTests(unittest.TestCase):
             "NoApproachMaxFrameSeconds = 0.10",
             "MaxQualifiedWaypointDistanceCm = 50000.0",
             "ApproachReferenceDistanceCm - MeaningfulApproachCm",
-            "StationarySeconds >= 8.0 || noApproachStall",
+            "StationarySeconds >= 8.0 - 1.0e-9 || noApproachStall",
             "ResetApproachWindow();",
             "if (RecoveryPending || IsFinished()",
         ):
@@ -66,6 +66,53 @@ class RivalNoApproachBindingTests(unittest.TestCase):
         self.assertNotIn("SetActorLocation", self.route)
         self.assertNotIn("AwardCredits", self.route)
         self.assertNotIn("GetRace(", self.route)
+
+    def test_pause_menu_focus_interruptions_clear_stalled_time(self):
+        tick = self.rival.split("void ALatebrakeRivalCar::Tick(", 1)[1]
+        before_physics = tick.split(
+            "const FVector Position = GetActorLocation();", 1)[0]
+        self.assertIn("Mode->IsFocusLossGuardActive()", before_physics)
+        self.assertIn("Mode->IsManualRacePauseActive()", before_physics)
+        self.assertIn("Mode->IsMenuOpen()", before_physics)
+        self.assertIn("Route.SuspendObservation();", before_physics)
+        self.assertLess(before_physics.index("Route.SuspendObservation();"),
+                        before_physics.index("RivalGateTrace.Reset();"))
+        self.assertIn("void SuspendObservation() noexcept", self.route)
+        suspend = self.route.split(
+            "void SuspendObservation() noexcept", 1
+        )[1].split("RouteObservation Observe(", 1)[0]
+        self.assertIn("StationarySeconds = 0.0;", suspend)
+        self.assertIn("ResetApproachWindow();", suspend)
+        for forbidden in ("NextWaypoint = ", "CompletedLaps = ",
+                          "Recoveries = ", "RecoveryPending = "):
+            self.assertNotIn(forbidden, suspend)
+
+    def test_first_resumed_tick_checks_authoritative_session_revision(self):
+        header = load("Source/Latebrake/Public/AI/LatebrakeRivalCar.h")
+        mode = load("Source/Latebrake/Public/Game/LatebrakeRaceGameMode.h")
+        actual_mode = load("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
+        tick = self.rival.split("void ALatebrakeRivalCar::Tick(", 1)[1]
+        epoch = tick.split("const uint64 CurrentSessionRevision =", 1)[1].split(
+            "const FVector Position = GetActorLocation();", 1
+        )[0]
+        self.assertIn("Mode->GetCheckpointSessionRevision()", epoch)
+        self.assertIn("CurrentSessionRevision != LastQualifiedSessionRevision", epoch)
+        self.assertIn("Route.SuspendObservation();", epoch)
+        self.assertIn("RivalGateTrace.Reset();", epoch)
+        self.assertIn("LastQualifiedSessionRevision = CurrentSessionRevision;", epoch)
+        self.assertIn("bHasQualifiedSessionRevision = true;", epoch)
+        self.assertIn("uint64 LastQualifiedSessionRevision = 0;", header)
+        self.assertIn("bool bHasQualifiedSessionRevision = false;", header)
+        self.assertIn("GetCheckpointSessionRevision() const", mode)
+        for event in ("CheckpointSession.OnPauseTransition();",
+                      "CheckpointSession.OnMenuReturnToRace();",
+                      "CheckpointSession.OnRaceRestart();"):
+            self.assertIn(event, actual_mode)
+        for method in ("ResetPilot", "ConfigurePilot"):
+            section = self.rival.split(
+                "void ALatebrakeRivalCar::" + method + "(", 1
+            )[1].split("void ALatebrakeRivalCar::", 1)[0]
+            self.assertIn("bHasQualifiedSessionRevision = false;", section)
 
     def test_resets_and_invalid_samples_cannot_carry_teleport_authority(self):
         for marker in (

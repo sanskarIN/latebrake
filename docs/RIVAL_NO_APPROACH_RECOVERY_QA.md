@@ -43,6 +43,48 @@ speeds under 80 cm/s. The 80–449 cm/s intermediate band is kept
 conservative; it cannot trigger a high-speed loop recovery based on
 ambiguous movement.
 
+## Physical verified-frame continuity fix
+
+The production `ObserveVerifiedGate` path now **rejects any physics
+frame longer than 0.10 seconds**, even if the caller says a directional
+plane was crossed. This is essential for the stationary recovery path:
+previously a single finite eight-second renderer hitch at speed zero
+could authorize an immediate supervised teleport. Such a frame is not
+eight seconds of consecutive observed physical stalling.
+
+Invalid position, speed or time also clears the real rival's stale
+stationary and moving-stall accumulation. A new recovery requires
+80 consecutive valid 0.10-second observations (or equivalent valid
+smaller frames), using a 1-nanosecond cumulative tolerance to account
+for non-exact decimal addition in IEEE-754 doubles. Gate credit and route advancement are blocked on a
+hitch, while the real `CheckpointMotionTrace` still performs 3D
+position, direction, speed and teleport-generation checking on the
+ordinary frames. The separate historical `Observe` distance-only
+portable interface remains backward-compatible; it does not drive
+the actual Unreal rival. No automatic recovery or lap credit can
+be based on an oversized verified physics tick.
+
+The amended cross-platform tests check a hitch at the gate, a hitch
+before stationary recovery, 79 clean frames interrupted by a long
+frame, invalid infinite time, and fresh uninterrupted recovery.
+In addition, the actual Unreal not-ready / pause / focus / menu branch
+calls `Route.SuspendObservation()` to clear both stall windows.
+Otherwise no route observation would occur during pause and 7.9 seconds
+of earlier stationary or moving stall could carry into the first
+resumed frame. The suspension preserves previously verified gate and
+lap counts, recovery budget and any pending issued teleport ledger.
+On a fully paused Unreal world, the actor Tick may not run at all.
+The first resumed qualified rival Tick therefore also compares
+`Mode->GetCheckpointSessionRevision()` against its last seen
+GameMode session epoch, which is incremented by actual pause, menu,
+focus and restart transitions. A changed epoch re-baselines the real
+3D gate trace and clears both rival stall windows and short-lived
+AI controls BEFORE any physics observation can advance the route.
+This preserves already credited gates and the teleport audit.
+Native UE behavior remains unverified.
+Unreal compilation and actual stalled-car recovery remain unverified
+until native self-hosted UE5.8 playtesting.
+
 ## Existing safeguards remain authoritative
 
 - The same finite `MaxRecoveries` budget (100,000 attempts) is used by
@@ -94,7 +136,7 @@ contact behavior, lap completion and driver experience are untested.
 4. Verify pause, focus loss, frame hitches, invalid chassis, player traffic,
    failed teleports, pending state, new events and normal finish handling.
 5. Validate actual installed Windows and Android performance and evidence
-   under [playable game gate #148](
-   https://github.com/sanskarIN/latebrake/issues/148).
+   through the owner-controlled UE5.8 real-device validation workflow
+   and record the specific PR head SHA and installed game evidence.
 
 No source-only test proves installed gameplay.

@@ -58,6 +58,16 @@ public:
         RecoveryPending = false;
     }
 
+    // Pause, focus loss, menu, invalid chassis and session suspension are
+    // breaks in physical observation, NOT evidence that a rival was stuck.
+    // Keep waypoint/lap credit and the finite pending teleport ledger,
+    // but require an entirely fresh observed interval for any recovery.
+    void SuspendObservation() noexcept
+    {
+        StationarySeconds = 0.0;
+        ResetApproachWindow();
+    }
+
     // Legacy distance-only route telemetry is retained for portable
     // consumers. The real physical rival must use ObserveVerifiedGate
     // below: mere proximity is never proof of a forward checkpoint pass.
@@ -88,6 +98,24 @@ private:
             !std::isfinite(speedCmPerSecond) || speedCmPerSecond < 0.0 ||
             !std::isfinite(deltaSeconds) || deltaSeconds <= 0.0)
         {
+            // Invalid real physics cannot be evidence of continuous
+            // stationary or moving observation across the interruption.
+            if (requiresPlaneCrossing) StationarySeconds = 0.0;
+            ResetApproachWindow();
+            return {};
+        }
+
+        // The actual Unreal rival uses ObserveVerifiedGate, not the old
+        // offline distance-only Observe API. Both real checkpoint credit
+        // AND recovery require bounded consecutive physics samples.
+        // In particular, an 8-second renderer hitch must NEVER count as
+        // eight seconds of physical stall, nor award a crossed gate.
+        // Keep legacy Observe behavior for backwards-compatible replay
+        // of historical synthetic route tests, not production scoring.
+        if (requiresPlaneCrossing &&
+            deltaSeconds > NoApproachMaxFrameSeconds)
+        {
+            StationarySeconds = 0.0;
             ResetApproachWindow();
             return {};
         }
@@ -158,7 +186,11 @@ private:
                 StationarySeconds + deltaSeconds);
         }
 
-        if (StationarySeconds >= 8.0 || noApproachStall)
+        // Repeated valid 0.10s physics frames may represent 8.0s as
+        // 7.999999999999988 due to binary floating-point rounding. The
+        // nanosecond tolerance is far below one frame and cannot turn a
+        // single hitch into a recovery (that was rejected above).
+        if (StationarySeconds >= 8.0 - 1.0e-9 || noApproachStall)
         {
             StationarySeconds = 0.0;
             ResetApproachWindow();
