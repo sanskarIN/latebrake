@@ -3,10 +3,12 @@
 #include "Vehicles/ChassisWheelAnchors.h"
 #include "Vehicles/SprungChassisDynamics.h"
 #include "Vehicles/SuspensionRayVelocity.h"
+#include "Track/CircuitCollisionPlan.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "Engine/StaticMeshActor.h"
 #include "CollisionQueryParams.h"
 
 #include <array>
@@ -26,15 +28,58 @@ bool GenuineWorldStaticHit(
     const FHitResult& hit,UStaticMeshComponent* chassis) noexcept
 {
     const UPrimitiveComponent* component=hit.GetComponent();
-    return hit.bBlockingHit &&
-        IsValid(component) &&
-        component!=chassis &&
-        component->GetCollisionObjectType()==ECC_WorldStatic &&
-        component->GetMobility()==EComponentMobility::Static &&
-        SourceFinite(hit.ImpactPoint) &&
-        SourceFinite(hit.ImpactNormal) &&
-        FMath::IsFinite(hit.Distance) &&
-        hit.Distance>=0.0f;
+    if(!hit.bBlockingHit || !IsValid(component) ||
+       component==chassis ||
+       component->GetCollisionObjectType()!=ECC_WorldStatic ||
+       component->GetCollisionEnabled()!=
+           ECollisionEnabled::QueryAndPhysics ||
+       component->GetCollisionResponseToChannel(ECC_PhysicsBody)!=ECR_Block ||
+       component->IsSimulatingPhysics() ||
+       !SourceFinite(hit.ImpactPoint) ||
+       !SourceFinite(hit.ImpactNormal) ||
+       !FMath::IsFinite(hit.Distance) ||
+       hit.Distance<0.0f)
+        return false;
+    // The production track uses world-static COLLISION object type with
+    // Movable component mobility at construction time. Mobility alone
+    // would incorrectly reject every authentic physical road actor.
+    // Instead require the exact immutable designed block, actual installed
+    // cube collision and original world transform of one of four slabs.
+    const AStaticMeshActor* actor=Cast<AStaticMeshActor>(
+        component->GetOwner());
+    if(!IsValid(actor) ||
+       actor->GetStaticMeshComponent()!=component ||
+       !actor->GetActorRotation().IsNearlyZero() ||
+       !actor->GetVelocity().IsNearlyZero() ||
+       !SourceFinite(actor->GetActorLocation()) ||
+       !SourceFinite(actor->GetActorScale3D()))
+        return false;
+    const FVector observed=actor->GetActorLocation();
+    const FVector scale=actor->GetActorScale3D();
+    for(int index=1;index<=4;++index)
+    {
+        const auto plan=latebrake::PlannedCollisionBlock(index);
+        const FVector expectedPosition(
+            plan.Center.X,plan.Center.Y,plan.Height);
+        const FVector expectedScale(
+            plan.ScaleX,plan.ScaleY,plan.ScaleZ);
+        if(plan.Style!=latebrake::CollisionBlockStyle::Asphalt ||
+           !observed.Equals(expectedPosition,0.05) ||
+           !scale.Equals(expectedScale,0.001))
+            continue;
+        // Real slab membership is checked in XY AND source-plane Z.
+        const double minX=plan.Center.X-50.0*plan.ScaleX;
+        const double maxX=plan.Center.X+50.0*plan.ScaleX;
+        const double minY=plan.Center.Y-50.0*plan.ScaleY;
+        const double maxY=plan.Center.Y+50.0*plan.ScaleY;
+        const double top=plan.Height+50.0*plan.ScaleZ;
+        return hit.ImpactPoint.X>=minX-0.1 &&
+            hit.ImpactPoint.X<=maxX+0.1 &&
+            hit.ImpactPoint.Y>=minY-0.1 &&
+            hit.ImpactPoint.Y<=maxY+0.1 &&
+            std::abs(static_cast<double>(hit.ImpactPoint.Z)-top)<1.0;
+    }
+    return false;
 }
 }
 
