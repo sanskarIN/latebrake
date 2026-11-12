@@ -55,7 +55,8 @@ eight seconds of consecutive observed physical stalling.
 Invalid position, speed or time also clears the real rival's stale
 stationary and moving-stall accumulation. A new recovery requires
 80 consecutive valid 0.10-second observations (or equivalent valid
-smaller frames). Gate credit and route advancement are blocked on a
+smaller frames), using a 1-nanosecond cumulative tolerance to account
+for non-exact decimal addition in IEEE-754 doubles. Gate credit and route advancement are blocked on a
 hitch, while the real `CheckpointMotionTrace` still performs 3D
 position, direction, speed and teleport-generation checking on the
 ordinary frames. The separate historical `Observe` distance-only
