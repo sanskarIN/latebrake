@@ -64,6 +64,17 @@ portable interface remains backward-compatible; it does not drive
 the actual Unreal rival. No automatic recovery or lap credit can
 be based on an oversized verified physics tick.
 
+The actual `ALatebrakeRivalCar::Tick` now also calls the shared
+`RivalRouteProgress::HasQualifiedFrameTime` BEFORE sampling
+`CheckpointMotionTrace`, closing a further integration gap: an
+oversized world frame must not update the trace baseline, apply a
+new autonomous throttle command, or carry prior brake/traffic history
+into the next valid tick. The actor brakes and resets only ephemeral
+motion observations; previously credited gate/lap totals remain
+untouched. Portable tests cover invalid finite/infinite durations and
+30/60/120 FPS normal frames, with Python source checks proving call
+order. This remains a source-only guard pending native Unreal QA.
+
 The amended cross-platform tests check a hitch at the gate, a hitch
 before stationary recovery, 79 clean frames interrupted by a long
 frame, invalid infinite time, and fresh uninterrupted recovery.

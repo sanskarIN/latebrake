@@ -58,10 +58,11 @@ class RivalDirectionalGateBindingTests(unittest.TestCase):
         self.assertIn("!requiresPlaneCrossing && distanceCm <= 440.0", self.route)
         self.assertIn("if (RecoveryPending || IsFinished()", self.route)
         self.assertIn("requiresPlaneCrossing &&", self.route)
-        self.assertIn("deltaSeconds > NoApproachMaxFrameSeconds", self.route)
+        self.assertIn("!HasQualifiedFrameTime(deltaSeconds)", self.route)
+        self.assertIn("deltaSeconds <= NoApproachMaxFrameSeconds", self.route)
         self.assertIn("if (requiresPlaneCrossing) StationarySeconds = 0.0;", self.route)
         self.assertLess(
-            self.route.index("deltaSeconds > NoApproachMaxFrameSeconds"),
+            self.route.index("!HasQualifiedFrameTime(deltaSeconds)"),
             self.route.index("++NextWaypoint;"),
         )
         self.assertIn("++NextWaypoint;", self.route)
@@ -71,6 +72,27 @@ class RivalDirectionalGateBindingTests(unittest.TestCase):
         for forbidden in ("AddTimePenalty(", "EarnCredits(", "SaveGame",
                           "UCLASS(", "SetActorLocation(", "AddTorque("):
             self.assertNotIn(forbidden, self.route)
+
+    def test_unreal_actor_rebases_gate_trace_before_invalid_hitch_samples(self):
+        tick = self.rival.split("void ALatebrakeRivalCar::Tick(", 1)[1]
+        guard = tick.split(
+            "if (!latebrake::RivalRouteProgress::HasQualifiedFrameTime(", 1
+        )[1].split(
+            "const uint64 CurrentSessionRevision =", 1
+        )[0]
+        self.assertIn("static_cast<double>(DeltaSeconds)", guard)
+        for token in ("Route.SuspendObservation();", "RivalGateTrace.Reset();",
+                      "FollowingBrakeHold.Reset();",
+                      "SetAutonomousControls(0.f, 0.f, true);",
+                      "Super::Tick(DeltaSeconds);", "return;"):
+            self.assertIn(token, guard)
+        self.assertLess(
+            tick.index("HasQualifiedFrameTime("),
+            tick.index("RivalGateTrace.Sample("))
+        self.assertLess(
+            tick.index("HasQualifiedFrameTime("),
+            tick.index("Route.ObserveVerifiedGate("))
+        self.assertIn("HasQualifiedFrameTime(double deltaSeconds)", self.route)
 
     def test_shared_player_gate_geometry_requires_motion_and_corridor(self):
         self.assertIn('#include "Racing/CheckpointMotionTrace.h"',

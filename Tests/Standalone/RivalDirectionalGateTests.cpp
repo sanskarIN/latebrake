@@ -151,6 +151,26 @@ int main()
                 "failed or spoofed crossings leave current rival gate unchanged");
     }
 
+    // The actor and the route controller MUST share exactly the same
+    // finite positive 0.10s frame interval to prevent a stale 3D
+    // gate baseline from surviving an Unreal frame hitch.
+    for (double delta : {
+        -8.0, -0.001, 0.0, 0.10000001, 0.101, 8.0,
+        std::numeric_limits<double>::quiet_NaN(),
+        std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity()
+    })
+    {
+        Require(!RivalRouteProgress::HasQualifiedFrameTime(delta),
+                "untrusted actor frame must not sample a rival gate");
+    }
+    for (double delta : {0.000001, 1.0 / 120.0,
+                         1.0 / 60.0, 1.0 / 30.0, 0.10})
+    {
+        Require(RivalRouteProgress::HasQualifiedFrameTime(delta),
+                "normal qualified actor frame permits real gate trace");
+    }
+
     // A genuinely verified Unreal tick may never advance a gate or
     // accumulate a full recovery window from one oversized engine frame.
     RivalRouteProgress frameGuard(4, 3);

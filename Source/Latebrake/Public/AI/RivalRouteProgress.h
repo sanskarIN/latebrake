@@ -30,6 +30,16 @@ public:
     static constexpr double NoApproachMaxFrameSeconds = 0.10;
     static constexpr double MaxQualifiedWaypointDistanceCm = 50000.0;
 
+    // Shared by the production actor BEFORE sampling its directional
+    // motion trace and by the route-credit state machine. One frame
+    // hitch is neither evidence of a valid gate crossing nor a safe
+    // contiguous physics observation. No engine or heap dependencies.
+    static bool HasQualifiedFrameTime(double deltaSeconds) noexcept
+    {
+        return std::isfinite(deltaSeconds) && deltaSeconds > 0.0 &&
+            deltaSeconds <= NoApproachMaxFrameSeconds;
+    }
+
     explicit RivalRouteProgress(int waypointCount = 4, int requiredLaps = 3) noexcept
         : WaypointCount(std::clamp(waypointCount, 1, 256)),
           RequiredLaps(std::clamp(requiredLaps, 1, 100))
@@ -113,7 +123,7 @@ private:
         // Keep legacy Observe behavior for backwards-compatible replay
         // of historical synthetic route tests, not production scoring.
         if (requiresPlaneCrossing &&
-            deltaSeconds > NoApproachMaxFrameSeconds)
+            !HasQualifiedFrameTime(deltaSeconds))
         {
             StationarySeconds = 0.0;
             ResetApproachWindow();
