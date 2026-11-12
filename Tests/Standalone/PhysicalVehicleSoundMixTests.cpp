@@ -140,7 +140,7 @@ static void RejectFabricatedAudioSensors()
               "bad physical identity or sensor evidence cannot generate sound");
     }
     auto settings=PhysicalVehicleSoundSettings{};
-    settings.MaxGainPerBus=1.5;
+    settings.MaximumGainPerBus=1.5;
     Check(!ValidVehicleSoundSettings(settings),
           "gain controls cannot be configured outside bounded safe levels");
 }
