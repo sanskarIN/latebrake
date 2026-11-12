@@ -176,7 +176,11 @@ private:
                 StationarySeconds + deltaSeconds);
         }
 
-        if (StationarySeconds >= 8.0 || noApproachStall)
+        // Repeated valid 0.10s physics frames may represent 8.0s as
+        // 7.999999999999988 due to binary floating-point rounding. The
+        // nanosecond tolerance is far below one frame and cannot turn a
+        // single hitch into a recovery (that was rejected above).
+        if (StationarySeconds >= 8.0 - 1.0e-9 || noApproachStall)
         {
             StationarySeconds = 0.0;
             ResetApproachWindow();
