@@ -47,6 +47,26 @@ not integrated, and the current visual cylinder wheels are still
 non-colliding decorations. A future real suspension effort needs
 separate UE wheel components, contact tuning and real builds.
 
+## Stable physical support for pit service
+
+Pit repairs now demand **four qualified ground traces** in the current
+physics frame, full contact traction and measured chassis vertical speed
+within **±80 cm/s**. This service-only stricter condition prevents a
+partially suspended or bouncing car from collecting a pit repair while
+merely two corners still permit ordinary controlled driving.
+
+The existing in-bay position, held-button time, service need, speed,
+neutral throttle, nitro release, player identity, GO state and pause
+guards remain authoritative. This gate does **not** claim full suspension,
+modify any physics forces, create pit objects or grant service by itself.
+
+In the **real Unreal Editor**, verify that a stationary car in the south
+bay reliably qualifies all four WorldStatic traces and can complete one
+normal 2.5-second repair. Check both front/rear wheel overhang,
+sloped contacts, kerbs, short ground bounces and invalid collision
+fixtures: these must prevent or reset a repair safely. Validate
+interruption, exit/re-arm and replay on a packaged Windows candidate.
+
 ## Cross-platform source qualification
 
 - `ChassisGroundContactTractionTests.cpp` verifies all 0–4 support
@@ -85,8 +105,9 @@ of them uses licensed Unreal SDK compilation.
    braking and lane-overtake interaction.
 7. Confirm no save, gate, reward or race session authority changed.
 
-The authentic installed-game release gate is still
-[issue #148](https://github.com/sanskarIN/latebrake/issues/148).
+Real UE5.8 Editor compile, ground trace and Win64 runtime testing are still
+required before considering any gameplay or public playable release. This
+source-only change is not a substitute for that owner-controlled evidence.
 
 ## Observational live ground-contact readout (PR #292)
 
