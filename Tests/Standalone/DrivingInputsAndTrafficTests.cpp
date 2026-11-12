@@ -369,8 +369,10 @@ static void CompleteObservedOvertake()
         {
             wasAlongside=true;
             Require(tracked.InCommittedLane &&
-                    tracked.SideBySide,
-                    "alongside state requires actual lateral position");
+                    (tracked.SideBySide ||
+                     (tracked.ForwardDistanceCm<0.0 &&
+                      !tracked.PassedWithFullClearance)),
+                    "alongside clearance remains pending until the rival is fully behind");
         }
         if(controller.ClearedPasses()>0)
         {
