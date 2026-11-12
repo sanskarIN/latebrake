@@ -1,3 +1,4 @@
+#include "Racecraft/PhysicalRaceReplayEvents.h"
 #include "Racecraft/PhysicalSixCarCameraRig.h"
 #include <cmath>
 #include <cstdlib>
@@ -416,7 +417,7 @@ static void PhysicalCameraShotReview()
 {
     auto traffic=CompleteSixCars();
     const auto frame=CameraFrame(traffic);
-    Check(ValidCameraFrame(frame,{}),
+    Check(ValidCameraFrame(frame),
           "all six camera chassis match exact real traffic frame");
     for(int kind=0;kind<5;++kind)
     {
@@ -536,6 +537,103 @@ static void OriginalCameraCollisionAndState()
           controller.Rejected()==2,
           "changed original six-car roster revokes smooth camera session");
 }
+static void PhysicalReplayEventTimeline()
+{
+    auto traffic=CompleteSixCars();
+    traffic.Others[1].Pose.Position={450.0,0.0};
+    PhysicalReplayEventRecorder reporter;
+    Check(reporter.Configure({}),
+          "read-only physical race incident observer configures");
+    auto observed=ReviewPhysicalTraceFrame(traffic);
+    Check(observed.Valid &&
+          reporter.Append(observed)==PhysicalReplayEventFault::None &&
+          reporter.Accepted()==1 &&
+          !reporter.HasActivePhysicalContact(1,2),
+          "close physical gap is not falsely reported as current collision");
+    const auto initial=reporter.Snapshot();
+    Check(initial.FollowGapEvents>=1 &&
+          initial.CollisionRiskEvents>=1 &&
+          initial.ContactsBegan==0 &&
+          initial.OfficialRaceControlUntouched,
+          "measured closing gap emits only spectator diagnostic events");
+    Check(reporter.Append(observed)==PhysicalReplayEventFault::StaleFrame &&
+          reporter.Rejected()==1,
+          "replayed physical frame cannot duplicate collision notifications");
+    for(int k=0;k<145;++k)
+    {
+        RealNextFrame(traffic);
+        observed=ReviewPhysicalTraceFrame(traffic);
+        Check(observed.Valid &&
+              reporter.Append(observed)==PhysicalReplayEventFault::None,
+              "continuous measured six-car traffic preserves event sequence");
+    }
+    const auto after=reporter.Snapshot();
+    Check(after.ContactsBegan==1 &&
+          after.ContactsEnded==1 &&
+          after.FollowGapEvents>=1 &&
+          after.AcceptedFrames==146 &&
+          !reporter.HasActivePhysicalContact(1,2),
+          "real overtaking creates one contact-start and one physical separation");
+    int observedContacts=0;
+    for(std::size_t i=0;i<reporter.Size();++i)
+    {
+        const auto* event=reporter.OldestFirst(i);
+        Check(event && event->Valid &&
+              event->FirstActor!=0 && event->SecondActor!=0 &&
+              !event->OfficialPenaltyIssued &&
+              !event->EngineCollisionEventFired &&
+              !event->ActualVehicleControlModified,
+              "replay event retains real physical slots with zero race authority");
+        if(event->Kind==PhysicalReplayEventKind::ContactBegan ||
+           event->Kind==PhysicalReplayEventKind::ContactEnded)
+            ++observedContacts;
+    }
+    Check(observedContacts==2,
+          "a single measured collision episode cannot create repeated alerts");
+    RealNextFrame(traffic);
+    traffic.Others[1].Identity.Actor+=9000;
+    observed=ReviewPhysicalTraceFrame(traffic);
+    Check(observed.Valid &&
+          reporter.Append(observed)==
+              PhysicalReplayEventFault::InconsistentRoster &&
+          reporter.Size()==0 &&
+          reporter.Snapshot().RosterResets==1,
+          "changed physical racer invalidates all previous event identity");
+    Check(reporter.Append(observed)==PhysicalReplayEventFault::None &&
+          reporter.Size()==0,
+          "after roster reauthentication the new event epoch starts empty");
+}
+static void NearMissAndDiscontinuityEvents()
+{
+    auto traffic=CompleteSixCars();
+    traffic.Others[1].Pose.Position={450.0,200.0};
+    PhysicalReplayEventRecorder events;
+    Check(events.Configure({}),
+          "near-miss event review has valid settings");
+    const auto sample=ReviewPhysicalTraceFrame(traffic);
+    Check(sample.Valid &&
+          events.Append(sample)==PhysicalReplayEventFault::None &&
+          events.Snapshot().ClosePassEvents==1 &&
+          events.Snapshot().ContactsBegan==0,
+          "close adjacent verified chassis produces near-miss, not collision");
+    RealNextFrame(traffic);
+    auto later=ReviewPhysicalTraceFrame(traffic);
+    Check(events.Append(later)==PhysicalReplayEventFault::None &&
+          events.Snapshot().ClosePassEvents==1,
+          "one continuous near miss is deduplicated across real physics frames");
+    RealNextFrame(traffic);
+    traffic.Others[2].Pose.Position.X+=2500.0;
+    later=ReviewPhysicalTraceFrame(traffic);
+    Check(later.Valid &&
+          events.Append(later)==
+              PhysicalReplayEventFault::LostPhysicsContinuity &&
+          events.Rejected()==1,
+          "unsupported physical position teleport cannot create replay event");
+    PhysicalReplayEventSettings invalid;
+    invalid.MinimumConfidence=2.0;
+    Check(!events.Configure(invalid),
+          "nonphysical event sensor confidence is rejected");
+}
 int main()
 {
     DirectPhysicalEvidence();
@@ -546,5 +644,7 @@ int main()
     RejectMalformedArchives();
     PhysicalCameraShotReview();
     OriginalCameraCollisionAndState();
+    PhysicalReplayEventTimeline();
+    NearMissAndDiscontinuityEvents();
     std::cout << "PhysicalSixCarRaceTrace OK\n";
 }
