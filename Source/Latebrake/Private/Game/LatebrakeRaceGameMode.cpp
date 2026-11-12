@@ -47,6 +47,7 @@
 #include "Track/CircuitCollisionPlan.h"
 #include "Track/RacingLineLayout.h"
 #include "Track/CircuitSurfaceDetail.h"
+#include "Track/OriginalAsphaltUnrealPreviewBridge.h"
 #include "Track/CollisionBlockSetup.h"
 #include "Track/CollisionResponsePolicy.h"
 #include "Track/CircuitSpawnSafety.h"
@@ -1252,6 +1253,19 @@ void ALatebrakeRaceGameMode::BuildCircuit()
     BuildBrakingReferenceBoards(DecorationMesh);
     BuildCornerApproachChevrons(DecorationMesh);
     BuildOriginalCircuitPaintPreview(DecorationMesh);
+#if !UE_BUILD_SHIPPING
+    // Original noncollision road texture; never an alternative asphalt.
+    if (FParse::Param(FCommandLine::Get(),
+                      TEXT("LatebrakeExperimentalAsphaltSkin")))
+    {
+        const bool bPreviewAdded =
+            latebrake::trackskin::SpawnOriginalAsphaltSkinPreview(
+                GetWorld(),DecorationMesh);
+        UE_LOG(LogLatebrakeStartup,Display,
+            TEXT("LATEBRAKE_ORIGINAL_ASPHALT_SKIN preview=%d collision=off"),
+            bPreviewAdded?1:0);
+    }
+#endif
 
     // Visual-only pit beacon near the inside edge of the southern road.
     // Do NOT use SpawnBlock: its BlockAll/QueryAndPhysics configuration is
