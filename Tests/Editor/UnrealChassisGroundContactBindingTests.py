@@ -91,6 +91,23 @@ class UnrealChassisGroundContactBindingTests(unittest.TestCase):
         self.assertIn("NAME ChassisGroundContactTraction", CMAKE)
         self.assertIn("CHASSIS_GROUND_CONTACT_QA.md", NAV)
 
+    def test_pit_service_requires_fully_supported_settled_chassis(self):
+        tick = PAWN.split("void ALatebrakeCarPawn::Tick(", 1)[1]
+        service = tick.split("if (PitService.Observe({", 1)[1].split(
+            "CollisionDamage.RepairAtPit();", 1)[0]
+        self.assertIn("latebrake::HasStablePitGroundSupport(", service)
+        self.assertIn(
+            "GroundContact, static_cast<double>(Velocity.Z)", service
+        )
+        self.assertIn("PitServiceMaximumVerticalSpeedCmPerSecond = 80.0", POLICY)
+        self.assertIn("contact.SupportingProbes == 4", POLICY)
+        self.assertIn("contact.ContactTractionScale == 1.0", POLICY)
+        self.assertIn("std::isfinite(verticalSpeedCmPerSecond)", POLICY)
+        self.assertLess(
+            tick.index("latebrake::EvaluateChassisGroundContact("),
+            tick.index("latebrake::HasStablePitGroundSupport(")
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
