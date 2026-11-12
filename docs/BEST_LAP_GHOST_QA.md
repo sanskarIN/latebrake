@@ -24,7 +24,12 @@ existing car pawn, RaceProgress and guarded race-start clock.
   frames and 360 seconds. Sampling never calls an API or allocates heap
   memory per tick. A long hitch, nonmonotone clock, malformed transform,
   impossible sampled jump or capacity exhaustion invalidates the
-  **entire candidate lap**, not an existing complete best lap.
+  **entire candidate lap**, not an existing complete best lap. Every
+  real physics frame is checked for impossible displacement **before**
+  deciding whether to store a 10-Hz keyframe; earlier short subframes
+  could bypass the motion check, letting a brief out-and-back teleport
+  disappear between recorded keys. The fixed check rejects that trace
+  without raising keyframe memory use or deleting the previous best.
 - Pawn replacement, focus/menu/pause session changes and the pawn's
   teleport/recovery revision invalidate that lap. The best completed
   lap may still be displayed after a later resumed clock, without
@@ -69,9 +74,12 @@ python3 -m unittest discover -s Tests/Editor -p 'BestLapGhostBindingTests.py' -v
 Portable C++ tests cover first/last playback, interpolation and yaw wrap,
 best replacement, slower lap rejection, menu/recovery invalidation,
 invalid coordinates and race-clock input, penalties, non-active laps,
-max-duration and restart. Source binding tests verify the real player
-pawn, same authoritative clock, ordered checkpoint transition, transient
-actor, zero collision and lack of saved score authority.
+max-duration and restart. A regression and 20,000 deterministic
+high-FPS subframe cases reject hidden out-and-back teleport motion,
+while normal high-refresh frames retain sparse 10-Hz storage. Source
+binding tests verify the real player pawn, same authoritative clock,
+ordered checkpoint transition, transient actor, zero collision and
+lack of saved score authority.
 
 ## Unreal 5.8 and installed Windows/Android QA still required
 

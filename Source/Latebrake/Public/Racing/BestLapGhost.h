@@ -73,21 +73,28 @@ public:
                 InvalidateCurrentLap();
                 return false;
             }
-            // Unreal may Tick several times between 10-Hz keyframes.
-            if (dt < 0.09)
-            {
-                return true;
-            }
+            // Check physical displacement on EVERY qualified Unreal frame,
+            // including frames intentionally omitted from the 10 Hz trace.
+            // Otherwise a teleport out and back between two stored keys
+            // could become an apparently legitimate clean-lap ghost.
             const double dx = pose.X - last.X;
             const double dy = pose.Y - last.Y;
             const double dz = pose.Z - last.Z;
             const double distance = std::hypot(std::hypot(dx, dy), dz);
-            // Conservative real-motion envelope, not a race speed limit.
-            // This detects teleports or corrupt transforms, not driving.
+            // Conservative real-motion envelope against the latest stored
+            // keyframe, not a racing speed limiter or a physics constraint.
+            // A rejected intermediate sample poisons the whole candidate
+            // while retaining any already completed and verified best.
             if (!std::isfinite(distance) || distance > dt * 15000.0 + 200.0)
             {
                 InvalidateCurrentLap();
                 return false;
+            }
+            // Unreal may Tick several times between 10-Hz keyframes.
+            // Skip only STORAGE; never skip pose or motion validation.
+            if (dt < 0.09)
+            {
+                return true;
             }
         }
         if (CandidateCount >= MaxSamples)

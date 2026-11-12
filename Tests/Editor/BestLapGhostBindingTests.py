@@ -105,6 +105,19 @@ class BestLapGhostBindingTests(unittest.TestCase):
             )[1].split("void ALatebrakeRaceGameMode::", 1)[0]
             self.assertIn("SuspendBestLapGhost();", fragment, heading)
 
+    def test_unstored_60fps_subframes_still_validate_live_motion(self):
+        source = self.policy.split("bool Record(", 1)[1].split(
+            "bool FinishLap(", 1
+        )[0]
+        self.assertIn("const double distance = std::hypot(", source)
+        self.assertIn("distance > dt * 15000.0 + 200.0", source)
+        self.assertIn("if (dt < 0.09)", source)
+        self.assertLess(source.index("distance > dt * 15000.0 + 200.0"),
+                        source.index("if (dt < 0.09)"))
+        self.assertIn("InvalidateCurrentLap();", source)
+        self.assertNotIn("AddForce(", source)
+        self.assertNotIn("AwardCredits(", source)
+
     def test_restart_and_source_run_isolation(self):
         restart = self.game.split(
             "void ALatebrakeRaceGameMode::RestartRace()", 1
