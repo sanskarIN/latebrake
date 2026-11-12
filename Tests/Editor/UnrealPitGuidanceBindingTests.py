@@ -29,6 +29,8 @@ class UnrealPitGuidanceBindingTests(unittest.TestCase):
         self.assertIn("std::abs(sample.RequestedThrottle) > 0.05", self.policy)
         self.assertIn("sample.NitroHeld", self.policy)
         self.assertIn("sample.ButtonHeld", self.policy)
+        self.assertIn("sample.StableGround", self.policy)
+        self.assertIn("PitServiceGuidance::SettleChassis", self.policy)
         self.assertIn("if (!sample.MaintenanceNeeded)", self.policy)
         self.assertIn("if (!armed) return PitServiceGuidance::ExitToRearm;", self.policy)
         self.assertIn("void Suspend() noexcept", self.policy)
@@ -48,6 +50,7 @@ class UnrealPitGuidanceBindingTests(unittest.TestCase):
             "PitServiceGuidance::ReleaseThrottle",
             "PitServiceGuidance::ReleaseNitro",
             "PitServiceGuidance::NoMaintenance",
+            "PitServiceGuidance::SettleChassis",
             "PitServiceGuidance::Servicing",
             "Pit.ProgressFraction()", "PIT SERVICED",
             "PIT: SLOW TO 4.3 KM/H OR LESS",
@@ -62,10 +65,26 @@ class UnrealPitGuidanceBindingTests(unittest.TestCase):
         self.assertIn('TEXT("PIT SLOW")', mobile)
         self.assertIn('TEXT("LIFT GAS")', mobile)
         self.assertIn('TEXT("NO NITRO")', mobile)
+        self.assertIn('TEXT("SETTLE CAR")', mobile)
         for code in ("RepairAtPit(", "ReplaceAtPit(", "RefillAtPit(",
                      "SaveRecords(", "EarnCredits(", "AddForce(", "TeleportTo("):
             self.assertNotIn(code, desktop)
             self.assertNotIn(code, mobile)
+
+    def test_ground_stability_gate_is_real_unreal_input_not_hud_guess(self):
+        pawn = read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
+        tick = pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1]
+        observe = tick.split("if (PitService.Observe({", 1)[1].split(
+            "CollisionDamage.RepairAtPit();", 1)[0]
+        self.assertIn("Mode->HasLocalPlayerDriver(),", observe)
+        self.assertIn("bPitNeedsService,", observe)
+        self.assertIn("latebrake::HasStablePitGroundSupport(", observe)
+        self.assertIn("GroundContact, static_cast<double>(Velocity.Z)", observe)
+        self.assertIn("!sample.MaintenanceNeeded || !sample.StableGround", self.policy)
+        self.assertLess(tick.index("EvaluateChassisGroundContact("),
+                        tick.index("HasStablePitGroundSupport("))
+        self.assertLess(tick.index("HasStablePitGroundSupport("),
+                        tick.index("CollisionDamage.RepairAtPit();"))
 
     def test_new_diagnostic_is_mandatory_standalone_target(self):
         self.assertIn("RacePitGuidanceTests.cpp", self.cmake)
