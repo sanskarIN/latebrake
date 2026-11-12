@@ -16,7 +16,7 @@
 
 <div class="lb-status-panel" role="status">
   <div class="lb-status-title">Development preview — source only</div>
-  <p>LateBrake is <strong>not a verified playable release</strong>. The latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97">v0.5.97</a> at <code>65ef6f2f192081b64f8256867403f40882cca462</code>: an <strong>experimental SOURCE-ONLY snapshot of unmerged physics PR #295 with zero executable assets</strong>. It includes load-distributed road-tangent braking. The guarded source publisher completed, but actual Unreal compilation, a cooked circuit, installed Win64 driving and Android packages remain unverified. Source archives are not installers. <a href="releases/v0.5.97/">Read the source notes</a>.</p>
+  <p>LateBrake is <strong>not a verified playable release</strong>. The latest GitHub source tag is <a href="https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98">v0.5.98</a> at <code>bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37</code>: an <strong>experimental SOURCE-ONLY snapshot of unmerged physics PR #295 with zero executable assets</strong>. Its independent modeled wheel braking and physical brake-capacity-aware rival planning were verified through hosted C++20/source-contract tests, not real Unreal driving. The <a href="https://github.com/sanskarIN/latebrake/actions/runs/43232929038">guarded owner publisher</a> finished successfully. The active main branch is separate from the tagged draft. Actual UE5.8 compilation, a cooked circuit, installed Win64 driving and Android packages remain unverified. Source archives are not installers. <a href="releases/v0.5.98/">Read the source notes</a>.</p>
   <a href="development-status/">Read the verification status →</a>
 </div>
 
