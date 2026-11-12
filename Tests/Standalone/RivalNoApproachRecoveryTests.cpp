@@ -137,6 +137,61 @@ int main()
           verifiedHitch.GetRecoveryCount() == 1,
           "only eighty new qualified frames authorize a stationary recovery");
 
+    // Pause or menu may skip physics observations entirely. The real
+    // Unreal not-ready branch must suspend both continuous stall windows.
+    RivalRouteProgress pauseAtSevenSeconds;
+    for (int i = 0; i < 79; ++i)
+    {
+        Check(!pauseAtSevenSeconds.ObserveVerifiedGate(
+                    3000.0, 0.0, 0.10, false).NeedsRecovery,
+              "pre-pause stationary time needs qualified frames");
+    }
+    pauseAtSevenSeconds.SuspendObservation();
+    Check(!pauseAtSevenSeconds.HasPendingRecovery() &&
+          pauseAtSevenSeconds.GetRecoveryCount() == 0,
+          "focus loss cannot fabricate a pending recovery");
+    for (int i = 0; i < 79; ++i)
+    {
+        Check(!pauseAtSevenSeconds.ObserveVerifiedGate(
+                    3000.0, 0.0, 0.10, false).NeedsRecovery,
+              "post-resume stationary time starts from zero");
+    }
+    Check(pauseAtSevenSeconds.ObserveVerifiedGate(
+              3000.0, 0.0, 0.10, false).NeedsRecovery,
+          "a new uninterrupted eight seconds permits post-pause recovery");
+    Check(pauseAtSevenSeconds.ReportRecoveryResult(true),
+          "physical recovery outcome still needs explicit acknowledgement");
+
+    RivalRouteProgress movingPause;
+    for (int i = 0; i < 159; ++i)
+    {
+        Check(!movingPause.ObserveVerifiedGate(
+                    3400.0, 1500.0, 0.05, false).NeedsRecovery,
+              "moving rival can accumulate verified no-approach samples");
+    }
+    movingPause.SuspendObservation();
+    Check(movingPause.NoApproachObservationSeconds() == 0.0,
+          "menu interruption clears prior high-speed stall history");
+    for (int i = 0; i < 159; ++i)
+    {
+        Check(!movingPause.ObserveVerifiedGate(
+                    3400.0, 1500.0, 0.05, false).NeedsRecovery,
+              "post-resume moving recovery requires new observations");
+    }
+    Check(movingPause.ObserveVerifiedGate(
+              3400.0, 1500.0, 0.05, false).NeedsRecovery,
+          "new continuous moving stall can use audited recovery budget");
+
+    RivalRouteProgress preservedRoute(4, 3);
+    Check(preservedRoute.ObserveVerifiedGate(
+              100.0, 1600.0, 0.016, true).Advanced,
+          "valid gate advances the same route before interruption");
+    preservedRoute.SuspendObservation();
+    Check(preservedRoute.GetNextWaypoint() == 1 &&
+          preservedRoute.GetCompletedLaps() == 0 &&
+          preservedRoute.GetRecoveryCount() == 0,
+          "suspension preserves credited gates, laps and recovery budget");
+
     RivalRouteProgress marginal;
     for (int i = 0; i < 500; ++i)
     {
