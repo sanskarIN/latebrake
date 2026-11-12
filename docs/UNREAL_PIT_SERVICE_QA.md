@@ -51,6 +51,7 @@ changing the existing 2.5-second and 120 cm/s criteria.
 | Slow down | Reduce measured planar speed to **at most 120 cm/s (~4.3 km/h)** |
 | Release throttle | Stop applying gas/reverse throttle |
 | Release nitro | Let go of boost while stopping |
+| Settle chassis | Park with four supported road-contact probes, then allow vertical bouncing to stop (within ±80 cm/s). The PIT hold restarts if support is lost. |
 | Hold button | Hold P, gamepad Y, or the Android PIT HOLD pad continuously |
 | Servicing | Keep the qualifying hold until the progress reaches 100% |
 | No maintenance | Continue racing; the car does not need another service |
@@ -60,13 +61,13 @@ changing the existing 2.5-second and 120 cm/s criteria.
 The expanded desktop HUD shows the actual last service-status reason,
 rather than falsely telling a moving or boosting player simply to hold
 the button. Android's shared touch rectangle displays short instructions
-such as **PIT SLOW**, **LIFT GAS**, or **NO NITRO** and true progress.
+such as **PIT SLOW**, **LIFT GAS**, **NO NITRO**, or **SETTLE CAR** and true progress.
 Unqualified frame data, menu/focus interruptions and a new race clear
 stale guidance. A completed service is acknowledged exactly once,
 after which the existing exit/re-enter requirement remains unchanged.
 
 The new portable `RacePitGuidance` tests cover blockers and priority
-when speed, throttle and nitro overlap; the original `RacePitService`
+when speed, throttle, nitro and unstable ground contact overlap; the original `RacePitService`
 tests still guard completion, single-visit repair restrictions and
 interruption reset. Source-binding tests assert that HUD-only code cannot
 repair the vehicle, teleport, grant credits or alter checkpoints. Licensed
