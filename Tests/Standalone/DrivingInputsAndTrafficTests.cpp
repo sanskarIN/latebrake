@@ -240,11 +240,271 @@ static void OvertakePolicy()
             supervisor.Rejections()==1,
             "replayed overtake frame cannot issue steering");
 }
+// Integrate ONLY physically qualified and exact-slot six-car observations.
+// The assistant's old passing loop was falsely aborted when the leader
+// crossed the acquisition-only 500-cm gap and could never reach clearing.
+static OvertakeObservation PassingFixture()
+{
+    OvertakeObservation s;
+    s.Traffic=Traffic(false);
+    // 8 m/s measured closing rate leaves time for an actual lane move.
+    s.Traffic.Others[1].Pose.Position.X=2600.0;
+    s.Traffic.Others[1].VelocityCmS={2400.0,0.0};
+    s.Traffic.DeltaSeconds=0.10;
+    s.Occupancy=ForecastPhysicalRivalLanes(s.Traffic);
+    s.SelfGripG=1.2;
+    s.PhysicalVisibilityDistanceCm=6000.0;
+    s.DistanceUntilCornerCm=6000.0;
+    s.ActualRoadHalfWidthCm=800.0;
+    s.OfficialGreenFlag=true;
+    s.ActualEnginePhysicsQualified=true;
+    s.WheelGripMeasured=true;
+    s.OriginalRaceTrackVerified=true;
+    Require(s.Occupancy.Valid &&
+            s.Occupancy.TotalPotentialContacts==0 &&
+            ProposeOvertake(s).Valid &&
+            ProposeOvertake(s).TargetActor==
+                s.Traffic.Others[1].Identity.Actor,
+            "fully qualified six-car opening pass acquisition");
+    return s;
+}
+static void AdvancePassingFrame(
+    OvertakeObservation& s,
+    double measuredTrackOffsetCm)
+{
+    auto& f=s.Traffic;
+    // The driver advances at 32 m/s; the same original target advances
+    // at 24 m/s. Each tenth-second therefore reduces the real gap by 80 cm.
+    f.Self.Identity.Frame++;
+    f.Self.Pose.Position.X+=320.0;
+    f.Self.Pose.Position.Y=measuredTrackOffsetCm;
+    f.Self.TrackLateralOffsetCm=measuredTrackOffsetCm;
+    f.Self.VelocityCmS={3200.0,0.0};
+    f.Self.PhysicsClockSeconds+=0.10;
+    for(std::size_t i=0;i<f.Others.size();++i)
+    {
+        auto& rival=f.Others[i];
+        ++rival.Identity.Frame;
+        rival.Pose.Position.X+=(i==1?240.0:320.0);
+        rival.PhysicsClockSeconds+=0.10;
+    }
+    f.DeltaSeconds=0.10;
+    s.Occupancy=ForecastPhysicalRivalLanes(f);
+    Require(s.Occupancy.Valid &&
+            s.Occupancy.VerifiedOtherCars==RivalTrafficCount,
+            "exact-frame physical six-car observation remains qualified");
+}
+static void PrepareObservedOvertake(
+    RivalOvertakeSupervisor& controller,
+    OvertakeObservation& sample)
+{
+    Require(controller.Configure({}),
+            "real pass state machine has valid calibration");
+    auto first=controller.Step(sample);
+    Require(first.Valid &&
+            first.State==OvertakeState::Evaluating &&
+            first.TargetActor==sample.Traffic.Others[1].Identity.Actor &&
+            controller.Commitments()==0,
+            "fresh overtaking request acquires one authenticated rival");
+    for(int step=1;step<=3;++step)
+    {
+        AdvancePassingFrame(sample,0.0);
+        const auto decision=controller.Step(sample);
+        Require(decision.Valid && decision.Veto==OvertakeVeto::None &&
+                decision.ProposedThrottle<=
+                    sample.Occupancy.ProposedThrottle &&
+                !decision.UnrealSteeringApplied,
+                "pre-commit approach must respect six-car brake authority");
+    }
+    Require(controller.CurrentState()==OvertakeState::Committed &&
+            controller.Commitments()==1 &&
+            controller.TrackedTargetActor()==
+                sample.Traffic.Others[1].Identity.Actor &&
+            controller.TrackedTargetSlot()==2 &&
+            std::abs(controller.CommittedOffsetCm())==400.0,
+            "stable physical target and absolute passing lane commit");
+}
+static void CompleteObservedOvertake()
+{
+    auto sample=PassingFixture();
+    RivalOvertakeSupervisor controller;
+    PrepareObservedOvertake(controller,sample);
+    const auto exactActor=controller.TrackedTargetActor();
+    const auto committedOffset=controller.CommittedOffsetCm();
+    bool sawAcquisitionExpire=false;
+    bool wasAlongside=false;
+    bool sawRealClearance=false;
+    for(int frame=4;frame<=44;++frame)
+    {
+        const double lateral=committedOffset*
+            std::min(1.0,(frame-3)/4.0);
+        AdvancePassingFrame(sample,lateral);
+        const auto acquisition=ProposeOvertake(sample);
+        const auto tracked=InspectTrackedOvertake(
+            sample,exactActor,2,committedOffset);
+        const auto decision=controller.Step(sample);
+        Require(decision.Valid &&
+                !decision.UnrealSteeringApplied &&
+                !decision.OfficialRaceStateChanged &&
+                decision.ProposedThrottle<=
+                    sample.Traffic.CurrentThrottle &&
+                decision.ProposedThrottle<=
+                    sample.Occupancy.ProposedThrottle &&
+                decision.ProposedBrake>=
+                    sample.Occupancy.ProposedBrake,
+                "tracked pass cannot override real traffic or race authority");
+        if(acquisition.Veto==OvertakeVeto::NoPassingAdvantage)
+            sawAcquisitionExpire=true;
+        if(decision.State==OvertakeState::Committed ||
+           decision.State==OvertakeState::Alongside)
+        {
+            Require(decision.TargetActor==exactActor &&
+                    decision.TargetActorSlot==2 &&
+                    decision.Lane==RivalLaneClass::Left &&
+                    decision.Veto==OvertakeVeto::None &&
+                    !decision.EarlyAbortRequested,
+                    "approach gap closing cannot switch target or drop pass");
+        }
+        if(decision.State==OvertakeState::Alongside)
+        {
+            wasAlongside=true;
+            Require(tracked.InCommittedLane &&
+                    tracked.SideBySide,
+                    "alongside state requires actual lateral position");
+        }
+        if(controller.ClearedPasses()>0)
+        {
+            Require(decision.State==OvertakeState::Clearing &&
+                    tracked.PassedWithFullClearance &&
+                    tracked.InCommittedLane,
+                    "pass counts only after original rival is fully behind");
+            sawRealClearance=true;
+            break;
+        }
+    }
+    Require(sawAcquisitionExpire &&
+            wasAlongside &&
+            sawRealClearance &&
+            controller.ClearedPasses()==1 &&
+            controller.AbortedPasses()==0,
+            "complete physically tracked pass survives acquisition expiry");
+    for(int i=0;i<23;++i)
+    {
+        AdvancePassingFrame(sample,committedOffset);
+        const auto recovery=controller.Step(sample);
+        Require(recovery.Valid &&
+                controller.ClearedPasses()==1 &&
+                controller.Commitments()==1 &&
+                !recovery.OfficialRaceStateChanged,
+                "clearing cannot double-count completed physical pass");
+    }
+    Require(controller.CurrentState()==OvertakeState::Following &&
+            controller.TrackedTargetActor()==0,
+            "post-pass recovery releases target without phantom lap credit");
+}
+static void RejectUnsafeOvertakeChanges()
+{
+    {
+        auto sample=PassingFixture();
+        RivalOvertakeSupervisor controller;
+        PrepareObservedOvertake(controller,sample);
+        AdvancePassingFrame(sample,0.0);
+        sample.LocalYellowActive=true;
+        const auto result=controller.Step(sample);
+        Require(result.Valid &&
+                result.Veto==OvertakeVeto::YellowFlag &&
+                result.State==OvertakeState::Aborted &&
+                result.EarlyAbortRequested &&
+                result.ProposedThrottle==0.0 &&
+                result.ProposedBrake>=0.20 &&
+                controller.AbortedPasses()==1 &&
+                controller.ClearedPasses()==0,
+                "real local yellow vetoes already committed overtaking");
+    }
+    {
+        auto sample=PassingFixture();
+        RivalOvertakeSupervisor controller;
+        PrepareObservedOvertake(controller,sample);
+        AdvancePassingFrame(sample,0.0);
+        sample.Traffic.Others[1].Identity.Actor+=10000;
+        sample.Occupancy=ForecastPhysicalRivalLanes(sample.Traffic);
+        const auto result=controller.Step(sample);
+        Require(result.Valid &&
+                result.Veto==OvertakeVeto::RosterChanged &&
+                result.State==OvertakeState::Aborted &&
+                controller.ClearedPasses()==0,
+                "replaced real target must not be mistaken for old opponent");
+    }
+    {
+        auto sample=PassingFixture();
+        RivalOvertakeSupervisor controller;
+        PrepareObservedOvertake(controller,sample);
+        AdvancePassingFrame(sample,0.0);
+        sample.Traffic.Others[2].Pose.Position.X=
+            sample.Traffic.Self.Pose.Position.X+200.0;
+        sample.Traffic.Others[2].Pose.Position.Y=
+            controller.CommittedOffsetCm();
+        sample.Traffic.Others[2].TrackLateralOffsetCm=
+            controller.CommittedOffsetCm();
+        sample.Occupancy=ForecastPhysicalRivalLanes(sample.Traffic);
+        const auto evidence=InspectTrackedOvertake(
+            sample,controller.TrackedTargetActor(),
+            controller.TrackedTargetSlot(),
+            controller.CommittedOffsetCm());
+        const auto result=controller.Step(sample);
+        Require(evidence.Valid &&
+                evidence.ConflictingObservedActors>=1 &&
+                result.Valid &&
+                result.State==OvertakeState::Aborted &&
+                result.Veto==OvertakeVeto::MultipleThreats &&
+                result.ProposedThrottle==0.0,
+                "real rival occupying committed strip triggers safe abort");
+    }
+    {
+        auto sample=PassingFixture();
+        RivalOvertakeSupervisor controller;
+        PrepareObservedOvertake(controller,sample);
+        AdvancePassingFrame(sample,0.0);
+        sample.Traffic.Self.RoadHalfWidthCm=520.0;
+        sample.Occupancy=ForecastPhysicalRivalLanes(sample.Traffic);
+        const auto result=controller.Step(sample);
+        Require(result.Valid &&
+                result.State==OvertakeState::Aborted &&
+                result.Veto==OvertakeVeto::UnsafeRoad,
+                "narrowing original road rejects committed passing strip");
+    }
+    {
+        auto sample=PassingFixture();
+        RivalOvertakeSupervisor controller;
+        PrepareObservedOvertake(controller,sample);
+        const auto replay=controller.Step(sample);
+        Require(!replay.Valid &&
+                controller.Rejections()==1 &&
+                controller.ClearedPasses()==0 &&
+                controller.CurrentState()==OvertakeState::Aborted,
+                "replayed engine frame invalidates rather than advances pass");
+    }
+    {
+        auto sample=PassingFixture();
+        RivalOvertakeSupervisor controller;
+        PrepareObservedOvertake(controller,sample);
+        AdvancePassingFrame(sample,0.0);
+        auto stale=sample;
+        std::swap(stale.Occupancy.Contacts[0],
+                  stale.Occupancy.Contacts[1]);
+        Require(!ValidOvertakeObservation(stale,{}) &&
+                !controller.Step(stale).Valid &&
+                controller.ClearedPasses()==0,
+                "misordered per-slot contact evidence cannot certify pass");
+    }
+}
 int main()
 {
     SteeringPhysics();
     TestDriverControls();
     TrafficSafety();
     OvertakePolicy();
+    CompleteObservedOvertake();
+    RejectUnsafeOvertakeChanges();
     std::cout<<"DrivingInputsAndTraffic OK\n";
 }
