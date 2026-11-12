@@ -622,6 +622,9 @@ inline PitCrewServiceReview EvaluatePhysicalPitService(
         Finite(out.ServiceReadinessFraction);
     return out;
 }
+// Pit clearance is a stateful claim about real wheel, jack and brake
+// observations across SEPARATE engine frames. A single frame containing
+// every checked task can never authorize an actual wheel-service release.
 class PhysicalPitCrewSupervisor final
 {
 public:
@@ -641,7 +644,10 @@ public:
         Rejected=0;
         WheelServiceFrames=0;
         UnsafeReleaseFrames=0;
+        CompletedServiceObservations=0;
+        LastClockSeconds=0.0;
         HasFrame=false;
+        ResetSequence();
     }
     PitCrewServiceReview Step(
         const PitCrewServiceFrame& sample) noexcept
@@ -654,16 +660,61 @@ public:
             Source.Actor==sample.Identity.Actor;
         if (!result.Valid ||
             (sameEpoch &&
-             sample.Identity.Frame<=Source.Frame) ||
-            (sameEpoch &&
-             ReservationToken!=sample.ReservationToken))
+             (sample.Identity.Frame<=Source.Frame ||
+              sample.PhysicsClockSeconds<=LastClockSeconds ||
+              ReservationToken!=sample.ReservationToken)))
         {
             ++Rejected;
             Last={};
+            ResetSequence();
             return {};
         }
-        ReservationToken=sample.ReservationToken;
+        if (!sameEpoch)
+            ResetSequence();
+        result.PhysicalReleaseClear=false;
+        if (!result.ServiceCanProceed)
+        {
+            // A rolling chassis, released brake or intruding crew-area
+            // hazard voids prior wheel-service evidence immediately.
+            ResetSequence();
+            result.Phase=PitCrewPhase::WaitingForCar;
+            result.Fault=PitCrewFault::CarNotStationary;
+        }
+        else if (!SequenceStarted)
+        {
+            if(sample.JackHeightCm<=PhysicsEpsilon &&
+               sample.MeasuredJackSupportLoadN<=PhysicsEpsilon &&
+               !sample.CrewTaskAcknowledged[
+                    static_cast<std::size_t>(PitCrewTask::Lift)])
+            {
+                SequenceStarted=true;
+                ServiceStartClockSeconds=sample.PhysicsClockSeconds;
+                InitialFuelLiters=sample.MeasuredFuelTankLiters;
+                RequestedFuelLiters=sample.RequestedFuelLiters;
+                EvidencePhase=PitCrewPhase::StationaryVerified;
+                result.Fault=PitCrewFault::None;
+            }
+            else
+            {
+                result.Fault=PitCrewFault::IncorrectServiceOrder;
+            }
+            result.Phase=EvidencePhase;
+        }
+        else
+        {
+            AdvanceAuthenticatedService(sample,result);
+        }
+        if (SequenceStarted)
+            result.TotalElapsedSeconds=std::max(
+                0.0,sample.PhysicsClockSeconds-
+                    ServiceStartClockSeconds);
+        result.Valid=result.Valid &&
+            Finite(result.TotalElapsedSeconds);
+        result.ActualUnrealVehicleModified=false;
+        result.OfficialRaceResultModified=false;
         Source=sample.Identity;
+        ReservationToken=sample.ReservationToken;
+        LastClockSeconds=sample.PhysicsClockSeconds;
         HasFrame=true;
         ++Qualified;
         WheelServiceFrames+=
@@ -671,6 +722,8 @@ public:
         UnsafeReleaseFrames+=
             sample.PitReleaseAuthorized &&
             !result.PhysicalReleaseClear?1U:0U;
+        if(result.PhysicalReleaseClear)
+            ++CompletedServiceObservations;
         Last=result;
         return Last;
     }
@@ -681,7 +734,199 @@ public:
     {return WheelServiceFrames;}
     std::uint64_t UnsafeReleaseAttempts() const noexcept
     {return UnsafeReleaseFrames;}
+    std::uint64_t CertifiedReleaseFrames() const noexcept
+    {return CompletedServiceObservations;}
+    PitCrewPhase CurrentPhase() const noexcept
+    {return EvidencePhase;}
 private:
+    void ResetSequence() noexcept
+    {
+        SequenceStarted=false;
+        EvidencePhase=PitCrewPhase::Unprepared;
+        ServiceStartClockSeconds=0.0;
+        JackRaisedClockSeconds=0.0;
+        WheelsRemovedClockSeconds=0.0;
+        WheelsInstalledClockSeconds=0.0;
+        WheelTorquesClockSeconds=0.0;
+        JackLoweredClockSeconds=0.0;
+        InitialFuelLiters=0.0;
+        RequestedFuelLiters=0.0;
+    }
+    bool AllWheelsRemoved(
+        const PitCrewServiceFrame& frame) const noexcept
+    {
+        for(int i=0;i<PhysicalWheelCount;++i)
+        {
+            const auto& wheel=frame.Wheels[
+                static_cast<std::size_t>(i)];
+            if(!wheel.ActualWheelRemoved ||
+               wheel.WheelRemovalClockSeconds<
+                    JackRaisedClockSeconds ||
+               wheel.WheelRemovalClockSeconds>
+                    frame.PhysicsClockSeconds ||
+               !frame.CrewTaskAcknowledged[
+                   static_cast<std::size_t>(
+                       static_cast<int>(
+                           PitCrewTask::RemoveFrontLeft)+i)])
+                return false;
+        }
+        return true;
+    }
+    bool AllWheelsInstalled(
+        const PitCrewServiceFrame& frame) const noexcept
+    {
+        for(int i=0;i<PhysicalWheelCount;++i)
+        {
+            const auto& wheel=frame.Wheels[
+                static_cast<std::size_t>(i)];
+            if(!PitCrewWheelPhysicallyServiced(
+                   wheel,frame.PhysicsClockSeconds,Settings) ||
+               wheel.WheelInstallationClockSeconds<
+                    WheelsRemovedClockSeconds ||
+               !frame.CrewTaskAcknowledged[
+                   static_cast<std::size_t>(
+                       static_cast<int>(
+                           PitCrewTask::InstallFrontLeft)+i)])
+                return false;
+        }
+        return true;
+    }
+    bool AllWheelTorqueInspections(
+        const PitCrewServiceFrame& frame) const noexcept
+    {
+        return frame.CrewTaskAcknowledged[
+            static_cast<std::size_t>(
+                PitCrewTask::InspectWheelTorque)] &&
+            std::all_of(frame.Wheels.begin(),frame.Wheels.end(),
+                [&](const PitCrewWheelObservation& wheel)
+                {
+                    return PitCrewWheelTorquePhysicallyVerified(
+                        wheel,frame.PhysicsClockSeconds,Settings);
+                });
+    }
+    void AdvanceAuthenticatedService(
+        const PitCrewServiceFrame& frame,
+        PitCrewServiceReview& out) noexcept
+    {
+        const double now=frame.PhysicsClockSeconds;
+        const bool jackRaised=
+            frame.CrewTaskAcknowledged[
+                static_cast<std::size_t>(PitCrewTask::Lift)] &&
+            frame.JackHeightCm>
+                Settings.MaximumHydraulicJackTravelCm*0.25 &&
+            frame.MeasuredJackSupportLoadN>=
+                Settings.MinimumJackSupportLoadN;
+        const bool jackLowered=
+            frame.CrewTaskAcknowledged[
+                static_cast<std::size_t>(
+                    PitCrewTask::ReleaseJack)] &&
+            frame.JackHeightCm<=PhysicsEpsilon &&
+            frame.MeasuredJackSupportLoadN<=PhysicsEpsilon;
+        switch(EvidencePhase)
+        {
+        case PitCrewPhase::StationaryVerified:
+            if(jackRaised &&
+               now-ServiceStartClockSeconds>=
+                   Settings.MinimumInitialReservationSeconds+
+                   Settings.MinimumLiftSeconds)
+            {
+                JackRaisedClockSeconds=now;
+                EvidencePhase=PitCrewPhase::JackUp;
+            }
+            break;
+        case PitCrewPhase::JackUp:
+            if(jackRaised &&
+               AllWheelsRemoved(frame) &&
+               now-JackRaisedClockSeconds>=
+                   Settings.MinimumWheelRemovalSeconds)
+            {
+                WheelsRemovedClockSeconds=now;
+                EvidencePhase=PitCrewPhase::RemoveWheels;
+            }
+            break;
+        case PitCrewPhase::RemoveWheels:
+            if(jackRaised &&
+               AllWheelsInstalled(frame) &&
+               now-WheelsRemovedClockSeconds>=
+                   Settings.MinimumWheelInstallationSeconds)
+            {
+                WheelsInstalledClockSeconds=now;
+                EvidencePhase=PitCrewPhase::FitWheels;
+            }
+            break;
+        case PitCrewPhase::FitWheels:
+            if(jackRaised &&
+               AllWheelTorqueInspections(frame) &&
+               now-WheelsInstalledClockSeconds>=
+                   Settings.MinimumWheelTorqueInspectionSeconds)
+            {
+                WheelTorquesClockSeconds=now;
+                EvidencePhase=PitCrewPhase::SafetyInspection;
+            }
+            break;
+        case PitCrewPhase::SafetyInspection:
+            if(jackLowered &&
+               now-WheelTorquesClockSeconds>=
+                   Settings.MinimumJackLoweringSeconds)
+            {
+                JackLoweredClockSeconds=now;
+                EvidencePhase=PitCrewPhase::JackDown;
+            }
+            break;
+        case PitCrewPhase::JackDown:
+        {
+            const bool fuelPhysicallyQualified=
+                RequestedFuelLiters<=0.0 ||
+                (frame.EngineFuelProbeQualified &&
+                 frame.CrewTaskAcknowledged[
+                     static_cast<std::size_t>(
+                         PitCrewTask::Refuel)] &&
+                 frame.MeasuredFuelTankLiters+
+                     Settings.MaximumFuelDisagreementLiters>=
+                        InitialFuelLiters+RequestedFuelLiters);
+            const bool elapsedQualified=
+                now-ServiceStartClockSeconds>=
+                    Settings.MinimumPitServiceSeconds &&
+                now-JackLoweredClockSeconds>=
+                    Settings.MinimumFinalInspectionSeconds;
+            if(frame.PitReleaseAuthorized &&
+               jackLowered &&
+               AllWheelsInstalled(frame) &&
+               AllWheelTorqueInspections(frame) &&
+               out.TasksPhysicallyComplete==out.TasksRequired &&
+               fuelPhysicallyQualified &&
+               elapsedQualified)
+            {
+                EvidencePhase=PitCrewPhase::ReadyForRelease;
+                out.PhysicalReleaseClear=true;
+            }
+            else if(frame.PitReleaseAuthorized)
+            {
+                out.Fault=!elapsedQualified ?
+                    PitCrewFault::InsufficientElapsedTime:
+                    PitCrewFault::IncorrectServiceOrder;
+            }
+            break;
+        }
+        case PitCrewPhase::ReadyForRelease:
+            // The original reservation and contact/provenance checks
+            // still run every frame; never issue an actual release
+            // command or official pit/lap timing change here.
+            out.PhysicalReleaseClear=
+                frame.PitReleaseAuthorized &&
+                jackLowered &&
+                AllWheelsInstalled(frame) &&
+                AllWheelTorqueInspections(frame);
+            break;
+        default:
+            break;
+        }
+        out.Phase=EvidencePhase;
+        if(frame.PitReleaseAuthorized &&
+           !out.PhysicalReleaseClear &&
+           out.Fault==PitCrewFault::None)
+            out.Fault=PitCrewFault::IncorrectServiceOrder;
+    }
     PitCrewServiceParameters Settings{};
     PitCrewServiceReview Last{};
     RaceIdentity Source{};
@@ -690,6 +935,18 @@ private:
     std::uint64_t Rejected=0;
     std::uint64_t WheelServiceFrames=0;
     std::uint64_t UnsafeReleaseFrames=0;
+    std::uint64_t CompletedServiceObservations=0;
+    double LastClockSeconds=0.0;
+    double ServiceStartClockSeconds=0.0;
+    double JackRaisedClockSeconds=0.0;
+    double WheelsRemovedClockSeconds=0.0;
+    double WheelsInstalledClockSeconds=0.0;
+    double WheelTorquesClockSeconds=0.0;
+    double JackLoweredClockSeconds=0.0;
+    double InitialFuelLiters=0.0;
+    double RequestedFuelLiters=0.0;
+    PitCrewPhase EvidencePhase=PitCrewPhase::Unprepared;
+    bool SequenceStarted=false;
     bool HasFrame=false;
 };
 } // namespace latebrake::racecraft
