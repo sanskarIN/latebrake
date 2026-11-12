@@ -58,6 +58,16 @@ public:
         RecoveryPending = false;
     }
 
+    // Pause, focus loss, menu, invalid chassis and session suspension are
+    // breaks in physical observation, NOT evidence that a rival was stuck.
+    // Keep waypoint/lap credit and the finite pending teleport ledger,
+    // but require an entirely fresh observed interval for any recovery.
+    void SuspendObservation() noexcept
+    {
+        StationarySeconds = 0.0;
+        ResetApproachWindow();
+    }
+
     // Legacy distance-only route telemetry is retained for portable
     // consumers. The real physical rival must use ObserveVerifiedGate
     // below: mere proximity is never proof of a forward checkpoint pass.
