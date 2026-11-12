@@ -98,6 +98,7 @@ struct SectorSplitRecord final
     double MeanSectorSpeedCmS=0.0;
     double MinimumPossibleDurationSeconds=0.0;
     double TimeSincePreviousCrossingSeconds=0.0;
+    double MinimumSourceConfidence=1.0;
     bool OriginalGateCrossedForward=false;
     bool PhysicallyConsistent=true;
     bool PersonalBestCandidate=false;
@@ -241,15 +242,28 @@ inline bool ValidSectorTimingCrossing(
         std::abs(c.RaceClockSeconds-
                  c.PreviousRaceClockSeconds-
                  c.DeltaSeconds)<=p.MaximumClockJumpSeconds &&
-        std::abs(g.EngineClockSeconds-
-                 c.RaceClockSeconds)<=
-            p.MaximumClockDriftSeconds &&
+        // Gate metadata is captured at course configuration, not
+        // regenerated at each live physics-frame trigger. Reject only
+        // gate metadata which claims to be newer than this crossing.
+        g.EngineClockSeconds<=
+            c.RaceClockSeconds+p.MaximumClockDriftSeconds &&
         Finite(c.DistanceAlongLapCm) &&
         c.DistanceAlongLapCm>=0.0 &&
         c.DistanceAlongLapCm<p.CircuitLengthCm &&
+        std::abs(c.DistanceAlongLapCm-g.DistanceAlongLapCm)<=
+            p.MaximumGateContactRadiusCm &&
         Finite(c.UnwrappedDistanceCm) &&
         c.UnwrappedDistanceCm>=0.0 &&
         c.UnwrappedDistanceCm<=p.MaximumUnwrappedPositionCm &&
+        // A physically observed gate must also match the measured
+        // progress on the original circuit, including lap wraparound.
+        std::min(
+            std::abs(std::fmod(c.UnwrappedDistanceCm,
+                p.CircuitLengthCm)-g.DistanceAlongLapCm),
+            p.CircuitLengthCm-std::abs(
+                std::fmod(c.UnwrappedDistanceCm,
+                    p.CircuitLengthCm)-g.DistanceAlongLapCm))<=
+            p.MaximumLapDistanceToleranceCm &&
         Finite(c.ChassisHeadingRadians) &&
         Finite(c.MeasuredGateConfidence) &&
         c.MeasuredGateConfidence>=p.MinimumSourceConfidence &&
@@ -316,6 +330,8 @@ inline bool ValidSectorTimingCourse(
                  p.CircuitLengthCm)>1.0)
         return false;
     double previous=-p.MinimumGateSpacingCm;
+    std::array<bool,PhysicalSectorCount> sectors{};
+    int lastSector=-1;
     for(int i=0;i<course.GateCount;++i)
     {
         const auto& gate=course.Gates[
@@ -325,8 +341,12 @@ inline bool ValidSectorTimingCourse(
             gate.DistanceAlongLapCm-previous<
                 p.MinimumGateSpacingCm ||
             (i>0 && gate.DistanceAlongLapCm-previous>
-                p.MaximumGateSpacingCm))
+                p.MaximumGateSpacingCm) ||
+            gate.SectorIndex<lastSector)
             return false;
+        sectors[static_cast<std::size_t>(
+            gate.SectorIndex)]=true;
+        lastSector=gate.SectorIndex;
         for(int earlier=0;earlier<i;++earlier)
             if(course.Gates[
                 static_cast<std::size_t>(earlier)].
@@ -335,8 +355,18 @@ inline bool ValidSectorTimingCourse(
                 return false;
         previous=gate.DistanceAlongLapCm;
     }
-    return true;
+    // The last gate must have a real remaining road segment to the
+    // start/finish line. A last intermediate sector is not a finish.
+    const double wrapGap=p.CircuitLengthCm-
+        previous+course.Gates[0].DistanceAlongLapCm;
+    return course.Gates[0].SectorIndex==0 &&
+        lastSector==PhysicalSectorCount-1 &&
+        wrapGap>=p.MinimumGateSpacingCm &&
+        wrapGap<=p.MaximumGateSpacingCm &&
+        std::all_of(sectors.begin(),sectors.end(),
+            [](bool present){return present;});
 }
+
 class PhysicalSectorTimingSupervisor final
 {
 public:
@@ -360,12 +390,13 @@ public:
         GateIndex=0;
         LapOrdinal=0;
         LastGateClock=0.0;
+        LastGateConfidence=1.0;
         LapStartClock=0.0;
+        LapStartDistanceCm=0.0;
         LastUnwrappedDistanceCm=0.0;
         AcceptedGateCrossings=0;
         RejectedGateCrossings=0;
         CompletedCandidateLaps=0;
-        OriginalMapSource=true;
         HasSource=false;
     }
     SectorTimingFault Submit(
@@ -388,8 +419,7 @@ public:
             Source.SessionRevision==
                 sample.Identity.SessionRevision &&
             Source.Actor==sample.Identity.Actor;
-        if (sameEpoch &&
-            sample.Identity.Frame<=Source.Frame)
+        if (sameEpoch && sample.Identity.Frame<=Source.Frame)
         {
             ++RejectedGateCrossings;
             return SectorTimingFault::ReplayedFrame;
@@ -404,94 +434,110 @@ public:
             ++RejectedGateCrossings;
             return SectorTimingFault::CrossedWrongWay;
         }
+        const double elapsed=HasSource ?
+            sample.RaceClockSeconds-LastGateClock:0.0;
+        const double progress=HasSource ?
+            sample.UnwrappedDistanceCm-
+                LastUnwrappedDistanceCm:0.0;
         if(HasSource &&
-           sample.UnwrappedDistanceCm+
-                Settings.MaximumDistanceDiscontinuityCm<
-                LastUnwrappedDistanceCm)
+           (progress<0.0 ||
+            elapsed<Settings.MinimumSectorDurationSeconds ||
+            elapsed>Settings.MaximumSectorDurationSeconds ||
+            progress>Settings.MaximumPhysicalSpeedCmS*elapsed+
+                Settings.MaximumLapDistanceToleranceCm))
         {
             ++RejectedGateCrossings;
             return SectorTimingFault::ImpossibleSectorSpeed;
         }
-        const double elapsed=HasSource ?
-            sample.RaceClockSeconds-LastGateClock:0.0;
-        if (HasSource &&
-            (elapsed<Settings.MinimumSectorDurationSeconds ||
-             elapsed>Settings.MaximumSectorDurationSeconds))
-        {
-            ++RejectedGateCrossings;
-            return SectorTimingFault::InvalidTime;
-        }
-        if (GateIndex==0)
+        const bool finishingLap=HasSource && GateIndex==0;
+        // First pass through gate zero starts evidence collection. Every
+        // subsequent crossing closes the distance after the PREVIOUS gate.
+        // This includes the final sector, closed only at gate zero again.
+        if (!HasSource)
         {
             LapStartClock=sample.RaceClockSeconds;
+            LapStartDistanceCm=sample.UnwrappedDistanceCm;
             LapRecords={};
             ++LapOrdinal;
         }
         else
         {
+            const int preceding=GateIndex==0 ?
+                Course.GateCount-1:GateIndex-1;
             const int sector=Course.Gates[
-                static_cast<std::size_t>(GateIndex)].
-                    SectorIndex;
-            if(sector>=0 && sector<PhysicalSectorCount)
+                static_cast<std::size_t>(preceding)].SectorIndex;
+            SectorSplitRecord split=LapRecords[
+                static_cast<std::size_t>(sector)];
+            if (!split.Valid)
             {
-                SectorSplitRecord& split=LapRecords[
-                    static_cast<std::size_t>(sector)];
                 split.SectorIndex=sector;
-                split.GateOrdinal=GateIndex;
                 split.SectorStartClockSeconds=LastGateClock;
-                split.SectorEndClockSeconds=
-                    sample.RaceClockSeconds;
-                split.SectorDurationSeconds=elapsed;
-                split.CumulativeLapDurationSeconds=
-                    sample.RaceClockSeconds-LapStartClock;
-                split.DistanceCompletedCm=
-                    sample.UnwrappedDistanceCm-
-                    LastUnwrappedDistanceCm;
-                split.MeanSectorSpeedCmS=SafeDivision(
-                    split.DistanceCompletedCm,elapsed);
-                split.MinimumPossibleDurationSeconds=
-                    SafeDivision(split.DistanceCompletedCm,
-                        Settings.MaximumPhysicalSpeedCmS);
-                split.TimeSincePreviousCrossingSeconds=elapsed;
-                split.OriginalGateCrossedForward=true;
-                split.PhysicallyConsistent=
-                    split.SectorDurationSeconds>=
-                        Settings.MinimumSectorDurationSeconds &&
-                    split.MeanSectorSpeedCmS<=
-                        Settings.MaximumPhysicalSpeedCmS &&
-                    split.MeanSectorSpeedCmS>=0.0;
-                split.Valid=split.PhysicallyConsistent &&
-                    Finite(split.MeanSectorSpeedCmS);
-                if(!split.Valid)
-                {
-                    ++RejectedGateCrossings;
-                    return SectorTimingFault::ImpossibleSectorSpeed;
-                }
+                split.MinimumSourceConfidence=
+                    LastGateConfidence;
             }
+            split.GateOrdinal=GateIndex;
+            split.SectorEndClockSeconds=sample.RaceClockSeconds;
+            split.SectorDurationSeconds+=elapsed;
+            split.DistanceCompletedCm+=progress;
+            split.CumulativeLapDurationSeconds=
+                sample.RaceClockSeconds-LapStartClock;
+            split.MeanSectorSpeedCmS=SafeDivision(
+                split.DistanceCompletedCm,
+                split.SectorDurationSeconds);
+            split.MinimumPossibleDurationSeconds=SafeDivision(
+                split.DistanceCompletedCm,
+                Settings.MaximumPhysicalSpeedCmS);
+            split.TimeSincePreviousCrossingSeconds=elapsed;
+            split.MinimumSourceConfidence=std::min(
+                split.MinimumSourceConfidence,
+                sample.MeasuredGateConfidence);
+            split.OriginalGateCrossedForward=true;
+            split.PhysicallyConsistent=
+                split.SectorDurationSeconds>=
+                    Settings.MinimumSectorDurationSeconds &&
+                split.SectorDurationSeconds<=
+                    Settings.MaximumSectorDurationSeconds &&
+                split.MeanSectorSpeedCmS>=0.0 &&
+                split.MeanSectorSpeedCmS<=
+                    Settings.MaximumPhysicalSpeedCmS &&
+                split.DistanceCompletedCm>=0.0;
+            split.Valid=split.PhysicallyConsistent &&
+                Finite(split.MeanSectorSpeedCmS);
+            if (!split.Valid)
+            {
+                ++RejectedGateCrossings;
+                return SectorTimingFault::ImpossibleSectorSpeed;
+            }
+            LapRecords[static_cast<std::size_t>(sector)]=split;
         }
         Source=sample.Identity;
         HasSource=true;
         LastGateClock=sample.RaceClockSeconds;
+        LastGateConfidence=sample.MeasuredGateConfidence;
         LastUnwrappedDistanceCm=sample.UnwrappedDistanceCm;
         ++AcceptedGateCrossings;
-        ++GateIndex;
-        if (GateIndex==Course.GateCount)
+        if (finishingLap)
         {
-            GateIndex=0;
             BuildCandidateLap(sample);
+            // The finish crossing is also the next lap's start. Preserve
+            // source continuity without copying previous sector evidence.
+            LapStartClock=sample.RaceClockSeconds;
+            LapStartDistanceCm=sample.UnwrappedDistanceCm;
+            LapRecords={};
+            ++LapOrdinal;
         }
+        GateIndex=(GateIndex+1)%Course.GateCount;
         return SectorTimingFault::None;
     }
     void BuildCandidateLap(
-        const SectorTimingCrossing& lastSample) noexcept
+        const SectorTimingCrossing& finish) noexcept
     {
         LapTimingEvidence result;
-        result.Identity=lastSample.Identity;
+        result.Identity=finish.Identity;
         result.LapOrdinal=LapOrdinal;
         result.Sectors=LapRecords;
         result.LapStartClockSeconds=LapStartClock;
-        result.LapFinishClockSeconds=
-            lastSample.RaceClockSeconds;
+        result.LapFinishClockSeconds=finish.RaceClockSeconds;
         result.ProposedLapTimeSeconds=
             result.LapFinishClockSeconds-
             result.LapStartClockSeconds;
@@ -504,6 +550,9 @@ public:
             ++result.CompletedSectorCount;
             result.TotalVerifiedDistanceCm+=
                 split.DistanceCompletedCm;
+            result.MinimumSectorConfidence=std::min(
+                result.MinimumSectorConfidence,
+                split.MinimumSourceConfidence);
             result.FastestMeasuredSectorSeconds=std::min(
                 result.FastestMeasuredSectorSeconds,
                 split.SectorDurationSeconds);
@@ -511,14 +560,26 @@ public:
                 result.SlowestMeasuredSectorSeconds,
                 split.SectorDurationSeconds);
         }
+        const double unwrappedLapDistance=
+            finish.UnwrappedDistanceCm-
+            LapStartDistanceCm;
         result.AllPhysicalGatesVisited=
             AcceptedGateCrossings>=
-                static_cast<std::uint64_t>(Course.GateCount) &&
-            result.CompletedSectorCount>=
-                PhysicalSectorCount-1;
+                static_cast<std::uint64_t>(Course.GateCount+1) &&
+            result.CompletedSectorCount==PhysicalSectorCount;
+        const bool completeDistance=
+            std::abs(unwrappedLapDistance-
+                     Settings.CircuitLengthCm)<=
+                Settings.MaximumLapDistanceToleranceCm &&
+            std::abs(result.TotalVerifiedDistanceCm-
+                     Settings.CircuitLengthCm)<=
+                Settings.MaximumLapDistanceToleranceCm;
         result.ActualEngineLapCreditIssued=false;
         result.CandidateForOfficialReview=
             result.AllPhysicalGatesVisited &&
+            completeDistance &&
+            result.MinimumSectorConfidence>=
+                Settings.MinimumSourceConfidence &&
             result.ProposedLapTimeSeconds>=
                 Settings.MinimumLapDurationSeconds &&
             result.ProposedLapTimeSeconds<=
@@ -544,12 +605,13 @@ private:
     int GateIndex=0;
     int LapOrdinal=0;
     double LastGateClock=0.0;
+    double LastGateConfidence=1.0;
     double LapStartClock=0.0;
+    double LapStartDistanceCm=0.0;
     double LastUnwrappedDistanceCm=0.0;
     std::uint64_t AcceptedGateCrossings=0;
     std::uint64_t RejectedGateCrossings=0;
     std::uint64_t CompletedCandidateLaps=0;
-    bool OriginalMapSource=true;
     bool HasSource=false;
     bool Configured=false;
 };
