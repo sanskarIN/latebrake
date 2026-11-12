@@ -83,6 +83,13 @@ public:
     {
         return latebrake::DescribeChassisContact(LastGroundContact);
     }
+    // The real rival's last accepted WorldStatic contact traces, not a
+    // synthetic rival position or HUD string. Used ONLY to qualify a
+    // small optional player drafting bonus, never scoring or motor load.
+    bool HasQualifiedDraftRoadSupport() const noexcept
+    {
+        return latebrake::HasQualifiedDraftGroundSupport(LastGroundContact);
+    }
     const latebrake::ArcadeTireCondition& GetTireCondition() const noexcept { return TireCondition; }
     const latebrake::ArcadeBrakeHeat& GetBrakeHeat() const noexcept { return BrakeHeat; }
     const latebrake::ArcadeEngineHeat& GetEngineHeat() const noexcept { return EngineHeat; }
