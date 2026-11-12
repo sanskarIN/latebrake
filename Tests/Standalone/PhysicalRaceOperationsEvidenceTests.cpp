@@ -105,6 +105,8 @@ static void PitCrewEvidence()
         w.ActualWheelRemoved=true;
         w.ActualNewWheelInstalled=true;
         w.WheelTorqueVerified=true;
+        w.WheelRemovalClockSeconds=1.0;
+        w.WheelInstallationClockSeconds=2.0;
         w.MeasuredWheelBoltTorqueNm=120.0;
     }
     frame.JackHeightCm=0.0;
@@ -112,14 +114,132 @@ static void PitCrewEvidence()
     frame.PitReleaseAuthorized=true;
     const auto after=EvaluatePhysicalPitService(frame);
     Check(after.Valid &&
-          after.Phase==PitCrewPhase::ReadyForRelease &&
-          after.PhysicalReleaseClear &&
+          after.Phase==PitCrewPhase::SafetyInspection &&
+          !after.PhysicalReleaseClear &&
+          after.WheelsActuallyReplaced==4 &&
           after.WheelsTorqueQualified==4 &&
+          after.TasksPhysicallyComplete==after.TasksRequired &&
           !after.OfficialRaceResultModified,
-          "physical wheel service and lowered jack allow review only");
-    frame.Wheels[2].OriginalChaosWheelComponent=false;
-    Check(!EvaluatePhysicalPitService(frame).Valid,
+          "one pit snapshot cannot prove chronological jack and wheel work");
+    auto missingPhysicalRemoval=frame;
+    missingPhysicalRemoval.Wheels[0].ActualWheelRemoved=false;
+    Check(!EvaluatePhysicalPitService(missingPhysicalRemoval).Valid,
+          "acknowledged tire change without actual removal is rejected");
+    missingPhysicalRemoval=frame;
+    missingPhysicalRemoval.Wheels[0].MeasuredTirePressureKpa=75.0;
+    const auto lowPressure=EvaluatePhysicalPitService(missingPhysicalRemoval);
+    Check(lowPressure.Valid &&
+          lowPressure.WheelsActuallyReplaced<4 &&
+          !lowPressure.PhysicalReleaseClear,
+          "unsafe fitted tire pressure cannot certify a replaced wheel");
+    missingPhysicalRemoval=frame;
+    missingPhysicalRemoval.Wheels[2].OriginalChaosWheelComponent=false;
+    Check(!EvaluatePhysicalPitService(missingPhysicalRemoval).Valid,
           "fabricated replacement wheel cannot permit pit release");
+
+    // Real release requires SEPARATE authentic engine frames in the
+    // correct physical service order. Invented all-true task snapshots
+    // and instantaneous jack lowering never certify an installed tire.
+    auto stage=frame;
+    stage.Identity.Frame=100;
+    stage.PhysicsClockSeconds=100.0;
+    stage.JackHeightCm=0.0;
+    stage.MeasuredJackSupportLoadN=0.0;
+    stage.PitReleaseAuthorized=true; // premature attempt is recorded
+    stage.CrewTaskAcknowledged.fill(false);
+    for(auto& wheel:stage.Wheels)
+    {
+        wheel.ActualWheelRemoved=false;
+        wheel.ActualNewWheelInstalled=false;
+        wheel.WheelTorqueVerified=false;
+        wheel.WheelRemovalClockSeconds=0.0;
+        wheel.WheelInstallationClockSeconds=0.0;
+        wheel.MeasuredWheelBoltTorqueNm=0.0;
+    }
+    PhysicalPitCrewSupervisor supervisor;
+    Check(supervisor.Configure({}),
+          "physical pit service state machine configured");
+    const auto initial=supervisor.Step(stage);
+    Check(initial.Valid &&
+          initial.Phase==PitCrewPhase::StationaryVerified &&
+          !initial.PhysicalReleaseClear &&
+          supervisor.UnsafeReleaseAttempts()==1,
+          "pit service begins only with stationary car and jack down");
+    stage.PitReleaseAuthorized=false;
+    auto next=[&](double clockSeconds)
+    {
+        ++stage.Identity.Frame;
+        stage.PhysicsClockSeconds=clockSeconds;
+        return supervisor.Step(stage);
+    };
+    stage.CrewTaskAcknowledged[
+        static_cast<std::size_t>(PitCrewTask::Lift)]=true;
+    stage.JackHeightCm=15.0;
+    stage.MeasuredJackSupportLoadN=3500.0;
+    Check(next(101.0).Phase==PitCrewPhase::JackUp,
+          "jack must be physically supported after reservation");
+    for(int i=0;i<PhysicalWheelCount;++i)
+    {
+        auto& wheel=stage.Wheels[static_cast<std::size_t>(i)];
+        wheel.ActualWheelRemoved=true;
+        wheel.WheelRemovalClockSeconds=101.5;
+        stage.CrewTaskAcknowledged[static_cast<std::size_t>(
+            static_cast<int>(PitCrewTask::RemoveFrontLeft)+i)]=true;
+    }
+    const auto removed=next(102.0);
+    Check(removed.Valid &&
+          removed.Phase==PitCrewPhase::RemoveWheels &&
+          !removed.PhysicalReleaseClear,
+          "all four physically removed wheels precede new installation");
+    for(int i=0;i<PhysicalWheelCount;++i)
+    {
+        auto& wheel=stage.Wheels[static_cast<std::size_t>(i)];
+        wheel.ActualNewWheelInstalled=true;
+        wheel.WheelInstallationClockSeconds=103.0;
+        stage.CrewTaskAcknowledged[static_cast<std::size_t>(
+            static_cast<int>(PitCrewTask::InstallFrontLeft)+i)]=true;
+    }
+    const auto installed=next(104.0);
+    Check(installed.Valid &&
+          installed.Phase==PitCrewPhase::FitWheels &&
+          installed.WheelsActuallyReplaced==4 &&
+          !installed.PhysicalReleaseClear,
+          "four fitted original-Chaos wheels need later torque checks");
+    for(auto& wheel:stage.Wheels)
+    {
+        wheel.WheelTorqueVerified=true;
+        wheel.MeasuredWheelBoltTorqueNm=120.0;
+    }
+    stage.CrewTaskAcknowledged[static_cast<std::size_t>(
+        PitCrewTask::InspectWheelTorque)]=true;
+    const auto torqued=next(105.0);
+    Check(torqued.Valid &&
+          torqued.Phase==PitCrewPhase::SafetyInspection &&
+          torqued.WheelsTorqueQualified==4 &&
+          !torqued.PhysicalReleaseClear,
+          "wheel torque qualification must occur after fitment");
+    stage.JackHeightCm=0.0;
+    stage.MeasuredJackSupportLoadN=0.0;
+    stage.CrewTaskAcknowledged[static_cast<std::size_t>(
+        PitCrewTask::ReleaseJack)]=true;
+    const auto lowered=next(106.0);
+    Check(lowered.Valid &&
+          lowered.Phase==PitCrewPhase::JackDown &&
+          !lowered.PhysicalReleaseClear,
+          "physically lowered jack must be observed separately");
+    stage.PitReleaseAuthorized=true;
+    const auto released=next(107.0);
+    Check(released.Valid &&
+          released.Phase==PitCrewPhase::ReadyForRelease &&
+          released.PhysicalReleaseClear &&
+          released.TotalElapsedSeconds==7.0 &&
+          !released.ActualUnrealVehicleModified &&
+          !released.OfficialRaceResultModified &&
+          supervisor.CertifiedReleaseFrames()==1,
+          "only chronological original-wheel service can certify release");
+    const auto replay=supervisor.Step(stage);
+    Check(!replay.Valid && supervisor.Rejections()==1,
+          "the same physical pit frame cannot release twice");
 }
 static void RoadWaterEvidence()
 {
