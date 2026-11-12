@@ -1141,7 +1141,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         Mode->TryGetRivalDraftingState(
             RivalPosition, RivalForward, RivalVelocity);
     double DraftExtraForce = 0.0;
-    if (bDraftTargetReady && GroundContact.HasDriveContact)
+    // The follower and the leader must each have independently
+    // qualified at least three real WorldStatic road probes. Mere
+    // chassis speed or an airborne rival's last location is not draft.
+    if (bDraftTargetReady &&
+        latebrake::HasQualifiedDraftGroundSupport(GroundContact))
     {
         const FVector Position = GetActorLocation();
         const FVector Offset = RivalPosition - Position;
