@@ -239,7 +239,23 @@ inline bool ValidOvertakeObservation(
         s.ActualRoadHalfWidthCm>=p.MinimumRoadWidthCm &&
         Finite(s.DriverSkill) &&
         s.DriverSkill>=0.0 &&
-        s.DriverSkill<=1.0;
+        s.DriverSkill<=1.0 &&
+        std::all_of(
+            s.Occupancy.Contacts.begin(),
+            s.Occupancy.Contacts.end(),
+            [&](const RivalLaneContact& contact)
+            {
+                for(int i=0;i<s.Traffic.OtherCount;++i)
+                {
+                    const auto& actor=s.Traffic.Others[
+                        static_cast<std::size_t>(i)];
+                    if(contact.Actor==actor.Identity.Actor &&
+                       contact.Slot==actor.Identity.Slot &&
+                       contact.PhysicallyQualified)
+                        return true;
+                }
+                return false;
+            });
 }
 inline OvertakeVeto EvaluateOvertakeVeto(
     const OvertakeObservation& s,
@@ -420,6 +436,134 @@ inline OvertakeDecision ProposeOvertake(
         Finite(out.ProposedBrake);
     return out;
 }
+// A physical passing commitment must retain the SAME source actor and
+// target strip across frames. The 'new pass' selector intentionally has
+// a minimum leading gap, so it cannot be reused after closing in on a
+// rival or it will abort every otherwise successful pass.
+struct TrackedOvertakeEvidence final
+{
+    OvertakeVeto Veto=OvertakeVeto::MissingPhysics;
+    std::uint64_t ActualTargetActor=0;
+    int ActualTargetSlot=-1;
+    double ForwardDistanceCm=0.0;
+    double LeadingGapCm=0.0;
+    double ClosingSpeedCmS=0.0;
+    double RemainingLateralOffsetCm=0.0;
+    double RoadEdgeReserveCm=0.0;
+    int ConflictingObservedActors=0;
+    bool InCommittedLane=false;
+    bool SideBySide=false;
+    bool PassedWithFullClearance=false;
+    bool PhysicalTargetObserved=false;
+    bool Valid=false;
+};
+inline TrackedOvertakeEvidence InspectTrackedOvertake(
+    const OvertakeObservation& sample,
+    std::uint64_t expectedTargetActor,
+    int expectedTargetSlot,
+    double committedTrackOffsetCm,
+    OvertakeCommitmentSettings settings={}) noexcept
+{
+    TrackedOvertakeEvidence out;
+    if (!ValidOvertakeObservation(sample,settings) ||
+        expectedTargetActor==0 ||
+        expectedTargetSlot<0 ||
+        expectedTargetSlot>=PhysicalFleetCapacity ||
+        expectedTargetSlot==sample.Traffic.Self.Identity.Slot ||
+        !Finite(committedTrackOffsetCm))
+        return out;
+    out.Veto=EvaluateOvertakeVeto(sample,settings);
+    const auto& self=sample.Traffic.Self;
+    const double leftRightReserve=
+        self.RoadHalfWidthCm-
+        std::abs(committedTrackOffsetCm)-
+        self.HalfWidthCm;
+    out.RoadEdgeReserveCm=leftRightReserve;
+    out.RemainingLateralOffsetCm=
+        committedTrackOffsetCm-self.TrackLateralOffsetCm;
+    out.InCommittedLane=
+        std::abs(out.RemainingLateralOffsetCm)<=
+            settings.MinimumAdjacentGapCm;
+    if(leftRightReserve<settings.MinimumRoadEdgeCm ||
+       std::abs(committedTrackOffsetCm)>
+           settings.MaximumLateralOffsetCm+
+           std::abs(self.TrackLateralOffsetCm))
+        out.Veto=OvertakeVeto::UnsafeRoad;
+    const double desiredRelativeCm=
+        committedTrackOffsetCm-self.TrackLateralOffsetCm;
+    // This checks the absolute committed strip, not a NEW left/right
+    // offset relative to a chassis already moving sideways.
+    for(int i=0;i<sample.Traffic.OtherCount;++i)
+    {
+        const auto& rival=sample.Traffic.Others[
+            static_cast<std::size_t>(i)];
+        const auto& contact=sample.Occupancy.Contacts[
+            static_cast<std::size_t>(i)];
+        if(contact.Actor!=rival.Identity.Actor ||
+           contact.Slot!=rival.Identity.Slot ||
+           !contact.PhysicallyQualified)
+        {
+            out.Veto=OvertakeVeto::InconsistentFrame;
+            return out;
+        }
+        if(rival.Identity.Actor==expectedTargetActor)
+        {
+            if(rival.Identity.Slot!=expectedTargetSlot)
+            {
+                out.Veto=OvertakeVeto::RosterChanged;
+                return out;
+            }
+            out.PhysicalTargetObserved=true;
+            out.ActualTargetActor=rival.Identity.Actor;
+            out.ActualTargetSlot=rival.Identity.Slot;
+            out.ForwardDistanceCm=contact.ForwardDistanceCm;
+            out.LeadingGapCm=contact.ForwardDistanceCm-
+                self.HalfLengthCm-rival.HalfLengthCm;
+            out.ClosingSpeedCmS=std::max(
+                0.0,-contact.RelativeForwardSpeedCmS);
+            out.SideBySide=std::abs(contact.ForwardDistanceCm)<=
+                self.HalfLengthCm+rival.HalfLengthCm+
+                    settings.LateAbortDistanceCm;
+            out.PassedWithFullClearance=
+                contact.ForwardDistanceCm<=
+                    -(self.HalfLengthCm+rival.HalfLengthCm+
+                      settings.MinimumPassTargetAdvanceCm);
+        }
+        const double lateralNow=std::abs(
+            contact.LateralDistanceCm-desiredRelativeCm);
+        const double lateralFuture=std::abs(
+            contact.LateralDistanceCm+
+            contact.RelativeLateralSpeedCmS*
+                settings.MinimumSafetyWindowSeconds-
+            desiredRelativeCm);
+        const double occupiedWidth=self.HalfWidthCm+
+            rival.HalfWidthCm+settings.OccupancyMarginCm;
+        const double longitudinalSafetyCm=
+            self.HalfLengthCm+rival.HalfLengthCm+
+            settings.MinimumAdjacentGapCm+
+            std::abs(contact.RelativeForwardSpeedCmS)*
+                settings.MinimumSafetyWindowSeconds;
+        // A real opponent overlapping the committed strip at present
+        // or within the safety horizon vetoes the pass, even if another
+        // projected lane is nominally empty.
+        if(std::min(lateralNow,lateralFuture)<
+                occupiedWidth &&
+           std::abs(contact.ForwardDistanceCm)<
+                longitudinalSafetyCm)
+            ++out.ConflictingObservedActors;
+    }
+    if(!out.PhysicalTargetObserved)
+        out.Veto=OvertakeVeto::RosterChanged;
+    else if(out.ConflictingObservedActors>0)
+        out.Veto=OvertakeVeto::MultipleThreats;
+    out.Valid=out.PhysicalTargetObserved &&
+        Finite(out.ForwardDistanceCm) &&
+        Finite(out.LeadingGapCm) &&
+        Finite(out.ClosingSpeedCmS) &&
+        Finite(out.RemainingLateralOffsetCm) &&
+        Finite(out.RoadEdgeReserveCm);
+    return out;
+}
 class RivalOvertakeSupervisor final
 {
 public:
@@ -435,9 +579,11 @@ public:
         Last={};
         State=OvertakeState::Disarmed;
         Source={};
+        Roster.fill(0);
         TargetActor=0;
         TargetSlot=-1;
         CommittedLane=RivalLaneClass::Center;
+        CommittedTrackOffsetCm=0.0;
         PreparationSeconds=0.0;
         CommitmentSeconds=0.0;
         AlongsideSeconds=0.0;
@@ -449,30 +595,46 @@ public:
         Attempts=0;
         Aborts=0;
         Completed=0;
+        HasRoster=false;
     }
     OvertakeDecision Step(
         const OvertakeObservation& sample) noexcept
     {
         OvertakeDecision decision=ProposeOvertake(
             sample,Settings);
-        const bool sameEpoch=Source.Session!=0 &&
-            Source.Session==sample.Traffic.Self.Identity.Session &&
+        const auto& own=sample.Traffic.Self;
+        const bool sameEpoch=HasRoster &&
+            Source.Session==own.Identity.Session &&
             Source.SessionRevision==
-                sample.Traffic.Self.Identity.SessionRevision &&
-            Source.Actor==sample.Traffic.Self.Identity.Actor;
+                own.Identity.SessionRevision &&
+            Source.Actor==own.Identity.Actor;
         if (!decision.Valid ||
             (sameEpoch &&
-             sample.Traffic.Self.Identity.Frame<=Source.Frame))
+             own.Identity.Frame<=Source.Frame))
         {
             ++Rejected;
+            // Never continue a committed manoeuvre from invalid/replayed
+            // physics. No guessed steering command may be returned.
             State=OvertakeState::Aborted;
             Last={};
+            CleanFrames=0;
+            TargetActor=0;
             return {};
         }
+        std::array<std::uint64_t,PhysicalFleetCapacity> roster{};
+        roster[static_cast<std::size_t>(
+            own.Identity.Slot)]=own.Identity.Actor;
+        for(const auto& rival:sample.Traffic.Others)
+            roster[static_cast<std::size_t>(
+                rival.Identity.Slot)]=rival.Identity.Actor;
+        const bool rosterChanged=sameEpoch &&
+            Settings.AbortOnRosterChange &&
+            roster!=Roster;
         if (!sameEpoch)
         {
             State=OvertakeState::Following;
             TargetActor=0;
+            TargetSlot=-1;
             CleanFrames=0;
             PreparationSeconds=0.0;
             CommitmentSeconds=0.0;
@@ -481,6 +643,32 @@ public:
             PreviousSteering=sample.Traffic.CurrentSteering;
         }
         const double dt=sample.Traffic.DeltaSeconds;
+        const bool activePass=State==OvertakeState::Committed ||
+            State==OvertakeState::Alongside;
+        TrackedOvertakeEvidence tracked;
+        if(activePass)
+        {
+            tracked=InspectTrackedOvertake(
+                sample,TargetActor,TargetSlot,
+                CommittedTrackOffsetCm,Settings);
+            // New-pass eligibility may disappear as the cars converge.
+            // A committed manoeuvre is reviewed against the already
+            // authenticated target, not replaced with another rival.
+            decision.Veto=tracked.Veto;
+            decision.TargetActor=TargetActor;
+            decision.TargetActorSlot=TargetSlot;
+            decision.Lane=CommittedLane;
+            decision.RequestedLateralOffsetCm=
+                tracked.RemainingLateralOffsetCm;
+            decision.PlannedSafetyMarginCm=
+                tracked.RoadEdgeReserveCm;
+            decision.PhysicalLeadingGapCm=
+                tracked.LeadingGapCm;
+            decision.ClosingAdvantageCmS=
+                tracked.ClosingSpeedCmS;
+        }
+        if(rosterChanged)
+            decision.Veto=OvertakeVeto::RosterChanged;
         const bool viable=decision.Veto==OvertakeVeto::None &&
             decision.TargetActor!=0 &&
             decision.PlannedSafetyMarginCm>=
@@ -488,14 +676,15 @@ public:
             decision.RiskScore<=Settings.RiskScoreThreshold;
         if (!viable)
         {
-            if(State==OvertakeState::Committed ||
-               State==OvertakeState::Alongside)
+            if(activePass)
             {
                 ++Aborts;
                 State=OvertakeState::Aborted;
                 RecoverySeconds=Settings.MaximumRecoverySeconds;
+                decision.EarlyAbortRequested=true;
             }
-            else if(State!=OvertakeState::Aborted)
+            else if(State!=OvertakeState::Aborted &&
+                    State!=OvertakeState::Clearing)
                 State=OvertakeState::Following;
             CleanFrames=0;
             PreparationSeconds=0.0;
@@ -507,16 +696,23 @@ public:
             TargetActor=decision.TargetActor;
             TargetSlot=decision.TargetActorSlot;
             CommittedLane=decision.Lane;
+            CommittedTrackOffsetCm=
+                own.TrackLateralOffsetCm+
+                decision.RequestedLateralOffsetCm;
             PreparationSeconds=0.0;
             CleanFrames=1;
         }
-        else if (State==OvertakeState::Evaluating)
+        else if(State==OvertakeState::Evaluating)
         {
             if(TargetActor!=decision.TargetActor ||
                CommittedLane!=decision.Lane)
             {
                 TargetActor=decision.TargetActor;
+                TargetSlot=decision.TargetActorSlot;
                 CommittedLane=decision.Lane;
+                CommittedTrackOffsetCm=
+                    own.TrackLateralOffsetCm+
+                    decision.RequestedLateralOffsetCm;
                 PreparationSeconds=0.0;
                 CleanFrames=0;
             }
@@ -537,11 +733,13 @@ public:
             if(CommitmentSeconds>Settings.MaximumCommitSeconds)
             {
                 State=OvertakeState::Aborted;
+                decision.Veto=OvertakeVeto::TimedOut;
                 ++Aborts;
+                decision.EarlyAbortRequested=true;
                 RecoverySeconds=Settings.MaximumRecoverySeconds;
             }
-            else if(decision.PhysicalLeadingGapCm<
-                Settings.LateAbortDistanceCm)
+            else if(tracked.InCommittedLane &&
+                    tracked.SideBySide)
             {
                 State=OvertakeState::Alongside;
                 AlongsideSeconds=0.0;
@@ -553,28 +751,33 @@ public:
             if(AlongsideSeconds>Settings.MaximumAlongsideSeconds)
             {
                 State=OvertakeState::Aborted;
+                decision.Veto=OvertakeVeto::TimedOut;
                 ++Aborts;
+                decision.EarlyAbortRequested=true;
                 RecoverySeconds=Settings.MaximumRecoverySeconds;
             }
-            else if(decision.TargetActorSlot!=TargetSlot)
+            else if(tracked.InCommittedLane &&
+                    tracked.PassedWithFullClearance)
             {
+                // The same actual rival must be physically behind by
+                // both chassis lengths PLUS a measured rearward gap.
                 State=OvertakeState::Clearing;
+                RecoverySeconds=Settings.MaximumRecoverySeconds;
                 ++Completed;
             }
         }
-        else if(State==OvertakeState::Aborted)
+        else if(State==OvertakeState::Aborted ||
+                State==OvertakeState::Clearing)
         {
             RecoverySeconds=std::max(
                 0.0,RecoverySeconds-dt);
             if(RecoverySeconds<=0.0)
+            {
                 State=OvertakeState::Following;
-        }
-        else if(State==OvertakeState::Clearing)
-        {
-            RecoverySeconds=std::max(
-                0.0,RecoverySeconds-dt);
-            if(RecoverySeconds<=0.0)
-                State=OvertakeState::Following;
+                TargetActor=0;
+                TargetSlot=-1;
+                CommittedTrackOffsetCm=0.0;
+            }
         }
         const bool laneAuthorized=
             State==OvertakeState::Committed ||
@@ -582,7 +785,9 @@ public:
         if(laneAuthorized)
         {
             const double steeringTarget=std::clamp(
-                SafeDivision(decision.RequestedLateralOffsetCm,
+                SafeDivision(
+                    CommittedTrackOffsetCm-
+                        own.TrackLateralOffsetCm,
                     Settings.MaximumLateralOffsetCm)*
                 Settings.MaximumPassingSteering,
                 -Settings.MaximumPassingSteering,
@@ -593,7 +798,7 @@ public:
                 Settings.MaximumSteeringRatePerSecond,dt);
             decision.DriverCommandsAltered=
                 decision.ProposedSteering!=
-                sample.Traffic.CurrentSteering;
+                    sample.Traffic.CurrentSteering;
         }
         else
         {
@@ -610,12 +815,16 @@ public:
                 decision.ProposedBrake,
                 Settings.MaximumBrakeFraction*0.20);
         }
-        decision.ProposedThrottle=std::min(
+        // An overtake review can never relax the real six-car collision
+        // planner or the original driver command.
+        decision.ProposedThrottle=std::min({
             decision.ProposedThrottle,
-            sample.Traffic.CurrentThrottle);
-        decision.ProposedBrake=std::max(
+            sample.Traffic.CurrentThrottle,
+            sample.Occupancy.ProposedThrottle});
+        decision.ProposedBrake=std::max({
             decision.ProposedBrake,
-            sample.Traffic.CurrentBrake);
+            sample.Traffic.CurrentBrake,
+            sample.Occupancy.ProposedBrake});
         if(decision.ProposedBrake>0.05)
             decision.ProposedThrottle=0.0;
         decision.State=State;
@@ -628,7 +837,9 @@ public:
         decision.UnrealSteeringApplied=false;
         decision.OfficialRaceStateChanged=false;
         PreviousSteering=decision.ProposedSteering;
-        Source=sample.Traffic.Self.Identity;
+        Source=own.Identity;
+        Roster=roster;
+        HasRoster=true;
         ++Qualified;
         Last=decision;
         return Last;
@@ -640,14 +851,21 @@ public:
     std::uint64_t AbortedPasses() const noexcept{return Aborts;}
     std::uint64_t ClearedPasses() const noexcept{return Completed;}
     OvertakeState CurrentState() const noexcept{return State;}
+    std::uint64_t TrackedTargetActor() const noexcept
+    {return TargetActor;}
+    int TrackedTargetSlot() const noexcept{return TargetSlot;}
+    double CommittedOffsetCm() const noexcept
+    {return CommittedTrackOffsetCm;}
 private:
     OvertakeCommitmentSettings Settings{};
     OvertakeDecision Last{};
     OvertakeState State=OvertakeState::Disarmed;
     RaceIdentity Source{};
+    std::array<std::uint64_t,PhysicalFleetCapacity> Roster{};
     RivalLaneClass CommittedLane=RivalLaneClass::Center;
     std::uint64_t TargetActor=0;
     int TargetSlot=-1;
+    double CommittedTrackOffsetCm=0.0;
     double PreparationSeconds=0.0;
     double CommitmentSeconds=0.0;
     double AlongsideSeconds=0.0;
@@ -659,5 +877,6 @@ private:
     std::uint64_t Attempts=0;
     std::uint64_t Aborts=0;
     std::uint64_t Completed=0;
+    bool HasRoster=false;
 };
 } // namespace latebrake::racecraft
