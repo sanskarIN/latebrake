@@ -62,6 +62,10 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive(),
             Mode->HasLocalPlayerDriver(), Route.IsFinished()))
     {
+        // A paused or unready chassis may skip rival ticks entirely.
+        // Never carry nearly-eight seconds of pre-pause stall into
+        // an immediate post-resume recovery or teleport request.
+        Route.SuspendObservation();
         RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
         GripPace.Reset();
@@ -82,6 +86,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     {
         // An event configured with more gates than the original four-point
         // circuit must not steer the rival toward the invalid {0,0} fallback.
+        Route.SuspendObservation();
         RivalGateTrace.Reset();
         FollowingBrakeHold.Reset();
         GripPace.Reset();
