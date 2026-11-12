@@ -2276,3 +2276,16 @@ else()
     target_compile_options(latebrake_physical_race_operations_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PhysicalRaceOperationsEvidence COMMAND latebrake_physical_race_operations_tests)
+
+
+# Exact-frame six-physical-chassis replay diagnostics; deliberately
+# read-only and not an Unreal/Chaos runtime acceptance test.
+add_executable(latebrake_physical_six_car_trace_tests PhysicalSixCarRaceTraceTests.cpp)
+target_include_directories(latebrake_physical_six_car_trace_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_physical_six_car_trace_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_physical_six_car_trace_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_physical_six_car_trace_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PhysicalSixCarRaceTrace COMMAND latebrake_physical_six_car_trace_tests)
