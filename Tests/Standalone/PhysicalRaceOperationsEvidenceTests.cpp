@@ -136,6 +136,11 @@ static void PitCrewEvidence()
     missingPhysicalRemoval.Wheels[2].OriginalChaosWheelComponent=false;
     Check(!EvaluatePhysicalPitService(missingPhysicalRemoval).Valid,
           "fabricated replacement wheel cannot permit pit release");
+    missingPhysicalRemoval=frame;
+    missingPhysicalRemoval.Wheels[2].WheelComponentToken=
+        missingPhysicalRemoval.Wheels[0].WheelComponentToken;
+    Check(!EvaluatePhysicalPitService(missingPhysicalRemoval).Valid,
+          "four fake aliases of an original wheel cannot certify full service");
 
     // Real release requires SEPARATE authentic engine frames in the
     // correct physical service order. Invented all-true task snapshots
@@ -156,6 +161,34 @@ static void PitCrewEvidence()
         wheel.WheelInstallationClockSeconds=0.0;
         wheel.MeasuredWheelBoltTorqueNm=0.0;
     }
+    const auto originalStart=stage;
+    // Separate adversarial physical services must reject mutated box and
+    // wheel identities, stale reservations, and missing engine ticks.
+    for(int fault=0;fault<5;++fault)
+    {
+        PhysicalPitCrewSupervisor tamper;
+        Check(tamper.Configure({}) &&
+              tamper.Step(originalStart).Valid,
+              "independent pit-service tamper guard starts qualified");
+        auto bad=originalStart;
+        ++bad.Identity.Frame;
+        bad.PhysicsClockSeconds+=0.1;
+        bad.DeltaSeconds=0.1;
+        if(fault==0)
+            ++bad.PitBoxComponentToken;
+        else if(fault==1)
+            bad.Wheels[1].WheelComponentToken+=999;
+        else if(fault==2)
+            ++bad.ReservationToken;
+        else if(fault==3)
+            bad.PhysicsClockSeconds+=0.5;
+        else
+            bad.DeltaSeconds=0.001;
+        Check(!tamper.Step(bad).Valid &&
+              tamper.Rejections()==1 &&
+              !tamper.Snapshot().PhysicalReleaseClear,
+              "physical pit identity, reservation and clock faults deny release");
+    }
     PhysicalPitCrewSupervisor supervisor;
     Check(supervisor.Configure({}),
           "physical pit service state machine configured");
@@ -166,11 +199,28 @@ static void PitCrewEvidence()
           supervisor.UnsafeReleaseAttempts()==1,
           "pit service begins only with stationary car and jack down");
     stage.PitReleaseAuthorized=false;
+    int physicalTick=0;
+    // Each observation represents an actual 100ms physics step, not
+    // fictitious 1-second frame jumps that could conceal a lost chassis.
     auto next=[&](double clockSeconds)
     {
-        ++stage.Identity.Frame;
-        stage.PhysicsClockSeconds=clockSeconds;
-        return supervisor.Step(stage);
+        const int requestedTick=static_cast<int>(
+            std::lround((clockSeconds-100.0)*10.0));
+        Check(requestedTick>physicalTick,
+              "physical pit fixture clock must advance monotonically");
+        PitCrewServiceReview reviewed{};
+        while(physicalTick<requestedTick)
+        {
+            ++physicalTick;
+            ++stage.Identity.Frame;
+            stage.PhysicsClockSeconds=100.0+
+                static_cast<double>(physicalTick)*0.1;
+            stage.DeltaSeconds=0.1;
+            reviewed=supervisor.Step(stage);
+            Check(reviewed.Valid,
+                  "continuous physical pit sensor frames remain qualified");
+        }
+        return reviewed;
     };
     stage.CrewTaskAcknowledged[
         static_cast<std::size_t>(PitCrewTask::Lift)]=true;
@@ -178,6 +228,8 @@ static void PitCrewEvidence()
     stage.MeasuredJackSupportLoadN=3500.0;
     Check(next(101.0).Phase==PitCrewPhase::JackUp,
           "jack must be physically supported after reservation");
+    Check(next(101.5).Phase==PitCrewPhase::JackUp,
+          "physical wheels cannot be removed before their sensor timestamp");
     for(int i=0;i<PhysicalWheelCount;++i)
     {
         auto& wheel=stage.Wheels[static_cast<std::size_t>(i)];
@@ -191,6 +243,8 @@ static void PitCrewEvidence()
           removed.Phase==PitCrewPhase::RemoveWheels &&
           !removed.PhysicalReleaseClear,
           "all four physically removed wheels precede new installation");
+    Check(next(103.0).Phase==PitCrewPhase::RemoveWheels,
+          "replaced tires cannot exist before installation sensor time");
     for(int i=0;i<PhysicalWheelCount;++i)
     {
         auto& wheel=stage.Wheels[static_cast<std::size_t>(i)];
@@ -227,6 +281,8 @@ static void PitCrewEvidence()
           lowered.Phase==PitCrewPhase::JackDown &&
           !lowered.PhysicalReleaseClear,
           "physically lowered jack must be observed separately");
+    Check(next(106.9).Phase==PitCrewPhase::JackDown,
+          "service is not authorized while release is withheld");
     stage.PitReleaseAuthorized=true;
     const auto released=next(107.0);
     Check(released.Valid &&
