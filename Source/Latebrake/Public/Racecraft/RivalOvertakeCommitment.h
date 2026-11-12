@@ -561,6 +561,17 @@ inline TrackedOvertakeEvidence InspectTrackedOvertake(
         out.Veto=OvertakeVeto::RosterChanged;
     else if(out.ConflictingObservedActors>0)
         out.Veto=OvertakeVeto::MultipleThreats;
+    else if(out.Veto==OvertakeVeto::NoClearLane &&
+            out.RoadEdgeReserveCm>=settings.MinimumRoadEdgeCm &&
+            sample.Occupancy.TotalPotentialContacts==0)
+    {
+        // During a verified lane change the discrete "left/center/right
+        // relative to the CURRENT chassis" choices can all be poor.
+        // The locked ABSOLUTE track strip is still demonstrably clear
+        // using every live rival's predicted contact envelope. Do not
+        // discard that physical evidence and accidentally abort mid-pass.
+        out.Veto=OvertakeVeto::None;
+    }
     out.Valid=out.PhysicalTargetObserved &&
         Finite(out.ForwardDistanceCm) &&
         Finite(out.LeadingGapCm) &&
