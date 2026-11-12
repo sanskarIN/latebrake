@@ -47,8 +47,15 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
         self.assertIn("Route.ReportRecoveryResult(bRecovered)", recovery)
         self.assertIn("SetAutonomousControls(0.f, 0.f, !bRecovered);", recovery)
         self.assertNotIn("RecoverTo(FVector(", recovery)
+        # The new occupancy preflight can legitimately report a
+        # *failed* attempt without invoking a teleport. Only the
+        # engine-verification receipt must follow TryRecoverTo.
+        self.assertIn("if (!Clearance.Safe())", recovery)
+        self.assertIn("Route.ReportRecoveryResult(false)", recovery)
+        self.assertLess(recovery.index("if (!Clearance.Safe())"),
+                        recovery.index("Route.ReportRecoveryResult(false)"))
         self.assertLess(recovery.index("TryRecoverTo("),
-                        recovery.index("Route.ReportRecoveryResult("))
+                        recovery.index("Route.ReportRecoveryResult(bRecovered)"))
         self.assertLess(recovery.index("Route.ReportRecoveryResult("),
                         recovery.index("Super::Tick(DeltaSeconds);"))
         self.assertIn("if (!bReported || !bRecovered)", recovery)

@@ -8,6 +8,7 @@
 #include "AI/RivalSurfaceDamagePace.h"
 #include "AI/RivalSpinThrottleGuard.h"
 #include "AI/RivalStraightPassAssist.h"
+#include "AI/RivalFleetRiskSupervisor.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -28,6 +29,10 @@ public:
     // Event configuration controls route-length telemetry; it never grants
     // authoritative race placement or player checkpoint progression.
     void ConfigurePilot(int32 CheckpointCount, int32 RequiredLaps);
+    // GameMode-owned physical slot; no AI actor may self-register an
+    // arbitrary opponent into official player/primary-rival scoring.
+    bool AssignGridSlot(int32 NewSlot);
+    int32 GetGridSlot() const { return GridSlot; }
     int32 GetExpectedLaps() const { return Route.GetRequiredLaps(); }
     int32 GetApproximateLaps() const { return Route.GetCompletedLaps(); }
     // The live rival's next forward verified gate; no physical placement
@@ -40,6 +45,7 @@ public:
     bool HasCompletedRoute() const { return Route.IsFinished(); }
 
 private:
+    int32 GridSlot = 1;
     latebrake::RivalRouteProgress Route{4, 3};
     latebrake::CheckpointMotionTrace RivalGateTrace;
     latebrake::RivalFollowingBrakeHold FollowingBrakeHold;
@@ -47,4 +53,7 @@ private:
     latebrake::RivalSurfaceDamagePace SurfaceDamagePace;
     latebrake::RivalSpinThrottleGuard SpinThrottleGuard;
     latebrake::RivalStraightPassAssist StraightPassAssist;
+    // Experimental six-car physical traffic only: identity-bound temporal
+    // braking and throttle recovery, never authority for laps or rewards.
+    latebrake::RivalFleetRiskSupervisor FleetRiskSupervisor;
 };
