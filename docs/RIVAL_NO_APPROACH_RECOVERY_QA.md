@@ -67,6 +67,13 @@ be based on an oversized verified physics tick.
 The amended cross-platform tests check a hitch at the gate, a hitch
 before stationary recovery, 79 clean frames interrupted by a long
 frame, invalid infinite time, and fresh uninterrupted recovery.
+In addition, the actual Unreal not-ready / pause / focus / menu branch
+calls `Route.SuspendObservation()` to clear both stall windows.
+Otherwise no route observation would occur during pause and 7.9 seconds
+of earlier stationary or moving stall could carry into the first
+resumed frame. The suspension preserves previously verified gate and
+lap counts, recovery budget and any pending issued teleport ledger.
+Native UE behavior remains unverified.
 Unreal compilation and actual stalled-car recovery remain unverified
 until native self-hosted UE5.8 playtesting.
 
