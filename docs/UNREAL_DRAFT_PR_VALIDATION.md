@@ -6,6 +6,11 @@ UE **5.8** installation, MSVC/Windows SDK, PowerShell 7, sufficient disk
 space and the runner label `unreal-5-8`. It does not run on public hosted
 CI and does not certify a playable game.
 
+**If the manual job is queued before any runner step begins**, use the
+[read-only self-hosted runner queue diagnostics](UNREAL_RUNNER_QUEUE_QA.md)
+first. An unstarted run is not a failed Unreal compile; it has not yet
+validated the PR number or source commit.
+
 ## Why this is needed
 
 The original `compile-unreal-editor.yml` and
