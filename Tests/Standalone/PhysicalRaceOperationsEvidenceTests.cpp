@@ -175,9 +175,9 @@ static void SectorTimingEvidence()
         g.OriginalGateComponent=400+i;
         g.GateOrdinal=i;
         g.SectorIndex=i;
-        g.OriginalGateCenterCm={5000.0*i,0.0};
+        g.OriginalGateCenterCm={62500.0*i,0.0};
         g.GateForwardNormal={1.0,0.0};
-        g.DistanceAlongLapCm=5000.0*i;
+        g.DistanceAlongLapCm=62500.0*i;
         g.EngineClockSeconds=2.0;
     }
     Check(ValidSectorTimingCourse(course,p),
@@ -206,6 +206,87 @@ static void SectorTimingEvidence()
     crossing.CurrentPositionCm={-20.0,0.0};
     Check(supervisor.Submit(crossing)!=SectorTimingFault::None,
           "wrong next gate cannot be used to claim a lap");
+
+    // A lap is NOT complete at the fourth gate: the car must cross
+    // start/finish a second time, with four qualified segment splits.
+    PhysicalSectorTimingSupervisor complete;
+    Check(complete.Configure(course,p),
+          "complete-lap test course qualifies original gates");
+    for(int crossingIndex=0;crossingIndex<=4;++crossingIndex)
+    {
+        const int gateIndex=crossingIndex%course.GateCount;
+        const auto& authored=course.Gates[
+            static_cast<std::size_t>(gateIndex)];
+        auto event=crossing;
+        event.Identity.Frame=
+            static_cast<std::uint64_t>(17+crossingIndex);
+        event.GateOrdinal=gateIndex;
+        event.RaceClockSeconds=2.0+20.0*crossingIndex;
+        event.PreviousRaceClockSeconds=
+            event.RaceClockSeconds-0.016;
+        event.DeltaSeconds=0.016;
+        event.PreviousPositionCm={
+            authored.OriginalGateCenterCm.X-10.0,0.0};
+        event.CurrentPositionCm={
+            authored.OriginalGateCenterCm.X+10.0,0.0};
+        event.DistanceAlongLapCm=authored.DistanceAlongLapCm;
+        event.UnwrappedDistanceCm=62500.0*crossingIndex;
+        Check(complete.Submit(event)==SectorTimingFault::None,
+              "only sequential authentic original-sector crossings count");
+        if(crossingIndex==3)
+            Check(complete.CandidateLaps()==0 &&
+                  complete.NextGateOrdinal()==0,
+                  "last intermediate gate cannot complete an entire lap");
+    }
+    const auto lap=complete.Snapshot();
+    Check(complete.CandidateLaps()==1 &&
+          lap.Valid &&
+          lap.CompletedSectorCount==PhysicalSectorCount &&
+          lap.AllPhysicalGatesVisited &&
+          lap.TotalVerifiedDistanceCm==p.CircuitLengthCm &&
+          lap.ProposedLapTimeSeconds==80.0 &&
+          !lap.ActualEngineLapCreditIssued,
+          "second original start/finish crossing qualifies full measured lap");
+    for(const auto& split:lap.Sectors)
+        Check(split.Valid &&
+              split.DistanceCompletedCm==62500.0 &&
+              split.SectorDurationSeconds==20.0,
+              "each four-sector split must use real gated distance and time");
+
+    // A lap which teleports through the missing last segment cannot
+    // receive a candidate split even when it crosses the gate plane.
+    PhysicalSectorTimingSupervisor incomplete;
+    Check(incomplete.Configure(course,p),
+          "incomplete-lap negative fixture configures");
+    for(int crossingIndex=0;crossingIndex<=4;++crossingIndex)
+    {
+        const int gateIndex=crossingIndex%course.GateCount;
+        const auto& authored=course.Gates[
+            static_cast<std::size_t>(gateIndex)];
+        auto event=crossing;
+        event.Identity.Frame=
+            static_cast<std::uint64_t>(100+crossingIndex);
+        event.GateOrdinal=gateIndex;
+        event.RaceClockSeconds=100.0+20.0*crossingIndex;
+        event.PreviousRaceClockSeconds=
+            event.RaceClockSeconds-0.016;
+        event.PreviousPositionCm={
+            authored.OriginalGateCenterCm.X-10.0,0.0};
+        event.CurrentPositionCm={
+            authored.OriginalGateCenterCm.X+10.0,0.0};
+        event.DistanceAlongLapCm=authored.DistanceAlongLapCm;
+        event.UnwrappedDistanceCm=62500.0*crossingIndex;
+        if(crossingIndex==4)
+            event.UnwrappedDistanceCm=240000.0;
+        const auto fault=incomplete.Submit(event);
+        if(crossingIndex<4)
+            Check(fault==SectorTimingFault::None,
+                  "physical intermediate gates count without lap credit");
+        else
+            Check(fault!=SectorTimingFault::None &&
+                  incomplete.CandidateLaps()==0,
+                  "missing road distance must reject false finish crossing");
+    }
 }
 static RaceTelemetryPhysicalFrame Telemetry()
 {
