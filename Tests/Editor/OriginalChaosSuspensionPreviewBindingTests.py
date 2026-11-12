@@ -25,6 +25,8 @@ class OriginalChaosSuspensionPreviewBindingTests(unittest.TestCase):
         self.assertIn("AddForceAtLocation(",text)
         self.assertIn("receipt.PhysicalRaysCast!=4",text)
         self.assertIn("ForcesSubmitted",text)
+        self.assertIn("receipt.WheelVisualTravelCm[index]",text)
+        self.assertIn("receipt.WheelSourceContact[index]",text)
         self.assertNotIn("SetPhysicsLinearVelocity(",text)
         self.assertNotIn("SetSimulatePhysics(false)",text)
         self.assertNotIn("Race.Credit",text)
@@ -38,6 +40,9 @@ class OriginalChaosSuspensionPreviewBindingTests(unittest.TestCase):
         self.assertIn("CanApplyPlayerDrive",pawn)
         self.assertIn("NeutralizeMotionWhenDrivingBlocked()",pawn)
         self.assertIn("NoChaosWheelSolver",pawn)
+        self.assertIn("SprungWheelVisualTravelCm=Spring.WheelVisualTravelCm",pawn)
+        self.assertIn("SetRelativeLocation(FVector(",pawn)
+        self.assertIn("bHasSprungWheelVisualSource=false",pawn)
 
     def test_source_receipt_does_not_claim_wheel_runtime_qa(self):
         header=(H/"OriginalChaosSuspensionPreview.h").read_text(encoding="utf-8")

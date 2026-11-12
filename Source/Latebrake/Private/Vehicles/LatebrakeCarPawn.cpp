@@ -25,6 +25,7 @@
 #include "Vehicles/RaceVehiclePhysicsReadiness.h"
 #include "Vehicles/VehicleDynamicsReadiness.h"
 #include "Vehicles/OriginalChaosSuspensionPreview.h"
+#include "Vehicles/ChassisWheelAnchors.h"
 #include "Racing/RecoveryTeleportVerification.h"
 #include "Vehicles/PlayerDriveReadiness.h"
 #include "UI/TouchControlLayout.h"
@@ -653,6 +654,8 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
 
 void ALatebrakeCarPawn::ClearDriverInputs()
 {
+    bHasSprungWheelVisualSource=false;
+    SprungWheelVisualTravelCm.fill(0.0);
     Throttle = 0.f;
     Steering = 0.f;
     SmoothedThrottle = 0.f;
@@ -687,6 +690,8 @@ void ALatebrakeCarPawn::ClearDriverInputs()
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
     ApplySignalLights(false, false, 0.0);
+    bHasSprungWheelVisualSource=false;
+    SprungWheelVisualTravelCm.fill(0.0);
     WheelMotion.Suspend();
     ApplyWheelVisualPose();
     DrivingStats.Suspend();
@@ -893,11 +898,15 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         const auto Spring =
             latebrake::vehiclepreview::ApplyOriginalChaosSprungPreview(
-                this,Chassis,DeltaSeconds);
-        if (!Spring.Valid)
+                this,Chassis.Get(),DeltaSeconds);
+        bHasSprungWheelVisualSource=Spring.Valid;
+        if(Spring.Valid)
         {
-            // Bad spring provenance cannot silently authorize new forces.
-            // Existing arcade drive remains active for valid base physics.
+            SprungWheelVisualTravelCm=Spring.WheelVisualTravelCm;
+        }
+        else
+        {
+            SprungWheelVisualTravelCm.fill(0.0);
         }
     }
 #endif
@@ -1476,6 +1485,19 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
             const FQuat Visual = (Index < 2 ? Steering : FQuat::Identity) *
                 Base * Rolling;
             Wheels[Index]->SetRelativeRotation(Visual.Rotator());
+            const auto& Mount=latebrake::ChassisWheelAnchors[
+                static_cast<std::size_t>(Index)];
+            const double travel=bHasSprungWheelVisualSource
+                ? SprungWheelVisualTravelCm[
+                    static_cast<std::size_t>(Index)] : 0.0;
+            // Render-only pose: original rigid-body collider never moves.
+            // The old resting spindle remains Z=-22 cm when not sampled.
+            const FVector WorldAuthored(
+                Mount.ForwardCm,Mount.RightCm,-22.0+travel);
+            Wheels[Index]->SetRelativeLocation(FVector(
+                WorldAuthored.X/latebrake::VehicleRootScaleX,
+                WorldAuthored.Y/latebrake::VehicleRootScaleY,
+                WorldAuthored.Z/latebrake::VehicleRootScaleZ));
         }
     }
 }
@@ -1589,6 +1611,8 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     SlipstreamBoost.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
+    bHasSprungWheelVisualSource=false;
+    SprungWheelVisualTravelCm.fill(0.0);
     ApplyWheelVisualPose();
     ClearDriverInputs();
     if (Chassis->IsSimulatingPhysics())

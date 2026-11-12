@@ -224,6 +224,12 @@ OriginalSprungPreviewReceipt ApplyOriginalChaosSprungPreview(
     receipt.Fault=OriginalSprungPreviewFault::None;
     receipt.Valid=true;
     receipt.RealSprungContacts=response.ContactCount;
+    for(std::size_t index=0;index<latebrake::ChassisWheelCount;++index)
+    {
+        const auto& wheel=response.Corners[index];
+        receipt.WheelVisualTravelCm[index]=wheel.WheelTravelCm;
+        receipt.WheelSourceContact[index]=wheel.Contact;
+    }
     receipt.TotalAppliedUpForce=response.TotalUpForce;
     receipt.ChassisWeightForce=response.WeightForce;
     receipt.MaximumCornerForce=0.0;

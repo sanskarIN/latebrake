@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 
 class AActor;
 class UStaticMeshComponent;
@@ -15,6 +16,9 @@ struct OriginalSprungPreviewReceipt final
 {
     OriginalSprungPreviewFault Fault=
         OriginalSprungPreviewFault::InvalidEngineState;
+    // Actual four independent wheel-ray travel observations; cosmetic only.
+    std::array<double,4> WheelVisualTravelCm{};
+    std::array<bool,4> WheelSourceContact{};
     int PhysicalRaysCast=0;
     int RealBlockingHits=0;
     int RealSprungContacts=0;

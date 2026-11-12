@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <array>
 #include "GameFramework/Pawn.h"
 #include "InputCoreTypes.h"
 #include "UI/TouchDriveState.h"
@@ -312,6 +313,10 @@ private:
     latebrake::RacePitService PitService;
     latebrake::SlipstreamDraftBoost SlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
+    // Nonshipping ray-spring experiment reads actual wheel travel.
+    // Does not change original collision or official wheel-physics status.
+    std::array<double,4> SprungWheelVisualTravelCm{};
+    bool bHasSprungWheelVisualSource = false;
     latebrake::TouchDriveState TouchDrive;
     latebrake::TouchPitHold TouchPit;
     latebrake::TouchPressTracker TouchPresses;
