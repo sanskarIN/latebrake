@@ -85,9 +85,10 @@ provide the Epic Engine, Editor/UHT, cooked .umap or installed gameplay.
   machine, run unreviewed forks, or share registration tokens.
 - After genuine engine execution, keep separate evidence for
   UE Editor/UHT, native Win64 cook, original `.umap`, installed
-  gameplay, six-car AI/physics and 30/60/120 FPS. Issue
-  [#148](https://github.com/sanskarIN/latebrake/issues/148) remains
-  open until all required gameplay gates are met.
+  gameplay, six-car AI/physics and 30/60/120 FPS. The former qualification issue #148 has been deleted. Use the maintained
+  [native merge-evidence checklist](UNREAL_NATIVE_MERGE_READINESS.md) and
+  the active [six-car review candidate PR #341](https://github.com/sanskarIN/latebrake/pull/341)
+  to record evidence; a deleted issue cannot satisfy gameplay approval.
 - GitHub documents:
   [adding self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),
   [runner labels](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/use-in-a-workflow),

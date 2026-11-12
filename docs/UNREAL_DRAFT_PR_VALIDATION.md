@@ -66,7 +66,7 @@ self-hosted runner, or accept source from outside this repository.
 
 **Do not merge the PR just because Editor/UHT passes.** Win64 cooking,
 installed driving, real collision/suspension stability and issue
-[#148](https://github.com/sanskarIN/latebrake/issues/148) remain
+[native merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md) remain
 mandatory. The separate ~200 KB native 2D preview is not the Unreal
 game package.
 

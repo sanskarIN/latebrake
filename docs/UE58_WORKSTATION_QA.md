@@ -88,8 +88,10 @@ launcher invoke this preflight before build or candidate output creation.
 - Source contracts cannot prove that this workflow has executed in
   Unreal or that the machine meets the required platform settings.
 
-Track actual evidence in [playable release qualification #148](
-https://github.com/sanskarIN/latebrake/issues/148).
+Track real engine/build/install evidence against the
+[native merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md)
+and the current [six-car validation candidate PR #341](https://github.com/sanskarIN/latebrake/pull/341).
+The former qualification issue #148 was deleted and is not an active approval gate.
 
 **As of this document, actual UE 5.8 compilation, owned cooked map,
 Win64 EXE, Android APK/AAB and installed hardware QA are unverified.**
