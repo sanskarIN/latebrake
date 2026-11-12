@@ -82,7 +82,10 @@ best replacement, slower lap rejection, menu/recovery invalidation,
 invalid coordinates and race-clock input, penalties, non-active laps,
 max-duration and restart. A regression and 20,000 deterministic
 high-FPS subframe cases reject hidden out-and-back teleport motion,
-while normal high-refresh frames retain sparse 10-Hz storage. Source
+and a separate 20,000-case sequence catches rapid opposite-direction
+motion that is individually plausible against the stored keyframe but
+impossible between adjacent live samples. Duplicate live timestamps
+also fail closed. Normal high-refresh frames retain sparse 10-Hz storage. Source
 binding tests verify the real player pawn, same authoritative clock,
 ordered checkpoint transition, transient actor, zero collision and
 lack of saved score authority.
