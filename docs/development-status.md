@@ -10,7 +10,7 @@
 | Item | State |
 | --- | --- |
 | Latest published GitHub pre-release | [v0.5.98](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98), experimental **SOURCE-ONLY**, unmerged draft PR #295 commit `bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37`; independently [published and verified](https://github.com/sanskarIN/latebrake/actions/runs/43232929038) with **zero executable attachments** |
-| Latest source-development milestone | Active [main `b47091f4`](https://github.com/sanskarIN/latebrake/commit/b47091f49bf541c6b9d5277cf603089339ea2c95) passed portable C++20, Python bindings and documentation CI after rival physics, traffic, pit, drafting and replay-integrity fixes. The latest audited main contains **18,214 qualifying game-source C++ lines**, not the 200,000 target. The independent v0.5.98 tag captures unmerged draft physics, **not** those active-main changes. |
+| Latest source-development milestone | Last audited main snapshot [`b47091f4`](https://github.com/sanskarIN/latebrake/commit/b47091f49bf541c6b9d5277cf603089339ea2c95) passed portable C++20, Python bindings and docs after rival physics, traffic, pit, drafting and replay fixes. It counted **18,214 qualifying game-source C++ lines**, not the 200,000 target. Additional [PR #366](https://github.com/sanskarIN/latebrake/pull/366) has since merged to verify consecutive ghost motion; do not attribute the older source count to that newer revision. The v0.5.98 release independently captures **unmerged** draft physics rather than active-main changes. |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
