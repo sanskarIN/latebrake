@@ -39,12 +39,16 @@ public:
     {
         CandidateCount = 0;
         CandidateAllowed = true;
+        HaveLastObservedPose = false;
+        LastObservedPose = {};
     }
 
     void InvalidateCurrentLap() noexcept
     {
         CandidateAllowed = false;
         CandidateCount = 0;
+        HaveLastObservedPose = false;
+        LastObservedPose = {};
     }
 
     bool Record(const LapGhostPose& pose, bool authorizedTick) noexcept
@@ -54,6 +58,33 @@ public:
         {
             InvalidateCurrentLap();
             return false;
+        }
+
+        // The 10-Hz storage window is NOT a continuous-motion witness.
+        // Check every pair of physically observed frames, including those
+        // omitted from the fixed-capacity keyframes. Otherwise alternating
+        // large displacements can remain within a generous keyframe-wide
+        // speed envelope even though consecutive-frame motion is impossible.
+        if (HaveLastObservedPose)
+        {
+            const double frameDt = pose.Seconds - LastObservedPose.Seconds;
+            if (!std::isfinite(frameDt) || frameDt <= 0.0 ||
+                frameDt > 0.45)
+            {
+                InvalidateCurrentLap();
+                return false;
+            }
+            const double frameX = pose.X - LastObservedPose.X;
+            const double frameY = pose.Y - LastObservedPose.Y;
+            const double frameZ = pose.Z - LastObservedPose.Z;
+            const double frameDistance = std::hypot(
+                std::hypot(frameX, frameY), frameZ);
+            if (!std::isfinite(frameDistance) ||
+                frameDistance > frameDt * 15000.0 + 200.0)
+            {
+                InvalidateCurrentLap();
+                return false;
+            }
         }
 
         if (CandidateCount == 0)
@@ -94,6 +125,8 @@ public:
             // Skip only STORAGE; never skip pose or motion validation.
             if (dt < 0.09)
             {
+                LastObservedPose = pose;
+                HaveLastObservedPose = true;
                 return true;
             }
         }
@@ -103,6 +136,8 @@ public:
             return false;
         }
         Candidate[CandidateCount++] = pose;
+        LastObservedPose = pose;
+        HaveLastObservedPose = true;
         return true;
     }
 
@@ -208,5 +243,9 @@ private:
     std::size_t BestCount = 0;
     double BestSeconds = 0.0;
     bool CandidateAllowed = true;
+    // Last accepted live physics pose, including non-keyframe samples.
+    // Run-local only; never saved, rendered, replayed or used for scoring.
+    LapGhostPose LastObservedPose{};
+    bool HaveLastObservedPose = false;
 };
 } // namespace latebrake
