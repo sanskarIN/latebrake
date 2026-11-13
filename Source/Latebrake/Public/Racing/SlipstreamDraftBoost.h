@@ -22,13 +22,13 @@ struct DraftingSample final
     double ForwardThrottle = 0.0;
     bool Braking = false;
     bool EligibleHumanRace = false;
-    // Actual Unreal collision-query clearance between the two live chassis.
-    // Defaults closed: callers cannot earn draft from unverified visibility.
-    bool ClearPhysicalDraftPath = false;
     // World-planar velocity projected onto each body's physical right
     // direction. Heading alignment alone cannot qualify a sliding car.
     double FollowerLateralSpeedCmPerSecond = 0.0;
     double LeadLateralSpeedCmPerSecond = 0.0;
+    // Append-only so the pawn's aggregate observation keeps its existing
+    // measured lateral-speed ordering. Defaults closed on missing proof.
+    bool ClearPhysicalDraftPath = false;
 };
 
 class SlipstreamDraftBoost final
