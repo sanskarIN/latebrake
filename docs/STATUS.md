@@ -5,6 +5,14 @@
 **Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
 **Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
 
+## 2026-11-13: audited +53,061 portable C++ integration merged into protected main
+
+- [PR #375](https://github.com/sanskarIN/latebrake/pull/375) is merged at immutable development commit [`6bf1320b62abe8f4786363045948f0fa81b67d89`](https://github.com/sanskarIN/latebrake/commit/6bf1320b62abe8f4786363045948f0fa81b67d89). The repository's `scripts/MeasureSourceScale.py --json` measured **71,567 qualifying authored nonblank/noncomment C++ source lines in 291 files** on this exact merged-main tree, versus the preceding main's **18,506** lines (**net +53,061 qualifying lines**).
+- Integration includes **69 portable Racecraft**, **32 portable Telemetry**, **3 portable Audio** and **4 original circuit/car mesh-generation** C++20 headers, plus **22 original behavior** and **4 compile-all header** CTest targets. All **203** tests passed on the exact PR head with Windows, Ubuntu and macOS, alongside editor Python, PowerShell, release-policy and site checks. Merged-main CI and docs were also started independently.
+- This is a *forward-port of previously written original, experimental source*, not 53,061 newly created lines or 53,061 lines of working UE gameplay. **NONE of these prototype libraries is enabled in the live car, rival, GameMode, 3D renderer or installed audio** by this merge. The old overlapping draft UE physics and six-car actor branches remain unmerged; they require real engine qualification before activation.
+- Latest publicly **published** GitHub source pre-release remains **v0.5.99**, pinned to the **earlier** protected-main commit `a3104ea76809ac86d315a8a31550d3215e79f824`; GitHub source tag contents and zero-assets release are unchanged. Do not claim an installer from its archive.
+- See the full [source audit and staged integration caveats](PORTABLE_RACECRAFT_RESEARCH_QA.md). The future v0.6.0 requirement is still **200,000** qualifying C++ lines and independently verified UE/Win64 quality—neither is met just by increasing source count.
+
 ## v0.5.99 owner-approved mainline source snapshot — NOT playable
 
 - The [source publisher #43413547703](https://github.com/sanskarIN/latebrake/actions/runs/43413547703) authenticated protected main `a3104ea76809ac86d315a8a31550d3215e79f824`, passed portable Windows/Ubuntu/macOS C++20, Python/editor, PowerShell synthetic asset policy and docs checks, then read back the immutable `v0.5.99` tag with **zero executable assets**. This is strictly source-level validation, not real Unreal Engine testing.
