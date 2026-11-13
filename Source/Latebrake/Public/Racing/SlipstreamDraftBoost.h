@@ -47,11 +47,17 @@ public:
     static constexpr double MaximumLateralSpeedCmPerSecond = 500.0;
     static constexpr double ConfirmSeconds = 0.18;
     static constexpr double MaxForceExtraFraction = 0.06;
+    // Admit ordinary tick-order/velocity-estimation skew without carrying
+    // drafting credit across an apparent rival teleport inside the lane.
+    static constexpr double MaxRelativeMotionResidualCm = 200.0;
 
     void Reset() noexcept
     {
         EligibleSeconds = 0.0;
         ExtraForceFraction = 0.0;
+        HavePreviousOffset = false;
+        PreviousOffsetX = 0.0;
+        PreviousOffsetY = 0.0;
     }
     void Suspend() noexcept { Reset(); }
 
@@ -125,6 +131,30 @@ public:
             Reset();
             return 0.0;
         }
+        // The pair must remain physically continuous, not just pass each
+        // independent in-lane snapshot. Predict relative world displacement
+        // from *both* measured planar velocity vectors over this frame.
+        // A recover/teleport can preserve an otherwise eligible 7-38m gap;
+        // such a jump must discard the old 0.18s confirmation window.
+        if (HavePreviousOffset)
+        {
+            const double followerVx = follower * ax - followerLateral * ay;
+            const double followerVy = follower * ay + followerLateral * ax;
+            const double leadVx = lead * bx - leadLateral * by;
+            const double leadVy = lead * by + leadLateral * bx;
+            const double predictedX = PreviousOffsetX + dt * (leadVx - followerVx);
+            const double predictedY = PreviousOffsetY + dt * (leadVy - followerVy);
+            const double residual = std::hypot(dx - predictedX, dy - predictedY);
+            if (!std::isfinite(residual) ||
+                residual > MaxRelativeMotionResidualCm)
+            {
+                Reset();
+                return 0.0;
+            }
+        }
+        PreviousOffsetX = dx;
+        PreviousOffsetY = dy;
+        HavePreviousOffset = true;
         EligibleSeconds = std::min(ConfirmSeconds, EligibleSeconds + dt);
         if (EligibleSeconds < ConfirmSeconds)
         {
@@ -147,5 +177,8 @@ public:
 private:
     double EligibleSeconds = 0.0;
     double ExtraForceFraction = 0.0;
+    double PreviousOffsetX = 0.0;
+    double PreviousOffsetY = 0.0;
+    bool HavePreviousOffset = false;
 };
 } // namespace latebrake
