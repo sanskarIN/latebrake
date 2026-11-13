@@ -26,6 +26,9 @@ struct DraftingSample final
     // direction. Heading alignment alone cannot qualify a sliding car.
     double FollowerLateralSpeedCmPerSecond = 0.0;
     double LeadLateralSpeedCmPerSecond = 0.0;
+    // Append-only so the pawn's aggregate observation keeps its existing
+    // measured lateral-speed ordering. Defaults closed on missing proof.
+    bool ClearPhysicalDraftPath = false;
 };
 
 class SlipstreamDraftBoost final
@@ -79,7 +82,8 @@ public:
             sample.FollowerLateralSpeedCmPerSecond;
         const double leadLateral = sample.LeadLateralSpeedCmPerSecond;
         const double throttle = sample.ForwardThrottle;
-        if (!sample.EligibleHumanRace || sample.Braking ||
+        if (!sample.EligibleHumanRace || !sample.ClearPhysicalDraftPath ||
+            sample.Braking ||
             !std::isfinite(dt) || dt < MinFrameSeconds ||
             dt > MaxFrameSeconds || !std::isfinite(follower) ||
             !std::isfinite(lead) || follower < MinimumFollowerSpeed ||

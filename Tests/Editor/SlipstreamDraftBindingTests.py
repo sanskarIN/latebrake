@@ -29,7 +29,7 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
                          "RivalCar->GetActorLocation()", "RivalCar->GetActorForwardVector()",
                          "RivalCar->GetVelocity()", "FMath::IsFinite("):
             self.assertIn(required, block)
-        self.assertIn("TryGetRivalDraftingState(FVector& OutPosition,", self.mode_h)
+        self.assertIn("TryGetRivalDraftingState(const ALatebrakeCarPawn* Observer,", self.mode_h)
 
     def test_draft_requires_both_actual_road_supported_chassis(self):
         traction = read(
@@ -76,6 +76,7 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             "Cast<APlayerController>(GetController()) != nullptr",
             "Mode->HasLocalPlayerDriver()",
             "Mode->TryGetRivalDraftingState(",
+            "this, RivalPosition, RivalForward, RivalVelocity",
             "FVector::DotProduct(RivalVelocity, RivalForward)",
             "SlipstreamBoost.Observe({",
             "static_cast<double>(EffectiveThrottle)",
@@ -109,7 +110,7 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             draft.index("SlipstreamBoost.Observe({"))
         self.assertLess(
             draft.index("static_cast<double>(LateralSpeed)"),
-            draft.index("RivalLateralSpeed\n        });"))
+            draft.index("RivalLateralSpeed,\n            true"))
         for required in (
             "FollowerLateralSpeedCmPerSecond",
             "LeadLateralSpeedCmPerSecond",
@@ -122,6 +123,45 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             "Reset();",
         ):
             self.assertIn(required, self.policy)
+
+    def test_real_world_obstruction_is_required_before_draft(self):
+        # A usable position alone is NOT aerodynamic line of sight.
+        # An actual Unreal collision trace must be part of the existing
+        # GameMode sample on every physical human/rival eligibility frame.
+        block = self.mode.split(
+            "bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(", 1
+        )[1].split(
+            "int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps()", 1
+        )[0]
+        for required in (
+            "const ALatebrakeCarPawn* Observer",
+            "IsValid(Observer)",
+            "Observer == RivalCar.Get()",
+            "Observer->GetWorld() != World",
+            "GetRaceEvent(SelectedEvent).SpawnRival",
+            "Observer->GetActorLocation()",
+            "RivalCar->GetActorLocation()",
+            "FCollisionQueryParams TraceParams(",
+            "TraceParams.AddIgnoredActor(Observer)",
+            "TraceParams.AddIgnoredActor(RivalCar.Get())",
+            "World->LineTraceSingleByChannel(",
+            "ECC_Visibility, TraceParams",
+            "MaximumDraftTraceDistanceCm = 5000.0",
+        ):
+            self.assertIn(required, block)
+        self.assertLess(
+            block.index("World->LineTraceSingleByChannel("),
+            block.index("OutPosition = Position;"))
+        self.assertIn("#include \"CollisionQueryParams.h\"", self.mode)
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        self.assertIn("this, RivalPosition, RivalForward, RivalVelocity", tick)
+        self.assertIn("RivalLateralSpeed,\n            true", tick)
+        self.assertIn("bool ClearPhysicalDraftPath = false;", self.policy)
+        self.assertIn("!sample.ClearPhysicalDraftPath", self.policy)
+        self.assertIn("s.ClearPhysicalDraftPath = true;", read(
+            "Tests/Standalone/SlipstreamDraftBoostTests.cpp"))
+        self.assertIn("solid barrier", self.guide)
 
     def test_base_motor_and_brakes_remain_authoritative(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(

@@ -89,8 +89,11 @@ public:
     float GetAttemptPreviousBestSeconds() const { return AttemptPreviousBestSeconds; }
     bool HasRival() const;
     bool TryGetRivalRadarPosition(FVector& OutPosition) const;
-    bool TryGetRivalDraftingState(FVector& OutPosition,
-        FVector& OutForward, FVector& OutVelocity) const;
+    // Reject interposed track collision in the real world before handing
+    // a rival state to the optional player-only drafting policy. Observer
+    // is the actual following pawn, not an inferred camera or HUD actor.
+    bool TryGetRivalDraftingState(const ALatebrakeCarPawn* Observer,
+        FVector& OutPosition, FVector& OutForward, FVector& OutVelocity) const;
     int32 GetRivalApproximateLaps() const;
     int32 GetRivalPlannedLaps() const;
     int32 GetRivalRecoveryCount() const;

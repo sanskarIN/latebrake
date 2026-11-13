@@ -11,6 +11,7 @@
 #include "GameFramework/PlayerStart.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/EngineTypes.h"
+#include "CollisionQueryParams.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "Components/SceneComponent.h"
@@ -1826,11 +1827,16 @@ bool ALatebrakeRaceGameMode::TryGetRivalRadarPosition(FVector& OutPosition) cons
 }
 
 bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
-    FVector& OutPosition, FVector& OutForward, FVector& OutVelocity) const
+    const ALatebrakeCarPawn* Observer, FVector& OutPosition,
+    FVector& OutForward, FVector& OutVelocity) const
 {
-    // Source-only physics observation: a stale, missing, finished-route or
-    // unhealthy rival is never a valid aerodynamic target.
-    if (!IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady() ||
+    // A rival state must belong to this very live race and a distinct,
+    // physics-ready following pawn. Never infer a view from the HUD.
+    UWorld* World = GetWorld();
+    if (!World || !IsValid(Observer) || Observer == RivalCar.Get() ||
+        Observer->GetWorld() != World ||
+        !latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
+        !IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady() ||
         !RivalCar->HasQualifiedDraftRoadSupport() ||
         RivalCar->HasCompletedRoute() || Race.IsFinished())
     {
@@ -1847,6 +1853,39 @@ bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
         !FMath::IsFinite(Velocity.X) || !FMath::IsFinite(Velocity.Y) ||
         !FMath::IsFinite(Velocity.Z))
     {
+        return false;
+    }
+    const FVector FollowingPosition = Observer->GetActorLocation();
+    if (!FMath::IsFinite(FollowingPosition.X) ||
+        !FMath::IsFinite(FollowingPosition.Y) ||
+        !FMath::IsFinite(FollowingPosition.Z))
+    {
+        return false;
+    }
+    // No drafting target more than 50m away can satisfy the portable
+    // 7-38m forward / 3.8m lateral / 2.3m height window. Avoid a world
+    // query for distant rivals, and reject bad/teleporting gaps early.
+    constexpr double MaximumDraftTraceDistanceCm = 5000.0;
+    if (FVector::DistSquared(FollowingPosition, Position) >
+        MaximumDraftTraceDistanceCm * MaximumDraftTraceDistanceCm)
+    {
+        return false;
+    }
+    // Query the REAL world from physical chassis root to physical chassis
+    // root, excluding only the two endpoint actors. The source circuit's
+    // BlockAll WorldStatic barriers block Visibility; a decorative road
+    // texture with no collision does not. No score/AI/collision edits.
+    FCollisionQueryParams TraceParams(
+        SCENE_QUERY_STAT(LatebrakeRivalDraftSightline), false);
+    TraceParams.AddIgnoredActor(Observer);
+    TraceParams.AddIgnoredActor(RivalCar.Get());
+    FHitResult Obstruction;
+    if (World->LineTraceSingleByChannel(
+            Obstruction, FollowingPosition, Position,
+            ECC_Visibility, TraceParams))
+    {
+        // A wall/ground/other blocking actor between the two chassis
+        // revokes the entire drafting confirmation, not only its HUD.
         return false;
     }
     OutPosition = Position;

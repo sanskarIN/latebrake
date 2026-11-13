@@ -25,6 +25,7 @@ latebrake::DraftingSample Sample(double gap = 1200.0, double lateral = 0.0)
     s.LeadOffsetY = lateral;
     s.ForwardThrottle = 1.0;
     s.EligibleHumanRace = true;
+    s.ClearPhysicalDraftPath = true;
     return s;
 }
 void Confirm(latebrake::SlipstreamDraftBoost& boost,
@@ -82,6 +83,8 @@ int main()
     };
     {auto s = Sample(); s.Braking = true; Reject(s, "brake takes priority");}
     {auto s = Sample(); s.EligibleHumanRace = false; Reject(s, "no AI/pause or menu eligibility");}
+    {auto s = Sample(); s.ClearPhysicalDraftPath = false;
+        Reject(s, "solid barrier cancels already-earned draft immediately");}
     {auto s = Sample(); s.ForwardThrottle = -0.4; Reject(s, "reverse input denied");}
     {auto s = Sample(); s.FollowerSpeedCmPerSecond = 800.0; Reject(s, "stationary car denied");}
     {auto s = Sample(); s.LeadSpeedCmPerSecond = 0.0; Reject(s, "stationary front car denied");}
@@ -207,6 +210,45 @@ int main()
         Check(boost.Observe(s) == 0.0 && !boost.IsActive() &&
               boost.QualifiedSeconds() == 0.0,
               "12k bounded but discontinuous rival gaps revoke boost");
+    }
+
+    // A blocked real-world sightline never grants help even when the
+    // chassis are forward-moving, aligned, supported and within one lane.
+    // Immediately losing visibility must erase the entire old window.
+    boost.Reset();
+    Confirm(boost);
+    auto blocked = Sample();
+    blocked.ClearPhysicalDraftPath = false;
+    Check(boost.Observe(blocked) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "solid barrier must revoke even a fully qualified physical draft");
+    blocked.ClearPhysicalDraftPath = true;
+    Check(boost.Observe(blocked) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "reopening the real sightline must not restore stored draft time");
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        boost.Observe(blocked);
+    }
+    Check(boost.IsActive(),
+          "four newly unobstructed samples reestablish drafting normally");
+
+    // Deterministic adversarial visibility sequences: an occlusion cannot
+    // borrow the previously accepted time even as the valid gap changes.
+    for (int run = 0; run < 12000; ++run)
+    {
+        boost.Reset();
+        Confirm(boost);
+        auto s = Sample();
+        s.LeadOffsetX = 1200.0 - static_cast<double>(run % 80);
+        s.ClearPhysicalDraftPath = false;
+        Check(boost.Observe(s) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() == 0.0,
+              "12k occluded but otherwise valid racing pairs deny draft");
+        s.ClearPhysicalDraftPath = true;
+        Check(boost.Observe(s) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+              "post-occlusion physics samples always start fresh");
     }
 
     boost.Reset();
