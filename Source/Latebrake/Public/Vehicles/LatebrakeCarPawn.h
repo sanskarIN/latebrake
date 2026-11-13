@@ -16,6 +16,7 @@
 #include "Vehicles/HeldLookBackCamera.h"
 #include "Vehicles/SpeedReactiveCameraFov.h"
 #include "Vehicles/CornerLookAheadCamera.h"
+#include "Vehicles/ChaseCameraTransition.h"
 #include "Vehicles/ArcadeTireCondition.h"
 #include "Vehicles/ArcadeBrakeHeat.h"
 #include "Vehicles/ArcadeEngineHeat.h"
@@ -290,6 +291,9 @@ private:
     latebrake::HeldLookBackCamera LookBackCamera;
     latebrake::SpeedReactiveCameraFov ReactiveFov;
     latebrake::CornerLookAheadCamera CornerLookAhead;
+    // Presentation-only camera: deliberate human chase-view transitions.
+    latebrake::ChaseCameraTransition ChaseRigTransition;
+    bool bBlendNextCameraPreset = false;
     latebrake::DrivingSessionStats DrivingStats;
     latebrake::DriftComboMeter DriftMeter;
     latebrake::VehicleGForceMeter GForceMeter;
