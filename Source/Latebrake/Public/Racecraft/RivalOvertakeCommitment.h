@@ -7,7 +7,10 @@
 #include <cstdint>
 #include <limits>
 
-namespace latebrake::racecraft
+// Keep this independently authored overtake-commitment experiment separate
+// from AIOvertakePlanner's distinct OvertakeObservation type. Both headers
+// must be composable in one TU; there is no implicit conversion/authority.
+namespace latebrake::racecraft::commitment
 {
 enum class OvertakeState : std::uint8_t
 {
@@ -898,4 +901,4 @@ private:
     std::uint64_t Completed=0;
     bool HasRoster=false;
 };
-} // namespace latebrake::racecraft
+} // namespace latebrake::racecraft::commitment
