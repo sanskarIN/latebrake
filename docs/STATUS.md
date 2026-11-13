@@ -1,9 +1,16 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-12
-**Latest published milestone:** [v0.5.98 SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98), immutable source `bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37`, **zero executable attachments**. This tag freezes **unmerged** draft physics PR #295 with independent modeled wheel braking and brake-capacity-aware rival planning. [Exact-source owner publisher](https://github.com/sanskarIN/latebrake/actions/runs/43232929038) completed successfully; real UE/UHT, cooked Win64 packaging and installed handling remain unverified.
+**Updated:** 2026-11-13
+**Latest published milestone:** [v0.5.99 SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99), protected-main source `a3104ea76809ac86d315a8a31550d3215e79f824`, **zero executable attachments**. The [owner-approved one-version publisher](https://github.com/sanskarIN/latebrake/actions/runs/43413547703) verified 3-OS C++20, Python, PowerShell and docs source gates before publishing. The previous v0.5.98 source-only tag separately snapshots **unmerged physics draft PR #295**; v0.5.99 does not incorporate its advanced suspension/wheel-brake systems. Real UE5.8/UHT, cooked Win64 packaging and installed gameplay remain unverified.
 **Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
 **Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
+
+## v0.5.99 owner-approved mainline source snapshot — NOT playable
+
+- The [source publisher #43413547703](https://github.com/sanskarIN/latebrake/actions/runs/43413547703) authenticated protected main `a3104ea76809ac86d315a8a31550d3215e79f824`, passed portable Windows/Ubuntu/macOS C++20, Python/editor, PowerShell synthetic asset policy and docs checks, then read back the immutable `v0.5.99` tag with **zero executable assets**. This is strictly source-level validation, not real Unreal Engine testing.
+- The tagged mainline has **18,328** qualifying nonblank/noncomment production C++ lines across 182 authored files by the exact-source `MeasureSourceScale.py` audit, leaving 181,672 to the separate 200,000-line v0.6.0 goal. Tests, docs and generated files are not production LOC.
+- PRs #368–#370 hardened real chassis drafting: reject excessive sideways slide, in-lane position discontinuity and a blocked true Unreal collision sightline. PRs #361–#366 strengthen rival/ghost consistency. These remain unverified on installed Unreal 5.8.
+- [v0.5.98](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98) remains an independent unmerged wheel-physics source preview from draft PR #295, not a previously-integrated main commit. See [v0.5.99 notes](releases/v0.5.99.md) for explicit source differences and installation limitations.
 
 ## v0.5.98 owner-published source snapshot — validated tag, NOT playable
 
