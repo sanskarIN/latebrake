@@ -155,6 +155,60 @@ int main()
               "20k varying-speed sideways rival frames never qualify");
     }
 
+    // A genuine relative gap change matching both measured chassis
+    // velocities must keep the qualification alive without a timer reset.
+    boost.Reset();
+    auto continuous = Sample();
+    Confirm(boost, continuous);
+    continuous.LeadOffsetX -= 5.0; // (2300 - 2400) cm/s for 0.05s
+    Check(boost.Observe(continuous) > 0.0 && boost.IsActive(),
+          "ordinary real relative movement retains qualified draft");
+
+    // A recovering/teleported rival may reappear in the same eligible lane.
+    // Snapshot geometry alone is insufficient: the prior boost must die.
+    boost.Reset();
+    Confirm(boost);
+    auto jumped = Sample();
+    jumped.LeadOffsetX = 2000.0; // still a valid standalone drafting gap
+    Check(boost.Observe(jumped) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "in-lane rival teleport revokes full drafting confirmation");
+    Check(boost.Observe(jumped) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "post-teleport geometry must establish an independent new window");
+
+    // World-space continuity also works on the Y axis, rather than only
+    // using horizontal map X or the leading vehicle's location.
+    boost.Reset();
+    auto north = Sample();
+    north.FollowerForwardX = 0.0;
+    north.FollowerForwardY = 1.0;
+    north.LeadForwardX = 0.0;
+    north.LeadForwardY = 1.0;
+    north.LeadOffsetX = 0.0;
+    north.LeadOffsetY = 1200.0;
+    Confirm(boost, north);
+    north.LeadOffsetY -= 5.0;
+    Check(boost.Observe(north) > 0.0 && boost.IsActive(),
+          "rotated northbound pair preserves genuine relative continuity");
+    north.LeadOffsetY = 1700.0;
+    Check(boost.Observe(north) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "northbound in-lane jump also clears drafting");
+
+    // 12k independent discontinuous in-lane snapshots must never inherit
+    // an old qualification, even when both headings and speeds are valid.
+    for (int run = 0; run < 12000; ++run)
+    {
+        boost.Reset();
+        Confirm(boost);
+        auto s = Sample();
+        s.LeadOffsetX = 1600.0 + static_cast<double>(run % 500);
+        Check(boost.Observe(s) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() == 0.0,
+              "12k bounded but discontinuous rival gaps revoke boost");
+    }
+
     boost.Reset();
     for (int run = 0; run < 5000; ++run)
     {
