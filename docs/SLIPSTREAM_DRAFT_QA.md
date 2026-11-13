@@ -38,6 +38,19 @@ multiplayer positioning or a source of official race results.
   Both measurements are supplied directly from the human's Chaos body
   and the rival's real world velocity, not inferred from heading
   or a frozen HUD reading. Reverse slip sign has no effect on the cap.
+- A **solid barrier or blocking static circuit object between the actual
+  player and rival chassis** denies drafting, even if headings, velocities,
+  and an otherwise legal gap agree. GameMode performs an Unreal
+  `LineTraceSingleByChannel` using `ECC_Visibility` between both live
+  chassis-root positions, ignoring only those two endpoint actors. A
+  blocking hit immediately fails source eligibility and clears previous
+  credit; the pure C++20 boost policy separately defaults the physical
+  path to **uncleared**, so missed runtime wiring cannot grant a boost.
+  Decorative non-colliding track paint is not a barrier. This trace is
+  limited to rivals within 50m to avoid distant scene queries. The existing
+  original BlockAll track barriers are configured to block visibility;
+  custom future meshes must have proper collision responses. Only an
+  authentic UE5.8 in-editor obstacle test can validate that configuration.
 - Consecutive **relative world positions** must also agree with the two
   measured planar chassis-velocity vectors (forward and lateral) over the
   current physics delta. More than **2 m** of unexplained residual relative
@@ -84,6 +97,7 @@ separation, denied driver states, braking, low speeds, invalid headings,
 measured excessive left/right chassis sliding on either vehicle,
 nonfinite lateral movement, 40,000 varying-speed sideways-motion cases,
 12,000 adversarial in-lane teleport traces and rotated/smooth relative travel,
+12,000 blocked physical sightline frames and post-occlusion reacquisition,
 and over-fast approach. Separate exact traction tests reject fabricated
 contact, 0–2 supporting corners and unsupported/airborne lead/follower
 states; Python source assertions verify both real Unreal bindings. They also check a 5,000-run stress sample, all
@@ -101,10 +115,17 @@ portable logic and static Unreal-source wiring.
 3. Check starting grid, countdown, menu, manually failed pause,
    focus loss, vehicle recovery, fresh restart, opposing headings,
    AI route completion and Time Attack. No phantom boost may survive.
-4. Compare control/input handoff, standalone engine car physics,
+4. Put an actual BlockAll/Visibility-blocking solid circuit barrier
+   between the player and the real rival without moving either car outside
+   the policy's allowed gap. Verify 0% draft, then remove the barrier and
+   require a new unbroken 0.18s confirmation. Repeat on both straights,
+   corner approaches, adjacent lanes, and during rival recovery. Check
+   world-query instrumentation, no false barriers on ordinary clean asphalt,
+   and the exact sampled actor identities on real Unreal 5.8.
+5. Compare control/input handoff, standalone engine car physics,
    motor-force application and normal steering/braking on Win64.
    Confirm no collision or vehicle penetration is needed to draft.
-5. Verify this cannot affect legitimate lap/checkpoint validation,
+6. Verify this cannot affect legitimate lap/checkpoint validation,
    game saves or credit awards; preserve genuine engine logs and
    observed hardware results. Test Android rendering separately.
 
