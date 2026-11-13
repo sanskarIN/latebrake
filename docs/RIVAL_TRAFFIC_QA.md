@@ -28,6 +28,44 @@ observed speed.
   to official rival race placement. A missing/unready player or
   malformed physics sample blocks rival motor output.
 
+## Anticipate measured sideways lane entry (source follow-up)
+
+The previous 225cm corridor looked only at the physical player's
+**current** lateral offset from the single real AI rival. A player
+moving sideways into the lane could be farther than 225cm away **now**
+but occupy the rival's path by the time a high-speed rear catch occurs.
+
+The safety post-processor now projects the **relative lateral world
+velocity of both chassis** onto the rival's measured heading. For a
+forward-closing pair (at least 2.3 m/s of closing velocity), it examines
+the approximate time until reaching the existing 3.8m rear-clearance
+margin, bounded to **0.10–1.25 seconds**. A currently adjacent player
+is treated as a possible lane conflict only if the projected lateral
+gap comes **inside 225cm and closer to lane center**. Otherwise an
+adjacent player moving **away** from the lane or too far in the future
+still does not trigger the courtesy brake.
+
+An anticipated lane conflict then goes through the **existing**
+grip/brake-capability stopping envelope and emergency decision. It
+cannot invent motor power, add steering corrections, override an
+authoritative corner brake, edit a player command, or award a checkpoint.
+Existing single-rival recovery, local actor readiness, physical
+velocity validity and traffic-brake hold remain authoritative.
+
+The test suite covers converging and diverging lanes, opposite-side
+mirroring, northbound world-axis rotation, weak/healthy brakes,
+sub-horizon and beyond-horizon conditions, and **12,000 adversarial
+velocity/gap pairs**. This is a conservative **constant-velocity,
+near-term source-only approximation**, *not* a 3D multi-car collision
+prediction, safe overtaking proof, or certified collision avoidance.
+
+**Installed Unreal acceptance still required:** test a real player
+cutting inward and outward from both adjacent lanes at 30/60/120 FPS,
+including diagonal motion, road barriers, recovery, low-grip driving,
+corner turns and same-speed false-positive cases. Capture actual
+contact traces, vehicle speed, projected lateral gaps and footage.
+Do not claim no-collision performance from this portable policy.
+
 ## Live measured-brake stopping envelope (subsequent source fix)
 
 The fixed 14.5-metre courtesy awareness distance did not leave enough
