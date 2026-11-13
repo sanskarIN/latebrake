@@ -112,6 +112,7 @@ nav:
       - Launch-speed feedback QA: LAUNCH_SPEED_QA.md
       - Vehicle dynamics readiness QA: VEHICLE_DYNAMICS_QA.md
       - Steering and handling stability QA: DRIVING_STABILITY_QA.md
+      - Chase camera transition QA: CHASE_CAMERA_TRANSITION_QA.md
       - Progressive road load and coast-down QA: PROGRESSIVE_ROAD_LOAD_QA.md
       - Grip-limited service and handbrake QA: GRIP_LIMITED_BRAKING_QA.md
       - Lateral grip and shared brake budget QA: LATERAL_GRIP_BUDGET_QA.md
