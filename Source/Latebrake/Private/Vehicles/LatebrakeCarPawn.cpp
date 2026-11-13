@@ -1151,6 +1151,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         const FVector Offset = RivalPosition - Position;
         const double RivalSignedForwardSpeed =
             FVector::DotProduct(RivalVelocity, RivalForward);
+        // The rival's true world-velocity right-axis component is just
+        // as important as the player's observed chassis lateral slip.
+        // Two similarly facing cars can still be sliding across the
+        // circuit: those frames must never accumulate drafting credit.
+        const double RivalLateralSpeed = FVector::DotProduct(
+            RivalVelocity,
+            FVector(-RivalForward.Y, RivalForward.X, 0.f));
         DraftExtraForce = SlipstreamBoost.Observe({
             static_cast<double>(DeltaSeconds),
             static_cast<double>(LongitudinalSpeed),
@@ -1161,7 +1168,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(Offset.X), static_cast<double>(Offset.Y),
             static_cast<double>(Offset.Z),
             static_cast<double>(EffectiveThrottle),
-            bEffectiveBraking, true
+            bEffectiveBraking, true,
+            static_cast<double>(LateralSpeed),
+            RivalLateralSpeed
         });
     }
     else

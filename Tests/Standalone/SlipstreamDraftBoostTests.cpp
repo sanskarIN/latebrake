@@ -92,6 +92,68 @@ int main()
     {auto s = Sample(); s.LeadOffsetY = 390.0; Reject(s, "rival in another lane denied");}
     {auto s = Sample(); s.LeadOffsetZ = 300.0; Reject(s, "vertical separation denied");}
     {auto s = Sample(); s.FollowerForwardX = 0.5; Reject(s, "non-unit forward vector denied");}
+    {auto s = Sample(); s.FollowerLateralSpeedCmPerSecond = 501.0;
+        Reject(s, "sliding follower does not earn forward-only aerodynamic help");}
+    {auto s = Sample(); s.LeadLateralSpeedCmPerSecond = -501.0;
+        Reject(s, "sliding real rival cannot become a valid leading target");}
+    {auto s = Sample(); s.FollowerSpeedCmPerSecond = 1200.0;
+        s.LeadSpeedCmPerSecond = 1000.0;
+        s.FollowerLateralSpeedCmPerSecond = 301.0;
+        Reject(s, "low-speed slip threshold scales with real forward travel");}
+    {auto s = Sample(); s.LeadSpeedCmPerSecond = 1000.0;
+        s.LeadLateralSpeedCmPerSecond = 251.0;
+        Reject(s, "slow leader uses fractional slip envelope, not just absolute cap");}
+    for (const double invalid : {bad, inf, -inf})
+    {
+        auto s = Sample();
+        s.FollowerLateralSpeedCmPerSecond = invalid;
+        Reject(s, "nonfinite follower lateral velocity cannot grant draft");
+        s = Sample();
+        s.LeadLateralSpeedCmPerSecond = invalid;
+        Reject(s, "nonfinite rival lateral velocity cannot grant draft");
+    }
+
+    // Physically admissible side slip at both boundaries still receives
+    // help, but a single sideways frame immediately clears all stored
+    // eligibility rather than silently resuming at the prior duration.
+    boost.Reset();
+    auto boundedSlip = Sample();
+    boundedSlip.FollowerLateralSpeedCmPerSecond = 500.0;
+    boundedSlip.LeadLateralSpeedCmPerSecond = -500.0;
+    Confirm(boost, boundedSlip);
+    Check(boost.IsActive(), "bounded physical side movement can still draft");
+    boundedSlip.LeadLateralSpeedCmPerSecond = -500.0001;
+    Check(boost.Observe(boundedSlip) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "first over-slip frame revokes boost and accumulated qualification");
+    boundedSlip.LeadLateralSpeedCmPerSecond = 0.0;
+    Check(boost.Observe(boundedSlip) == 0.0 &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "drift recovery cannot inherit previous confirmation time");
+
+    // Deterministic positive/negative lateral slip sweeps against real
+    // permitted forward speeds: neither car may earn assistance from
+    // excessive sideways travel, even when both headings point forward.
+    for (int i = 0; i < 20000; ++i)
+    {
+        auto s = Sample();
+        s.FollowerSpeedCmPerSecond = 1200.0 + (i % 6000);
+        s.LeadSpeedCmPerSecond = s.FollowerSpeedCmPerSecond - 100.0;
+        s.FollowerLateralSpeedCmPerSecond =
+            (i & 1 ? -1.0 : 1.0) *
+            (0.25 * s.FollowerSpeedCmPerSecond + 600.0);
+        boost.Reset();
+        Check(boost.Observe(s) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() == 0.0,
+              "20k varying-speed sideways follower frames never qualify");
+        s.FollowerLateralSpeedCmPerSecond = 0.0;
+        s.LeadLateralSpeedCmPerSecond =
+            (i & 1 ? 1.0 : -1.0) *
+            (0.25 * s.LeadSpeedCmPerSecond + 600.0);
+        Check(boost.Observe(s) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() == 0.0,
+              "20k varying-speed sideways rival frames never qualify");
+    }
 
     boost.Reset();
     for (int run = 0; run < 5000; ++run)
