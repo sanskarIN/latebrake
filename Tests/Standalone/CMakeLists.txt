@@ -2074,3 +2074,9 @@ add_latebrake_portable_research_test(OriginalSixCarPcmSynth)
 add_latebrake_portable_research_test(PhysicalVehicleSoundMix)
 add_latebrake_portable_research_test(PhysicalSixCarRaceReplayAnalytics)
 add_latebrake_portable_research_test(PhysicalSixCarRaceTrace)
+
+# Every transferred domain header must be parsed by the native compiler,
+# even if an individual behavior test does not currently include it.
+add_latebrake_portable_research_test(ResearchRacecraftHeaderCompile)
+add_latebrake_portable_research_test(ResearchTelemetryHeaderCompile)
+add_latebrake_portable_research_test(ResearchAudioHeaderCompile)
