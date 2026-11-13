@@ -17,7 +17,7 @@ and draft PR #349 remain intact.
   drivetrain calculations, steering and braking envelopes, collision/passing
   forecasting, official-state isolation, pit-crew and incident evidence,
   and original six-car replay/camera research.
-- **51 portable Telemetry headers:** read-only vehicle samples, finite
+- **32 compatible portable Telemetry headers:** read-only vehicle samples, finite
   numeric validation, lap and sector review, tire/fuel/brake analysis, replay
   sampling and export, strategy forecasts, driver coaching and session
   consistency checks.
@@ -35,10 +35,10 @@ separate validated integration.
 
 ## Minimum independently inspectable tests
 
-`Tests/Standalone/CMakeLists.txt` registers **19 real behavior suites**,
+`Tests/Standalone/CMakeLists.txt` registers **18 real behavior suites**,
 each built with MSVC `/W4 /WX` or Clang/GCC
 `-Wall -Wextra -Wpedantic -Werror`, plus **3 compile-all header targets**
-covering all 69 Racecraft, 51 Telemetry and 3 Audio headers. The source
+covering all 69 Racecraft, 32 Telemetry and 3 Audio headers. The source
 tool must show **all** the old 177+ CTest targets passing, including the
 new ones; a header merely existing in `Source` is not a successful
 test or native Unreal integration.
@@ -61,17 +61,25 @@ substituted for new, protected-main integration tests.
 
 The prior protected main snapshot `c1752b3a79de4aca389df9fc224e98c7326c87e3`
 measured **18,506** nonblank/noncomment game-source C++ lines in
-**183** files. The first staged PR snapshot `099a93dc457c4fdad416e38f09ecc25b5f1fb659`
-measured **79,556** on the PR branch in **306** source files, or
-**61,050 additional qualifying lines**. Treat this as the *branch* count
+**183** files. After removing 19 incompatible stacked telemetry declarations, staged
+commit `354e02ab64550c68e7fe52e74515d9ffec3585cc` measured **69,093**
+on the PR branch, or **50,587 additional qualifying lines**. Treat this as the *branch* count
 until the final merge is completed and the same method runs on the new
 protected `main` commit. Do not count test/fixture code, comments,
 README text, generated content or copied external third-party sources,
 and do not add PR LOC twice to the mainline count.
 
-**Scope caveat:** all 61,050 are previously authored, newly integrated
-portable experimental source, **not** a claim of 61,050 lines of new
-functionality verified in the runnable game. The 200,000-line
+**Scope caveat:** all 50,587 are previously authored, newly integrated
+portable experimental source, **not** a claim of 50,587 lines of new
+functionality verified in the runnable game. 
+The second-generation strategy telemetry was deliberately held back because
+its globally named coaching types collide with the independently developed
+first-generation driver-coaching API. Its source-only test passing alone
+would have concealed this ODR problem. The remaining research-only overtake
+commitment policy uses its own nested namespace to avoid collisions with
+the other autonomous passing planner.
+
+The 200,000-line
 `v0.6.0` source milestone and release-playability gate are distinct.
 
 ## Required real Unreal Engine owner qualification before using in gameplay
