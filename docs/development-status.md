@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.98](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98), experimental **SOURCE-ONLY**, unmerged draft PR #295 commit `bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37`; independently [published and verified](https://github.com/sanskarIN/latebrake/actions/runs/43232929038) with **zero executable attachments** |
-| Latest source-development milestone | Audited main snapshot [`bbe5e76f`](https://github.com/sanskarIN/latebrake/commit/bbe5e76f91e0b50ce16b7ade2216e218c4d6b7f7) contains merged rival safety, PIT, drafting and replay fixes in PRs #361–#366. Its actual [source-scale report](https://github.com/sanskarIN/latebrake/actions/runs/43235696333) counts **18,245 qualifying game-source C++ lines** in 182 files, not the 200,000 target. Hosted source validation does **not** establish installed Unreal gameplay. The v0.5.98 tag independently captures **unmerged draft physics**, not the main-branch safety work. |
+| Latest published GitHub pre-release | [v0.5.99](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99), experimental **SOURCE-ONLY**, immutable mainline commit `a3104ea76809ac86d315a8a31550d3215e79f824`, owner-authorized [exact-source publishing matrix](https://github.com/sanskarIN/latebrake/actions/runs/43413547703), **zero executable attachments**; independent v0.5.98 physics draft PR #295 remains unmerged |
+| Latest source-development milestone | Audited mainline [v0.5.99 source](https://github.com/sanskarIN/latebrake/commit/a3104ea76809ac86d315a8a31550d3215e79f824) integrates PRs #361–#370 for ghost/replay continuity, rival frame safety and physical-path-constrained single-rival drafting. Exact-source [production audit](https://github.com/sanskarIN/latebrake/actions/runs/43413547703) counted **18,328 qualifying authored game C++ lines** in 182 files, versus the 200,000-line v0.6.0 target. Portable tests do **not** establish actual Unreal playability. The previous v0.5.98 tag is a separate **unmerged** physics experiment, not part of this mainline snapshot. |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.
