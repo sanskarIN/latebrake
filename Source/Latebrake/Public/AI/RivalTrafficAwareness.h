@@ -77,8 +77,14 @@ inline PilotCommand YieldRivalToPlayer(
     const double facingX = std::cos(sample.RivalHeadingRadians);
     const double facingY = std::sin(sample.RivalHeadingRadians);
     const double forwardDistance = aheadX * facingX + aheadY * facingY;
-    const double lateralDistance = std::abs(
-        aheadY * facingX - aheadX * facingY);
+    // The present lateral corridor alone misses a real player moving
+    // SIDEWAYS into the rival's lane at the same time as a forward catch.
+    // Keep the signed world-space side so a velocity moving AWAY from the
+    // lane never creates a false collision. This is not a future steering
+    // planner or a substitute for actual Chaos overlap testing.
+    const double signedLateralDistance =
+        aheadY * facingX - aheadX * facingY;
+    const double lateralDistance = std::abs(signedLateralDistance);
     const double playerForwardSpeed =
         sample.PlayerWorldVelocityX * facingX +
         sample.PlayerWorldVelocityY * facingY;
@@ -107,6 +113,11 @@ inline PilotCommand YieldRivalToPlayer(
     constexpr double CriticalTimeToContactSeconds = 0.75;
     constexpr double ReactionReserveSeconds = 0.50;
     constexpr double PredictiveThrottleBufferCm = 500.0;
+    // Predict only near-term lateral lane entry for a forward-closing pair.
+    // Real chassis lateral world-velocity differences, not steering axes,
+    // determine whether the player is converging into the rival's lane.
+    constexpr double LaneEntryHorizonSeconds = 1.25;
+    constexpr double MinimumLaneEntryLookaheadSeconds = 0.10;
 
     // Model the closing velocity rather than total chassis speed to
     // preserve legitimate following/passing at nearly matching speeds.
@@ -125,6 +136,32 @@ inline PilotCommand YieldRivalToPlayer(
     const bool occupiedFootprint =
         forwardDistance < EmergencyFootprintDistanceCm &&
         rivalForwardSpeed > 1.0;
+    const double relativeLateralSpeed =
+        (sample.PlayerWorldVelocityY - sample.RivalWorldVelocityY) * facingX -
+        (sample.PlayerWorldVelocityX - sample.RivalWorldVelocityX) * facingY;
+    bool predictedLaneEntry = false;
+    if (closingSpeed >= 230.0 &&
+        forwardDistance > 0.0 &&
+        lateralDistance >= LaneCorridorCm)
+    {
+        // The predicted moment when the rival reaches the existing
+        // conservative rear-clearance gap. Do not predict so far ahead
+        // that unrelated distant lane changes become phantom hazards.
+        const double timeToForwardContact = std::max(
+            MinimumLaneEntryLookaheadSeconds,
+            (forwardDistance - ConservativeContactClearanceCm) / closing);
+        if (std::isfinite(timeToForwardContact) &&
+            timeToForwardContact <= LaneEntryHorizonSeconds)
+        {
+            const double predictedLateral = signedLateralDistance +
+                relativeLateralSpeed * timeToForwardContact;
+            predictedLaneEntry = std::isfinite(predictedLateral) &&
+                std::abs(predictedLateral) < LaneCorridorCm &&
+                std::abs(predictedLateral) < lateralDistance;
+        }
+    }
+    const bool laneConflict =
+        lateralDistance < LaneCorridorCm || predictedLaneEntry;
     // The 65m cap applies to *gentle throttle awareness*, not to a
     // physically required brake: a badly faded car may require much
     // longer than 65m to decelerate at the observed closing speed.
@@ -134,7 +171,7 @@ inline PilotCommand YieldRivalToPlayer(
     if (forwardDistance <= 0.0 ||
         (forwardDistance >= awarenessDistance &&
          !insufficientBrakingRunway) ||
-        lateralDistance >= LaneCorridorCm ||
+        !laneConflict ||
         (sample.RivalPlanarSpeedCmPerSecond < 450.0 &&
          !occupiedFootprint) ||
         (closingSpeed < 130.0 && !occupiedFootprint))
