@@ -22,6 +22,9 @@ struct DraftingSample final
     double ForwardThrottle = 0.0;
     bool Braking = false;
     bool EligibleHumanRace = false;
+    // Actual Unreal collision-query clearance between the two live chassis.
+    // Defaults closed: callers cannot earn draft from unverified visibility.
+    bool ClearPhysicalDraftPath = false;
     // World-planar velocity projected onto each body's physical right
     // direction. Heading alignment alone cannot qualify a sliding car.
     double FollowerLateralSpeedCmPerSecond = 0.0;
@@ -79,7 +82,8 @@ public:
             sample.FollowerLateralSpeedCmPerSecond;
         const double leadLateral = sample.LeadLateralSpeedCmPerSecond;
         const double throttle = sample.ForwardThrottle;
-        if (!sample.EligibleHumanRace || sample.Braking ||
+        if (!sample.EligibleHumanRace || !sample.ClearPhysicalDraftPath ||
+            sample.Braking ||
             !std::isfinite(dt) || dt < MinFrameSeconds ||
             dt > MaxFrameSeconds || !std::isfinite(follower) ||
             !std::isfinite(lead) || follower < MinimumFollowerSpeed ||
