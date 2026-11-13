@@ -2038,3 +2038,51 @@ else()
 endif()
 add_test(NAME ChaseCameraTransition
     COMMAND latebrake_chase_camera_transition_tests)
+
+# Experimental research-only C++20 libraries ported from the earlier
+# source-review branch. No Unreal/Chaos adapters or playable game code are
+# enabled here. Each original domain fixture builds with all warnings errors.
+function(add_latebrake_portable_research_test suffix)
+    set(target "latebrake_research_${suffix}")
+    add_executable(${target} "${suffix}Tests.cpp")
+    target_include_directories(${target} PRIVATE ../../Source/Latebrake/Public)
+    target_compile_features(${target} PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /WX)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+    add_test(NAME "Research${suffix}" COMMAND ${target})
+endfunction()
+
+add_latebrake_portable_research_test(AerodynamicWakeTraffic)
+add_latebrake_portable_research_test(BrakePressureCoherence)
+add_latebrake_portable_research_test(CornerGripForecast)
+add_latebrake_portable_research_test(DrivingInputsAndTraffic)
+add_latebrake_portable_research_test(PhysicalRaceOperationsEvidence)
+add_latebrake_portable_research_test(PhysicalRideAndContact)
+add_latebrake_portable_research_test(PhysicalSafetyControlFusion)
+add_latebrake_portable_research_test(PhysicalSurfaceGripAtlas)
+add_latebrake_portable_research_test(RaceEngineerTelemetry)
+add_latebrake_portable_research_test(RacecraftExtendedSystems)
+add_latebrake_portable_research_test(RacecraftFoundations)
+add_latebrake_portable_research_test(TelemetryAdvancedAnalytics)
+add_latebrake_portable_research_test(TelemetryExtendedSubsystem)
+add_latebrake_portable_research_test(PhysicalSixCarAudioStage)
+add_latebrake_portable_research_test(OriginalSixCarPcmSynth)
+add_latebrake_portable_research_test(PhysicalVehicleSoundMix)
+add_latebrake_portable_research_test(PhysicalSixCarRaceReplayAnalytics)
+add_latebrake_portable_research_test(PhysicalSixCarRaceTrace)
+
+# Every transferred domain header must be parsed by the native compiler,
+# even if an individual behavior test does not currently include it.
+add_latebrake_portable_research_test(ResearchRacecraftHeaderCompile)
+add_latebrake_portable_research_test(ResearchTelemetryHeaderCompile)
+add_latebrake_portable_research_test(ResearchAudioHeaderCompile)
+
+# Original source-only circuit surface and six-car body mesh algorithms.
+add_latebrake_portable_research_test(OriginalArmcoBarrierMesh)
+add_latebrake_portable_research_test(OriginalPhysicalAsphaltSkin)
+add_latebrake_portable_research_test(OriginalCircuitKerbMesh)
+add_latebrake_portable_research_test(OriginalVehicleSurfaceMesh)
+add_latebrake_portable_research_test(ResearchOriginalGeometryHeaderCompile)
