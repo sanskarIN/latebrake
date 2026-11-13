@@ -1,0 +1,62 @@
+// Compile every standalone Telemetry domain header together under
+// -Werror / /WX. No Unreal SDK, native actors, hardware or assets used.
+// This guards transitive includes, ODR/type collisions and missing headers;
+// separate behavioral suites test runtime values and safety decisions.
+#include "Telemetry/TelemetryBrakeTrace.h"
+#include "Telemetry/TelemetryBraking.h"
+#include "Telemetry/TelemetryCoach.h"
+#include "Telemetry/TelemetryCornerSequence.h"
+#include "Telemetry/TelemetryCornering.h"
+#include "Telemetry/TelemetryDashboard.h"
+#include "Telemetry/TelemetryDeltaComparison.h"
+#include "Telemetry/TelemetryDistancePace.h"
+#include "Telemetry/TelemetryDriverCoach.h"
+#include "Telemetry/TelemetryDriverComparison.h"
+#include "Telemetry/TelemetryEnvironmentModel.h"
+#include "Telemetry/TelemetryEventJournal.h"
+#include "Telemetry/TelemetryExport.h"
+#include "Telemetry/TelemetryFilters.h"
+#include "Telemetry/TelemetryFleetGapReview.h"
+#include "Telemetry/TelemetryFuelStint.h"
+#include "Telemetry/TelemetryFuelStrategy.h"
+#include "Telemetry/TelemetryGrip.h"
+#include "Telemetry/TelemetryIncidentJournal.h"
+#include "Telemetry/TelemetryKinematics.h"
+#include "Telemetry/TelemetryLapAnalysis.h"
+#include "Telemetry/TelemetryLapComparison.h"
+#include "Telemetry/TelemetryLapJournal.h"
+#include "Telemetry/TelemetryMath.h"
+#include "Telemetry/TelemetryOpponents.h"
+#include "Telemetry/TelemetryPitReview.h"
+#include "Telemetry/TelemetryPitStrategyReview.h"
+#include "Telemetry/TelemetryRaceLineProfile.h"
+#include "Telemetry/TelemetryRaceStrategy.h"
+#include "Telemetry/TelemetryReliability.h"
+#include "Telemetry/TelemetryReplayBookmarks.h"
+#include "Telemetry/TelemetryReplayBuffer.h"
+#include "Telemetry/TelemetryReplaySampler.h"
+#include "Telemetry/TelemetrySafetyAudit.h"
+#include "Telemetry/TelemetrySectorAnalysis.h"
+#include "Telemetry/TelemetrySectorMatrix.h"
+#include "Telemetry/TelemetrySessionIntegrity.h"
+#include "Telemetry/TelemetrySessionRecorder.h"
+#include "Telemetry/TelemetrySessionTimeline.h"
+#include "Telemetry/TelemetrySignalSeries.h"
+#include "Telemetry/TelemetryStintPerformance.h"
+#include "Telemetry/TelemetrySuspensionReview.h"
+#include "Telemetry/TelemetryTireStint.h"
+#include "Telemetry/TelemetryTrack.h"
+#include "Telemetry/TelemetryTrainingDrills.h"
+#include "Telemetry/TelemetryTransmissionReview.h"
+#include "Telemetry/TelemetryTypes.h"
+#include "Telemetry/TelemetryValidation.h"
+#include "Telemetry/TelemetryVehicleBalance.h"
+#include "Telemetry/TelemetryVehicleHealth.h"
+#include "Telemetry/TelemetryWeatherTrend.h"
+
+#include <iostream>
+int main()
+{
+    std::cout << "Telemetry: all 51 standalone headers parsed.\\n";
+    return 0;
+}
