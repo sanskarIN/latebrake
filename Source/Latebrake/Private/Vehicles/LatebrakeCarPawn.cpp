@@ -1578,8 +1578,12 @@ void ALatebrakeCarPawn::ApplyCameraPreset()
     // that view's unmodified FOV; no acceleration or race state is changed.
     ReactiveFov.Reset();
     CornerLookAhead.Reset();
+    const bool bBlendChaseRig = bBlendNextCameraPreset;
+    bBlendNextCameraPreset = false; // A look-back/recovery cannot inherit this.
     if (!IsValid(CameraBoom))
     {
+        ChaseRigTransition.Snap(latebrake::GetCameraPreset(
+            latebrake::CameraView::Chase));
         return;
     }
     const latebrake::CameraPreset Requested =
@@ -1589,13 +1593,29 @@ void ALatebrakeCarPawn::ApplyCameraPreset()
     const latebrake::CameraPreset View =
         latebrake::IsSafeCameraPreset(Requested)
             ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
-    CameraBoom->TargetArmLength = static_cast<float>(View.ArmLengthCm);
+    // Only deliberate human chase-to-chase switches animate. Read the
+    // actually displayed spring-arm pose, including interrupted blends.
+    // Hood and held rear view always snap to their complete safe preset.
+    const latebrake::ChaseCameraPose DisplayedPose{
+        static_cast<double>(CameraBoom->TargetArmLength),
+        static_cast<double>(CameraBoom->GetRelativeRotation().Pitch),
+        static_cast<double>(CameraBoom->SocketOffset.X),
+        static_cast<double>(CameraBoom->SocketOffset.Z)};
+    const bool bTransitioning = bBlendChaseRig && IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr &&
+        ChaseRigTransition.Begin(DisplayedPose, View);
+    if (!bTransitioning)
+    {
+        ChaseRigTransition.Snap(View);
+    }
+    const latebrake::ChaseCameraPose Pose = ChaseRigTransition.Pose();
+    CameraBoom->TargetArmLength = static_cast<float>(Pose.ArmLengthCm);
     CameraBoom->SetRelativeRotation(FRotator(
-        static_cast<float>(View.PitchDegrees),
+        static_cast<float>(Pose.PitchDegrees),
         static_cast<float>(LookBackCamera.SpringArmYawDegrees()), 0.f));
     CameraBoom->SocketOffset = FVector(
-        static_cast<float>(View.ForwardOffsetCm), 0.f,
-        static_cast<float>(View.HeightOffsetCm));
+        static_cast<float>(Pose.ForwardOffsetCm), 0.f,
+        static_cast<float>(Pose.HeightOffsetCm));
     CameraBoom->CameraLagSpeed = static_cast<float>(View.CameraLagSpeed);
     CameraBoom->bEnableCameraLag = View.CameraLagEnabled;
     CameraBoom->bDoCollisionTest = View.CollisionProbeEnabled;
@@ -1651,7 +1671,11 @@ void ALatebrakeCarPawn::UpdateSpeedCameraFov(
 
 void ALatebrakeCarPawn::ResetCornerCameraYaw()
 {
-    if (!CornerLookAhead.HasActiveSample())
+    // Pause, recovery, focus loss and invalid Chaos frames stop both
+    // animations immediately. Never leave an in-between camera rig frozen.
+    const bool bHadTransition = ChaseRigTransition.IsActive();
+    ChaseRigTransition.Cancel();
+    if (!CornerLookAhead.HasActiveSample() && !bHadTransition)
     {
         return;
     }
@@ -1660,15 +1684,15 @@ void ALatebrakeCarPawn::ResetCornerCameraYaw()
     {
         return;
     }
-    const latebrake::CameraPreset Requested =
-        latebrake::GetCameraPreset(CameraViews.Current());
-    const latebrake::CameraPreset View =
-        latebrake::IsSafeCameraPreset(Requested)
-            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
     // Restore the preset immediately when the race loses input ownership,
     // even if Chaos or the paused world never sends another Tick.
+    const latebrake::ChaseCameraPose Pose = ChaseRigTransition.Pose();
+    CameraBoom->TargetArmLength = static_cast<float>(Pose.ArmLengthCm);
+    CameraBoom->SocketOffset = FVector(
+        static_cast<float>(Pose.ForwardOffsetCm), 0.f,
+        static_cast<float>(Pose.HeightOffsetCm));
     CameraBoom->SetRelativeRotation(FRotator(
-        static_cast<float>(View.PitchDegrees),
+        static_cast<float>(Pose.PitchDegrees),
         static_cast<float>(LookBackCamera.SpringArmYawDegrees()), 0.f));
 }
 
@@ -1682,11 +1706,6 @@ void ALatebrakeCarPawn::UpdateCornerCameraYaw(
     }
     const bool bHumanPlayer = IsLocallyControlled() &&
         Cast<APlayerController>(GetController()) != nullptr;
-    const latebrake::CameraPreset Requested =
-        latebrake::GetCameraPreset(CameraViews.Current());
-    const latebrake::CameraPreset View =
-        latebrake::IsSafeCameraPreset(Requested)
-            ? Requested : latebrake::GetCameraPreset(latebrake::CameraView::Chase);
     const double YawLead = CornerLookAhead.Sample(
         ForwardCmPerSecond, VisualSteering, FrameSeconds,
         bHumanPlayer, LookBackCamera.IsHeld(), CameraViews.Current());
@@ -1694,17 +1713,49 @@ void ALatebrakeCarPawn::UpdateCornerCameraYaw(
     {
         return;
     }
-    // Only the spring-arm view changes; no pawn transform, forces, game
-    // controls, AI, checkpoint authorization, saved state or awards.
+    // Update only the local camera spring arm. A smooth chase framing
+    // change is layered underneath the existing steering yaw lead.
+    // Failed/hitched frames snap to their safe target (portable policy).
+    const latebrake::ChaseCameraPose Pose =
+        ChaseRigTransition.Advance(FrameSeconds);
+    CameraBoom->TargetArmLength = static_cast<float>(Pose.ArmLengthCm);
+    CameraBoom->SocketOffset = FVector(
+        static_cast<float>(Pose.ForwardOffsetCm), 0.f,
+        static_cast<float>(Pose.HeightOffsetCm));
     CameraBoom->SetRelativeRotation(FRotator(
-        static_cast<float>(View.PitchDegrees),
+        static_cast<float>(Pose.PitchDegrees),
         static_cast<float>(LookBackCamera.SpringArmYawDegrees() + YawLead),
         0.f));
 }
 
 void ALatebrakeCarPawn::ChangeCamera()
 {
-    CameraViews.Next();
+    const latebrake::CameraView Previous = CameraViews.Current();
+    const latebrake::CameraView Next = CameraViews.Next();
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    // Preset switching remains available outside a race, but transition
+    // animation needs the exact same live human/physical driver authority.
+    // A menu or paused-world press snaps rather than freezing midway.
+    const bool bLiveHumanRace = IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr &&
+        Mode && Mode->IsRaceStartGreen() &&
+        Mode->IsCircuitReadyForGameplay() &&
+        Mode->IsRestartPlacementReady() &&
+        !Mode->IsMenuOpen() &&
+        !Mode->IsFocusLossGuardActive() &&
+        !Mode->IsManualRacePauseActive() &&
+        !Mode->GetRace().IsFinished() &&
+        !UGameplayStatics::IsGamePaused(this) &&
+        IsRacePhysicsReady();
+    // The hood's zero-length spring arm must NEVER pass through the car
+    // on a blended camera path; rear view retains immediate priority.
+    bBlendNextCameraPreset =
+        bLiveHumanRace &&
+        Previous != latebrake::CameraView::Hood &&
+        Next != latebrake::CameraView::Hood &&
+        !LookBackCamera.IsHeld();
     ApplyCameraPreset();
 }
 
