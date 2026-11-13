@@ -1,20 +1,28 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.97**. It freezes unmerged physics PR #295 and has zero executable attachments.
+    The independently verified latest published GitHub tag is **v0.5.98**. It freezes **unmerged** experimental physics PR #295 and has zero executable attachments.
 
-**Current source release:** [v0.5.97](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97) at
-`65ef6f2f192081b64f8256867403f40882cca462`. The [guarded publisher](https://github.com/sanskarIN/latebrake/actions/runs/42588788912)
-completed its exact-source tests and immutable tag/release readback. This
-snapshot includes load-distributed braking at measured road points and
-road-tangent force/energy bounds. It remains a rigid-body prototype with
-no verified Unreal build, cooked circuit or installed Windows gameplay.
+**Current source release:** [v0.5.98](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98) at
+`bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37`. The [owner-dispatched guarded publisher](https://github.com/sanskarIN/latebrake/actions/runs/43232929038)
+completed the exact-source Windows, Ubuntu and macOS C++20 suites, Python
+source contracts, PowerShell packaging-policy checks and documentation
+qualification before publishing the immutable tag and read-back-verified
+pre-release. Its independent wheel-brake and rival-capacity source remains
+**draft**, not in the active main game; it is not an installed Unreal build.
 
-The [publication record](V0597_SOURCE_RELEASE_PREPARATION.md) preserves its
-source pin and manual workflow. The previous v0.5.96 rounded-circuit snapshot
-is an independent draft branch; source releases do not merge experiments
-into main. [Playable gate #148](https://github.com/sanskarIN/latebrake/issues/148)
-remains open.
+The [v0.5.97 predecessor](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97)
+remains at `65ef6f2f192081b64f8256867403f40882cca462` and has not been moved. Prepared
+[v0.5.98 release notes](releases/v0.5.98.md) are intentionally preserved
+byte-for-byte because the protected publisher authenticates their exact
+source revision; their pre-publication language describes the original
+readiness plan. Neither tag contains a compiled Windows/Android game.
+
+Real UE5.8 Editor/UHT compilation, original cooked circuit, validated
+Win64 installer and installed driving remain blocked on physical-engine
+qualification; [playable issue #148](https://github.com/sanskarIN/latebrake/issues/148)
+is still outstanding. Main-branch improvements are tracked separately
+and cannot be presented as already included in the draft-source snapshot.
 
 ## Published source previews
 
@@ -22,6 +30,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.98 | [Release notes](releases/v0.5.98.md) |
 | v0.5.97 | [Release notes](releases/v0.5.97.md) |
 | v0.5.96 | [Release notes](releases/v0.5.96.md) |
 | v0.5.95 | [Release notes](releases/v0.5.95.md) |

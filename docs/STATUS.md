@@ -1,9 +1,16 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-09
-**Latest published milestone:** [v0.5.97 SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.97), immutable source `65ef6f2f192081b64f8256867403f40882cca462`, **zero executable attachments**. It freezes unmerged physics PR #295 with load-distributed road-tangent brakes. [Exact-source publisher](https://github.com/sanskarIN/latebrake/actions/runs/42588788912) completed successfully; real UE/UHT, cooked Win64 packaging and installed handling remain unverified.
+**Updated:** 2026-11-12
+**Latest published milestone:** [v0.5.98 SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98), immutable source `bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37`, **zero executable attachments**. This tag freezes **unmerged** draft physics PR #295 with independent modeled wheel braking and brake-capacity-aware rival planning. [Exact-source owner publisher](https://github.com/sanskarIN/latebrake/actions/runs/43232929038) completed successfully; real UE/UHT, cooked Win64 packaging and installed handling remain unverified.
 **Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
 **Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
+
+## v0.5.98 owner-published source snapshot — validated tag, NOT playable
+
+- The owner-controlled [publisher workflow](https://github.com/sanskarIN/latebrake/actions/runs/43232929038) succeeded at protected main `b47091f49bf541c6b9d5277cf603089339ea2c95`, rebuilding the independently pinned draft PR #295 source `bc0d5606d4c415f7603cc97f5ba6c90f59fa9c37` on Windows/Ubuntu/macOS and running Python, PowerShell and docs gates. The resulting release is [v0.5.98](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.98), a source-only pre-release with **no binary attachments**.
+- The v0.5.98 tag is **not** the active main branch. PR #295 remains a draft until actual UE5.8 Editor/UHT compilation, real cookable map, installed Win64 gameplay and safety/handling QA are verified.
+- The last audited active-main snapshot `bbe5e76f91e0b50ce16b7ade2216e218c4d6b7f7` includes merged production route, traffic, pit, drafting and ghost replay-safety changes from PRs #361–#366. Its hosted source-count run reports **18,245 nonblank noncomment game-source C++ lines** in 182 files, excluding docs/tests/vendor code. The v0.6.0 target of **200,000 such lines** is not yet met; these source checks are not a real Unreal Engine gameplay qualification.
+- Read the preserved [release notes](releases/v0.5.98.md), [published release history](release-history.md) and [real-engine blocker](UNREAL_DRAFT_PR_VALIDATION.md).
 
 ## v0.5.95 original Unreal circuit surface source (published tag, NOT merged)
 
