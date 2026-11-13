@@ -10,8 +10,9 @@ using the **real possessed player's Unreal actor position and world
 velocity**, compared with the rival's actual chassis heading and
 observed speed.
 
-- Only a player **ahead** of the rival in a narrow lane corridor
-  (within 225 cm laterally) can trigger slowing.
+- Only a player **ahead** of the rival who is physically inside the
+  narrow 225cm lane corridor, or is measured converging into that corridor
+  before a near-term rear catch, can trigger courtesy slowing.
 - The rule only activates when the rival is moving and genuinely
   **closing** on the player, not merely when cars are parked nearby,
   in adjacent lanes or traveling the same direction at similar speeds.
