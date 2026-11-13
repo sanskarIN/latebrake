@@ -8,6 +8,7 @@
 #include <limits>
 
 using namespace latebrake::racecraft;
+using namespace latebrake::racecraft::commitment;
 static void Require(bool ok,const char* message)
 {
     if (!ok)
