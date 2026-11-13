@@ -38,6 +38,14 @@ multiplayer positioning or a source of official race results.
   Both measurements are supplied directly from the human's Chaos body
   and the rival's real world velocity, not inferred from heading
   or a frozen HUD reading. Reverse slip sign has no effect on the cap.
+- Consecutive **relative world positions** must also agree with the two
+  measured planar chassis-velocity vectors (forward and lateral) over the
+  current physics delta. More than **2 m** of unexplained residual relative
+  movement resets qualification immediately, even if a recovered rival lands
+  inside the legal drafting zone. This is a conservative source-only guard
+  with allowances for ordinary tick-order skew, **not** proof of a genuine
+  engine-verified teleport or collision detector. The first valid frame
+  establishes a new baseline without granting a boost.
 - Drafting must remain continuously eligible for **0.18 seconds** before
   granting help; an invalid frame, stale/missing rival, teleport,
   sideways-slide excess or input interruption clears the entire
@@ -74,7 +82,8 @@ Tests reject malformed/time-hitch samples, NaN/Infinity position and
 motion, reverse/too-distant/oncoming rival, wrong lane, vertical
 separation, denied driver states, braking, low speeds, invalid headings,
 measured excessive left/right chassis sliding on either vehicle,
-nonfinite lateral movement and 40,000 varying-speed sideways-motion cases,
+nonfinite lateral movement, 40,000 varying-speed sideways-motion cases,
+12,000 adversarial in-lane teleport traces and rotated/smooth relative travel,
 and over-fast approach. Separate exact traction tests reject fabricated
 contact, 0–2 supporting corners and unsupported/airborne lead/follower
 states; Python source assertions verify both real Unreal bindings. They also check a 5,000-run stress sample, all
