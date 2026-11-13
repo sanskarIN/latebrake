@@ -113,6 +113,42 @@ int main()
         cruise, Traffic(1050, 226.0, 3400.0, 500.0));
     Require(!outsideLane.Brake && outsideLane.Throttle == cruise.Throttle,
             "prediction cannot brake for a player outside the lane corridor");
+    // An otherwise adjacent player can merge into the real physical
+    // passing lane BEFORE a rapidly closing rival reaches its rear gap.
+    // The previous source policy only inspected the CURRENT 225cm lane.
+    auto imminentMerge = Traffic(1500, 400.0, 2200.0, 500.0);
+    imminentMerge.PlayerWorldVelocityY = -600.0;
+    const auto crossing = YieldRivalToPlayer(cruise, imminentMerge);
+    Require(crossing.Brake && crossing.Throttle == 0.0 &&
+            crossing.Steering == cruise.Steering,
+            "real sideways entry into future lane overlap triggers early brake");
+    auto oppositeMerge = imminentMerge;
+    oppositeMerge.PlayerY = -400.0;
+    oppositeMerge.PlayerWorldVelocityY = 600.0;
+    const auto mirrored = YieldRivalToPlayer(cruise, oppositeMerge);
+    Require(mirrored.Brake && mirrored.Throttle == 0.0,
+            "opposite side merging toward lane is symmetric");
+    auto diverging = imminentMerge;
+    diverging.PlayerWorldVelocityY = 600.0;
+    const auto outward = YieldRivalToPlayer(cruise, diverging);
+    Require(!outward.Brake && outward.Throttle == cruise.Throttle,
+            "same-side travel AWAY from lane cannot invent contact");
+    auto nearMiss = imminentMerge;
+    nearMiss.PlayerWorldVelocityY = -200.0;
+    const auto grazing = YieldRivalToPlayer(cruise, nearMiss);
+    Require(!grazing.Brake && grazing.Throttle == cruise.Throttle,
+            "lateral projection staying outside clearance remains untouched");
+    auto distantCross = imminentMerge;
+    distantCross.PlayerX = 5500.0;
+    const auto farUncertain = YieldRivalToPlayer(cruise, distantCross);
+    Require(!farUncertain.Brake && farUncertain.Throttle == cruise.Throttle,
+            "distant future lane-entry guess cannot freeze the rival");
+    auto matchedAdjacent = imminentMerge;
+    matchedAdjacent.PlayerWorldVelocityX = 2150.0;
+    const auto noCatch = YieldRivalToPlayer(cruise, matchedAdjacent);
+    Require(!noCatch.Brake && noCatch.Throttle == cruise.Throttle,
+            "lateral merging with no longitudinal closing is not a rear-catch");
+
     const auto mildClose = YieldRivalToPlayer(
         cruise, Traffic(350, 0, 1600.0, 1400.0));
     Require(!mildClose.Brake && mildClose.Throttle < cruise.Throttle,
@@ -138,6 +174,19 @@ int main()
         1200.0, -700.0, HalfPi, 2000.0,
         1190.0, -300.0, 0.0, 900.0, true, 0.0, 2000.0, 684.0
     };
+    const RivalTrafficObservation northboundMerge{
+        1200.0, -700.0, HalfPi, 2200.0,
+        800.0, 800.0, 600.0, 500.0, true, 0.0, 2200.0, 684.0
+    };
+    const auto rotatedMerge = YieldRivalToPlayer(cruise, northboundMerge);
+    Require(rotatedMerge.Brake && rotatedMerge.Throttle == 0.0,
+            "world-X sideways merge near northbound forward collision brakes");
+    auto rotatedAway = northboundMerge;
+    rotatedAway.PlayerWorldVelocityX = -600.0;
+    const auto rotatedExit = YieldRivalToPlayer(cruise, rotatedAway);
+    Require(!rotatedExit.Brake && rotatedExit.Throttle == cruise.Throttle,
+            "northbound player moving outward from lane remains unblocked");
+
     const auto rotating = YieldRivalToPlayer(cruise, ninety);
     Require(rotating.Brake && rotating.Throttle == 0.0 &&
             rotating.Steering == cruise.Steering,
@@ -245,6 +294,31 @@ int main()
                     "weaker measured brakes never dismiss a healthy-brake stop");
         }
     }
+    // 12,000 deterministic, mirrored lane-entry scenarios across real
+    // measured approach gaps. Inward lateral velocity may reduce throttle;
+    // outward travel must never trigger phantom braking. The guard must
+    // preserve steering and never add throttle or create route progress.
+    int predictedBrakes = 0;
+    for (int index = 0; index < 12000; ++index)
+    {
+        const double forward = 400.0 + static_cast<double>(index % 1800);
+        const double side = 250.0 + static_cast<double>(index % 350);
+        auto inward = Traffic(forward, side, 2200.0, 500.0);
+        inward.PlayerWorldVelocityY = -600.0;
+        auto away = inward;
+        away.PlayerWorldVelocityY = 600.0;
+        const auto toward = YieldRivalToPlayer(cruise, inward);
+        const auto retreat = YieldRivalToPlayer(cruise, away);
+        Require(toward.Throttle <= cruise.Throttle &&
+                toward.Throttle <= retreat.Throttle &&
+                toward.Steering == cruise.Steering &&
+                retreat.Steering == cruise.Steering &&
+                !retreat.Brake && retreat.Throttle == cruise.Throttle,
+                "12k converging/retreating lane pairs stay conservative");
+        if (toward.Brake) ++predictedBrakes;
+    }
+    Require(predictedBrakes > 5000,
+            "physically converging lateral traffic is detected broadly");
     std::cout << "Rival lane-approach safety policy passed.\n";
     return EXIT_SUCCESS;
 }
