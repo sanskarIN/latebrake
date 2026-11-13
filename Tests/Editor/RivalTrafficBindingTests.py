@@ -56,6 +56,31 @@ class RivalTrafficBindingTests(unittest.TestCase):
         self.assertIn("const bool occupiedFootprint =", self.policy)
         self.assertIn("const bool insufficientBrakingRunway =", self.policy)
 
+    def test_measured_sideways_merge_anticipation_is_bounded(self):
+        # Pure C++20 policy only: this does not emulate real Chaos traffic.
+        # Sideways motion must be read from both existing WORLD velocity
+        # vectors and projected at the physical rear-contact time, never
+        # from a guessed steering axis, future waypoint, or player input.
+        for marker in (
+            "const double signedLateralDistance =",
+            "const double relativeLateralSpeed =",
+            "sample.PlayerWorldVelocityY - sample.RivalWorldVelocityY",
+            "sample.PlayerWorldVelocityX - sample.RivalWorldVelocityX",
+            "LaneEntryHorizonSeconds = 1.25",
+            "MinimumLaneEntryLookaheadSeconds = 0.10",
+            "const double timeToForwardContact =",
+            "predictedLateral = signedLateralDistance +",
+            "predictedLaneEntry = std::isfinite(predictedLateral)",
+            "const bool laneConflict =",
+            "!laneConflict ||",
+        ):
+            self.assertIn(marker, self.policy)
+        self.assertLess(self.policy.index("const bool laneConflict ="),
+                        self.policy.index("if (forwardDistance <= 0.0 ||"))
+        self.assertIn("12000", (ROOT / "Tests/Standalone/"
+                                 "RivalTrafficAwarenessTests.cpp").read_text(
+                                     encoding="utf-8"))
+
     def test_never_mutates_race_or_player_control(self):
         for forbidden in (
             "AddForce", "AddTorque", "RaceProgress", "PassCheckpoint",
