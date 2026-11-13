@@ -1139,7 +1139,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         Cast<APlayerController>(GetController()) != nullptr &&
         Mode->HasLocalPlayerDriver() &&
         Mode->TryGetRivalDraftingState(
-            RivalPosition, RivalForward, RivalVelocity);
+            this, RivalPosition, RivalForward, RivalVelocity);
     double DraftExtraForce = 0.0;
     // The follower and the leader must each have independently
     // qualified at least three real WorldStatic road probes. Mere
@@ -1170,7 +1170,8 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(EffectiveThrottle),
             bEffectiveBraking, true,
             static_cast<double>(LateralSpeed),
-            RivalLateralSpeed
+            RivalLateralSpeed,
+            true // GameMode just verified an unobstructed physical sightline.
         });
     }
     else
