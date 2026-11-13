@@ -23,6 +23,10 @@ and draft PR #349 remain intact.
   consistency checks.
 - **3 portable Audio headers:** original waveform synthesis, physical
   race audio staging and bounded engine sound-mix calculations.
+- **4 original portable geometry headers:** typed, self-contained asphalt,
+  kerb, Armco crash-barrier and six-car prototype body-surface mesh
+  generation, with separate deterministic geometry fixtures. No meshes
+  are uploaded, rendered or cooked in Unreal by these classes.
 
 These are **domain models**, and are not enabled inside
 `ALatebrakeCarPawn`, `ALatebrakeRivalCar`, `ALatebrakeRaceGameMode`, or
@@ -35,10 +39,10 @@ separate validated integration.
 
 ## Minimum independently inspectable tests
 
-`Tests/Standalone/CMakeLists.txt` registers **18 real behavior suites**,
+`Tests/Standalone/CMakeLists.txt` registers **22 real behavior suites**,
 each built with MSVC `/W4 /WX` or Clang/GCC
-`-Wall -Wextra -Wpedantic -Werror`, plus **3 compile-all header targets**
-covering all 69 Racecraft, 32 Telemetry and 3 Audio headers. The source
+`-Wall -Wextra -Wpedantic -Werror`, plus **4 compile-all header targets**
+covering all 69 Racecraft, 32 Telemetry, 3 Audio and 4 geometry headers. The source
 tool must show **all** the old 177+ CTest targets passing, including the
 new ones; a header merely existing in `Source` is not a successful
 test or native Unreal integration.
@@ -63,14 +67,16 @@ The prior protected main snapshot `c1752b3a79de4aca389df9fc224e98c7326c87e3`
 measured **18,506** nonblank/noncomment game-source C++ lines in
 **183** files. After removing 19 incompatible stacked telemetry declarations, staged
 commit `354e02ab64550c68e7fe52e74515d9ffec3585cc` measured **69,093**
-on the PR branch, or **50,587 additional qualifying lines**. Treat this as the *branch* count
+on the PR branch, or **50,587 additional qualifying lines**. The four later, separately tested geometry builders add genuine source;
+verify their contribution from the final exact-head source audit instead of
+extrapolating from their physical-line count. Treat this as the *branch* count
 until the final merge is completed and the same method runs on the new
 protected `main` commit. Do not count test/fixture code, comments,
 README text, generated content or copied external third-party sources,
 and do not add PR LOC twice to the mainline count.
 
-**Scope caveat:** all 50,587 are previously authored, newly integrated
-portable experimental source, **not** a claim of 50,587 lines of new
+**Scope caveat:** the imported portable code is previously authored, newly integrated
+portable experimental source, **not** a claim of equivalent new lines of
 functionality verified in the runnable game. 
 The second-generation strategy telemetry was deliberately held back because
 its globally named coaching types collide with the independently developed
