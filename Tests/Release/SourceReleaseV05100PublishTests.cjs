@@ -161,7 +161,7 @@ test('publisher has no auto-push trigger or unconfirmed standalone source releas
     "approval:",
     "SourceReleaseV05100ReadinessTests.cjs",
     "SourceReleaseV05100PublishTests.cjs",
-    "guard.publish({github,context,notes})",
+    "publisher.publish({github,context,notes})",
     "SlipstreamDraftBoost",
   ])assert.ok(yaml.includes(must),'Workflow invariant missing: '+must);
 });

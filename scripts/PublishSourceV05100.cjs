@@ -80,7 +80,7 @@ async function publish({github, context, notes}) {
       released.draft !== false ||
       !Array.isArray(released.assets) ||
       released.assets.length !== 0) {
-    throw new Error('Source-only release metadata changed after readback');
+    throw new Error('Source-only release metadata or attached assets changed after readback');
   }
   return released;
 }
