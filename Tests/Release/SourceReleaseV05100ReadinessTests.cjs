@@ -31,7 +31,14 @@ function fixture() {
       'PreviousFollowerWorldY = followerWorldY ' +
       'PreviousFollowerWorldZ = followerWorldZ ' +
       'followerResidual > MaxRelativeMotionResidualCm ' +
-      'std::abs(followerVerticalResidual)').toString('base64')},
+      'std::abs(followerVerticalResidual) ' +
+      'const double leadWorldX = followerWorldX + dx; ' +
+      'const double leadWorldY = followerWorldY + dy; ' +
+      'const double leadWorldZ = followerWorldZ + dz; ' +
+      'const double predictedLeadX = const double predictedLeadY = ' +
+      'const double predictedLeadZ = ' +
+      'leadResidual > MaxRelativeMotionResidualCm ' +
+      'std::abs(leadVerticalResidual)').toString('base64')},
     pawn: {type:'file',encoding:'base64',content:Buffer.from(
       'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
       'static_cast<std::uint64_t>(RivalIdentity) ' +
@@ -47,7 +54,11 @@ function fixture() {
       'rapid opponent swaps cannot inherit drafting charge ' +
       'common-mode X relocation common-mode lateral relocation ' +
       'common-mode vertical relocation ' +
-      'genuine measured follower world movement').toString('base64')},
+      'genuine measured follower world movement ' +
+      'hidden 255cm lead relocation denied ' +
+      'combined 120cm rival Z jump rejected ' +
+      'independent rival continuity rejects rearward hidden relocation ' +
+      'physically predicted lead and follower motion retains drafting').toString('base64')},
     pr: {state:'closed',merged:true,merge_commit_sha:MERGE,
       base:{ref:'main'},head:{repo:{full_name:'sanskarIN/latebrake'}}},
     compare: {status:'ahead',behind_by:0,ahead_by:1},
@@ -193,6 +204,24 @@ for (const [label,modify,error] of [
     f.state.tests.content=Buffer.from(
       'same-lane vertical relocation identical-geometry replacement ' +
       'rapid opponent swaps cannot inherit drafting charge'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing independently reconstructed rival world guard',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'leadResidual > MaxRelativeMotionResidualCm','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing independent lead Z ceiling',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'std::abs(leadVerticalResidual)','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing hidden lead relocation regression',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'hidden 255cm lead relocation denied','')
     ).toString('base64');
   },/physical-3D/],
   ['spoofed GitHub checks app',f=>{f.state.checks.check_runs[0].app.slug='untrusted';},/untrusted app/],
