@@ -145,7 +145,84 @@ test('deny added assets in the publisher readback',async()=>{
   await assert.rejects(runCase(f),/assets/);
   assert.deepEqual(f.state.writes,['tag','release']);
 });
-test('publisher has no auto-push trigger or unconfirmed standalone source release',()=>{
+// Guard the ACTUAL job/trigger structure, not a word anywhere in the
+// workflow: a second trigger or a preflight write token must fail CI even
+// if the string "workflow_dispatch" still appears in a comment.
+function verifyManualPublisherWorkflow(yaml) {
+  const triggerMatch = /^on:\s*\n([\s\S]*?)^permissions:\s*$/m.exec(yaml);
+  assert.ok(triggerMatch, 'Publisher needs top-level trigger and permission blocks');
+  const directTriggers = triggerMatch[1].split('\n')
+    .filter(line => /^  [a-z_]+:\s*(?:#.*)?$/.test(line))
+    .map(line => line.trim().split(':')[0]);
+  assert.deepEqual(directTriggers, ['workflow_dispatch'],
+    'Source release must have exactly one manual dispatch trigger');
+  assert.match(triggerMatch[1], /^      candidate_sha:\s*$/m);
+  assert.match(triggerMatch[1], /^      approval:\s*$/m);
+
+  const publishSplit = yaml.split(/^  publish:\s*$/m);
+  assert.equal(publishSplit.length, 2,
+    'Exactly one final publish job is required');
+  const [prePublish, publish] = publishSplit;
+  const topLevelPermissions = prePublish.match(
+    /^permissions:\s*\n([\s\S]*?)^concurrency:\s*$/m);
+  assert.ok(topLevelPermissions, 'Explicit top-level readonly permissions required');
+  assert.match(topLevelPermissions[1], /^  contents: read\s*$/m);
+  assert.doesNotMatch(prePublish, /^\s+contents: write\s*$/m,
+    'Preflight or test jobs may never have a write-enabled token');
+  assert.match(publish, /^    needs: \[preflight, cpp, editor, policies, docs\]\s*$/m);
+  assert.match(publish, /^    permissions:\s*\n      contents: write\s*$/m);
+  assert.match(publish, /github\.actor == 'sanskarIN'/);
+  assert.match(publish, /github\.ref == 'refs\/heads\/main'/);
+  assert.match(prePublish, /SourceReleaseV05100ReadinessTests\.cjs/);
+  assert.match(prePublish, /SourceReleaseV05100PublishTests\.cjs/);
+  assert.match(prePublish, /publisher\.requireExactAuthorization\(context\)/);
+  assert.match(prePublish, /guard\.inspectReadiness\(/);
+  assert.match(publish, /publisher\.publish\(\{github,context,notes\}\)/);
+  assert.match(publish, /ref: \$\{\{ github\.sha \}\}/);
+}
+test('publisher is manual-only, read-only before guarded final write',()=>{
+  const fs=require('node:fs'),path=require('node:path');
+  const yaml=fs.readFileSync(path.join(__dirname,
+    '../../.github/workflows/publish-v05100-mainline-source.yml'),'utf8');
+  verifyManualPublisherWorkflow(yaml);
+});
+test('publisher isolation audit rejects automatic events, privilege drift and missing gates',()=>{
+  const fs=require('node:fs'),path=require('node:path');
+  const original=fs.readFileSync(path.join(__dirname,
+    '../../.github/workflows/publish-v05100-mainline-source.yml'),'utf8');
+  const modifications=[
+    ['push event',v=>v.replace('  workflow_dispatch:', '  push:\n  workflow_dispatch:')],
+    ['pull_request_target event',v=>v.replace('  workflow_dispatch:',
+      '  pull_request_target:\n  workflow_dispatch:')],
+    ['scheduled event',v=>v.replace('  workflow_dispatch:',
+      '  schedule:\n  workflow_dispatch:')],
+    ['repository_dispatch event',v=>v.replace('  workflow_dispatch:',
+      '  repository_dispatch:\n  workflow_dispatch:')],
+    ['preflight write token',v=>v.replace('  preflight:\n',
+      '  preflight:\n    permissions:\n      contents: write\n')],
+    ['global write token',v=>v.replace('permissions:\n  contents: read',
+      'permissions:\n  contents: write')],
+    ['drop preflight dependency',v=>v.replace(
+      'needs: [preflight, cpp, editor, policies, docs]',
+      'needs: [cpp, editor, policies, docs]')],
+    ['drop macOS test dependency',v=>v.replace(
+      'needs: [preflight, cpp, editor, policies, docs]',
+      'needs: [preflight, editor, policies, docs]')],
+    ['bypass exact-SHA authorization',v=>v.replace(
+      'publisher.requireExactAuthorization(context)',
+      'context.sha')],
+    ['remove final owner assertion',v=>v.replace(
+      "      github.actor == 'sanskarIN' &&\n      github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    permissions:\n      contents: write",
+      "      github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    permissions:\n      contents: write")],
+  ];
+  for (const [name,mutate] of modifications) {
+    const changed=mutate(original);
+    assert.notEqual(changed,original,'Mutation did not change workflow: '+name);
+    assert.throws(()=>verifyManualPublisherWorkflow(changed),
+      undefined,'Publisher trust boundary should reject: '+name);
+  }
+});
+
   const fs=require('node:fs'),path=require('node:path');
   const yaml=fs.readFileSync(path.join(__dirname,
     '../../.github/workflows/publish-v05100-mainline-source.yml'),'utf8');
