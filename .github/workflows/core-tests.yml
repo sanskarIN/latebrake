@@ -166,4 +166,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: node --test Tests/Release/ExperimentalSourceReleaseTests.cjs Tests/Release/MainlineSourceReleaseV0599Tests.cjs
+      - run: node --test Tests/Release/ExperimentalSourceReleaseTests.cjs Tests/Release/MainlineSourceReleaseV0599Tests.cjs Tests/Release/SourceReleaseV05100ReadinessTests.cjs
