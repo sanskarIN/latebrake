@@ -118,8 +118,21 @@ public:
         const double followerNorm = ax * ax + ay * ay;
         const double leadNorm = bx * bx + by * by;
         if (followerNorm < 0.95 || followerNorm > 1.05 ||
-            leadNorm < 0.95 || leadNorm > 1.05 ||
-            ax * bx + ay * by < MinimumHeadingAlignment)
+            leadNorm < 0.95 || leadNorm > 1.05)
+        {
+            Reset();
+            return 0.0;
+        }
+        // The 5% source tolerance does not authorize scaled heading vectors
+        // to fake alignment. Resolve BOTH measured directions to unit planar
+        // axes before any angular, gap or world-velocity calculation.
+        const double invFollowerNorm = 1.0 / std::sqrt(followerNorm);
+        const double invLeadNorm = 1.0 / std::sqrt(leadNorm);
+        const double fwdX = ax * invFollowerNorm;
+        const double fwdY = ay * invFollowerNorm;
+        const double leadX = bx * invLeadNorm;
+        const double leadY = by * invLeadNorm;
+        if (fwdX * leadX + fwdY * leadY < MinimumHeadingAlignment)
         {
             Reset();
             return 0.0;
@@ -139,8 +152,8 @@ public:
             Reset();
             return 0.0;
         }
-        const double forwardGap = dx * ax + dy * ay;
-        const double lateralGap = std::abs(dx * ay - dy * ax);
+        const double forwardGap = dx * fwdX + dy * fwdY;
+        const double lateralGap = std::abs(dx * fwdY - dy * fwdX);
         if (!std::isfinite(forwardGap) || !std::isfinite(lateralGap) ||
             forwardGap < MinForwardDistance ||
             forwardGap >= MaxForwardDistance ||
@@ -157,10 +170,14 @@ public:
         // such a jump must discard the old 0.18s confirmation window.
         if (HavePreviousOffset)
         {
-            const double followerVx = follower * ax - followerLateral * ay;
-            const double followerVy = follower * ay + followerLateral * ax;
-            const double leadVx = lead * bx - leadLateral * by;
-            const double leadVy = lead * by + leadLateral * bx;
+            const double followerVx =
+                follower * fwdX - followerLateral * fwdY;
+            const double followerVy =
+                follower * fwdY + followerLateral * fwdX;
+            const double leadVx =
+                lead * leadX - leadLateral * leadY;
+            const double leadVy =
+                lead * leadY + leadLateral * leadX;
             const double predictedX = PreviousOffsetX + dt * (leadVx - followerVx);
             const double predictedY = PreviousOffsetY + dt * (leadVy - followerVy);
             const double predictedZ = PreviousOffsetZ +
