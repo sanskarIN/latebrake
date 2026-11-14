@@ -140,7 +140,8 @@ int main()
 
     // Unit-axis normalization keeps slightly imperfect source vectors
     // from falsifying true chassis alignment. The raw dot product of two
-    // near-5%-long headings can exceed 0.94 even at a physically invalid angle.
+    // slightly oversized headings can pass a raw dot-product check
+    // despite a physically invalid real angle.
     boost.Reset();
     auto scaledAndSkewed = Sample();
     const double permittedScale = std::sqrt(1.04);

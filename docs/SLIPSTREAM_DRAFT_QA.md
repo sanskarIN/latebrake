@@ -28,7 +28,7 @@ multiplayer positioning or a source of official race results.
   heading alignment above 0.94 and forward throttle at least 30%.
   Both world-planar heading vectors are **normalized before** alignment,
   physical lane/gap measurement and relative-motion prediction. This
-  prevents the accepted 5% input-vector length tolerance from making
+  prevents the accepted 5% squared-length tolerance from making
   oblique rivals look aligned or falsely inflating near-boundary gaps.
 - Real measured relative speeds/positions/directions are supplied to
   an engine-free production C++20 policy. If the player closes more
