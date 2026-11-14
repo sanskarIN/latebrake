@@ -179,6 +179,13 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     policy.includes('const double predictedLeadZ =') &&
     policy.includes('leadResidual > MaxRelativeMotionResidualCm') &&
     policy.includes('std::abs(leadVerticalResidual)') &&
+    policy.includes('const bool hadContinuityBaseline = HavePreviousOffset;') &&
+    policy.includes('hadContinuityBaseline ? dt : 0.0') &&
+    policy.includes('PredictedFollowerWorldX += dt * followerVx;') &&
+    policy.includes('PredictedLeadWorldX += dt * leadVx;') &&
+    policy.includes('followerWindowResidual > MaxRelativeMotionResidualCm') &&
+    policy.includes('leadWindowResidual > MaxRelativeMotionResidualCm') &&
+    policy.includes('MotionWindowSeconds >= ConfirmSeconds') &&
     pawn.includes('static_cast<double>(Position.X)') &&
     pawn.includes('static_cast<double>(Position.Y)') &&
     pawn.includes('static_cast<double>(Position.Z)') &&
@@ -197,7 +204,11 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     tests.includes('hidden 255cm lead relocation denied') &&
     tests.includes('combined 120cm rival Z jump rejected') &&
     tests.includes('independent rival continuity rejects rearward hidden relocation') &&
-    tests.includes('physically predicted lead and follower motion retains drafting'),
+    tests.includes('physically predicted lead and follower motion retains drafting') &&
+    tests.includes('initial drafting sample establishes baseline with zero time') &&
+    tests.includes('stale world positions cannot earn drafting at 24m/s') &&
+    tests.includes('stale lead chassis cannot hide behind moving follower') &&
+    tests.includes('30/60/120 FPS physically integrated drafting follows elapsed time'),
     'Reviewed physical-3D/identity-aware draft code or regression absent from main');
 
   // Only exact main-source checks count. Never accept PR-head or branch-name
