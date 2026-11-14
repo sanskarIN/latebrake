@@ -176,6 +176,11 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             "followerWindowResidual > MaxRelativeMotionResidualCm",
             "leadWindowResidual > MaxRelativeMotionResidualCm",
             "hadContinuityBaseline ? dt : 0.0",
+            "followerExpectedTravel = std::hypot(",
+            "leadExpectedTravel = std::hypot(",
+            "followerWindowResidual > followerWindowCeiling",
+            "leadWindowResidual > leadWindowCeiling",
+            "WindowStartLeadWorldX = leadWorldX;",
         ):
             self.assertIn(required, self.policy)
 

@@ -97,6 +97,62 @@ int main()
               boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
               "stale world positions cannot earn drafting at 24m/s");
     }
+    // The rival's *minimum eligible* speed is only 10m/s. In 0.20s
+    // it is expected to travel exactly 200cm, previously equal to
+    // the absolute residual ceiling. That could let a stationary
+    // observed rival qualify by the fourth/fifth 25ms physics tick.
+    boost.Reset();
+    for (int frame = 0; frame <= 8; ++frame)
+    {
+        auto lowSpeedFrozenLead = Sample();
+        lowSpeedFrozenLead.FrameSeconds = 0.025;
+        lowSpeedFrozenLead.FollowerSpeedCmPerSecond = 1200.0;
+        lowSpeedFrozenLead.LeadSpeedCmPerSecond = 1000.0;
+        lowSpeedFrozenLead.FollowerWorldX = 30.0 * frame;
+        lowSpeedFrozenLead.LeadOffsetX = 1200.0 - 30.0 * frame;
+        const double force = boost.Observe(lowSpeedFrozenLead);
+        Check(force == 0.0 && !boost.IsActive(),
+              "10m/s frozen rival must not pass 2m absolute drift allowance");
+        if (frame == 8)
+        {
+            Check(boost.QualifiedSeconds() == 0.0,
+                  "stale slow rival must lose entire 0.18s window");
+        }
+    }
+    // The same minimum-speed rival genuinely moves 25cm/25ms,
+    // while the follower moves 30cm: this must qualify normally.
+    boost.Reset();
+    for (int frame = 0; frame <= 8; ++frame)
+    {
+        auto lowSpeedGenuineLead = Sample();
+        lowSpeedGenuineLead.FrameSeconds = 0.025;
+        lowSpeedGenuineLead.FollowerSpeedCmPerSecond = 1200.0;
+        lowSpeedGenuineLead.LeadSpeedCmPerSecond = 1000.0;
+        lowSpeedGenuineLead.FollowerWorldX = 30.0 * frame;
+        lowSpeedGenuineLead.LeadOffsetX = 1200.0 - 5.0 * frame;
+        const double force = boost.Observe(lowSpeedGenuineLead);
+        Check(frame < 8
+                  ? (force == 0.0 && !boost.IsActive())
+                  : (force > 0.0 && boost.IsActive()),
+              "real 10m/s rival correctly qualifies after 0.20s");
+    }
+    // 25% modeled velocity/position skew should remain within the
+    // completed-window tolerance; do not require perfect Unreal ticks.
+    boost.Reset();
+    for (int frame = 0; frame <= 8; ++frame)
+    {
+        auto lowSpeedModerateSkew = Sample();
+        lowSpeedModerateSkew.FrameSeconds = 0.025;
+        lowSpeedModerateSkew.FollowerSpeedCmPerSecond = 1200.0;
+        lowSpeedModerateSkew.LeadSpeedCmPerSecond = 1000.0;
+        lowSpeedModerateSkew.FollowerWorldX = 30.0 * frame;
+        lowSpeedModerateSkew.LeadOffsetX = 1200.0 - 11.25 * frame;
+        const double force = boost.Observe(lowSpeedModerateSkew);
+        Check(frame < 8
+                  ? (force == 0.0 && !boost.IsActive())
+                  : (force > 0.0 && boost.IsActive()),
+              "bounded slow-leader tick skew remains accepted");
+    }
     boost.Reset();
     for (int frame = 0; frame < 30; ++frame)
     {

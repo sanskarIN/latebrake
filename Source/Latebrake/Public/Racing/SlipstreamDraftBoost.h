@@ -94,6 +94,12 @@ public:
         PredictedLeadWorldX = 0.0;
         PredictedLeadWorldY = 0.0;
         PredictedLeadWorldZ = 0.0;
+        WindowStartFollowerWorldX = 0.0;
+        WindowStartFollowerWorldY = 0.0;
+        WindowStartFollowerWorldZ = 0.0;
+        WindowStartLeadWorldX = 0.0;
+        WindowStartLeadWorldY = 0.0;
+        WindowStartLeadWorldZ = 0.0;
     }
     void Suspend() noexcept { Reset(); }
 
@@ -324,6 +330,38 @@ public:
             MotionWindowSeconds += dt;
             if (MotionWindowSeconds >= ConfirmSeconds)
             {
+                // A slow rival reporting the MINIMUM valid 10m/s travels
+                // only 180-200cm over qualification. The absolute 200cm
+                // residual alone can certify a fully FROZEN rival at
+                // exactly that speed. At the complete observed interval,
+                // also require motion accurate to within half the
+                // velocity-integrated independent path displacement.
+                // Keep 40cm tick-order tolerance for sharp genuine turns,
+                // and never exceed the original 200cm hard ceiling.
+                const double followerExpectedTravel = std::hypot(
+                    std::hypot(
+                        PredictedFollowerWorldX - WindowStartFollowerWorldX,
+                        PredictedFollowerWorldY - WindowStartFollowerWorldY),
+                    PredictedFollowerWorldZ - WindowStartFollowerWorldZ);
+                const double leadExpectedTravel = std::hypot(
+                    std::hypot(
+                        PredictedLeadWorldX - WindowStartLeadWorldX,
+                        PredictedLeadWorldY - WindowStartLeadWorldY),
+                    PredictedLeadWorldZ - WindowStartLeadWorldZ);
+                const double followerWindowCeiling = std::min(
+                    MaxRelativeMotionResidualCm,
+                    std::max(40.0, 0.5 * followerExpectedTravel));
+                const double leadWindowCeiling = std::min(
+                    MaxRelativeMotionResidualCm,
+                    std::max(40.0, 0.5 * leadExpectedTravel));
+                if (!std::isfinite(followerExpectedTravel) ||
+                    !std::isfinite(leadExpectedTravel) ||
+                    followerWindowResidual > followerWindowCeiling ||
+                    leadWindowResidual > leadWindowCeiling)
+                {
+                    Reset();
+                    return 0.0;
+                }
                 // Refresh only AFTER completing a checked full window.
                 // Keep long races responsive to turns and acceleration,
                 // without allowing per-frame errors to hide stale samples.
@@ -333,6 +371,12 @@ public:
                 PredictedLeadWorldX = leadWorldX;
                 PredictedLeadWorldY = leadWorldY;
                 PredictedLeadWorldZ = leadWorldZ;
+                WindowStartFollowerWorldX = followerWorldX;
+                WindowStartFollowerWorldY = followerWorldY;
+                WindowStartFollowerWorldZ = followerWorldZ;
+                WindowStartLeadWorldX = leadWorldX;
+                WindowStartLeadWorldY = leadWorldY;
+                WindowStartLeadWorldZ = leadWorldZ;
                 MotionWindowSeconds = 0.0;
             }
         }
@@ -344,6 +388,12 @@ public:
             PredictedLeadWorldX = followerWorldX + dx;
             PredictedLeadWorldY = followerWorldY + dy;
             PredictedLeadWorldZ = followerWorldZ + dz;
+            WindowStartFollowerWorldX = followerWorldX;
+            WindowStartFollowerWorldY = followerWorldY;
+            WindowStartFollowerWorldZ = followerWorldZ;
+            WindowStartLeadWorldX = followerWorldX + dx;
+            WindowStartLeadWorldY = followerWorldY + dy;
+            WindowStartLeadWorldZ = followerWorldZ + dz;
             MotionWindowSeconds = 0.0;
         }
         PreviousOffsetX = dx;
@@ -394,6 +444,12 @@ private:
     double PredictedLeadWorldX = 0.0;
     double PredictedLeadWorldY = 0.0;
     double PredictedLeadWorldZ = 0.0;
+    double WindowStartFollowerWorldX = 0.0;
+    double WindowStartFollowerWorldY = 0.0;
+    double WindowStartFollowerWorldZ = 0.0;
+    double WindowStartLeadWorldX = 0.0;
+    double WindowStartLeadWorldY = 0.0;
+    double WindowStartLeadWorldZ = 0.0;
     bool HavePreviousOffset = false;
 };
 } // namespace latebrake

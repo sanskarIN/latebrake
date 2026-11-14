@@ -101,8 +101,15 @@ multiplayer positioning or a source of official race results.
   follower and lead chassis velocities. This specifically denies a
   frozen coordinate stream that still reports 24m/s: every 50ms local
   error would be below 2m, but the accumulated discrepancy cannot
-  qualify. The window refreshes after a *validated* full interval so
-  high-speed curves do not accumulate lifetime-long prediction drift.
+  qualify. At the end of each complete interval, both cars must
+  additionally keep displacement error below **half the individually
+  predicted 3D travel**, with 40 cm low-end sampling tolerance and a
+  hard 200 cm ceiling. This closes the 10m/s minimum-speed rival
+  loophole where its entire 0.18–0.20s expected travel was less than or
+  equal to the older 200 cm absolute tolerance. Correct low-speed
+  movement and modest tick-order skew remain eligible. The window
+  refreshes after a *validated* full interval so high-speed curves
+  do not accumulate lifetime-long prediction drift.
   Any invalid frame, stale/missing rival, teleport, sideways-slide
   excess or input interruption clears the entire confirmation window.
 - A qualified position yields at most **+6% additive motor force**.
