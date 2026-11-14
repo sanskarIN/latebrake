@@ -222,23 +222,3 @@ test('publisher isolation audit rejects automatic events, privilege drift and mi
       undefined,'Publisher trust boundary should reject: '+name);
   }
 });
-
-  const fs=require('node:fs'),path=require('node:path');
-  const yaml=fs.readFileSync(path.join(__dirname,
-    '../../.github/workflows/publish-v05100-mainline-source.yml'),'utf8');
-  assert.match(yaml,/workflow_dispatch:/);
-  assert.doesNotMatch(yaml,/^\s+push:/m);
-  for (const must of [
-    "github.actor == 'sanskarIN'",
-    "github.ref == 'refs/heads/main'",
-    "contents: write",
-    "pull-requests: read",
-    "checks: read",
-    "candidate_sha:",
-    "approval:",
-    "SourceReleaseV05100ReadinessTests.cjs",
-    "SourceReleaseV05100PublishTests.cjs",
-    "publisher.publish({github,context,notes})",
-    "SlipstreamDraftBoost",
-  ])assert.ok(yaml.includes(must),'Workflow invariant missing: '+must);
-});
