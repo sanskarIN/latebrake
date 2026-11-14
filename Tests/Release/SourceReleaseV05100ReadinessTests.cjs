@@ -45,7 +45,14 @@ function fixture() {
       'PredictedLeadWorldX += dt * leadVx; ' +
       'followerWindowResidual > MaxRelativeMotionResidualCm ' +
       'leadWindowResidual > MaxRelativeMotionResidualCm ' +
-      'MotionWindowSeconds >= ConfirmSeconds').toString('base64')},
+      'MotionWindowSeconds >= ConfirmSeconds ' +
+      'followerExpectedTravel = std::hypot( ' +
+      'leadExpectedTravel = std::hypot( ' +
+      '0.5 * followerExpectedTravel ' +
+      '0.5 * leadExpectedTravel ' +
+      'followerWindowResidual > followerWindowCeiling ' +
+      'leadWindowResidual > leadWindowCeiling ' +
+      'WindowStartLeadWorldX = leadWorldX;').toString('base64')},
     pawn: {type:'file',encoding:'base64',content:Buffer.from(
       'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
       'static_cast<std::uint64_t>(RivalIdentity) ' +
@@ -69,7 +76,10 @@ function fixture() {
       'initial drafting sample establishes baseline with zero time ' +
       'stale world positions cannot earn drafting at 24m/s ' +
       'stale lead chassis cannot hide behind moving follower ' +
-      '30/60/120 FPS physically integrated drafting follows elapsed time').toString('base64')},
+      '30/60/120 FPS physically integrated drafting follows elapsed time ' +
+      '10m/s frozen rival must not pass 2m absolute drift allowance ' +
+      'real 10m/s rival correctly qualifies after 0.20s ' +
+      'bounded slow-leader tick skew remains accepted').toString('base64')},
     pr: {state:'closed',merged:true,merge_commit_sha:MERGE,
       base:{ref:'main'},head:{repo:{full_name:'sanskarIN/latebrake'}}},
     compare: {status:'ahead',behind_by:0,ahead_by:1},
@@ -263,6 +273,30 @@ for (const [label,modify,error] of [
     f.state.tests.content=Buffer.from(
       Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
         'stale lead chassis cannot hide behind moving follower','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing speed-normalized leader window ceiling',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        '0.5 * leadExpectedTravel','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing slow-rival motion identity reset',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'WindowStartLeadWorldX = leadWorldX;','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing minimum-speed frozen-lead regression',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        '10m/s frozen rival must not pass 2m absolute drift allowance','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing positive low-speed regression',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'real 10m/s rival correctly qualifies after 0.20s','')
     ).toString('base64');
   },/physical-3D/],
   ['spoofed GitHub checks app',f=>{f.state.checks.check_runs[0].app.slug='untrusted';},/untrusted app/],
