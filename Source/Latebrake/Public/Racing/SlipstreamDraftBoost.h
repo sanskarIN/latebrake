@@ -87,6 +87,13 @@ public:
         PreviousFollowerWorldY = 0.0;
         PreviousFollowerWorldZ = 0.0;
         PreviousLeadIdentity = 0;
+        MotionWindowSeconds = 0.0;
+        PredictedFollowerWorldX = 0.0;
+        PredictedFollowerWorldY = 0.0;
+        PredictedFollowerWorldZ = 0.0;
+        PredictedLeadWorldX = 0.0;
+        PredictedLeadWorldY = 0.0;
+        PredictedLeadWorldZ = 0.0;
     }
     void Suspend() noexcept { Reset(); }
 
@@ -196,6 +203,10 @@ public:
         {
             Reset();
         }
+        // The first valid frame merely establishes an observed baseline.
+        // It is NOT evidence of elapsed physical motion and must not
+        // contribute an unverified dt to the 0.18s confirmation timer.
+        const bool hadContinuityBaseline = HavePreviousOffset;
         // The pair must remain physically continuous, not just pass each
         // independent in-lane snapshot. Predict relative world displacement
         // from *both* measured 3D velocity vectors over this frame.
@@ -277,6 +288,63 @@ public:
                 Reset();
                 return 0.0;
             }
+            // One 50ms sample at 24m/s travels 120cm, less than the 200cm
+            // per-frame residual limit. Unchanged world positions can pass
+            // that test indefinitely despite reporting fast live wheels.
+            // Integrate BOTH independent chassis predictions for one full
+            // confirmation window. A stale world-position stream, even with
+            // valid actor identity and a legal fixed gap, must never earn
+            // motor-force assistance.
+            PredictedFollowerWorldX += dt * followerVx;
+            PredictedFollowerWorldY += dt * followerVy;
+            PredictedFollowerWorldZ += dt * followerVertical;
+            PredictedLeadWorldX += dt * leadVx;
+            PredictedLeadWorldY += dt * leadVy;
+            PredictedLeadWorldZ += dt * leadVertical;
+            const double followerWindowResidual = std::hypot(
+                std::hypot(followerWorldX - PredictedFollowerWorldX,
+                           followerWorldY - PredictedFollowerWorldY),
+                followerWorldZ - PredictedFollowerWorldZ);
+            const double leadWindowResidual = std::hypot(
+                std::hypot(leadWorldX - PredictedLeadWorldX,
+                           leadWorldY - PredictedLeadWorldY),
+                leadWorldZ - PredictedLeadWorldZ);
+            if (!std::isfinite(followerWindowResidual) ||
+                !std::isfinite(leadWindowResidual) ||
+                followerWindowResidual > MaxRelativeMotionResidualCm ||
+                leadWindowResidual > MaxRelativeMotionResidualCm ||
+                std::abs(followerWorldZ - PredictedFollowerWorldZ) >
+                    MaxVerticalMotionResidualCm ||
+                std::abs(leadWorldZ - PredictedLeadWorldZ) >
+                    MaxVerticalMotionResidualCm)
+            {
+                Reset();
+                return 0.0;
+            }
+            MotionWindowSeconds += dt;
+            if (MotionWindowSeconds >= ConfirmSeconds)
+            {
+                // Refresh only AFTER completing a checked full window.
+                // Keep long races responsive to turns and acceleration,
+                // without allowing per-frame errors to hide stale samples.
+                PredictedFollowerWorldX = followerWorldX;
+                PredictedFollowerWorldY = followerWorldY;
+                PredictedFollowerWorldZ = followerWorldZ;
+                PredictedLeadWorldX = leadWorldX;
+                PredictedLeadWorldY = leadWorldY;
+                PredictedLeadWorldZ = leadWorldZ;
+                MotionWindowSeconds = 0.0;
+            }
+        }
+        else
+        {
+            PredictedFollowerWorldX = followerWorldX;
+            PredictedFollowerWorldY = followerWorldY;
+            PredictedFollowerWorldZ = followerWorldZ;
+            PredictedLeadWorldX = followerWorldX + dx;
+            PredictedLeadWorldY = followerWorldY + dy;
+            PredictedLeadWorldZ = followerWorldZ + dz;
+            MotionWindowSeconds = 0.0;
         }
         PreviousOffsetX = dx;
         PreviousOffsetY = dy;
@@ -286,7 +354,9 @@ public:
         PreviousFollowerWorldZ = followerWorldZ;
         PreviousLeadIdentity = sample.LeadIdentity;
         HavePreviousOffset = true;
-        EligibleSeconds = std::min(ConfirmSeconds, EligibleSeconds + dt);
+        EligibleSeconds = std::min(
+            ConfirmSeconds,
+            EligibleSeconds + (hadContinuityBaseline ? dt : 0.0));
         if (EligibleSeconds < ConfirmSeconds)
         {
             ExtraForceFraction = 0.0;
@@ -315,6 +385,15 @@ private:
     double PreviousFollowerWorldY = 0.0;
     double PreviousFollowerWorldZ = 0.0;
     std::uint64_t PreviousLeadIdentity = 0;
+    // Rolling observed-motion proof; no lifetime-long integration drift.
+    // Reset on a missing/changed rival, interruption or impossible motion.
+    double MotionWindowSeconds = 0.0;
+    double PredictedFollowerWorldX = 0.0;
+    double PredictedFollowerWorldY = 0.0;
+    double PredictedFollowerWorldZ = 0.0;
+    double PredictedLeadWorldX = 0.0;
+    double PredictedLeadWorldY = 0.0;
+    double PredictedLeadWorldZ = 0.0;
     bool HavePreviousOffset = false;
 };
 } // namespace latebrake

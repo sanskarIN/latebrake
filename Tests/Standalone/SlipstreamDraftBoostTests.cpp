@@ -37,13 +37,42 @@ latebrake::DraftingSample Sample(double gap = 1200.0, double lateral = 0.0)
 void Confirm(latebrake::SlipstreamDraftBoost& boost,
              latebrake::DraftingSample s = Sample())
 {
-    for (int i = 0; i < 3; ++i)
+    // Each fixture step must represent the ACTUAL two rigid-body
+    // trajectories. The old helper sent identical positions at 24m/s
+    // over and over; that physically frozen stream is now rejected.
+    const double fn = std::hypot(s.FollowerForwardX, s.FollowerForwardY);
+    const double ln = std::hypot(s.LeadForwardX, s.LeadForwardY);
+    const double fx = s.FollowerForwardX / fn, fy = s.FollowerForwardY / fn;
+    const double lx = s.LeadForwardX / ln, ly = s.LeadForwardY / ln;
+    const double fvx = s.FollowerSpeedCmPerSecond * fx -
+                       s.FollowerLateralSpeedCmPerSecond * fy;
+    const double fvy = s.FollowerSpeedCmPerSecond * fy +
+                       s.FollowerLateralSpeedCmPerSecond * fx;
+    const double lvx = s.LeadSpeedCmPerSecond * lx -
+                       s.LeadLateralSpeedCmPerSecond * ly;
+    const double lvy = s.LeadSpeedCmPerSecond * ly +
+                       s.LeadLateralSpeedCmPerSecond * lx;
+    // End at the caller's supplied world position and rival gap so that
+    // subsequent obstacle/recovery assertions compare the intended state.
+    for (int frame = 0; frame < 5; ++frame)
     {
-        Check(boost.Observe(s) == 0.0 && !boost.IsActive(),
-              "single frame/short draft never earns active boost");
+        auto moving = s;
+        const double secondsBack = (4 - frame) * s.FrameSeconds;
+        moving.FollowerWorldX -= secondsBack * fvx;
+        moving.FollowerWorldY -= secondsBack * fvy;
+        moving.FollowerWorldZ -= secondsBack *
+            s.FollowerVerticalSpeedCmPerSecond;
+        moving.LeadOffsetX -= secondsBack * (lvx - fvx);
+        moving.LeadOffsetY -= secondsBack * (lvy - fvy);
+        moving.LeadOffsetZ -= secondsBack *
+            (s.LeadVerticalSpeedCmPerSecond -
+             s.FollowerVerticalSpeedCmPerSecond);
+        const double force = boost.Observe(moving);
+        Check(frame < 4
+                  ? (force == 0.0 && !boost.IsActive())
+                  : (force > 0.0 && boost.IsActive()),
+              "only 0.18s of genuinely observed chassis motion earns draft");
     }
-    Check(boost.Observe(s) > 0.0 && boost.IsActive(),
-          "sustained same-direction draft earns modest boost");
 }
 }
 int main()
@@ -54,6 +83,32 @@ int main()
           "fresh policy has no free speed");
     Confirm(boost);
     const double nearBonus = boost.ExtraForce();
+    // A single valid sample provides a position, not elapsed physics
+    // evidence. Equally, an apparently fast pair reporting frozen world
+    // positions on every subsequent tick must NEVER gain assistance.
+    boost.Reset();
+    auto staleWorld = Sample();
+    Check(boost.Observe(staleWorld) == 0.0 &&
+          boost.QualifiedSeconds() == 0.0,
+          "initial drafting sample establishes baseline with zero time");
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        Check(boost.Observe(staleWorld) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+              "stale world positions cannot earn drafting at 24m/s");
+    }
+    boost.Reset();
+    for (int frame = 0; frame < 30; ++frame)
+    {
+        auto staleLead = Sample();
+        staleLead.FrameSeconds = 0.016;
+        staleLead.FollowerWorldX = frame * 38.4;
+        staleLead.LeadOffsetX = 1200.0 - frame * 38.4;
+        Check(boost.Observe(staleLead) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+              "stale lead chassis cannot hide behind moving follower");
+    }
+    boost.Reset();
     Check(nearBonus > 0.0 && nearBonus <= SlipstreamDraftBoost::MaxForceExtraFraction,
           "bonus is strictly bounded to 6 percent");
     boost.Reset();
@@ -189,17 +244,12 @@ int main()
     // Planar gap, lane lateral distance and predicted relative motion
     // must use normalized axes, not a fictitious 5% longer heading.
     boost.Reset();
-    auto scaledForward = Sample(3780.0);
+    auto scaledForward = Sample(3775.0);
     scaledForward.FollowerForwardX = permittedScale;
     scaledForward.LeadForwardX = permittedScale;
-    for (int frame = 0; frame < 3; ++frame)
-    {
-        Check(boost.Observe(scaledForward) == 0.0 &&
-              boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
-              "true gap near 38m remains eligible before confirmation");
-    }
-    Check(boost.Observe(scaledForward) > 0.0 && boost.IsActive(),
-          "normalization prevents false far-edge gap rejection");
+    Confirm(boost, scaledForward);
+    Check(boost.IsActive(),
+          "normalized forward axes keep true near-edge gap eligible");
     boost.Reset();
     auto scaledSide = Sample(1200.0, 377.0);
     scaledSide.FollowerForwardX = permittedScale;
@@ -328,9 +378,14 @@ int main()
     Check(boost.Observe(deceptiveRise) == 0.0 &&
           boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
           "isolated Z jump cannot reuse previous confirmation time");
-    for (int frame = 0; frame < 3; ++frame)
+    for (int frame = 1; frame <= 4; ++frame)
     {
-        boost.Observe(deceptiveRise);
+        auto physicallyRecovered = deceptiveRise;
+        physicallyRecovered.FollowerWorldX = 120.0 * frame;
+        physicallyRecovered.LeadOffsetX = 1200.0 - 5.0 * frame;
+        const double force = boost.Observe(physicallyRecovered);
+        Check(frame < 4 ? force == 0.0 : force > 0.0,
+              "recovered Z separation needs real pair motion to requalify");
     }
     Check(boost.IsActive(),
           "stable recovered real Z separation may qualify again");
@@ -380,12 +435,16 @@ int main()
     auto replacedRival = Sample();
     replacedRival.LeadIdentity = 18;
     Check(boost.Observe(replacedRival) == 0.0 && !boost.IsActive() &&
-          boost.QualifiedSeconds() > 0.0 &&
-          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          boost.QualifiedSeconds() == 0.0,
           "identical-geometry replacement restarts rival confirmation");
-    for (int frame = 0; frame < 3; ++frame)
+    for (int frame = 1; frame <= 4; ++frame)
     {
-        boost.Observe(replacedRival);
+        auto freshRivalMotion = replacedRival;
+        freshRivalMotion.FollowerWorldX = 120.0 * frame;
+        freshRivalMotion.LeadOffsetX = 1200.0 - 5.0 * frame;
+        const double force = boost.Observe(freshRivalMotion);
+        Check(frame < 4 ? force == 0.0 : force > 0.0,
+              "replacement actor must supply its own measured motion");
     }
     Check(boost.IsActive(),
           "replacement rival must earn its own complete drafting interval");
@@ -460,7 +519,7 @@ int main()
         highSpeed.FollowerWorldX = 450.0 * frame;
         highSpeed.LeadOffsetX = 1200.0 - 5.0 * frame;
         const double force = boost.Observe(highSpeed);
-        Check(frame < 3
+        Check(frame < 4
                   ? (force == 0.0 && !boost.IsActive())
                   : (force > 0.0 && boost.IsActive()),
               "physically continuous high-speed world motion keeps draft");
@@ -484,7 +543,7 @@ int main()
         rotatedRoad.LeadOffsetX = (1200.0 - 5.0 * frame) * roadX;
         rotatedRoad.LeadOffsetY = (1200.0 - 5.0 * frame) * roadY;
         const double force = boost.Observe(rotatedRoad);
-        Check(frame < 3
+        Check(frame < 4
                   ? (force == 0.0 && !boost.IsActive())
                   : (force > 0.0 && boost.IsActive()),
               "rotated track world/relative motion qualifies without false teleport");
@@ -527,7 +586,7 @@ int main()
         bend.LeadOffsetX = bendLeaderX - bendFollowerX;
         bend.LeadOffsetY = bendLeaderY - bendFollowerY;
         const double force = boost.Observe(bend);
-        Check(frame < 3
+        Check(frame < 4
                   ? (force == 0.0 && !boost.IsActive())
                   : (force > 0.0 && boost.IsActive()),
               "64-frame physically integrated bend retains drafting");
@@ -566,7 +625,7 @@ int main()
         bend.LeadOffsetX = bendLeaderX - bendFollowerX;
         bend.LeadOffsetY = bendLeaderY - bendFollowerY;
         const double force = boost.Observe(bend);
-        Check(frame < 3
+        Check(frame < 4
                   ? (force == 0.0 && !boost.IsActive())
                   : (force > 0.0 && boost.IsActive()),
               "64-frame opposite-handed bend retains real drafting");
@@ -597,7 +656,10 @@ int main()
             paced.FollowerWorldX = followerAtX;
             paced.LeadOffsetX = leadGap;
             const double force = boost.Observe(paced);
-            qualifiedElapsed += paced.FrameSeconds;
+            if (frame > 0)
+            {
+                qualifiedElapsed += paced.FrameSeconds;
+            }
             const bool shouldHaveDraft =
                 qualifiedElapsed + 1e-12 >= SlipstreamDraftBoost::ConfirmSeconds;
             Check(shouldHaveDraft
@@ -691,14 +753,19 @@ int main()
           "solid barrier must revoke even a fully qualified physical draft");
     blocked.ClearPhysicalDraftPath = true;
     Check(boost.Observe(blocked) == 0.0 && !boost.IsActive() &&
-          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
-          "reopening the real sightline must not restore stored draft time");
-    for (int frame = 0; frame < 3; ++frame)
+          boost.QualifiedSeconds() == 0.0,
+          "reopening the real sightline must start a new time baseline");
+    for (int frame = 1; frame <= 4; ++frame)
     {
-        boost.Observe(blocked);
+        auto clearPhysicalMotion = blocked;
+        clearPhysicalMotion.FollowerWorldX = 120.0 * frame;
+        clearPhysicalMotion.LeadOffsetX = 1200.0 - 5.0 * frame;
+        const double force = boost.Observe(clearPhysicalMotion);
+        Check(frame < 4 ? force == 0.0 : force > 0.0,
+              "unobstructed physical motion requalifies after full 0.18s");
     }
     Check(boost.IsActive(),
-          "four newly unobstructed samples reestablish drafting normally");
+          "five unobstructed observations reestablish drafting normally");
 
     // Deterministic adversarial visibility sequences: an occlusion cannot
     // borrow the previously accepted time even as the valid gap changes.

@@ -92,10 +92,19 @@ multiplayer positioning or a source of official race results.
   skew, **not** proof of a genuine
   engine-verified teleport or collision detector. The first valid frame
   establishes a new baseline without granting a boost.
-- Drafting must remain continuously eligible for **0.18 seconds** before
-  granting help; an invalid frame, stale/missing rival, teleport,
-  sideways-slide excess or input interruption clears the entire
-  confirmation window.
+- Drafting must remain continuously eligible for **0.18 seconds of
+  observed physical movement after the first valid baseline sample**
+  before granting help. A first position reading alone adds **zero**
+  qualified time. Each successive sample must satisfy both individual
+  per-frame 3D continuity **and cumulative displacement over a rolling
+  0.18-second window**, measured against independently integrated real
+  follower and lead chassis velocities. This specifically denies a
+  frozen coordinate stream that still reports 24m/s: every 50ms local
+  error would be below 2m, but the accumulated discrepancy cannot
+  qualify. The window refreshes after a *validated* full interval so
+  high-speed curves do not accumulate lifetime-long prediction drift.
+  Any invalid frame, stale/missing rival, teleport, sideways-slide
+  excess or input interruption clears the entire confirmation window.
 - A qualified position yields at most **+6% additive motor force**.
   Greater distance or lateral separation reduces the benefit. The
   existing baseline motor force, frame-stable damping, top-speed cap,

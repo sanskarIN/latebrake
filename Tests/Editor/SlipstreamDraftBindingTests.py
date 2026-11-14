@@ -169,6 +169,15 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("PreviousLeadIdentity = sample.LeadIdentity",
                       self.policy)
         self.assertIn("PreviousLeadIdentity = 0;", self.policy)
+        for required in (
+            "MotionWindowSeconds = 0.0",
+            "PredictedFollowerWorldX += dt * followerVx",
+            "PredictedLeadWorldX += dt * leadVx",
+            "followerWindowResidual > MaxRelativeMotionResidualCm",
+            "leadWindowResidual > MaxRelativeMotionResidualCm",
+            "hadContinuityBaseline ? dt : 0.0",
+        ):
+            self.assertIn(required, self.policy)
 
     def test_live_vertical_physics_is_bound_into_three_dimensional_continuity(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
