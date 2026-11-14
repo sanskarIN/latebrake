@@ -93,7 +93,8 @@ public:
     // a rival state to the optional player-only drafting policy. Observer
     // is the actual following pawn, not an inferred camera or HUD actor.
     bool TryGetRivalDraftingState(const ALatebrakeCarPawn* Observer,
-        FVector& OutPosition, FVector& OutForward, FVector& OutVelocity) const;
+        FVector& OutPosition, FVector& OutForward, FVector& OutVelocity,
+        uint32& OutIdentity) const;
     int32 GetRivalApproximateLaps() const;
     int32 GetRivalPlannedLaps() const;
     int32 GetRivalRecoveryCount() const;

@@ -55,6 +55,11 @@ multiplayer positioning or a source of official race results.
   original BlockAll track barriers are configured to block visibility;
   custom future meshes must have proper collision responses. Only an
   authentic UE5.8 in-editor obstacle test can validate that configuration.
+- The source sample carries a **nonzero unique live rival actor identity**
+  from Unreal `RivalCar->GetUniqueID()`. A respawned/replaced rival that
+  occupies the same position with the same apparent velocity must earn a
+  **new uninterrupted 0.18-second window**. A missing/zero identity fails
+  closed; an identity change cannot reuse the old motor-force credit.
 - Consecutive **relative 3D world positions** must also agree with the two
   measured chassis-velocity vectors: planar forward/lateral components and
   the actual human/rival Chaos vertical velocities over the current physics

@@ -1828,7 +1828,7 @@ bool ALatebrakeRaceGameMode::TryGetRivalRadarPosition(FVector& OutPosition) cons
 
 bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
     const ALatebrakeCarPawn* Observer, FVector& OutPosition,
-    FVector& OutForward, FVector& OutVelocity) const
+    FVector& OutForward, FVector& OutVelocity, uint32& OutIdentity) const
 {
     // A rival state must belong to this very live race and a distinct,
     // physics-ready following pawn. Never infer a view from the HUD.
@@ -1842,6 +1842,13 @@ bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
     {
         // An airborne or barely supported physical rival cannot give a
         // human an aerodynamic bonus by leaving a stale position behind.
+        return false;
+    }
+    const uint32 RivalIdentity = RivalCar->GetUniqueID();
+    if (RivalIdentity == 0)
+    {
+        // No stable per-live-object identity: do not allow an old car's
+        // charge to transfer to an unauthenticated replacement.
         return false;
     }
     const FVector Position = RivalCar->GetActorLocation();
@@ -1891,6 +1898,7 @@ bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
     OutPosition = Position;
     OutForward = Forward;
     OutVelocity = Velocity;
+    OutIdentity = RivalIdentity;
     return true;
 }
 

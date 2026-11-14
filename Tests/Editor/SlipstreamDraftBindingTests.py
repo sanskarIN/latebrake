@@ -125,6 +125,29 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             self.assertIn(required, self.policy)
 
 
+    def test_live_rival_identity_cannot_transfer_existing_draft_credit(self):
+        state = self.mode.split(
+            "bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(", 1
+        )[1].split("int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps()", 1)[0]
+        self.assertIn("uint32& OutIdentity) const", state)
+        self.assertIn("RivalCar->GetUniqueID()", state)
+        self.assertIn("if (RivalIdentity == 0)", state)
+        self.assertIn("OutIdentity = RivalIdentity;", state)
+        self.assertIn("uint32& OutIdentity) const;", self.mode_h)
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        self.assertIn("uint32 RivalIdentity = 0;", tick)
+        self.assertIn("this, RivalPosition, RivalForward, RivalVelocity,",
+                      tick)
+        self.assertIn("static_cast<std::uint64_t>(RivalIdentity)", tick)
+        self.assertIn("std::uint64_t LeadIdentity = 0;", self.policy)
+        self.assertIn("sample.LeadIdentity == 0", self.policy)
+        self.assertIn("PreviousLeadIdentity != sample.LeadIdentity",
+                      self.policy)
+        self.assertIn("PreviousLeadIdentity = sample.LeadIdentity",
+                      self.policy)
+        self.assertIn("PreviousLeadIdentity = 0;", self.policy)
+
     def test_live_vertical_physics_is_bound_into_three_dimensional_continuity(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]

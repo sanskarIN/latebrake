@@ -28,6 +28,7 @@ latebrake::DraftingSample Sample(double gap = 1200.0, double lateral = 0.0)
     s.ClearPhysicalDraftPath = true;
     s.FollowerVerticalSpeedCmPerSecond = 0.0;
     s.LeadVerticalSpeedCmPerSecond = 0.0;
+    s.LeadIdentity = 17;
     return s;
 }
 void Confirm(latebrake::SlipstreamDraftBoost& boost,
@@ -87,6 +88,8 @@ int main()
     {auto s = Sample(); s.EligibleHumanRace = false; Reject(s, "no AI/pause or menu eligibility");}
     {auto s = Sample(); s.ClearPhysicalDraftPath = false;
         Reject(s, "solid barrier cancels already-earned draft immediately");}
+    {auto s = Sample(); s.LeadIdentity = 0;
+        Reject(s, "unknown live rival actor identity fails closed");}
     {auto s = Sample(); s.ForwardThrottle = -0.4; Reject(s, "reverse input denied");}
     {auto s = Sample(); s.FollowerSpeedCmPerSecond = 800.0; Reject(s, "stationary car denied");}
     {auto s = Sample(); s.LeadSpeedCmPerSecond = 0.0; Reject(s, "stationary front car denied");}
@@ -356,6 +359,40 @@ int main()
     Check(boost.Observe(boundedVerticalSkew) == 0.0 &&
           boost.QualifiedSeconds() == 0.0,
           "vertical continuity denies threshold exceedance in one frame");
+
+    // A substituted rival may have exactly the same speed, world heading,
+    // gap and elevation as the previously observed car. Its UNIQUE actor
+    // identity must invalidate the earlier fully earned drafting window.
+    boost.Reset();
+    Confirm(boost);
+    auto replacedRival = Sample();
+    replacedRival.LeadIdentity = 18;
+    Check(boost.Observe(replacedRival) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() > 0.0 &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "identical-geometry replacement restarts rival confirmation");
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        boost.Observe(replacedRival);
+    }
+    Check(boost.IsActive(),
+          "replacement rival must earn its own complete drafting interval");
+    replacedRival.LeadIdentity = 0;
+    Check(boost.Observe(replacedRival) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "unknown actor after replacement clears all earned credit");
+
+    // Rapid rival identity churn cannot synthesize a continuous 0.18s
+    // aerodynamic interval, even when snapshots are geometrically valid.
+    boost.Reset();
+    for (int frame = 0; frame < 5000; ++frame)
+    {
+        auto alternatingRival = Sample();
+        alternatingRival.LeadIdentity = frame % 2 == 0 ? 17 : 18;
+        Check(boost.Observe(alternatingRival) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+              "rapid opponent swaps cannot inherit drafting charge");
+    }
 
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.

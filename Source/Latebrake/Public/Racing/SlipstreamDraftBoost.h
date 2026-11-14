@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 namespace latebrake
@@ -36,6 +37,9 @@ struct DraftingSample final
         std::numeric_limits<double>::quiet_NaN();
     double LeadVerticalSpeedCmPerSecond =
         std::numeric_limits<double>::quiet_NaN();
+    // Actual live Unreal rival UObject identity, not an inferred lane slot.
+    // Missing identity cannot confirm drafting after a recovered/replaced car.
+    std::uint64_t LeadIdentity = 0;
 };
 
 class SlipstreamDraftBoost final
@@ -73,6 +77,7 @@ public:
         PreviousOffsetX = 0.0;
         PreviousOffsetY = 0.0;
         PreviousOffsetZ = 0.0;
+        PreviousLeadIdentity = 0;
     }
     void Suspend() noexcept { Reset(); }
 
@@ -98,7 +103,7 @@ public:
         const double leadVertical = sample.LeadVerticalSpeedCmPerSecond;
         const double throttle = sample.ForwardThrottle;
         if (!sample.EligibleHumanRace || !sample.ClearPhysicalDraftPath ||
-            sample.Braking ||
+            sample.Braking || sample.LeadIdentity == 0 ||
             !std::isfinite(dt) || dt < MinFrameSeconds ||
             dt > MaxFrameSeconds || !std::isfinite(follower) ||
             !std::isfinite(lead) || follower < MinimumFollowerSpeed ||
@@ -167,6 +172,14 @@ public:
             Reset();
             return 0.0;
         }
+        // A newly spawned/rehomed actor can occupy the SAME physical
+        // coordinates with the SAME velocity as the previous rival.
+        // Geometry-only continuity must never carry the old opponent's
+        // confirmation credit to a different live actor.
+        if (HavePreviousOffset && PreviousLeadIdentity != sample.LeadIdentity)
+        {
+            Reset();
+        }
         // The pair must remain physically continuous, not just pass each
         // independent in-lane snapshot. Predict relative world displacement
         // from *both* measured 3D velocity vectors over this frame.
@@ -201,6 +214,7 @@ public:
         PreviousOffsetX = dx;
         PreviousOffsetY = dy;
         PreviousOffsetZ = dz;
+        PreviousLeadIdentity = sample.LeadIdentity;
         HavePreviousOffset = true;
         EligibleSeconds = std::min(ConfirmSeconds, EligibleSeconds + dt);
         if (EligibleSeconds < ConfirmSeconds)
@@ -227,6 +241,7 @@ private:
     double PreviousOffsetX = 0.0;
     double PreviousOffsetY = 0.0;
     double PreviousOffsetZ = 0.0;
+    std::uint64_t PreviousLeadIdentity = 0;
     bool HavePreviousOffset = false;
 };
 } // namespace latebrake
