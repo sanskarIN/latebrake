@@ -63,5 +63,5 @@ cmake -S Tests/Standalone -B Tests/Standalone/build -DCMAKE_BUILD_TYPE=Release
 cmake --build Tests/Standalone/build --config Release --parallel
 ctest --test-dir Tests/Standalone/build -C Release --output-on-failure
 python3 -m unittest discover -s Tests/Editor -p '*Tests.py' -v
-node --test Tests/Release/ExperimentalSourceReleaseTests.cjs Tests/Release/MainlineSourceReleaseV0599Tests.cjs
+node --test Tests/Release/ExperimentalSourceReleaseTests.cjs Tests/Release/MainlineSourceReleaseV0599Tests.cjs Tests/Release/SourceReleaseV05100ReadinessTests.cjs
 ```

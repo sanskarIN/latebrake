@@ -269,6 +269,13 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("Unreal Engine 5.8", self.guide)
         self.assertIn("source-only", self.guide.lower())
 
+    def test_native_acceptance_points_to_current_review_not_deleted_issue(self):
+        self.assertNotIn("issues/148", self.guide)
+        self.assertIn("UNREAL_NATIVE_MERGE_READINESS.md", self.guide)
+        self.assertIn("UNREAL_DRAFT_PR_VALIDATION.md", self.guide)
+        self.assertIn("PR #377", self.guide)
+        self.assertIn("source-only", self.guide.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

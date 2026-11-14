@@ -87,8 +87,9 @@ multiplayer positioning or a source of official race results.
   An independent **75 cm vertical residual** ceiling also rejects smaller
   unexplained Z relocations that could fit inside the full 2.3 m vertical
   eligibility zone and the wider 2 m three-axis tolerance, even if the
-  rival remains inside an otherwise legal drafting zone. This is a conservative source-only guard
-  with allowances for ordinary tick-order skew, **not** proof of a genuine
+  rival remains inside an otherwise legal drafting zone. This is a
+  conservative source-only guard with allowances for ordinary tick-order
+  skew, **not** proof of a genuine
   engine-verified teleport or collision detector. The first valid frame
   establishes a new baseline without granting a boost.
 - Drafting must remain continuously eligible for **0.18 seconds** before
@@ -163,6 +164,10 @@ portable logic and static Unreal-source wiring.
    game saves or credit awards; preserve genuine engine logs and
    observed hardware results. Test Android rendering separately.
 
-Until verified on installed packages and
-[playable milestone #148](https://github.com/sanskarIN/latebrake/issues/148)
-is qualified, this remains an unverified **source-only** feature.
+Until the exact PR #377 head passes genuine UE5.8 Editor/UHT,
+source-provenanced cooked Win64 packaging and installed Windows driving
+acceptance per the
+[maintained native merge-evidence checklist](UNREAL_NATIVE_MERGE_READINESS.md)
+and [manual draft PR validation](UNREAL_DRAFT_PR_VALIDATION.md),
+this remains an unverified **source-only** feature.
+The former issue #148 was deleted and cannot authorize gameplay release.
