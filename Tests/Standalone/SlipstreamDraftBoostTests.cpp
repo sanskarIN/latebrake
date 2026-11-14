@@ -448,6 +448,48 @@ int main()
     Check(boost.Observe(worldContinues) > 0.0 && boost.IsActive(),
           "repeated genuine forward world movement preserves draft");
 
+    // A sustained HIGH-SPEED physical convoy must still qualify. This
+    // exercises real world travel rather than relying on zeroed fixture
+    // positions and tests the 90m/s observed high-speed safety envelope.
+    boost.Reset();
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        auto highSpeed = Sample();
+        highSpeed.FollowerSpeedCmPerSecond = 9000.0;
+        highSpeed.LeadSpeedCmPerSecond = 8900.0;
+        highSpeed.FollowerWorldX = 450.0 * frame;
+        highSpeed.LeadOffsetX = 1200.0 - 5.0 * frame;
+        const double force = boost.Observe(highSpeed);
+        Check(frame < 3
+                  ? (force == 0.0 && !boost.IsActive())
+                  : (force > 0.0 && boost.IsActive()),
+              "physically continuous high-speed world motion keeps draft");
+    }
+
+    // Genuine world-space motion is not restricted to an X-aligned circuit.
+    // Both absolute vehicle displacement and relative lead/follower motion
+    // must be reconstructed correctly after rotating the driving axes.
+    boost.Reset();
+    const double roadX = std::cos(0.55);
+    const double roadY = std::sin(0.55);
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        auto rotatedRoad = Sample();
+        rotatedRoad.FollowerForwardX = roadX;
+        rotatedRoad.FollowerForwardY = roadY;
+        rotatedRoad.LeadForwardX = roadX;
+        rotatedRoad.LeadForwardY = roadY;
+        rotatedRoad.FollowerWorldX = 120.0 * frame * roadX;
+        rotatedRoad.FollowerWorldY = 120.0 * frame * roadY;
+        rotatedRoad.LeadOffsetX = (1200.0 - 5.0 * frame) * roadX;
+        rotatedRoad.LeadOffsetY = (1200.0 - 5.0 * frame) * roadY;
+        const double force = boost.Observe(rotatedRoad);
+        Check(frame < 3
+                  ? (force == 0.0 && !boost.IsActive())
+                  : (force > 0.0 && boost.IsActive()),
+              "rotated track world/relative motion qualifies without false teleport");
+    }
+
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.
     for (int run = 0; run < 12000; ++run)
