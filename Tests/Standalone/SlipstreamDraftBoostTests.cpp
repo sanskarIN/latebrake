@@ -176,11 +176,13 @@ int main()
     auto scaledForward = Sample(3780.0);
     scaledForward.FollowerForwardX = permittedScale;
     scaledForward.LeadForwardX = permittedScale;
-    Check(boost.Observe(scaledForward) == 0.0 &&
-          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
-          "true gap near 38m remains eligible before boost confirmation");
-    Confirm(boost, scaledForward);
-    Check(boost.IsActive(),
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        Check(boost.Observe(scaledForward) == 0.0 &&
+              boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+              "true gap near 38m remains eligible before confirmation");
+    }
+    Check(boost.Observe(scaledForward) > 0.0 && boost.IsActive(),
           "normalization prevents false far-edge gap rejection");
     boost.Reset();
     auto scaledSide = Sample(1200.0, 372.0);
