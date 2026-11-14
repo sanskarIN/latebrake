@@ -38,7 +38,14 @@ function fixture() {
       'const double predictedLeadX = const double predictedLeadY = ' +
       'const double predictedLeadZ = ' +
       'leadResidual > MaxRelativeMotionResidualCm ' +
-      'std::abs(leadVerticalResidual)').toString('base64')},
+      'std::abs(leadVerticalResidual) ' +
+      'const bool hadContinuityBaseline = HavePreviousOffset; ' +
+      'hadContinuityBaseline ? dt : 0.0 ' +
+      'PredictedFollowerWorldX += dt * followerVx; ' +
+      'PredictedLeadWorldX += dt * leadVx; ' +
+      'followerWindowResidual > MaxRelativeMotionResidualCm ' +
+      'leadWindowResidual > MaxRelativeMotionResidualCm ' +
+      'MotionWindowSeconds >= ConfirmSeconds').toString('base64')},
     pawn: {type:'file',encoding:'base64',content:Buffer.from(
       'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
       'static_cast<std::uint64_t>(RivalIdentity) ' +
@@ -58,7 +65,11 @@ function fixture() {
       'hidden 255cm lead relocation denied ' +
       'combined 120cm rival Z jump rejected ' +
       'independent rival continuity rejects rearward hidden relocation ' +
-      'physically predicted lead and follower motion retains drafting').toString('base64')},
+      'physically predicted lead and follower motion retains drafting ' +
+      'initial drafting sample establishes baseline with zero time ' +
+      'stale world positions cannot earn drafting at 24m/s ' +
+      'stale lead chassis cannot hide behind moving follower ' +
+      '30/60/120 FPS physically integrated drafting follows elapsed time').toString('base64')},
     pr: {state:'closed',merged:true,merge_commit_sha:MERGE,
       base:{ref:'main'},head:{repo:{full_name:'sanskarIN/latebrake'}}},
     compare: {status:'ahead',behind_by:0,ahead_by:1},
@@ -222,6 +233,36 @@ for (const [label,modify,error] of [
     f.state.tests.content=Buffer.from(
       Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
         'hidden 255cm lead relocation denied','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['no measured-motion window on follower',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'followerWindowResidual > MaxRelativeMotionResidualCm','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['no measured-motion window on rival',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'leadWindowResidual > MaxRelativeMotionResidualCm','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['first sample wrongly adds unobserved time',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'hadContinuityBaseline ? dt : 0.0','dt')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing frozen-position replay denial test',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'stale world positions cannot earn drafting at 24m/s','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing stale-leader replay denial test',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'stale lead chassis cannot hide behind moving follower','')
     ).toString('base64');
   },/physical-3D/],
   ['spoofed GitHub checks app',f=>{f.state.checks.check_runs[0].app.slug='untrusted';},/untrusted app/],
