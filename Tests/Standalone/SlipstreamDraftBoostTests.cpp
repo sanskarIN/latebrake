@@ -140,10 +140,10 @@ int main()
 
     // Unit-axis normalization keeps slightly imperfect source vectors
     // from falsifying true chassis alignment. The raw dot product of two
-    // 5%-long headings can exceed 0.94 even at a physically invalid angle.
+    // near-5%-long headings can exceed 0.94 even at a physically invalid angle.
     boost.Reset();
     auto scaledAndSkewed = Sample();
-    const double permittedScale = std::sqrt(1.05);
+    const double permittedScale = std::sqrt(1.04);
     scaledAndSkewed.FollowerForwardX = permittedScale;
     scaledAndSkewed.FollowerForwardY = 0.0;
     scaledAndSkewed.LeadForwardX = permittedScale * std::cos(0.43);
@@ -185,7 +185,7 @@ int main()
     Check(boost.Observe(scaledForward) > 0.0 && boost.IsActive(),
           "normalization prevents false far-edge gap rejection");
     boost.Reset();
-    auto scaledSide = Sample(1200.0, 372.0);
+    auto scaledSide = Sample(1200.0, 377.0);
     scaledSide.FollowerForwardX = permittedScale;
     scaledSide.LeadForwardX = permittedScale;
     Confirm(boost, scaledSide);
