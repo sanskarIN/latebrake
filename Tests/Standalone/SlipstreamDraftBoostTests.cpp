@@ -572,6 +572,44 @@ int main()
               "64-frame opposite-handed bend retains real drafting");
     }
 
+    // The qualification timer must represent elapsed physics time, not
+    // frame count. Replay a genuine follower+leader world trajectory at
+    // 30, 60 and 120 FPS, including absolute and relative motion, to
+    // prevent frame-rate-dependent source-only draft activation.
+    for (const int fps : {30, 60, 120})
+    {
+        boost.Reset();
+        double followerAtX = 0.0;
+        double leadGap = 1200.0;
+        double qualifiedElapsed = 0.0;
+        for (int frame = 0; frame < fps * 2; ++frame)
+        {
+            auto paced = Sample();
+            paced.FrameSeconds = 1.0 / static_cast<double>(fps);
+            if (frame > 0)
+            {
+                followerAtX += paced.FrameSeconds *
+                    paced.FollowerSpeedCmPerSecond;
+                leadGap += paced.FrameSeconds *
+                    (paced.LeadSpeedCmPerSecond -
+                     paced.FollowerSpeedCmPerSecond);
+            }
+            paced.FollowerWorldX = followerAtX;
+            paced.LeadOffsetX = leadGap;
+            const double force = boost.Observe(paced);
+            qualifiedElapsed += paced.FrameSeconds;
+            const bool shouldHaveDraft =
+                qualifiedElapsed + 1e-12 >= SlipstreamDraftBoost::ConfirmSeconds;
+            Check(shouldHaveDraft
+                      ? (force > 0.0 && boost.IsActive())
+                      : (force == 0.0 && !boost.IsActive()),
+                  "30/60/120 FPS physically integrated drafting follows elapsed time");
+        }
+        Check(std::abs(boost.QualifiedSeconds() -
+                       SlipstreamDraftBoost::ConfirmSeconds) < 1e-10,
+              "frame-rate qualification is bounded by exact confirm time");
+    }
+
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.
     for (int run = 0; run < 12000; ++run)
