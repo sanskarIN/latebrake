@@ -23,17 +23,31 @@ function fixture() {
       'MaxVerticalMotionResidualCm = 75.0 ' +
       'std::abs(verticalResidual) > MaxVerticalMotionResidualCm ' +
       'std::uint64_t LeadIdentity = 0 sample.LeadIdentity == 0 ' +
-      'PreviousLeadIdentity != sample.LeadIdentity').toString('base64')},
+      'PreviousLeadIdentity != sample.LeadIdentity ' +
+      'FollowerWorldX FollowerWorldY FollowerWorldZ ' +
+      '!std::isfinite(followerWorldX) !std::isfinite(followerWorldY) ' +
+      '!std::isfinite(followerWorldZ) ' +
+      'PreviousFollowerWorldX = followerWorldX ' +
+      'PreviousFollowerWorldY = followerWorldY ' +
+      'PreviousFollowerWorldZ = followerWorldZ ' +
+      'followerResidual > MaxRelativeMotionResidualCm ' +
+      'std::abs(followerVerticalResidual)').toString('base64')},
     pawn: {type:'file',encoding:'base64',content:Buffer.from(
       'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
-      'static_cast<std::uint64_t>(RivalIdentity)'
+      'static_cast<std::uint64_t>(RivalIdentity) ' +
+      'static_cast<double>(Position.X) ' +
+      'static_cast<double>(Position.Y) ' +
+      'static_cast<double>(Position.Z)'
     ).toString('base64')},
     mode: {type:'file',encoding:'base64',content:Buffer.from(
       'RivalCar->GetUniqueID() OutIdentity = RivalIdentity;'
     ).toString('base64')},
     tests: {type:'file',encoding:'base64',content:Buffer.from(
       'same-lane vertical relocation identical-geometry replacement ' +
-      'rapid opponent swaps cannot inherit drafting charge').toString('base64')},
+      'rapid opponent swaps cannot inherit drafting charge ' +
+      'common-mode X relocation common-mode lateral relocation ' +
+      'common-mode vertical relocation ' +
+      'genuine measured follower world movement').toString('base64')},
     pr: {state:'closed',merged:true,merge_commit_sha:MERGE,
       base:{ref:'main'},head:{repo:{full_name:'sanskarIN/latebrake'}}},
     compare: {status:'ahead',behind_by:0,ahead_by:1},
@@ -158,6 +172,28 @@ for (const [label,modify,error] of [
   },/physical-3D/],
   ['missing actor identity regression',f=>{
     f.state.tests.content=Buffer.from('same-lane vertical relocation').toString('base64');
+  },/physical-3D/],
+  ['missing follower world-position policy',f=>{
+    f.state.policy.content=Buffer.from(
+      'FollowerVerticalSpeedCmPerSecond LeadVerticalSpeedCmPerSecond ' +
+      'dz - predictedZ !std::isfinite(followerVertical) ' +
+      'MaxVerticalMotionResidualCm = 75.0 ' +
+      'std::abs(verticalResidual) > MaxVerticalMotionResidualCm ' +
+      'std::uint64_t LeadIdentity = 0 sample.LeadIdentity == 0 ' +
+      'PreviousLeadIdentity != sample.LeadIdentity'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing follower world-position Unreal callsite',f=>{
+    f.state.pawn.content=Buffer.from(
+      'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
+      'static_cast<std::uint64_t>(RivalIdentity)'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing common-mode teleport regression',f=>{
+    f.state.tests.content=Buffer.from(
+      'same-lane vertical relocation identical-geometry replacement ' +
+      'rapid opponent swaps cannot inherit drafting charge'
+    ).toString('base64');
   },/physical-3D/],
   ['spoofed GitHub checks app',f=>{f.state.checks.check_runs[0].app.slug='untrusted';},/untrusted app/],
   ['check belongs to other commit',f=>{f.state.checks.check_runs[0].head_sha=MERGE;},/commit identity/],

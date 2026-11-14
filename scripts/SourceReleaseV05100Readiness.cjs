@@ -160,6 +160,20 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     policy.includes('std::uint64_t LeadIdentity = 0') &&
     policy.includes('sample.LeadIdentity == 0') &&
     policy.includes('PreviousLeadIdentity != sample.LeadIdentity') &&
+    policy.includes('FollowerWorldX') &&
+    policy.includes('FollowerWorldY') &&
+    policy.includes('FollowerWorldZ') &&
+    policy.includes('!std::isfinite(followerWorldX)') &&
+    policy.includes('!std::isfinite(followerWorldY)') &&
+    policy.includes('!std::isfinite(followerWorldZ)') &&
+    policy.includes('PreviousFollowerWorldX = followerWorldX') &&
+    policy.includes('PreviousFollowerWorldY = followerWorldY') &&
+    policy.includes('PreviousFollowerWorldZ = followerWorldZ') &&
+    policy.includes('followerResidual > MaxRelativeMotionResidualCm') &&
+    policy.includes('std::abs(followerVerticalResidual)') &&
+    pawn.includes('static_cast<double>(Position.X)') &&
+    pawn.includes('static_cast<double>(Position.Y)') &&
+    pawn.includes('static_cast<double>(Position.Z)') &&
     pawn.includes('static_cast<double>(Velocity.Z)') &&
     pawn.includes('static_cast<double>(RivalVelocity.Z)') &&
     pawn.includes('static_cast<std::uint64_t>(RivalIdentity)') &&
@@ -167,7 +181,11 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     mode.includes('OutIdentity = RivalIdentity;') &&
     tests.includes('same-lane vertical relocation') &&
     tests.includes('identical-geometry replacement') &&
-    tests.includes('rapid opponent swaps cannot inherit drafting charge'),
+    tests.includes('rapid opponent swaps cannot inherit drafting charge') &&
+    tests.includes('common-mode X relocation') &&
+    tests.includes('common-mode lateral relocation') &&
+    tests.includes('common-mode vertical relocation') &&
+    tests.includes('genuine measured follower world movement'),
     'Reviewed physical-3D/identity-aware draft code or regression absent from main');
 
   // Only exact main-source checks count. Never accept PR-head or branch-name
