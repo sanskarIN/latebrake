@@ -19,12 +19,21 @@ function fixture() {
     notes: {type:'file',encoding:'base64',content:Buffer.from(notes).toString('base64')},
     policy: {type:'file',encoding:'base64',content:Buffer.from(
       'FollowerVerticalSpeedCmPerSecond LeadVerticalSpeedCmPerSecond ' +
-      'dz - predictedZ !std::isfinite(followerVertical)').toString('base64')},
+      'dz - predictedZ !std::isfinite(followerVertical) ' +
+      'MaxVerticalMotionResidualCm = 75.0 ' +
+      'std::abs(verticalResidual) > MaxVerticalMotionResidualCm ' +
+      'std::uint64_t LeadIdentity = 0 sample.LeadIdentity == 0 ' +
+      'PreviousLeadIdentity != sample.LeadIdentity').toString('base64')},
     pawn: {type:'file',encoding:'base64',content:Buffer.from(
-      'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z)'
+      'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
+      'static_cast<std::uint64_t>(RivalIdentity)'
+    ).toString('base64')},
+    mode: {type:'file',encoding:'base64',content:Buffer.from(
+      'RivalCar->GetUniqueID() OutIdentity = RivalIdentity;'
     ).toString('base64')},
     tests: {type:'file',encoding:'base64',content:Buffer.from(
-      'same-lane vertical relocation').toString('base64')},
+      'same-lane vertical relocation identical-geometry replacement ' +
+      'rapid opponent swaps cannot inherit drafting charge').toString('base64')},
     pr: {state:'closed',merged:true,merge_commit_sha:MERGE,
       base:{ref:'main'},head:{repo:{full_name:'sanskarIN/latebrake'}}},
     compare: {status:'ahead',behind_by:0,ahead_by:1},
@@ -57,6 +66,8 @@ function fixture() {
           return data(state.policy);
         if (filename==='Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp')
           return data(state.pawn);
+        if (filename==='Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp')
+          return data(state.mode);
         if (filename==='Tests/Standalone/SlipstreamDraftBoostTests.cpp')
           return data(state.tests);
         throw new Error('unexpected file: '+filename);
@@ -134,9 +145,20 @@ for (const [label,modify,error] of [
   ['merged from fork',f=>{f.state.pr.head.repo.full_name='fork/repo';},/not merged/],
   ['diverged from PR merge',f=>{f.state.compare.status='diverged';},/not a descendant/],
   ['behind PR merge',f=>{f.state.compare.behind_by=1;},/not a descendant/],
-  ['missing 3D policy',f=>{f.state.policy.content=Buffer.from('no Z').toString('base64');},/3D draft/],
-  ['missing Unreal integration',f=>{f.state.pawn.content=Buffer.from('fake').toString('base64');},/3D draft/],
-  ['missing 3D regression',f=>{f.state.tests.content=Buffer.from('fake').toString('base64');},/3D draft/],
+  ['missing 3D policy',f=>{f.state.policy.content=Buffer.from('no Z').toString('base64');},/physical-3D/],
+  ['missing Unreal integration',f=>{f.state.pawn.content=Buffer.from('fake').toString('base64');},/physical-3D/],
+  ['missing 3D regression',f=>{f.state.tests.content=Buffer.from('fake').toString('base64');},/physical-3D/],
+  ['missing rival actor binding',f=>{f.state.mode.content=Buffer.from('fake').toString('base64');},/physical-3D/],
+  ['missing actor identity policy',f=>{
+    f.state.policy.content=Buffer.from(
+      'FollowerVerticalSpeedCmPerSecond LeadVerticalSpeedCmPerSecond dz - predictedZ ' +
+      '!std::isfinite(followerVertical) MaxVerticalMotionResidualCm = 75.0 ' +
+      'std::abs(verticalResidual) > MaxVerticalMotionResidualCm'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing actor identity regression',f=>{
+    f.state.tests.content=Buffer.from('same-lane vertical relocation').toString('base64');
+  },/physical-3D/],
   ['spoofed GitHub checks app',f=>{f.state.checks.check_runs[0].app.slug='untrusted';},/untrusted app/],
   ['check belongs to other commit',f=>{f.state.checks.check_runs[0].head_sha=MERGE;},/commit identity/],
   ['newest check spoofed by another app',f=>{

@@ -142,6 +142,10 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     owner, repo, path:prefix + 'Private/Vehicles/LatebrakeCarPawn.cpp',
     ref:candidateSha,
   })).data, 'LatebrakeCarPawn.cpp');
+  const mode = decodeFile((await api.repos.getContent({
+    owner, repo, path:prefix + 'Private/Game/LatebrakeRaceGameMode.cpp',
+    ref:candidateSha,
+  })).data, 'LatebrakeRaceGameMode.cpp');
   const tests = decodeFile((await api.repos.getContent({
     owner, repo, path:'Tests/Standalone/SlipstreamDraftBoostTests.cpp',
     ref:candidateSha,
@@ -151,10 +155,20 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     policy.includes('LeadVerticalSpeedCmPerSecond') &&
     policy.includes('dz - predictedZ') &&
     policy.includes('!std::isfinite(followerVertical)') &&
+    policy.includes('MaxVerticalMotionResidualCm = 75.0') &&
+    policy.includes('std::abs(verticalResidual) > MaxVerticalMotionResidualCm') &&
+    policy.includes('std::uint64_t LeadIdentity = 0') &&
+    policy.includes('sample.LeadIdentity == 0') &&
+    policy.includes('PreviousLeadIdentity != sample.LeadIdentity') &&
     pawn.includes('static_cast<double>(Velocity.Z)') &&
     pawn.includes('static_cast<double>(RivalVelocity.Z)') &&
-    tests.includes('same-lane vertical relocation'),
-    'Reviewed measured-3D draft behavior or regression is absent from main');
+    pawn.includes('static_cast<std::uint64_t>(RivalIdentity)') &&
+    mode.includes('RivalCar->GetUniqueID()') &&
+    mode.includes('OutIdentity = RivalIdentity;') &&
+    tests.includes('same-lane vertical relocation') &&
+    tests.includes('identical-geometry replacement') &&
+    tests.includes('rapid opponent swaps cannot inherit drafting charge'),
+    'Reviewed physical-3D/identity-aware draft code or regression absent from main');
 
   // Only exact main-source checks count. Never accept PR-head or branch-name
   // jobs as substitute for the release candidate's tested commit.
