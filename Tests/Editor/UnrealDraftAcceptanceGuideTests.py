@@ -63,6 +63,23 @@ class UnrealDraftAcceptanceGuideTests(unittest.TestCase):
         ):
             self.assertIn(phrase, self.acceptance)
 
+    def test_exact_head_local_windows_diagnostics_do_not_waive_native_gate(self):
+        local = read("docs/WINDOWS_PERSONAL_PLAYTEST.md")
+        for required in (
+            "git fetch --no-tags origin pull/377/head",
+            "(git rev-parse FETCH_HEAD).Trim()",
+            "git switch --detach $ExpectedHead",
+            "Compile-UnrealEditor.ps1",
+            "Build-WindowsPlaytest.ps1",
+            "does not replace",
+            "exact-main SHA",
+            "No release is created",
+        ):
+            self.assertIn(required, local)
+        self.assertNotIn("github.com/sanskarIN/latebrake/issues/148", local)
+        self.assertIn("Optional local diagnostics", self.guide)
+        self.assertIn("trusted manual Editor-then-Win64", self.guide)
+
     def test_no_deleted_native_issue_used_as_a_release_gate(self):
         self.assertNotIn("playable milestone #148", self.acceptance)
         self.assertIn("PR #377", self.readiness)

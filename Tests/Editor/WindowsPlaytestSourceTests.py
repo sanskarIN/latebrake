@@ -141,9 +141,11 @@ class WindowsPlaytestSourceTests(unittest.TestCase):
             "UNVERIFIED",
             "out/Win64Playtests",
             "cooked",
-            "#148",
+            "UNREAL_NATIVE_MERGE_READINESS.md",
         ):
             self.assertIn(text, self.docs)
+        self.assertNotIn("github.com/sanskarIN/latebrake/issues/148",
+                         self.docs)
 
     def test_ci_runs_synthetic_negative_preflight(self):
         self.assertIn("Build-WindowsPlaytest.ps1", self.ci)

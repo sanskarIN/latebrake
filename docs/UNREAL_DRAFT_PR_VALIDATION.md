@@ -71,6 +71,16 @@ self-hosted runner, or accept source from outside this repository.
    Capture real runtime logs, hardware and manifest hashes; never
    substitute portable C++20 tests for installed gameplay.
 
+### Optional local diagnostics when the trusted runner is unavailable
+
+The [Windows personal playtest guide](WINDOWS_PERSONAL_PLAYTEST.md) now
+documents fetching the **live head of draft PR #377** in a fresh Windows
+clone, verifying its exact reviewed SHA and invoking the existing real
+UE5.8 Editor/Win64 build commands. This can identify compiler/cook issues
+early. It **does not replace** the trusted manual Editor-then-Win64
+workflow, installed-game acceptance or exact-main source release approval.
+No GitHub pre-release is created by local diagnostics.
+
 **Do not merge the PR just because Editor/UHT passes.** Win64 cooking,
 installed driving, real collision/suspension stability and issue
 [native merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md) remain
