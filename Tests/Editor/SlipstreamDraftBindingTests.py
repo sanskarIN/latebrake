@@ -147,6 +147,18 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("PreviousFollowerWorldZ = followerWorldZ;", self.policy)
         self.assertIn("followerResidual > MaxRelativeMotionResidualCm",
                       self.policy)
+        self.assertIn("const double leadWorldX = followerWorldX + dx;",
+                      self.policy)
+        self.assertIn("const double leadWorldY = followerWorldY + dy;",
+                      self.policy)
+        self.assertIn("const double leadWorldZ = followerWorldZ + dz;",
+                      self.policy)
+        self.assertIn("const double predictedLeadX =", self.policy)
+        self.assertIn("const double predictedLeadY =", self.policy)
+        self.assertIn("const double predictedLeadZ =", self.policy)
+        self.assertIn("leadResidual > MaxRelativeMotionResidualCm",
+                      self.policy)
+        self.assertIn("std::abs(leadVerticalResidual)", self.policy)
         self.assertIn("std::abs(followerVerticalResidual)", self.policy)
         for field in ("FollowerWorldX", "FollowerWorldY", "FollowerWorldZ"):
             self.assertIn(f"double {field} =", self.policy)

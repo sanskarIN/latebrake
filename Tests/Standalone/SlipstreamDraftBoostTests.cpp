@@ -610,6 +610,62 @@ int main()
               "frame-rate qualification is bounded by exact confirm time");
     }
 
+    // Independent follower and relative limits are NOT sufficient to
+    // authenticate the rival. Each can be below 2m while the *sum* of
+    // their residuals conceals a 2.55m leader teleport (despite the
+    // same valid in-lane geometry and authenticated rival actor).
+    boost.Reset();
+    Confirm(boost);
+    auto splitErrorLead = Sample();
+    splitErrorLead.FollowerWorldX = 270.0;  // 150cm follower residual
+    splitErrorLead.LeadOffsetX = 1300.0;   // 105cm relative residual
+    Check(std::abs(splitErrorLead.FollowerWorldX - 120.0) <
+              SlipstreamDraftBoost::MaxRelativeMotionResidualCm &&
+          std::abs(splitErrorLead.LeadOffsetX - 1195.0) <
+              SlipstreamDraftBoost::MaxRelativeMotionResidualCm,
+          "adversarial split-error scenario passes both earlier 2m gates");
+    Check(boost.Observe(splitErrorLead) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "hidden 255cm lead relocation denied by independent rival world gate");
+    Check(boost.Observe(splitErrorLead) == 0.0 &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "lead relocation must earn a wholly fresh 0.18s interval");
+
+    // Two separately tolerated 60cm vertical residuals can combine to
+    // conceal a 120cm rival Z jump, breaking the 75cm individual limit.
+    boost.Reset();
+    Confirm(boost);
+    auto splitVerticalLead = Sample();
+    splitVerticalLead.FollowerWorldZ = 60.0;
+    splitVerticalLead.LeadOffsetZ = 60.0;
+    Check(boost.Observe(splitVerticalLead) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "combined 120cm rival Z jump rejected although each input is 60cm");
+
+    // Opposite-signed residuals can hide a rearward jump as well.
+    boost.Reset();
+    Confirm(boost);
+    auto reverseLeadJump = Sample();
+    reverseLeadJump.FollowerWorldX = 0.0; // follower -120cm residual
+    reverseLeadJump.LeadOffsetX = 1095.0; // relative -100cm residual
+    Check(boost.Observe(reverseLeadJump) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "independent rival continuity rejects rearward hidden relocation");
+
+    // Normal paired movement reconstructs the exact physical leader
+    // trajectory and must not be falsely rejected by the new gate.
+    boost.Reset();
+    Confirm(boost);
+    auto genuineLeaderMotion = Sample();
+    genuineLeaderMotion.FollowerWorldX = 120.0;
+    genuineLeaderMotion.LeadOffsetX = 1195.0;
+    Check(boost.Observe(genuineLeaderMotion) > 0.0 && boost.IsActive(),
+          "physically predicted lead and follower motion retains drafting");
+    genuineLeaderMotion.FollowerWorldX = 240.0;
+    genuineLeaderMotion.LeadOffsetX = 1190.0;
+    Check(boost.Observe(genuineLeaderMotion) > 0.0 && boost.IsActive(),
+          "independent lead continuity remains stable across true chassis ticks");
+
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.
     for (int run = 0; run < 12000; ++run)

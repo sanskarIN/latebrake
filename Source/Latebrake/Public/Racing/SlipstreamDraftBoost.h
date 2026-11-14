@@ -234,6 +234,34 @@ public:
                 Reset();
                 return 0.0;
             }
+            // Independently authenticate the leader's absolute motion.
+            // Follower and relative offsets can EACH be under their 2m
+            // residual limit while their errors ADD to a 3-4m rival jump.
+            // Reconstruct the rival world position from the two real
+            // chassis coordinates; no additional Unreal sample is needed.
+            const double leadWorldX = followerWorldX + dx;
+            const double leadWorldY = followerWorldY + dy;
+            const double leadWorldZ = followerWorldZ + dz;
+            const double predictedLeadX =
+                PreviousFollowerWorldX + PreviousOffsetX + dt * leadVx;
+            const double predictedLeadY =
+                PreviousFollowerWorldY + PreviousOffsetY + dt * leadVy;
+            const double predictedLeadZ =
+                PreviousFollowerWorldZ + PreviousOffsetZ + dt * leadVertical;
+            const double leadResidual = std::hypot(
+                std::hypot(leadWorldX - predictedLeadX,
+                           leadWorldY - predictedLeadY),
+                leadWorldZ - predictedLeadZ);
+            const double leadVerticalResidual =
+                leadWorldZ - predictedLeadZ;
+            if (!std::isfinite(leadResidual) ||
+                std::abs(leadVerticalResidual) >
+                    MaxVerticalMotionResidualCm ||
+                leadResidual > MaxRelativeMotionResidualCm)
+            {
+                Reset();
+                return 0.0;
+            }
             const double predictedX = PreviousOffsetX + dt * (leadVx - followerVx);
             const double predictedY = PreviousOffsetY + dt * (leadVy - followerVy);
             const double predictedZ = PreviousOffsetZ +

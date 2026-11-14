@@ -68,6 +68,16 @@ multiplayer positioning or a source of official race results.
   eligibility, even if the ahead, lane and 3D relative offsets remain legal.
   Missing/nonfinite follower coordinates fail closed. This is source-only
   until actual UE5.8 physics, world-origin, restart and teleport tests.
+- The rival's **independent absolute world-space trajectory** is
+  reconstructed from the measured player position and physical rival
+  offset, then compared with the rival's own 3D velocity. This prevents
+  two separately tolerated residuals (player travel and relative gap)
+  from combining into a much larger rival displacement. The same 2m
+  three-axis and 75cm vertical safety ceilings apply to each chassis
+  **independently** as well as to their relative geometry. Invalid
+  rival world reconstructions reset eligibility; standalone tests cover
+  2.55m hidden lead relocations, 1.2m hidden vertical movement and
+  physically consistent high-speed/cornering trajectories.
 - Consecutive **relative 3D world positions** must also agree with the two
   measured chassis-velocity vectors: planar forward/lateral components and
   the actual human/rival Chaos vertical velocities over the current physics
