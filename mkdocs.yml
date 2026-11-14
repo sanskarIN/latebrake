@@ -156,6 +156,7 @@ nav:
       - Rival surface and impact-aware pace QA: RIVAL_SURFACE_DAMAGE_PACE_QA.md
       - Rival engine-heat cooldown pace QA: RIVAL_ENGINE_HEAT_PACE_QA.md
       - Single-rival slipstream QA: SLIPSTREAM_DRAFT_QA.md
+      - v0.5.100 native drafting acceptance: UNREAL_V05100_DRAFTING_ACCEPTANCE.md
       - Off-track and AI approach QA: OFF_TRACK_AND_RIVAL_APPROACH_QA.md
       - Rival proximity HUD QA: RIVAL_PROXIMITY_QA.md
       - Rival accepted gate-gap QA: RIVAL_VERIFIED_GATE_GAP_QA.md
