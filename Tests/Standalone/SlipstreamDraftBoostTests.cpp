@@ -320,6 +320,28 @@ int main()
     Check(boost.IsActive(),
           "stable recovered real Z separation may qualify again");
 
+
+    // Symmetry matters: an unmeasured downward 90cm relocation is no
+    // more physically consistent than the upward case.
+    boost.Reset();
+    Confirm(boost);
+    auto deceptiveDrop = Sample();
+    deceptiveDrop.LeadOffsetZ = -90.0;
+    Check(boost.Observe(deceptiveDrop) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "downward in-lane jump also revokes drafting immediately");
+
+    // The vertical policy still follows REAL measured descent: both
+    // cars can be dropping rapidly without a false teleport detection.
+    boost.Reset();
+    auto measuredDescent = Sample();
+    measuredDescent.FollowerVerticalSpeedCmPerSecond = -75.0;
+    measuredDescent.LeadVerticalSpeedCmPerSecond = -275.0;
+    Confirm(boost, measuredDescent);
+    measuredDescent.LeadOffsetZ = -10.0;
+    Check(boost.Observe(measuredDescent) > 0.0 && boost.IsActive(),
+          "physically predicted falling pair preserves draft");
+
     // A 75cm residual boundary is eligible; the Z policy must reject
     // only strictly beyond tolerance while preserving the wider 3D gate.
     boost.Reset();

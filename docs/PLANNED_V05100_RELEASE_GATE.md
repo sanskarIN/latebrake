@@ -14,6 +14,10 @@ The latest verified published release at the time of authoring is
 - Harden real human-versus-rival arcade drafting against impossible **vertical
   relative position jumps**, complementing the already shipped planar
   velocity-consistency, physical road support and obstruction checks.
+  Preserve the 2m full 3D residual ceiling while independently rejecting
+  **more than 75cm unexplained vertical residual**; audit both upward and
+  downward discontinuities and physically predicted ascent/descent.
+  Treat this threshold as source-only until measured in a real UE5.8 drive.
 - Use **measured Chaos Z velocity of each live car**; fail closed when either
   measurement is unavailable or invalid. The integrated result retains the
   0.18-second confirmation, +6% maximum drafting effect and shared +40%
