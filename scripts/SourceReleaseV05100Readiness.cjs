@@ -186,6 +186,13 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     policy.includes('followerWindowResidual > MaxRelativeMotionResidualCm') &&
     policy.includes('leadWindowResidual > MaxRelativeMotionResidualCm') &&
     policy.includes('MotionWindowSeconds >= ConfirmSeconds') &&
+    policy.includes('followerExpectedTravel = std::hypot(') &&
+    policy.includes('leadExpectedTravel = std::hypot(') &&
+    policy.includes('0.5 * followerExpectedTravel') &&
+    policy.includes('0.5 * leadExpectedTravel') &&
+    policy.includes('followerWindowResidual > followerWindowCeiling') &&
+    policy.includes('leadWindowResidual > leadWindowCeiling') &&
+    policy.includes('WindowStartLeadWorldX = leadWorldX;') &&
     pawn.includes('static_cast<double>(Position.X)') &&
     pawn.includes('static_cast<double>(Position.Y)') &&
     pawn.includes('static_cast<double>(Position.Z)') &&
@@ -208,7 +215,10 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     tests.includes('initial drafting sample establishes baseline with zero time') &&
     tests.includes('stale world positions cannot earn drafting at 24m/s') &&
     tests.includes('stale lead chassis cannot hide behind moving follower') &&
-    tests.includes('30/60/120 FPS physically integrated drafting follows elapsed time'),
+    tests.includes('30/60/120 FPS physically integrated drafting follows elapsed time') &&
+    tests.includes('10m/s frozen rival must not pass 2m absolute drift allowance') &&
+    tests.includes('real 10m/s rival correctly qualifies after 0.20s') &&
+    tests.includes('bounded slow-leader tick skew remains accepted'),
     'Reviewed physical-3D/identity-aware draft code or regression absent from main');
 
   // Only exact main-source checks count. Never accept PR-head or branch-name
