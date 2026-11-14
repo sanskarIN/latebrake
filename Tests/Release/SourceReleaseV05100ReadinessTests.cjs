@@ -30,6 +30,7 @@ function fixture() {
     compare: {status:'ahead',behind_by:0,ahead_by:1},
     checks: {check_runs:guard.REQUIRED_CHECKS.map((name,i) => ({
       id:i+1,name,status:'completed',conclusion:'success',
+      app:{slug:'github-actions'},head_sha:SHA,
     }))},
     oldRelease: {tag_name:guard.PREVIOUS_TAG,
       target_commitish:guard.PREVIOUS_SHA,prerelease:true,draft:false,assets:[]},
@@ -136,13 +137,21 @@ for (const [label,modify,error] of [
   ['missing 3D policy',f=>{f.state.policy.content=Buffer.from('no Z').toString('base64');},/3D draft/],
   ['missing Unreal integration',f=>{f.state.pawn.content=Buffer.from('fake').toString('base64');},/3D draft/],
   ['missing 3D regression',f=>{f.state.tests.content=Buffer.from('fake').toString('base64');},/3D draft/],
+  ['spoofed GitHub checks app',f=>{f.state.checks.check_runs[0].app.slug='untrusted';},/untrusted app/],
+  ['check belongs to other commit',f=>{f.state.checks.check_runs[0].head_sha=MERGE;},/commit identity/],
+  ['newest check spoofed by another app',f=>{
+    f.state.checks.check_runs.push({id:100,name:guard.REQUIRED_CHECKS[0],
+      status:'completed',conclusion:'success',
+      app:{slug:'untrusted'},head_sha:SHA});
+  },/untrusted app/],
   ['missing Windows check',f=>{f.state.checks.check_runs=f.state.checks.check_runs.filter(
     row=>row.name!=='Portable C++20 tests / windows-latest');},/Windows|windows/],
   ['pending macOS check',f=>{f.state.checks.check_runs[2].status='in_progress';},/macos/],
   ['failed Linux check',f=>{f.state.checks.check_runs[1].conclusion='failure';},/ubuntu/],
   ['newer failed check masks older pass',f=>{
     f.state.checks.check_runs.push({id:100,name:guard.REQUIRED_CHECKS[0],
-      status:'completed',conclusion:'failure'});
+      status:'completed',conclusion:'failure',
+      app:{slug:'github-actions'},head_sha:SHA});
   },/windows/],
   ['wrong predecessor SHA',f=>{f.state.oldRelease.target_commitish=SHA;},/Pre-release identity/],
   ['old tag changed',f=>{f.state.oldTag.object.sha=SHA;},/Source tag/],

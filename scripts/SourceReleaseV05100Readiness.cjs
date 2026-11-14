@@ -84,14 +84,18 @@ async function optional(get) {
     throw error;
   }
 }
-function requirePassingChecks(response) {
+function requirePassingChecks(response, expectedSha) {
+  requireState(SHA40.test(expectedSha), 'Expected exact check-run SHA is invalid');
   const rows = response?.check_runs;
   requireState(Array.isArray(rows), 'Exact-head checks response is unavailable');
   for (const name of REQUIRED_CHECKS) {
     // A superseded passing run cannot mask a newer failed/requeued run.
     const matches = rows.filter(row => row.name === name)
       .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
-    requireState(matches.length > 0 && matches[0].status === 'completed' &&
+    requireState(matches.length > 0 && matches[0].app?.slug === 'github-actions' &&
+      matches[0].head_sha === expectedSha,
+      'Required exact-head check has untrusted app or commit identity: ' + name);
+    requireState(matches[0].status === 'completed' &&
       matches[0].conclusion === 'success',
       'Required latest exact-head source check not successful: ' + name);
   }
@@ -157,7 +161,7 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
   const checks = (await api.checks.listForRef({
     owner, repo, ref:candidateSha, per_page:100,
   })).data;
-  requirePassingChecks(checks);
+  requirePassingChecks(checks, candidateSha);
 
   const predecessor = (await api.repos.getReleaseByTag({
     owner, repo, tag:PREVIOUS_TAG,
