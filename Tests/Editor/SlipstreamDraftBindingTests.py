@@ -140,6 +140,16 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("this, RivalPosition, RivalForward, RivalVelocity,",
                       tick)
         self.assertIn("static_cast<std::uint64_t>(RivalIdentity)", tick)
+        for field in ("X", "Y", "Z"):
+            self.assertIn(f"static_cast<double>(Position.{field})", tick)
+        self.assertIn("PreviousFollowerWorldX = followerWorldX;", self.policy)
+        self.assertIn("PreviousFollowerWorldY = followerWorldY;", self.policy)
+        self.assertIn("PreviousFollowerWorldZ = followerWorldZ;", self.policy)
+        self.assertIn("followerResidual > MaxRelativeMotionResidualCm",
+                      self.policy)
+        self.assertIn("std::abs(followerVerticalResidual)", self.policy)
+        for field in ("FollowerWorldX", "FollowerWorldY", "FollowerWorldZ"):
+            self.assertIn(f"double {field} =", self.policy)
         self.assertIn("std::uint64_t LeadIdentity = 0;", self.policy)
         self.assertIn("sample.LeadIdentity == 0", self.policy)
         self.assertIn("PreviousLeadIdentity != sample.LeadIdentity",

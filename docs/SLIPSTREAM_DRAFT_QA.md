@@ -60,6 +60,14 @@ multiplayer positioning or a source of official race results.
   occupies the same position with the same apparent velocity must earn a
   **new uninterrupted 0.18-second window**. A missing/zero identity fails
   closed; an identity change cannot reuse the old motor-force credit.
+- The actual follower chassis world-space position is also monitored
+  independently against its measured forward, lateral and Z velocities.
+  When **both** cars jump together, their unchanged relative gap would
+  otherwise fool a relative-only motion check. More than 2m of unexplained
+  player world movement or 75cm unexplained player vertical movement revokes
+  eligibility, even if the ahead, lane and 3D relative offsets remain legal.
+  Missing/nonfinite follower coordinates fail closed. This is source-only
+  until actual UE5.8 physics, world-origin, restart and teleport tests.
 - Consecutive **relative 3D world positions** must also agree with the two
   measured chassis-velocity vectors: planar forward/lateral components and
   the actual human/rival Chaos vertical velocities over the current physics

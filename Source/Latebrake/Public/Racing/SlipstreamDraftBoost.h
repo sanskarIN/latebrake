@@ -40,6 +40,12 @@ struct DraftingSample final
     // Actual live Unreal rival UObject identity, not an inferred lane slot.
     // Missing identity cannot confirm drafting after a recovered/replaced car.
     std::uint64_t LeadIdentity = 0;
+    // Genuine follower chassis-root world position. The relative lane
+    // offset alone cannot detect when BOTH vehicles relocate together.
+    // Missing world coordinates fail closed rather than disabling the gate.
+    double FollowerWorldX = std::numeric_limits<double>::quiet_NaN();
+    double FollowerWorldY = std::numeric_limits<double>::quiet_NaN();
+    double FollowerWorldZ = std::numeric_limits<double>::quiet_NaN();
 };
 
 class SlipstreamDraftBoost final
@@ -77,6 +83,9 @@ public:
         PreviousOffsetX = 0.0;
         PreviousOffsetY = 0.0;
         PreviousOffsetZ = 0.0;
+        PreviousFollowerWorldX = 0.0;
+        PreviousFollowerWorldY = 0.0;
+        PreviousFollowerWorldZ = 0.0;
         PreviousLeadIdentity = 0;
     }
     void Suspend() noexcept { Reset(); }
@@ -95,6 +104,9 @@ public:
         const double dx = sample.LeadOffsetX;
         const double dy = sample.LeadOffsetY;
         const double dz = sample.LeadOffsetZ;
+        const double followerWorldX = sample.FollowerWorldX;
+        const double followerWorldY = sample.FollowerWorldY;
+        const double followerWorldZ = sample.FollowerWorldZ;
         const double followerLateral =
             sample.FollowerLateralSpeedCmPerSecond;
         const double leadLateral = sample.LeadLateralSpeedCmPerSecond;
@@ -112,7 +124,11 @@ public:
             !std::isfinite(ax) || !std::isfinite(ay) ||
             !std::isfinite(bx) || !std::isfinite(by) ||
             !std::isfinite(dx) || !std::isfinite(dy) ||
-            !std::isfinite(dz) || !std::isfinite(throttle) ||
+            !std::isfinite(dz) ||
+            !std::isfinite(followerWorldX) ||
+            !std::isfinite(followerWorldY) ||
+            !std::isfinite(followerWorldZ) ||
+            !std::isfinite(throttle) ||
             !std::isfinite(followerLateral) ||
             !std::isfinite(leadLateral) ||
             !std::isfinite(followerVertical) ||
@@ -195,6 +211,29 @@ public:
                 lead * leadX - leadLateral * leadY;
             const double leadVy =
                 lead * leadY + leadLateral * leadX;
+            // Real-world follower continuity independently rejects common
+            // translations of BOTH cars that leave their relative lane
+            // geometry and all measured relative velocities unchanged.
+            const double predictedFollowerX = PreviousFollowerWorldX +
+                dt * followerVx;
+            const double predictedFollowerY = PreviousFollowerWorldY +
+                dt * followerVy;
+            const double predictedFollowerZ = PreviousFollowerWorldZ +
+                dt * followerVertical;
+            const double followerResidual = std::hypot(
+                std::hypot(followerWorldX - predictedFollowerX,
+                           followerWorldY - predictedFollowerY),
+                followerWorldZ - predictedFollowerZ);
+            const double followerVerticalResidual =
+                followerWorldZ - predictedFollowerZ;
+            if (!std::isfinite(followerResidual) ||
+                std::abs(followerVerticalResidual) >
+                    MaxVerticalMotionResidualCm ||
+                followerResidual > MaxRelativeMotionResidualCm)
+            {
+                Reset();
+                return 0.0;
+            }
             const double predictedX = PreviousOffsetX + dt * (leadVx - followerVx);
             const double predictedY = PreviousOffsetY + dt * (leadVy - followerVy);
             const double predictedZ = PreviousOffsetZ +
@@ -214,6 +253,9 @@ public:
         PreviousOffsetX = dx;
         PreviousOffsetY = dy;
         PreviousOffsetZ = dz;
+        PreviousFollowerWorldX = followerWorldX;
+        PreviousFollowerWorldY = followerWorldY;
+        PreviousFollowerWorldZ = followerWorldZ;
         PreviousLeadIdentity = sample.LeadIdentity;
         HavePreviousOffset = true;
         EligibleSeconds = std::min(ConfirmSeconds, EligibleSeconds + dt);
@@ -241,6 +283,9 @@ private:
     double PreviousOffsetX = 0.0;
     double PreviousOffsetY = 0.0;
     double PreviousOffsetZ = 0.0;
+    double PreviousFollowerWorldX = 0.0;
+    double PreviousFollowerWorldY = 0.0;
+    double PreviousFollowerWorldZ = 0.0;
     std::uint64_t PreviousLeadIdentity = 0;
     bool HavePreviousOffset = false;
 };

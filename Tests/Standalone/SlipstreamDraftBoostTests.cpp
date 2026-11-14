@@ -29,6 +29,9 @@ latebrake::DraftingSample Sample(double gap = 1200.0, double lateral = 0.0)
     s.FollowerVerticalSpeedCmPerSecond = 0.0;
     s.LeadVerticalSpeedCmPerSecond = 0.0;
     s.LeadIdentity = 17;
+    s.FollowerWorldX = 0.0;
+    s.FollowerWorldY = 0.0;
+    s.FollowerWorldZ = 0.0;
     return s;
 }
 void Confirm(latebrake::SlipstreamDraftBoost& boost,
@@ -90,6 +93,15 @@ int main()
         Reject(s, "solid barrier cancels already-earned draft immediately");}
     {auto s = Sample(); s.LeadIdentity = 0;
         Reject(s, "unknown live rival actor identity fails closed");}
+    for (const double invalid : {bad, inf, -inf})
+    {
+        auto s = Sample(); s.FollowerWorldX = invalid;
+        Reject(s, "missing or nonfinite follower world X fails closed");
+        s = Sample(); s.FollowerWorldY = invalid;
+        Reject(s, "missing or nonfinite follower world Y fails closed");
+        s = Sample(); s.FollowerWorldZ = invalid;
+        Reject(s, "missing or nonfinite follower world Z fails closed");
+    }
     {auto s = Sample(); s.ForwardThrottle = -0.4; Reject(s, "reverse input denied");}
     {auto s = Sample(); s.FollowerSpeedCmPerSecond = 800.0; Reject(s, "stationary car denied");}
     {auto s = Sample(); s.LeadSpeedCmPerSecond = 0.0; Reject(s, "stationary front car denied");}
@@ -393,6 +405,48 @@ int main()
               boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
               "rapid opponent swaps cannot inherit drafting charge");
     }
+
+    // Relative gap and heading do not change when two vehicles relocate
+    // identically. The independent follower world-position check must
+    // revoke even a fully qualified draft instead of inheriting its charge.
+    boost.Reset();
+    Confirm(boost);
+    auto commonWorldJump = Sample();
+    commonWorldJump.FollowerWorldX = 500.0;
+    Check(boost.Observe(commonWorldJump) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "common-mode X relocation revokes unchanged relative drafting");
+    Check(boost.Observe(commonWorldJump) == 0.0 &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "common-mode relocation must requalify from scratch");
+
+    boost.Reset();
+    Confirm(boost);
+    commonWorldJump = Sample();
+    commonWorldJump.FollowerWorldY = 400.0;
+    Check(boost.Observe(commonWorldJump) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "common-mode lateral relocation cannot carry old drafting");
+
+    boost.Reset();
+    Confirm(boost);
+    commonWorldJump = Sample();
+    commonWorldJump.FollowerWorldZ = 100.0;
+    Check(boost.Observe(commonWorldJump) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "common-mode vertical relocation violates absolute Z continuity");
+
+    // Normal real player movement matching the measured physical velocity
+    // must NOT be classified as a relocation or reset the draft window.
+    boost.Reset();
+    Confirm(boost);
+    auto worldContinues = Sample();
+    worldContinues.FollowerWorldX = 120.0; // 2400 cm/s for 50 ms
+    Check(boost.Observe(worldContinues) > 0.0 && boost.IsActive(),
+          "genuine measured follower world movement preserves draft");
+    worldContinues.FollowerWorldX += 120.0;
+    Check(boost.Observe(worldContinues) > 0.0 && boost.IsActive(),
+          "repeated genuine forward world movement preserves draft");
 
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.

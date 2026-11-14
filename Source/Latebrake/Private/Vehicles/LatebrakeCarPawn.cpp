@@ -1176,7 +1176,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             true, // GameMode verified an unobstructed physical sightline.
             static_cast<double>(Velocity.Z),
             static_cast<double>(RivalVelocity.Z),
-            static_cast<std::uint64_t>(RivalIdentity)
+            static_cast<std::uint64_t>(RivalIdentity),
+            static_cast<double>(Position.X),
+            static_cast<double>(Position.Y),
+            static_cast<double>(Position.Z)
         });
     }
     else
