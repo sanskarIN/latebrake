@@ -171,6 +171,14 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     policy.includes('PreviousFollowerWorldZ = followerWorldZ') &&
     policy.includes('followerResidual > MaxRelativeMotionResidualCm') &&
     policy.includes('std::abs(followerVerticalResidual)') &&
+    policy.includes('const double leadWorldX = followerWorldX + dx;') &&
+    policy.includes('const double leadWorldY = followerWorldY + dy;') &&
+    policy.includes('const double leadWorldZ = followerWorldZ + dz;') &&
+    policy.includes('const double predictedLeadX =') &&
+    policy.includes('const double predictedLeadY =') &&
+    policy.includes('const double predictedLeadZ =') &&
+    policy.includes('leadResidual > MaxRelativeMotionResidualCm') &&
+    policy.includes('std::abs(leadVerticalResidual)') &&
     pawn.includes('static_cast<double>(Position.X)') &&
     pawn.includes('static_cast<double>(Position.Y)') &&
     pawn.includes('static_cast<double>(Position.Z)') &&
@@ -185,7 +193,11 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     tests.includes('common-mode X relocation') &&
     tests.includes('common-mode lateral relocation') &&
     tests.includes('common-mode vertical relocation') &&
-    tests.includes('genuine measured follower world movement'),
+    tests.includes('genuine measured follower world movement') &&
+    tests.includes('hidden 255cm lead relocation denied') &&
+    tests.includes('combined 120cm rival Z jump rejected') &&
+    tests.includes('independent rival continuity rejects rearward hidden relocation') &&
+    tests.includes('physically predicted lead and follower motion retains drafting'),
     'Reviewed physical-3D/identity-aware draft code or regression absent from main');
 
   // Only exact main-source checks count. Never accept PR-head or branch-name
