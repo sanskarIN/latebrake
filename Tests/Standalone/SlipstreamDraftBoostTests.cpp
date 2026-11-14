@@ -490,6 +490,88 @@ int main()
               "rotated track world/relative motion qualifies without false teleport");
     }
 
+    // A live road bend changes actual world velocity every frame. The
+    // previous tests rotate a straight road once; this verifies continuously
+    // turning physics with time-integrated positions for BOTH moving cars.
+    // The same heading/velocity vectors passed to the policy MUST predict
+    // the observed world displacement and relative lead position, rather
+    // than resetting legitimate slipstream assistance each steering tick.
+    boost.Reset();
+    double bendFollowerX = 0.0;
+    double bendFollowerY = 0.0;
+    double bendLeaderX = 1200.0;
+    double bendLeaderY = 0.0;
+    for (int frame = 0; frame < 64; ++frame)
+    {
+        auto bend = Sample();
+        const double yaw = frame * 0.003;
+        const double directionX = std::cos(yaw);
+        const double directionY = std::sin(yaw);
+        if (frame > 0)
+        {
+            bendFollowerX += bend.FrameSeconds *
+                bend.FollowerSpeedCmPerSecond * directionX;
+            bendFollowerY += bend.FrameSeconds *
+                bend.FollowerSpeedCmPerSecond * directionY;
+            bendLeaderX += bend.FrameSeconds *
+                bend.LeadSpeedCmPerSecond * directionX;
+            bendLeaderY += bend.FrameSeconds *
+                bend.LeadSpeedCmPerSecond * directionY;
+        }
+        bend.FollowerForwardX = directionX;
+        bend.FollowerForwardY = directionY;
+        bend.LeadForwardX = directionX;
+        bend.LeadForwardY = directionY;
+        bend.FollowerWorldX = bendFollowerX;
+        bend.FollowerWorldY = bendFollowerY;
+        bend.LeadOffsetX = bendLeaderX - bendFollowerX;
+        bend.LeadOffsetY = bendLeaderY - bendFollowerY;
+        const double force = boost.Observe(bend);
+        Check(frame < 3
+                  ? (force == 0.0 && !boost.IsActive())
+                  : (force > 0.0 && boost.IsActive()),
+              "64-frame physically integrated bend retains drafting");
+    }
+
+    // A matching world trajectory can be inverted on the Y axis without
+    // treating legitimate right-handed and left-handed corners differently.
+    boost.Reset();
+    bendFollowerX = 0.0;
+    bendFollowerY = 0.0;
+    bendLeaderX = 1200.0;
+    bendLeaderY = 0.0;
+    for (int frame = 0; frame < 64; ++frame)
+    {
+        auto bend = Sample();
+        const double yaw = -frame * 0.003;
+        const double directionX = std::cos(yaw);
+        const double directionY = std::sin(yaw);
+        if (frame > 0)
+        {
+            bendFollowerX += bend.FrameSeconds *
+                bend.FollowerSpeedCmPerSecond * directionX;
+            bendFollowerY += bend.FrameSeconds *
+                bend.FollowerSpeedCmPerSecond * directionY;
+            bendLeaderX += bend.FrameSeconds *
+                bend.LeadSpeedCmPerSecond * directionX;
+            bendLeaderY += bend.FrameSeconds *
+                bend.LeadSpeedCmPerSecond * directionY;
+        }
+        bend.FollowerForwardX = directionX;
+        bend.FollowerForwardY = directionY;
+        bend.LeadForwardX = directionX;
+        bend.LeadForwardY = directionY;
+        bend.FollowerWorldX = bendFollowerX;
+        bend.FollowerWorldY = bendFollowerY;
+        bend.LeadOffsetX = bendLeaderX - bendFollowerX;
+        bend.LeadOffsetY = bendLeaderY - bendFollowerY;
+        const double force = boost.Observe(bend);
+        Check(frame < 3
+                  ? (force == 0.0 && !boost.IsActive())
+                  : (force > 0.0 && boost.IsActive()),
+              "64-frame opposite-handed bend retains real drafting");
+    }
+
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.
     for (int run = 0; run < 12000; ++run)
