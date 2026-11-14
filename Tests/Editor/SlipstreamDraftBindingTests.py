@@ -124,6 +124,26 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         ):
             self.assertIn(required, self.policy)
 
+
+    def test_live_vertical_physics_is_bound_into_three_dimensional_continuity(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        draft = tick.split("const bool bDraftTargetReady =", 1)[1].split(
+            "SlipstreamBoost.Suspend();", 1
+        )[0]
+        self.assertIn("static_cast<double>(Velocity.Z)", draft)
+        self.assertIn("static_cast<double>(RivalVelocity.Z)", draft)
+        self.assertLess(draft.index("RivalLateralSpeed,"),
+                        draft.index("static_cast<double>(Velocity.Z)"))
+        self.assertIn("FollowerVerticalSpeedCmPerSecond", self.policy)
+        self.assertIn("LeadVerticalSpeedCmPerSecond", self.policy)
+        self.assertIn("!std::isfinite(followerVertical)", self.policy)
+        self.assertIn("!std::isfinite(leadVertical)", self.policy)
+        self.assertIn("const double predictedZ = PreviousOffsetZ +", self.policy)
+        self.assertIn("dz - predictedZ", self.policy)
+        self.assertIn("PreviousOffsetZ = dz;", self.policy)
+        self.assertIn("std::numeric_limits<double>::quiet_NaN()", self.policy)
+
     def test_real_world_obstruction_is_required_before_draft(self):
         # A usable position alone is NOT aerodynamic line of sight.
         # An actual Unreal collision trace must be part of the existing

@@ -51,10 +51,13 @@ multiplayer positioning or a source of official race results.
   original BlockAll track barriers are configured to block visibility;
   custom future meshes must have proper collision responses. Only an
   authentic UE5.8 in-editor obstacle test can validate that configuration.
-- Consecutive **relative world positions** must also agree with the two
-  measured planar chassis-velocity vectors (forward and lateral) over the
-  current physics delta. More than **2 m** of unexplained residual relative
-  movement resets qualification immediately, even if a recovered rival lands
+- Consecutive **relative 3D world positions** must also agree with the two
+  measured chassis-velocity vectors: planar forward/lateral components and
+  the actual human/rival Chaos vertical velocities over the current physics
+  delta. Missing, nonfinite or implausibly large vertical velocities fail
+  closed, rather than assuming zero motion. More than **2 m** of unexplained
+  total 3D residual relative movement resets qualification immediately,
+  even if a recovered rival lands
   inside the legal drafting zone. This is a conservative source-only guard
   with allowances for ordinary tick-order skew, **not** proof of a genuine
   engine-verified teleport or collision detector. The first valid frame
@@ -98,7 +101,8 @@ measured excessive left/right chassis sliding on either vehicle,
 nonfinite lateral movement, 40,000 varying-speed sideways-motion cases,
 12,000 adversarial in-lane teleport traces and rotated/smooth relative travel,
 12,000 blocked physical sightline frames and post-occlusion reacquisition,
-and over-fast approach. Separate exact traction tests reject fabricated
+vertical velocity provenance, plausible airborne-lean changes, impossible
+in-lane vertical relocation and reset/reacquisition, and over-fast approach. Separate exact traction tests reject fabricated
 contact, 0–2 supporting corners and unsupported/airborne lead/follower
 states; Python source assertions verify both real Unreal bindings. They also check a 5,000-run stress sample, all
 real racer/unreal binding guards and reset paths. This verifies only

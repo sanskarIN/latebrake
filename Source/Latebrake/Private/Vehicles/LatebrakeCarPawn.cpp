@@ -1171,7 +1171,9 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             bEffectiveBraking, true,
             static_cast<double>(LateralSpeed),
             RivalLateralSpeed,
-            true // GameMode just verified an unobstructed physical sightline.
+            true, // GameMode verified an unobstructed physical sightline.
+            static_cast<double>(Velocity.Z),
+            static_cast<double>(RivalVelocity.Z)
         });
     }
     else

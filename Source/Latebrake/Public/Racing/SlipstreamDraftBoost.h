@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace latebrake
 {
@@ -29,6 +30,12 @@ struct DraftingSample final
     // Append-only so the pawn's aggregate observation keeps its existing
     // measured lateral-speed ordering. Defaults closed on missing proof.
     bool ClearPhysicalDraftPath = false;
+    // Both genuine Chaos Z velocities are required. Missing observations
+    // fail closed rather than silently treating unobserved motion as zero.
+    double FollowerVerticalSpeedCmPerSecond =
+        std::numeric_limits<double>::quiet_NaN();
+    double LeadVerticalSpeedCmPerSecond =
+        std::numeric_limits<double>::quiet_NaN();
 };
 
 class SlipstreamDraftBoost final
@@ -61,6 +68,7 @@ public:
         HavePreviousOffset = false;
         PreviousOffsetX = 0.0;
         PreviousOffsetY = 0.0;
+        PreviousOffsetZ = 0.0;
     }
     void Suspend() noexcept { Reset(); }
 
@@ -81,6 +89,9 @@ public:
         const double followerLateral =
             sample.FollowerLateralSpeedCmPerSecond;
         const double leadLateral = sample.LeadLateralSpeedCmPerSecond;
+        const double followerVertical =
+            sample.FollowerVerticalSpeedCmPerSecond;
+        const double leadVertical = sample.LeadVerticalSpeedCmPerSecond;
         const double throttle = sample.ForwardThrottle;
         if (!sample.EligibleHumanRace || !sample.ClearPhysicalDraftPath ||
             sample.Braking ||
@@ -95,6 +106,10 @@ public:
             !std::isfinite(dz) || !std::isfinite(throttle) ||
             !std::isfinite(followerLateral) ||
             !std::isfinite(leadLateral) ||
+            !std::isfinite(followerVertical) ||
+            !std::isfinite(leadVertical) ||
+            std::abs(followerVertical) > 10000.0 ||
+            std::abs(leadVertical) > 10000.0 ||
             throttle < 0.30 || throttle > 1.0)
         {
             Reset();
@@ -137,7 +152,7 @@ public:
         }
         // The pair must remain physically continuous, not just pass each
         // independent in-lane snapshot. Predict relative world displacement
-        // from *both* measured planar velocity vectors over this frame.
+        // from *both* measured 3D velocity vectors over this frame.
         // A recover/teleport can preserve an otherwise eligible 7-38m gap;
         // such a jump must discard the old 0.18s confirmation window.
         if (HavePreviousOffset)
@@ -148,7 +163,11 @@ public:
             const double leadVy = lead * by + leadLateral * bx;
             const double predictedX = PreviousOffsetX + dt * (leadVx - followerVx);
             const double predictedY = PreviousOffsetY + dt * (leadVy - followerVy);
-            const double residual = std::hypot(dx - predictedX, dy - predictedY);
+            const double predictedZ = PreviousOffsetZ +
+                dt * (leadVertical - followerVertical);
+            const double residual = std::hypot(
+                std::hypot(dx - predictedX, dy - predictedY),
+                dz - predictedZ);
             if (!std::isfinite(residual) ||
                 residual > MaxRelativeMotionResidualCm)
             {
@@ -158,6 +177,7 @@ public:
         }
         PreviousOffsetX = dx;
         PreviousOffsetY = dy;
+        PreviousOffsetZ = dz;
         HavePreviousOffset = true;
         EligibleSeconds = std::min(ConfirmSeconds, EligibleSeconds + dt);
         if (EligibleSeconds < ConfirmSeconds)
@@ -183,6 +203,7 @@ private:
     double ExtraForceFraction = 0.0;
     double PreviousOffsetX = 0.0;
     double PreviousOffsetY = 0.0;
+    double PreviousOffsetZ = 0.0;
     bool HavePreviousOffset = false;
 };
 } // namespace latebrake

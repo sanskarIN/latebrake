@@ -26,6 +26,8 @@ latebrake::DraftingSample Sample(double gap = 1200.0, double lateral = 0.0)
     s.ForwardThrottle = 1.0;
     s.EligibleHumanRace = true;
     s.ClearPhysicalDraftPath = true;
+    s.FollowerVerticalSpeedCmPerSecond = 0.0;
+    s.LeadVerticalSpeedCmPerSecond = 0.0;
     return s;
 }
 void Confirm(latebrake::SlipstreamDraftBoost& boost,
@@ -116,6 +118,26 @@ int main()
         Reject(s, "nonfinite rival lateral velocity cannot grant draft");
     }
 
+
+    // Missing/nonphysical vertical observations must fail closed even
+    // if every planar sample otherwise looks like a valid drafting lane.
+    for (const double invalid : {bad, inf, -inf})
+    {
+        auto s = Sample(); s.FollowerVerticalSpeedCmPerSecond = invalid;
+        Reject(s, "invalid follower vertical velocity clears draft");
+        s = Sample(); s.LeadVerticalSpeedCmPerSecond = invalid;
+        Reject(s, "invalid lead vertical velocity clears draft");
+    }
+    {auto s = Sample(); s.FollowerVerticalSpeedCmPerSecond = 10001.0;
+        Reject(s, "implausibly fast vertical follower denied");}
+    {auto s = Sample(); s.LeadVerticalSpeedCmPerSecond = -10001.0;
+        Reject(s, "implausibly fast vertical leader denied");}
+    {auto s = Sample(); s.FollowerVerticalSpeedCmPerSecond = bad;
+        boost.Reset();
+        Check(boost.Observe(s) == 0.0 && !boost.IsActive() &&
+              boost.QualifiedSeconds() == 0.0,
+              "missing Z evidence on an uninitialized frame is closed");}
+
     // Physically admissible side slip at both boundaries still receives
     // help, but a single sideways frame immediately clears all stored
     // eligibility rather than silently resuming at the prior duration.
@@ -198,6 +220,26 @@ int main()
     Check(boost.Observe(north) == 0.0 && !boost.IsActive() &&
           boost.QualifiedSeconds() == 0.0,
           "northbound in-lane jump also clears drafting");
+
+
+    // Physically consistent vertical motion may preserve drafting; an
+    // impossible up/down displacement within the usual 2.3 m geometry
+    // envelope must not inherit an earned boost or confirmation time.
+    boost.Reset();
+    auto rising = Sample();
+    rising.FollowerVerticalSpeedCmPerSecond = 80.0;
+    rising.LeadVerticalSpeedCmPerSecond = 280.0;
+    Confirm(boost, rising);
+    rising.LeadOffsetZ = 10.0; // (280 - 80) cm/s * 0.05s
+    Check(boost.Observe(rising) > 0.0 && boost.IsActive(),
+          "measured ordinary relative 3D motion preserves drafting");
+    rising.LeadOffsetZ = -220.0; // valid gap, but incompatible with velocity
+    Check(boost.Observe(rising) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "same-lane vertical relocation immediately revokes 3D drafting");
+    Check(boost.Observe(rising) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "post-vertical-jump frames must earn a fresh confirmation window");
 
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.
