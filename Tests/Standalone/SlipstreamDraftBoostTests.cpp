@@ -296,6 +296,45 @@ int main()
           boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
           "post-vertical-jump frames must earn a fresh confirmation window");
 
+    // The total 2m three-axis tolerance alone permits a 90cm vertical
+    // relocation inside a perfectly ordinary drafting height window.
+    // Unmeasured modest tick-order position skew is tolerated, but an
+    // impossible isolated vertical jump immediately revokes earned credit.
+    boost.Reset();
+    Confirm(boost);
+    auto deceptiveRise = Sample();
+    deceptiveRise.LeadOffsetZ = 60.0;
+    Check(boost.Observe(deceptiveRise) > 0.0 && boost.IsActive(),
+          "small vertical observation skew preserves a qualified draft");
+    deceptiveRise.LeadOffsetZ = 150.0; // 90cm unreported delta, <2m 3D
+    Check(boost.Observe(deceptiveRise) == 0.0 && !boost.IsActive() &&
+          boost.QualifiedSeconds() == 0.0,
+          "90cm impossible vertical relocation fails the independent Z gate");
+    Check(boost.Observe(deceptiveRise) == 0.0 &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "isolated Z jump cannot reuse previous confirmation time");
+    for (int frame = 0; frame < 3; ++frame)
+    {
+        boost.Observe(deceptiveRise);
+    }
+    Check(boost.IsActive(),
+          "stable recovered real Z separation may qualify again");
+
+    // A 75cm residual boundary is eligible; the Z policy must reject
+    // only strictly beyond tolerance while preserving the wider 3D gate.
+    boost.Reset();
+    Confirm(boost);
+    auto boundedVerticalSkew = Sample();
+    boundedVerticalSkew.LeadOffsetZ =
+        SlipstreamDraftBoost::MaxVerticalMotionResidualCm;
+    Check(boost.Observe(boundedVerticalSkew) > 0.0 && boost.IsActive(),
+          "vertical threshold itself is inclusive");
+    boundedVerticalSkew.LeadOffsetZ += 0.01 +
+        SlipstreamDraftBoost::MaxVerticalMotionResidualCm;
+    Check(boost.Observe(boundedVerticalSkew) == 0.0 &&
+          boost.QualifiedSeconds() == 0.0,
+          "vertical continuity denies threshold exceedance in one frame");
+
     // 12k independent discontinuous in-lane snapshots must never inherit
     // an old qualification, even when both headings and speeds are valid.
     for (int run = 0; run < 12000; ++run)

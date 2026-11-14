@@ -60,9 +60,11 @@ multiplayer positioning or a source of official race results.
   the actual human/rival Chaos vertical velocities over the current physics
   delta. Missing, nonfinite or implausibly large vertical velocities fail
   closed, rather than assuming zero motion. More than **2 m** of unexplained
-  total 3D residual relative movement resets qualification immediately,
-  even if a recovered rival lands
-  inside the legal drafting zone. This is a conservative source-only guard
+  total 3D residual relative movement resets qualification immediately.
+  An independent **75 cm vertical residual** ceiling also rejects smaller
+  unexplained Z relocations that could fit inside the full 2.3 m vertical
+  eligibility zone and the wider 2 m three-axis tolerance, even if the
+  rival remains inside an otherwise legal drafting zone. This is a conservative source-only guard
   with allowances for ordinary tick-order skew, **not** proof of a genuine
   engine-verified teleport or collision detector. The first valid frame
   establishes a new baseline without granting a boost.

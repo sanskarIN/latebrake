@@ -141,6 +141,9 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("!std::isfinite(leadVertical)", self.policy)
         self.assertIn("const double predictedZ = PreviousOffsetZ +", self.policy)
         self.assertIn("dz - predictedZ", self.policy)
+        self.assertIn("MaxVerticalMotionResidualCm = 75.0", self.policy)
+        self.assertIn("std::abs(verticalResidual) > MaxVerticalMotionResidualCm",
+                      self.policy)
         self.assertIn("PreviousOffsetZ = dz;", self.policy)
         self.assertIn("std::numeric_limits<double>::quiet_NaN()", self.policy)
 

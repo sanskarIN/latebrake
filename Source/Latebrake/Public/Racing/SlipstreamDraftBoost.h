@@ -60,6 +60,10 @@ public:
     // Admit ordinary tick-order/velocity-estimation skew without carrying
     // drafting credit across an apparent rival teleport inside the lane.
     static constexpr double MaxRelativeMotionResidualCm = 200.0;
+    // A vertical jump can hide inside the wider 3D allowance while
+    // staying under the legal 2.3m height envelope. Check Z separately:
+    // an unmeasured 0.9m rise in a 50ms frame is NOT normal continuity.
+    static constexpr double MaxVerticalMotionResidualCm = 75.0;
 
     void Reset() noexcept
     {
@@ -185,7 +189,9 @@ public:
             const double residual = std::hypot(
                 std::hypot(dx - predictedX, dy - predictedY),
                 dz - predictedZ);
+            const double verticalResidual = dz - predictedZ;
             if (!std::isfinite(residual) ||
+                std::abs(verticalResidual) > MaxVerticalMotionResidualCm ||
                 residual > MaxRelativeMotionResidualCm)
             {
                 Reset();
