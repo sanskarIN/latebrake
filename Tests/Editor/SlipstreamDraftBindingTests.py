@@ -124,6 +124,88 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         ):
             self.assertIn(required, self.policy)
 
+
+    def test_live_rival_identity_cannot_transfer_existing_draft_credit(self):
+        state = self.mode.split(
+            "bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(", 1
+        )[1].split("int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps()", 1)[0]
+        self.assertIn("uint32& OutIdentity) const", state)
+        self.assertIn("RivalCar->GetUniqueID()", state)
+        self.assertIn("if (RivalIdentity == 0)", state)
+        self.assertIn("OutIdentity = RivalIdentity;", state)
+        self.assertIn("uint32& OutIdentity) const;", self.mode_h)
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        self.assertIn("uint32 RivalIdentity = 0;", tick)
+        self.assertIn("this, RivalPosition, RivalForward, RivalVelocity,",
+                      tick)
+        self.assertIn("static_cast<std::uint64_t>(RivalIdentity)", tick)
+        for field in ("X", "Y", "Z"):
+            self.assertIn(f"static_cast<double>(Position.{field})", tick)
+        self.assertIn("PreviousFollowerWorldX = followerWorldX;", self.policy)
+        self.assertIn("PreviousFollowerWorldY = followerWorldY;", self.policy)
+        self.assertIn("PreviousFollowerWorldZ = followerWorldZ;", self.policy)
+        self.assertIn("followerResidual > MaxRelativeMotionResidualCm",
+                      self.policy)
+        self.assertIn("const double leadWorldX = followerWorldX + dx;",
+                      self.policy)
+        self.assertIn("const double leadWorldY = followerWorldY + dy;",
+                      self.policy)
+        self.assertIn("const double leadWorldZ = followerWorldZ + dz;",
+                      self.policy)
+        self.assertIn("const double predictedLeadX =", self.policy)
+        self.assertIn("const double predictedLeadY =", self.policy)
+        self.assertIn("const double predictedLeadZ =", self.policy)
+        self.assertIn("leadResidual > MaxRelativeMotionResidualCm",
+                      self.policy)
+        self.assertIn("std::abs(leadVerticalResidual)", self.policy)
+        self.assertIn("std::abs(followerVerticalResidual)", self.policy)
+        for field in ("FollowerWorldX", "FollowerWorldY", "FollowerWorldZ"):
+            self.assertIn(f"double {field} =", self.policy)
+        self.assertIn("std::uint64_t LeadIdentity = 0;", self.policy)
+        self.assertIn("sample.LeadIdentity == 0", self.policy)
+        self.assertIn("PreviousLeadIdentity != sample.LeadIdentity",
+                      self.policy)
+        self.assertIn("PreviousLeadIdentity = sample.LeadIdentity",
+                      self.policy)
+        self.assertIn("PreviousLeadIdentity = 0;", self.policy)
+        for required in (
+            "MotionWindowSeconds = 0.0",
+            "PredictedFollowerWorldX += dt * followerVx",
+            "PredictedLeadWorldX += dt * leadVx",
+            "followerWindowResidual > MaxRelativeMotionResidualCm",
+            "leadWindowResidual > MaxRelativeMotionResidualCm",
+            "hadContinuityBaseline ? dt : 0.0",
+            "followerExpectedTravel = std::hypot(",
+            "leadExpectedTravel = std::hypot(",
+            "followerWindowResidual > followerWindowCeiling",
+            "leadWindowResidual > leadWindowCeiling",
+            "WindowStartLeadWorldX = leadWorldX;",
+        ):
+            self.assertIn(required, self.policy)
+
+    def test_live_vertical_physics_is_bound_into_three_dimensional_continuity(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        draft = tick.split("const bool bDraftTargetReady =", 1)[1].split(
+            "SlipstreamBoost.Suspend();", 1
+        )[0]
+        self.assertIn("static_cast<double>(Velocity.Z)", draft)
+        self.assertIn("static_cast<double>(RivalVelocity.Z)", draft)
+        self.assertLess(draft.index("RivalLateralSpeed,"),
+                        draft.index("static_cast<double>(Velocity.Z)"))
+        self.assertIn("FollowerVerticalSpeedCmPerSecond", self.policy)
+        self.assertIn("LeadVerticalSpeedCmPerSecond", self.policy)
+        self.assertIn("!std::isfinite(followerVertical)", self.policy)
+        self.assertIn("!std::isfinite(leadVertical)", self.policy)
+        self.assertIn("const double predictedZ = PreviousOffsetZ +", self.policy)
+        self.assertIn("dz - predictedZ", self.policy)
+        self.assertIn("MaxVerticalMotionResidualCm = 75.0", self.policy)
+        self.assertIn("std::abs(verticalResidual) > MaxVerticalMotionResidualCm",
+                      self.policy)
+        self.assertIn("PreviousOffsetZ = dz;", self.policy)
+        self.assertIn("std::numeric_limits<double>::quiet_NaN()", self.policy)
+
     def test_real_world_obstruction_is_required_before_draft(self):
         # A usable position alone is NOT aerodynamic line of sight.
         # An actual Unreal collision trace must be part of the existing
@@ -199,6 +281,13 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("SlipstreamDraftBoostTests.cpp", self.cmake)
         self.assertIn("cxx_std_20", self.cmake)
         self.assertIn("Unreal Engine 5.8", self.guide)
+        self.assertIn("source-only", self.guide.lower())
+
+    def test_native_acceptance_points_to_current_review_not_deleted_issue(self):
+        self.assertNotIn("issues/148", self.guide)
+        self.assertIn("UNREAL_NATIVE_MERGE_READINESS.md", self.guide)
+        self.assertIn("UNREAL_DRAFT_PR_VALIDATION.md", self.guide)
+        self.assertIn("PR #377", self.guide)
         self.assertIn("source-only", self.guide.lower())
 
 

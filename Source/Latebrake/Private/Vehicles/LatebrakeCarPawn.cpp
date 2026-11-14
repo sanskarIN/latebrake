@@ -1134,12 +1134,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     FVector RivalPosition = FVector::ZeroVector;
     FVector RivalForward = FVector::ZeroVector;
     FVector RivalVelocity = FVector::ZeroVector;
+    uint32 RivalIdentity = 0;
     const bool bDraftTargetReady =
         IsLocallyControlled() &&
         Cast<APlayerController>(GetController()) != nullptr &&
         Mode->HasLocalPlayerDriver() &&
         Mode->TryGetRivalDraftingState(
-            this, RivalPosition, RivalForward, RivalVelocity);
+            this, RivalPosition, RivalForward, RivalVelocity,
+            RivalIdentity);
     double DraftExtraForce = 0.0;
     // The follower and the leader must each have independently
     // qualified at least three real WorldStatic road probes. Mere
@@ -1171,7 +1173,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             bEffectiveBraking, true,
             static_cast<double>(LateralSpeed),
             RivalLateralSpeed,
-            true // GameMode just verified an unobstructed physical sightline.
+            true, // GameMode verified an unobstructed physical sightline.
+            static_cast<double>(Velocity.Z),
+            static_cast<double>(RivalVelocity.Z),
+            static_cast<std::uint64_t>(RivalIdentity),
+            static_cast<double>(Position.X),
+            static_cast<double>(Position.Y),
+            static_cast<double>(Position.Z)
         });
     }
     else

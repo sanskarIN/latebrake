@@ -26,6 +26,10 @@ multiplayer positioning or a source of official race results.
   respectively. The relative geometry must be within **7–38 m ahead**,
   less than **3.8 m lateral** and **2.3 m vertical** separation, with
   heading alignment above 0.94 and forward throttle at least 30%.
+  Both world-planar heading vectors are **normalized before** alignment,
+  physical lane/gap measurement and relative-motion prediction. This
+  prevents the accepted 5% squared-length tolerance from making
+  oblique rivals look aligned or falsely inflating near-boundary gaps.
 - Real measured relative speeds/positions/directions are supplied to
   an engine-free production C++20 policy. If the player closes more
   than 10 m/s faster than the rival, or either brakes/reverses/moves
@@ -51,18 +55,63 @@ multiplayer positioning or a source of official race results.
   original BlockAll track barriers are configured to block visibility;
   custom future meshes must have proper collision responses. Only an
   authentic UE5.8 in-editor obstacle test can validate that configuration.
-- Consecutive **relative world positions** must also agree with the two
-  measured planar chassis-velocity vectors (forward and lateral) over the
-  current physics delta. More than **2 m** of unexplained residual relative
-  movement resets qualification immediately, even if a recovered rival lands
-  inside the legal drafting zone. This is a conservative source-only guard
-  with allowances for ordinary tick-order skew, **not** proof of a genuine
+- The source sample carries a **nonzero unique live rival actor identity**
+  from Unreal `RivalCar->GetUniqueID()`. A respawned/replaced rival that
+  occupies the same position with the same apparent velocity must earn a
+  **new uninterrupted 0.18-second window**. A missing/zero identity fails
+  closed; an identity change cannot reuse the old motor-force credit.
+- The actual follower chassis world-space position is also monitored
+  independently against its measured forward, lateral and Z velocities.
+  When **both** cars jump together, their unchanged relative gap would
+  otherwise fool a relative-only motion check. More than 2m of unexplained
+  player world movement or 75cm unexplained player vertical movement revokes
+  eligibility, even if the ahead, lane and 3D relative offsets remain legal.
+  Missing/nonfinite follower coordinates fail closed. This is source-only
+  until actual UE5.8 physics, world-origin, restart and teleport tests.
+- The rival's **independent absolute world-space trajectory** is
+  reconstructed from the measured player position and physical rival
+  offset, then compared with the rival's own 3D velocity. This prevents
+  two separately tolerated residuals (player travel and relative gap)
+  from combining into a much larger rival displacement. The same 2m
+  three-axis and 75cm vertical safety ceilings apply to each chassis
+  **independently** as well as to their relative geometry. Invalid
+  rival world reconstructions reset eligibility; standalone tests cover
+  2.55m hidden lead relocations, 1.2m hidden vertical movement and
+  physically consistent high-speed/cornering trajectories.
+- Consecutive **relative 3D world positions** must also agree with the two
+  measured chassis-velocity vectors: planar forward/lateral components and
+  the actual human/rival Chaos vertical velocities over the current physics
+  delta. Missing, nonfinite or implausibly large vertical velocities fail
+  closed, rather than assuming zero motion. More than **2 m** of unexplained
+  total 3D residual relative movement resets qualification immediately.
+  An independent **75 cm vertical residual** ceiling also rejects smaller
+  unexplained Z relocations that could fit inside the full 2.3 m vertical
+  eligibility zone and the wider 2 m three-axis tolerance, even if the
+  rival remains inside an otherwise legal drafting zone. This is a
+  conservative source-only guard with allowances for ordinary tick-order
+  skew, **not** proof of a genuine
   engine-verified teleport or collision detector. The first valid frame
   establishes a new baseline without granting a boost.
-- Drafting must remain continuously eligible for **0.18 seconds** before
-  granting help; an invalid frame, stale/missing rival, teleport,
-  sideways-slide excess or input interruption clears the entire
-  confirmation window.
+- Drafting must remain continuously eligible for **0.18 seconds of
+  observed physical movement after the first valid baseline sample**
+  before granting help. A first position reading alone adds **zero**
+  qualified time. Each successive sample must satisfy both individual
+  per-frame 3D continuity **and cumulative displacement over a rolling
+  0.18-second window**, measured against independently integrated real
+  follower and lead chassis velocities. This specifically denies a
+  frozen coordinate stream that still reports 24m/s: every 50ms local
+  error would be below 2m, but the accumulated discrepancy cannot
+  qualify. At the end of each complete interval, both cars must
+  additionally keep displacement error below **half the individually
+  predicted 3D travel**, with 40 cm low-end sampling tolerance and a
+  hard 200 cm ceiling. This closes the 10m/s minimum-speed rival
+  loophole where its entire 0.18–0.20s expected travel was less than or
+  equal to the older 200 cm absolute tolerance. Correct low-speed
+  movement and modest tick-order skew remain eligible. The window
+  refreshes after a *validated* full interval so high-speed curves
+  do not accumulate lifetime-long prediction drift.
+  Any invalid frame, stale/missing rival, teleport, sideways-slide
+  excess or input interruption clears the entire confirmation window.
 - A qualified position yields at most **+6% additive motor force**.
   Greater distance or lateral separation reduces the benefit. The
   existing baseline motor force, frame-stable damping, top-speed cap,
@@ -98,7 +147,9 @@ measured excessive left/right chassis sliding on either vehicle,
 nonfinite lateral movement, 40,000 varying-speed sideways-motion cases,
 12,000 adversarial in-lane teleport traces and rotated/smooth relative travel,
 12,000 blocked physical sightline frames and post-occlusion reacquisition,
-and over-fast approach. Separate exact traction tests reject fabricated
+vertical velocity provenance, plausible airborne-lean changes, impossible
+in-lane vertical relocation and reset/reacquisition, near-unit input headings
+with angular spoofing, near-edge lane/gap measurements, and over-fast approach. Separate exact traction tests reject fabricated
 contact, 0–2 supporting corners and unsupported/airborne lead/follower
 states; Python source assertions verify both real Unreal bindings. They also check a 5,000-run stress sample, all
 real racer/unreal binding guards and reset paths. This verifies only
@@ -129,6 +180,10 @@ portable logic and static Unreal-source wiring.
    game saves or credit awards; preserve genuine engine logs and
    observed hardware results. Test Android rendering separately.
 
-Until verified on installed packages and
-[playable milestone #148](https://github.com/sanskarIN/latebrake/issues/148)
-is qualified, this remains an unverified **source-only** feature.
+Until the exact PR #377 head passes genuine UE5.8 Editor/UHT,
+source-provenanced cooked Win64 packaging and installed Windows driving
+acceptance per the
+[maintained native merge-evidence checklist](UNREAL_NATIVE_MERGE_READINESS.md)
+and [manual draft PR validation](UNREAL_DRAFT_PR_VALIDATION.md),
+this remains an unverified **source-only** feature.
+The former issue #148 was deleted and cannot authorize gameplay release.
