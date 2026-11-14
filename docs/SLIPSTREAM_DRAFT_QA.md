@@ -26,6 +26,10 @@ multiplayer positioning or a source of official race results.
   respectively. The relative geometry must be within **7–38 m ahead**,
   less than **3.8 m lateral** and **2.3 m vertical** separation, with
   heading alignment above 0.94 and forward throttle at least 30%.
+  Both world-planar heading vectors are **normalized before** alignment,
+  physical lane/gap measurement and relative-motion prediction. This
+  prevents the accepted 5% input-vector length tolerance from making
+  oblique rivals look aligned or falsely inflating near-boundary gaps.
 - Real measured relative speeds/positions/directions are supplied to
   an engine-free production C++20 policy. If the player closes more
   than 10 m/s faster than the rival, or either brakes/reverses/moves
@@ -102,7 +106,8 @@ nonfinite lateral movement, 40,000 varying-speed sideways-motion cases,
 12,000 adversarial in-lane teleport traces and rotated/smooth relative travel,
 12,000 blocked physical sightline frames and post-occlusion reacquisition,
 vertical velocity provenance, plausible airborne-lean changes, impossible
-in-lane vertical relocation and reset/reacquisition, and over-fast approach. Separate exact traction tests reject fabricated
+in-lane vertical relocation and reset/reacquisition, near-unit input headings
+with angular spoofing, near-edge lane/gap measurements, and over-fast approach. Separate exact traction tests reject fabricated
 contact, 0–2 supporting corners and unsupported/airborne lead/follower
 states; Python source assertions verify both real Unreal bindings. They also check a 5,000-run stress sample, all
 real racer/unreal binding guards and reset paths. This verifies only
