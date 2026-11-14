@@ -138,6 +138,58 @@ int main()
               boost.QualifiedSeconds() == 0.0,
               "missing Z evidence on an uninitialized frame is closed");}
 
+    // Unit-axis normalization keeps slightly imperfect source vectors
+    // from falsifying true chassis alignment. The raw dot product of two
+    // 5%-long headings can exceed 0.94 even at a physically invalid angle.
+    boost.Reset();
+    auto scaledAndSkewed = Sample();
+    const double permittedScale = std::sqrt(1.05);
+    scaledAndSkewed.FollowerForwardX = permittedScale;
+    scaledAndSkewed.FollowerForwardY = 0.0;
+    scaledAndSkewed.LeadForwardX = permittedScale * std::cos(0.43);
+    scaledAndSkewed.LeadForwardY = permittedScale * std::sin(0.43);
+    Check(scaledAndSkewed.FollowerForwardX *
+              scaledAndSkewed.LeadForwardX >
+              SlipstreamDraftBoost::MinimumHeadingAlignment,
+          "adversarial raw scaled dot appears aligned");
+    Check(std::cos(0.43) <
+              SlipstreamDraftBoost::MinimumHeadingAlignment,
+          "adversarial normalized angle is actually disallowed");
+    Reject(scaledAndSkewed,
+           "scaled headings cannot fake the physical alignment threshold");
+
+    // A valid slightly nonunit direction remains accepted after both
+    // axes are normalized; the 5% source tolerance is not a false
+    // rejection of small heading-axis measurement error.
+    boost.Reset();
+    auto scaledAndAligned = Sample();
+    scaledAndAligned.FollowerForwardX = permittedScale;
+    scaledAndAligned.LeadForwardX = permittedScale * std::cos(0.32);
+    scaledAndAligned.LeadForwardY = permittedScale * std::sin(0.32);
+    Confirm(boost, scaledAndAligned);
+    Check(boost.IsActive(),
+          "properly aligned near-boundary headings retain drafting");
+
+    // Planar gap, lane lateral distance and predicted relative motion
+    // must use normalized axes, not a fictitious 5% longer heading.
+    boost.Reset();
+    auto scaledForward = Sample(3780.0);
+    scaledForward.FollowerForwardX = permittedScale;
+    scaledForward.LeadForwardX = permittedScale;
+    Check(boost.Observe(scaledForward) == 0.0 &&
+          boost.QualifiedSeconds() < SlipstreamDraftBoost::ConfirmSeconds,
+          "true gap near 38m remains eligible before boost confirmation");
+    Confirm(boost, scaledForward);
+    Check(boost.IsActive(),
+          "normalization prevents false far-edge gap rejection");
+    boost.Reset();
+    auto scaledSide = Sample(1200.0, 372.0);
+    scaledSide.FollowerForwardX = permittedScale;
+    scaledSide.LeadForwardX = permittedScale;
+    Confirm(boost, scaledSide);
+    Check(boost.IsActive(),
+          "normalization prevents near-edge lane offset inflation");
+
     // Physically admissible side slip at both boundaries still receives
     // help, but a single sideways frame immediately clears all stored
     // eligibility rather than silently resuming at the prior duration.
