@@ -38,6 +38,10 @@ jobs:
     if: github.repository == 'sanskarIN/latebrake' && github.actor == 'sanskarIN' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, Windows, X64, unreal-5-8]
     timeout-minutes: 180
+    outputs:
+      # Pass ONLY the SHA previously authenticated against live GitHub PR
+      # metadata. The separate hosted post-build job will reauthenticate it.
+      verified_sha: ${{ steps.authorize.outputs.verified_sha }}
     steps:
       # The workflow comes from main. Do not checkout, run actions, load
       # artifacts or execute any code from a PR before authenticating it.
@@ -184,7 +188,7 @@ jobs:
         if: inputs.validation == 'Win64' && success()
         uses: actions/upload-artifact@v4
         with:
-          name: UNVERIFIED-UE58-Win64-PR${{ inputs.pr_number }}-${{ github.run_id }}
+          name: UNVERIFIED-UE58-Win64-PR${{ inputs.pr_number }}-${{ steps.authorize.outputs.verified_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.verify_host.outputs.candidate_output }}/
           if-no-files-found: error
           compression-level: 0
@@ -225,3 +229,71 @@ jobs:
             }
           }
           Remove-Item -LiteralPath $target -Recurse -Force
+
+  # A successful native job may have taken hours. The PR owner could push
+  # a replacement head WHILE the engine was compiling. On a SEPARATE
+  # GitHub-hosted runner (never on the machine that executed PR scripts),
+  # reauthenticate live PR identity AFTER the build and artifact handoff.
+  # A superseded source revision MUST NOT produce a green validation run.
+  postbuild-source-identity:
+    name: Reauthenticate built PR SHA after native build (NO game QA)
+    needs: [trusted-draft-candidate]
+    if: >-
+      github.repository == 'sanskarIN/latebrake' &&
+      github.actor == 'sanskarIN' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # Never checkout the PR here, download candidate artifacts, or touch
+      # source-executing self-hosted workspaces. Only read live GitHub API.
+      - name: Check post-build current owner PR and exact built SHA
+        uses: actions/github-script@v7
+        env:
+          NATIVE_VERIFIED_SHA: ${{ needs.trusted-draft-candidate.outputs.verified_sha }}
+          REQUESTED_PR: ${{ inputs.pr_number }}
+          REQUESTED_SHA: ${{ inputs.expected_head_sha }}
+          NATIVE_VALIDATION: ${{ inputs.validation }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const expected = process.env.REQUESTED_SHA.toLowerCase();
+            const built = process.env.NATIVE_VERIFIED_SHA;
+            const number = Number(process.env.REQUESTED_PR);
+            const mode = process.env.NATIVE_VALIDATION;
+            if (owner !== 'sanskarIN' || repo !== 'latebrake' ||
+                context.actor !== 'sanskarIN' ||
+                context.eventName !== 'workflow_dispatch' ||
+                context.ref !== 'refs/heads/main' ||
+                !/^[0-9a-f]{40}$/.test(expected) ||
+                !/^[0-9a-f]{40}$/.test(built) ||
+                !Number.isSafeInteger(number) || number < 1 ||
+                !['Editor', 'Win64'].includes(mode) ||
+                expected !== built) {
+              throw new Error('Built SHA, input, owner, mode or dispatch identity mismatch');
+            }
+            const response = await github.rest.pulls.get({
+              owner, repo, pull_number: number,
+            });
+            const pr = response.data;
+            if (pr.state !== 'open' || pr.base?.ref !== 'main' ||
+                pr.head?.repo?.full_name !== context.repo.owner + '/' + repo ||
+                pr.head?.user?.login !== 'sanskarIN' ||
+                pr.head?.sha !== built) {
+              throw new Error(
+                'PR head changed, closed, retargeted or became ineligible DURING native build; ' +
+                'old native evidence is stale and cannot certify the current PR.');
+            }
+            core.summary.addHeading('LateBrake native PR source identity handoff', 2);
+            core.summary.addRaw('PR #' + number + ' · ' + mode +
+              ' · exactly built commit `' + built + '`.');
+            core.summary.addRaw(
+              ' Live owner PR head still matches AFTER native build. ' +
+              '**No installed gameplay, handling, visuals or release is certified.**');
+            await core.summary.write();
+            core.notice('Post-build live PR head verified at ' + built +
+              '; installed Win64 driving QA is still required.');
