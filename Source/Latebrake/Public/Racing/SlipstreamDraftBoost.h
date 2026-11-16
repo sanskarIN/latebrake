@@ -215,6 +215,32 @@ public:
             Reset();
             return 0.0;
         }
+        // Both signed lateral-speed observations must agree with the
+        // independently measured Chaos world XY velocities. A stale or
+        // mis-scaled right-axis projection must not disguise a skidding
+        // chassis as a forward-only aerodynamic target. Allow small
+        // tick-order/projection error (50-120 cm/s) but never an arbitrary
+        // near-5m/s lateral slip hidden behind reported zero.
+        const double followerWorldLateral =
+            -followerWorldVelocityX * fwdY + followerWorldVelocityY * fwdX;
+        const double leadWorldLateral =
+            -leadWorldVelocityX * leadY + leadWorldVelocityY * leadX;
+        const double followerSlipObservationTolerance = std::min(
+            120.0, 50.0 + 0.02 *
+                std::hypot(followerWorldVelocityX, followerWorldVelocityY));
+        const double leadSlipObservationTolerance = std::min(
+            120.0, 50.0 + 0.02 *
+                std::hypot(leadWorldVelocityX, leadWorldVelocityY));
+        if (!std::isfinite(followerWorldLateral) ||
+            !std::isfinite(leadWorldLateral) ||
+            std::abs(followerWorldLateral - followerLateral) >
+                followerSlipObservationTolerance ||
+            std::abs(leadWorldLateral - leadLateral) >
+                leadSlipObservationTolerance)
+        {
+            Reset();
+            return 0.0;
+        }
         // Both chassis must travel primarily FORWARD rather than merely
         // point in the same direction while sliding sideways. These are
         // actual per-body world velocity projections, not yaw estimates.

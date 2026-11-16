@@ -100,11 +100,12 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         for required in (
             "FVector::DotProduct(RivalVelocity, RivalForward)",
             "const double RivalLateralSpeed = FVector::DotProduct(",
-            "FVector(-RivalForward.Y, RivalForward.X, 0.f)",
+            "FVector(-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
             "static_cast<double>(LateralSpeed)",
             "RivalLateralSpeed",
         ):
             self.assertIn(required, draft)
+        self.assertIn("RivalVelocity, RivalPlanarRight)", draft)
         self.assertLess(
             draft.index("const double RivalLateralSpeed ="),
             draft.index("SlipstreamBoost.Observe({"))
@@ -205,6 +206,17 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("const double leadVy = leadWorldVelocityY;", self.policy)
         self.assertIn("followerNorm < 0.75", self.policy)
         self.assertIn("followerPlanarForward < 0.70 * follower", self.policy)
+        for required in (
+            "const double followerWorldLateral =",
+            "const double leadWorldLateral =",
+            "followerWorldLateral - followerLateral",
+            "leadWorldLateral - leadLateral",
+            "followerSlipObservationTolerance",
+            "leadSlipObservationTolerance",
+        ):
+            self.assertIn(required, self.policy)
+        self.assertIn("FVector(-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
+                      draft)
         self.assertIn("leadPlanarForward < 0.70 * lead", self.policy)
         self.assertIn("leadNorm < 0.75", self.policy)
         self.assertNotIn("follower * fwdX - followerLateral * fwdY", self.policy)

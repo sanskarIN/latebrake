@@ -296,6 +296,46 @@ int main()
               boost.QualifiedSeconds() == 0.0,
               "missing Z evidence on an uninitialized frame is closed");}
 
+
+    // A physically sliding chassis can no longer forge zero lateral
+    // telemetry while its independently observed Chaos XY vector still
+    // shows hundreds of cm/s sideways movement. Reject the FIRST sample
+    // without carrying any old qualified boost across a spoofed reading.
+    for (bool followerSliding : {true, false})
+    {
+        boost.Reset();
+        Confirm(boost);
+        auto misreportedSlip = WithMeasuredPlanarVelocities(Sample());
+        if (followerSliding)
+        {
+            misreportedSlip.FollowerWorldVelocityY = 650.0;
+        }
+        else
+        {
+            misreportedSlip.LeadWorldVelocityY = -650.0;
+        }
+        Check(boost.Observe(misreportedSlip) == 0.0 &&
+              !boost.IsActive() && boost.QualifiedSeconds() == 0.0,
+              "independent XY velocity rejects concealed lateral sliding");
+    }
+
+    // Small genuinely plausible tick-order differences must still allow
+    // uninterrupted 0.18-second confirmation on both chassis, not make
+    // the new source-provenance check overly sensitive to tiny XY jitter.
+    boost.Reset();
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        auto smallLateralSkew = WithMeasuredPlanarVelocities(Sample());
+        smallLateralSkew.FollowerWorldVelocityY = 25.0;
+        smallLateralSkew.LeadWorldVelocityY = 25.0;
+        smallLateralSkew.FollowerWorldX = 120.0 * frame;
+        smallLateralSkew.FollowerWorldY = 1.25 * frame;
+        smallLateralSkew.LeadOffsetX = 1200.0 - 5.0 * frame;
+        const double force = boost.Observe(smallLateralSkew);
+        Check(frame < 4 ? force == 0.0 : force > 0.0,
+              "small measured XY lateral offset retains physically continuous draft");
+    }
+
     // Unit-axis normalization keeps slightly imperfect source vectors
     // from falsifying true chassis alignment. The raw dot product of two
     // slightly oversized headings can pass a raw dot-product check

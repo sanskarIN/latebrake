@@ -1162,9 +1162,13 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // as important as the player's observed chassis lateral slip.
         // Two similarly facing cars can still be sliding across the
         // circuit: those frames must never accumulate drafting credit.
+        // For pitched chassis, raw planar cross-axis has length cos(pitch).
+        // Normalize the actual planar right axis so the rival's sideways
+        // speed is never silently underreported on slopes or crests.
+        const FVector RivalPlanarRight = FVector(
+            -RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();
         const double RivalLateralSpeed = FVector::DotProduct(
-            RivalVelocity,
-            FVector(-RivalForward.Y, RivalForward.X, 0.f));
+            RivalVelocity, RivalPlanarRight);
         DraftExtraForce = SlipstreamBoost.Observe({
             static_cast<double>(DeltaSeconds),
             FollowerSignedForwardSpeed,

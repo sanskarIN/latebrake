@@ -39,6 +39,14 @@ multiplayer positioning or a source of official race results.
   must remain at or below **25% of that car's own forward speed** and
   at or below **5 m/s**, whichever is smaller. Identically facing but
   broadside-sliding cars no longer qualify as an aerodynamic pair.
+  Both independent right-axis velocity readings are cross-checked against
+  the measured world XY velocity and normalized planar heading, with a
+  bounded 50-120 cm/s observation tolerance; a falsely reported zero
+  lateral speed cannot mask a strong physical slide. The rival's right
+  axis is normalized so an inclined forward heading cannot shrink its
+  sampled lateral speed. These are source-only safeguards until native
+  gameplay verifies road contact, actual slope orientation and the
+  30/60/120 FPS traces.
   Both measurements are supplied directly from the human's Chaos body
   and the rival's real world velocity, not inferred from heading
   or a frozen HUD reading. Reverse slip sign has no effect on the cap.
