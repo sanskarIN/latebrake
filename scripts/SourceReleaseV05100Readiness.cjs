@@ -221,6 +221,49 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
     tests.includes('bounded slow-leader tick skew remains accepted'),
     'Reviewed physical-3D/identity-aware draft code or regression absent from main');
 
+
+  // Full-3D speed is NOT an XY world-velocity observation. Require the
+  // newer exact Chaos-vector binding and the separate sideways-slip
+  // provenance guards before the one-shot source publisher may proceed.
+  // Read-only source checks are still NOT licensed UE/UHT or installed QA.
+  const measuredMotionEvidence = [
+    [policy, [
+      'double FollowerWorldVelocityX =', 'double FollowerWorldVelocityY =',
+      'double LeadWorldVelocityX =', 'double LeadWorldVelocityY =',
+      'const double followerVx = followerWorldVelocityX;',
+      'const double followerVy = followerWorldVelocityY;',
+      'const double leadVx = leadWorldVelocityX;',
+      'const double leadVy = leadWorldVelocityY;',
+      'followerNorm < 0.75', 'leadNorm < 0.75',
+      'followerPlanarForward < 0.70 * follower',
+      'leadPlanarForward < 0.70 * lead',
+      'followerWorldLateral - followerLateral',
+      'leadWorldLateral - leadLateral',
+      'followerSlipObservationTolerance',
+      'leadSlipObservationTolerance',
+    ]],
+    [pawn, [
+      'FVector::DotProduct(Velocity, Forward)',
+      'const FVector RivalPlanarRight = FVector(',
+      '-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();',
+      'const double RivalLateralSpeed = FVector::DotProduct(',
+      'RivalVelocity, RivalPlanarRight)',
+      'static_cast<double>(Velocity.X)',
+      'static_cast<double>(Velocity.Y)',
+      'static_cast<double>(RivalVelocity.X)',
+      'static_cast<double>(RivalVelocity.Y)',
+    ]],
+    [tests, [
+      'genuine high-speed climbing Chaos motion keeps drafting across windows',
+      'vertical-only pitched motion is not forward drafting',
+      'independent XY velocity rejects concealed lateral sliding',
+      'small measured XY lateral offset retains physically continuous draft',
+    ]],
+  ];
+  requireState(measuredMotionEvidence.every(([source, fragments]) =>
+    fragments.every(fragment => source.includes(fragment))),
+  'Reviewed actual Chaos XY/slope/lateral-slip source or regression is absent from main');
+
   // Only exact main-source checks count. Never accept PR-head or branch-name
   // jobs as substitute for the release candidate's tested commit.
   const checks = (await api.checks.listForRef({
