@@ -22,6 +22,12 @@ The latest verified published release at the time of authoring is
   measurement is unavailable or invalid. The integrated result retains the
   0.18-second confirmation, +6% maximum drafting effect and shared +40%
   nitro/draft ceiling. Never change race progress or official lap/reward state.
+- Use directly observed world XY velocities of both Chaos chassis,
+  normalized inclined headings and a minimum 70% lane-aligned real
+  forward movement to reject fake climbing/vertical-only eligibility.
+  Independently compare true lateral XY motion against both reported slip
+  readings, with normalized rival right axis and bounded 50–120 cm/s
+  observation skew, and revoke the interval on a concealed strong skid.
 - Add portable C++ motion, invalid-input and reacquisition regressions,
   Python tests asserting actual Unreal source binding, and update drafting QA.
 
@@ -39,9 +45,14 @@ The latest verified published release at the time of authoring is
 4. Independently audit published v0.5.99 identity, current main protection,
    actual proposed tag target, the exact final release-note bytes, passing
    gates and zero attached binaries for a source-only publication.
-5. Build and test a new narrowly scoped v0.5.100 publisher **only after**
-   the final source SHA is known. Avoid reusing the v0.5.99-only publisher
-   with a new version or implying that a draft release note is publication.
+5. The narrowly scoped, manual, owner-approved v0.5.100 **SOURCE-ONLY**
+   publisher already exists on protected main at
+   `.github/workflows/publish-v05100-mainline-source.yml`. It requires
+   the exact reviewed main SHA, successful source checks, immutable
+   predecessor and explicit exact-SHA approval. Do **not** dispatch it
+   before the qualifying PR #377 native acceptance and merge, the final
+   committed notes and a successful read-only source preflight; it does
+   not build or attach playable Windows executables.
 6. An owner must explicitly authorize publication of the **specific SHA**.
    Never retag, overwrite, or recreate the v0.5.99 release.
 

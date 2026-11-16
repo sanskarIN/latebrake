@@ -323,6 +323,30 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("Unreal Engine 5.8", self.guide)
         self.assertIn("source-only", self.guide.lower())
 
+    def test_next_source_release_notes_cover_current_measured_physics(self):
+        notes = read("docs/releases/v0.5.100.md")
+        plan = read("docs/PLANNED_V05100_RELEASE_GATE.md")
+        for required in (
+            "SOURCE-ONLY PRE-RELEASE",
+            "NO PLAYABLE WINDOWS EXECUTABLE",
+            "measured Chaos world XY",
+            "70% real lane-aligned XY forward",
+            "rival planar right axis is normalized",
+            "50–120 cm/s",
+            "40-frame 29.8-degree high-speed",
+            "No licensed UE5.8",
+        ):
+            self.assertIn(required, notes)
+        for required in (
+            "publish-v05100-mainline-source.yml",
+            "exact reviewed main SHA",
+            "Do **not** dispatch it",
+            "70% lane-aligned",
+            "normalized rival right axis",
+        ):
+            self.assertIn(required, plan)
+        self.assertNotIn("source-only means a playable game", notes.lower())
+
     def test_native_acceptance_points_to_current_review_not_deleted_issue(self):
         self.assertNotIn("issues/148", self.guide)
         self.assertIn("UNREAL_NATIVE_MERGE_READINESS.md", self.guide)
