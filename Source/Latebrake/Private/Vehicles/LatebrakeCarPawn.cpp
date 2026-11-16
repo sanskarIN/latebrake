@@ -1151,6 +1151,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         const FVector Position = GetActorLocation();
         const FVector Offset = RivalPosition - Position;
+        // Match both cars' signed forward speeds in full 3D on a grade.
+        // Gameplay traction still uses its existing planar longitudinal
+        // speed; this observation changes drafting eligibility only.
+        const double FollowerSignedForwardSpeed =
+            FVector::DotProduct(Velocity, Forward);
         const double RivalSignedForwardSpeed =
             FVector::DotProduct(RivalVelocity, RivalForward);
         // The rival's true world-velocity right-axis component is just
@@ -1162,7 +1167,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             FVector(-RivalForward.Y, RivalForward.X, 0.f));
         DraftExtraForce = SlipstreamBoost.Observe({
             static_cast<double>(DeltaSeconds),
-            static_cast<double>(LongitudinalSpeed),
+            FollowerSignedForwardSpeed,
             RivalSignedForwardSpeed,
             static_cast<double>(Forward.X), static_cast<double>(Forward.Y),
             static_cast<double>(RivalForward.X),
@@ -1179,7 +1184,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<std::uint64_t>(RivalIdentity),
             static_cast<double>(Position.X),
             static_cast<double>(Position.Y),
-            static_cast<double>(Position.Z)
+            static_cast<double>(Position.Z),
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y),
+            static_cast<double>(RivalVelocity.X),
+            static_cast<double>(RivalVelocity.Y)
         });
     }
     else

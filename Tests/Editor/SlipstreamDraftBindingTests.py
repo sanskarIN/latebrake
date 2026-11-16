@@ -184,6 +184,31 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         ):
             self.assertIn(required, self.policy)
 
+    def test_exact_world_xy_velocity_binding_and_grade_normalization(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        draft = tick.split("const bool bDraftTargetReady =", 1)[1].split(
+            "SlipstreamBoost.Suspend();", 1)[0]
+        self.assertIn("FVector::DotProduct(Velocity, Forward)", draft)
+        self.assertIn("FollowerSignedForwardSpeed,", draft)
+        self.assertIn("RivalSignedForwardSpeed,", draft)
+        for velocity in ("Velocity.X", "Velocity.Y",
+                         "RivalVelocity.X", "RivalVelocity.Y"):
+            self.assertIn(f"static_cast<double>({velocity})", draft)
+        for field in ("FollowerWorldVelocityX", "FollowerWorldVelocityY",
+                      "LeadWorldVelocityX", "LeadWorldVelocityY"):
+            self.assertIn(f"double {field} =", self.policy)
+            self.assertIn(f"sample.{field};", self.policy)
+        self.assertIn("const double followerVx = followerWorldVelocityX;", self.policy)
+        self.assertIn("const double followerVy = followerWorldVelocityY;", self.policy)
+        self.assertIn("const double leadVx = leadWorldVelocityX;", self.policy)
+        self.assertIn("const double leadVy = leadWorldVelocityY;", self.policy)
+        self.assertIn("followerNorm < 0.75", self.policy)
+        self.assertIn("leadNorm < 0.75", self.policy)
+        self.assertNotIn("follower * fwdX - followerLateral * fwdY", self.policy)
+        self.assertIn("gradeRadians = 0.52", read(
+            "Tests/Standalone/SlipstreamDraftBoostTests.cpp"))
+
     def test_live_vertical_physics_is_bound_into_three_dimensional_continuity(self):
         tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
             "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]

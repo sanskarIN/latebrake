@@ -28,7 +28,7 @@ multiplayer positioning or a source of official race results.
   heading alignment above 0.94 and forward throttle at least 30%.
   Both world-planar heading vectors are **normalized before** alignment,
   physical lane/gap measurement and relative-motion prediction. This
-  prevents the accepted 5% squared-length tolerance from making
+  prevents imperfect projected heading length from making
   oblique rivals look aligned or falsely inflating near-boundary gaps.
 - Real measured relative speeds/positions/directions are supplied to
   an engine-free production C++20 policy. If the player closes more
@@ -78,6 +78,15 @@ multiplayer positioning or a source of official race results.
   rival world reconstructions reset eligibility; standalone tests cover
   2.55m hidden lead relocations, 1.2m hidden vertical movement and
   physically consistent high-speed/cornering trajectories.
+- On grades and crests, the two real Chaos chassis supply **exact world XY
+  velocity components** instead of inferring horizontal motion from 3D
+  signed forward speed and a normalized planar heading. This prevents a
+  steep uphill car from accumulating fictitious lateral/forward motion and
+  falsely losing draft. Both measured speeds now use matching full-3D
+  signed forward projections for eligibility only; road grip, engine force,
+  brakes and other handling remain unchanged. Source-only adversarial tests
+  cover 29.8-degree high-speed ascent and missing/nonfinite/impossible XY
+  sensor readings; native UE5.8 hill and crest tests remain mandatory.
 - Consecutive **relative 3D world positions** must also agree with the two
   measured chassis-velocity vectors: planar forward/lateral components and
   the actual human/rival Chaos vertical velocities over the current physics

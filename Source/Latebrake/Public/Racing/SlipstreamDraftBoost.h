@@ -46,6 +46,14 @@ struct DraftingSample final
     double FollowerWorldX = std::numeric_limits<double>::quiet_NaN();
     double FollowerWorldY = std::numeric_limits<double>::quiet_NaN();
     double FollowerWorldZ = std::numeric_limits<double>::quiet_NaN();
+    // Exact world XY velocities from the two real Chaos chassis. Projecting
+    // a 3D uphill forward speed onto a unit XY heading invents horizontal
+    // displacement; the actual components keep grade/crest motion valid.
+    // Missing telemetry fails closed instead of projecting a guess.
+    double FollowerWorldVelocityX = std::numeric_limits<double>::quiet_NaN();
+    double FollowerWorldVelocityY = std::numeric_limits<double>::quiet_NaN();
+    double LeadWorldVelocityX = std::numeric_limits<double>::quiet_NaN();
+    double LeadWorldVelocityY = std::numeric_limits<double>::quiet_NaN();
 };
 
 class SlipstreamDraftBoost final
@@ -120,6 +128,10 @@ public:
         const double followerWorldX = sample.FollowerWorldX;
         const double followerWorldY = sample.FollowerWorldY;
         const double followerWorldZ = sample.FollowerWorldZ;
+        const double followerWorldVelocityX = sample.FollowerWorldVelocityX;
+        const double followerWorldVelocityY = sample.FollowerWorldVelocityY;
+        const double leadWorldVelocityX = sample.LeadWorldVelocityX;
+        const double leadWorldVelocityY = sample.LeadWorldVelocityY;
         const double followerLateral =
             sample.FollowerLateralSpeedCmPerSecond;
         const double leadLateral = sample.LeadLateralSpeedCmPerSecond;
@@ -141,6 +153,12 @@ public:
             !std::isfinite(followerWorldX) ||
             !std::isfinite(followerWorldY) ||
             !std::isfinite(followerWorldZ) ||
+            !std::isfinite(followerWorldVelocityX) ||
+            !std::isfinite(followerWorldVelocityY) ||
+            !std::isfinite(leadWorldVelocityX) ||
+            !std::isfinite(leadWorldVelocityY) ||
+            std::hypot(followerWorldVelocityX, followerWorldVelocityY) > 12000.0 ||
+            std::hypot(leadWorldVelocityX, leadWorldVelocityY) > 12000.0 ||
             !std::isfinite(throttle) ||
             !std::isfinite(followerLateral) ||
             !std::isfinite(leadLateral) ||
@@ -155,13 +173,16 @@ public:
         }
         const double followerNorm = ax * ax + ay * ay;
         const double leadNorm = bx * bx + by * by;
-        if (followerNorm < 0.95 || followerNorm > 1.05 ||
-            leadNorm < 0.95 || leadNorm > 1.05)
+        // A real 3D unit forward vector can project to only cos(30deg)^2
+        // = 0.75 in XY on a steep grade. Treat that as physical pitch,
+        // not an invalid axis; alignment still uses normalized planar axes.
+        if (followerNorm < 0.75 || followerNorm > 1.05 ||
+            leadNorm < 0.75 || leadNorm > 1.05)
         {
             Reset();
             return 0.0;
         }
-        // The 5% source tolerance does not authorize scaled heading vectors
+        // The accepted projected source length does not authorize scaled heading vectors
         // to fake alignment. Resolve BOTH measured directions to unit planar
         // axes before any angular, gap or world-velocity calculation.
         const double invFollowerNorm = 1.0 / std::sqrt(followerNorm);
@@ -220,14 +241,13 @@ public:
         // such a jump must discard the old 0.18s confirmation window.
         if (HavePreviousOffset)
         {
-            const double followerVx =
-                follower * fwdX - followerLateral * fwdY;
-            const double followerVy =
-                follower * fwdY + followerLateral * fwdX;
-            const double leadVx =
-                lead * leadX - leadLateral * leadY;
-            const double leadVy =
-                lead * leadY + leadLateral * leadX;
+            // Never reconstruct XY travel from heading and signed speed:
+            // chassis pitch/bank makes that approximation overstate travel.
+            // Both cars' XY components are sampled directly from Chaos.
+            const double followerVx = followerWorldVelocityX;
+            const double followerVy = followerWorldVelocityY;
+            const double leadVx = leadWorldVelocityX;
+            const double leadVy = leadWorldVelocityY;
             // Real-world follower continuity independently rejects common
             // translations of BOTH cars that leave their relative lane
             // geometry and all measured relative velocities unchanged.
