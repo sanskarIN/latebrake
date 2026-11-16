@@ -113,11 +113,20 @@ function fixture() {
       'leadWorldLateral - leadLateral',
       'followerSlipObservationTolerance',
       'leadSlipObservationTolerance',
+      'std::max(std::abs(followerLateral),',
+      'std::abs(followerWorldLateral))',
+      'std::max(std::abs(leadLateral),',
+      'std::abs(leadWorldLateral))',
     ].join(' '),
     pawn: [
       'FVector::DotProduct(Velocity, Forward)',
       'const FVector RivalPlanarRight = FVector(',
       '-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();',
+      'const FVector FollowerPlanarRight = FVector(',
+      '-Forward.Y, Forward.X, 0.f).GetSafeNormal();',
+      'const double FollowerDraftLateralSpeed = FVector::DotProduct(',
+      'Velocity, FollowerPlanarRight)',
+      'FollowerDraftLateralSpeed,',
       'const double RivalLateralSpeed = FVector::DotProduct(',
       'RivalVelocity, RivalPlanarRight)',
       'static_cast<double>(Velocity.X)',
@@ -129,6 +138,8 @@ function fixture() {
       'genuine high-speed climbing Chaos motion keeps drafting across windows',
       'vertical-only pitched motion is not forward drafting',
       'independent XY velocity rejects concealed lateral sliding',
+      'actual Chaos XY slip above cap cannot hide inside tolerated lateral telemetry skew',
+      'physically measured slip below cap keeps continuous drafting despite small observation skew',
       'small measured XY lateral offset retains physically continuous draft',
     ].join(' '),
   })) {
@@ -405,6 +416,36 @@ for (const [label,key,missingToken] of [
       assert.ok(original.includes(missingToken),label+' fixture must contain source');
       f.state[key].content=Buffer.from(
         original.replace(missingToken,'')).toString('base64');
+    },/actual Chaos XY\/slope\/lateral-slip/);
+  });
+}
+
+
+for (const [label,key,token] of [
+  ['follower authoritative true slip limit','policy',
+    'std::max(std::abs(followerLateral),'],
+  ['follower physical world slip operand','policy',
+    'std::abs(followerWorldLateral))'],
+  ['rival authoritative true slip limit','policy',
+    'std::max(std::abs(leadLateral),'],
+  ['rival physical world slip operand','policy',
+    'std::abs(leadWorldLateral))'],
+  ['human normalized right axis','pawn',
+    '-Forward.Y, Forward.X, 0.f).GetSafeNormal();'],
+  ['human real XY drafting lateral observation','pawn',
+    'Velocity, FollowerPlanarRight)'],
+  ['actual human slip used in draft sample','pawn',
+    'FollowerDraftLateralSpeed,'],
+  ['concealed cap-crossing regression','tests',
+    'actual Chaos XY slip above cap cannot hide inside tolerated lateral telemetry skew'],
+  ['legal near-cap physical motion regression','tests',
+    'physically measured slip below cap keeps continuous drafting despite small observation skew'],
+]) {
+  test('deny v0.5.100 release without '+label,async()=>{
+    await reject(f=>{
+      const source=Buffer.from(f.state[key].content,'base64').toString('utf8');
+      assert.ok(source.includes(token), 'test fixture must carry '+label);
+      f.state[key].content=Buffer.from(source.replace(token,'')).toString('base64');
     },/actual Chaos XY\/slope\/lateral-slip/);
   });
 }
