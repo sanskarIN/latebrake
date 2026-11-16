@@ -92,6 +92,48 @@ function fixture() {
     oldTag: {object:{type:'commit',sha:guard.PREVIOUS_SHA}},
     tag:null, release:null, reads:[], writes:0, onRead:()=>{},
   };
+
+  // Independent fixture for the later, integrated grade/XY and slip-source
+  // requirements. Intentionally do not derive tokens from the gate: omission
+  // of a production binding must produce a failing negative mutation test.
+  for (const [key, extension] of Object.entries({
+    policy: [
+      'double FollowerWorldVelocityX =',
+      'double FollowerWorldVelocityY =',
+      'double LeadWorldVelocityX =',
+      'double LeadWorldVelocityY =',
+      'const double followerVx = followerWorldVelocityX;',
+      'const double followerVy = followerWorldVelocityY;',
+      'const double leadVx = leadWorldVelocityX;',
+      'const double leadVy = leadWorldVelocityY;',
+      'followerNorm < 0.75', 'leadNorm < 0.75',
+      'followerPlanarForward < 0.70 * follower',
+      'leadPlanarForward < 0.70 * lead',
+      'followerWorldLateral - followerLateral',
+      'leadWorldLateral - leadLateral',
+      'followerSlipObservationTolerance',
+      'leadSlipObservationTolerance',
+    ].join(' '),
+    pawn: [
+      'FVector::DotProduct(Velocity, Forward)',
+      'const FVector RivalPlanarRight = FVector(',
+      '-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();',
+      'FVector::DotProduct(\\n            RivalVelocity, RivalPlanarRight)',
+      'static_cast<double>(Velocity.X)',
+      'static_cast<double>(Velocity.Y)',
+      'static_cast<double>(RivalVelocity.X)',
+      'static_cast<double>(RivalVelocity.Y)',
+    ].join(' '),
+    tests: [
+      'genuine high-speed climbing Chaos motion keeps drafting across windows',
+      'vertical-only pitched motion is not forward drafting',
+      'independent XY velocity rejects concealed lateral sliding',
+      'small measured XY lateral offset retains physically continuous draft',
+    ].join(' '),
+  })) {
+    const original = Buffer.from(state[key].content, 'base64').toString('utf8');
+    state[key].content = Buffer.from(original + ' ' + extension).toString('base64');
+  }
   const context = {
     repo:{owner:'sanskarIN',repo:'latebrake'},
     actor:'sanskarIN',eventName:'workflow_dispatch',
@@ -334,6 +376,37 @@ for (const [label,modify,error] of [
       name:guard.NAME,body:notes,prerelease:true,draft:false,assets:[{name:'installer.exe'}]};
   },/zero-assets/],
 ]) test('deny '+label,async()=>reject(modify,error));
+
+for (const [label,key,missingToken] of [
+  ['missing actual follower X velocity field','policy','double FollowerWorldVelocityX ='],
+  ['missing actual leader Y velocity field','policy','double LeadWorldVelocityY ='],
+  ['XY motion replaced with inferred follower travel','policy','const double followerVx = followerWorldVelocityX;'],
+  ['XY motion replaced with inferred rival travel','policy','const double leadVx = leadWorldVelocityX;'],
+  ['pitched heading gate missing','policy','followerNorm < 0.75'],
+  ['vertical-only follower accepted','policy','followerPlanarForward < 0.70 * follower'],
+  ['vertical-only rival accepted','policy','leadPlanarForward < 0.70 * lead'],
+  ['follower hidden slip no longer cross-checked','policy','followerWorldLateral - followerLateral'],
+  ['rival hidden slip no longer cross-checked','policy','leadWorldLateral - leadLateral'],
+  ['follower slip tolerance removed','policy','followerSlipObservationTolerance'],
+  ['rival slip tolerance removed','policy','leadSlipObservationTolerance'],
+  ['live rival planar axis no longer normalized','pawn','-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();'],
+  ['real follower Chaos X not bound','pawn','static_cast<double>(Velocity.X)'],
+  ['real rival Chaos Y not bound','pawn','static_cast<double>(RivalVelocity.Y)'],
+  ['uphill physical convoy acceptance test removed','tests','genuine high-speed climbing Chaos motion keeps drafting across windows'],
+  ['vertical-only phantom draft regression removed','tests','vertical-only pitched motion is not forward drafting'],
+  ['concealed sideways slide regression removed','tests','independent XY velocity rejects concealed lateral sliding'],
+  ['small lateral observation noise regression removed','tests','small measured XY lateral offset retains physically continuous draft'],
+]) {
+  test('reject v0.5.100 '+label,async()=>{
+    await reject(f=>{
+      const original=Buffer.from(f.state[key].content,'base64').toString('utf8');
+      assert.ok(original.includes(missingToken),label+' fixture must contain source');
+      f.state[key].content=Buffer.from(
+        original.replace(missingToken,'')).toString('base64');
+    },/actual Chaos XY\/slope\/lateral-slip/);
+  });
+}
+
 test('reject stale final protected-main read',async()=>{
   const f=fixture();let calls=0;
   f.state.onRead=()=>{calls+=1;if(calls===2)f.state.main.commit.sha=MERGE;};
