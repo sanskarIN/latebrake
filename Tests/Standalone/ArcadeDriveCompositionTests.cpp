@@ -65,6 +65,17 @@ int main()
     const double throttle = StabilizeCornerThrottle(1.0, 3000.0, 500.0, true);
     Check(throttle > 0.0 && throttle <= 1.0,
           "corner assist must not invent extra throttle");
+    // Reversed real chassis motion is the counter-throttle counterpart
+    // of the forward-motion/reverse-pedal braking request. Neither
+    // corner grip moderation nor the physical speed-cap taper may cut
+    // the opposing demand, irrespective of real sideways slip.
+    const double reverseTravelCounterThrottle =
+        StabilizeCornerThrottle(0.8, -2700.0, 1600.0, true);
+    const double counterThrottleGearFactor = GearAwareMotorPowerFactor(
+        reverseTravelCounterThrottle, -2700.0, 6500.0, true);
+    Check(std::abs(reverseTravelCounterThrottle - 0.8) < 1e-12 &&
+          counterThrottleGearFactor == 1.0,
+          "reversing chassis retains full opposite-direction motor braking through corner and gear policy");
     const auto healthyEngine = engine.Observe({
         0.05, 3000.0, throttle, false, true});
     const double normalGear = GearAwareMotorPowerFactor(
