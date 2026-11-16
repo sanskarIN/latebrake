@@ -86,7 +86,11 @@ multiplayer positioning or a source of official race results.
   signed forward projections for eligibility only; road grip, engine force,
   brakes and other handling remain unchanged. Source-only adversarial tests
   cover 29.8-degree high-speed ascent and missing/nonfinite/impossible XY
-  sensor readings; native UE5.8 hill and crest tests remain mandatory.
+  sensor readings. Independently require at least 70% of each car's
+  full-3D forward speed as real lane-aligned XY movement so a pitched
+  vertical-only chassis cannot earn a phantom boost; genuine physical
+  climbing movement must requalify after such a rejection. Native UE5.8
+  hill and crest tests remain mandatory.
 - Consecutive **relative 3D world positions** must also agree with the two
   measured chassis-velocity vectors: planar forward/lateral components and
   the actual human/rival Chaos vertical velocities over the current physics

@@ -191,6 +191,25 @@ public:
         const double fwdY = ay * invFollowerNorm;
         const double leadX = bx * invLeadNorm;
         const double leadY = by * invLeadNorm;
+        // Full-3D signed speed can be positive when a pitched chassis is
+        // travelling mainly VERTICALLY (for example during a bouncing
+        // crest), even if neither car advances along the physical lane.
+        // Require substantial ACTUAL world-XY forward movement for each
+        // body; a vertical-only pair must never earn aerodynamic thrust.
+        // The 70% floor leaves margin for genuine ~30-degree climbs and
+        // ordinary Chaos sampling skew, but never accepts reverse XY travel.
+        const double followerPlanarForward =
+            followerWorldVelocityX * fwdX + followerWorldVelocityY * fwdY;
+        const double leadPlanarForward =
+            leadWorldVelocityX * leadX + leadWorldVelocityY * leadY;
+        if (!std::isfinite(followerPlanarForward) ||
+            !std::isfinite(leadPlanarForward) ||
+            followerPlanarForward < 0.70 * follower ||
+            leadPlanarForward < 0.70 * lead)
+        {
+            Reset();
+            return 0.0;
+        }
         if (fwdX * leadX + fwdY * leadY < MinimumHeadingAlignment)
         {
             Reset();

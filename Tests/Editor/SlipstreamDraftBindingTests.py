@@ -204,6 +204,8 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("const double leadVx = leadWorldVelocityX;", self.policy)
         self.assertIn("const double leadVy = leadWorldVelocityY;", self.policy)
         self.assertIn("followerNorm < 0.75", self.policy)
+        self.assertIn("followerPlanarForward < 0.70 * follower", self.policy)
+        self.assertIn("leadPlanarForward < 0.70 * lead", self.policy)
         self.assertIn("leadNorm < 0.75", self.policy)
         self.assertNotIn("follower * fwdX - followerLateral * fwdY", self.policy)
         self.assertIn("gradeRadians = 0.52", read(

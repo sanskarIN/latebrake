@@ -628,6 +628,56 @@ int main()
               "genuine high-speed climbing Chaos motion keeps drafting across windows");
     }
 
+
+    // Vertical world movement alone is not real forward drafting. A pitched
+    // car can have positive full-3D signed speed while moving mainly up,
+    // and ground-support telemetry can briefly lag a crest/bounce frame.
+    // Both actual XY velocity projections must still show forward travel.
+    boost.Reset();
+    auto risingWithoutForwardTravel = WithMeasuredPlanarVelocities(Sample());
+    risingWithoutForwardTravel.FollowerForwardX = gradeX;
+    risingWithoutForwardTravel.LeadForwardX = gradeX;
+    risingWithoutForwardTravel.FollowerSpeedCmPerSecond = 1800.0;
+    risingWithoutForwardTravel.LeadSpeedCmPerSecond = 1700.0;
+    risingWithoutForwardTravel.FollowerVerticalSpeedCmPerSecond = 3800.0;
+    risingWithoutForwardTravel.LeadVerticalSpeedCmPerSecond = 3600.0;
+    risingWithoutForwardTravel.FollowerWorldVelocityX = 0.0;
+    risingWithoutForwardTravel.FollowerWorldVelocityY = 0.0;
+    risingWithoutForwardTravel.LeadWorldVelocityX = 0.0;
+    risingWithoutForwardTravel.LeadWorldVelocityY = 0.0;
+    Check(boost.Observe(risingWithoutForwardTravel) == 0.0 &&
+          boost.QualifiedSeconds() == 0.0 && !boost.IsActive(),
+          "vertical-only pitched motion is not forward drafting");
+    // Returning actual XY motion must start a completely new interval.
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        auto properClimb = Sample();
+        properClimb.FollowerForwardX = gradeX;
+        properClimb.LeadForwardX = gradeX;
+        properClimb.FollowerVerticalSpeedCmPerSecond =
+            properClimb.FollowerSpeedCmPerSecond * gradeZ;
+        properClimb.LeadVerticalSpeedCmPerSecond =
+            properClimb.LeadSpeedCmPerSecond * gradeZ;
+        properClimb.FollowerWorldVelocityX =
+            properClimb.FollowerSpeedCmPerSecond * gradeX;
+        properClimb.FollowerWorldVelocityY = 0.0;
+        properClimb.LeadWorldVelocityX =
+            properClimb.LeadSpeedCmPerSecond * gradeX;
+        properClimb.LeadWorldVelocityY = 0.0;
+        properClimb.FollowerWorldX = frame * 0.05 *
+            properClimb.FollowerWorldVelocityX;
+        properClimb.FollowerWorldZ = frame * 0.05 *
+            properClimb.FollowerVerticalSpeedCmPerSecond;
+        properClimb.LeadOffsetX = 1200.0 + frame * 0.05 *
+            (properClimb.LeadWorldVelocityX - properClimb.FollowerWorldVelocityX);
+        properClimb.LeadOffsetZ = frame * 0.05 *
+            (properClimb.LeadVerticalSpeedCmPerSecond -
+             properClimb.FollowerVerticalSpeedCmPerSecond);
+        const double force = boost.Observe(properClimb);
+        Check(frame < 4 ? force == 0.0 : force > 0.0,
+              "real climbing XY and Z motion requalifies after vertical-only denial");
+    }
+
     // Unavailable or unreasonable measured world XY velocity must revoke
     // an earned draft. The portable wrapper never manufactures a fallback
     // for these explicit adversarial raw-policy observations.
