@@ -98,6 +98,33 @@ int main()
     const auto forwardUpshift = drive(5200.0, 1.0);
     Require(forwardUpshift.Gear == 2 && forwardUpshift.Shifting,
             "forward demand retains ordinary high-speed upshift logic");
+
+    // Opposite-direction braking must not disable measured-speed
+    // DOWNSHIFTS. Start in gear 3, slow down under held reverse input,
+    // and verify the transmission can stage 3 -> 2 -> 1 without
+    // suppressing the existing physical engine-braking demand.
+    box.Reset();
+    drive(0.0);
+    drive(1600.0);
+    for (int i = 0; i < 5; ++i) drive(1600.0);
+    auto thirdGear = drive(3500.0);
+    Require(thirdGear.Valid && thirdGear.Gear == 3 && thirdGear.Shifting,
+            "forward acceleration can reach third before reversal braking");
+    for (int i = 0; i < 5; ++i) thirdGear = drive(3500.0);
+    const auto secondOnReverseBraking = drive(2300.0, -1.0);
+    Require(secondOnReverseBraking.Valid &&
+            secondOnReverseBraking.Gear == 2 &&
+            secondOnReverseBraking.Shifting &&
+            Near(secondOnReverseBraking.PropulsionFactor, 1.0),
+            "opposite-direction engine braking preserves second-gear downshift");
+    for (int i = 0; i < 5; ++i) drive(2300.0, -1.0);
+    const auto firstOnReverseBraking = drive(900.0, -1.0);
+    Require(firstOnReverseBraking.Valid &&
+            firstOnReverseBraking.Gear == 1 &&
+            firstOnReverseBraking.Shifting &&
+            Near(firstOnReverseBraking.PropulsionFactor, 1.0),
+            "opposite-direction braking retains safe downshift back to first");
+
     box.Reset();
     drive(0.0);
 
