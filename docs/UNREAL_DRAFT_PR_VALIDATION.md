@@ -60,7 +60,16 @@ self-hosted runner, or accept source from outside this repository.
    must compile, cook, and generate a source- and engine-hashed
    **UNVERIFIED Win64 candidate artifact**. It is retained for only
    **3 days**, never published as a GitHub Release.
-6. Download the complete cooked archive onto a Windows test machine,
+6. After the native job succeeds, a **separate GitHub-hosted post-build
+   identity job** reads the current live owner PR again. It rejects any
+   PR whose head was replaced, closed, retargeted, moved to a fork or is
+   no longer the exact built SHA. The job deliberately checks metadata
+   on a clean hosted runner, **not the self-hosted machine that ran PR
+   scripts**, and never downloads candidate artifacts. A failed final
+   recheck invalidates that workflow run as evidence for the current PR,
+   even if an older UNVERIFIED artifact was uploaded. The Win64 artifact
+   name includes the **full exact built 40-character SHA** and run attempt.
+7. Download the complete cooked archive onto a Windows test machine,
    verify its manifest, then follow
    [Windows personal playtesting](WINDOWS_PERSONAL_PLAYTEST.md).
    For PR #377 specifically, follow the
@@ -124,6 +133,10 @@ policy are separate from this manual game-candidate workflow.
 - A genuinely trusted owner PR can still contain malicious build
   scripts or C++ source. The automatic checks cannot replace
   **manual source review and an isolated runner**.
+- Native build success alone is insufficient if the PR changes during
+  compilation: the hosted post-build check reauthenticates exact SHA
+  after every successful Editor or Win64 native job. A stale result is
+  **not** accepted as evidence even if an artifact has already uploaded.
 - Candidate output is created under `RUNNER_TEMP` with a unique
   run/attempt name, never reused, and temporary cleanup refuses
   junctions/symlinks. The artifact has a short retention period.
