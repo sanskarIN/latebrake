@@ -24,7 +24,7 @@ class UnrealAutomaticTransmissionBindingTests(unittest.TestCase):
         cls.policy = POLICY.read_text(encoding="utf-8")
 
     def test_opposite_direction_pedal_does_not_trigger_forward_upshift(self):
-        policy = read("Source/Latebrake/Public/Vehicles/AutomaticTransmission.h")
+        policy = self.policy
         self.assertIn(
             "if (!directionOpposed && Gear < ForwardGearCount &&", policy
         )
@@ -34,7 +34,9 @@ class UnrealAutomaticTransmissionBindingTests(unittest.TestCase):
         self.assertIn(
             "ratio <= DownshiftRatios[static_cast<unsigned>(Gear - 2)]", policy
         )
-        portable = read("Tests/Standalone/AutomaticTransmissionTests.cpp")
+        portable = (ROOT / "Tests/Standalone/AutomaticTransmissionTests.cpp").read_text(
+            encoding="utf-8"
+        )
         for token in (
             "reverse pedal at high positive speed never initiates a forward upshift",
             "neutral/coasting resumes physical-speed forward gear staging",
