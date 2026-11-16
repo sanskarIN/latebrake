@@ -59,8 +59,11 @@ async function evaluate(change = () => {}) {
 
 test('valid current owner PR is accepted only as a source identity handoff',async()=>{
   const output = await evaluate();
-  assert.deepEqual(output.queried, {owner:'sanskarIN',
-    repo:'latebrake',pull_number:377});
+  // The VM deliberately gives the API argument a separate prototype.
+  // Compare the actual submitted primitives, not realm-specific prototypes.
+  assert.equal(output.queried.owner, 'sanskarIN');
+  assert.equal(output.queried.repo, 'latebrake');
+  assert.equal(output.queried.pull_number, 377);
   assert.equal(output.calls,1);
   assert.match(output.summary.join(' '),/No installed gameplay/);
   assert.ok(output.summary.join(' ').includes(SHA));
