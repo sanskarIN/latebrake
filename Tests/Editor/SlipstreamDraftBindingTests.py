@@ -100,11 +100,12 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         for required in (
             "FVector::DotProduct(RivalVelocity, RivalForward)",
             "const double RivalLateralSpeed = FVector::DotProduct(",
-            "FVector(-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
+            "-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
             "static_cast<double>(LateralSpeed)",
             "RivalLateralSpeed",
         ):
             self.assertIn(required, draft)
+        self.assertIn("const FVector RivalPlanarRight = FVector(", draft)
         self.assertIn("RivalVelocity, RivalPlanarRight)", draft)
         self.assertLess(
             draft.index("const double RivalLateralSpeed ="),
@@ -215,7 +216,7 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             "leadSlipObservationTolerance",
         ):
             self.assertIn(required, self.policy)
-        self.assertIn("FVector(-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
+        self.assertIn("-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
                       draft)
         self.assertIn("leadPlanarForward < 0.70 * lead", self.policy)
         self.assertIn("leadNorm < 0.75", self.policy)
