@@ -319,6 +319,64 @@ int main()
               "independent XY velocity rejects concealed lateral sliding");
     }
 
+
+    // A rolled/pitched right-axis reading may underreport a genuine
+    // 5.5m/s side skid as 4.6m/s, while the 0.9m/s discrepancy remains
+    // INSIDE the 50-120cm/s observation tolerance. The real world XY
+    // velocity must still enforce the exact 5m/s slip cap for EACH car.
+    // Both trajectories are integrated over five genuine 50ms samples:
+    // the old report-only cap would incorrectly earn a +draft boost.
+    for (bool followerSlides : {true, false})
+    {
+        boost.Reset();
+        for (int frame = 0; frame < 5; ++frame)
+        {
+            auto hiddenThresholdSlip =
+                WithMeasuredPlanarVelocities(Sample());
+            const double lateralMotion = followerSlides ? 550.0 : -550.0;
+            if (followerSlides)
+            {
+                hiddenThresholdSlip.FollowerLateralSpeedCmPerSecond = 460.0;
+                hiddenThresholdSlip.FollowerWorldVelocityY = lateralMotion;
+                hiddenThresholdSlip.FollowerWorldY =
+                    frame * 0.05 * lateralMotion;
+                hiddenThresholdSlip.LeadOffsetY =
+                    -frame * 0.05 * lateralMotion;
+            }
+            else
+            {
+                hiddenThresholdSlip.LeadLateralSpeedCmPerSecond = -460.0;
+                hiddenThresholdSlip.LeadWorldVelocityY = lateralMotion;
+                hiddenThresholdSlip.LeadOffsetY =
+                    frame * 0.05 * lateralMotion;
+            }
+            hiddenThresholdSlip.FollowerWorldX = 120.0 * frame;
+            hiddenThresholdSlip.LeadOffsetX = 1200.0 - 5.0 * frame;
+            Check(boost.Observe(hiddenThresholdSlip) == 0.0 &&
+                  boost.QualifiedSeconds() == 0.0 && !boost.IsActive(),
+                  "actual Chaos XY slip above cap cannot hide inside tolerated lateral telemetry skew");
+        }
+    }
+
+    // The new cap is measured, not an accidental ban on all near-limit
+    // sideways motion: 4.75m/s true physical slip with a 4.60m/s
+    // readout remains eligible after a full, consistent 0.20s window.
+    boost.Reset();
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        auto legalNearThresholdSlip =
+            WithMeasuredPlanarVelocities(Sample());
+        legalNearThresholdSlip.FollowerLateralSpeedCmPerSecond = 460.0;
+        legalNearThresholdSlip.FollowerWorldVelocityY = 475.0;
+        legalNearThresholdSlip.FollowerWorldX = 120.0 * frame;
+        legalNearThresholdSlip.FollowerWorldY = 23.75 * frame;
+        legalNearThresholdSlip.LeadOffsetX = 1200.0 - 5.0 * frame;
+        legalNearThresholdSlip.LeadOffsetY = -23.75 * frame;
+        const double force = boost.Observe(legalNearThresholdSlip);
+        Check(frame < 4 ? force == 0.0 : force > 0.0,
+              "physically measured slip below cap keeps continuous drafting despite small observation skew");
+    }
+
     // Small genuinely plausible tick-order differences must still allow
     // uninterrupted 0.18-second confirmation on both chassis, not make
     // the new source-provenance check overly sensitive to tiny XY jitter.

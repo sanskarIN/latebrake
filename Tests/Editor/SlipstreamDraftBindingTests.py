@@ -101,17 +101,26 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             "FVector::DotProduct(RivalVelocity, RivalForward)",
             "const double RivalLateralSpeed = FVector::DotProduct(",
             "-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
-            "static_cast<double>(LateralSpeed)",
+            "const FVector FollowerPlanarRight = FVector(",
+            "-Forward.Y, Forward.X, 0.f).GetSafeNormal()",
+            "const double FollowerDraftLateralSpeed = FVector::DotProduct(",
+            "Velocity, FollowerPlanarRight)",
+            "FollowerDraftLateralSpeed,",
             "RivalLateralSpeed",
         ):
             self.assertIn(required, draft)
         self.assertIn("const FVector RivalPlanarRight = FVector(", draft)
         self.assertIn("RivalVelocity, RivalPlanarRight)", draft)
+        self.assertIn("const FVector FollowerPlanarRight = FVector(", draft)
+        self.assertIn("Velocity, FollowerPlanarRight)", draft)
+        # The regular chassis meter remains unchanged: only the
+        # drafting-specific right-axis sample becomes normalized XY.
+        self.assertNotIn("static_cast<double>(LateralSpeed),", draft)
         self.assertLess(
             draft.index("const double RivalLateralSpeed ="),
             draft.index("SlipstreamBoost.Observe({"))
         self.assertLess(
-            draft.index("static_cast<double>(LateralSpeed)"),
+            draft.index("FollowerDraftLateralSpeed,"),
             draft.index("RivalLateralSpeed,\n            true"))
         for required in (
             "FollowerLateralSpeedCmPerSecond",
@@ -214,6 +223,10 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             "leadWorldLateral - leadLateral",
             "followerSlipObservationTolerance",
             "leadSlipObservationTolerance",
+            "std::max(std::abs(followerLateral),",
+            "std::abs(followerWorldLateral))",
+            "std::max(std::abs(leadLateral),",
+            "std::abs(leadWorldLateral))",
         ):
             self.assertIn(required, self.policy)
         self.assertIn("-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
@@ -221,6 +234,11 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("leadPlanarForward < 0.70 * lead", self.policy)
         self.assertIn("leadNorm < 0.75", self.policy)
         self.assertNotIn("follower * fwdX - followerLateral * fwdY", self.policy)
+        for regression in (
+            "actual Chaos XY slip above cap cannot hide inside tolerated lateral telemetry skew",
+            "physically measured slip below cap keeps continuous drafting despite small observation skew",
+        ):
+            self.assertIn(regression, read("Tests/Standalone/SlipstreamDraftBoostTests.cpp"))
         self.assertIn("gradeRadians = 0.52", read(
             "Tests/Standalone/SlipstreamDraftBoostTests.cpp"))
 

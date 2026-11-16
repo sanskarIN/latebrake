@@ -1165,6 +1165,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // For pitched chassis, raw planar cross-axis has length cos(pitch).
         // Normalize the actual planar right axis so the rival's sideways
         // speed is never silently underreported on slopes or crests.
+        // Project the human's slip onto the SAME normalized XY right
+        // axis used for the rival. The ordinary chassis handling meter
+        // intentionally retains its original lateral-slip source; only
+        // drafting needs the grade/roll-independent planar observation.
+        const FVector FollowerPlanarRight = FVector(
+            -Forward.Y, Forward.X, 0.f).GetSafeNormal();
+        const double FollowerDraftLateralSpeed = FVector::DotProduct(
+            Velocity, FollowerPlanarRight);
         const FVector RivalPlanarRight = FVector(
             -RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();
         const double RivalLateralSpeed = FVector::DotProduct(
@@ -1180,7 +1188,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(Offset.Z),
             static_cast<double>(EffectiveThrottle),
             bEffectiveBraking, true,
-            static_cast<double>(LateralSpeed),
+            FollowerDraftLateralSpeed,
             RivalLateralSpeed,
             true, // GameMode verified an unobstructed physical sightline.
             static_cast<double>(Velocity.Z),

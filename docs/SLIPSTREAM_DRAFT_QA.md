@@ -44,7 +44,14 @@ multiplayer positioning or a source of official race results.
   bounded 50-120 cm/s observation tolerance; a falsely reported zero
   lateral speed cannot mask a strong physical slide. The rival's right
   axis is normalized so an inclined forward heading cannot shrink its
-  sampled lateral speed. These are source-only safeguards until native
+  sampled lateral speed. The follower's drafting-specific right axis is
+  likewise normalized without changing the existing chassis handling
+  meter. **Both the reported and independently projected world-XY
+  lateral speeds must satisfy the slip limit**: a true 5.5 m/s slide
+  cannot qualify merely because a tilted right-axis reports 4.6 m/s
+  and the 0.9 m/s difference is within observation tolerance. A real
+  4.75 m/s lateral drift with small measurement skew remains eligible.
+  These are source-only safeguards until native
   gameplay verifies road contact, actual slope orientation and the
   30/60/120 FPS traces.
   Both measurements are supplied directly from the human's Chaos body

@@ -246,10 +246,18 @@ public:
         // actual per-body world velocity projections, not yaw estimates.
         // Qualification is revoked immediately; prior charge cannot
         // survive a single unqualified sideways-slipping physics frame.
-        if (std::abs(followerLateral) >
+        // A plausible 50-120cm/s observation difference is NOT extra
+        // allowed sideways grip. Even if the reported lateral component
+        // stays just BELOW the slip cap, the actual Chaos XY right-axis
+        // velocity must separately stay INSIDE the cap. This protects
+        // banked/pitched chassis readings from disguising threshold
+        // crossings that are smaller than the permitted sensor skew.
+        if (std::max(std::abs(followerLateral),
+                     std::abs(followerWorldLateral)) >
                 std::min(MaximumLateralSpeedCmPerSecond,
                          MaximumLateralSlipFraction * follower) ||
-            std::abs(leadLateral) >
+            std::max(std::abs(leadLateral),
+                     std::abs(leadWorldLateral)) >
                 std::min(MaximumLateralSpeedCmPerSecond,
                          MaximumLateralSlipFraction * lead))
         {
