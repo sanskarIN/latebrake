@@ -340,7 +340,7 @@ void TestVehicleHealthAndEnvironment()
 
 void TestFuelStintAndPit()
 {
-    FuelStintMonitor fuel;
+    FuelStrategyStintMonitor fuel;
     PitVisitMonitor pits;
     Require(fuel.Configure({}) && pits.Configure({}),
             "fuel and pit review remain advisory");
@@ -418,7 +418,7 @@ void TestReliabilityCoachingAndStrategy()
     Require(coach.Observe(source) &&
             coach.ActiveTips() > 0 &&
             coach.PrimaryTip().Evidence.Topic ==
-                CoachingTopic::ReduceExcessiveSlip,
+                RaceEngineerCoachingTopic::ReduceExcessiveSlip,
             "safety feedback outranks performance without drive control");
     RaceStrategyReview review;
     Require(review.Configure({}),
