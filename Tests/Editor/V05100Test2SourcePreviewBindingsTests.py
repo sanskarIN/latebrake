@@ -30,7 +30,7 @@ def verify_safe_preview(workflow: str, guard: str, audit: str, notes: str) -> No
         "context.eventName === 'workflow_dispatch'",
         "context.payload?.inputs?.candidate_sha === candidateSha",
         "branch.protected === true",
-        "note.encoding === 'base64'" if False else "blob.encoding === 'base64'",
+        "blob.encoding === 'base64'",
         "readUtf8File(note) === notes",
         "sourceGate.requirePassingChecks(checkRuns, candidateSha)",
         "releaseAudit.verifyPublishedSourceRelease({",
