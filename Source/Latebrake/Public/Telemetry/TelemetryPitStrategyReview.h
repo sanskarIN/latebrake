@@ -41,7 +41,7 @@ enum class PitObservationIssue : std::uint8_t
     Duplicate
 };
 
-struct PitReviewSettings final
+struct PitVisitReviewSettings final
 {
     double MaximumPitLaneSpeedCmS = 2300.0;
     double StationaryThresholdCmS = 70.0;
@@ -61,8 +61,8 @@ struct PitReviewSettings final
     bool RequireValidForwardProgress = false;
 };
 
-inline bool ValidPitReviewSettings(
-    const PitReviewSettings& s) noexcept
+inline bool ValidPitVisitReviewSettings(
+    const PitVisitReviewSettings& s) noexcept
 {
     return Finite(s.MaximumPitLaneSpeedCmS) &&
            s.MaximumPitLaneSpeedCmS > 0.0 &&
@@ -160,9 +160,9 @@ struct PitLiveObservation final
 class PitVisitMonitor final
 {
 public:
-    bool Configure(PitReviewSettings settings) noexcept
+    bool Configure(PitVisitReviewSettings settings) noexcept
     {
-        if (!ValidPitReviewSettings(settings))
+        if (!ValidPitVisitReviewSettings(settings))
         {
             return false;
         }
@@ -470,7 +470,7 @@ private:
         StationaryRunSeconds = 0.0;
     }
 
-    PitReviewSettings Settings{};
+    PitVisitReviewSettings Settings{};
     std::array<PitVisitRecord, MaximumTelemetryLaps> History{};
     PitVisitRecord Working{};
     PitVisitRecord Latest{};
