@@ -23,6 +23,10 @@ const LEGACY_TEST_BODY = [
   'The protected-main source has passed portable C++20 tests on Windows, Ubuntu and macOS, along with Python/editor source checks and release-policy checks.',
   '',
   '**Not included:** Unmerged gameplay work from PR #377 and PR #391, Windows game executable, installer or verified Unreal Engine 5.8 build.',
+  '',
+  "GitHub's automatically generated source archives are not playable game installers.",
+  '',
+  'The official v0.5.100 release remains in preparation.',
 ].join('\n');
 
 const REQUIRED_SOURCE_WARNINGS = Object.freeze([
