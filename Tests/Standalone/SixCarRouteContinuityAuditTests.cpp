@@ -317,6 +317,47 @@ void SignedRoadMotionCannotBeForged(double fps)
           "independently measured moderate physical drift retains forward evidence");
 }
 
+void RepeatedReportedProgressCannotFabricatePass()
+{
+    using namespace latebrake;
+    const double dt = 0.05;
+    Stations station{{15000, 15080, 17400, 18600, 19800, 21000}};
+    const Speeds speeds{{2000, 2000, 2000, 2000, 2000, 2000}};
+    SixCarRouteContinuityAudit audit;
+    auto out = audit.Observe(Fleet(1, station, speeds, dt));
+    Check(out.Valid && !out.MotionContinuous &&
+          out.AdvisoryOrder[5] == 0,
+          "source-only six-car observation has initial physical rear car");
+
+    // Seven fabricated centimetres per frame is below the 12cm
+    // frame-motion allowance at 20m/s and still below the independent
+    // 220cm geometric projection gap after 24 observations. The
+    // source caller cannot convert this tolerated jitter into a
+    // 168cm fictitious overtake of a body that physically stays behind.
+    for (std::uint64_t frame = 2; frame <= 25; ++frame)
+    {
+        Advance(station, speeds, dt);
+        auto sample = Fleet(frame, station, speeds, dt);
+        sample.Actors[0].ReportedLapProgressCm +=
+            static_cast<double>(frame - 1) * 7.0;
+        out = audit.Observe(sample);
+        Check(out.Valid && out.MotionContinuous &&
+              out.RejectedFrames == 0 &&
+              out.ConfirmedRelativePasses == 0,
+              "small reported-station drift cannot invent a pass");
+        Check(out.CarsBySlot[0].TotalReportedProgressCm >
+                    out.CarsBySlot[0].TotalProjectedProgressCm,
+              "test exercises real reported-vs-geometric station skew");
+        Check(out.CarsBySlot[0].TotalProjectedProgressCm <
+                    out.CarsBySlot[1].TotalProjectedProgressCm &&
+              out.AdvisoryOrder[5] == 0,
+              "advisory ordering must follow measured geometry, not fabricated progress");
+    }
+    Check(out.CarsBySlot[0].TotalReportedProgressCm >
+              out.CarsBySlot[1].TotalReportedProgressCm,
+          "test achieved false reported overtaking while physics did not");
+}
+
 void TeleportsAndLapFraud()
 {
     using namespace latebrake;
@@ -453,6 +494,7 @@ int main()
     }
     InvalidAndIncompleteFleet();
     TeleportsAndLapFraud();
+    RepeatedReportedProgressCannotFabricatePass();
     EpochIdentityAndFrameGaps();
     FullLapBoundary();
     std::cout
