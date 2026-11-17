@@ -54,6 +54,13 @@ struct SixCarRouteFrameSample final
     std::array<SixCarRouteActorSample, SixCarRouteAuditCapacity> Actors{};
 };
 
+enum class SixCarRouteTravelDirection
+{
+    Stationary,
+    Forward,
+    Reverse
+};
+
 struct SixCarRouteCarAdvisory final
 {
     std::uint64_t ActorIdentity = 0;
@@ -63,6 +70,12 @@ struct SixCarRouteCarAdvisory final
     // externally qualified completed-lap count. Advisory only.
     double TotalProjectedProgressCm = 0.0;
     double MeasuredSpeedCmps = 0.0;
+    // Direction is derived from world velocity projected onto the
+    // independently observed authored route tangent; it is NOT based
+    // on gear selection, the car's nose or untrusted lap counters.
+    double SignedRouteSpeedCmps = 0.0;
+    SixCarRouteTravelDirection Direction =
+        SixCarRouteTravelDirection::Stationary;
     double SignedRoadOffsetCm = 0.0;
     double RouteProjectionResidualCm = 0.0;
 };
@@ -255,10 +268,17 @@ public:
                     WorldScaleCircuitLapCm +
                 projection.LapDistanceCm;
             projectedDistance[slot] = projectedTotal;
+            const SixCarRouteTravelDirection direction =
+                signedProgressSpeed >= 50.0 ?
+                    SixCarRouteTravelDirection::Forward :
+                signedProgressSpeed <= -50.0 ?
+                    SixCarRouteTravelDirection::Reverse :
+                    SixCarRouteTravelDirection::Stationary;
             current[slot] = {
                 actor.ActorIdentity, actor.GridSlot, total,
                 projectedTotal,
                 std::hypot(actor.VelocityX, actor.VelocityY),
+                signedProgressSpeed, direction,
                 projection.SignedLateralCm,
                 projection.CentrelineSeparationCm,
             };
@@ -343,7 +363,11 @@ public:
                     !std::isfinite(expectedAdvance) ||
                     !std::isfinite(measuredTravelMagnitude) ||
                     worldResidual > maxWorldError ||
-                    measuredAdvance < -5.0 ||
+                    // A real reverse-driving car can legitimately
+                    // decrease its unwrapped route station. Rejecting
+                    // every negative frame would erase physical wrong-way
+                    // evidence; the SIGNED tangent check above already
+                    // rejects fabricated backward or forward progress.
                     std::abs(measuredAdvance - expectedAdvance) >
                         maxAdvanceError)
                 {
