@@ -30,13 +30,17 @@ inline constexpr double SixCarRouteAuditMaxProgressResidualCm = 220.0;
 inline constexpr double SixCarRouteAuditPassHysteresisCm = 35.0;
 inline constexpr double SixCarRouteAuditMinFrameSeconds = 0.001;
 inline constexpr double SixCarRouteAuditMaxFrameSeconds = 0.10;
-inline constexpr unsigned SixCarRouteAuditMaxRecordedLaps = 1000;
+inline constexpr int SixCarRouteAuditMaxSpatialRevolutions = 1000;
 
 struct SixCarRouteActorSample final
 {
     int GridSlot = -1;
     std::uint64_t ActorIdentity = 0;
-    unsigned CompletedLaps = 0;
+    // Signed authored-circuit traversal index, NOT official completed
+    // racing laps. Reverse travel before the first start/finish crossing
+    // needs index -1 with wrapped progress just below circuit length.
+    // A future native adapter must NOT alias this to its race lap clock.
+    int SpatialRevolutionIndex = 0;
     double ReportedLapProgressCm = 0.0;
     double WorldX = 0.0;
     double WorldY = 0.0;
@@ -67,7 +71,7 @@ struct SixCarRouteCarAdvisory final
     int GridSlot = -1;
     double TotalReportedProgressCm = 0.0;
     // Independently geometrically projected station plus the
-    // externally qualified completed-lap count. Advisory only.
+    // externally qualified signed spatial-revolution index. Advisory only.
     double TotalProjectedProgressCm = 0.0;
     double MeasuredSpeedCmps = 0.0;
     // Direction is derived from world velocity projected onto the
@@ -99,7 +103,10 @@ inline bool ValidSixCarRouteActor(const SixCarRouteActorSample& a) noexcept
     if (a.GridSlot < 0 ||
         a.GridSlot >= static_cast<int>(SixCarRouteAuditCapacity) ||
         a.ActorIdentity == 0 || !a.QualifiedRoadContact ||
-        a.CompletedLaps > SixCarRouteAuditMaxRecordedLaps ||
+        a.SpatialRevolutionIndex >
+            SixCarRouteAuditMaxSpatialRevolutions ||
+        a.SpatialRevolutionIndex <
+            -SixCarRouteAuditMaxSpatialRevolutions ||
         !std::isfinite(a.ReportedLapProgressCm) ||
         a.ReportedLapProgressCm < 0.0 ||
         a.ReportedLapProgressCm >= WorldScaleCircuitLapCm ||
@@ -254,7 +261,7 @@ public:
             currentSignedRouteSpeed[slot] = signedProgressSpeed;
             ordered[slot] = actor;
             const double total =
-                static_cast<double>(actor.CompletedLaps) *
+                static_cast<double>(actor.SpatialRevolutionIndex) *
                     WorldScaleCircuitLapCm +
                 actor.ReportedLapProgressCm;
             currentDistance[slot] = total;
@@ -264,7 +271,7 @@ public:
             // for advisory relative ranking, while reported distance is
             // separately checked against both geometry and elapsed motion.
             const double projectedTotal =
-                static_cast<double>(actor.CompletedLaps) *
+                static_cast<double>(actor.SpatialRevolutionIndex) *
                     WorldScaleCircuitLapCm +
                 projection.LapDistanceCm;
             projectedDistance[slot] = projectedTotal;
