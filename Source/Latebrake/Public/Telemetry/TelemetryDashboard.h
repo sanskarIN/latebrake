@@ -150,7 +150,7 @@ struct DashboardRaceView final
     FuelForecastConfidence FuelQuality =
         FuelForecastConfidence::Missing;
     StrategyKind SuggestedReview = StrategyKind::Unavailable;
-    CoachingTopic PrimaryCoachingTopic = CoachingTopic::None;
+    RaceEngineerCoachingTopic PrimaryCoachingTopic = RaceEngineerCoachingTopic::None;
     DashboardDataQuality OverallData =
         DashboardDataQuality::Unavailable;
     std::array<DashboardPanelStatus, 16> Panels{};
@@ -414,7 +414,7 @@ public:
         view.RiskEventHoldSeconds = ThreatHoldSeconds;
         view.SuggestedReview = sources.Strategy.Preferred;
         view.PrimaryCoachingTopic = sources.Coach.Visible ?
-            sources.Coach.Evidence.Topic : CoachingTopic::None;
+            sources.Coach.Evidence.Topic : RaceEngineerCoachingTopic::None;
         view.EstimatedLapDeltaSeconds =
             sources.LapDelta.Qualified ?
                 std::clamp(sources.LapDelta.DeltaSeconds,
