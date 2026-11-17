@@ -21,10 +21,10 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
         for token in (
             "SixCarRouteAuditCapacity = 6",
             "frame.SessionIdentity",
-            "actor.ActorIdentity == 0",
+            "a.ActorIdentity == 0",
             "seenSlots[slot]",
             "ordered[i].ActorIdentity == ordered[j].ActorIdentity",
-            "actor.QualifiedRoadContact",
+            "a.QualifiedRoadContact",
             "ProjectWorldScaleRoute(",
             "projection.InsidePhysicalCandidateRoad",
             "SixCarRouteDistanceDifference(",
