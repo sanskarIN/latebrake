@@ -49,8 +49,14 @@ For every received frame, the advisory:
   relative-pass event; forged reverse progress during forward motion
   is also rejected. This remains advisory, not a powertrain controller
   or official wrong-way/race-results authority.
-- Validates *unwrapped* route distance, including genuine lap transitions
-  where `CompletedLaps` increments and wrapped progress returns to 0.
+- Validates *unwrapped* **signed spatial** route distance, including
+  genuine seam transitions where `SpatialRevolutionIndex` increments or
+  decrements as the observed chassis travels across the line. This
+  field is NEVER an official count of completed racing laps. A car
+  reversing past the start before lap zero correctly uses revolution
+  index -1 plus a wrapped positive position, with a negative total
+  longitudinal station. The actual race clock and lap authority must
+  remain completely separate.
   Spoofed lap increments, unexplained jumps, backwards progress and
   teleports invalidate the full frame, not just one car's rank.
 - Re-baselines after a pause, race epoch change, actor replacement or
@@ -96,6 +102,11 @@ runs with the existing strict `/W4 /WX` or
   is accepted and classified as Reverse at 30/60/120 FPS, but cannot
   trigger a forward relative-pass claim. A forward-travelling chassis
   falsely reporting decreasing lap progress is rejected.
+- A real reverse crossing from spatial revolution 0 into -1 BEFORE
+  any official racing lap is completed is independently validated at
+  30/60/120 FPS. Negative spatial revolutions cannot alter official
+  completed race laps or award checkpoint credit. Attempts to exceed
+  the bounded [-1000, 1000] spatial-revolution range fail closed.
 - A true 1.70 km wrapped-lap crossing that remains continuous.
 - Rejection of NaN/Inf, impossible speeds, lost road support,
   duplicated/missing identity, repeated slot, invalid lap boundaries,
