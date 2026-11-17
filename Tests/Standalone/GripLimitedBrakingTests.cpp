@@ -68,6 +68,89 @@ int main()
             paved.DecelerationCmPerSecondSquared &&
             Near(gravel.DecelerationCmPerSecondSquared, 466.56),
             "confirmed off-road grip, worn tires and damage all reduce braking");
+    // Regression: the lateral friction-circle policy uses the actual
+    // product of road, tire and damage grip, WITHOUT a 10% floor.
+    // Braking must not invent more traction than that shared contact
+    // budget when severely degraded but still eligible (>= 5%).
+    for (const double speed : {1200.0, 3000.0, -3000.0})
+    {
+        for (const bool arcade : {true, false})
+        {
+            const double signedDirection = speed > 0.0 ? -1.0 : 1.0;
+            const double baseline = arcade
+                ? ArcadeServiceBrakeDeceleration
+                : SimulationServiceBrakeDeceleration;
+            const auto lowGrip = calc(
+                speed, true, false, arcade, 0.4, 0.4, 0.5);
+            const double combinedGrip = 0.4 * 0.4 * 0.5;
+            Require(lowGrip.Valid &&
+                    Near(combinedGrip, 0.08) &&
+                    Near(lowGrip.DecelerationCmPerSecondSquared,
+                         baseline * combinedGrip) &&
+                    Near(lowGrip.ForwardForce,
+                         signedDirection * 1100.0 * baseline * combinedGrip),
+                    "8 percent physical contact grip must yield exactly 8 percent longitudinal brake authority");
+            const auto bothLowGrip = calc(
+                speed, true, true, arcade, 0.4, 0.4, 0.5, 0.05);
+            Require(bothLowGrip.Valid &&
+                    Near(bothLowGrip.DecelerationCmPerSecondSquared,
+                         HandbrakeDeceleration * combinedGrip) &&
+                    Near(bothLowGrip.ForwardForce,
+                         signedDirection * 1100.0 *
+                             HandbrakeDeceleration * combinedGrip),
+                    "service heat fade and handbrake preserve 8 percent road grip without a floor");
+        }
+    }
+    // Real source can supply the lowest validated factor for each
+    // independently measured surface/tire/damage component. Neither
+    // smooth driving nor the brake may amplify a product smaller than
+    // the friction-circle's admissible 5%-scale operating region.
+    const auto extremeWear = calc(
+        3000.0, true, false, true, 0.05, 0.05, 0.05);
+    Require(extremeWear.Valid &&
+            Near(extremeWear.DecelerationCmPerSecondSquared,
+                 ArcadeServiceBrakeDeceleration * 0.000125) &&
+            extremeWear.DecelerationCmPerSecondSquared > 0.0,
+            "near-zero but finite validated grip cannot be promoted to a false 10 percent braking floor");
+    // The pre-existing 2.0x upper bound still prevents excessive
+    // acceleration authority from multiplying maximum garage/grip values.
+    const auto upperBound = calc(
+        3000.0, true, false, true, 2.0, 2.0, 2.0);
+    Require(upperBound.Valid &&
+            Near(upperBound.DecelerationCmPerSecondSquared,
+                 ArcadeServiceBrakeDeceleration * 2.0),
+            "existing maximum physical brake multiplier stays capped at two");
+
+    // Vary ALL grip contributors. Effective braking must be monotonic
+    // in the combined validated product across 30/60/120 FPS, with
+    // forward and reverse parity. Tests use speeds far from frame cap.
+    for (const double dt : {1.0 / 30.0, 1.0 / 60.0, 1.0 / 120.0})
+    {
+        double previous = 0.0;
+        for (int n = 0; n <= 100; ++n)
+        {
+            const double surface = 0.2 + 0.008 * n;
+            const double tire = 0.4;
+            const double damage = 0.5;
+            const double total = surface * tire * damage;
+            const auto forward = calc(
+                4500.0, true, false, true,
+                surface, tire, damage, 1.0, dt);
+            const auto reverseLowGrip = calc(
+                -4500.0, true, false, true,
+                surface, tire, damage, 1.0, dt);
+            Require(forward.Valid && reverseLowGrip.Valid &&
+                    Near(forward.DecelerationCmPerSecondSquared,
+                         ArcadeServiceBrakeDeceleration * total) &&
+                    Near(reverseLowGrip.DecelerationCmPerSecondSquared,
+                         forward.DecelerationCmPerSecondSquared) &&
+                    Near(reverseLowGrip.ForwardForce, -forward.ForwardForce) &&
+                    forward.DecelerationCmPerSecondSquared + 1e-9 >= previous,
+                    "low-grip braking remains proportional, frame-rate invariant and opposite real velocity");
+            previous = forward.DecelerationCmPerSecondSquared;
+        }
+    }
+
     const auto parking = calc(3000.0, false, true);
     Require(parking.Valid && Near(parking.DecelerationCmPerSecondSquared, 470.0),
             "human handbrake can slow car while preserving drift grip policy");
