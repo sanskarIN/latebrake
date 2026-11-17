@@ -38,7 +38,11 @@ For every received frame, the advisory:
   residuals are limited independently to 5 cm or 12% of expected travel,
   whichever is larger.** The looser 220 cm track-projection tolerance
   is NEVER reused as permission for a frozen body with a falsely moving
-  speedometer to earn measured-source continuity.
+  speedometer to earn measured-source continuity. The independently
+  projected circuit tangent also gives **signed forward velocity**:
+  only physical longitudinal route motion can justify increasing
+  reported lap distance. Reverse driving or a pure sideways slide must
+  not be misreported as a completed forward overtake.
 - Validates *unwrapped* route distance, including genuine lap transitions
   where `CompletedLaps` increments and wrapped progress returns to 0.
   Spoofed lap increments, unexplained jumps, backwards progress and
@@ -48,6 +52,10 @@ For every received frame, the advisory:
 - Sorts the six advisory distances independently of input-array order
   and reports pairwise relative passes only after 35 cm of hysteresis,
   preventing small rank-tie jitter from producing repeated pass events.
+  A relative pass is reported only when the newly leading chassis also
+  has at least 0.5 m/s of measured velocity along the circuit's actual
+  forward tangent; ordinary physical sideways drift remains permitted
+  when real forward progress agrees with projected motion.
 - Never outputs a "winner", official finish, pass bonus, race score,
   checkpoint award, safety intervention or throttle command.
 
@@ -66,6 +74,9 @@ runs with the existing strict `/W4 /WX` or
 - Independent frozen-world, forged-progress and moving-world/stale-route
   attacks at 30/60/120 FPS; neither a believable projected location nor
   the previous 180 cm fixed error budget may fabricate motion.
+- Reverse-motion and 90-degree sideways-sliding chassis with false
+  forward progress reports must be rejected at 30/60/120 FPS, while
+  a legitimate forward drift with moderate lateral slip stays valid.
 - A true 1.70 km wrapped-lap crossing that remains continuous.
 - Rejection of NaN/Inf, impossible speeds, lost road support,
   duplicated/missing identity, repeated slot, invalid lap boundaries,
