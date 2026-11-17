@@ -1,6 +1,11 @@
 #include "Telemetry/TelemetryPitReview.h"
 #include "Telemetry/TelemetryPitStrategyReview.h"
 #include "Telemetry/TelemetryRaceStrategy.h"
+#include "Telemetry/TelemetryDriverCoach.h"
+#include "Telemetry/TelemetryCoach.h"
+#include "Telemetry/TelemetryFuelStint.h"
+#include "Telemetry/TelemetryFuelStrategy.h"
+#include "Telemetry/TelemetryDashboard.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -22,6 +27,16 @@ int main()
 {
     using namespace latebrake::engineering;
     static_assert(!std::is_same_v<PitReviewSettings, PitVisitReviewSettings>);
+    // Existing driver coaching and imported race-strategy coaching have
+    // intentionally different contracts, despite their historic names.
+    static_assert(!std::is_same_v<CoachingTopic, RaceEngineerCoachingTopic>);
+    static_assert(!std::is_same_v<CoachingPriority, RaceEngineerCoachingPriority>);
+    static_assert(!std::is_same_v<CoachingSettings, RaceEngineerCoachingSettings>);
+    static_assert(!std::is_same_v<CoachingEvidence, RaceEngineerCoachingEvidence>);
+    // A real fuel-stint review and an advisory strategy forecast must also
+    // remain independently typed when both are included in one editor TU.
+    static_assert(!std::is_same_v<FuelSample, FuelStrategySample>);
+    static_assert(!std::is_same_v<FuelStintMonitor, FuelStrategyStintMonitor>);
     const PitReviewSettings strategySettings{};
     const PitVisitReviewSettings visitSettings{};
     const RaceStrategySettings raceSettings{};
