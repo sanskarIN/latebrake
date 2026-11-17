@@ -91,7 +91,7 @@ inline bool ValidFuelSettings(
            s.RollingLapWindow <= 32;
 }
 
-struct FuelSample final
+struct FuelStrategySample final
 {
     double MonotonicSeconds = 0.0;
     double RaceClockSeconds = 0.0;
@@ -143,7 +143,7 @@ struct FuelStintSummary final
     bool Qualified = false;
 };
 
-class FuelStintMonitor final
+class FuelStrategyStintMonitor final
 {
 public:
     bool Configure(FuelAnalysisSettings settings) noexcept
@@ -224,7 +224,7 @@ public:
             Suspend();
             return false;
         }
-        FuelSample sample;
+        FuelStrategySample sample;
         sample.MonotonicSeconds = frame.MonotonicSeconds;
         sample.RaceClockSeconds = frame.RaceClockSeconds;
         sample.FuelFraction = fuel;
@@ -377,7 +377,7 @@ public:
         return true;
     }
 
-    FuelSample Snapshot() const noexcept { return Last; }
+    FuelStrategySample Snapshot() const noexcept { return Last; }
     FuelStintSummary History() const noexcept { return Summary; }
     bool ForecastQualified() const noexcept
     {
@@ -391,7 +391,7 @@ public:
 
 private:
     FuelAnalysisSettings Settings{};
-    FuelSample Last{};
+    FuelStrategySample Last{};
     FuelStintSummary Summary{};
     RollingWindow<32> LapBurns;
     ExponentialFilter BurnRateFilter;
