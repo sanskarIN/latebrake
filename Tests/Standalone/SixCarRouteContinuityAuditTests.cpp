@@ -358,6 +358,76 @@ void RepeatedReportedProgressCannotFabricatePass()
           "test achieved false reported overtaking while physics did not");
 }
 
+void GenuineReverseRouteAndLapSeam(double fps)
+{
+    using namespace latebrake;
+    const double dt = 1.0 / fps;
+    const double lap = WorldScaleCircuitLapCm;
+    const Speeds speeds{{1800, 1800, 1800, 1800, 1800, 900}};
+    Stations station{{15000, 16500, 18000, 19500, 21000, lap + 65.0}};
+    SixCarRouteContinuityAudit audit;
+
+    auto baseline = Fleet(1, station, speeds, dt);
+    baseline.Actors[5].VelocityX *= -1.0;
+    baseline.Actors[5].VelocityY *= -1.0;
+    const auto first = audit.Observe(baseline);
+    Check(first.Valid && !first.MotionContinuous &&
+          first.CarsBySlot[5].Direction ==
+              SixCarRouteTravelDirection::Reverse &&
+          first.CarsBySlot[5].SignedRouteSpeedCmps < -800.0,
+          "real wrong-way world velocity establishes a reverse-only baseline");
+
+    bool crossedReverseLapSeam = false;
+    double previousReported = first.CarsBySlot[5].TotalReportedProgressCm;
+    for (std::uint64_t frame = 2; frame <= 18; ++frame)
+    {
+        for (std::size_t i = 0; i < 5; ++i)
+        {
+            station[i] += speeds[i] * dt;
+        }
+        station[5] -= speeds[5] * dt;
+        auto sample = Fleet(frame, station, speeds, dt);
+        sample.Actors[5].VelocityX *= -1.0;
+        sample.Actors[5].VelocityY *= -1.0;
+        const auto result = audit.Observe(sample);
+        Check(result.Valid && result.MotionContinuous &&
+              result.RejectedFrames == 0 &&
+              result.ConfirmedRelativePasses == 0 &&
+              result.AcceptedContinuityFrames == frame - 1,
+              "truthful six-car reverse travel must not be treated as a teleport");
+        const auto& reversing = result.CarsBySlot[5];
+        Check(reversing.Direction == SixCarRouteTravelDirection::Reverse &&
+              reversing.SignedRouteSpeedCmps < -800.0 &&
+              reversing.TotalReportedProgressCm < previousReported,
+              "independent road direction must remain negative and monotone");
+        crossedReverseLapSeam =
+            crossedReverseLapSeam || station[5] < lap;
+        previousReported = reversing.TotalReportedProgressCm;
+    }
+    Check(crossedReverseLapSeam,
+          "a genuine reverse car crosses from completed-lap 1 to lap 0");
+    Check(audit.Readout().CarsBySlot[5].TotalReportedProgressCm < lap,
+          "reverse seam correctly decrements externally qualified lap count");
+}
+
+void ReverseProgressSpoofingIsRejected(double fps)
+{
+    using namespace latebrake;
+    const double dt = 1.0 / fps;
+    Stations station{{15000, 16400, 17800, 19200, 20600, 22000}};
+    const Speeds speeds{{2100, 2000, 1900, 1800, 1700, 1600}};
+    SixCarRouteContinuityAudit audit;
+    Check(audit.Observe(Fleet(1, station, speeds, dt)).Valid,
+          "forward chassis baseline establishes source identity");
+    Advance(station, speeds, dt);
+    auto forged = Fleet(2, station, speeds, dt);
+    forged.Actors[4].ReportedLapProgressCm -= 2.0 * speeds[4] * dt;
+    const auto result = audit.Observe(forged);
+    Check(!result.Valid && result.RejectedFrames == 1 &&
+          result.ConfirmedRelativePasses == 0,
+          "forward physical car cannot fabricate backward route progress");
+}
+
 void TeleportsAndLapFraud()
 {
     using namespace latebrake;
@@ -490,6 +560,8 @@ int main()
         NormalSixCarMotion(fps);
         FrozenAndStalePhysics(fps);
         SignedRoadMotionCannotBeForged(fps);
+        GenuineReverseRouteAndLapSeam(fps);
+        ReverseProgressSpoofingIsRejected(fps);
         PassHysteresis(fps);
     }
     InvalidAndIncompleteFleet();
