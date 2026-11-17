@@ -22,75 +22,58 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
       - name: Audit immutable published snapshot using GitHub API
         uses: actions/github-script@v7
         env:
           INPUT_TAG: ${{ inputs.tag }}
         with:
           script: |
+            // Trust only approved, read-only local policy. Checkout pins its
+            // source to main even when a release event points to an older tag.
+            const policy = require('./scripts/AuditPublishedSourceRelease.cjs');
             const {owner, repo} = context.repo;
             const tag = context.eventName === 'release'
               ? context.payload.release?.tag_name
               : process.env.INPUT_TAG;
-            if (!/^v0\.5\.\d+$/.test(tag || '')) {
-              throw new Error('Only an explicit v0.5.N source-preview tag is accepted.');
-            }
-
-            // Read-only lookup. An ambiguous publisher HTTP 500
-            // is neither proof of publication nor proof of failure.
+            const classification = policy.classifySourceTag(tag);
+            
             const release = (await github.rest.repos.getReleaseByTag({
               owner, repo, tag
             })).data;
-            if (release.tag_name !== tag || release.draft ||
-                !release.prerelease || !release.published_at ||
-                release.assets.length !== 0) {
-              throw new Error('Release absent, draft, not a pre-release, or has game assets.');
-            }
-
-            const ref = (await github.rest.git.getRef({
+            const reference = (await github.rest.git.getRef({
               owner, repo, ref: 'tags/' + tag
-            })).data.object;
-            if (ref.type !== 'commit' ||
-                !/^[a-f0-9]{40}$/.test(ref.sha)) {
-              throw new Error('Source tag is not a direct 40-digit commit ref.');
-            }
-            if (release.target_commitish !== ref.sha) {
-              throw new Error('Release target commit does not match its source tag.');
-            }
-
-            // Compare the exact immutable source-tag notes, not moving main.
-            const noteFile = (await github.rest.repos.getContent({
-              owner, repo,
-              path: 'docs/releases/' + tag + '.md',
-              ref: ref.sha
             })).data;
-            if (Array.isArray(noteFile) || noteFile.type !== 'file' ||
-                noteFile.encoding !== 'base64' ||
-                typeof noteFile.content !== 'string') {
-              throw new Error('Source-tagged release notes are not a regular file.');
-            }
-            const notes = Buffer.from(
-              noteFile.content.replace(/\s/g, ''), 'base64'
-            ).toString('utf8');
-            if (release.body !== notes) {
-              throw new Error('Published release description differs from tagged notes.');
-            }
-            for (const warning of [
-              'SOURCE-ONLY',
-              'NOT a playable game build',
-              'No compiled Win64 EXE',
-              'Android APK/AAB',
-              'not installers',
-              'zero executable binaries'
-            ]) {
-              if (!notes.includes(warning)) {
-                throw new Error('Required source-only warning missing: ' + warning);
+            
+            let sourceNotes;
+            if (classification.notesPath) {
+              // Ordinary versioned releases retain the strongest existing gate:
+              // read the EXACT notes committed at the immutable direct tag SHA.
+              const noteFile = (await github.rest.repos.getContent({
+                owner, repo, path: classification.notesPath,
+                ref: reference.object.sha
+              })).data;
+              if (Array.isArray(noteFile) || noteFile.type !== 'file' ||
+                  noteFile.encoding !== 'base64' ||
+                  typeof noteFile.content !== 'string') {
+                throw new Error('Source-tagged release notes are not a regular file.');
               }
+              sourceNotes = Buffer.from(
+                noteFile.content.replace(/\s/g, ''), 'base64'
+              ).toString('utf8');
             }
+            
+            const checked = policy.verifyPublishedSourceRelease({
+              tag, release, reference, sourceNotes,
+            });
             if (context.eventName === 'release' &&
                 context.payload.release.id !== release.id) {
               throw new Error('Release event ID does not match fetched publication.');
             }
-            core.notice('Verified source-only release: ' +
-              release.html_url + ' @ ' + ref.sha +
-              ' (notes exact, zero executable attachments).');
+            core.notice('Verified source-only release metadata: ' +
+              release.html_url + ' @ ' + checked.sha +
+              ' (' + checked.kind + ', zero attachments). ' +
+              'NOT evidence of Unreal compilation or a playable build.');
