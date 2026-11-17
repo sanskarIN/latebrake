@@ -62,25 +62,39 @@ int main()
     result = policy.Apply(drive, {1.0/60.0, 5, true, zero});
     Require(result.Valid && !result.CapacityAvailable && result.Command.Brake &&
             result.Command.Throttle == 0.0, "zero estimated capacity cannot authorize more propulsion");
+    // Capacity forecaster remains a separate engine-neutral source
+    // component. The current main branch's corner envelope does NOT
+    // expose the historical contact-ceiling adapter fields: never
+    // fabricate their integration or modify live Unreal behavior here.
+    // Instead prove the real existing corner planner still respects
+    // independently reported road grip and thermal braking evidence.
     const auto corner = CircuitGate(0);
     RivalCornerBrakeSample envelope;
-    envelope.NextGate = 0; envelope.Position = {corner.X - 3000.0, corner.Y};
-    envelope.PlanarSpeedCmPerSecond = 2500.0; envelope.PriorPhysicsQualified = true;
+    envelope.NextGate = 0;
+    envelope.Position = {corner.X - 3000.0, corner.Y};
+    envelope.PlanarSpeedCmPerSecond = 2500.0;
+    envelope.PriorPhysicsQualified = true;
     const auto original = ApplyRivalCornerBrakeEnvelope(drive, envelope);
-    envelope.UseContactCapacityCeiling = true;
-    envelope.ContactDecelerationCeiling = 120.0; envelope.ReactionSeconds = 0.22;
-    const auto limited = ApplyRivalCornerBrakeEnvelope(drive, envelope);
-    Require(original.Valid && limited.Valid && limited.Command.Brake &&
-            limited.Command.Throttle == 0.0 &&
-            limited.BrakeEnvelopeSpeedCmPerSecond < original.BrakeEnvelopeSpeedCmPerSecond,
-            "real contact capacity reduces target speed before the same actual turn");
-    const double runway = 3000.0 - 550.0 - 2500.0 * 0.22;
-    Require(std::abs(limited.BrakeEnvelopeSpeedCmPerSecond -
-            std::sqrt(1550.0*1550.0 + 2.0*120.0*runway)) < 1.0e-7,
-            "capacity envelope matches independent stopping-distance and reaction-distance reference");
-    envelope.ContactDecelerationCeiling = 0.0;
-    const auto blocked = ApplyRivalCornerBrakeEnvelope(drive, envelope);
-    Require(blocked.Valid && blocked.Command.Brake && blocked.Command.Throttle == 0.0,
-            "supported but zero-capacity forecast fails to a brake command");
+    envelope.BrakeHeatMultiplier = 0.50;
+    const auto faded = ApplyRivalCornerBrakeEnvelope(drive, envelope);
+    Require(original.Valid && faded.Valid &&
+            original.SafeDecelerationCmPerSecondSquared > 0.0 &&
+            std::abs(2.0 * faded.SafeDecelerationCmPerSecondSquared -
+                     original.SafeDecelerationCmPerSecondSquared) < 1.0e-9,
+            "mainline corner envelope independently derates measured brake heat");
+    envelope.BrakeHeatMultiplier = 1.0;
+    envelope.SurfaceGrip = 0.60;
+    const auto reducedGrip = ApplyRivalCornerBrakeEnvelope(drive, envelope);
+    Require(reducedGrip.Valid &&
+            reducedGrip.SafeDecelerationCmPerSecondSquared <
+                original.SafeDecelerationCmPerSecondSquared &&
+            reducedGrip.Command.Throttle <= drive.Throttle &&
+            reducedGrip.Command.Steering == drive.Steering,
+            "mainline corner predictor preserves route authority under lower road grip");
+    envelope.PriorPhysicsQualified = false;
+    const auto rejectedCorner = ApplyRivalCornerBrakeEnvelope(drive, envelope);
+    Require(!rejectedCorner.Valid,
+            "unqualified physics can never authorize a cornering command");
+
     std::cout << "Rival brake capacity: source identity, immediate loss, recovery rate and analytic envelope passed\n";
 }
