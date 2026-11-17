@@ -111,7 +111,7 @@ class V05100Test2SourcePreviewBindingsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify_safe_preview(
                 self.workflow, self.guard, self.audit,
-                self.notes.replace("PR #394", "Merged PR #394"),
+                self.notes.replace("PR #394", "unverified brake change"),
             )
 
 
