@@ -1,4 +1,5 @@
 #include "Vehicles/GripLimitedBraking.h"
+#include "Vehicles/LateralGripBudget.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -120,6 +121,30 @@ int main()
             Near(upperBound.DecelerationCmPerSecondSquared,
                  ArcadeServiceBrakeDeceleration * 2.0),
             "existing maximum physical brake multiplier stays capped at two");
+
+    // Cross-policy physical integration: lateral grip's independently
+    // computed combined contact budget must not be smaller than a
+    // simultaneously demanded longitudinal brake. An old 10% minimum
+    // demanded 90 cm/s^2 at 5% actual grip while the Arcade contact
+    // budget had only 77.5 cm/s^2 available, an impossible result.
+    for (int n = 0; n <= 10; ++n)
+    {
+        const double surface = 0.25 + 0.025 * static_cast<double>(n);
+        const double tire = 0.4;
+        const double damage = 0.5;
+        const double combined = surface * tire * damage; // 5%-10%.
+        const auto brake = calc(3000.0, true, false, true,
+                                surface, tire, damage);
+        const auto sharedGrip = CalculateLateralGripForce({
+            1.0 / 60.0, 1000.0, 1100.0, 4.0, combined,
+            brake.DecelerationCmPerSecondSquared, true, false});
+        Require(brake.Valid && sharedGrip.Valid &&
+                brake.DecelerationCmPerSecondSquared <=
+                    ArcadeCombinedGripBudget * combined + 1e-9 &&
+                sharedGrip.AvailableLateralDeceleration >= 0.0 &&
+                std::isfinite(sharedGrip.RightForce),
+                "braking cannot exceed independently measured shared friction-circle traction budget");
+    }
 
     // Vary ALL grip contributors. Effective braking must be monotonic
     // in the combined validated product across 30/60/120 FPS, with
