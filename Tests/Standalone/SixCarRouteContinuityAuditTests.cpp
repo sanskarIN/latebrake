@@ -41,11 +41,15 @@ latebrake::SixCarRouteActorSample ActorAt(
           "authored world-scale route centerline is usable");
     auto wrapped = std::fmod(station, WorldScaleCircuitLapCm);
     if (wrapped < 0.0) wrapped += WorldScaleCircuitLapCm;
-    Check(station >= 0.0, "test lap totals must never be negative");
+    // Signed spatial revolution is independent from official race
+    // completed laps: physically driving backwards before start yields -1.
+    Check(std::isfinite(station) &&
+              std::abs(station / WorldScaleCircuitLapCm) <= 1000.0,
+          "source-only fixture requires a bounded signed spatial station");
     SixCarRouteActorSample a{};
     a.GridSlot = slot;
     a.ActorIdentity = 1000 + static_cast<std::uint64_t>(slot);
-    a.CompletedLaps = static_cast<unsigned>(
+    a.SpatialRevolutionIndex = static_cast<int>(
         std::floor(station / WorldScaleCircuitLapCm));
     a.ReportedLapProgressCm = wrapped;
     a.WorldX = current.Pose.Position.X;
@@ -130,7 +134,7 @@ void InvalidAndIncompleteFleet()
     const auto good = Fleet(1, station, speed, dt);
     Check(audit.Observe(good).Valid, "trusted six-car baseline accepted");
     unsigned rejected = 0;
-    for (int variant = 0; variant < 22; ++variant)
+    for (int variant = 0; variant < 23; ++variant)
     {
         auto f = good;
         f.FrameOrdinal = 2;
@@ -153,11 +157,13 @@ void InvalidAndIncompleteFleet()
         case 14: f.Actors[5].WorldY = 2000000.0; break;
         case 15: f.Actors[5].VelocityX = 20000.0; break;
         case 16: f.Actors[5].VelocityY = std::numeric_limits<double>::quiet_NaN(); break;
-        case 17: f.Actors[5].CompletedLaps = SixCarRouteAuditMaxRecordedLaps + 1; break;
+        case 17: f.Actors[5].SpatialRevolutionIndex = SixCarRouteAuditMaxSpatialRevolutions + 1; break;
         case 18: f.Actors[5].ReportedLapProgressCm += 2000.0; break;
         case 19: f.Actors[5].WorldY += 5000.0; break;
         case 20: f.Actors[5].WorldX = std::numeric_limits<double>::quiet_NaN(); break;
         case 21: f.DeltaSeconds = std::numeric_limits<double>::quiet_NaN(); break;
+        case 22: f.Actors[5].SpatialRevolutionIndex =
+                     -SixCarRouteAuditMaxSpatialRevolutions - 1; break;
         default: Check(false, "unhandled invalid-source case"); break;
         }
         const auto result = audit.Observe(f);
@@ -446,7 +452,7 @@ void TeleportsAndLapFraud()
         {
         case 0: second.Actors[4].WorldX += 1200.0; break;
         case 1: second.Actors[4].ReportedLapProgressCm += 1000.0; break;
-        case 2: ++second.Actors[4].CompletedLaps; break;
+        case 2: ++second.Actors[4].SpatialRevolutionIndex; break;
         case 3: second.Actors[4].VelocityX = 14999.0; break;
         case 4: second.Actors[4].ReportedLapProgressCm =
                     initial[4] - 800.0; break;
