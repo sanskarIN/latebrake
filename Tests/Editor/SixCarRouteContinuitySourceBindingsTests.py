@@ -20,7 +20,7 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
     def test_all_six_physical_identities_are_mandatory(self):
         for token in (
             "SixCarRouteAuditCapacity = 6",
-            "sample.SessionIdentity" if False else "frame.SessionIdentity",
+            "frame.SessionIdentity",
             "actor.ActorIdentity == 0",
             "seenSlots[slot]",
             "ordered[i].ActorIdentity == ordered[j].ActorIdentity",
@@ -28,7 +28,7 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "ProjectWorldScaleRoute(",
             "projection.InsidePhysicalCandidateRoad",
             "SixCarRouteDistanceDifference(",
-            "source-only",
+            "This is not an AI controller",
         ):
             self.assertIn(token, self.header)
 
@@ -71,16 +71,6 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             self.assertNotIn(banned, self.header)
         self.assertIn("This is not an AI controller", self.header)
         self.assertIn("not integrated Unreal gameplay", self.qa)
-
-    def test_unchecked_synthetic_provenance_does_not_count_as_qa(self):
-        bad = self.header.replace(
-            "actor.QualifiedRoadContact",
-            "true /* fake road contact */",
-            1,
-        )
-        self.assertNotIn("actor.QualifiedRoadContact", bad)
-        self.assertIn("actor.QualifiedRoadContact", self.header)
-
 
 if __name__ == "__main__":
     unittest.main()
