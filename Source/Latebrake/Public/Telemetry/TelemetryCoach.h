@@ -16,7 +16,7 @@
 
 namespace latebrake::engineering
 {
-enum class CoachingTopic : std::uint8_t
+enum class RaceEngineerCoachingTopic : std::uint8_t
 {
     None,
     BrakeEarlier,
@@ -44,7 +44,7 @@ enum class CoachingTopic : std::uint8_t
     VerifyGroundContact
 };
 
-enum class CoachingPriority : std::uint8_t
+enum class RaceEngineerCoachingPriority : std::uint8_t
 {
     None,
     Opportunity,
@@ -67,7 +67,7 @@ enum class CoachingPresentation : std::uint8_t
 inline constexpr int CoachingTopicCount = 23;
 inline constexpr int MaximumCoachTips = 16;
 
-struct CoachingSettings final
+struct RaceEngineerCoachingSettings final
 {
     double MinimumEvidenceConfidence = 0.70;
     double MinimumHintIntervalSeconds = 5.0;
@@ -92,7 +92,7 @@ struct CoachingSettings final
 };
 
 inline bool ValidCoachingSettings(
-    const CoachingSettings& s) noexcept
+    const RaceEngineerCoachingSettings& s) noexcept
 {
     return Finite(s.MinimumEvidenceConfidence) &&
            s.MinimumEvidenceConfidence >= 0.0 &&
@@ -131,10 +131,10 @@ inline bool ValidCoachingSettings(
            s.MaximumActiveTips <= MaximumCoachTips;
 }
 
-struct CoachingEvidence final
+struct RaceEngineerCoachingEvidence final
 {
-    CoachingTopic Topic = CoachingTopic::None;
-    CoachingPriority Priority = CoachingPriority::None;
+    RaceEngineerCoachingTopic Topic = RaceEngineerCoachingTopic::None;
+    RaceEngineerCoachingPriority Priority = RaceEngineerCoachingPriority::None;
     CoachingPresentation Presentation =
         CoachingPresentation::AfterLap;
     double Confidence = 0.0;
@@ -154,7 +154,7 @@ struct CoachingEvidence final
 
 struct CoachingTip final
 {
-    CoachingEvidence Evidence{};
+    RaceEngineerCoachingEvidence Evidence{};
     std::uint64_t Sequence = 0;
     double FirstObservedSeconds = 0.0;
     double LastObservedSeconds = 0.0;
@@ -188,17 +188,17 @@ struct CoachingFrameInput final
     bool NativeObserved = false;
 };
 
-inline CoachingEvidence MakeCoachingEvidence(
-    CoachingTopic topic,
-    CoachingPriority priority,
+inline RaceEngineerCoachingEvidence MakeCoachingEvidence(
+    RaceEngineerCoachingTopic topic,
+    RaceEngineerCoachingPriority priority,
     CoachingPresentation presentation,
     double magnitude, double reference,
     double confidence, double nowSeconds,
     bool nativeObserved, bool isSafetyRelated) noexcept
 {
-    CoachingEvidence result;
-    if (topic == CoachingTopic::None ||
-        priority == CoachingPriority::None ||
+    RaceEngineerCoachingEvidence result;
+    if (topic == RaceEngineerCoachingTopic::None ||
+        priority == RaceEngineerCoachingPriority::None ||
         !Finite(magnitude) ||
         !Finite(reference) ||
         !Finite(confidence) ||
@@ -225,7 +225,7 @@ inline CoachingEvidence MakeCoachingEvidence(
 }
 
 inline int CoachingPriorityRank(
-    const CoachingEvidence& e) noexcept
+    const RaceEngineerCoachingEvidence& e) noexcept
 {
     if (!e.Qualified)
     {
@@ -247,7 +247,7 @@ public:
         Count = 0;
     }
 
-    bool Add(CoachingEvidence evidence) noexcept
+    bool Add(RaceEngineerCoachingEvidence evidence) noexcept
     {
         if (!evidence.Qualified ||
             Count >= static_cast<int>(Candidates.size()))
@@ -256,7 +256,7 @@ public:
         }
         for (int i = 0; i < Count; ++i)
         {
-            CoachingEvidence& existing =
+            RaceEngineerCoachingEvidence& existing =
                 Candidates[static_cast<std::size_t>(i)];
             if (existing.Topic != evidence.Topic)
             {
@@ -275,7 +275,7 @@ public:
 
     int Evaluate(
         const CoachingFrameInput& input,
-        const CoachingSettings& settings) noexcept
+        const RaceEngineerCoachingSettings& settings) noexcept
     {
         Reset();
         if (!ValidCoachingSettings(settings) ||
@@ -287,13 +287,13 @@ public:
             return 0;
         }
         const auto add = [this, &input](
-            CoachingTopic topic,
-            CoachingPriority priority,
+            RaceEngineerCoachingTopic topic,
+            RaceEngineerCoachingPriority priority,
             CoachingPresentation presentation,
             double magnitude, double reference,
             bool safety = false)
         {
-            CoachingEvidence e = MakeCoachingEvidence(
+            RaceEngineerCoachingEvidence e = MakeCoachingEvidence(
                 topic, priority, presentation,
                 magnitude, reference,
                 input.EvidenceConfidence,
@@ -309,8 +309,8 @@ public:
             if (input.Health.EngineTemperatureC >=
                 settings.CriticalEngineHeatC)
             {
-                add(CoachingTopic::MonitorEngineHeat,
-                    CoachingPriority::Critical,
+                add(RaceEngineerCoachingTopic::MonitorEngineHeat,
+                    RaceEngineerCoachingPriority::Critical,
                     CoachingPresentation::AdvisoryNow,
                     input.Health.EngineTemperatureC,
                     settings.CriticalEngineHeatC, true);
@@ -318,8 +318,8 @@ public:
             if (input.Health.BrakeTemperatureC >=
                 settings.CriticalBrakeHeatC)
             {
-                add(CoachingTopic::ManageBrakeHeat,
-                    CoachingPriority::Safety,
+                add(RaceEngineerCoachingTopic::ManageBrakeHeat,
+                    RaceEngineerCoachingPriority::Safety,
                     CoachingPresentation::NextStraight,
                     input.Health.BrakeTemperatureC,
                     settings.CriticalBrakeHeatC, true);
@@ -328,8 +328,8 @@ public:
         if (input.Opponents.Valid &&
             input.Opponents.PredictedContacts > 0)
         {
-            add(CoachingTopic::StayClearOfOpponent,
-                CoachingPriority::Safety,
+            add(RaceEngineerCoachingTopic::StayClearOfOpponent,
+                RaceEngineerCoachingPriority::Safety,
                 CoachingPresentation::AdvisoryNow,
                 static_cast<double>(
                     input.Opponents.PredictedContacts),
@@ -340,31 +340,31 @@ public:
             if (input.Grip.State == GripState::Sliding ||
                 input.Grip.State == GripState::Saturated)
             {
-                add(CoachingTopic::ReduceExcessiveSlip,
-                    CoachingPriority::Safety,
+                add(RaceEngineerCoachingTopic::ReduceExcessiveSlip,
+                    RaceEngineerCoachingPriority::Safety,
                     CoachingPresentation::NextStraight,
                     input.Grip.MaximumCombinedSaturation,
                     1.0, true);
             }
             if (input.Grip.SuspectedUndersteer)
             {
-                add(CoachingTopic::ReduceUndersteer,
-                    CoachingPriority::Consistency,
+                add(RaceEngineerCoachingTopic::ReduceUndersteer,
+                    RaceEngineerCoachingPriority::Consistency,
                     CoachingPresentation::AfterLap,
                     input.Grip.MaximumCombinedSaturation, 1.0);
             }
             if (input.Grip.SuspectedOversteer)
             {
-                add(CoachingTopic::ReduceOversteer,
-                    CoachingPriority::Safety,
+                add(RaceEngineerCoachingTopic::ReduceOversteer,
+                    RaceEngineerCoachingPriority::Safety,
                     CoachingPresentation::NextStraight,
                     input.Grip.MaximumCombinedSaturation, 1.0, true);
             }
             if (input.Grip.MeanTireTemperatureC >=
                 settings.CriticalTireHeatC)
             {
-                add(CoachingTopic::ManageTireHeat,
-                    CoachingPriority::Mechanical,
+                add(RaceEngineerCoachingTopic::ManageTireHeat,
+                    RaceEngineerCoachingPriority::Mechanical,
                     CoachingPresentation::NextStraight,
                     input.Grip.MeanTireTemperatureC,
                     settings.CriticalTireHeatC, true);
@@ -382,8 +382,8 @@ public:
             if (input.Brake.Valid &&
                 input.Brake.CurrentWheelLockFraction > 0.0)
             {
-                add(CoachingTopic::ReduceWheelLock,
-                    CoachingPriority::Consistency,
+                add(RaceEngineerCoachingTopic::ReduceWheelLock,
+                    RaceEngineerCoachingPriority::Consistency,
                     CoachingPresentation::AfterLap,
                     input.Brake.CurrentWheelLockFraction, 0.0);
             }
@@ -391,8 +391,8 @@ public:
                 input.Corner.CurrentLineErrorCm >
                     settings.MaximumAcceptableLineErrorCm)
             {
-                add(CoachingTopic::ImproveApexConsistency,
-                    CoachingPriority::Consistency,
+                add(RaceEngineerCoachingTopic::ImproveApexConsistency,
+                    RaceEngineerCoachingPriority::Consistency,
                     CoachingPresentation::AfterLap,
                     input.Corner.CurrentLineErrorCm,
                     settings.MaximumAcceptableLineErrorCm);
@@ -401,8 +401,8 @@ public:
                 input.LapDelta.DeltaSeconds >=
                     settings.MinimumOpportunityTimeGainSeconds)
             {
-                add(CoachingTopic::CompareSector,
-                    CoachingPriority::Opportunity,
+                add(RaceEngineerCoachingTopic::CompareSector,
+                    RaceEngineerCoachingPriority::Opportunity,
                     CoachingPresentation::AfterLap,
                     input.LapDelta.DeltaSeconds,
                     settings.MinimumOpportunityTimeGainSeconds);
@@ -410,8 +410,8 @@ public:
             if (input.Fuel.Qualified &&
                 input.Fuel.FuelSavingLikelyNeeded)
             {
-                add(CoachingTopic::ConserveFuel,
-                    CoachingPriority::Performance,
+                add(RaceEngineerCoachingTopic::ConserveFuel,
+                    RaceEngineerCoachingPriority::Performance,
                     CoachingPresentation::AfterLap,
                     input.Fuel.ReserveShortfallFraction,
                     settings.MinimumFuelReserveFraction);
@@ -420,8 +420,8 @@ public:
         if (input.Grip.Valid &&
             input.Grip.ContactFraction < 0.5)
         {
-            add(CoachingTopic::VerifyGroundContact,
-                CoachingPriority::Mechanical,
+            add(RaceEngineerCoachingTopic::VerifyGroundContact,
+                RaceEngineerCoachingPriority::Mechanical,
                 CoachingPresentation::AdvisoryNow,
                 1.0 - input.Grip.ContactFraction,
                 0.5, true);
@@ -429,19 +429,19 @@ public:
         return Count;
     }
 
-    CoachingEvidence At(int index) const noexcept
+    RaceEngineerCoachingEvidence At(int index) const noexcept
     {
         return index >= 0 && index < Count ?
             Candidates[static_cast<std::size_t>(index)] :
-            CoachingEvidence{};
+            RaceEngineerCoachingEvidence{};
     }
 
-    CoachingEvidence Best() const noexcept
+    RaceEngineerCoachingEvidence Best() const noexcept
     {
-        CoachingEvidence best;
+        RaceEngineerCoachingEvidence best;
         for (int i = 0; i < Count; ++i)
         {
-            const CoachingEvidence& current =
+            const RaceEngineerCoachingEvidence& current =
                 Candidates[static_cast<std::size_t>(i)];
             if (!best.Qualified ||
                 CoachingPriorityRank(current) >
@@ -456,14 +456,14 @@ public:
     int Size() const noexcept { return Count; }
 
 private:
-    std::array<CoachingEvidence, MaximumCoachTips> Candidates{};
+    std::array<RaceEngineerCoachingEvidence, MaximumCoachTips> Candidates{};
     int Count = 0;
 };
 
 class RaceEngineerCoach final
 {
 public:
-    bool Configure(CoachingSettings settings) noexcept
+    bool Configure(RaceEngineerCoachingSettings settings) noexcept
     {
         if (!ValidCoachingSettings(settings))
         {
@@ -519,14 +519,14 @@ public:
         Actor = input.SourceFrame.Identity.ActorToken;
         LastTime = input.MonotonicSeconds;
         ActiveCount = Builder.Evaluate(input, Settings);
-        std::array<CoachingEvidence, MaximumCoachTips> sorted{};
+        std::array<RaceEngineerCoachingEvidence, MaximumCoachTips> sorted{};
         for (int i = 0; i < ActiveCount; ++i)
         {
             sorted[static_cast<std::size_t>(i)] = Builder.At(i);
         }
         for (int i = 1; i < ActiveCount; ++i)
         {
-            const CoachingEvidence selected =
+            const RaceEngineerCoachingEvidence selected =
                 sorted[static_cast<std::size_t>(i)];
             int j = i;
             while (j > 0 &&
@@ -544,7 +544,7 @@ public:
         for (int i = 0; i < ActiveCount &&
              i < Settings.MaximumActiveTips; ++i)
         {
-            const CoachingEvidence e =
+            const RaceEngineerCoachingEvidence e =
                 sorted[static_cast<std::size_t>(i)];
             const int topic = static_cast<int>(e.Topic);
             if (topic <= 0 || topic >= CoachingTopicCount)
@@ -611,7 +611,7 @@ public:
     }
     int ActiveTips() const noexcept { return ActiveCount; }
     CoachingTip LastEmittedTip() const noexcept { return LastTip; }
-    std::uint64_t EmissionsFor(CoachingTopic topic) const noexcept
+    std::uint64_t EmissionsFor(RaceEngineerCoachingTopic topic) const noexcept
     {
         const int index = static_cast<int>(topic);
         return index >= 0 && index < CoachingTopicCount ?
@@ -621,7 +621,7 @@ public:
     std::uint64_t RejectedFrames() const noexcept { return Rejected; }
 
 private:
-    CoachingSettings Settings{};
+    RaceEngineerCoachingSettings Settings{};
     CoachingCandidateBuilder Builder;
     std::array<CoachingTip, MaximumCoachTips> Tips{};
     std::array<double, CoachingTopicCount> LastEmitted{};
