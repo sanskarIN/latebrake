@@ -2145,3 +2145,6 @@ add_latebrake_portable_research_test(WorldScaleSmoothCollisionRoad)
 
 # New cross-domain source-only continuity audit; no UE5.8 gameplay claims.
 add_latebrake_portable_research_test(CircuitPaceAudit)
+
+# Detect duplicate pit-review type names across old/new source-only APIs.
+add_latebrake_portable_research_test(PitCompatibility)
