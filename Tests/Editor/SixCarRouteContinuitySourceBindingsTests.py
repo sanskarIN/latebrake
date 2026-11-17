@@ -51,6 +51,9 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "PreviousSignedRouteSpeed[i] +",
             "currentSignedRouteSpeed[i]",
             "currentSignedRouteSpeed[newLeader] >= 50.0",
+            "enum class SixCarRouteTravelDirection",
+            "SixCarRouteTravelDirection::Reverse",
+            "SignedRouteSpeedCmps",
             "const double projectedTotal =",
             "projectedDistance[slot] = projectedTotal;",
             "projectedDistance[static_cast<std::size_t>(a)]",
@@ -68,6 +71,8 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "FrozenAndStalePhysics",
             "SignedRoadMotionCannotBeForged",
             "RepeatedReportedProgressCannotFabricatePass",
+            "GenuineReverseRouteAndLapSeam",
+            "ReverseProgressSpoofingIsRejected",
             "30.0, 60.0, 120.0",
         ):
             self.assertIn(test_name, self.tests)
