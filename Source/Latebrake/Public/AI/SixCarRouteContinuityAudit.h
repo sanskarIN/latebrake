@@ -19,7 +19,13 @@ namespace latebrake
 // collision solver, racing-result clock, or qualified playable feature.
 inline constexpr std::size_t SixCarRouteAuditCapacity = 6;
 inline constexpr double SixCarRouteAuditMaxSpeedCmps = 15000.0;
-inline constexpr double SixCarRouteAuditMaxMotionResidualCm = 180.0;
+// Independent route-to-position matching may need a wider projection
+// tolerance on tessellated bends. Consecutive measured frames MUST meet
+// separate, much tighter kinematic limits: at 20m/s and 120Hz the chassis
+// advances only ~17cm, so an absolute 180cm allowance would accept a
+// completely frozen actor indefinitely.
+inline constexpr double SixCarRouteAuditMaxMotionResidualCm = 5.0;
+inline constexpr double SixCarRouteAuditMaxAdvanceErrorCm = 5.0;
 inline constexpr double SixCarRouteAuditMaxProgressResidualCm = 220.0;
 inline constexpr double SixCarRouteAuditPassHysteresisCm = 35.0;
 inline constexpr double SixCarRouteAuditMinFrameSeconds = 0.001;
@@ -261,15 +267,23 @@ public:
                 const double expectedAdvance = 0.5 * frame.DeltaSeconds *
                     (std::hypot(before.VelocityX, before.VelocityY) +
                      current[i].MeasuredSpeedCmps);
+                // A wide 220cm geometric projection tolerance does NOT
+                // authorize the same 220cm of forged motion per physics
+                // tick. Use physically scaled, much tighter successive
+                // frame error budgets, including at 30/60/120Hz.
+                const double maxWorldError = std::max(
+                    SixCarRouteAuditMaxMotionResidualCm,
+                    0.12 * expectedAdvance);
+                const double maxAdvanceError = std::max(
+                    SixCarRouteAuditMaxAdvanceErrorCm,
+                    0.12 * expectedAdvance);
                 if (!std::isfinite(worldResidual) ||
                     !std::isfinite(measuredAdvance) ||
                     !std::isfinite(expectedAdvance) ||
-                    worldResidual > std::max(
-                        SixCarRouteAuditMaxMotionResidualCm,
-                        0.15 * expectedAdvance) ||
-                    measuredAdvance < -25.0 ||
+                    worldResidual > maxWorldError ||
+                    measuredAdvance < -5.0 ||
                     std::abs(measuredAdvance - expectedAdvance) >
-                        SixCarRouteAuditMaxProgressResidualCm)
+                        maxAdvanceError)
                 {
                     // An impossible teleport, lap shortcut, rollback, or
                     // synthetic speed jump invalidates the ENTIRE frame.
