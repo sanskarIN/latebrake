@@ -416,6 +416,66 @@ void GenuineReverseRouteAndLapSeam(double fps)
           "reverse seam correctly decrements externally qualified lap count");
 }
 
+void ReverseBeforeFirstStartLine(double fps)
+{
+    using namespace latebrake;
+    const double dt = 1.0 / fps;
+    const double lap = WorldScaleCircuitLapCm;
+    const Speeds speeds{{1800, 1900, 1950, 2000, 2050, 900}};
+    // The sixth physical chassis begins just AFTER spatial origin 0
+    // before crossing it in reverse. Negative station is NOT an
+    // official -1 racing lap, just an unwrapped physical coordinate.
+    Stations station{{15000, 16500, 18000, 19500, 21000, 65.0}};
+    SixCarRouteContinuityAudit audit;
+    auto start = Fleet(1, station, speeds, dt);
+    start.Actors[5].VelocityX *= -1.0;
+    start.Actors[5].VelocityY *= -1.0;
+    Check(start.Actors[5].SpatialRevolutionIndex == 0,
+          "spatial baseline starts in revolution zero");
+    auto first = audit.Observe(start);
+    Check(first.Valid && !first.MotionContinuous &&
+          first.CarsBySlot[5].Direction ==
+              SixCarRouteTravelDirection::Reverse,
+          "reverse before first line is a valid physical baseline");
+    bool crossed = false;
+    double previousDistance =
+        first.CarsBySlot[5].TotalReportedProgressCm;
+    for (std::uint64_t frame = 2; frame <= 18; ++frame)
+    {
+        for (std::size_t i = 0; i < 5; ++i)
+        {
+            station[i] += speeds[i] * dt;
+        }
+        station[5] -= speeds[5] * dt;
+        auto observation = Fleet(frame, station, speeds, dt);
+        observation.Actors[5].VelocityX *= -1.0;
+        observation.Actors[5].VelocityY *= -1.0;
+        if (station[5] < 0.0)
+        {
+            crossed = true;
+            Check(observation.Actors[5].SpatialRevolutionIndex == -1 &&
+                  observation.Actors[5].ReportedLapProgressCm > lap - 600.0,
+                  "negative physical station has wrapped positive lap coordinate");
+        }
+        const auto out = audit.Observe(observation);
+        Check(out.Valid && out.MotionContinuous &&
+              out.RejectedFrames == 0 &&
+              out.AcceptedContinuityFrames == frame - 1 &&
+              out.ConfirmedRelativePasses == 0 &&
+              out.CarsBySlot[5].Direction ==
+                  SixCarRouteTravelDirection::Reverse &&
+              out.CarsBySlot[5].TotalReportedProgressCm <
+                  previousDistance,
+              "real reverse pre-start motion retains six-car provenance across zero");
+        previousDistance =
+            out.CarsBySlot[5].TotalReportedProgressCm;
+    }
+    Check(crossed && station[5] < 0.0 &&
+          audit.Readout().CarsBySlot[5].TotalReportedProgressCm < 0.0 &&
+          audit.Readout().CarsBySlot[5].TotalProjectedProgressCm < 0.0,
+          "signed source-only spatial station supports pre-start reversal");
+}
+
 void ReverseProgressSpoofingIsRejected(double fps)
 {
     using namespace latebrake;
@@ -567,6 +627,7 @@ int main()
         FrozenAndStalePhysics(fps);
         SignedRoadMotionCannotBeForged(fps);
         GenuineReverseRouteAndLapSeam(fps);
+        ReverseBeforeFirstStartLine(fps);
         ReverseProgressSpoofingIsRejected(fps);
         PassHysteresis(fps);
     }
