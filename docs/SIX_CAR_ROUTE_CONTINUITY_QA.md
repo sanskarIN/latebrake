@@ -49,6 +49,11 @@ For every received frame, the advisory:
   teleports invalidate the full frame, not just one car's rank.
 - Re-baselines after a pause, race epoch change, actor replacement or
   frame gap. It cannot award time that was not actually observed.
+- Sorts the advisory positions from **independently projected physical
+  chassis locations**, not the separately reported lap stations. Repeated
+  small source-station overstatements cannot accumulate into invented
+  passing events even when every individual frame remains within the
+  conservative geometric and per-frame tolerances.
 - Sorts the six advisory distances independently of input-array order
   and reports pairwise relative passes only after 35 cm of hysteresis,
   preventing small rank-tie jitter from producing repeated pass events.
@@ -74,6 +79,9 @@ runs with the existing strict `/W4 /WX` or
 - Independent frozen-world, forged-progress and moving-world/stale-route
   attacks at 30/60/120 FPS; neither a believable projected location nor
   the previous 180 cm fixed error budget may fabricate motion.
+- Cumulative +7cm/frame fake route progress cannot award a relative
+  pass while the true world-projected car remains behind; this check
+  deliberately stays within existing per-frame drift tolerances.
 - Reverse-motion and 90-degree sideways-sliding chassis with false
   forward progress reports must be rejected at 30/60/120 FPS, while
   a legitimate forward drift with moderate lateral slip stays valid.
