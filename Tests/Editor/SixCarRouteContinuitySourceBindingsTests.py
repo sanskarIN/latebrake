@@ -44,7 +44,13 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "WorldScaleCircuitLapCm",
             "SixCarRouteAuditPassHysteresisCm",
             "SixCarRouteAuditMaxAdvanceErrorCm",
-            "0.12 * expectedAdvance",
+            "0.12 * measuredTravelMagnitude",
+            "const auto tangentBefore = WorldScaleCenterlineAt(",
+            "const auto tangentAfter = WorldScaleCenterlineAt(",
+            "const double signedProgressSpeed =",
+            "PreviousSignedRouteSpeed[i] +",
+            "currentSignedRouteSpeed[i]",
+            "currentSignedRouteSpeed[newLeader] >= 50.0",
             "worldResidual > maxWorldError",
             "ConfirmedRelativePasses",
             "RejectAndBreakContinuity();",
@@ -56,6 +62,7 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "TeleportsAndLapFraud", "EpochIdentityAndFrameGaps",
             "FullLapBoundary", "PassHysteresis",
             "FrozenAndStalePhysics",
+            "SignedRoadMotionCannotBeForged",
             "30.0, 60.0, 120.0",
         ):
             self.assertIn(test_name, self.tests)
