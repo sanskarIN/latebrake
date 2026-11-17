@@ -10,6 +10,13 @@ const OFFICIAL_SOURCE_TAG = /^v0\.5\.\d+$/;
 // Its release was created against "main" and its source commit did not have
 // docs/releases/v0.5.100-test.1.md. Do not generalize this exception to
 // future "-test" tags or relax ordinary source-release provenance.
+const REVIEWED_TEST_TAG = 'v0.5.100-test.2';
+const REVIEWED_TEST_NAME =
+  'LateBrake v0.5.100-test.2 — Portable Racecraft Integration (SOURCE-ONLY Pre-release)';
+
+// This NEW test snapshot has no historic "target_commitish: main" exception.
+// It requires immutable source-tagged notes and an EXACT release target SHA.
+const REVIEWED_TEST_NOTES_PATH = 'docs/releases/v0.5.100-test.2.md';
 const LEGACY_TEST_TAG = 'v0.5.100-test.1';
 const LEGACY_TEST_SHA = 'a04db1ccc15ee2e3be6771d7e4a5159dcadb2384';
 const LEGACY_TEST_NAME = 'LateBrake v0.5.100-test.1 — Source Testing';
@@ -46,6 +53,9 @@ function classifySourceTag(tag) {
   if (typeof tag === 'string' && OFFICIAL_SOURCE_TAG.test(tag)) {
     return {kind: 'official-source', notesPath: 'docs/releases/' + tag + '.md'};
   }
+  if (tag === REVIEWED_TEST_TAG) {
+    return {kind: 'reviewed-source-test', notesPath: REVIEWED_TEST_NOTES_PATH};
+  }
   if (tag === LEGACY_TEST_TAG) {
     return {kind: 'legacy-source-test', notesPath: null};
   }
@@ -63,7 +73,10 @@ function verifyPublishedSourceRelease({tag, reference, release, sourceNotes}) {
     release.assets.length === 0 && typeof release.body === 'string',
     'Release must be published, non-draft, pre-release, and have zero attachments.');
 
-  if (classification.kind === 'official-source') {
+  if (classification.kind === 'official-source' ||
+      classification.kind === 'reviewed-source-test') {
+    // The test.2 snapshot uses the same strict, exact-tagged source-note
+    // policy as official previews, NOT the old test.1 branch-name escape.
     requireState(release.target_commitish === ref.sha,
       'Official source release target must be the exact immutable source tag SHA.');
     requireState(typeof sourceNotes === 'string' && release.body === sourceNotes,
@@ -71,6 +84,16 @@ function verifyPublishedSourceRelease({tag, reference, release, sourceNotes}) {
     for (const warning of REQUIRED_SOURCE_WARNINGS) {
       requireState(sourceNotes.includes(warning),
         'Official source-only warning missing: ' + warning);
+    }
+    if (classification.kind === 'reviewed-source-test') {
+      requireState(release.name === REVIEWED_TEST_NAME &&
+        sourceNotes.includes('PR #395') &&
+        sourceNotes.includes('PR #377') &&
+        sourceNotes.includes('PR #391') &&
+        sourceNotes.includes('PR #394') &&
+        sourceNotes.includes('not integrated into real Unreal gameplay') &&
+        sourceNotes.includes('87,792'),
+        'Reviewed test snapshot title, source scope or unmerged-work warnings changed');
     }
   } else {
     requireState(ref.sha === LEGACY_TEST_SHA,
@@ -88,6 +111,7 @@ function verifyPublishedSourceRelease({tag, reference, release, sourceNotes}) {
 }
 
 module.exports = {
+  REVIEWED_TEST_TAG, REVIEWED_TEST_NAME, REVIEWED_TEST_NOTES_PATH,
   LEGACY_TEST_TAG,
   LEGACY_TEST_SHA,
   LEGACY_TEST_NAME,

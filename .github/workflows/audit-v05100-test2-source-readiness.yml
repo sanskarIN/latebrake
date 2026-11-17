@@ -1,0 +1,55 @@
+name: Audit v0.5.100-test.2 SOURCE-ONLY readiness (READ ONLY)
+
+# Owner alone may inspect one exact protected-main source commit.
+# No write token, automatic releases, game executables or background publication.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: 'Exact reviewed protected-main SHA (40 lowercase hex)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+  pull-requests: read
+
+concurrency:
+  group: latebrake-v05100-test2-source-audit-readonly
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Verify source identity, previous tag and zero gameplay claims
+    if: >-
+      github.repository == 'sanskarIN/latebrake' &&
+      github.actor == 'sanskarIN' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify checkout source identity
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Offline source release security regression (no GitHub writes)
+        run: node --test Tests/Release/V05100Test2ReadinessTests.cjs Tests/Release/PublishedSourceReleaseAuditTests.cjs
+      - name: Read-only exact protected-main release preflight
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const guard = require('./scripts/SourcePreviewV05100Test2Readiness.cjs');
+            const candidateSha = context.payload.inputs?.candidate_sha;
+            const notes = fs.readFileSync(guard.NOTES_PATH, 'utf8');
+            const report = await guard.inspectReadiness({
+              github, context, candidateSha, notes,
+            });
+            core.notice('Read-only test.2 source preflight receipt: ' +
+              JSON.stringify(report));
+            core.notice('No tag/release written. This does NOT build Unreal or a playable Win64 game.');
