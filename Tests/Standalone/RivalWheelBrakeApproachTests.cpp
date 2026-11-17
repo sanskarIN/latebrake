@@ -63,9 +63,8 @@ Observation Approach(int vehicle, bool arcade, double fps, const Condition& cond
         const auto gate = CircuitGate(0);
         const auto forecast = ApplyRivalCornerBrakeEnvelope(guarded.Command, {
             0, {gate.X - remaining, gate.Y}, speed, condition.Grip, 1.0, 1.0,
-            condition.Heat, arcade, true, true,
-            guarded.DecelerationCeilingCmPerSecondSquared, 0.20 + dt});
-        Require(forecast.Valid, "contact-aware actual gate forecast accepts flat approach");
+            condition.Heat, arcade, true});
+        Require(forecast.Valid, "mainline gate forecast accepts qualified flat approach");
         double acceleration = 400.0 * forecast.Command.Throttle - 8.0;
         if (forecast.Command.Brake)
         {
@@ -114,7 +113,7 @@ int main()
         {
             const auto result = Approach(car, arcade, fps, condition);
             Require(result.BrakeFrames > 0 && result.EntrySpeed <= 1810.0,
-                    "capacity-limited controller slows to the synthetic entry envelope in every condition");
+                    "actual bounded wheel force slows the synthetic approach in each condition");
             if (fps == 120.0) reference = result.EntrySpeed;
             else Require(std::abs(result.EntrySpeed - reference) < 55.0,
                     "synthetic actual-rotor approach remains within 0.55 m/s across render frame rates");
@@ -122,5 +121,5 @@ int main()
         }
     }
     Require(runs == 108, "all six profiles, two modes, three road/load states and three frame rates ran");
-    std::cout << "108 prescribed flat rival/wheel-brake approach scenarios passed; not Chaos runtime evidence\n";
+    std::cout << "108 portable rival/wheel-brake approach scenarios passed; not Chaos runtime evidence\n";
 }
