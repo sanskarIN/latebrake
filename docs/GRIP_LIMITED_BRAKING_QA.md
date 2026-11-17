@@ -29,6 +29,13 @@ The shared Unreal pawn now:
   surface, tires and collision damage are all severely degraded.
   It is still a source-only single-body approximation requiring real
   UE5.8 braking-distance and road-contact validation.
+- Uses the **same measured low-grip product in the AI rival's
+  anticipatory corner braking**. The corner forecast retains its
+  conservative 0.76× reserve, but no longer assumes an artificial
+  10%-traction minimum while the actual car can brake with 5–9%.
+  When tire, surface and damage conditions worsen, its computed
+  safe corner approach speed falls; this does not grant any extra
+  brake torque or alter route/arrival authority.
 - Applies the physically signed force opposite **measured forward
   velocity**, including backing up, rather than assuming the driver
   always moves forwards.
@@ -61,6 +68,10 @@ real Unreal physics/gameplay build before release.
   8% combined traction, all three validated minimum inputs, a retained
   2× maximum, symmetric reverse forces, heat-faded handbrake selection,
   and identical uncapped 30/60/120 FPS braking demands.
+- `Tests/Standalone/RivalCornerBrakeEnvelopeTests.cpp`: compare the
+  AI's exact expected conservative deceleration with physical
+  `CalculateGripLimitedBraking` at 5%, 8%, 9.9%, 10%, 10.1%, all-minimum
+  sensor components and the preserved 2× cap in both handling modes.
 - `Tests/Editor/UnrealGripLimitedBrakingBindingTests.py`: confirms
   actual pawn force application and retains physical safety bounds,
   independent handbrake input, original traction, and scoring isolation.
