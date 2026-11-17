@@ -34,7 +34,11 @@ For every received frame, the advisory:
   This candidate circuit projection is not an authoritative checkpoint.
 - Requires identical actor identity, strictly consecutive frame
   ordinal, and physically compatible trapezoidal observed XY motion
-  before accumulating the next frame's evidence.
+  before accumulating the next frame's evidence. **Per-frame kinematic
+  residuals are limited independently to 5 cm or 12% of expected travel,
+  whichever is larger.** The looser 220 cm track-projection tolerance
+  is NEVER reused as permission for a frozen body with a falsely moving
+  speedometer to earn measured-source continuity.
 - Validates *unwrapped* route distance, including genuine lap transitions
   where `CompletedLaps` increments and wrapped progress returns to 0.
   Spoofed lap increments, unexplained jumps, backwards progress and
@@ -59,6 +63,9 @@ runs with the existing strict `/W4 /WX` or
   with the complete six-member input array deliberately permuted.
 - Stable ordering and a single pairwise overtake even when the
   speed-sensitive crossing occurs across several observations.
+- Independent frozen-world, forged-progress and moving-world/stale-route
+  attacks at 30/60/120 FPS; neither a believable projected location nor
+  the previous 180 cm fixed error budget may fabricate motion.
 - A true 1.70 km wrapped-lap crossing that remains continuous.
 - Rejection of NaN/Inf, impossible speeds, lost road support,
   duplicated/missing identity, repeated slot, invalid lap boundaries,
