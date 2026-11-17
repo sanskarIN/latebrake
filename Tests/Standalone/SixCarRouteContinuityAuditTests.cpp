@@ -175,6 +175,57 @@ void InvalidAndIncompleteFleet()
           "recovery after invalid roster cannot inherit motion seconds");
 }
 
+void FrozenAndStalePhysics(double fps)
+{
+    using namespace latebrake;
+    const double dt = 1.0 / fps;
+    const Stations initial{{15000, 16200, 17400, 18600, 19800, 21000}};
+    const Speeds speeds{{2400, 2300, 2200, 2100, 2000, 1900}};
+
+    // A chassis pose frozen at the previous position while its
+    // reported velocity still says 19m/s MUST NOT pass a 120Hz sample
+    // simply because the old 180cm fixed error budget exceeded the
+    // actual ~16cm of physical motion between two frames.
+    SixCarRouteContinuityAudit frozen;
+    Check(frozen.Observe(Fleet(1, initial, speeds, dt)).Valid,
+          "trusted physical baseline required");
+    auto oldPosition = Fleet(2, initial, speeds, dt);
+    const auto notMoving = frozen.Observe(oldPosition);
+    Check(!notMoving.Valid && notMoving.RejectedFrames == 1,
+          "stationary observed chassis cannot pass as moving at any frame rate");
+
+    // Forging route progress while remaining at the same measured
+    // world pose is a separate attack. Its apparent 30/60/120Hz step
+    // is BELOW the broad 220cm road-projection tolerance, but must
+    // still be rejected by successive-frame kinematics.
+    SixCarRouteContinuityAudit falseProgress;
+    Check(falseProgress.Observe(Fleet(1, initial, speeds, dt)).Valid,
+          "baseline for independent forged progress case");
+    oldPosition = Fleet(2, initial, speeds, dt);
+    oldPosition.Actors[5].ReportedLapProgressCm += speeds[5] * dt;
+    const auto lying = falseProgress.Observe(oldPosition);
+    Check(!lying.Valid && lying.RejectedFrames == 1 &&
+          lying.ConfirmedRelativePasses == 0,
+          "reported route distance never substitutes actual moving chassis");
+
+    // A real world motion with a stale source lap station is also
+    // inconsistent even if the stationary route claim is geometrically
+    // close enough to the projected world point at this frame.
+    SixCarRouteContinuityAudit staleRoute;
+    Check(staleRoute.Observe(Fleet(1, initial, speeds, dt)).Valid,
+          "baseline for stale route-progress case");
+    Stations moved = initial;
+    Advance(moved, speeds, dt);
+    auto stale = Fleet(2, moved, speeds, dt);
+    stale.Actors[5].ReportedLapProgressCm =
+        initial[5];
+    const auto missingAdvance = staleRoute.Observe(stale);
+    Check(!missingAdvance.Valid &&
+          missingAdvance.AcceptedContinuityFrames == 0 &&
+          missingAdvance.ConfirmedRelativePasses == 0,
+          "moving real body cannot claim unchanged route distance");
+}
+
 void TeleportsAndLapFraud()
 {
     using namespace latebrake;
@@ -305,6 +356,7 @@ int main()
     for (double fps : {30.0, 60.0, 120.0})
     {
         NormalSixCarMotion(fps);
+        FrozenAndStalePhysics(fps);
         PassHysteresis(fps);
     }
     InvalidAndIncompleteFleet();
