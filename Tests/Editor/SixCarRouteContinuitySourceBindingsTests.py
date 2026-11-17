@@ -43,6 +43,9 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "actor.CompletedLaps",
             "WorldScaleCircuitLapCm",
             "SixCarRouteAuditPassHysteresisCm",
+            "SixCarRouteAuditMaxAdvanceErrorCm",
+            "0.12 * expectedAdvance",
+            "worldResidual > maxWorldError",
             "ConfirmedRelativePasses",
             "RejectAndBreakContinuity();",
             "PreviousActors = ordered;",
@@ -52,6 +55,7 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "NormalSixCarMotion", "InvalidAndIncompleteFleet",
             "TeleportsAndLapFraud", "EpochIdentityAndFrameGaps",
             "FullLapBoundary", "PassHysteresis",
+            "FrozenAndStalePhysics",
             "30.0, 60.0, 120.0",
         ):
             self.assertIn(test_name, self.tests)
