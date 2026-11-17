@@ -117,6 +117,29 @@ class UnrealGripLimitedBrakingBindingTests(unittest.TestCase):
         ):
             self.assertIn(proof, regressions)
 
+    def test_rival_brake_forecast_uses_real_combined_grip(self):
+        forecast = (
+            ROOT / "Source/Latebrake/Public/AI/RivalCornerBrakeEnvelope.h"
+        ).read_text(encoding="utf-8")
+        regression = (
+            ROOT / "Tests/Standalone/RivalCornerBrakeEnvelopeTests.cpp"
+        ).read_text(encoding="utf-8")
+        self.assertIn("const double effectiveGrip = std::min(", forecast)
+        self.assertIn(
+            "sample.SurfaceGrip * sample.TireGrip * sample.ImpactGrip, 2.0);",
+            forecast,
+        )
+        self.assertNotIn("0.10, 2.0);", forecast)
+        self.assertIn("RivalBrakeForecastSafetyScale", forecast)
+        self.assertIn("ArcadeServiceBrakeDeceleration", forecast)
+        self.assertIn("SimulationServiceBrakeDeceleration", forecast)
+        self.assertIn("CalculateGripLimitedBraking({", regression)
+        self.assertIn("tractionCases[][3]", regression)
+        self.assertIn(
+            "AI braking forecast must reserve exactly the genuine chassis traction",
+            regression,
+        )
+
     def test_strict_cross_platform_build_and_site_qa_exist(self):
         cmake = CMAKE.read_text(encoding="utf-8")
         nav = NAV.read_text(encoding="utf-8")
