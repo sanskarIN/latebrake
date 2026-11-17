@@ -46,8 +46,8 @@ python3 -m unittest discover -s Tests/Editor -p '*Tests.py'
 python3 scripts/MeasureSourceScale.py --json
 ```
 
-The CMake additions register **47 new standalone behavioral targets**:
-46 historical portable tests and one new cross-system pace audit
+The CMake additions register **46 new standalone behavioral targets**:
+45 historical portable tests and one new cross-system pace audit
 test. Each uses strict C++20 and compiler warnings as errors on Windows,
 Ubuntu and macOS. GitHub Actions results are separate and must be checked
 against the final exact branch SHA, not an older passing revision.
