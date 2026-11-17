@@ -20,6 +20,15 @@ The shared Unreal pawn now:
 - Scales the brake force by **actual confirmed pavement state**, garage
   grip tuning, observed tire wear, existing collision damage and
   existing brake thermal fade. It does not invent tire contact data.
+- Never promotes a **genuinely degraded combined road × tire × damage
+  grip below 10%** back to an artificial 10% floor. Longitudinal braking
+  now uses the same observed factor as the lateral friction-circle
+  policy; the pre-existing 2× upper limit is preserved. For example,
+  factors 0.4 × 0.4 × 0.5 produce an 8% service-braking request,
+  instead of 10%. This avoids demanding excess forward grip when
+  surface, tires and collision damage are all severely degraded.
+  It is still a source-only single-body approximation requiring real
+  UE5.8 braking-distance and road-contact validation.
 - Applies the physically signed force opposite **measured forward
   velocity**, including backing up, rather than assuming the driver
   always moves forwards.
@@ -48,7 +57,10 @@ real Unreal physics/gameplay build before release.
   brakes, off-road/tire/damage combined degradation, reverse travel,
   handbrake only / both brakes, low-speed and long-frame no-reversal,
   no-brake/coasting, finite/range validation and 10,000 signed/cadence
-  checks.
+  checks. Includes additional low-grip regression matrices that cover
+  8% combined traction, all three validated minimum inputs, a retained
+  2× maximum, symmetric reverse forces, heat-faded handbrake selection,
+  and identical uncapped 30/60/120 FPS braking demands.
 - `Tests/Editor/UnrealGripLimitedBrakingBindingTests.py`: confirms
   actual pawn force application and retains physical safety bounds,
   independent handbrake input, original traction, and scoring isolation.
@@ -73,6 +85,10 @@ or execute Unreal, and do not certify actual car feel.
    almost instantaneous stop or reverse-speed snap.
 4. Test damage, grass/off-road, worn tires, brake fade after repeated
    laps, opposite-direction braking and deliberate handbrake drifts.
+   Repeat at **8% combined grip** and just above the lateral policy's
+   minimum accepted grip. Confirm brake and corner grip budgets agree,
+   that driving remains controllable, and that longer stopping distances
+   reflect less actual traction (not a broken handbrake or missed input).
 5. Confirm AI rivals also complete ordered checkpoints and brake at
    corners with no new deadlocks. Check combined previous steering,
    progressive drag and automatic gearbox at 30/60/120 FPS.
