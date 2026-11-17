@@ -1,0 +1,407 @@
+#include "Vehicles/SprungChassisDynamics.h"
+
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#include <limits>
+
+namespace
+{
+void Require(bool ok, const char* message)
+{
+    if (!ok)
+    {
+        std::cerr << "Sprung chassis regression: " << message << '\n';
+        std::exit(EXIT_FAILURE);
+    }
+}
+bool Near(double a, double b, double tolerance = 1.0e-7)
+{
+    return std::abs(a - b) <= tolerance;
+}
+latebrake::SuspensionFrame Resting(double mass = 1100.0)
+{
+    latebrake::SuspensionFrame sample;
+    sample.DeltaSeconds = 1.0 / 60.0;
+    sample.MassKg = mass;
+    sample.PhysicsReady = true;
+    for (auto& c : sample.Corners)
+    {
+        c = {true, latebrake::SuspensionTargetRideDistanceCm, 1.0, 0.0};
+    }
+    return sample;
+}
+}
+
+int main()
+{
+    using namespace latebrake;
+    for (const double mass : {100.0, 800.0, 1100.0, 1800.0, 15000.0})
+    {
+        auto s = Resting(mass);
+        const auto out = CalculateSprungChassis(s);
+        Require(out.Valid && out.ContactCount == 4,
+                "all four genuinely measured corners support the car");
+        Require(Near(out.TotalUpForce,
+                     mass * SuspensionGravityCmPerSecondSquared, 0.001),
+                "spring force balances real gravity for any accepted mass");
+        for (const auto& c : out.Corners)
+        {
+            Require(c.Contact && Near(c.WheelTravelCm, 0.0) &&
+                    Near(c.UpForce,
+                         mass * SuspensionGravityCmPerSecondSquared / 4.0,
+                         0.001),
+                    "each wheel independently balances a quarter of chassis weight");
+        }
+    }
+
+    // A front-only anti-roll bar must transfer EXISTING vertical load,
+    // not add ground force or apply a pull to a hanging wheel.
+    {
+        auto s = Resting();
+        s.Corners[0].DistanceCm = 54.0; // compressed front-left
+        s.Corners[1].DistanceCm = 64.0; // extended front-right
+        const auto out = CalculateSprungChassis(s);
+        const double k = (s.MassKg * 0.25) *
+            s.GravityCmPerSecondSquared /
+            (SuspensionRestDistanceCm - SuspensionTargetRideDistanceCm);
+        const double frontLeftBaseline = k * (SuspensionRestDistanceCm - 54.0);
+        const double frontRightBaseline = k * (SuspensionRestDistanceCm - 64.0);
+        const double transfer =
+            SuspensionAntiRollSpringFraction * k * (64.0 - 54.0);
+        Require(out.Valid && out.ContactCount == 4 &&
+                Near(out.AntiRollTransfer[0], transfer, 0.001) &&
+                Near(out.AntiRollTransfer[1], 0.0, 0.001) &&
+                Near(out.Corners[0].UpForce, frontLeftBaseline + transfer, 0.001) &&
+                Near(out.Corners[1].UpForce, frontRightBaseline - transfer, 0.001),
+                "front bar shifts positive load to compressed wheel");
+        Require(Near(out.Corners[2].UpForce, out.Corners[3].UpForce, 0.001),
+                "rear axle cannot inherit front-only compression");
+        Require(Near(out.TotalUpForce,
+                     out.Corners[0].UpForce + out.Corners[1].UpForce +
+                     out.Corners[2].UpForce + out.Corners[3].UpForce, 0.001),
+                "anti-roll cannot create net gravity-compensating vertical force");
+        const auto referenceFrontTotal = frontLeftBaseline + frontRightBaseline;
+        Require(Near(out.Corners[0].UpForce + out.Corners[1].UpForce,
+                     referenceFrontTotal, 0.001),
+                "front bar conserves sum of existing spring loads");
+        s.Corners[0].Hit = false;
+        const auto unloadedAxle = CalculateSprungChassis(s);
+        Require(unloadedAxle.Valid && !unloadedAxle.Corners[0].Contact &&
+                unloadedAxle.AntiRollTransfer[0] == 0.0 &&
+                unloadedAxle.Corners[0].UpForce == 0.0 &&
+                Near(unloadedAxle.Corners[1].UpForce,
+                     frontRightBaseline, 0.001),
+                "anti-roll cannot lever an airborne wheel into false contact");
+        s = Resting();
+        s.Corners[2].DistanceCm = 64.0;
+        s.Corners[3].DistanceCm = 54.0;
+        const auto rearOnly = CalculateSprungChassis(s);
+        Require(rearOnly.Valid &&
+                rearOnly.AntiRollTransfer[1] < 0.0 &&
+                rearOnly.AntiRollTransfer[0] == 0.0 &&
+                Near(rearOnly.Corners[0].UpForce,
+                     s.MassKg * 0.25 * s.GravityCmPerSecondSquared, 0.001) &&
+                rearOnly.Corners[3].UpForce > rearOnly.Corners[2].UpForce,
+                "rear bar acts independently of unaffected front axle");
+        s = Resting();
+        // Equal ride height but opposite wheel point speeds load the
+        // compression side: the anti-roll damper responds to genuine
+        // asymmetric chassis pitch/roll, not decorative visual tilt.
+        s.Corners[0].RayDistanceSpeedCmPerSecond = -60.0;
+        s.Corners[1].RayDistanceSpeedCmPerSecond = 60.0;
+        const auto rateDamping = CalculateSprungChassis(s);
+        Require(rateDamping.Valid &&
+                rateDamping.AntiRollTransfer[0] > 0.0 &&
+                rateDamping.Corners[0].UpForce >
+                    rateDamping.Corners[1].UpForce,
+                "anti-roll damper resists opposing corner vertical speeds");
+    }
+
+    // Live drivetrain policy must match spring contact, not the older
+    // larger 115 cm trace radius that can include unsupported wheels.
+    ChassisGroundContactSample coarseFrame{};
+    coarseFrame.PhysicsReady = true;
+    coarseFrame.DeltaSeconds = 1.0 / 60.0;
+    for (auto& probe : coarseFrame.Probes)
+    {
+        probe = {true, 59.0, 1.0};
+    }
+    const auto coarse = EvaluateChassisGroundContact(coarseFrame);
+    auto fullSprings = CalculateSprungChassis(Resting());
+    const auto matchedFull =
+        ConstrainGroundContactToSuspension(coarse, fullSprings);
+    Require(matchedFull.Valid && matchedFull.SupportingProbes == 4 &&
+            matchedFull.HasDriveContact &&
+            matchedFull.ContactTractionScale == 1.0,
+            "four real spring contacts retain full drivetrain authority");
+    auto splitFrame = Resting();
+    splitFrame.Corners[0].Hit = false;
+    splitFrame.Corners[1].Hit = false;
+    const auto halfSprings = CalculateSprungChassis(splitFrame);
+    const auto matchedHalf =
+        ConstrainGroundContactToSuspension(coarse, halfSprings);
+    Require(matchedHalf.Valid && matchedHalf.SupportingProbes == 2 &&
+            matchedHalf.HasDriveContact &&
+            matchedHalf.ContactTractionScale == 0.45,
+            "two sprung corners reduce all drive and grip to the same fraction");
+    splitFrame.Corners[2].Hit = false;
+    const auto almostAirborne =
+        ConstrainGroundContactToSuspension(coarse,
+            CalculateSprungChassis(splitFrame));
+    Require(almostAirborne.Valid && !almostAirborne.HasDriveContact &&
+            almostAirborne.SupportingProbes == 1 &&
+            almostAirborne.ContactTractionScale == 0.0,
+            "one remaining real spring cannot produce phantom tire drive");
+    auto fabricated = fullSprings;
+    auto coarseTwo = coarse;
+    coarseTwo.SupportingProbes = 2;
+    Require(!ConstrainGroundContactToSuspension(coarseTwo, fabricated).Valid,
+            "higher sprung count than trusted ground observations fails closed");
+    auto invalidCoarse = coarse;
+    invalidCoarse.Valid = false;
+    Require(!ConstrainGroundContactToSuspension(invalidCoarse, fullSprings).Valid,
+            "invalid WorldStatic contact never becomes trusted suspension");
+
+    // A nearly-extended spring is geometrically near the asphalt but
+    // carries zero load. It must NOT authorize throttle, nitro or tyre grip.
+    auto noLoadSample = Resting();
+    for (auto& corner : noLoadSample.Corners)
+    {
+        corner.DistanceCm = SuspensionRestDistanceCm;
+    }
+    const auto noLoadResponse = CalculateSprungChassis(noLoadSample);
+    const auto noLoadTraction =
+        ConstrainGroundContactToSuspension(coarse, noLoadResponse);
+    Require(noLoadResponse.Valid && noLoadResponse.ContactCount == 4 &&
+            noLoadResponse.TotalUpForce == 0.0 &&
+            noLoadTraction.Valid && !noLoadTraction.HasDriveContact &&
+            noLoadTraction.ContactTractionScale == 0.0,
+            "all nearby but unloaded springs cannot produce fictitious grip");
+
+    auto reboundSample = Resting();
+    for (auto& corner : reboundSample.Corners)
+    {
+        corner.RayDistanceSpeedCmPerSecond = 700.0;
+    }
+    const auto reboundResponse = CalculateSprungChassis(reboundSample);
+    const auto reboundGrip =
+        ConstrainGroundContactToSuspension(coarse, reboundResponse);
+    Require(reboundResponse.Valid && reboundResponse.ContactCount == 4 &&
+            reboundResponse.TotalUpForce == 0.0 &&
+            reboundGrip.Valid && reboundGrip.ContactTractionScale == 0.0 &&
+            !reboundGrip.HasDriveContact,
+            "a rising chassis must lose fictitious tyre grip when dampers unload");
+
+    auto softSpring = Resting();
+    for (auto& corner : softSpring.Corners)
+    {
+        corner.DistanceCm = 65.0;
+    }
+    const auto softened =
+        ConstrainGroundContactToSuspension(coarse,
+            CalculateSprungChassis(softSpring));
+    Require(softened.Valid && softened.HasDriveContact &&
+            softened.ContactTractionScale > 0.7 &&
+            softened.ContactTractionScale < 1.0,
+            "partially loaded four-corner car has physically reduced grip");
+
+    auto zeroWeight = fullSprings;
+    zeroWeight.WeightForce = 0.0;
+    Require(!ConstrainGroundContactToSuspension(coarse, zeroWeight).Valid,
+            "missing mass-gravity weight cannot award traction");
+    auto unboundedImpulse = fullSprings;
+    unboundedImpulse.TotalUpForce = fullSprings.WeightForce * 4.0;
+    Require(!ConstrainGroundContactToSuspension(coarse, unboundedImpulse).Valid,
+            "fabricated spring impulse cannot produce grip beyond 4-wheel cap");
+    auto badForce = fullSprings;
+    badForce.TotalUpForce = std::numeric_limits<double>::quiet_NaN();
+    Require(!ConstrainGroundContactToSuspension(coarse, badForce).Valid,
+            "nonfinite summed spring force never authorizes grip");
+
+    auto alternateGravity = Resting(1320.0);
+    alternateGravity.GravityCmPerSecondSquared = 490.0;
+    const auto lowGravity = CalculateSprungChassis(alternateGravity);
+    Require(lowGravity.Valid &&
+            Near(lowGravity.TotalUpForce, 1320.0 * 490.0, 0.001),
+            "real nondefault gravity changes spring equilibrium load once");
+
+    auto s = Resting();
+    s.Corners[0].DistanceCm = 45.0;
+    const auto loaded = CalculateSprungChassis(s);
+    Require(loaded.Valid &&
+            loaded.Corners[0].UpForce > loaded.Corners[1].UpForce &&
+            loaded.Corners[0].WheelTravelCm > 0.0,
+            "one physically raised wheel applies extra lift and visually compresses");
+    s.Corners[0].RayDistanceSpeedCmPerSecond = 600.0;
+    const auto rebound = CalculateSprungChassis(s);
+    Require(rebound.Corners[0].UpForce == 0.0,
+            "strong upward corner motion cannot create downward spring suction");
+    s.Corners[0].RayDistanceSpeedCmPerSecond = -2000.0;
+    const auto compression = CalculateSprungChassis(s);
+    Require(Near(compression.Corners[0].UpForce,
+                 s.MassKg * SuspensionGravityCmPerSecondSquared *
+                     SuspensionMaxPerCornerWeightFactor, 0.01),
+            "hard landing is bounded per corner, including damper response");
+    s = Resting();
+    s.Corners[0].Hit = false;
+    s.Corners[1].NormalZ = 0.35;
+    s.Corners[2].DistanceCm = 210.0;
+    const auto edge = CalculateSprungChassis(s);
+    Require(edge.Valid && edge.ContactCount == 1 &&
+            edge.Corners[0].UpForce == 0.0 &&
+            edge.Corners[1].UpForce == 0.0 &&
+            edge.Corners[2].UpForce == 0.0 &&
+            edge.Corners[3].UpForce > 0.0,
+            "missing road, wall and overlong traces cannot prop up car");
+    Require(Near(edge.Corners[0].WheelTravelCm,
+                 SuspensionVisualMinTravelCm) &&
+            Near(edge.Corners[1].WheelTravelCm,
+                 SuspensionVisualMinTravelCm),
+            "airborne wheel visual has bounded extension without fictitious support");
+
+    s = Resting();
+    s.Corners[0].DistanceCm = SuspensionRestDistanceCm;
+    s.Corners[0].RayDistanceSpeedCmPerSecond = 0.0;
+    const auto fullExtension = CalculateSprungChassis(s);
+    Require(fullExtension.Corners[0].Contact &&
+            fullExtension.Corners[0].UpForce == 0.0,
+            "full extension cannot pull a rigid body toward the ground");
+    s.Corners[0].DistanceCm = 0.0;
+    const auto bottomed = CalculateSprungChassis(s);
+    Require(bottomed.Corners[0].UpForce > 0.0 &&
+            bottomed.Corners[0].WheelTravelCm ==
+                SuspensionVisualMaxTravelCm,
+            "bottomed suspension has a finite bounded response");
+
+    s = Resting();
+    s.PhysicsReady = false;
+    Require(!CalculateSprungChassis(s).Valid,
+            "unqualified physics cannot activate springs");
+    // The production Tick sends only supported short physics frames
+    // through this force path. At a finite 100ms engine hitch the real
+    // Chaos velocity is handled independently: this helper must reject
+    // unsupported samples, not fabricate a compensating spring impulse.
+    s = Resting();
+    s.DeltaSeconds = SuspensionMaximumFrameSeconds;
+    Require(CalculateSprungChassis(s).Valid,
+            "100ms suspension frame remains within the accepted boundary");
+    s = Resting();
+    s.DeltaSeconds = SuspensionMaximumFrameSeconds + 0.000001;
+    Require(!CalculateSprungChassis(s).Valid,
+            "just-over-boundary hitch cannot submit spring forces");
+    s = Resting();
+    s.DeltaSeconds = 0.11;
+    Require(!CalculateSprungChassis(s).Valid,
+            "hitch frame cannot submit fresh spring force");
+    s = Resting();
+    s.DeltaSeconds = 0.0;
+    Require(!CalculateSprungChassis(s).Valid,
+            "zero frame cannot submit springs");
+    s = Resting();
+    s.MassKg = 15001;
+    Require(!CalculateSprungChassis(s).Valid,
+            "unbounded physical mass is rejected");
+    s = Resting();
+    s.MassKg = 99;
+    Require(!CalculateSprungChassis(s).Valid,
+            "nonsensical light car mass is rejected");
+    s = Resting();
+    s.GravityCmPerSecondSquared = -1.0;
+    Require(!CalculateSprungChassis(s).Valid,
+            "inverted or missing downward gravity does not grant lift");
+    s = Resting();
+    s.GravityCmPerSecondSquared = 3000.0;
+    Require(!CalculateSprungChassis(s).Valid,
+            "implausible gravity cannot inject unbounded vertical impulses");
+    s = Resting();
+    s.GravityCmPerSecondSquared = std::numeric_limits<double>::infinity();
+    Require(!CalculateSprungChassis(s).Valid,
+            "nonfinite actual world gravity fails closed");
+
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const double inf = std::numeric_limits<double>::infinity();
+    s = Resting();
+    s.Corners[2].DistanceCm = nan;
+    Require(!CalculateSprungChassis(s).Valid,
+            "NaN distance fails closed");
+    s = Resting();
+    s.Corners[1].NormalZ = 2.0;
+    Require(!CalculateSprungChassis(s).Valid,
+            "impossible ground normal fails closed");
+    s = Resting();
+    s.Corners[3].RayDistanceSpeedCmPerSecond = inf;
+    Require(!CalculateSprungChassis(s).Valid,
+            "infinite local contact speed fails closed");
+    s = Resting();
+    s.Corners[0].DistanceCm = -2.0;
+    Require(!CalculateSprungChassis(s).Valid,
+            "negative measured distance fails closed");
+
+    // Regression: no accumulated force state, no fabricated contacts, no
+    // huge impulses or numeric drift across realistic and extreme samples.
+    for (int i = 0; i < 120000; ++i)
+    {
+        s = Resting(100.0 + static_cast<double>((i * 41) % 14901));
+        s.DeltaSeconds = 1.0 / (30.0 + static_cast<double>(i % 110));
+        const int active = i % 5;
+        for (int j = 0; j < 4; ++j)
+        {
+            s.Corners[static_cast<unsigned>(j)].Hit = j < active;
+            s.Corners[static_cast<unsigned>(j)].DistanceCm =
+                static_cast<double>((i + j * 17) % 281);
+            s.Corners[static_cast<unsigned>(j)].NormalZ =
+                (i + j) % 9 == 0 ? 0.5 : 0.99;
+            s.Corners[static_cast<unsigned>(j)].RayDistanceSpeedCmPerSecond =
+                static_cast<double>(((i * 17 + j * 13) % 1801) - 900);
+        }
+        const auto out = CalculateSprungChassis(s);
+        Require(out.Valid && out.ContactCount >= 0 &&
+                out.ContactCount <= 4 && std::isfinite(out.TotalUpForce) &&
+                out.TotalUpForce >= 0.0 &&
+                out.TotalUpForce <= s.MassKg *
+                    SuspensionGravityCmPerSecondSquared *
+                    SuspensionMaxPerCornerWeightFactor * 4.0 + 0.01,
+                "120k randomized frames respect strict overall impulse budget");
+        const auto matchingTyres =
+            ConstrainGroundContactToSuspension(coarse, out);
+        Require(matchingTyres.Valid &&
+                std::isfinite(matchingTyres.ContactTractionScale) &&
+                matchingTyres.ContactTractionScale >= 0.0 &&
+                matchingTyres.ContactTractionScale <= 1.0 &&
+                (!matchingTyres.HasDriveContact ||
+                    matchingTyres.ContactTractionScale > 0.0),
+                "120k loading frames never fabricate traction from empty spring forces");
+        Require(std::isfinite(out.AntiRollTransfer[0]) &&
+                std::isfinite(out.AntiRollTransfer[1]) &&
+                std::abs(out.AntiRollTransfer[0]) <=
+                    s.MassKg * s.GravityCmPerSecondSquared *
+                    SuspensionAntiRollMaxWeightFractionPerAxle + 0.001 &&
+                std::abs(out.AntiRollTransfer[1]) <=
+                    s.MassKg * s.GravityCmPerSecondSquared *
+                    SuspensionAntiRollMaxWeightFractionPerAxle + 0.001,
+                "front/rear axle transfers remain independent and bounded");
+        int counted = 0;
+        double sum = 0.0;
+        for (const auto& c : out.Corners)
+        {
+            counted += c.Contact ? 1 : 0;
+            sum += c.UpForce;
+            Require(std::isfinite(c.UpForce) && c.UpForce >= 0.0 &&
+                    c.UpForce <= s.MassKg *
+                        SuspensionGravityCmPerSecondSquared *
+                        SuspensionMaxPerCornerWeightFactor + 0.001 &&
+                    c.WheelTravelCm >= SuspensionVisualMinTravelCm &&
+                    c.WheelTravelCm <= SuspensionVisualMaxTravelCm,
+                    "every per-corner physical force and visual offset is bounded");
+        }
+        Require(counted == out.ContactCount &&
+                Near(out.TotalUpForce, sum, 0.02),
+                "published contacts and total never drift from wheel force outputs");
+    }
+    // The random stress fixture also exercises the axle transfer path.
+    // Every output remains positive and bounded even for opposite extreme
+    // corner speed signs and strong left/right road height differences.
+    std::cout << "Four-corner sprung chassis policy passed (120k frames).\n";
+    return EXIT_SUCCESS;
+}
