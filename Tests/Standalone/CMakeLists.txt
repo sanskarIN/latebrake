@@ -2104,6 +2104,10 @@ add_latebrake_portable_research_test(MeasuredPlanarForwardSpeed)
 add_latebrake_portable_research_test(OpposingThrottleBraking)
 add_latebrake_portable_research_test(PlanarSpeedGovernor)
 add_latebrake_portable_research_test(PlayerFleetRecoveryClearance)
+# This test calls the repository's real engine-neutral RaceProgress API;
+# link its existing implementation rather than inventing test stubs.
+target_sources(latebrake_research_PlayerFleetRecoveryClearance PRIVATE
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 add_latebrake_portable_research_test(RaceEngineerStrategy)
 add_latebrake_portable_research_test(RacingLineLayout)
 add_latebrake_portable_research_test(ReverseSpeedGovernor)
