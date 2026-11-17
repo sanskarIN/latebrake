@@ -2148,3 +2148,7 @@ add_latebrake_portable_research_test(CircuitPaceAudit)
 
 # Detect duplicate pit-review type names across old/new source-only APIs.
 add_latebrake_portable_research_test(PitCompatibility)
+
+# Fully roster-qualified six-car actual-position/velocity source audit.
+# No real UE5.8 actor binding, race-result authority or playable build.
+add_latebrake_portable_research_test(SixCarRouteContinuityAudit)
