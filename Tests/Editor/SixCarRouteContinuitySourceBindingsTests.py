@@ -51,6 +51,10 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "PreviousSignedRouteSpeed[i] +",
             "currentSignedRouteSpeed[i]",
             "currentSignedRouteSpeed[newLeader] >= 50.0",
+            "const double projectedTotal =",
+            "projectedDistance[slot] = projectedTotal;",
+            "projectedDistance[static_cast<std::size_t>(a)]",
+            "const double gap = projectedDistance[i] - projectedDistance[j];",
             "worldResidual > maxWorldError",
             "ConfirmedRelativePasses",
             "RejectAndBreakContinuity();",
@@ -63,6 +67,7 @@ class SixCarRouteContinuitySourceBindingsTests(unittest.TestCase):
             "FullLapBoundary", "PassHysteresis",
             "FrozenAndStalePhysics",
             "SignedRoadMotionCannotBeForged",
+            "RepeatedReportedProgressCannotFabricatePass",
             "30.0, 60.0, 120.0",
         ):
             self.assertIn(test_name, self.tests)
