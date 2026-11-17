@@ -42,7 +42,13 @@ For every received frame, the advisory:
   projected circuit tangent also gives **signed forward velocity**:
   only physical longitudinal route motion can justify increasing
   reported lap distance. Reverse driving or a pure sideways slide must
-  not be misreported as a completed forward overtake.
+  not be misreported as a completed forward overtake. **Genuine reverse
+  motion is retained and classified as Reverse**, rather than being
+  discarded solely because the truthful unwrapped lap coordinate
+  decreases. A physically reversing chassis cannot earn a *forward*
+  relative-pass event; forged reverse progress during forward motion
+  is also rejected. This remains advisory, not a powertrain controller
+  or official wrong-way/race-results authority.
 - Validates *unwrapped* route distance, including genuine lap transitions
   where `CompletedLaps` increments and wrapped progress returns to 0.
   Spoofed lap increments, unexplained jumps, backwards progress and
@@ -85,6 +91,11 @@ runs with the existing strict `/W4 /WX` or
 - Reverse-motion and 90-degree sideways-sliding chassis with false
   forward progress reports must be rejected at 30/60/120 FPS, while
   a legitimate forward drift with moderate lateral slip stays valid.
+- A physically reversing sixth car with truthful measured XY velocity,
+  negative signed route station and a real **reverse lap-seam crossing**
+  is accepted and classified as Reverse at 30/60/120 FPS, but cannot
+  trigger a forward relative-pass claim. A forward-travelling chassis
+  falsely reporting decreasing lap progress is rejected.
 - A true 1.70 km wrapped-lap crossing that remains continuous.
 - Rejection of NaN/Inf, impossible speeds, lost road support,
   duplicated/missing identity, repeated slot, invalid lap boundaries,
