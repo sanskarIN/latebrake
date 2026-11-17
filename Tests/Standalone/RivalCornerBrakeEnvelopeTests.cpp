@@ -107,6 +107,56 @@ int main()
               "actual gate arrival never overwritten");
     }
 
+    // A service-brake chassis and the autonomous corner forecast MUST
+    // share the same measured road*tire*damage grip, especially below
+    // the old artificial 10% floor. Higher estimated grip must never
+    // appear out of thin air while approaching a physical circuit gate.
+    constexpr double tractionCases[][3] = {
+        {0.40, 0.40, 0.50}, // 8% combined contact
+        {0.20, 0.50, 0.50}, // 5%
+        {0.495, 0.40, 0.50}, // 9.9%, boundary regression
+        {0.50, 0.40, 0.50}, // exactly 10%
+        {0.505, 0.40, 0.50}, // 10.1%
+        {0.05, 0.05, 0.05}, // all independently valid at 5%
+        {1.0, 1.0, 1.0},
+        {2.0, 2.0, 2.0} // maximum 2x total remains retained
+    };
+    for (const bool arcade : {true, false})
+    {
+        for (const auto& inputs : tractionCases)
+        {
+            auto input = Sample(0, 3000.0, 3500.0);
+            input.ArcadeHandling = arcade;
+            input.SurfaceGrip = inputs[0];
+            input.TireGrip = inputs[1];
+            input.ImpactGrip = inputs[2];
+            input.BrakeHeatMultiplier = 0.65;
+            const auto advisory = ApplyRivalCornerBrakeEnvelope(driving, input);
+            const auto physics = CalculateGripLimitedBraking({
+                1.0 / 60.0, 3500.0, 1100.0, true, false, arcade,
+                inputs[0], inputs[1], inputs[2], 0.65
+            });
+            const double availableGrip = std::min(
+                inputs[0] * inputs[1] * inputs[2], 2.0);
+            const double expected = (arcade
+                ? ArcadeServiceBrakeDeceleration
+                : SimulationServiceBrakeDeceleration) *
+                availableGrip * 0.65 * RivalBrakeForecastSafetyScale;
+            Check(advisory.Valid && physics.Valid &&
+                  advisory.InboundCorner &&
+                  std::abs(advisory.SafeDecelerationCmPerSecondSquared -
+                           expected) < 1.0e-8 &&
+                  std::abs(advisory.SafeDecelerationCmPerSecondSquared -
+                           physics.DecelerationCmPerSecondSquared *
+                               RivalBrakeForecastSafetyScale) < 1.0e-8,
+                  "AI braking forecast must reserve exactly the genuine chassis traction at 5%-10% grip");
+            Check(advisory.Command.Brake &&
+                  advisory.Command.Throttle == 0.0 &&
+                  advisory.Command.Steering == driving.Steering,
+                  "severe wear must request real braking without overriding steering");
+        }
+    }
+
     const auto service = CalculateGripLimitedBraking({
         0.016, 3500.0, 1100.0, true, false, true,
         0.72, 0.90, 0.95, 0.80
