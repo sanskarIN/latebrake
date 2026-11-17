@@ -226,6 +226,97 @@ void FrozenAndStalePhysics(double fps)
           "moving real body cannot claim unchanged route distance");
 }
 
+void SignedRoadMotionCannotBeForged(double fps)
+{
+    using namespace latebrake;
+    const double dt = 1.0 / fps;
+    const Stations initial{{15000, 16300, 17600, 18900, 20200, 21500}};
+    const Speeds speeds{{1900, 1800, 2100, 2000, 2200, 1700}};
+
+    // Actual physical motion is backward, with truthful reverse world
+    // velocities but a forged INCREASING route station. The geometric
+    // route-projection gap is under 220cm at every tested frame rate.
+    // Magnitude-only travel would incorrectly treat this as forward.
+    SixCarRouteContinuityAudit reverse;
+    auto reverseStart = Fleet(1, initial, speeds, dt);
+    reverseStart.Actors[4].VelocityX *= -1.0;
+    reverseStart.Actors[4].VelocityY *= -1.0;
+    Check(reverse.Observe(reverseStart).Valid,
+          "reverse-speed observation can establish neutral baseline");
+    Stations backward = initial;
+    Advance(backward, speeds, dt);
+    backward[4] = initial[4] - speeds[4] * dt;
+    auto forgedForward = Fleet(2, backward, speeds, dt);
+    forgedForward.Actors[4].VelocityX *= -1.0;
+    forgedForward.Actors[4].VelocityY *= -1.0;
+    forgedForward.Actors[4].ReportedLapProgressCm =
+        initial[4] + speeds[4] * dt;
+    const auto wrongWay = reverse.Observe(forgedForward);
+    Check(!wrongWay.Valid && wrongWay.RejectedFrames == 1 &&
+          wrongWay.AcceptedContinuityFrames == 0 &&
+          wrongWay.ConfirmedRelativePasses == 0,
+          "honest reverse chassis cannot invent positive forward race distance");
+
+    // A second actor slides across the track with its velocity 90deg
+    // to the independent route tangent. Its position and measured
+    // velocity AGREE in XY; only the claimed forward progress is fake.
+    // This isolates route-direction truth from world-motion validation.
+    const auto before = WorldScaleCenterlineAt(initial[3] - 100.0);
+    const auto after = WorldScaleCenterlineAt(initial[3] + 100.0);
+    Check(before.Valid && after.Valid,
+          "future authored track has a valid local tangent");
+    const double tangentX =
+        after.Pose.Position.X - before.Pose.Position.X;
+    const double tangentY =
+        after.Pose.Position.Y - before.Pose.Position.Y;
+    const double tangentLength = std::hypot(tangentX, tangentY);
+    Check(tangentLength > 1.0, "valid physical tangent has length");
+    const double normalX = -tangentY / tangentLength;
+    const double normalY = tangentX / tangentLength;
+    SixCarRouteContinuityAudit sideways;
+    auto lateralStart = Fleet(1, initial, speeds, dt);
+    lateralStart.Actors[3].VelocityX = normalX * speeds[3];
+    lateralStart.Actors[3].VelocityY = normalY * speeds[3];
+    Check(sideways.Observe(lateralStart).Valid,
+          "sideways observation can establish source baseline");
+    Stations noRouteAdvance = initial;
+    Advance(noRouteAdvance, speeds, dt);
+    noRouteAdvance[3] = initial[3];
+    auto inventedForward = Fleet(2, noRouteAdvance, speeds, dt);
+    inventedForward.Actors[3].WorldX += normalX * speeds[3] * dt;
+    inventedForward.Actors[3].WorldY += normalY * speeds[3] * dt;
+    inventedForward.Actors[3].VelocityX = normalX * speeds[3];
+    inventedForward.Actors[3].VelocityY = normalY * speeds[3];
+    inventedForward.Actors[3].ReportedLapProgressCm =
+        initial[3] + speeds[3] * dt;
+    const auto slipFraud = sideways.Observe(inventedForward);
+    Check(!slipFraud.Valid && slipFraud.RejectedFrames == 1 &&
+          slipFraud.ConfirmedRelativePasses == 0,
+          "real sideways slip cannot pretend to advance along the circuit");
+
+    // Legitimate forward motion with a moderate lateral chassis slip
+    // is still accepted: the signed longitudinal component agrees
+    // with actual independently projected route progress.
+    SixCarRouteContinuityAudit drift;
+    auto first = Fleet(1, initial, speeds, dt);
+    constexpr double SlipCmps = 330.0;
+    first.Actors[3].VelocityX += normalX * SlipCmps;
+    first.Actors[3].VelocityY += normalY * SlipCmps;
+    Check(drift.Observe(first).Valid, "physical forward drift establishes baseline");
+    Stations next = initial;
+    Advance(next, speeds, dt);
+    auto second = Fleet(2, next, speeds, dt);
+    second.Actors[3].WorldX += normalX * SlipCmps * dt;
+    second.Actors[3].WorldY += normalY * SlipCmps * dt;
+    second.Actors[3].VelocityX += normalX * SlipCmps;
+    second.Actors[3].VelocityY += normalY * SlipCmps;
+    const auto realDrift = drift.Observe(second);
+    Check(realDrift.Valid && realDrift.MotionContinuous &&
+          realDrift.RejectedFrames == 0 &&
+          realDrift.AcceptedContinuityFrames == 1,
+          "independently measured moderate physical drift retains forward evidence");
+}
+
 void TeleportsAndLapFraud()
 {
     using namespace latebrake;
@@ -357,6 +448,7 @@ int main()
     {
         NormalSixCarMotion(fps);
         FrozenAndStalePhysics(fps);
+        SignedRoadMotionCannotBeForged(fps);
         PassHysteresis(fps);
     }
     InvalidAndIncompleteFleet();
