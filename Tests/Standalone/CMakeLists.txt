@@ -2132,6 +2132,9 @@ add_latebrake_portable_research_test(SuspensionMountAttitude)
 add_latebrake_portable_research_test(SuspensionQaCadence)
 add_latebrake_portable_research_test(SuspensionRayVelocity)
 add_latebrake_portable_research_test(TrackLimitsSteward)
+# The steward fixture also exercises the real race-clock penalty ledger.
+target_sources(latebrake_research_TrackLimitsSteward PRIVATE
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 add_latebrake_portable_research_test(TractionLimitedPropulsion)
 add_latebrake_portable_research_test(WheelBrakeDynamics)
 add_latebrake_portable_research_test(WorldScaleCandidateRivalPilot)
