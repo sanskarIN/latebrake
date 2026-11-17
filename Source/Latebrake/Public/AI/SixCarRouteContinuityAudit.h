@@ -59,6 +59,9 @@ struct SixCarRouteCarAdvisory final
     std::uint64_t ActorIdentity = 0;
     int GridSlot = -1;
     double TotalReportedProgressCm = 0.0;
+    // Independently geometrically projected station plus the
+    // externally qualified completed-lap count. Advisory only.
+    double TotalProjectedProgressCm = 0.0;
     double MeasuredSpeedCmps = 0.0;
     double SignedRoadOffsetCm = 0.0;
     double RouteProjectionResidualCm = 0.0;
@@ -167,6 +170,7 @@ public:
 
         std::array<SixCarRouteActorSample, SixCarRouteAuditCapacity> ordered{};
         std::array<double, SixCarRouteAuditCapacity> currentDistance{};
+        std::array<double, SixCarRouteAuditCapacity> projectedDistance{};
         std::array<double, SixCarRouteAuditCapacity> currentSignedRouteSpeed{};
         std::array<SixCarRouteCarAdvisory, SixCarRouteAuditCapacity> current{};
         std::array<bool, SixCarRouteAuditCapacity> seenSlots{};
@@ -241,8 +245,19 @@ public:
                     WorldScaleCircuitLapCm +
                 actor.ReportedLapProgressCm;
             currentDistance[slot] = total;
+            // Reported distance may be an honest noisy measurement,
+            // but must NOT alone authorize a passing or ordering event.
+            // The independently measured XY chassis projection is used
+            // for advisory relative ranking, while reported distance is
+            // separately checked against both geometry and elapsed motion.
+            const double projectedTotal =
+                static_cast<double>(actor.CompletedLaps) *
+                    WorldScaleCircuitLapCm +
+                projection.LapDistanceCm;
+            projectedDistance[slot] = projectedTotal;
             current[slot] = {
                 actor.ActorIdentity, actor.GridSlot, total,
+                projectedTotal,
                 std::hypot(actor.VelocityX, actor.VelocityY),
                 projection.SignedLateralCm,
                 projection.CentrelineSeparationCm,
@@ -368,9 +383,9 @@ public:
                   report.AdvisoryOrder.end(),
                   [&](int a, int b) noexcept {
             const double lhs =
-                currentDistance[static_cast<std::size_t>(a)];
+                projectedDistance[static_cast<std::size_t>(a)];
             const double rhs =
-                currentDistance[static_cast<std::size_t>(b)];
+                projectedDistance[static_cast<std::size_t>(b)];
             return lhs > rhs ||
                 (lhs == rhs && a < b);
         });
@@ -380,7 +395,7 @@ public:
         for (std::size_t i = 0; i < SixCarRouteAuditCapacity; ++i)
         for (std::size_t j = i + 1; j < SixCarRouteAuditCapacity; ++j)
         {
-            const double gap = currentDistance[i] - currentDistance[j];
+            const double gap = projectedDistance[i] - projectedDistance[j];
             int lead = 0;
             if (gap > SixCarRouteAuditPassHysteresisCm) lead = 1;
             else if (gap < -SixCarRouteAuditPassHysteresisCm) lead = -1;
