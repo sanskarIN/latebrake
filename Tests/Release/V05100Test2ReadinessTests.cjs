@@ -225,6 +225,6 @@ for(const [label,change,expression] of rejects) {
 test('missing required note phrases is not bypassed by source CI',()=>{
   assert.throws(()=>guard.checkNotes(NOTES.replace('zero executable binaries','game available')),
     /warning missing/);
-  assert.throws(()=>guard.checkNotes(NOTES.replace('PR #395','PR #999')),
+  assert.throws(()=>guard.checkNotes(NOTES.replaceAll('PR #395','PR #999')),
     /notes omit/);
 });
