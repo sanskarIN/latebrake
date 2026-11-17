@@ -2137,3 +2137,6 @@ add_latebrake_portable_research_test(WorldScaleCollisionRayTriangle)
 add_latebrake_portable_research_test(WorldScaleRacePace)
 add_latebrake_portable_research_test(WorldScaleRoundedCircuit)
 add_latebrake_portable_research_test(WorldScaleSmoothCollisionRoad)
+
+# New cross-domain source-only continuity audit; no UE5.8 gameplay claims.
+add_latebrake_portable_research_test(CircuitPaceAudit)
