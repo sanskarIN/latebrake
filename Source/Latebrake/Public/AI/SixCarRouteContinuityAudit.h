@@ -132,6 +132,7 @@ public:
         HaveBaseline = false;
         PreviousActors = {};
         PreviousReportedDistance = {};
+        PreviousSignedRouteSpeed = {};
         PairwiseLead = {};
         AcceptedFrames = 0;
         RejectedCount = 0;
@@ -166,6 +167,7 @@ public:
 
         std::array<SixCarRouteActorSample, SixCarRouteAuditCapacity> ordered{};
         std::array<double, SixCarRouteAuditCapacity> currentDistance{};
+        std::array<double, SixCarRouteAuditCapacity> currentSignedRouteSpeed{};
         std::array<SixCarRouteCarAdvisory, SixCarRouteAuditCapacity> current{};
         std::array<bool, SixCarRouteAuditCapacity> seenSlots{};
         for (const auto& actor : frame.Actors)
@@ -196,6 +198,43 @@ public:
                 RejectAndBreakContinuity();
                 return Last;
             }
+            // Compare reported progress to the ACTUAL geometric forward
+            // tangent, not speed magnitude. A car travelling backward or
+            // sliding sideways cannot forge forward lap progress by merely
+            // supplying a plausible speedometer value. Tangent is derived
+            // from independently projected authored geometry, not the
+            // untrusted reported station or a driver-facing nose vector.
+            constexpr double TangentSampleHalfWindowCm = 100.0;
+            const auto tangentBefore = WorldScaleCenterlineAt(
+                projection.LapDistanceCm - TangentSampleHalfWindowCm);
+            const auto tangentAfter = WorldScaleCenterlineAt(
+                projection.LapDistanceCm + TangentSampleHalfWindowCm);
+            if (!tangentBefore.Valid || !tangentAfter.Valid)
+            {
+                RejectAndBreakContinuity();
+                return Last;
+            }
+            const double tangentX =
+                tangentAfter.Pose.Position.X -
+                tangentBefore.Pose.Position.X;
+            const double tangentY =
+                tangentAfter.Pose.Position.Y -
+                tangentBefore.Pose.Position.Y;
+            const double tangentLength = std::hypot(tangentX, tangentY);
+            if (!std::isfinite(tangentLength) || tangentLength < 1.0)
+            {
+                RejectAndBreakContinuity();
+                return Last;
+            }
+            const double signedProgressSpeed =
+                (actor.VelocityX * tangentX +
+                 actor.VelocityY * tangentY) / tangentLength;
+            if (!std::isfinite(signedProgressSpeed))
+            {
+                RejectAndBreakContinuity();
+                return Last;
+            }
+            currentSignedRouteSpeed[slot] = signedProgressSpeed;
             ordered[slot] = actor;
             const double total =
                 static_cast<double>(actor.CompletedLaps) *
@@ -264,7 +303,14 @@ public:
                     after.WorldX - expectedX, after.WorldY - expectedY);
                 const double measuredAdvance =
                     currentDistance[i] - PreviousReportedDistance[i];
+                // True route travel is SIGNED: magnitude cannot prove
+                // forward motion. Drifting almost perpendicular to the
+                // road and reversing cannot claim forward progress.
                 const double expectedAdvance = 0.5 * frame.DeltaSeconds *
+                    (PreviousSignedRouteSpeed[i] +
+                     currentSignedRouteSpeed[i]);
+                const double measuredTravelMagnitude = 0.5 *
+                    frame.DeltaSeconds *
                     (std::hypot(before.VelocityX, before.VelocityY) +
                      current[i].MeasuredSpeedCmps);
                 // A wide 220cm geometric projection tolerance does NOT
@@ -273,13 +319,14 @@ public:
                 // frame error budgets, including at 30/60/120Hz.
                 const double maxWorldError = std::max(
                     SixCarRouteAuditMaxMotionResidualCm,
-                    0.12 * expectedAdvance);
+                    0.12 * measuredTravelMagnitude);
                 const double maxAdvanceError = std::max(
                     SixCarRouteAuditMaxAdvanceErrorCm,
-                    0.12 * expectedAdvance);
+                    0.12 * measuredTravelMagnitude);
                 if (!std::isfinite(worldResidual) ||
                     !std::isfinite(measuredAdvance) ||
                     !std::isfinite(expectedAdvance) ||
+                    !std::isfinite(measuredTravelMagnitude) ||
                     worldResidual > maxWorldError ||
                     measuredAdvance < -5.0 ||
                     std::abs(measuredAdvance - expectedAdvance) >
@@ -342,7 +389,15 @@ public:
                 if (continuous && PairwiseLead[i][j] != 0 &&
                     PairwiseLead[i][j] != lead)
                 {
-                    ++report.ConfirmedRelativePasses;
+                    // Count an advisory FORWARD pass only when the newly
+                    // leading physical chassis has genuinely positive
+                    // longitudinal road velocity (at least 0.5 m/s).
+                    const std::size_t newLeader =
+                        lead > 0 ? i : j;
+                    if (currentSignedRouteSpeed[newLeader] >= 50.0)
+                    {
+                        ++report.ConfirmedRelativePasses;
+                    }
                 }
                 PairwiseLead[i][j] = lead;
             }
@@ -350,6 +405,7 @@ public:
 
         PreviousActors = ordered;
         PreviousReportedDistance = currentDistance;
+        PreviousSignedRouteSpeed = currentSignedRouteSpeed;
         PreviousFrameOrdinal = frame.FrameOrdinal;
         HaveBaseline = true;
         report.AcceptedContinuityFrames = AcceptedFrames;
@@ -380,6 +436,8 @@ private:
         PreviousActors{};
     std::array<double, SixCarRouteAuditCapacity>
         PreviousReportedDistance{};
+    std::array<double, SixCarRouteAuditCapacity>
+        PreviousSignedRouteSpeed{};
     std::array<std::array<int, SixCarRouteAuditCapacity>,
                SixCarRouteAuditCapacity> PairwiseLead{};
     std::uint64_t AcceptedFrames = 0;
