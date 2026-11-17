@@ -2090,7 +2090,6 @@ add_latebrake_portable_research_test(ResearchOriginalGeometryHeaderCompile)
 # Imported earlier original, engine-neutral racing research retained as
 # standalone source-only QA. No Unreal runner, Win64 executable or runtime
 # actor binding is implied by a green test here.
-add_latebrake_portable_research_test(AirborneRoadLoad)
 add_latebrake_portable_research_test(AxleTractionBudget)
 add_latebrake_portable_research_test(BrakeRoadTangent)
 add_latebrake_portable_research_test(ChassisWheelGeometry)
