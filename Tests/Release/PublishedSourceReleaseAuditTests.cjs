@@ -5,7 +5,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   LEGACY_TEST_TAG, LEGACY_TEST_SHA, LEGACY_TEST_NAME,
-  LEGACY_TEST_BODY, classifySourceTag, verifyPublishedSourceRelease,
+  LEGACY_TEST_BODY, REVIEWED_TEST_TAG, REVIEWED_TEST_NAME,
+  REVIEWED_TEST_NOTES_PATH, classifySourceTag, verifyPublishedSourceRelease,
 } = require('../../scripts/AuditPublishedSourceRelease.cjs');
 
 const MAIN = 'a'.repeat(40);
@@ -50,9 +51,39 @@ function official() {
     },
   };
 }
+const REVIEWED_NOTES = [
+  'LateBrake v0.5.100-test.2 SOURCE-ONLY Pre-release',
+  'NOT a playable game build',
+  'No compiled Win64 EXE',
+  'Android APK/AAB',
+  'not installers',
+  'zero executable binaries',
+  'PR #395',
+  'PR #377',
+  'PR #391',
+  'PR #394',
+  'not integrated into real Unreal gameplay',
+  '87,792',
+].join('\n');
+function reviewed() {
+  return {
+    tag: REVIEWED_TEST_TAG,
+    reference: {object: {type:'commit', sha:MAIN}},
+    sourceNotes: REVIEWED_NOTES,
+    release: {
+      tag_name: REVIEWED_TEST_TAG, target_commitish: MAIN,
+      draft:false, prerelease:true,
+      published_at:'2026-11-17T11:30:00Z',
+      name: REVIEWED_TEST_NAME,
+      body: REVIEWED_NOTES, assets:[],
+    },
+  };
+}
+
 function denied(name, edit, expression) {
   test(name, () => {
-    const fixture = edit.kind === 'official' ? official() : legacy();
+    const fixture = edit.kind === 'official' ? official() :
+      edit.kind === 'reviewed' ? reviewed() : legacy();
     edit.apply(fixture);
     assert.throws(() => verifyPublishedSourceRelease(fixture), expression);
   });
@@ -81,12 +112,58 @@ test('historical body supports actual GitHub CRLF normalization only', () => {
 });
 
 for (const tag of [
-  'v0.5.100-test.2', 'v0.5.101-test.1', 'v0.5.100-rc.1',
+  'v0.5.100-test.3', 'v0.5.101-test.1', 'v0.5.100-rc.1',
   'v0.6.0', 'v0.5.100-test.1+dirty', 'v0.5.100/tag', '',
 ]) {
   test('unapproved source-preview tag is rejected: ' + tag, () => {
     assert.throws(() => classifySourceTag(tag), /Only v0.5.N/);
   });
+}
+
+test('reviewed v0.5.100-test.2 must have tagged exact notes and exact release target', () => {
+  assert.deepEqual(classifySourceTag(REVIEWED_TEST_TAG),
+    {kind:'reviewed-source-test', notesPath:REVIEWED_TEST_NOTES_PATH});
+  const receipt = verifyPublishedSourceRelease(reviewed());
+  assert.equal(receipt.kind, 'reviewed-source-test');
+  assert.equal(receipt.sha, MAIN);
+});
+
+const reviewedChanges = [
+  ['moved reviewed source tag', f=>{f.reference.object.sha='b'.repeat(40);},
+    /exact immutable source tag SHA/],
+  ['annotated reviewed source tag', f=>{f.reference.object.type='tag';},
+    /point directly/],
+  ['release points at mutable main branch', f=>{f.release.target_commitish='main';},
+    /exact immutable source tag SHA/],
+  ['stale copied notes', f=>{f.release.body+='\\n';},
+    /exact source-tagged UTF-8/],
+  ['forged review title', f=>{f.release.name+=' Windows EXE';},
+    /Reviewed test snapshot title/],
+  ['missing provenance note', f=>{
+    f.sourceNotes=f.sourceNotes.replace('PR #395','PR #999');
+    f.release.body=f.sourceNotes;
+  }, /Reviewed test snapshot title/],
+  ['incorrect unmerged PR note', f=>{
+    f.sourceNotes=f.sourceNotes.replace('PR #394','merged feature');
+    f.release.body=f.sourceNotes;
+  }, /Reviewed test snapshot title/],
+  ['missing actual nonplayable warning', f=>{
+    f.sourceNotes=f.sourceNotes.replace('No compiled Win64 EXE','Included compiled Win64 EXE');
+    f.release.body=f.sourceNotes;
+  }, /warning missing/],
+  ['fake 99-thousand source count', f=>{
+    f.sourceNotes=f.sourceNotes.replace('87,792','99,999');
+    f.release.body=f.sourceNotes;
+  }, /Reviewed test snapshot title/],
+  ['attached binary', f=>{f.release.assets=[{name:'LateBrake.exe'}];},
+    /zero attachments/],
+  ['published as stable', f=>{f.release.prerelease=false;},
+    /Release must be published/],
+  ['new release without exact source notes', f=>{delete f.sourceNotes;},
+    /exact source-tagged UTF-8/],
+];
+for (const [name, apply, expression] of reviewedChanges) {
+  denied('deny test.2 '+name, {kind:'reviewed',apply}, expression);
 }
 
 const legacyChanges = [
