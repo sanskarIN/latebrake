@@ -2166,3 +2166,7 @@ else()
 endif()
 add_test(NAME WorldScaleCandidateRacingLine
     COMMAND latebrake_world_scale_candidate_racing_line)
+
+# Independent swept finite-chassis footprint verification for candidate line.
+# Source-only: no Chaos collision, native steering or Win64 driving claim.
+add_latebrake_portable_research_test(WorldScaleSweptEnvelope)
