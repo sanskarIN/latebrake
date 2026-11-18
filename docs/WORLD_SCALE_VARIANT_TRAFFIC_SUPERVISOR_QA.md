@@ -52,3 +52,22 @@ driving qualification.
 
 This PR remains a draft stacked on PRs #405–#407 while protected
 main retains its source-only v0.5.100-test.2 manual release gate.
+
+## Atomic six-car arbitration
+
+`Source/Latebrake/Public/AI/WorldScaleVariantFleetTrafficArbitration.h`
+provides a single **all-or-nothing** admission boundary for all six
+rival pilot receipts. The six candidate pilots must independently
+match their exact real actor, session, source circuit and frame against
+the same qualified fleet snapshot. Only then are the six independent
+conservative traffic demands evaluated. If any one pilot is invalid,
+the complete frame returns six invalid, zero-throttle, braked receipts;
+no partial advisory can leak to a controller.
+
+This keeps the physical-identity trust contract separate from corner
+braking, authentic 3D collisions and online race arbitration. It does
+not make an Unreal actor or live brake control available. The strict
+`WorldScaleVariantTrafficSupervisor` regression also exercises
+six-circuit atomic all-or-nothing rejection for one bad actor token,
+one bad track/session/frame, one malformed pilot command, a missing
+physical contact or a discontinuous fleet source.
