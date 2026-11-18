@@ -136,8 +136,10 @@ void UniformWetAndTransitions(
     const auto seam = BuildWorldScaleVariableGripPace(baseline, input);
     CheckPhysicsBounds(baseline, seam);
     Expect(Near(seam.MinimumMeasuredGripFraction, 0.52) &&
-           seam.ReducedSpeedStations > 0,
-           "a 30-node grip patch crossing the 511 -> 0 edge remains valid");
+           Near(seam.Nodes[0].VerifiedGripFraction, 0.52) &&
+           Near(seam.Nodes[WorldScalePaceStations - 1u]
+                    .VerifiedGripFraction, 0.52),
+           "the start/finish seam retains both measured low-grip endpoints");
     for (double distance : {-WorldScaleCircuitLapCm, 0.0,
                             WorldScaleCircuitLapCm,
                             2.0 * WorldScaleCircuitLapCm})
