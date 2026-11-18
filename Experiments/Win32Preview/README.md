@@ -51,3 +51,31 @@ The input fallback is designed for optional XInput devices; compatibility with s
 - Ordinary GitHub Actions MSVC checks test the self-test and package integrity only. They cannot verify graphics, controller hardware or human playability.
 
 **Production goal:** An authenticated UE 5.8 Windows Editor/UHT build, original cooked circuit, inspected Win64 package and actual installed hardware tests remain required by issue #148. Xbox support in this 2D experiment is *not* an Unreal Engine Input Mapping integration; that requires separate production work.
+
+## Diagnosing an empty or black preview window (source candidate)
+
+The separate V5 **2D** program now reports failures to register or create
+its desktop window in a visible Windows dialog (historical silent process
+exit codes `5` and `6`). If a non-minimized window then fails to present
+its GDI framebuffer on **45 consecutive attempts**, it shows a single
+failure explanation and exits with code `26` instead of silently
+continuing a blank surface forever. Minimized and zero-sized viewports
+are deliberately ignored, and one successful GDI draw resets the counter.
+The tested source policy does **not** detect a successful but incorrect
+paint, inaccessible window behind another app, remote-desktop compositor
+failure or missing Unreal gameplay content.
+
+For **manual native Windows QA only**, run the unverified preview EXE in an
+active Windows 11 desktop session, not merely in CI. Confirm the welcome
+menu, visible original 2D track, resizable letterboxing, controls and
+first lap. Minimize then restore; the app must not show a false graphics
+failure. If the UI is blank, record whether there is a dialog, the process
+exit status, Windows build, GPU/driver model, remote-session status,
+window size, display scaling and the exact EXE SHA-256. Check Windows
+Event Viewer or debugger output for `LateBrake V5` diagnostics.
+
+GitHub's MSVC `--self-test` validates the 45-failure state machine without
+opening any UI or reading/writing a player's profile. The Win64 build
+job can confirm compilation and isolated synthetic logic, **not** desktop
+visibility or an installed Unreal Engine 5.8 3D game. Do not publish a
+playable-release claim from these results.
