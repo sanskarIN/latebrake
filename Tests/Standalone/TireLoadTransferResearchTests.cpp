@@ -136,5 +136,34 @@ int main() {
         EstimateWheelLoads(corner), tire)));
     CHECK(std::isnan(EstimateFourWheelPeakLongitudinalForceN(
         stationary, {0.0, 1.2, 0.1})));
+    // Combined-demand advisory cannot grant more longitudinal grip than
+    // the unloaded lateral case. A fully utilized patch has no remainder.
+    const std::array<double, 4> noLateral{0.0, 0.0, 0.0, 0.0};
+    const double unconstrained =
+        EstimateRemainingLongitudinalForceN(stationary, tire, noLateral);
+    CHECK(Near(unconstrained, fourTireForce));
+    std::array<double, 4> partialLateral{};
+    std::array<double, 4> saturatedLateral{};
+    for (std::size_t wheel = 0; wheel < partialLateral.size(); ++wheel) {
+        const double peak =
+            EstimatePeakLongitudinalForceN(stationary.normalN[wheel], tire);
+        partialLateral[wheel] = peak * 0.6;
+        saturatedLateral[wheel] = peak;
+    }
+    const double reduced =
+        EstimateRemainingLongitudinalForceN(stationary, tire, partialLateral);
+    CHECK(Near(reduced, fourTireForce * 0.8));
+    CHECK(Near(EstimateRemainingLongitudinalForceN(
+        stationary, tire, saturatedLateral), 0.0));
+    partialLateral[0] = std::numeric_limits<double>::infinity();
+    CHECK(std::isnan(EstimateRemainingLongitudinalForceN(
+        stationary, tire, partialLateral)));
+    partialLateral[0] = saturatedLateral[0] * 1.01;
+    CHECK(std::isnan(EstimateRemainingLongitudinalForceN(
+        stationary, tire, partialLateral)));
+    CHECK(std::isnan(EstimateRemainingLongitudinalForceN(
+        EstimateWheelLoads(corner), tire, noLateral)));
+    CHECK(std::isnan(EstimateRemainingLongitudinalForceN(
+        stationary, {0.0, 1.2, 0.1}, noLateral)));
     return 0;
 }
