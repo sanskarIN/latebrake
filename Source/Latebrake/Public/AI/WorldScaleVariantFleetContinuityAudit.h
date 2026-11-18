@@ -68,6 +68,8 @@ struct WorldScaleVariantFleetReadout final
     bool Valid=false;
     bool MotionContinuous=false;
     WorldScaleVariantId TrackId=WorldScaleVariantId::OriginalLoop;
+    std::uint64_t SourceSessionToken=0;
+    std::uint64_t SourceFrameOrdinal=0;
     std::array<WorldScaleVariantFleetCarResult,
                WorldScaleVariantFleetCars> CarsBySlot{};
     std::array<unsigned,WorldScaleVariantFleetCars> AdvisoryOrder{};
@@ -326,6 +328,8 @@ public:
         result.Valid=true;
         result.MotionContinuous=successor;
         result.TrackId=plan.Track.Id;
+        result.SourceSessionToken=frame.SessionToken;
+        result.SourceFrameOrdinal=frame.FrameOrdinal;
         result.CarsBySlot=reported;
         for(unsigned i=0;i<WorldScaleVariantFleetCars;++i)
             result.AdvisoryOrder[i]=i;
