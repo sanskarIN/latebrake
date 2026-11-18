@@ -149,6 +149,19 @@ void RejectedSensorsAndRecovery(
     Check(!pilot.Step(reference, grip, bad).Valid,
           "a different race session cannot reuse the measured grip plan");
 
+    auto staleSamples = QualifiedRoad(reference, 0.80);
+    for (auto& station : staleSamples.Stations)
+    {
+        station.MeasurementClockSeconds = 398.1;
+    }
+    const auto sensorNearlyExpired =
+        BuildWorldScaleVariableGripPace(reference, staleSamples);
+    Check(sensorNearlyExpired.Valid &&
+          sensorNearlyExpired.MaximumMeasurementAgeSeconds > 1.8,
+          "source builder may ingest independently verified near-expiry readings");
+    Check(!pilot.Step(reference, sensorNearlyExpired, first).Valid,
+          "oldest real friction reading plus game clock age fails 2-second gate");
+
     bad = first;
     bad.PhysicsClockSeconds = 399.5;
     Check(!pilot.Step(reference, grip, bad).Valid,
