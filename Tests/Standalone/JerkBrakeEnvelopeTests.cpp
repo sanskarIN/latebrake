@@ -1,4 +1,5 @@
 #include "AI/JerkBrakeEnvelope.h"
+#include "AI/JerkBrakeSpeedLimit.h"
 
 #include <cassert>
 #include <cmath>
@@ -64,4 +65,34 @@ int main()
     invalid=settings;
     invalid.ReactionSeconds=std::numeric_limits<double>::quiet_NaN();
     assert(!EvaluateJerkBrakeEnvelope(100,0,1000,invalid).Valid);
+    // Inverse planner must never advise a speed whose forward gap is unsafe.
+    const auto overlap=SolveJerkBrakeClosingSpeedLimit(485.0);
+    assert(overlap.Valid && !overlap.HasSafeClosingSpeed);
+    const auto invalidGap=SolveJerkBrakeClosingSpeedLimit(
+        std::numeric_limits<double>::quiet_NaN());
+    assert(!invalidGap.Valid && !invalidGap.HasSafeClosingSpeed);
+    double previous=0.0;
+    for(double gap=486.0;gap<=90000.0;gap+=137.0)
+    {
+        const auto limit=SolveJerkBrakeClosingSpeedLimit(gap);
+        assert(limit.Valid && limit.HasSafeClosingSpeed);
+        assert(limit.MaximumClosingSpeedCmps>=previous);
+        assert(limit.MaximumClosingSpeedCmps>=0.0);
+        assert(limit.MaximumClosingSpeedCmps<=20000.0);
+        const auto safe=EvaluateJerkBrakeEnvelope(
+            limit.MaximumClosingSpeedCmps,0.0,gap);
+        assert(safe.Valid && !safe.RequiresEmergencyBrake);
+        assert(limit.RequiredGapAtLimitCm==safe.RequiredGapCm);
+        if(limit.MaximumClosingSpeedCmps<19999.0)
+        {
+            const auto faster=EvaluateJerkBrakeEnvelope(
+                limit.MaximumClosingSpeedCmps+0.01,0.0,gap);
+            assert(faster.Valid && faster.RequiresEmergencyBrake);
+        }
+        previous=limit.MaximumClosingSpeedCmps;
+    }
+    auto badLimitSettings=settings;
+    badLimitSettings.MaximumDecelerationCmps2=-1.0;
+    assert(!SolveJerkBrakeClosingSpeedLimit(1000,badLimitSettings).Valid);
+
 }
