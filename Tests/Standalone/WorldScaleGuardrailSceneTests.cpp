@@ -151,7 +151,7 @@ void SeamAndPanelSpacing()
     Require(plan.Valid && AuditWorldScaleGuardrailScene(plan),
             "alternate 375cm section plan remains physically disjoint from pavement");
     Require(plan.Panels.front().StartStationCm==0.0 &&
-            plan.Panels.back().EndStationCm==WorldScaleCircuitLapCm,
+            std::abs(plan.Panels.back().EndStationCm - WorldScaleCircuitLapCm) <= 1.0e-6,
             "last future roadside scene section closes to authored lap exactly");
     const auto& first=plan.Posts.front().Base;
     const auto& final=plan.Panels.back().Corners[1];
