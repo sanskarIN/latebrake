@@ -2301,3 +2301,84 @@ else()
 endif()
 add_test(NAME WorldScaleCandidateRacingLine
     COMMAND latebrake_world_scale_candidate_racing_line)
+
+# Source-only original-circuit projection: deterministic CTest smoke and
+# opt-in --profile synthetic 30/60/120 Hz measurements (not UE timing).
+add_executable(latebrake_world_scale_projection_profile
+    WorldScaleProjectionProfileTests.cpp)
+target_include_directories(latebrake_world_scale_projection_profile PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_projection_profile PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_projection_profile PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_projection_profile PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleProjectionProfile
+    COMMAND latebrake_world_scale_projection_profile)
+
+# Conservative read-only broad phase; compare every returned field with
+# the unchanged O(512) route reference, not live Unreal gameplay.
+add_executable(latebrake_world_scale_projection_blocks
+    WorldScaleProjectionBlockIndexTests.cpp)
+target_include_directories(latebrake_world_scale_projection_blocks PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_projection_blocks PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_projection_blocks PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_projection_blocks PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleProjectionBlocks
+    COMMAND latebrake_world_scale_projection_blocks)
+
+# Source-only opt-in A/B performance measurements with fully identical
+# output regression; default CTest uses only a small deterministic smoke.
+add_executable(latebrake_world_scale_projection_ab_profile
+    WorldScaleProjectionABProfileTests.cpp)
+target_include_directories(latebrake_world_scale_projection_ab_profile
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_projection_ab_profile
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_projection_ab_profile PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_projection_ab_profile
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleProjectionABProfile
+    COMMAND latebrake_world_scale_projection_ab_profile)
+
+# Strict portable 512-source-station variable-friction lap speed solver.
+# Never used as live Unreal/Chaos friction or official race evidence.
+add_executable(latebrake_world_scale_variable_grip_pace
+    WorldScaleVariableGripPaceTests.cpp)
+target_include_directories(latebrake_world_scale_variable_grip_pace
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variable_grip_pace PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variable_grip_pace PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variable_grip_pace PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariableGripPace
+    COMMAND latebrake_world_scale_variable_grip_pace)
+
+# Optional measured-grip route constraint layered over existing dry
+# world-scale rival pilot; never wired into Unreal GameMode.
+add_executable(latebrake_world_scale_conservative_grip_pilot
+    WorldScaleConservativeGripPilotTests.cpp)
+target_include_directories(latebrake_world_scale_conservative_grip_pilot
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_conservative_grip_pilot PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_conservative_grip_pilot PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_conservative_grip_pilot
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleConservativeGripPilot
+    COMMAND latebrake_world_scale_conservative_grip_pilot)
