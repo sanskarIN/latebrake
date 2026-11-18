@@ -2148,3 +2148,37 @@ add_latebrake_portable_research_test(CircuitPaceAudit)
 
 # Detect duplicate pit-review type names across old/new source-only APIs.
 add_latebrake_portable_research_test(PitCompatibility)
+
+# Portable original 1.3-2.4km future racing levels: distinct 68-piece
+# physical road plans, closed graphics ribbons and route pace forecasts.
+# This does NOT cook any Unreal level, grant lap or install a Win64 game.
+add_executable(latebrake_world_scale_original_circuits
+    WorldScaleOriginalCircuitsTests.cpp)
+target_include_directories(latebrake_world_scale_original_circuits PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_original_circuits PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_original_circuits PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_original_circuits PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleOriginalCircuits
+    COMMAND latebrake_world_scale_original_circuits)
+
+# Six ORIGINAL road variant 3x2 grid and signed sector planes,
+# without altering Unreal's active GameMode or race progress.
+add_executable(latebrake_world_scale_variant_grid_and_gates
+    WorldScaleVariantGridAndGatesTests.cpp)
+target_include_directories(latebrake_world_scale_variant_grid_and_gates
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variant_grid_and_gates PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variant_grid_and_gates
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variant_grid_and_gates
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariantGridAndGates
+    COMMAND latebrake_world_scale_variant_grid_and_gates)
