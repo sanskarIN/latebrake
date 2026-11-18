@@ -14,6 +14,7 @@ namespace latebrake
 // power and pace; it has no steering, Chaos, collision, checkpoint or
 // official race authority. No native GameMode instantiates this wrapper.
 inline constexpr double WorldScaleGripPilotMaxSourceAgeSeconds = 0.75;
+inline constexpr double WorldScaleGripPilotMaxTotalSensorAgeSeconds = 2.0;
 
 struct WorldScaleGripPilotObservation final
 {
@@ -60,8 +61,12 @@ public:
             !std::isfinite(input.PhysicsClockSeconds) ||
             input.PhysicsClockSeconds < 0.0 ||
             !std::isfinite(grip.SourceClockSeconds) ||
+            !std::isfinite(grip.MaximumMeasurementAgeSeconds) ||
+            grip.MaximumMeasurementAgeSeconds < 0.0 ||
             !std::isfinite(age) || age < 0.0 ||
-            age > WorldScaleGripPilotMaxSourceAgeSeconds)
+            age > WorldScaleGripPilotMaxSourceAgeSeconds ||
+            grip.MaximumMeasurementAgeSeconds + age >
+                WorldScaleGripPilotMaxTotalSensorAgeSeconds)
         {
             Reset();
             return {};
