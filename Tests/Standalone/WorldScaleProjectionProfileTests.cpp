@@ -147,6 +147,23 @@ void VerifyResults(
             "no optimizer-elided or empty projection workload");
 }
 
+void VerifyProfileInputContract(const latebrake::WorldScalePacePlan& plan)
+{
+    // The opt-in benchmark must not pass CTest while its input generator
+    // or +/-220 cm lane-offset geometry is broken. Keep this short:
+    // 30 synthetic frames, six source points per frame, no stopwatch.
+    const auto observations = PrepareSixCarObservations(30u, 1u);
+    Require(observations.size() == 180u,
+            "baseline must cover 180 real source-route projection queries");
+    std::vector<latebrake::WorldScaleRouteProjection> results;
+    results.reserve(observations.size());
+    for (const auto& xy : observations)
+    {
+        results.push_back(latebrake::ProjectWorldScaleRoute(plan, xy));
+    }
+    VerifyResults(results);
+}
+
 void ProfileRate(const latebrake::WorldScalePacePlan& plan, unsigned fps)
 {
     // Sixty seconds of source-only precomputed six-position observations
@@ -201,6 +218,7 @@ int main(int argc, char** argv)
     }
     const auto plan = latebrake::BuildWorldScalePacePlan();
     VerifyAllReferenceNodes(plan);
+    VerifyProfileInputContract(plan);
     if (profile)
     {
         std::cout << "Portable C++20 original route, three trial median; "
