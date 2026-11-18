@@ -116,4 +116,55 @@ inline double EstimatePeakLongitudinalForceN(
            std::numeric_limits<double>::quiet_NaN();
 }
 
+// Upper bound on steady lateral acceleration before a wheel unloads.
+// The bound is computed from the longitudinally transferred axle loads;
+// it is not a tire-friction or roll-dynamics prediction.
+inline double EstimateWheelLiftLateralLimitMps2(
+    const LoadTransferInput& input) noexcept {
+    auto neutral = input;
+    neutral.lateralAccelerationMps2 = 0.0;
+    const auto loads = EstimateWheelLoads(neutral);
+    if (loads.status != LoadTransferStatus::Valid) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    if (input.centerOfMassHeightM == 0.0) {
+        return std::numeric_limits<double>::infinity();
+    }
+    double limit = std::numeric_limits<double>::infinity();
+    if (input.frontRollTransferFraction > 0.0) {
+        const double frontLimit = loads.frontAxleN * input.frontTrackM /
+            (2.0 * input.massKg * input.centerOfMassHeightM *
+             input.frontRollTransferFraction);
+        limit = std::min(limit, frontLimit);
+    }
+    if (input.frontRollTransferFraction < 1.0) {
+        const double rearLimit = loads.rearAxleN * input.rearTrackM /
+            (2.0 * input.massKg * input.centerOfMassHeightM *
+             (1.0 - input.frontRollTransferFraction));
+        limit = std::min(limit, rearLimit);
+    }
+    return std::isfinite(limit) && limit > 0.0
+        ? limit : std::numeric_limits<double>::quiet_NaN();
+}
+
+// Summed longitudinal peak-force proxy, only for a fully grounded car.
+// No friction ellipse or brake/drive distribution is implied.
+inline double EstimateFourWheelPeakLongitudinalForceN(
+    const WheelLoadEstimate& loads,
+    const TireLoadSensitivity& tire) noexcept {
+    if (loads.status != LoadTransferStatus::Valid) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    double total = 0.0;
+    for (double load : loads.normalN) {
+        const double force = EstimatePeakLongitudinalForceN(load, tire);
+        if (!std::isfinite(force) || force <= 0.0) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        total += force;
+    }
+    return std::isfinite(total) && total > 0.0
+        ? total : std::numeric_limits<double>::quiet_NaN();
+}
+
 } // namespace LateBrake::PhysicsResearch
