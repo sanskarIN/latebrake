@@ -83,7 +83,9 @@ inline WheelLoadEstimate EstimateWheelLoads(const LoadTransferInput& v) noexcept
                                               result.normalN.end());
     if (!std::isfinite(weight) || !std::isfinite(front) || !std::isfinite(rear) ||
         !std::isfinite(frontSide) || !std::isfinite(rearSide) ||
-        !std::isfinite(result.minimumWheelN)) {
+        !std::isfinite(result.minimumWheelN) ||
+        !std::all_of(result.normalN.begin(), result.normalN.end(),
+                     [](double load) { return std::isfinite(load); })) {
         return WheelLoadEstimate{};
     }
     result.status = result.minimumWheelN <= 0.0 ? LoadTransferStatus::WheelLift
@@ -121,6 +123,9 @@ inline double EstimatePeakLongitudinalForceN(
 // it is not a tire-friction or roll-dynamics prediction.
 inline double EstimateWheelLiftLateralLimitMps2(
     const LoadTransferInput& input) noexcept {
+    if (!FiniteLoadInput(input)) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
     auto neutral = input;
     neutral.lateralAccelerationMps2 = 0.0;
     const auto loads = EstimateWheelLoads(neutral);
