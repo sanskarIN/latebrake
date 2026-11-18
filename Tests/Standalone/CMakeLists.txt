@@ -2148,3 +2148,35 @@ add_latebrake_portable_research_test(CircuitPaceAudit)
 
 # Detect duplicate pit-review type names across old/new source-only APIs.
 add_latebrake_portable_research_test(PitCompatibility)
+
+# Strict portable 512-source-station variable-friction lap speed solver.
+# Never used as live Unreal/Chaos friction or official race evidence.
+add_executable(latebrake_world_scale_variable_grip_pace
+    WorldScaleVariableGripPaceTests.cpp)
+target_include_directories(latebrake_world_scale_variable_grip_pace
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variable_grip_pace PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variable_grip_pace PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variable_grip_pace PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariableGripPace
+    COMMAND latebrake_world_scale_variable_grip_pace)
+
+# Optional measured-grip route constraint layered over existing dry
+# world-scale rival pilot; never wired into Unreal GameMode.
+add_executable(latebrake_world_scale_conservative_grip_pilot
+    WorldScaleConservativeGripPilotTests.cpp)
+target_include_directories(latebrake_world_scale_conservative_grip_pilot
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_conservative_grip_pilot PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_conservative_grip_pilot PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_conservative_grip_pilot
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleConservativeGripPilot
+    COMMAND latebrake_world_scale_conservative_grip_pilot)
