@@ -1,4 +1,4 @@
-#include "AI/WorldScaleVariantTrafficSupervisor.h"
+#include "AI/WorldScaleVariantFleetTrafficArbitration.h"
 
 #include <algorithm>
 #include <array>
@@ -304,6 +304,107 @@ void FrameSequenceReceipt()
                 "source-only traffic uses a matched physics frame receipt");
     }
 }
+void WholeFleetAtomicArbitration()
+{
+    for(unsigned n=0;n<WorldScaleVariantCount;++n)
+    {
+        const auto id=WorldScaleVariantAt(n).Id;
+        const auto fleet=Fleet(id);
+        std::array<WorldScaleVariantPilotReadout,
+                   WorldScaleVariantFleetCars> pilots{};
+        for(unsigned slot=0;slot<WorldScaleVariantFleetCars;++slot)
+        {
+            pilots[slot]=Pilot(id);
+            pilots[slot].SourceActor=fleet.CarsBySlot[slot].ActorToken;
+        }
+        auto result=ApplyWorldScaleVariantFleetTraffic(pilots,fleet);
+        Require(result.Valid &&
+                result.AllSixPilotsPhysicallyQualified &&
+                result.SourceTrack==id &&
+                result.SourceSessionToken==fleet.SourceSessionToken &&
+                result.SourceFrameOrdinal==fleet.SourceFrameOrdinal &&
+                result.EmergencyBrakeCount==0 &&
+                result.RestrictedThrottleCount==0 &&
+                result.NoOfficialLapCredit &&
+                result.NoLiveActuatorAuthority,
+                "all six source rival pilots agree on track/session/frame");
+        for(unsigned slot=0;slot<WorldScaleVariantFleetCars;++slot)
+        {
+            Require(result.Car[slot].Valid &&
+                    result.Car[slot].SelfSlot==static_cast<int>(slot) &&
+                    result.Car[slot].Decision.Command.Throttle==0.85 &&
+                    !result.Car[slot].Decision.Command.Brake &&
+                    result.Car[slot].NoLiveBrakeActuatorAuthority,
+                    "all real-source roster slots receive individual clean-road advice");
+        }
+
+        auto close=fleet;
+        close.CarsBySlot[1].UnwrappedProjectedStationCm=10500.0;
+        close.CarsBySlot[1].UnwrappedReportedStationCm=10500.0;
+        close.CarsBySlot[1].SignedRouteSpeedCmps=1300.0;
+        result=ApplyWorldScaleVariantFleetTraffic(pilots,close);
+        Require(result.Valid && result.EmergencyBrakeCount>=1u &&
+                result.Car[0].EmergencyBrake &&
+                result.Car[0].Decision.Command.Throttle==0.0 &&
+                result.Car[0].Decision.Command.Brake &&
+                result.Car[1].Decision.Command.Throttle==0.85,
+                "six-slot arbitration preserves independent safe braking decisions");
+
+        const auto reject=[&](const auto& badPilots,
+                              const auto& badFleet)
+        {
+            const auto rejected=ApplyWorldScaleVariantFleetTraffic(
+                badPilots,badFleet);
+            Require(!rejected.Valid &&
+                    !rejected.AllSixPilotsPhysicallyQualified &&
+                    rejected.EmergencyBrakeCount==0 &&
+                    rejected.RestrictedThrottleCount==0,
+                    "one faulty physical source invalidates entire six-driver frame");
+            for(const auto& car:rejected.Car)
+            {
+                Require(!car.Valid && car.Decision.Command.Brake &&
+                        car.Decision.Command.Throttle==0.0 &&
+                        car.NoLiveBrakeActuatorAuthority,
+                        "no partial advisory may leak after whole-fleet rejection");
+            }
+        };
+        auto invalid=pilots;
+        invalid[4].SourceFrame+=1u;
+        reject(invalid,fleet);
+        invalid=pilots;
+        invalid[3].SourceSessionToken+=1u;
+        reject(invalid,fleet);
+        invalid=pilots;
+        invalid[2].SourceActor=pilots[0].SourceActor;
+        reject(invalid,fleet);
+        invalid=pilots;
+        invalid[5].SourceTrack=WorldScaleVariantId::TestOval;
+        if(id==WorldScaleVariantId::TestOval)
+            invalid[5].SourceTrack=WorldScaleVariantId::OriginalLoop;
+        reject(invalid,fleet);
+        invalid=pilots;
+        invalid[1].Valid=false;
+        reject(invalid,fleet);
+        invalid=pilots;
+        invalid[2].Decision.Command.Throttle=
+            std::numeric_limits<double>::quiet_NaN();
+        reject(invalid,fleet);
+
+        auto badFleet=fleet;
+        badFleet.MotionContinuous=false;
+        reject(pilots,badFleet);
+        badFleet=fleet;
+        badFleet.SourceSessionToken=0;
+        reject(pilots,badFleet);
+        badFleet=fleet;
+        badFleet.CarsBySlot[5].ActorToken=0;
+        reject(pilots,badFleet);
+        badFleet=fleet;
+        badFleet.CarsBySlot[3].WithinOriginalRoad=false;
+        reject(pilots,badFleet);
+    }
+}
+
 } // namespace
 
 int main()
@@ -311,6 +412,7 @@ int main()
     IndependentSixCircuitCases();
     RejectUnqualifiedData();
     FrameSequenceReceipt();
+    WholeFleetAtomicArbitration();
     std::cout<<"WorldScaleVariantTrafficSupervisor PASS: all six "
                  "proposed circuits, six-body token/clock matching, "
                  "lane separation, following, braking, reverse "
