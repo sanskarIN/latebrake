@@ -2200,3 +2200,21 @@ else()
 endif()
 add_test(NAME WorldScaleVariantFleetContinuity
     COMMAND latebrake_world_scale_variant_fleet_continuity)
+
+# Conservative real-world XY measured rival control proposal per original
+# variant; does not bind Chaos controls, official laps or online players.
+add_executable(latebrake_world_scale_variant_rival_pilot
+    WorldScaleVariantRivalPilotTests.cpp)
+target_include_directories(latebrake_world_scale_variant_rival_pilot
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variant_rival_pilot
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variant_rival_pilot
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variant_rival_pilot
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariantRivalPilot
+    COMMAND latebrake_world_scale_variant_rival_pilot)
