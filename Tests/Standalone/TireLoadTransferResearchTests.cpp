@@ -76,5 +76,37 @@ int main() {
     assert(Near(EstimatePeakLongitudinalForceN(3000.0, tire), 3600.0));
     assert(std::isnan(EstimatePeakLongitudinalForceN(-1.0, tire)));
     assert(std::isnan(EstimatePeakLongitudinalForceN(3000.0, {0.0, 1.2, 0.1})));
+
+    const double lateralLimit = EstimateWheelLiftLateralLimitMps2(base);
+    assert(std::isfinite(lateralLimit) && lateralLimit > 0.0);
+    auto justInside = base;
+    justInside.lateralAccelerationMps2 = lateralLimit * 0.99;
+    assert(EstimateWheelLoads(justInside).status == LoadTransferStatus::Valid);
+    justInside.lateralAccelerationMps2 = -lateralLimit * 0.99;
+    assert(EstimateWheelLoads(justInside).status == LoadTransferStatus::Valid);
+    justInside.lateralAccelerationMps2 = lateralLimit * 1.01;
+    assert(EstimateWheelLoads(justInside).status == LoadTransferStatus::WheelLift);
+    justInside.lateralAccelerationMps2 = -lateralLimit * 1.01;
+    assert(EstimateWheelLoads(justInside).status == LoadTransferStatus::WheelLift);
+    auto zeroHeight = base;
+    zeroHeight.centerOfMassHeightM = 0.0;
+    assert(std::isinf(EstimateWheelLiftLateralLimitMps2(zeroHeight)));
+    auto invalidLimit = base;
+    invalidLimit.massKg = -1.0;
+    assert(std::isnan(EstimateWheelLiftLateralLimitMps2(invalidLimit)));
+    auto rearward = base;
+    rearward.longitudinalAccelerationMps2 = 3.0;
+    assert(EstimateWheelLiftLateralLimitMps2(rearward) <
+           EstimateWheelLiftLateralLimitMps2(base));
+    const double fourTireForce =
+        EstimateFourWheelPeakLongitudinalForceN(stationary, tire);
+    assert(std::isfinite(fourTireForce) && fourTireForce > 0.0);
+    const TireLoadSensitivity loadIndependent{3000.0, 1.2, 0.0};
+    assert(Near(EstimateFourWheelPeakLongitudinalForceN(stationary, loadIndependent),
+                stationary.totalN * 1.2));
+    assert(std::isnan(EstimateFourWheelPeakLongitudinalForceN(
+        EstimateWheelLoads(corner), tire)));
+    assert(std::isnan(EstimateFourWheelPeakLongitudinalForceN(
+        stationary, {0.0, 1.2, 0.1})));
     return 0;
 }
