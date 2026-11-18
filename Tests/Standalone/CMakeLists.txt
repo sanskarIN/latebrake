@@ -2180,3 +2180,20 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionBlocks
     COMMAND latebrake_world_scale_projection_blocks)
+
+# Source-only opt-in A/B performance measurements with fully identical
+# output regression; default CTest uses only a small deterministic smoke.
+add_executable(latebrake_world_scale_projection_ab_profile
+    WorldScaleProjectionABProfileTests.cpp)
+target_include_directories(latebrake_world_scale_projection_ab_profile
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_projection_ab_profile
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_projection_ab_profile PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_projection_ab_profile
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleProjectionABProfile
+    COMMAND latebrake_world_scale_projection_ab_profile)
