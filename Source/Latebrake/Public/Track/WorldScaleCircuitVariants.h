@@ -152,6 +152,18 @@ inline double WorldScaleVariantWrapDistance(
         return std::numeric_limits<double>::quiet_NaN();
     double wrapped=std::fmod(distanceCm,p.LapLengthCm);
     if(wrapped<0.0)wrapped+=p.LapLengthCm;
+    // A float expression such as 3.0 * lap can round to the next
+    // representable value and fmod may return 0 or just-below-lap.
+    // Canonicalize ONLY the subnanometre numerical seam tolerance;
+    // real signed motion a measurable distance before the start line
+    // must still project to the previous lap, never a new crossing.
+    const double seamTolerance=std::max(
+        1.0e-8,
+        32.0*std::numeric_limits<double>::epsilon()*
+            std::max(std::abs(distanceCm),p.LapLengthCm));
+    if(wrapped<=seamTolerance ||
+       p.LapLengthCm-wrapped<=seamTolerance)
+        wrapped=0.0;
     return wrapped;
 }
 
