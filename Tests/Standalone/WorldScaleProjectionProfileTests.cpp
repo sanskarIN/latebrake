@@ -1,5 +1,6 @@
 #include "Track/WorldScaleRacePacePlan.h"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -7,14 +8,14 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <string_view>
 #include <vector>
 
-// Native, portable geometry-only source QA. This program is not a
-// performance claim about Unreal Tick, Chaos physics or six live actors.
-// With --profile it times ONLY the unchanged nearest-segment projector;
-// generating synthetic observations and building the reference happen
-// outside the timed loop.
+// Strict, standalone source-only QA; this does not execute Unreal Tick,
+// real Chaos physics, a cooked level, or a six-actor gameplay simulation.
+// A separate --profile mode times the existing full-scan XY route query;
+// geometry generation and ALL validity assertions are outside the timed loop.
 namespace
 {
 void Require(bool condition, const char* reason)
@@ -46,79 +47,151 @@ void VerifyAllReferenceNodes(const latebrake::WorldScalePacePlan& plan)
                     first.CentrelineSeparationCm == second.CentrelineSeparationCm &&
                     first.InsidePhysicalCandidateRoad ==
                         second.InsidePhysicalCandidateRoad,
-                "repeated projection of one physical position is deterministic");
+                "repeated physical projection is deterministic");
+        // Independent halfway-between-nodes positions and real lane offsets
+        // exercise bends and the start/finish seam, not just exact knots.
+        const auto halfway = WorldScaleCenterlineAt(
+            (static_cast<double>(i) + 0.5) * WorldScalePaceStepCm);
+        Require(halfway.Valid, "halfway circuit pose is authored and finite");
+        const double rad = halfway.Pose.HeadingDegrees *
+            WorldScalePaceRadPerDegree;
+        for (double lateral : {-180.0, 0.0, 180.0})
+        {
+            const CircuitPoint road{
+                halfway.Pose.Position.X - std::sin(rad) * lateral,
+                halfway.Pose.Position.Y + std::cos(rad) * lateral
+            };
+            const auto projected = ProjectWorldScaleRoute(plan, road);
+            Require(projected.Valid && projected.InsidePhysicalCandidateRoad &&
+                        std::isfinite(projected.LapDistanceCm) &&
+                        std::isfinite(projected.SignedLateralCm) &&
+                        std::isfinite(projected.CentrelineSeparationCm) &&
+                        projected.CentrelineSeparationCm <= 300.0,
+                    "half-segment lane offsets remain road-backed and finite");
+        }
     }
     const WorldScalePacePlan invalid{};
     Require(!ProjectWorldScaleRoute(invalid, plan.Nodes[0].Position).Valid,
-            "invalid reference cannot be projected");
+            "invalid reference cannot authorize projection");
+    for (const double value : {
+        std::numeric_limits<double>::quiet_NaN(),
+        std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(),
+        2000000.0})
+    {
+        Require(!ProjectWorldScaleRoute(
+                    plan, CircuitPoint{value, 0.0}).Valid,
+                "untrusted X coordinates fail closed");
+        Require(!ProjectWorldScaleRoute(
+                    plan, CircuitPoint{0.0, value}).Valid,
+                "untrusted Y coordinates fail closed");
+    }
 }
 
 std::vector<latebrake::CircuitPoint> PrepareSixCarObservations(
-    const latebrake::WorldScalePacePlan& plan,
     unsigned framesPerSecond, unsigned virtualSeconds)
 {
     using namespace latebrake;
-    constexpr unsigned roster = 6;
+    constexpr std::size_t roster = 6;
     const std::size_t frames = static_cast<std::size_t>(
         framesPerSecond) * virtualSeconds;
     std::vector<CircuitPoint> observations;
     observations.reserve(frames * roster);
-    // Six independent source-coordinate streams cover every part of
-    // the candidate route; these are NOT synthetic Unreal actors.
+    // Six separate geometry inputs at staggered route stations. The
+    // geometry is a deterministic synthetic workload, NOT live actors.
+    // Alternate left, center and right source positions, including bends.
     for (std::size_t frame = 0; frame < frames; ++frame)
     {
-        for (unsigned slot = 0; slot < roster; ++slot)
+        for (std::size_t slot = 0; slot < roster; ++slot)
         {
-            const std::size_t index =
-                (frame * 13u + static_cast<std::size_t>(slot) * 83u +
-                 frame / 5u) % WorldScalePaceStations;
-            observations.push_back(plan.Nodes[index].Position);
+            const double station =
+                (static_cast<double>((frame * 13u + slot * 83u +
+                                     frame / 5u) % WorldScalePaceStations) +
+                 0.37) * WorldScalePaceStepCm;
+            const auto pose = WorldScaleCenterlineAt(station);
+            Require(pose.Valid, "precomputed synthetic circuit pose is valid");
+            const double rad = pose.Pose.HeadingDegrees *
+                WorldScalePaceRadPerDegree;
+            const double lateral = slot % 3u == 0 ? -220.0 :
+                                   slot % 3u == 1 ? 0.0 : 220.0;
+            const CircuitPoint road{
+                pose.Pose.Position.X - std::sin(rad) * lateral,
+                pose.Pose.Position.Y + std::cos(rad) * lateral
+            };
+            Require(IsOnWorldScaleRoad(road),
+                    "synthetic lane sample remains on original source road");
+            observations.push_back(road);
         }
     }
     Require(observations.size() == frames * roster,
-            "exact six-observation synthetic workload");
+            "exact six-source-observation workload");
     return observations;
+}
+
+void VerifyResults(
+    const std::vector<latebrake::WorldScaleRouteProjection>& results)
+{
+    double checksum = 0.0;
+    for (std::size_t i = 0; i < results.size(); ++i)
+    {
+        const auto& result = results[i];
+        Require(result.Valid && result.InsidePhysicalCandidateRoad &&
+                    std::isfinite(result.SignedLateralCm) &&
+                    std::isfinite(result.SuggestedSpeedCmps) &&
+                    result.CentrelineSeparationCm <= 350.0,
+                "profile query must produce road-backed, finite geometry");
+        checksum += result.LapDistanceCm *
+            (1.0 + static_cast<double>(i % 6u) * 1.0e-6);
+    }
+    Require(std::isfinite(checksum) && checksum > 0.0,
+            "no optimizer-elided or empty projection workload");
 }
 
 void ProfileRate(const latebrake::WorldScalePacePlan& plan, unsigned fps)
 {
-    // Sixty simulated seconds at each stated observation rate; no
-    // wall-clock deadline and no brittle CI timing pass/fail threshold.
-    const auto observations = PrepareSixCarObservations(plan, fps, 60u);
-    double checksum = 0.0;
+    // Sixty seconds of source-only precomputed six-position observations
+    // for each rate. Do not turn noisy CPU timings into CTest assertions.
+    const auto observations = PrepareSixCarObservations(fps, 60u);
+    std::vector<latebrake::WorldScaleRouteProjection> results(
+        observations.size());
     using Clock = std::chrono::steady_clock;
-    const auto start = Clock::now();
-    for (std::size_t i = 0; i < observations.size(); ++i)
+    std::array<double, 3> samplesNs{};
+    for (std::size_t trial = 0; trial < samplesNs.size(); ++trial)
     {
-        const auto result = latebrake::ProjectWorldScaleRoute(
-            plan, observations[i]);
-        Require(result.Valid && result.InsidePhysicalCandidateRoad &&
-                    result.CentrelineSeparationCm <= 1.0e-5,
-                "profile must not conceal an invalid geometric projection");
-        checksum += result.LapDistanceCm *
-            (1.0 + static_cast<double>(i % 6u) * 1.0e-6);
+        // Only projector calls and the result writes are timed. No source
+        // generation, IsOnWorldScaleRoad, validation or checksum inside.
+        const auto start = Clock::now();
+        for (std::size_t i = 0; i < observations.size(); ++i)
+        {
+            results[i] = latebrake::ProjectWorldScaleRoute(
+                plan, observations[i]);
+        }
+        const auto finish = Clock::now();
+        samplesNs[trial] =
+            std::chrono::duration<double, std::nano>(
+                finish - start).count() /
+            static_cast<double>(observations.size());
+        Require(std::isfinite(samplesNs[trial]) && samplesNs[trial] >= 0.0,
+                "finite portable stopwatch receipt");
+        // Every trial's full result buffer is consumed AFTER the timer.
+        VerifyResults(results);
     }
-    const auto finish = Clock::now();
-    const double nanoseconds =
-        std::chrono::duration<double, std::nano>(finish - start).count();
-    Require(std::isfinite(checksum) && checksum > 0.0 &&
-                std::isfinite(nanoseconds) && nanoseconds >= 0.0,
-            "profile produced a finite nonempty observation receipt");
-    const double perProjectionNs =
-        nanoseconds / static_cast<double>(observations.size());
-    std::cout << fps << " Hz | 6 synthetic positions/frame | "
-              << observations.size() << " projections | "
+    std::sort(samplesNs.begin(), samplesNs.end());
+    const double medianNs = samplesNs[1];
+    std::cout << fps << " Hz | six lane-offset source points/frame | "
+              << observations.size() << " projections/trial | "
               << std::fixed << std::setprecision(1)
-              << perProjectionNs << " ns/projection | checksum="
-              << std::setprecision(3) << checksum << '\n';
+              << medianNs << " median ns/query | "
+              << std::setprecision(3)
+              << 6.0 * medianNs / 1000000.0
+              << " ms/6 queries (estimated, portable only)\n";
 }
 } // namespace
 
 int main(int argc, char** argv)
 {
-    // Default mode is a quick deterministic CTest smoke check.
-    // Timings are opt-in because CI virtual machines have variable CPU
-    // contention and cannot certify a frame-time budget for an actual game.
+    // CI always uses the default correctness mode, never timing gates.
+    // Manually opt into source-only CPU research with --profile.
     const bool profile = argc == 2 &&
         std::string_view(argv[1]) == "--profile";
     if (argc != 1 && !profile)
@@ -130,8 +203,8 @@ int main(int argc, char** argv)
     VerifyAllReferenceNodes(plan);
     if (profile)
     {
-        std::cout << "Portable C++20 geometry-only measurement; "
-                     "not native Unreal gameplay evidence\n";
+        std::cout << "Portable C++20 original route, three trial median; "
+                     "not licensed UE5.8 or playable Win64 evidence\n";
         for (unsigned fps : std::array<unsigned, 3>{30u, 60u, 120u})
         {
             ProfileRate(plan, fps);
@@ -139,9 +212,9 @@ int main(int argc, char** argv)
     }
     else
     {
-        std::cout << "512 authored centerline node projection checks passed; "
-                     "run with --profile for 30/60/120 Hz synthetic costs; "
-                     "NOT a UE5.8 or Win64 playtest\n";
+        std::cout << "512 source knots, 1536 half-station lane-offset "
+                     "projections, invalid-input guards passed; "
+                     "NOT native Unreal/Win64 testing\n";
     }
     return EXIT_SUCCESS;
 }

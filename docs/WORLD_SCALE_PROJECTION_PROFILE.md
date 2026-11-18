@@ -6,17 +6,17 @@ playable release is certified by this test.
 
 ## Why the measurement is needed
 
-The current `ProjectWorldScaleRoute` scans all
+The current `ProjectWorldScaleRoute` scans
 `WorldScalePaceStations == 512` candidate centerline segments for
-**every** XY projection. Six observations per frame imply exactly
-3,072 segment candidates per frame, or 368,640 per second at 120 Hz,
+**every** XY projection. Six observations per frame imply 3,072
+segment comparisons per frame, or 368,640 per second at 120 Hz,
 before collision, Chaos, suspension, networking or rendering work.
-These are loop counts, **not measured CPU timings**.
+These are static loop counts, **not measured CPU timings**.
 
 The audit intentionally does **not** replace the existing global
 closest-segment implementation with a local-neighborhood shortcut:
-hairpins, overlaps, pit access and lap seams require correctness
-evidence before a search-space optimization can be accepted.
+hairpins, overlaps and lap seams require correctness evidence
+before a search-space optimization can be accepted.
 
 ## Reproducible portable measurement
 
@@ -32,32 +32,42 @@ executable directory (for example, `build/route-projection-profile/`
 on a single-config Linux generator or `.../Release/` with Visual
 Studio).
 
-- Default CTest mode is deterministic and lightweight: checks all
-  512 source centerline nodes, repeated projection identity,
-  candidate road support and fail-closed invalid reference.
-- Manual `--profile` mode precomputes six independent XY samples for
-  60 simulated seconds at **30, 60 and 120 Hz**. It builds the pace
-  plan and creates input coordinates **outside** the timed section.
-- Each measured result is checked for validity, road support and zero
-  centerline residual; the output reports projection count, average
-  nanoseconds per query and a finite checksum to keep the work live.
-- No wall-clock timing threshold is enforced in CI: machine speed,
-  compiler optimization, thermal state and virtualization vary. Record
-  compiler version, Release flags, architecture, run count, median
-  and warm/cold behavior when doing a real engineering comparison.
+- Default CTest mode is deterministic and lightweight: check all
+  512 exact source-centerline knots, **1,536** halfway-between-station
+  left/center/right road offsets, repeated centerline projection,
+  failure on invalid source reference and untrusted nonfinite or
+  out-of-range XY inputs.
+- Opt-in `--profile` precomputes six staggered station/lane-offset
+  XY observations per frame for **60 simulated seconds** at
+  **30, 60 and 120 Hz**. It builds the pace plan, verifies source
+  road support and creates input coordinates **outside** the timer.
+- Each of three full trials writes projection results to a buffer
+  that is independently validated and consumed **after** the timer.
+  This isolates the projector plus unavoidable result writes from
+  input generation, assertions and checksumming. The reported
+  nanoseconds/query are the **median of three trials**, and the
+  six-query millisecond figure is only a synthetic source estimate.
+- No time limit is enforced in CI: machine speed, Release flags,
+  compiler optimization, virtualization and thermal state vary.
+  Record compiler version, architecture, run count and repeat
+  measurements on actual target hardware before design decisions.
 
-These figures are **synthetic portable geometry costs only**. Actual
-native optimization decisions require profiling the fully integrated
-Unreal Tick on the original level with six distinct real actors, true
-velocity/contact provenance, track crossings, roadside surfaces and
-native Windows hardware at 30/60/120 FPS.
+Source positions and lateral offsets are **fabricated geometric test
+inputs**, not a simulation of six chassis and not evidence of physical
+actors, braking, racing interaction or installed performance.
+
+These figures are **portable geometry costs only**. Actual native
+optimization decisions require profiling an integrated Unreal Tick
+on the original level with six distinct real actors, true
+velocity/contact provenance, real track crossings, road shoulders
+and native Windows hardware at 30/60/120 FPS.
 
 ## Release isolation
 
-This work is a separate draft QA change, **not part of**
-the already-reviewed `v0.5.100-test.2` immutable main source
-candidate (`a92a4799bfd2e43de30089f1cb9c069012529d5c`).
-Do not merge it or any new code into `main` before the owner has
-manually published and verified that source-only pre-release.
-No tag, release, executable, GitHub issue/PR comment or runtime
-gameplay change is created by this profiling program.
+This work stays in draft QA, **not in** the already-reviewed
+`v0.5.100-test.2` immutable protected-main candidate
+(`a92a4799bfd2e43de30089f1cb9c069012529d5c`).
+Do not merge into `main` before owner manual source-only
+pre-release publication and independent published-source audit.
+No release/tag, executable, GitHub issue/PR comment or native
+gameplay change is created by the profiling program.
