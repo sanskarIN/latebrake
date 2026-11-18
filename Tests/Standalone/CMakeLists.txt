@@ -2182,3 +2182,21 @@ else()
 endif()
 add_test(NAME WorldScaleVariantGridAndGates
     COMMAND latebrake_world_scale_variant_grid_and_gates)
+
+# Source-only six-real-actor observation proof across all six new
+# circuit geometries, with zero actual Unreal standings/lap authority.
+add_executable(latebrake_world_scale_variant_fleet_continuity
+    WorldScaleVariantFleetContinuityTests.cpp)
+target_include_directories(latebrake_world_scale_variant_fleet_continuity
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variant_fleet_continuity
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variant_fleet_continuity
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variant_fleet_continuity
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariantFleetContinuity
+    COMMAND latebrake_world_scale_variant_fleet_continuity)
