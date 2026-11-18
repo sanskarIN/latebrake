@@ -2164,3 +2164,19 @@ else()
 endif()
 add_test(NAME WorldScaleSourceScene
     COMMAND latebrake_world_scale_source_scene)
+
+# Visual-only future-world-scale 1.7km road LOD. Mesh source without
+# Unreal Engine rendering, cooked original circuit or Chaos collision.
+add_executable(latebrake_world_scale_visual_lod
+    WorldScaleVisualLodTests.cpp)
+target_include_directories(latebrake_world_scale_visual_lod PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_visual_lod PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_visual_lod PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_visual_lod PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVisualLod
+    COMMAND latebrake_world_scale_visual_lod)
