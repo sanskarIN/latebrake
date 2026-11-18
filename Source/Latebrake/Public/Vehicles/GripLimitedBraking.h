@@ -68,9 +68,15 @@ inline GripLimitedBrakingOutput CalculateGripLimitedBraking(
         return {true, 0.0, 0.0};
     }
 
-    const double grip = std::clamp(
+    // Use the SAME measured surface/tire/damage contact-grip product as
+    // the lateral friction-circle policy. The old 0.10 minimum invented
+    // braking authority when all three real inputs combined to <10% grip,
+    // so a heavily degraded car could demand more longitudinal force than
+    // its independently calculated physical lateral grip budget permits.
+    // Keep the existing maximum, but never raise genuinely low traction.
+    const double grip = std::min(
         s.SurfaceGripMultiplier * s.TireGripMultiplier *
-            s.DamageGripMultiplier, 0.10, 2.0);
+            s.DamageGripMultiplier, 2.0);
     const double service = s.ServiceBrakeHeld
         ? (s.ArcadeHandling ? ArcadeServiceBrakeDeceleration
                             : SimulationServiceBrakeDeceleration) *

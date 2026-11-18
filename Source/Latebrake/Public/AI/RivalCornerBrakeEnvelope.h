@@ -77,9 +77,12 @@ inline RivalCornerBrakeResult ApplyRivalCornerBrakeEnvelope(
         return {{}, false, false, false, 0.0, 0.0};
     }
 
-    const double effectiveGrip = std::clamp(
-        sample.SurfaceGrip * sample.TireGrip * sample.ImpactGrip,
-        0.10, 2.0);
+    // Match the physical car's same-source brake policy. Inventing a
+    // 10%-grip floor here when road, tires and damage provide only 5-9%
+    // would allow the rival to plan a later brake point than its actual
+    // chassis can support. Preserve only the existing upper 2x bound.
+    const double effectiveGrip = std::min(
+        sample.SurfaceGrip * sample.TireGrip * sample.ImpactGrip, 2.0);
     const double safeBrakeDeceleration =
         (sample.ArcadeHandling ? ArcadeServiceBrakeDeceleration
                                : SimulationServiceBrakeDeceleration) *
