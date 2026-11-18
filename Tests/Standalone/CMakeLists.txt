@@ -2148,3 +2148,21 @@ add_latebrake_portable_research_test(CircuitPaceAudit)
 
 # Detect duplicate pit-review type names across old/new source-only APIs.
 add_latebrake_portable_research_test(PitCompatibility)
+
+# Pure C++20 512-station candidate racing corridor and pace advisory.
+# No Unreal car steering, collisions, passing or lap authority.
+add_executable(latebrake_world_scale_candidate_racing_line
+    WorldScaleCandidateRacingLineTests.cpp)
+target_include_directories(latebrake_world_scale_candidate_racing_line
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_candidate_racing_line
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_candidate_racing_line
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_candidate_racing_line
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleCandidateRacingLine
+    COMMAND latebrake_world_scale_candidate_racing_line)
