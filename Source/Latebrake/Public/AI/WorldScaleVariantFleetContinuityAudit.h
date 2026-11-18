@@ -23,7 +23,7 @@ inline constexpr double WorldScaleVariantFleetMaximumFrameSeconds=0.10;
 inline constexpr double WorldScaleVariantFleetMinimumFrameSeconds=0.001;
 inline constexpr double WorldScaleVariantFleetMaxStationResidualCm=220.0;
 inline constexpr double WorldScaleVariantFleetMinimumResidualSlackCm=5.0;
-inline constexpr double WorldScaleVariantFleetMaximumSourceClockAgeSeconds=0.15;
+inline constexpr double WorldScaleVariantFleetMaximumClockSkewSeconds=0.02;
 
 struct WorldScaleVariantFleetActor final
 {
@@ -123,6 +123,7 @@ public:
     {
         Session=0;
         LastFrame=0;
+        LastObservationClockSeconds=0.0;
         Reference=nullptr;
         HavePrevious=false;
         Earlier={};
@@ -255,6 +256,16 @@ public:
         const bool successor=HavePrevious &&
             LastFrame!=std::numeric_limits<std::uint64_t>::max() &&
             frame.FrameOrdinal==LastFrame+1u;
+        // A source adapter cannot present a strictly increasing frame
+        // number while recycling a stale physics timestamp. Snapshot
+        // time must advance by this same frame's measured delta.
+        if(successor &&
+           (!std::isfinite(LastObservationClockSeconds) ||
+            frame.ObservationClockSeconds<=LastObservationClockSeconds ||
+            std::abs(frame.ObservationClockSeconds-
+                     LastObservationClockSeconds-frame.DeltaSeconds)>
+                WorldScaleVariantFleetMaximumClockSkewSeconds))
+            return Reject();
         double maxMotionError=0.0;
         double maxStationError=0.0;
         if(successor)
@@ -342,6 +353,7 @@ public:
             EarlierSignedSpeed[i]=signedSpeed[i];
         }
         LastFrame=frame.FrameOrdinal;
+        LastObservationClockSeconds=frame.ObservationClockSeconds;
         HavePrevious=true;
         LastReadout=result;
         return result;
@@ -352,6 +364,7 @@ private:
     {
         HavePrevious=false;
         LastFrame=0;
+        LastObservationClockSeconds=0.0;
         Earlier={};
         EarlierReported={};
         EarlierSignedSpeed={};
@@ -370,6 +383,7 @@ private:
 
     std::uint64_t Session=0;
     std::uint64_t LastFrame=0;
+    double LastObservationClockSeconds=0.0;
     const WorldScaleVariantPacePlan* Reference=nullptr;
     bool HavePrevious=false;
     std::array<WorldScaleVariantFleetActor,
