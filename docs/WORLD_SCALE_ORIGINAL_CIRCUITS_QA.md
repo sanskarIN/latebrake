@@ -64,3 +64,37 @@ cars, implement multiplayer, or grant a race reward/lap.
 The source-only `v0.5.100-test.2` protected-main snapshot remains
 pinned at `a92a4799bfd2e43de30089f1cb9c069012529d5c` for owner
 manual publication before any new feature branch is merged.
+
+## Source-only six-car grid and ordered gates
+
+`Track/WorldScaleVariantGridAndGates.h` adds a separate authenticated
+**source-geometry proposal** for six grid slots and four ordered gate
+planes on **each** of the six new variants. A track-specific starting
+grid has three rows, with two cars per row and independent source
+tokens. Car centers, headings, nine sampling points across each
+orientated rectangular body and every grid partner are checked
+against the track's authored 68-slab 9m physical road. Body pair
+clearance is measured with true oriented-box SAT geometry, not the
+incorrect circular-radius approximation that would reject otherwise
+legal side-by-side starting rows.
+
+Four sector planes are placed at independently computed 0, 25, 50,
+and 75 percent stations along the variant's own lap length. Their
+endpoints must remain on the original paved roadway. A portable
+read-only crossing receipt requires a measured physical actor token,
+valid race-phase/contact evidence, finite frame time and true
+upstream-to-downstream movement through the current requested gate.
+Wrong-way, stationary, impossible-speed, missing-contact and
+out-of-range gate observations cannot be counted as valid forward
+crossings. The receipt explicitly has **no official lap credit**.
+
+```sh
+cmake --build build/variant-circuits --config Release --target latebrake_world_scale_variant_grid_and_gates
+ctest --test-dir build/variant-circuits -C Release -R '^WorldScaleVariantGridAndGates$' --output-on-failure
+```
+
+The portable test checks six nonoverlapping car footprints and
+four forward/reverse sector crossings across all six proposed
+layouts. These are synthetic source-coordinate fixtures, NOT six
+real physical Unreal actors, certified starting grids, collision
+events, reliable checkpoint implementations or playable new levels.
