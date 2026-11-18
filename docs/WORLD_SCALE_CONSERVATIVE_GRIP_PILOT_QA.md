@@ -12,7 +12,10 @@ playable multiplayer simulation are created by this class.**
 The adapter contract requires matching nonzero session identity,
 current measured body contact, verified physical road identity,
 finite race timestamp not earlier than the source friction snapshot,
-and a fresh snapshot no more than **750 ms** old. Missing any input
+and a fresh snapshot no more than **750 ms** old. The oldest
+individual friction reading must also be within **2 seconds of the
+current physics clock**; a newly stamped aggregate does not refresh
+old per-station sensors. Missing any input
 produces the existing zero-power braked decision and resets steering
 continuity rather than pretending to have dry grip.
 
