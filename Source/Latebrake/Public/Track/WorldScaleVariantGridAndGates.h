@@ -170,6 +170,46 @@ inline bool WorldScaleVariantBodyOnRoad(
     return true;
 }
 
+// SAT separating-axis clearance between two source-only XY chassis
+// rectangles. A circular bounding radius falsely rejects perfectly
+// legal side-by-side grid slots; four actual OBB axes preserve safety.
+inline double WorldScaleVariantGridBodyClearance(
+    CircuitPose a,CircuitPose b,
+    double halfLength,double halfWidth) noexcept
+{
+    const double angleA=a.HeadingDegrees*WorldScalePaceRadPerDegree;
+    const double angleB=b.HeadingDegrees*WorldScalePaceRadPerDegree;
+    const std::array<CircuitPoint,4> axes{{
+        {std::cos(angleA),std::sin(angleA)},
+        {-std::sin(angleA),std::cos(angleA)},
+        {std::cos(angleB),std::sin(angleB)},
+        {-std::sin(angleB),std::cos(angleB)}
+    }};
+    const CircuitPoint delta{
+        b.Position.X-a.Position.X,b.Position.Y-a.Position.Y
+    };
+    double best=-std::numeric_limits<double>::infinity();
+    for(const auto& axis:axes)
+    {
+        const double offset=std::abs(
+            delta.X*axis.X+delta.Y*axis.Y);
+        const double radiusA=halfLength*std::abs(
+            axis.X*std::cos(angleA)+axis.Y*std::sin(angleA))+
+            halfWidth*std::abs(
+                -axis.X*std::sin(angleA)+axis.Y*std::cos(angleA));
+        const double radiusB=halfLength*std::abs(
+            axis.X*std::cos(angleB)+axis.Y*std::sin(angleB))+
+            halfWidth*std::abs(
+                -axis.X*std::sin(angleB)+axis.Y*std::cos(angleB));
+        if(!std::isfinite(offset) ||
+           !std::isfinite(radiusA) ||
+           !std::isfinite(radiusB))return
+                -std::numeric_limits<double>::infinity();
+        best=std::max(best,offset-radiusA-radiusB);
+    }
+    return best;
+}
+
 inline WorldScaleVariantGridPlan BuildWorldScaleVariantGrid(
     const WorldScaleVariantRecipe& p,
     WorldScaleVariantGridSettings s = {}) noexcept
@@ -210,9 +250,10 @@ inline WorldScaleVariantGridPlan BuildWorldScaleVariantGrid(
             const double gap=std::hypot(
                 pose.Position.X-other.Pose.Position.X,
                 pose.Position.Y-other.Pose.Position.Y);
-            const double radius=std::hypot(
-                s.VehicleHalfLengthCm,s.VehicleHalfWidthCm);
-            const double clearance=gap-2.0*radius;
+            const double clearance=
+                WorldScaleVariantGridBodyClearance(
+                    pose,other.Pose,
+                    s.VehicleHalfLengthCm,s.VehicleHalfWidthCm);
             if(!std::isfinite(gap) ||
                clearance<s.MinimumBodyGapCm)
                 return {};
