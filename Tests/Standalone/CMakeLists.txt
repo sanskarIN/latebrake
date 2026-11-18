@@ -2180,3 +2180,19 @@ else()
 endif()
 add_test(NAME WorldScaleVisualLod
     COMMAND latebrake_world_scale_visual_lod)
+
+# Nonphysical roadside 3-level rail/post proposals on original 1.7km
+# source route. No Unreal WorldStatic safety barrier actor is built.
+add_executable(latebrake_world_scale_guardrail_scene
+    WorldScaleGuardrailSceneTests.cpp)
+target_include_directories(latebrake_world_scale_guardrail_scene PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_guardrail_scene PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_guardrail_scene PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_guardrail_scene PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleGuardrailScene
+    COMMAND latebrake_world_scale_guardrail_scene)
