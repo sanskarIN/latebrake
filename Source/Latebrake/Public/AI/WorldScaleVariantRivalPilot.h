@@ -35,6 +35,7 @@ struct WorldScaleVariantPilotReadout final
     WorldScaleVariantId SourceTrack=WorldScaleVariantId::OriginalLoop;
     WorldScalePilotDecision Decision{};
     std::uint64_t SourceActor=0;
+    std::uint64_t SourceSessionToken=0;
     std::uint64_t SourceFrame=0;
     double WorldMotionResidualCm=0.0;
     double SignedObservedRouteAdvanceCm=0.0;
@@ -241,7 +242,8 @@ public:
         HavePrevious=true;
         return {
             true,plan.Track.Id,decision,
-            observation.ActorToken,observation.PhysicsFrame,
+            observation.ActorToken,
+            observation.SessionToken,observation.PhysicsFrame,
             residual,progressAdvance,road.SignedLateralCm,
             true,false,false
         };
