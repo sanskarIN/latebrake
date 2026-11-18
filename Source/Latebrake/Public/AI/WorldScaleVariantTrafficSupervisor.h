@@ -142,6 +142,15 @@ inline WorldScaleVariantTrafficReceipt
        pilot.Decision.Command.Steering>1.0)
         return result;
 
+    // Standings use signed unwrapped distance. Physical collisions do
+    // not: a lapped rival is still on the same asphalt. Resolve every
+    // forward gap modulo this circuit's own authored lap length,
+    // including signed-revolution differences across the start line.
+    // Never use the original fixed 1.7km length on other variants.
+    const auto track=WorldScaleVariantAt(
+        static_cast<unsigned>(fleet.TrackId));
+    if(!ValidWorldScaleVariantRecipe(track))
+        return result;
     const auto& self=fleet.CarsBySlot[
         static_cast<unsigned>(selfSlot)];
     std::array<std::uint64_t,WorldScaleVariantFleetCars> seen{};
@@ -184,11 +193,13 @@ inline WorldScaleVariantTrafficReceipt
     {
         if(static_cast<int>(slot)==selfSlot)continue;
         const auto& other=fleet.CarsBySlot[slot];
-        const double gap=other.UnwrappedProjectedStationCm-
+        const double signedGap=
+            other.UnwrappedProjectedStationCm-
             self.UnwrappedProjectedStationCm;
+        const double gap=WorldScaleVariantWrapDistance(
+            track,signedGap);
         if(!std::isfinite(gap))return result;
-        if(gap<0.0 || gap>
-                settings.MaximumRelevantForwardGapCm)
+        if(gap>settings.MaximumRelevantForwardGapCm)
             continue;
         const double lateral=std::abs(
             other.SignedLateralOffsetCm-
