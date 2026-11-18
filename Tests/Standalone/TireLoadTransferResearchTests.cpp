@@ -77,6 +77,25 @@ int main() {
     assert(std::isnan(EstimatePeakLongitudinalForceN(-1.0, tire)));
     assert(std::isnan(EstimatePeakLongitudinalForceN(3000.0, {0.0, 1.2, 0.1})));
 
+    // The limit must not accept a corrupt lateral sensor merely because the
+    // analytical bound is evaluated at zero lateral acceleration.
+    auto badLateral = base;
+    badLateral.lateralAccelerationMps2 =
+        std::numeric_limits<double>::quiet_NaN();
+    assert(std::isnan(EstimateWheelLiftLateralLimitMps2(badLateral)));
+    badLateral.lateralAccelerationMps2 =
+        std::numeric_limits<double>::infinity();
+    assert(std::isnan(EstimateWheelLiftLateralLimitMps2(badLateral)));
+
+    // Overflow of one contact patch must invalidate the entire receipt.
+    auto overflow = base;
+    overflow.massKg = 1.0e308;
+    overflow.gravityMps2 = 1.0;
+    overflow.centerOfMassHeightM = 1.0e308;
+    overflow.lateralAccelerationMps2 = 2.0;
+    assert(EstimateWheelLoads(overflow).status ==
+           LoadTransferStatus::InvalidInput);
+
     const double lateralLimit = EstimateWheelLiftLateralLimitMps2(base);
     assert(std::isfinite(lateralLimit) && lateralLimit > 0.0);
     auto justInside = base;
