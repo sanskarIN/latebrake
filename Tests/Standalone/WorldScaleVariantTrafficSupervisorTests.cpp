@@ -165,9 +165,43 @@ void IndependentSixCircuitCases()
             previousLap.CarsBySlot[1].UnwrappedProjectedStationCm;
         result=ApplyWorldScaleVariantTrafficSupervisor(
             pilot,previousLap,0);
+        Require(result.Valid && result.EmergencyBrake &&
+                result.LimitingOtherSlot==1 &&
+                result.ClosestRelevantGapCm<=500.00001 &&
+                result.Decision.Command.Brake &&
+                result.Decision.Command.Throttle==0.0,
+                "lapped rival remains a real nearby physical obstacle");
+
+        // Official unwrapped lap identity must never suppress a real
+        // physical obstacle ahead across the source start/finish seam.
+        const double lap=WorldScaleVariantAt(track).LapLengthCm;
+        auto acrossSeam=empty;
+        acrossSeam.CarsBySlot[0].SourceLapStationCm=lap-200.0;
+        acrossSeam.CarsBySlot[0].UnwrappedProjectedStationCm=lap-200.0;
+        acrossSeam.CarsBySlot[0].UnwrappedReportedStationCm=lap-200.0;
+        acrossSeam.CarsBySlot[1].SourceLapStationCm=150.0;
+        acrossSeam.CarsBySlot[1].UnwrappedProjectedStationCm=150.0;
+        acrossSeam.CarsBySlot[1].UnwrappedReportedStationCm=150.0;
+        auto beforeSeam=pilot;
+        beforeSeam.Decision.WrappedLapDistanceCm=lap-200.0;
+        result=ApplyWorldScaleVariantTrafficSupervisor(
+            beforeSeam,acrossSeam,0);
+        Require(result.Valid && result.EmergencyBrake &&
+                result.LimitingOtherSlot==1 &&
+                std::abs(result.ClosestRelevantGapCm-350.0)<=1e-6 &&
+                result.Decision.Command.Brake,
+                "traffic immediately after seam is physically ahead and must brake");
+
+        auto safelyBehind=threat;
+        safelyBehind.CarsBySlot[1].UnwrappedProjectedStationCm=
+            9500.0-lap;
+        safelyBehind.CarsBySlot[1].UnwrappedReportedStationCm=
+            safelyBehind.CarsBySlot[1].UnwrappedProjectedStationCm;
+        result=ApplyWorldScaleVariantTrafficSupervisor(
+            pilot,safelyBehind,0);
         Require(result.Valid && !result.EmergencyBrake &&
                 result.LimitingOtherSlot==-1,
-                "same XY location a revolution behind is not the same car gap");
+                "nearby car physically behind stays behind even if one lap down");
 
         auto nearTwo=threat;
         nearTwo.CarsBySlot[2].UnwrappedProjectedStationCm=10400.0;
