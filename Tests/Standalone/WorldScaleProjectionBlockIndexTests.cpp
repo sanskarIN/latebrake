@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -146,6 +147,42 @@ void RoadAndSeamEquivalence(
     }
 }
 
+void DeterministicHostileRouteSamples(
+    const latebrake::WorldScalePacePlan& plan,
+    const latebrake::WorldScaleProjectionBlockIndex& index,
+    std::size_t& cases, std::size_t& blocksAvoided,
+    std::size_t& segmentsAvoided)
+{
+    using namespace latebrake;
+    // Independent deterministic off-axis and near-seam cases, including
+    // samples outside the mapped 9m physical road. Do not assume the
+    // local centerline branch is the global nearest segment on bends.
+    std::uint64_t seed = 0x9e3779b97f4a7c15ULL;
+    auto unit = [&seed]() noexcept {
+        seed = seed * 6364136223846793005ULL +
+            1442695040888963407ULL;
+        return static_cast<double>((seed >> 16u) & 65535u) /
+            65535.0;
+    };
+    for (unsigned i = 0; i < 8192; ++i)
+    {
+        const double station = unit() * WorldScaleCircuitLapCm;
+        const auto pose = WorldScaleCenterlineAt(station);
+        Require(pose.Valid, "randomized fixture source pose exists");
+        const double rad = pose.Pose.HeadingDegrees *
+            WorldScalePaceRadPerDegree;
+        const double lateral = (2.0 * unit() - 1.0) * 1900.0;
+        const double longitudinal = (2.0 * unit() - 1.0) * 190.0;
+        const CircuitPoint point{
+            pose.Pose.Position.X - std::sin(rad) * lateral +
+                std::cos(rad) * longitudinal,
+            pose.Pose.Position.Y + std::cos(rad) * lateral +
+                std::sin(rad) * longitudinal
+        };
+        Compare(plan, index, point, cases, blocksAvoided, segmentsAvoided);
+    }
+}
+
 void SixSourceCoordinateStreams(
     const latebrake::WorldScalePacePlan& plan,
     const latebrake::WorldScaleProjectionBlockIndex& index,
@@ -191,7 +228,9 @@ int main()
                            blocksAvoided, segmentsAvoided);
     SixSourceCoordinateStreams(plan, index, cases,
                                blocksAvoided, segmentsAvoided);
-    Require(cases > 15000 && blocksAvoided > 0 &&
+    DeterministicHostileRouteSamples(plan, index, cases,
+                                     blocksAvoided, segmentsAvoided);
+    Require(cases > 23000 && blocksAvoided > 0 &&
                 segmentsAvoided > cases * 16,
             "the index must demonstrate genuine source-only broad-phase work avoidance");
     std::cout << "Exact 512-segment source equivalence: " << cases
