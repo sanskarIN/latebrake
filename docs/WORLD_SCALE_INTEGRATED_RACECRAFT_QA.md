@@ -8,7 +8,7 @@ is reserved for the owner's manual pre-release
 ## Purpose
 
 This branch integrates source logic from the reviewed future-circuit
-PRs #403, #404 and #405–#408 into one **common portable C++20
+PRs #401–#404 and #405–#408 into one **common portable C++20
 compilation/test topology**. Each dependency branch remains separately
 inspectable; no source lines are counted twice merely because an
 intermediate PR is stacked.
@@ -31,6 +31,15 @@ intermediate PR is stacked.
 - 512-station candidate racing line on the original physical road
   union, bound by vehicle footprint, lateral offset, source speed
   and acceleration/braking constraints.
+- Exact-source block-pruned 512-station nearest-route projection with
+  source/profile benchmark and independent A/B reference checks.
+- Optional indexed original 1.7km rival pilot with exact plain-pilot
+  output-parity checks; existing simple-pilot behavior is preserved.
+- Full-ring **measured-grip** world-scale lap speed planning that
+  rejects unqualified or stale traction observations and never
+  assumes dry tire grip as a real physical measurement.
+- Conservative measured-grip original rival pilot adapter with
+  no additional Chaos control authority.
 
 ## Reproduce the portable tests
 
@@ -52,6 +61,9 @@ The build/CTest registration explicitly includes:
 - `WorldScaleVisualLod`
 - `WorldScaleGuardrailScene`
 - `WorldScaleCandidateRacingLine`
+- `WorldScaleProjectionProfile`, `WorldScaleProjectionBlockIndex`,
+  and `WorldScaleProjectionABProfile`
+- `WorldScaleVariableGripPace` and `WorldScaleConservativeGripPilot`
 
 Tests must pass on Windows/MSVC, Ubuntu/GCC and macOS/Clang
 at the **exact final integration SHA**. Docs/release-policy checks
