@@ -2164,3 +2164,6 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionProfile
     COMMAND latebrake_world_scale_projection_profile)
+
+# Source-only load-transfer research; does not actuate Chaos vehicles.
+add_latebrake_portable_research_test(TireLoadTransferResearch)
