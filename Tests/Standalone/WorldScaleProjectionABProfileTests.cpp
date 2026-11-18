@@ -36,10 +36,10 @@ bool Same(const Projection& a, const Projection& b)
              a.SuggestedSpeedCmps == b.SuggestedSpeedCmps));
 }
 
-std::vector<latebrake::CircuitPoint> BuildWorkload(unsigned fps)
+std::vector<latebrake::CircuitPoint> BuildWorkload(unsigned fps, unsigned seconds)
 {
     using namespace latebrake;
-    const std::size_t frames = static_cast<std::size_t>(fps) * 60u;
+    const std::size_t frames = static_cast<std::size_t>(fps) * seconds;
     std::vector<CircuitPoint> positions;
     positions.reserve(frames * 6u);
     for (std::size_t tick = 0; tick < frames; ++tick)
@@ -169,7 +169,7 @@ void Profile(const latebrake::WorldScalePacePlan& plan,
              const latebrake::WorldScaleProjectionBlockIndex& index,
              unsigned fps)
 {
-    const auto source = BuildWorkload(fps);
+    const auto source = BuildWorkload(fps, 60u);
     std::array<double, 5> reference{};
     std::array<double, 5> candidate{};
     std::size_t avoided = 0;
@@ -197,7 +197,7 @@ void Profile(const latebrake::WorldScalePacePlan& plan,
 void Smoke(const latebrake::WorldScalePacePlan& plan,
            const latebrake::WorldScaleProjectionBlockIndex& index)
 {
-    const auto source = BuildWorkload(30u);
+    const auto source = BuildWorkload(30u, 1u);
     std::vector<Projection> baseline, candidate;
     baseline.reserve(180u);
     candidate.reserve(180u);
