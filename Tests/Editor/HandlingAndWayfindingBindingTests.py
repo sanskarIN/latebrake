@@ -60,10 +60,21 @@ class HandlingAndWayfindingBindingTests(unittest.TestCase):
         self.assertIn("std::isfinite(longitudinalCmPerSecond)", self.traction)
         self.assertIn("std::isfinite(lateralCmPerSecond)", self.traction)
         self.assertIn("if (bounded <= 0.0)", self.traction)
+        self.assertIn("if (longitudinalCmPerSecond < 0.0)", self.traction)
         self.assertIn("return bounded;", self.traction)
         self.assertIn("return bounded * CornerThrottleFactor(", self.traction)
         self.assertIn("CornerThrottleFactor(1800.0, 950.0", self.traction_tests)
         self.assertIn("StabilizeCornerThrottle(-0.75", self.traction_tests)
+        self.assertIn(
+            "positive throttle while physically reversing IS engine braking",
+            self.traction_tests,
+        )
+        self.assertIn(
+            "counterThrottleGearFactor == 1.0",
+            (ROOT / "Tests/Standalone/ArcadeDriveCompositionTests.cpp").read_text(
+                encoding="utf-8"
+            ),
+        )
 
     def test_hud_clears_stale_wrong_way_across_discontinuity(self):
         self.assertIn('#include "Racing/WrongWayIndicator.h"', self.hud_h)

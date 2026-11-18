@@ -23,6 +23,27 @@ class UnrealAutomaticTransmissionBindingTests(unittest.TestCase):
         cls.hud = HUD.read_text(encoding="utf-8")
         cls.policy = POLICY.read_text(encoding="utf-8")
 
+    def test_opposite_direction_pedal_does_not_trigger_forward_upshift(self):
+        policy = self.policy
+        self.assertIn(
+            "if (!directionOpposed && Gear < ForwardGearCount &&", policy
+        )
+        self.assertIn(
+            "ratio >= UpshiftRatios[static_cast<unsigned>(Gear - 1)]", policy
+        )
+        self.assertIn(
+            "ratio <= DownshiftRatios[static_cast<unsigned>(Gear - 2)]", policy
+        )
+        portable = (ROOT / "Tests/Standalone/AutomaticTransmissionTests.cpp").read_text(
+            encoding="utf-8"
+        )
+        for token in (
+            "reverse pedal at high positive speed never initiates a forward upshift",
+            "neutral/coasting resumes physical-speed forward gear staging",
+            "forward demand retains ordinary high-speed upshift logic",
+        ):
+            self.assertIn(token, portable)
+
     def test_real_shared_pawn_owns_automatic_shift_state(self):
         self.assertIn("latebrake::AutomaticTransmission Transmission;", self.header)
         self.assertIn("GetTransmissionReadout() const noexcept", self.header)
