@@ -12,9 +12,13 @@ Test file: `Tests/Standalone/WorldScaleVariantTrafficSupervisorTests.cpp`.
 The source checks a complete six-slot, uniquely tokenized roster with
 consistent finite speeds, original road support, signed unwrapped source
 positions, matching pilot actor, source circuit, race session and frame.
-It compares forward projected track gaps and measured lateral separation.
-A rival in a different lane or a revolution behind is not incorrectly
-considered the current lane's next collision threat.
+It compares forward **physical** track gaps modulo the selected
+circuit's exact lap length and measured lateral separation. Signed
+unwrapped distance remains for official progress ordering only: a rival
+one lap behind but on the very same section of physical asphalt is
+still a nearby collision threat, including across the start/finish
+seam. Other-lane cars beyond physical body/lane overlap are not
+incorrectly classified as same-lane hazards.
 
 For a relevant forward rival, the planner calculates conservative
 clearance including two longitudinal car half-lengths, body clearance,
@@ -38,7 +42,7 @@ ctest --test-dir build/traffic -C Release -R '^WorldScaleVariantTrafficSuperviso
 ```
 
 The regression covers independent six-circuit signed lap geometry,
-clear road vs same-lane following, 500cm emergency gap, separated
+clear road vs same-lane following, 500cm emergency gap, lapped-rival and start-line seam threats, separated
 lanes, rear traffic, reverse-oncoming traffic, two conflicting
 vehicles, retained original brake and rejected invalid source
 provenance. The tests use synthetic, explicitly source-only receipts;
