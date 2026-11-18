@@ -2164,3 +2164,19 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionProfile
     COMMAND latebrake_world_scale_projection_profile)
+
+# Conservative read-only broad phase; compare every returned field with
+# the unchanged O(512) route reference, not live Unreal gameplay.
+add_executable(latebrake_world_scale_projection_blocks
+    WorldScaleProjectionBlockIndexTests.cpp)
+target_include_directories(latebrake_world_scale_projection_blocks PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_projection_blocks PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_projection_blocks PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_projection_blocks PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleProjectionBlocks
+    COMMAND latebrake_world_scale_projection_blocks)
