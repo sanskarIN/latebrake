@@ -2148,3 +2148,19 @@ add_latebrake_portable_research_test(CircuitPaceAudit)
 
 # Detect duplicate pit-review type names across old/new source-only APIs.
 add_latebrake_portable_research_test(PitCompatibility)
+
+# Source-only future 1.7km original-road scene geometry. Visual-only:
+# not cooked UE5.8, collision road, driver braking or official checkpoints.
+add_executable(latebrake_world_scale_source_scene
+    WorldScaleSourceSceneTests.cpp)
+target_include_directories(latebrake_world_scale_source_scene PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_source_scene PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_source_scene PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_source_scene PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleSourceScene
+    COMMAND latebrake_world_scale_source_scene)
