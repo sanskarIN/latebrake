@@ -172,4 +172,47 @@ inline double EstimateFourWheelPeakLongitudinalForceN(
         ? total : std::numeric_limits<double>::quiet_NaN();
 }
 
+// Conservative friction-circle proxy for available longitudinal tire force
+// after a measured per-wheel lateral-force demand. This is an advisory bound,
+// not a combined-slip tire model or an allocation of actuator brake torque.
+// The caller must supply physical lateral demand at each contact patch.
+inline double EstimateRemainingLongitudinalForceN(
+    const WheelLoadEstimate& loads,
+    const TireLoadSensitivity& tire,
+    const std::array<double, 4>& lateralDemandN) noexcept {
+    if (loads.status != LoadTransferStatus::Valid ||
+        !std::isfinite(loads.totalN) || loads.totalN <= 0.0) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    double remaining = 0.0;
+    double verifiedNormal = 0.0;
+    for (std::size_t wheel = 0; wheel < loads.normalN.size(); ++wheel) {
+        const double normal = loads.normalN[wheel];
+        const double lateral = lateralDemandN[wheel];
+        if (!std::isfinite(normal) || normal <= 0.0 ||
+            !std::isfinite(lateral)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        const double peak = EstimatePeakLongitudinalForceN(normal, tire);
+        if (!std::isfinite(peak) || peak <= 0.0 ||
+            std::abs(lateral) > peak) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        const double utilization = lateral / peak;
+        const double available = peak *
+            std::sqrt(std::max(0.0, 1.0 - utilization * utilization));
+        if (!std::isfinite(available)) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+        remaining += available;
+        verifiedNormal += normal;
+    }
+    if (!std::isfinite(remaining) || !std::isfinite(verifiedNormal) ||
+        std::abs(verifiedNormal - loads.totalN) >
+            1e-8 * std::max(verifiedNormal, loads.totalN)) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    return remaining;
+}
+
 } // namespace LateBrake::PhysicsResearch
