@@ -2235,3 +2235,69 @@ else()
 endif()
 add_test(NAME WorldScaleVariantTrafficSupervisor
     COMMAND latebrake_world_scale_variant_traffic_supervisor)
+
+# Source-only future 1.7km original-road scene geometry. Visual-only:
+# not cooked UE5.8, collision road, driver braking or official checkpoints.
+add_executable(latebrake_world_scale_source_scene
+    WorldScaleSourceSceneTests.cpp)
+target_include_directories(latebrake_world_scale_source_scene PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_source_scene PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_source_scene PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_source_scene PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleSourceScene
+    COMMAND latebrake_world_scale_source_scene)
+
+# Visual-only future-world-scale 1.7km road LOD. Mesh source without
+# Unreal Engine rendering, cooked original circuit or Chaos collision.
+add_executable(latebrake_world_scale_visual_lod
+    WorldScaleVisualLodTests.cpp)
+target_include_directories(latebrake_world_scale_visual_lod PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_visual_lod PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_visual_lod PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_visual_lod PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVisualLod
+    COMMAND latebrake_world_scale_visual_lod)
+
+# Nonphysical roadside 3-level rail/post proposals on original 1.7km
+# source route. No Unreal WorldStatic safety barrier actor is built.
+add_executable(latebrake_world_scale_guardrail_scene
+    WorldScaleGuardrailSceneTests.cpp)
+target_include_directories(latebrake_world_scale_guardrail_scene PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_guardrail_scene PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_guardrail_scene PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_guardrail_scene PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleGuardrailScene
+    COMMAND latebrake_world_scale_guardrail_scene)
+
+# Pure C++20 512-station candidate racing corridor and pace advisory.
+# No Unreal car steering, collisions, passing or lap authority.
+add_executable(latebrake_world_scale_candidate_racing_line
+    WorldScaleCandidateRacingLineTests.cpp)
+target_include_directories(latebrake_world_scale_candidate_racing_line
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_candidate_racing_line
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_candidate_racing_line
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_candidate_racing_line
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleCandidateRacingLine
+    COMMAND latebrake_world_scale_candidate_racing_line)
