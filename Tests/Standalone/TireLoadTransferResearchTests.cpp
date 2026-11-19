@@ -165,5 +165,26 @@ int main() {
         EstimateWheelLoads(corner), tire, noLateral)));
     CHECK(std::isnan(EstimateRemainingLongitudinalForceN(
         stationary, {0.0, 1.2, 0.1}, noLateral)));
+    // A caller can fabricate or corrupt a receipt: a Valid enum alone
+    // must never authorize a positive tire-force advisory.
+    CHECK(ConsistentWheelLoads(stationary));
+    auto forged = stationary;
+    forged.normalN[0] *= 0.5;
+    CHECK(!ConsistentWheelLoads(forged));
+    CHECK(std::isnan(EstimateFourWheelPeakLongitudinalForceN(forged, tire)));
+    CHECK(std::isnan(EstimateRemainingLongitudinalForceN(forged, tire, noLateral)));
+    forged = stationary;
+    forged.frontAxleN *= 1.1;
+    CHECK(!ConsistentWheelLoads(forged));
+    forged = stationary;
+    forged.minimumWheelN *= 0.5;
+    CHECK(!ConsistentWheelLoads(forged));
+    forged = stationary;
+    forged.normalN[2] = std::numeric_limits<double>::quiet_NaN();
+    CHECK(!ConsistentWheelLoads(forged));
+    forged = stationary;
+    forged.totalN = std::numeric_limits<double>::infinity();
+    CHECK(!ConsistentWheelLoads(forged));
+    CHECK(!ConsistentWheelLoads(EstimateWheelLoads(corner)));
     return 0;
 }
