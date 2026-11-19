@@ -1,5 +1,6 @@
 #include "../../Source/Latebrake/Public/Competition/ChampionshipSeason.h"
 #include "../../Source/Latebrake/Public/Competition/QualifyingSession.h"
+#include "../../Source/Latebrake/Public/Competition/SeasonArchive.h"
 
 #include <array>
 #include <cmath>
@@ -313,11 +314,98 @@ void SparseGridAndAudit() {
     VERIFY(season.Ranking().count == 2);
 }
 
+
+void ArchiveRoundTripAndTamperDefense() {
+    ChampionshipSeason season;
+    const auto roster = Roster();
+    VERIFY(season.Begin(SeasonConfiguration(), roster, roster.size()));
+    VERIFY(season.Accept(Round(1, 9001)) == SeasonAdmission::Accepted);
+    auto second = Round(2, 9002);
+    second.participants[0].fastestLapVerified = false;
+    second.participants[0].fastestLegalLapSeconds = 0.0;
+    second.participants[1].fastestLapVerified = true;
+    second.participants[1].fastestLegalLapSeconds = 37.5;
+    VERIFY(season.Accept(second) == SeasonAdmission::Accepted);
+    const auto source = season.Ranking();
+    VERIFY(ValidArchiveRanking(source));
+    const auto saved = EncodeSeasonRanking(891, source);
+    VERIFY(saved.valid);
+    VERIFY(saved.length == SeasonArchiveHeaderBytes +
+           MaximumSeasonDrivers * SeasonArchiveEntryBytes +
+           SeasonArchiveChecksumBytes);
+    const auto decoded =
+        DecodeSeasonRanking(saved.bytes.data(), saved.length, 891);
+    VERIFY(decoded.valid && decoded.seasonIdentity == 891);
+    VERIFY(decoded.ranking.count == source.count);
+    VERIFY(decoded.ranking.completedRounds == 2);
+    VERIFY(decoded.ranking.remainingRounds == 1);
+    for (std::size_t i = 0; i < source.count; ++i) {
+        const auto& left = source.sorted[i];
+        const auto& right = decoded.ranking.sorted[i];
+        VERIFY(left.actor == right.actor);
+        VERIFY(left.points == right.points);
+        VERIFY(left.wins == right.wins);
+        VERIFY(left.podiums == right.podiums);
+        VERIFY(left.classifiedFinishes == right.classifiedFinishes);
+        VERIFY(left.fastestLapBonuses == right.fastestLapBonuses);
+        VERIFY(left.positionCounts == right.positionCounts);
+        VERIFY(left.pointsPerRound == right.pointsPerRound);
+    }
+
+    VERIFY(!DecodeSeasonRanking(saved.bytes.data(), saved.length, 892).valid);
+    VERIFY(!DecodeSeasonRanking(nullptr, saved.length, 891).valid);
+    VERIFY(!DecodeSeasonRanking(saved.bytes.data(), saved.length - 1, 891).valid);
+    VERIFY(!DecodeSeasonRanking(saved.bytes.data(), 0, 891).valid);
+    VERIFY(!DecodeSeasonRanking(saved.bytes.data(),
+                                MaximumSeasonArchiveBytes + 1, 891).valid);
+    auto broken = saved;
+    broken.bytes[100] ^= 0x80U;
+    VERIFY(!DecodeSeasonRanking(
+        broken.bytes.data(), broken.length, 891).valid);
+    broken = saved;
+    broken.bytes[0] = 0;
+    VERIFY(!DecodeSeasonRanking(
+        broken.bytes.data(), broken.length, 891).valid);
+    broken = saved;
+    broken.bytes[20] = 0xffU;
+    VERIFY(!DecodeSeasonRanking(
+        broken.bytes.data(), broken.length, 891).valid);
+
+    // A correctly recomputed checksum must not bypass version validation.
+    broken = saved;
+    broken.bytes[4] = 99;
+    std::uint32_t crc = SeasonArchiveChecksum(
+        broken.bytes.data(), broken.length - 4);
+    for (int i = 0; i < 4; ++i) {
+        broken.bytes[broken.length - 4 + static_cast<std::size_t>(i)] =
+            static_cast<std::uint8_t>(crc & 0xffU);
+        crc >>= 8U;
+    }
+    VERIFY(!DecodeSeasonRanking(
+        broken.bytes.data(), broken.length, 891).valid);
+
+    // An unknown or duplicated driver is never a valid archive source.
+    auto invalid = source;
+    invalid.sorted[1].actor = invalid.sorted[0].actor;
+    VERIFY(!EncodeSeasonRanking(891, invalid).valid);
+    invalid = source;
+    invalid.sorted[0].points += 2;
+    VERIFY(!EncodeSeasonRanking(891, invalid).valid);
+    invalid = source;
+    invalid.sorted[0].pointsPerRound[2] = 25;
+    VERIFY(!EncodeSeasonRanking(891, invalid).valid);
+    invalid = source;
+    invalid.sorted[0].wins = 100;
+    VERIFY(!EncodeSeasonRanking(891, invalid).valid);
+    VERIFY(!EncodeSeasonRanking(0, source).valid);
+}
+
 } // namespace
 
 int main() {
     QualifyingValidation();
     SeasonValidation();
     SparseGridAndAudit();
+    ArchiveRoundTripAndTamperDefense();
     return 0;
 }
