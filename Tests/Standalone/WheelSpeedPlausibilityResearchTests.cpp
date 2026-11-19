@@ -6,11 +6,11 @@
 
 using namespace LateBrake::PhysicsResearch;
 
-// Unlike REQUIRE(), REQUIRE remains executable in Release/RelWithDebInfo
+// Unlike the standard assert() macro, REQUIRE remains executable in Release/RelWithDebInfo
 // CTest builds. It also keeps every tested observation used under -Werror.
 #define REQUIRE(expression) do { \
     if (!(expression)) { \
-        std::fprintf(stderr, "Wheel speed check failed: %s at line %d\\n", \
+        std::fprintf(stderr, "Wheel speed check failed: %s at line %d\n", \
                      #expression, __LINE__); \
         std::abort(); \
     } \
