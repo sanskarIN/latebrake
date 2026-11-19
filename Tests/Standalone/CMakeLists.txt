@@ -2164,3 +2164,18 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionProfile
     COMMAND latebrake_world_scale_projection_profile)
+
+# Source-only load-transfer research; does not actuate Chaos vehicles.
+add_latebrake_portable_research_test(TireLoadTransferResearch)
+
+# Advisory brake-force allocation regression; source-only, no Chaos authority.
+add_latebrake_portable_research_test(BrakeForceAllocationResearch)
+
+# Advisory four-wheel brake-slip modulation; not integrated with Chaos.
+add_latebrake_portable_research_test(BrakeSlipModulationResearch)
+
+# Advisory grip-envelope and ABS pressure coupling; no Chaos actuation.
+add_latebrake_portable_research_test(ModulatedBrakeAllocationResearch)
+
+# Source-only four-wheel sensor plausibility; no trusted Chaos telemetry.
+add_latebrake_portable_research_test(WheelSpeedPlausibilityResearch)
