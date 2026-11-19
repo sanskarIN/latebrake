@@ -193,6 +193,10 @@ void TestPhysicalSectorReviews() {
     CHECK(review.ReviewLap(other, corrupted, 2) ==
           SectorAdmission::InvalidChronology);
     corrupted = otherEvidence;
+    corrupted[1].gateEntryFrame = 321;
+    CHECK(review.ReviewLap(other, corrupted, 2) ==
+          SectorAdmission::InvalidChronology);
+    corrupted = otherEvidence;
     corrupted[0].continuousPhysicalMotion = false;
     CHECK(review.ReviewLap(other, corrupted, 2) ==
           SectorAdmission::InvalidSource);
