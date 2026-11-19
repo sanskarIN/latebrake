@@ -2176,3 +2176,6 @@ add_latebrake_portable_research_test(BrakeSlipModulationResearch)
 
 # Advisory grip-envelope and ABS pressure coupling; no Chaos actuation.
 add_latebrake_portable_research_test(ModulatedBrakeAllocationResearch)
+
+# Source-only four-wheel sensor plausibility; no trusted Chaos telemetry.
+add_latebrake_portable_research_test(WheelSpeedPlausibilityResearch)
