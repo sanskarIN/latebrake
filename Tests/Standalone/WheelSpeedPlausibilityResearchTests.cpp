@@ -65,6 +65,35 @@ int main() {
     sample.frameSeconds = 0.2;
     REQUIRE(!ReviewWheelSpeedSample(sample, limits, landed.next).valid);
     sample.frameSeconds = 0.02;
+    // Reverse motion must retain wheel rotation sign, including valid transitions
+    // through zero; a sudden direction reversal remains implausible.
+    WheelSpeedSample reverse{};
+    reverse.frameSeconds = 0.02;
+    reverse.vehicleSpeedMps = -3.0;
+    reverse.rollingRadiusMeters.fill(0.3);
+    reverse.angularSpeedRadPerSecond.fill(-10.0);
+    reverse.inContact.fill(true);
+    const auto reverseFirst = ReviewWheelSpeedSample(reverse, WheelSpeedLimits{}, {});
+    REQUIRE(reverseFirst.valid);
+    for (std::size_t i = 0; i < 4; ++i) {
+        REQUIRE(reverseFirst.plausible[i]);
+        REQUIRE(std::abs(reverseFirst.surfaceSpeedMps[i] + 3.0) < 1e-9);
+    }
+    reverse.angularSpeedRadPerSecond[0] = -9.0;
+    const auto reverseNext = ReviewWheelSpeedSample(
+        reverse, WheelSpeedLimits{}, reverseFirst.next);
+    REQUIRE(reverseNext.valid && reverseNext.plausible[0]);
+    REQUIRE(reverseNext.surfaceSpeedMps[0] < 0.0);
+    reverse.angularSpeedRadPerSecond[0] = 10.0;
+    const auto impossibleReversal = ReviewWheelSpeedSample(
+        reverse, WheelSpeedLimits{}, reverseNext.next);
+    REQUIRE(impossibleReversal.valid && !impossibleReversal.plausible[0]);
+    REQUIRE(impossibleReversal.next.surfaceSpeedMps[0] ==
+            reverseNext.next.surfaceSpeedMps[0]);
+    reverse.angularSpeedRadPerSecond[0] = -1000.0;
+    REQUIRE(!ReviewWheelSpeedSample(
+        reverse, WheelSpeedLimits{}, reverseNext.next).valid);
+
     limits.maximumWheelAccelerationMps2 = -1.0;
     REQUIRE(!ReviewWheelSpeedSample(sample, limits, landed.next).valid);
     return 0;
