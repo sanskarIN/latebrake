@@ -228,6 +228,16 @@ void SeasonValidation() {
     bad.participants[0].officialRaceSeconds =
         std::numeric_limits<double>::infinity();
     VERIFY(season.Accept(bad) == SeasonAdmission::InvalidField);
+    bad = race;
+    bad.participants[5].state = static_cast<FinishState>(255);
+    bad.participants[5].officialPosition = 0;
+    bad.participants[5].physicalFinishGateVerified = false;
+    VERIFY(season.Accept(bad) == SeasonAdmission::InvalidClassification);
+    bad = race;
+    bad.participants[5].state = FinishState::DidNotStart;
+    bad.participants[5].officialPosition = 0;
+    bad.participants[5].physicalFinishGateVerified = false;
+    VERIFY(season.Accept(bad) == SeasonAdmission::InvalidClassification);
     VERIFY(season.CompletedRounds() == 0);
     VERIFY(season.Driver(101)->points == 0);
 
