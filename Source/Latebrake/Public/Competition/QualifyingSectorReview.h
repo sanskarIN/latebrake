@@ -208,7 +208,10 @@ public:
                 s.toGate > settings_.gatesPerLap) {
                 return SectorAdmission::MisorderedGates;
             }
-            if (s.gateEntryFrame < priorEndFrame ||
+            // Adjacent sectors share one authenticated gate receipt.
+            // A skipped frame at that gate cannot be silently treated as
+            // a complete, continuous split time.
+            if (s.gateEntryFrame != priorEndFrame ||
                 s.gateExitFrame <= s.gateEntryFrame ||
                 s.gateExitFrame > lap.endingFrame ||
                 (i == 0 && s.gateEntryFrame != lap.beginningFrame)) {
