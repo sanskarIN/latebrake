@@ -159,6 +159,14 @@ public:
         GateTraceCar& car = cars_[index];
         const auto reject = [&car, &result](
             GateTraceAdmission reason) noexcept -> GateTraceResult {
+            // Once a trusted lap sequence is interrupted, the same engine
+            // lap ordinal must never be restarted at a second gate-zero
+            // observation. Otherwise missing or contradictory checkpoints
+            // could be silently discarded before granting provisional pace.
+            if (car.inLap) {
+                car.completedLapOrdinal = std::max(
+                    car.completedLapOrdinal, car.currentLapOrdinal);
+            }
             car.inLap = false;
             car.nextGate = 0;
             car.currentLapOrdinal = 0;
