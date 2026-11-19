@@ -97,6 +97,7 @@ void ValidateAudit() {
     CHECK(audit.qualifiedCount == 0);
     CHECK(audit.sectorQualifiedCount == 0);
     CHECK(audit.sectorOrderingDifferences == 0);
+    CHECK(pipeline.AuditGrid().fullyAgrees);
 
     Admit(pipeline,101,1,10.0);
     Admit(pipeline,100,1,11.0);
@@ -111,6 +112,7 @@ void ValidateAudit() {
     CHECK(audit.byGridSlot[0].measuredBestLapSeconds == 27.0);
     CHECK(audit.maximumObservedBestLapDifferenceSeconds == 0.0);
     CHECK(audit.maximumObservedTheoreticalGainSeconds == 0.0);
+    CHECK(pipeline.AuditGrid().fullyAgrees);
     CHECK(audit.byGridSlot[3].hasValidLap == false);
 
     // Two valid laps with different sector minima may offer an advisory
@@ -165,6 +167,12 @@ void ValidateAudit() {
     grid.qualifiedCount = 8;
     audit = AuditQualifyingGrid(grid,sectors);
     CHECK(audit.fault == GridAuditFault::InvalidCount);
+
+    grid = pipeline.Grid();
+    sectors = pipeline.SectorLeaderboard();
+    grid.bestLapSeconds[5] = -std::numeric_limits<double>::infinity();
+    audit = AuditQualifyingGrid(grid,sectors);
+    CHECK(audit.fault == GridAuditFault::InconsistentQualification);
 
     grid = pipeline.Grid();
     sectors = pipeline.SectorLeaderboard();
