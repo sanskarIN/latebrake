@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <utility>
 
 #define CHECK(expr) do { if (!(expr)) { \
     std::fprintf(stderr,"Grid audit failed: %s line %d\n",#expr,__LINE__); \
@@ -127,6 +128,58 @@ void ValidateAudit() {
     auto grid = pipeline.Grid();
     auto sectors = pipeline.SectorLeaderboard();
 
+    // A fabricated standings permutation can preserve actor identities
+    // and identical independent timing while putting a slower car first.
+    // The final grid MUST fail closed even when *both* views are shuffled.
+    std::swap(grid.actors[0], grid.actors[1]);
+    std::swap(grid.bestLapSeconds[0], grid.bestLapSeconds[1]);
+    std::swap(grid.bestLapOrdinals[0], grid.bestLapOrdinals[1]);
+    std::swap(grid.qualified[0], grid.qualified[1]);
+    std::swap(sectors.entries[0], sectors.entries[1]);
+    audit = AuditQualifyingGrid(grid, sectors);
+    CHECK(!audit.fullyAgrees);
+    CHECK(audit.fault == GridAuditFault::InvalidPositionOrder);
+    CHECK(audit.faultSlot == 1);
+
+    // The same error must be caught when only the sector view is shuffled.
+    grid = pipeline.Grid();
+    sectors = pipeline.SectorLeaderboard();
+    std::swap(sectors.entries[0], sectors.entries[1]);
+    audit = AuditQualifyingGrid(grid, sectors);
+    CHECK(audit.fault == GridAuditFault::InvalidPositionOrder);
+    CHECK(audit.faultSlot == 1);
+
+    // A timed car may not be placed behind an untimed entrant, even if
+    // the two provisional displays have been forged consistently.
+    grid = pipeline.Grid();
+    sectors = pipeline.SectorLeaderboard();
+    std::swap(grid.actors[0], grid.actors[3]);
+    std::swap(grid.bestLapSeconds[0], grid.bestLapSeconds[3]);
+    std::swap(grid.bestLapOrdinals[0], grid.bestLapOrdinals[3]);
+    std::swap(grid.qualified[0], grid.qualified[3]);
+    std::swap(sectors.entries[0], sectors.entries[3]);
+    audit = AuditQualifyingGrid(grid, sectors);
+    CHECK(audit.fault == GridAuditFault::InvalidPositionOrder);
+    CHECK(audit.faultSlot == 1);
+
+    // Equal measured laps legitimately admit different tie-breaks:
+    // qualifying may prefer second-best laps; sector view may prefer
+    // theoretical splits. Neither tie-breaking policy can reorder a
+    // strictly faster timed result behind a slower one.
+    grid = pipeline.Grid();
+    sectors = pipeline.SectorLeaderboard();
+    grid.bestLapSeconds[1] = grid.bestLapSeconds[0];
+    sectors.entries[1].measuredBestLapSeconds =
+        grid.bestLapSeconds[0];
+    sectors.entries[1].bestSectorCombinationSeconds =
+        grid.bestLapSeconds[0];
+    std::swap(sectors.entries[0], sectors.entries[1]);
+    audit = AuditQualifyingGrid(grid, sectors);
+    CHECK(audit.fullyAgrees);
+    CHECK(audit.sectorOrderingDifferences == 2);
+
+    grid = pipeline.Grid();
+    sectors = pipeline.SectorLeaderboard();
     grid.actors[1] = grid.actors[0];
     audit = AuditQualifyingGrid(grid,sectors);
     CHECK(!audit.fullyAgrees);
