@@ -2173,3 +2173,6 @@ add_latebrake_portable_research_test(BrakeForceAllocationResearch)
 
 # Advisory four-wheel brake-slip modulation; not integrated with Chaos.
 add_latebrake_portable_research_test(BrakeSlipModulationResearch)
+
+# Advisory grip-envelope and ABS pressure coupling; no Chaos actuation.
+add_latebrake_portable_research_test(ModulatedBrakeAllocationResearch)
