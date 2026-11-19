@@ -55,11 +55,12 @@ inline BrakeAllocationResult AllocateCombinedGripBraking(
     f += std::min(front - f, std::max(0.0, target - f - r));
     r += std::min(rear - r, std::max(0.0, target - f - r));
     if (front > 0.0) {
-        out.brakeForceN[0] = f * capacity[0] / front;
+        // Divide first: multiplying two finite large forces can overflow.
+        out.brakeForceN[0] = f * (capacity[0] / front);
         out.brakeForceN[1] = f - out.brakeForceN[0];
     }
     if (rear > 0.0) {
-        out.brakeForceN[2] = r * capacity[2] / rear;
+        out.brakeForceN[2] = r * (capacity[2] / rear);
         out.brakeForceN[3] = r - out.brakeForceN[2];
     }
     for (std::size_t i = 0; i < capacity.size(); ++i) {
