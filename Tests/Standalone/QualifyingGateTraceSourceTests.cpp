@@ -137,6 +137,14 @@ int main() {
     VERIFY(!trace.Car(103)->inLap);
     VERIFY(trace.Observe(Sample(103, 1, 3)).status ==
            GateTraceAdmission::StaleOrMisordered);
+    // An interrupted attempt cannot be restarted with a second gate zero
+    // inside the same physical lap ordinal, even at a newer source frame.
+    auto forgedRestart = Sample(103, 1, 0);
+    forgedRestart.engineFrame = 8500;
+    forgedRestart.clockSeconds = 39.0;
+    VERIFY(trace.Observe(forgedRestart).status ==
+           GateTraceAdmission::StaleOrMisordered);
+    VERIFY(trace.Car(103)->completedLapOrdinal == 1);
 
     VERIFY(trace.Observe(Sample(104, 1, 0)).status ==
            GateTraceAdmission::Started);
