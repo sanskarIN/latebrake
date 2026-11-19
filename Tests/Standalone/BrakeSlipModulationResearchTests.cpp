@@ -69,6 +69,16 @@ int main() {
     calibration.recoverySlip = calibration.entrySlip;
     CHECK(!AdvanceBrakeSlip(observation, calibration, stable).valid);
     calibration = {};
+    // Very large finite slew rates must saturate at physical pressure bounds,
+    // not produce NaN or an out-of-range control proposal.
+    calibration.releaseRatePerSecond = std::numeric_limits<double>::max();
+    calibration.restoreRatePerSecond = std::numeric_limits<double>::max();
+    observation.vehicleSpeedMps = 20.0;
+    observation.wheelSurfaceSpeedMps[0] = 0.0;
+    r = AdvanceBrakeSlip(observation, calibration, stable);
+    CHECK(r.valid && r.next.pressureFraction[0] == calibration.minimumPressureFraction);
+    CHECK(r.next.pressureFraction[1] == 1.0);
+    calibration = {};
     auto corrupt = stable;
     corrupt.pressureFraction[3] = std::numeric_limits<double>::infinity();
     CHECK(!AdvanceBrakeSlip(observation, calibration, corrupt).valid);
