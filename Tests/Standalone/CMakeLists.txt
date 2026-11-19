@@ -2190,3 +2190,7 @@ add_latebrake_portable_research_test(QualifyingGridAudit)
 # Source-only qualifying order mapped to the original six-slot physical
 # circuit grid preflight; does not spawn cars or award official positions.
 add_latebrake_portable_research_test(QualifyingStartGridPlan)
+
+# Source-only formation / green / full-course yellow / red-flag review.
+# This never actuates or certifies an Unreal Engine race director.
+add_latebrake_portable_research_test(ProvisionalRaceControl)
