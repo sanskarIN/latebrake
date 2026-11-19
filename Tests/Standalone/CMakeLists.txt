@@ -2176,3 +2176,6 @@ add_latebrake_portable_research_test(QualifyingGateTraceSource)
 
 # Original source-only sector chronology and measured optimal sector pace.
 add_latebrake_portable_research_test(QualifyingSectorReview)
+
+# Conservative points-only championship title bounds (no official awards).
+add_latebrake_portable_research_test(SeasonTitleBounds)
