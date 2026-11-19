@@ -87,6 +87,19 @@ inline WheelSpeedReview ReviewWheelSpeedSample(
             return out;
     }
 
+    // A corrupted trusted wheel history must not silently become a plausible
+    // observation when contact temporarily drops. Reject the entire frame
+    // without advancing vehicle history, so callers can reset explicitly.
+    if (history.initialized) {
+        for (std::size_t i = 0; i < 4; ++i) {
+            if (history.inContact[i] &&
+                (!std::isfinite(history.surfaceSpeedMps[i]) ||
+                 std::abs(history.surfaceSpeedMps[i]) >
+                     limits.maximumSurfaceSpeedMps))
+                return out;
+        }
+    }
+
     out.next = history;
     out.next.initialized = true;
     out.next.vehicleSpeedMps = sample.vehicleSpeedMps;
@@ -97,7 +110,9 @@ inline WheelSpeedReview ReviewWheelSpeedSample(
             radius < limits.minimumRadiusMeters ||
             radius > limits.maximumRadiusMeters)
             return WheelSpeedReview{};
-        // Preserve rotation direction: reverse travel and direction changes are valid.\n        // Temporal acceleration checks still reject impossible sign flips.\n        const double surface = radius * angular;
+        // Preserve rotation direction: reverse travel and direction changes are valid.
+        // Temporal acceleration checks still reject impossible sign flips.
+        const double surface = radius * angular;
         if (!std::isfinite(surface) ||
             std::abs(surface) > limits.maximumSurfaceSpeedMps)
             return WheelSpeedReview{};
