@@ -2183,3 +2183,6 @@ add_latebrake_portable_research_test(SeasonTitleBounds)
 # Audit the atomic physical gate -> split -> provisional grid composition.
 # Test passes never substitute for licensed Unreal editor or cooked Win64 QA.
 add_latebrake_portable_research_test(QualifyingEvidencePipeline)
+
+# Independent provisional-grid and sector-leaderboard consistency audit.
+add_latebrake_portable_research_test(QualifyingGridAudit)
