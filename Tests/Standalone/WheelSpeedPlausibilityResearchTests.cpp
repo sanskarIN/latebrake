@@ -94,6 +94,41 @@ int main() {
     REQUIRE(!ReviewWheelSpeedSample(
         reverse, WheelSpeedLimits{}, reverseNext.next).valid);
 
+
+    // A corrupted previously trusted observation must not be legitimized by
+    // briefly removing contact, or by changing the current sensor reading.
+    WheelSpeedHistory poisoned = first.next;
+    poisoned.surfaceSpeedMps[2] =
+        std::numeric_limits<double>::quiet_NaN();
+    WheelSpeedSample contactTransition{};
+    contactTransition.frameSeconds = 0.02;
+    contactTransition.vehicleSpeedMps = 20.0;
+    contactTransition.angularSpeedRadPerSecond.fill(60.0);
+    contactTransition.rollingRadiusMeters.fill(0.33);
+    contactTransition.inContact.fill(true);
+    contactTransition.inContact[2] = false;
+    const auto rejectedHistory = ReviewWheelSpeedSample(
+        contactTransition, WheelSpeedLimits{}, poisoned);
+    REQUIRE(!rejectedHistory.valid);
+    REQUIRE(!rejectedHistory.next.initialized);
+    contactTransition.inContact[2] = true;
+    REQUIRE(!ReviewWheelSpeedSample(
+        contactTransition, WheelSpeedLimits{}, poisoned).valid);
+
+    poisoned = first.next;
+    poisoned.surfaceSpeedMps[2] = 200.0;
+    REQUIRE(!ReviewWheelSpeedSample(
+        contactTransition, WheelSpeedLimits{}, poisoned).valid);
+    poisoned = first.next;
+    poisoned.inContact[2] = false;
+    poisoned.surfaceSpeedMps[2] =
+        std::numeric_limits<double>::quiet_NaN();
+    // An explicitly untrusted airborne history may be reinitialized.
+    const auto resetAirborne = ReviewWheelSpeedSample(
+        contactTransition, WheelSpeedLimits{}, poisoned);
+    REQUIRE(resetAirborne.valid && resetAirborne.plausible[2]);
+    REQUIRE(std::isfinite(resetAirborne.next.surfaceSpeedMps[2]));
+
     limits.maximumWheelAccelerationMps2 = -1.0;
     REQUIRE(!ReviewWheelSpeedSample(sample, limits, landed.next).valid);
     return 0;
