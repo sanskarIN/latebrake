@@ -46,5 +46,23 @@ int main() {
     input.requestedBrakeForceN = 3000.0;
     input.loads.normalN[0] = 0.0;
     CHECK(!AllocateCombinedGripBraking(input).valid);
+    // Extreme but finite load receipts must not overflow intermediate
+    // products when distributing braking across contact patches.
+    input.loads = EstimateWheelLoads(chassis);
+    for (double& normal : input.loads.normalN) normal *= 1e300;
+    input.loads.frontAxleN *= 1e300;
+    input.loads.rearAxleN *= 1e300;
+    input.loads.totalN *= 1e300;
+    input.loads.minimumWheelN *= 1e300;
+    input.tire = {3000.0, 1.0, 0.0};
+    input.requestedBrakeForceN = 1e303;
+    input.preferredFrontFraction = 0.6;
+    result = AllocateCombinedGripBraking(input);
+    CHECK(result.valid && !result.saturated);
+    CHECK(std::isfinite(result.achievedForceN));
+    CHECK(std::abs(result.achievedForceN / 1e303 - 1.0) < 1e-12);
+    for (double force : result.brakeForceN) {
+        CHECK(std::isfinite(force) && force >= 0.0);
+    }
     return 0;
 }
