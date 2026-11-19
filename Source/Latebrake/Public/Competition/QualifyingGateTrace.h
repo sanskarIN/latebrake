@@ -1,6 +1,7 @@
 #pragma once
 
 #include "QualifyingSession.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
