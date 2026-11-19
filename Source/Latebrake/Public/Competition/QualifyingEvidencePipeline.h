@@ -1,6 +1,7 @@
 #pragma once
 
 #include "QualifyingGateTrace.h"
+#include "QualifyingGridAudit.h"
 #include "QualifyingSectorReview.h"
 #include "QualifyingSession.h"
 
@@ -273,6 +274,10 @@ public:
 
     ProvisionalSectorOrder SectorLeaderboard() const noexcept {
         return sectors_.Leaderboard();
+    }
+
+    GridAuditReceipt AuditGrid() const noexcept {
+        return AuditQualifyingGrid(Grid(), SectorLeaderboard());
     }
 
     bool Active() const noexcept { return active_; }
