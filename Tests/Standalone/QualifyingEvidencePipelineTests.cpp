@@ -241,7 +241,7 @@ void AtomicCrossDomainRejection() {
     VERIFY(rejected.status ==
            QualifyingPipelineStatus::SectorReviewRejected);
     VERIFY(rejected.lapStatus == LapAdmission::Accepted);
-    VERIFY(rejected.sectorStatus == SectorAdmission::InconsistentTiming);
+    VERIFY(rejected.sectorStatus == SectorAdmission::InvalidChronology);
     VERIFY(!rejected.accepted);
     VERIFY(strictSectors.Grid().qualifiedCount == 0);
     VERIFY(strictSectors.Sectors().Driver(101)->reviewedLaps == 0);
