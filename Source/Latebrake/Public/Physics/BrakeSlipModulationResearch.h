@@ -77,6 +77,10 @@ inline BrakeSlipResult AdvanceBrakeSlip(
     const bool moving = observation.vehicleSpeedMps >= calibration.minimumVehicleSpeedMps;
     const double releaseStep = calibration.releaseRatePerSecond * observation.sampleSeconds;
     const double restoreStep = calibration.restoreRatePerSecond * observation.sampleSeconds;
+    // Finite inputs can overflow when multiplied. Never turn an overflowing
+    // control increment into a silent full-pressure release or restoration.
+    if (!std::isfinite(releaseStep) || !std::isfinite(restoreStep))
+        return BrakeSlipResult{};
     for (std::size_t i = 0; i < 4; ++i) {
         const bool supported = moving && observation.contactValid[i];
         if (supported) {
