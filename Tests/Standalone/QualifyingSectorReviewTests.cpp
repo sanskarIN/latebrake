@@ -126,6 +126,13 @@ void TestPhysicalSectorReviews() {
     CHECK(review.Driver(101)->bestSectorSeconds[0] == 17.0);
     CHECK(review.Driver(101)->bestSectorSeconds[1] == 17.0);
     CHECK(review.Driver(101)->bestSectorLapOrdinals[0] == 1);
+    auto leaderboard = review.Leaderboard();
+    CHECK(leaderboard.valid && leaderboard.count == 6);
+    CHECK(leaderboard.timedDrivers == 1);
+    CHECK(leaderboard.entries[0].actor == 101);
+    CHECK(leaderboard.entries[0].hasEvidence);
+    CHECK(leaderboard.entries[0].theoreticalGainSeconds == 0.0);
+    CHECK(!leaderboard.entries[1].hasEvidence);
 
     CHECK(review.ReviewLap(first, data, 2, &receipt) ==
           SectorAdmission::StaleLap);
@@ -147,6 +154,10 @@ void TestPhysicalSectorReviews() {
     CHECK(review.Driver(101)->bestSectorLapOrdinals[0] == 1);
     CHECK(review.Driver(101)->bestSectorLapOrdinals[1] == 2);
     CHECK(review.Driver(101)->reviewedLaps == 2);
+    leaderboard = review.Leaderboard();
+    CHECK(leaderboard.entries[0].measuredBestLapSeconds == 33.0);
+    CHECK(leaderboard.entries[0].bestSectorCombinationSeconds == 32.0);
+    CHECK(leaderboard.entries[0].theoreticalGainSeconds == 1.0);
 
     const auto before = *review.Driver(101);
     auto badLap = second;
@@ -228,6 +239,10 @@ void TestPhysicalSectorReviews() {
     CHECK(review.Driver(102)->reviewedLaps == 1);
     CHECK(review.Driver(102)->bestLapSeconds == 34.0);
     CHECK(review.Driver(101)->bestLapSeconds == 33.0);
+    leaderboard = review.Leaderboard();
+    CHECK(leaderboard.timedDrivers == 2);
+    CHECK(leaderboard.entries[0].actor == 101);
+    CHECK(leaderboard.entries[1].actor == 102);
 }
 
 } // namespace
