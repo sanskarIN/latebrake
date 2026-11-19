@@ -2164,3 +2164,33 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionProfile
     COMMAND latebrake_world_scale_projection_profile)
+
+
+# Source-only competition models. Provisional qualifying and championship
+# summaries never change Unreal race positions, persistent saves or awards.
+add_latebrake_portable_research_test(CompetitionSource)
+
+# Source-only replay of exact gate-crossing chronology and admission to the
+# provisional competition model; source booleans are not UE proof.
+add_latebrake_portable_research_test(QualifyingGateTraceSource)
+
+# Original source-only sector chronology and measured optimal sector pace.
+add_latebrake_portable_research_test(QualifyingSectorReview)
+
+# Conservative points-only championship title bounds (no official awards).
+add_latebrake_portable_research_test(SeasonTitleBounds)
+
+# Audit the atomic physical gate -> split -> provisional grid composition.
+# Test passes never substitute for licensed Unreal editor or cooked Win64 QA.
+add_latebrake_portable_research_test(QualifyingEvidencePipeline)
+
+# Independent provisional-grid and sector-leaderboard consistency audit.
+add_latebrake_portable_research_test(QualifyingGridAudit)
+
+# Source-only qualifying order mapped to the original six-slot physical
+# circuit grid preflight; does not spawn cars or award official positions.
+add_latebrake_portable_research_test(QualifyingStartGridPlan)
+
+# Source-only formation / green / full-course yellow / red-flag review.
+# This never actuates or certifies an Unreal Engine race director.
+add_latebrake_portable_research_test(ProvisionalRaceControl)
