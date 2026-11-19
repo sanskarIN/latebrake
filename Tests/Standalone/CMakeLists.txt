@@ -2173,3 +2173,6 @@ add_latebrake_portable_research_test(CompetitionSource)
 # Source-only replay of exact gate-crossing chronology and admission to the
 # provisional competition model; source booleans are not UE proof.
 add_latebrake_portable_research_test(QualifyingGateTraceSource)
+
+# Original source-only sector chronology and measured optimal sector pace.
+add_latebrake_portable_research_test(QualifyingSectorReview)
