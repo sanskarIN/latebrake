@@ -22,6 +22,7 @@ enum class GridAuditFault : std::uint8_t {
     DuplicateActor,
     ForeignActor,
     InconsistentQualification,
+    InvalidPositionOrder,
     InvalidLapTime,
     ConflictingBestLap,
     InvalidTheoreticalPace
@@ -192,6 +193,42 @@ inline GridAuditReceipt AuditQualifyingGrid(
         output.maximumObservedTheoreticalGainSeconds =
             std::max(output.maximumObservedTheoreticalGainSeconds,
                      audited.theoreticalGainSeconds);
+    }
+
+    // Both source displays must independently rank a completed lap
+    // ahead of an untimed car, with nondecreasing measured lap times.
+    // Different order for equal measured laps is valid: the grid may use
+    // second-best laps as a tie-break while the sector view uses optimal
+    // split combinations. Never accept an arbitrary faster-behind-slower
+    // permutation as a valid starting grid.
+    bool untimedGridSeen = false;
+    bool untimedSectorSeen = false;
+    double previousGridLap = -1.0;
+    double previousSectorLap = -1.0;
+    for (std::size_t i = 0; i < grid.count; ++i) {
+        const auto& candidate = sectorOrder.entries[i];
+        if (!grid.qualified[i]) {
+            untimedGridSeen = true;
+        } else {
+            if (untimedGridSeen ||
+                grid.bestLapSeconds[i] < previousGridLap) {
+                output.fault = GridAuditFault::InvalidPositionOrder;
+                output.faultSlot = static_cast<int>(i);
+                return output;
+            }
+            previousGridLap = grid.bestLapSeconds[i];
+        }
+        if (!candidate.hasEvidence) {
+            untimedSectorSeen = true;
+        } else {
+            if (untimedSectorSeen ||
+                candidate.measuredBestLapSeconds < previousSectorLap) {
+                output.fault = GridAuditFault::InvalidPositionOrder;
+                output.faultSlot = static_cast<int>(i);
+                return output;
+            }
+            previousSectorLap = candidate.measuredBestLapSeconds;
+        }
     }
 
     if (observedQualifying != grid.qualifiedCount ||
