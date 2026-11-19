@@ -218,17 +218,58 @@ inline bool ValidArchiveRanking(const SeasonRanking& ranking) noexcept {
     }
     const int totalRounds =
         ranking.completedRounds + ranking.remainingRounds;
+    std::array<int, MaximumSeasonDrivers> overallPositions{};
+    int totalFastestBonuses = 0;
     for (std::size_t i = 0; i < ranking.count; ++i) {
         const auto& driver = ranking.sorted[i];
         if (!ValidArchiveSummary(driver, ranking.completedRounds,
                                  totalRounds)) {
             return false;
         }
+        totalFastestBonuses += driver.fastestLapBonuses;
+        for (std::size_t p = 0; p < overallPositions.size(); ++p) {
+            overallPositions[p] += driver.positionCounts[p];
+        }
         for (std::size_t j = 0; j < i; ++j) {
-            if (driver.actor == ranking.sorted[j].actor) {
-                return false;
+            const auto& earlier = ranking.sorted[j];
+            if (driver.actor == earlier.actor) return false;
+            // Archive contents must retain the canonical championship
+            // order; untrusted bytes cannot rename an unsorted leaderboard
+            // as an official-looking sorted standings report.
+            if (driver.points > earlier.points) return false;
+            if (driver.points == earlier.points &&
+                driver.wins > earlier.wins) return false;
+            if (driver.points == earlier.points &&
+                driver.wins == earlier.wins &&
+                driver.podiums > earlier.podiums) return false;
+            if (driver.points == earlier.points &&
+                driver.wins == earlier.wins &&
+                driver.podiums == earlier.podiums) {
+                for (std::size_t p = 0; p < MaximumSeasonDrivers; ++p) {
+                    if (driver.positionCounts[p] !=
+                        earlier.positionCounts[p]) {
+                        if (driver.positionCounts[p] >
+                            earlier.positionCounts[p]) return false;
+                        break;
+                    }
+                }
             }
         }
+    }
+    if (totalFastestBonuses > ranking.completedRounds) return false;
+    for (int positionTotal : overallPositions) {
+        if (positionTotal > ranking.completedRounds) return false;
+    }
+    // Only one verified car can receive a given finishing position in
+    // each race. A fabricated points archive must not exceed the physical
+    // six-car event's maximum combined awards for one round.
+    for (int r = 0; r < ranking.completedRounds; ++r) {
+        int totalAwarded = 0;
+        for (std::size_t driver = 0; driver < ranking.count; ++driver) {
+            totalAwarded += ranking.sorted[driver].pointsPerRound[
+                static_cast<std::size_t>(r)];
+        }
+        if (totalAwarded > 89) return false;
     }
     return true;
 }
