@@ -397,6 +397,11 @@ void ArchiveRoundTripAndTamperDefense() {
     invalid = source;
     invalid.sorted[0].wins = 100;
     VERIFY(!EncodeSeasonRanking(891, invalid).valid);
+    invalid = source;
+    const auto first = invalid.sorted[0];
+    invalid.sorted[0] = invalid.sorted[1];
+    invalid.sorted[1] = first;
+    VERIFY(!EncodeSeasonRanking(891, invalid).valid);
     VERIFY(!EncodeSeasonRanking(0, source).valid);
 }
 
