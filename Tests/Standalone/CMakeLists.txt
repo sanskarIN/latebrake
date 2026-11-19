@@ -2167,3 +2167,6 @@ add_test(NAME WorldScaleProjectionProfile
 
 # Source-only load-transfer research; does not actuate Chaos vehicles.
 add_latebrake_portable_research_test(TireLoadTransferResearch)
+
+# Advisory brake-force allocation regression; source-only, no Chaos authority.
+add_latebrake_portable_research_test(BrakeForceAllocationResearch)
