@@ -2164,3 +2164,8 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionProfile
     COMMAND latebrake_world_scale_projection_profile)
+
+
+# Source-only competition models. Provisional qualifying and championship
+# summaries never change Unreal race positions, persistent saves or awards.
+add_latebrake_portable_research_test(CompetitionSource)
