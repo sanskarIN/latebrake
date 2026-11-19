@@ -152,12 +152,40 @@ inline double EstimateWheelLiftLateralLimitMps2(
         ? limit : std::numeric_limits<double>::quiet_NaN();
 }
 
+// Validate externally supplied wheel-load receipts before using them for grip.
+// Status alone is not evidence of a coherent physical contact patch state.
+inline bool ConsistentWheelLoads(const WheelLoadEstimate& loads) noexcept {
+    if (loads.status != LoadTransferStatus::Valid ||
+        !std::isfinite(loads.totalN) || loads.totalN <= 0.0 ||
+        !std::isfinite(loads.frontAxleN) || loads.frontAxleN <= 0.0 ||
+        !std::isfinite(loads.rearAxleN) || loads.rearAxleN <= 0.0 ||
+        !std::isfinite(loads.minimumWheelN) || loads.minimumWheelN <= 0.0) {
+        return false;
+    }
+    double sum = 0.0;
+    double minimum = std::numeric_limits<double>::infinity();
+    for (double normal : loads.normalN) {
+        if (!std::isfinite(normal) || normal <= 0.0) return false;
+        sum += normal;
+        minimum = std::min(minimum, normal);
+    }
+    if (!std::isfinite(sum)) return false;
+    const auto close = [](double a, double b) noexcept {
+        return std::abs(a - b) <= 1e-8 * std::max(a, b);
+    };
+    return close(sum, loads.totalN) &&
+           close(loads.normalN[0] + loads.normalN[1], loads.frontAxleN) &&
+           close(loads.normalN[2] + loads.normalN[3], loads.rearAxleN) &&
+           close(loads.frontAxleN + loads.rearAxleN, loads.totalN) &&
+           close(minimum, loads.minimumWheelN);
+}
+
 // Summed longitudinal peak-force proxy, only for a fully grounded car.
 // No friction ellipse or brake/drive distribution is implied.
 inline double EstimateFourWheelPeakLongitudinalForceN(
     const WheelLoadEstimate& loads,
     const TireLoadSensitivity& tire) noexcept {
-    if (loads.status != LoadTransferStatus::Valid) {
+    if (!ConsistentWheelLoads(loads)) {
         return std::numeric_limits<double>::quiet_NaN();
     }
     double total = 0.0;
@@ -180,8 +208,7 @@ inline double EstimateRemainingLongitudinalForceN(
     const WheelLoadEstimate& loads,
     const TireLoadSensitivity& tire,
     const std::array<double, 4>& lateralDemandN) noexcept {
-    if (loads.status != LoadTransferStatus::Valid ||
-        !std::isfinite(loads.totalN) || loads.totalN <= 0.0) {
+    if (!ConsistentWheelLoads(loads)) {
         return std::numeric_limits<double>::quiet_NaN();
     }
     double remaining = 0.0;
