@@ -190,8 +190,8 @@ public:
             if (source.gateOrdinal != 0 ||
                 source.lapOrdinal <= car.completedLapOrdinal ||
                 source.engineFrame <= car.lastFrame ||
-                source.clockSeconds <= car.lastSeconds &&
-                    car.lastFrame != 0) {
+                (source.clockSeconds <= car.lastSeconds &&
+                 car.lastFrame != 0)) {
                 return reject(GateTraceAdmission::StaleOrMisordered);
             }
             car.startFrame = source.engineFrame;
