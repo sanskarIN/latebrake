@@ -95,11 +95,11 @@ inline WheelSpeedReview ReviewWheelSpeedSample(
         const double angular = sample.angularSpeedRadPerSecond[i];
         if (!std::isfinite(radius) || !std::isfinite(angular) ||
             radius < limits.minimumRadiusMeters ||
-            radius > limits.maximumRadiusMeters || angular < 0.0)
+            radius > limits.maximumRadiusMeters)
             return WheelSpeedReview{};
-        const double surface = radius * angular;
+        // Preserve rotation direction: reverse travel and direction changes are valid.\n        // Temporal acceleration checks still reject impossible sign flips.\n        const double surface = radius * angular;
         if (!std::isfinite(surface) ||
-            surface > limits.maximumSurfaceSpeedMps)
+            std::abs(surface) > limits.maximumSurfaceSpeedMps)
             return WheelSpeedReview{};
         out.surfaceSpeedMps[i] = surface;
         bool plausible = true;
