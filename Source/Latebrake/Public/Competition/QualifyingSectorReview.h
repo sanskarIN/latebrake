@@ -84,6 +84,22 @@ struct SectorReviewReceipt final {
     bool valid = false;
 };
 
+struct ProvisionalSectorPosition final {
+    std::uint64_t actor = 0;
+    double measuredBestLapSeconds = std::numeric_limits<double>::infinity();
+    double bestSectorCombinationSeconds = std::numeric_limits<double>::infinity();
+    double theoreticalGainSeconds = 0.0;
+    int reviewedLaps = 0;
+    bool hasEvidence = false;
+};
+
+struct ProvisionalSectorOrder final {
+    std::array<ProvisionalSectorPosition, MaximumQualifyingCars> entries{};
+    std::size_t count = 0;
+    std::size_t timedDrivers = 0;
+    bool valid = false;
+};
+
 inline bool ValidSectorSettings(const SectorSettings& s) noexcept {
     return s.session != 0 && s.circuit != 0 &&
            s.gatesPerLap >= 2 && s.gatesPerLap <= 4096 &&
@@ -301,6 +317,55 @@ public:
             receipt->valid = true;
         }
         return SectorAdmission::Accepted;
+    }
+
+    // Advisory leaderboard is independent of the official Unreal GameMode.
+    // It ranks real best laps first, then hypothetical best split times.
+    // Actor registration order remains the deterministic final tie-break.
+    ProvisionalSectorOrder Leaderboard() const noexcept {
+        ProvisionalSectorOrder output{};
+        if (!active_) return output;
+        std::array<std::size_t, MaximumQualifyingCars> order{};
+        for (std::size_t i = 0; i < count_; ++i) order[i] = i;
+        for (std::size_t i = 1; i < count_; ++i) {
+            const std::size_t chosen = order[i];
+            std::size_t j = i;
+            while (j > 0) {
+                const auto& a = drivers_[chosen];
+                const auto& b = drivers_[order[j - 1]];
+                const bool ahead =
+                    (a.hasLapEvidence && !b.hasLapEvidence) ||
+                    (a.hasLapEvidence == b.hasLapEvidence &&
+                     a.bestLapSeconds < b.bestLapSeconds) ||
+                    (a.hasLapEvidence == b.hasLapEvidence &&
+                     a.bestLapSeconds == b.bestLapSeconds &&
+                     a.optimalSectorSumSeconds <
+                         b.optimalSectorSumSeconds);
+                if (!ahead) break;
+                order[j] = order[j - 1];
+                --j;
+            }
+            order[j] = chosen;
+        }
+        for (std::size_t i = 0; i < count_; ++i) {
+            const auto& driver = drivers_[order[i]];
+            auto& entry = output.entries[i];
+            entry.actor = driver.actor;
+            entry.hasEvidence = driver.hasLapEvidence;
+            entry.reviewedLaps = driver.reviewedLaps;
+            if (driver.hasLapEvidence) {
+                entry.measuredBestLapSeconds = driver.bestLapSeconds;
+                entry.bestSectorCombinationSeconds =
+                    driver.optimalSectorSumSeconds;
+                entry.theoreticalGainSeconds = std::max(
+                    0.0, driver.bestLapSeconds -
+                             driver.optimalSectorSumSeconds);
+                ++output.timedDrivers;
+            }
+        }
+        output.count = count_;
+        output.valid = true;
+        return output;
     }
 
     const SectorDriverReview* Driver(std::uint64_t actor) const noexcept {
