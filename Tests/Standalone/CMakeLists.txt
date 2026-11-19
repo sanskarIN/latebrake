@@ -2186,3 +2186,7 @@ add_latebrake_portable_research_test(QualifyingEvidencePipeline)
 
 # Independent provisional-grid and sector-leaderboard consistency audit.
 add_latebrake_portable_research_test(QualifyingGridAudit)
+
+# Source-only qualifying order mapped to the original six-slot physical
+# circuit grid preflight; does not spawn cars or award official positions.
+add_latebrake_portable_research_test(QualifyingStartGridPlan)
