@@ -142,9 +142,12 @@ inline GridAuditReceipt AuditQualifyingGrid(
         if (!grid.qualified[i]) {
             if (grid.bestLapOrdinals[i] != 0 ||
                 sectors.reviewedLaps != 0 ||
-                !std::isinf(grid.bestLapSeconds[i]) ||
-                !std::isinf(sectors.measuredBestLapSeconds) ||
-                !std::isinf(sectors.bestSectorCombinationSeconds)) {
+                grid.bestLapSeconds[i] !=
+                    std::numeric_limits<double>::infinity() ||
+                sectors.measuredBestLapSeconds !=
+                    std::numeric_limits<double>::infinity() ||
+                sectors.bestSectorCombinationSeconds !=
+                    std::numeric_limits<double>::infinity()) {
                 output.fault = GridAuditFault::InconsistentQualification;
                 return output;
             }
