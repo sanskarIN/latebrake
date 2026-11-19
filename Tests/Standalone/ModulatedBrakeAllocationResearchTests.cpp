@@ -9,12 +9,13 @@ using namespace LateBrake::PhysicsResearch;
 
 int main() {
     BrakeAllocationInput input{};
-    input.loads.valid = true;
+    input.loads.status = LoadTransferStatus::Valid;
     input.loads.normalN = {3000.0, 3000.0, 2000.0, 2000.0};
     input.loads.frontAxleN = 6000.0;
     input.loads.rearAxleN = 4000.0;
-    input.loads.totalNormalN = 10000.0;
+    input.loads.totalN = 10000.0;
     input.loads.minimumWheelN = 2000.0;
+    input.tire = {2500.0, 1.0, 0.0};
     input.requestedBrakeForceN = 2000.0;
     input.preferredFrontFraction = 0.6;
     BrakeSlipResult pressure{};
