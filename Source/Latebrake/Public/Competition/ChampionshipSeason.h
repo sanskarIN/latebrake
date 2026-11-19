@@ -214,6 +214,23 @@ public:
                 car.completedLaps > settings_.requiredRaceLaps) {
                 return SeasonAdmission::InvalidField;
             }
+            // Reject unrecognised states and contradictory did-not-start
+            // records instead of silently treating them as a retirement.
+            switch (car.state) {
+            case FinishState::Classified:
+            case FinishState::Retired:
+            case FinishState::Disqualified:
+                break;
+            case FinishState::DidNotStart:
+                if (car.completedLaps != 0 ||
+                    car.officialRaceSeconds != 0.0 ||
+                    car.fastestLapVerified) {
+                    return SeasonAdmission::InvalidClassification;
+                }
+                break;
+            default:
+                return SeasonAdmission::InvalidClassification;
+            }
             if (car.state == FinishState::Classified) {
                 if (car.officialPosition <= 0 ||
                     car.officialPosition > static_cast<int>(count_) ||
