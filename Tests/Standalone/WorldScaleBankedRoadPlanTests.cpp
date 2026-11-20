@@ -159,9 +159,19 @@ int main()
             Check(audit.MaximumTopCm-audit.MinimumTopCm>650.0,
                   "technical crest has meaningful original terrain relief");
         if(circuit.Id==WorldScaleVariantId::OriginalLoop)
-            Check(Near(audit.MinimumTopCm,-1.0) &&
-                  Near(audit.MaximumTopCm,-1.0),
-                  "the original loop is an intentionally flat centerline");
+        {
+            // The original loop has ZERO longitudinal crest, but its
+            // proposed visual road still has a small, nonzero cross-bank.
+            // Audit extrema include left/right edges, not just centerline.
+            const auto centerQuarter=SampleWorldScaleBankedRoad(
+                circuit,profile,0.125*lap,0.0);
+            Check(centerQuarter.Valid &&
+                  Near(centerQuarter.WorldZcm,-1.0) &&
+                  audit.MinimumTopCm<-1.0 &&
+                  audit.MaximumTopCm>-1.0 &&
+                  audit.MaximumTopCm-audit.MinimumTopCm<30.0,
+                  "flat centerline retains its bounded edge banking");
+        }
         const auto mesh=BuildWorldScaleBankedRoadVisualCandidate(
             circuit,profile);
         Check(mesh.Vertices.size()==
