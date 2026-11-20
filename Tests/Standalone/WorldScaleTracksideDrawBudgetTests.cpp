@@ -200,6 +200,10 @@ int main()
               minimal.RejectedByBudget>0u,
               "tight budgets downgrade to billboard before dropping geometry");
         auto cameraBack=camera;
+        // Some source objects are wide grandstands: their bounding sphere
+        // may still enter a reversed frustum at only 1000 cm. Move far
+        // enough behind the observed prop to prove complete rejection.
+        cameraBack.Xcm=anchor.Xcm-5000.0;
         cameraBack.YawRadians=TracksideDrawPi;
         const auto reverse=BuildTracksideDrawFrame(
             scene,cameraBack);
