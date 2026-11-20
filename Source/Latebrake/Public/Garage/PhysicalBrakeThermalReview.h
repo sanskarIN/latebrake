@@ -93,6 +93,9 @@ struct PhysicalBrakeThermalPlan final {
     double MaximumRotorTemperatureC=0.0;
     double MinimumRotorThicknessMarginMm=0.0;
     double MaximumAxleTemperatureSplitC=0.0;
+    double MaximumAxleTorqueImbalance=0.0;
+    unsigned AxlesWithHotSplit=0u;
+    unsigned AxlesWithTorqueImbalance=0u;
     double FrontTorqueFraction=0.0;
     double OriginalGarageFrontBrakeBias=0.0;
     double FrontBiasObservedDifference=0.0;
@@ -254,7 +257,8 @@ inline PhysicalBrakeThermalCorner ReviewPhysicalBrakeCorner(
     const double pressure=witness.HydraulicPressureKpa;
     const double torque=witness.MeasuredBrakeTorqueNm;
     const double nominal=std::max(
-        1.0,settings.IdealMaximumTemperatureC);
+        1.0,settings.MaximumDiscThicknessMm-
+             witness.ManufacturerMinimumThicknessMm);
     const double headroom=std::max(
         0.0,settings.FadeRiskTemperatureC-
             witness.RotorTemperatureC);
@@ -362,11 +366,21 @@ inline PhysicalBrakeThermalPlan BuildPhysicalBrakeThermalReview(
     out.FrontBiasObservedDifference=
         out.FrontTorqueFraction-out.OriginalGarageFrontBrakeBias;
     for(unsigned axle=0u;axle<2u;++axle){
+        const double left=out.Corners[2u*axle].ActualBrakeTorqueNm;
+        const double right=out.Corners[2u*axle+1u].ActualBrakeTorqueNm;
+        const double denominator=std::max(1.0,left+right);
+        const double imbalance=std::abs(left-right)/denominator;
+        out.MaximumAxleTorqueImbalance=std::max(
+            out.MaximumAxleTorqueImbalance,imbalance);
+        if(imbalance>settings.MaximumAxleTorqueImbalanceFraction)
+            ++out.AxlesWithTorqueImbalance;
         const double split=std::abs(
             out.Corners[2u*axle].ActualRotorTemperatureC-
             out.Corners[2u*axle+1u].ActualRotorTemperatureC);
         out.MaximumAxleTemperatureSplitC=std::max(
             out.MaximumAxleTemperatureSplitC,split);
+        if(split>settings.MaximumTemperatureSideDifferenceC)
+            ++out.AxlesWithHotSplit;
     }
     out.Valid=std::isfinite(out.MeanRotorTemperatureC) &&
         std::isfinite(out.FrontTorqueFraction) &&
