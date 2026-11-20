@@ -173,7 +173,6 @@ int main()
               WetLapTracePlausibleContinuity(frame,second) &&
               log.Record(second).Accepted,
               "measured standing water remains physical and continuous");
-        const auto genuine=second;
         auto moved=second;
         moved.Cars[0].WorldXcm+=7000.0;
         Check(!WetLapTracePlausibleContinuity(frame,moved) &&
