@@ -290,10 +290,12 @@ inline WetLapTraceFrame BuildWetLapTraceFrame(
         const auto& witness=sources[i];
         if(!ValidWetLapTraceRoadWitness(car,witness,fleet,p))
             return {};
+        // Different cars on the same circuit normally touch the SAME
+        // original asphalt collision body. The car actor must be unique,
+        // but the authenticated road body is allowed to be shared.
         for(std::size_t j=0u;j<i;++j)
         {
-            if(witness.RoadBody==sources[j].RoadBody ||
-               witness.Actor==sources[j].Actor)
+            if(witness.Actor==sources[j].Actor)
                 return {};
         }
         const auto film=SampleObservedWaterFilm(
