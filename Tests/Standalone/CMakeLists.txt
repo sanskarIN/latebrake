@@ -2458,3 +2458,7 @@ add_latebrake_portable_research_test(ObservedWetSprayVisibility)
 # Actual measured wet road grip across six banked tracks, with physically
 # conservative closed-loop braking; never guesses grip from water film.
 add_latebrake_portable_research_test(WorldScaleMeasuredWetGripPace)
+
+# Source-only 24-wheel hydroplaning risk from actual physical tire probes
+# and authenticated six-track water; never applies a tire or steering force.
+add_latebrake_portable_research_test(ObservedTyreWaterContactRisk)
