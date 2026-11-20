@@ -2450,3 +2450,7 @@ add_latebrake_portable_research_test(WorldScaleObservedWaterFilm)
 
 # Real-water source-only reflection and wet-sheen mesh without new road collision.
 add_latebrake_portable_research_test(WorldScaleObservedPuddleVisuals)
+
+# Source-only six-real-car mist forecast over verified measured road water.
+# No collision, native particles, actual occlusion or official race impact.
+add_latebrake_portable_research_test(ObservedWetSprayVisibility)
