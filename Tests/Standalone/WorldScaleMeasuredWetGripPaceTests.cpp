@@ -92,8 +92,104 @@ int main(){
               reference.SourceFrame==900u &&
               reference.MinimumGrip==1.0 &&
               reference.MaximumGrip==1.0 &&
-              reference.SourceOnly==false,
-              "placeholder");
+              reference.OriginalDryPaceUntouched &&
+              reference.NativePhysicsUntouched &&
+              reference.RaceAuthorityUntouched &&
+              Near(reference.EstimatedLapSeconds,
+                   dry.EstimatedGeometricLapSeconds,1e-5),
+              "all-grip source cannot fabricate an improved race pace");
+        auto wetInput=Grip(circuit,0.65);
+        const auto wet=BuildMeasuredWetGripPace(
+            circuit,dry,water,wetInput);
+        Check(wet.Valid &&
+              wet.Fault==WetGripPaceFault::None &&
+              wet.MinimumGrip==0.65 &&
+              wet.MaximumGrip==0.65 &&
+              wet.MaximumObservedFilmMm==1.5 &&
+              wet.EstimatedLapSeconds>=
+                  dry.EstimatedGeometricLapSeconds-1e-5 &&
+              wet.ReducedNodes>0u &&
+              wet.RelaxationPasses>0u &&
+              wet.RelaxationPasses<=WetGripPaceNodeCount,
+              "measured lower grip reduces only advisory speeds");
+        for(std::size_t node=0;node<WetGripPaceNodeCount;++node){
+            const auto& current=wet.Nodes[node];
+            const auto& next=wet.Nodes[
+                (node+1u)%WetGripPaceNodeCount];
+            const double speed2=current.TargetCmps*current.TargetCmps;
+            const double next2=next.TargetCmps*next.TargetCmps;
+            const double braking=std::min(
+                current.BrakingCmps2,next.BrakingCmps2);
+            const double driving=std::min(
+                current.DrivingCmps2,next.DrivingCmps2);
+            Check(current.TargetCmps<=current.LocalCapCmps+1e-5 &&
+                  current.TargetCmps<=
+                      dry.Nodes[node].TargetSpeedCmps+1e-5 &&
+                  current.NoNativeActuation &&
+                  current.Grip==0.65 &&
+                  current.ObservedFilmMm==1.5 &&
+                  speed2<=next2+
+                      2.0*wet.NodeLengthCm*braking+0.1 &&
+                  next2<=speed2+
+                      2.0*wet.NodeLengthCm*driving+0.1,
+                  "every wet circuit edge conservatively brakes through seam");
+        }
+        for(const double station:{
+            0.0,circuit.LapLengthCm*0.25,
+            circuit.LapLengthCm-1.0})
+        {
+            const auto a=SampleMeasuredWetGripPace(
+                circuit,wet,station);
+            const auto b=SampleMeasuredWetGripPace(
+                circuit,wet,station+circuit.LapLengthCm);
+            Check(a.Valid && b.Valid &&
+                  a.SourceOnly && a.NoRaceResultAuthority &&
+                  Near(a.TargetSpeedCmps,b.TargetSpeedCmps) &&
+                  Near(a.MinimumMeasuredGrip,
+                       b.MinimumMeasuredGrip),
+                  "signed whole-lap wet pace sampling preserves seam continuity");
+        }
+        const auto wrong=WorldScaleOriginalVariantRecipes[
+            (index+1u)%WorldScaleVariantCount];
+        Check(!SampleMeasuredWetGripPace(
+            wrong,wet,0.0).Valid &&
+            !SampleMeasuredWetGripPace(
+            circuit,wet,nan).Valid,
+            "unqualified route and nonfinite pace queries rejected");
+        const auto dryWater=Water(circuit,0.0);
+        const auto unchanged=BuildMeasuredWetGripPace(
+            circuit,dry,dryWater,wetInput);
+        Check(unchanged.Valid &&
+              Near(unchanged.EstimatedLapSeconds,
+                   wet.EstimatedLapSeconds,1e-5),
+              "water film is never a fictional friction sensor");
+        wetInput=Grip(circuit,0.65);
+        wetInput.Probes[50].TrueFrictionMeasurement=false;
+        Check(!BuildMeasuredWetGripPace(
+            circuit,dry,water,wetInput).Valid,
+            "one missing tire-force witness invalidates pace");
+        wetInput=Grip(circuit,0.65);
+        wetInput.Probes[25].MeasuredGrip=nan;
+        Check(!BuildMeasuredWetGripPace(
+            circuit,dry,water,wetInput).Valid,
+            "nonfinite measured friction fails closed");
+        wetInput=Grip(circuit,0.65);
+        wetInput.Probes[75].StationCm+=5.0;
+        Check(!BuildMeasuredWetGripPace(
+            circuit,dry,water,wetInput).Valid,
+            "false station mapping cannot qualify native grip");
+        wetInput=Grip(circuit,0.65);
+        wetInput.Probes[50].ClockSeconds=5.0;
+        Check(!BuildMeasuredWetGripPace(
+            circuit,dry,water,wetInput).Valid,
+            "stale physical grip station cannot be extrapolated");
+        wetInput=Grip(circuit,0.65);
+        wetInput.Revision=4u;
+        const auto staleEpoch=BuildMeasuredWetGripPace(
+            circuit,dry,water,wetInput);
+        Check(!staleEpoch.Valid &&
+              staleEpoch.Fault==WetGripPaceFault::SourceEpochChanged,
+              "official session revision separates measured weather");
         ++routes;
     }
     Check(routes==WorldScaleVariantCount,
