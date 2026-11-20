@@ -2474,3 +2474,7 @@ add_latebrake_portable_research_test(SixCarCircuitSetupResearch)
 # Authenticated four-wheel tire pressure/temperature/tread setup QA for 36
 # original car/track combinations, without real inflation or garage changes.
 add_latebrake_portable_research_test(PhysicalTyreSetupTelemetry)
+
+# Fixed-capacity 64-frame four-wheel tire pressure and wear trend source QA.
+# No live Chaos tire wear, valve correction, or career unlock authority.
+add_latebrake_portable_research_test(PhysicalTyreStintTrend)
