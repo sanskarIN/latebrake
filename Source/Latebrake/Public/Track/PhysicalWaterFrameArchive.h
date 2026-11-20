@@ -232,16 +232,22 @@ public:
         double activeClockSeconds) const noexcept
     {
         PhysicalWaterPlaybackFrame out;
-        if(!HasPlayback() ||
-           !std::isfinite(activeClockSeconds) ||
-           activeClockSeconds<EarliestClock() ||
-           activeClockSeconds>LatestClock())
+        if(!HasPlayback() || !std::isfinite(activeClockSeconds))
             return out;
+        // Exact recorded frame times can differ by one machine ulp from
+        // user-supplied decimal query times. Admit a tiny numeric epsilon,
+        // clamp to the witnessed range, and never extrapolate a real frame.
+        constexpr double TimeRoundingEpsilon=1.0e-8;
+        if(activeClockSeconds<EarliestClock()-TimeRoundingEpsilon ||
+           activeClockSeconds>LatestClock()+TimeRoundingEpsilon)
+            return out;
+        const double query=std::clamp(activeClockSeconds,
+            EarliestClock(),LatestClock());
         std::size_t first=0u;
         std::size_t last=Size-1u;
         while(first<last){
             const std::size_t mid=first+(last-first)/2u;
-            if(FrameAt(mid).ClockSeconds<activeClockSeconds)
+            if(FrameAt(mid).ClockSeconds<query)
                 first=mid+1u;
             else
                 last=mid;
@@ -257,7 +263,7 @@ public:
                dt<0.001 ||
                dt>0.2)
                 return {};
-            alpha=(activeClockSeconds-a.ClockSeconds)/dt;
+            alpha=(query-a.ClockSeconds)/dt;
             if(!std::isfinite(alpha) ||
                alpha<0.0 ||
                alpha>1.0)return {};
@@ -271,7 +277,7 @@ public:
         out.Revision=a.Revision;
         out.LowerFrame=a.SourceFrame;
         out.UpperFrame=b.SourceFrame;
-        out.SourceClockSeconds=activeClockSeconds;
+        out.SourceClockSeconds=query;
         out.InterpolationFraction=alpha;
         out.MinimumFilmMm=
             std::numeric_limits<double>::infinity();
