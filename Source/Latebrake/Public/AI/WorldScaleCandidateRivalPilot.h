@@ -1,7 +1,7 @@
 #pragma once
 
 #include "AI/RivalPilot.h"
-#include "Track/WorldScaleRacePacePlan.h"
+#include "Track/WorldScaleProjectionBlockIndex.h"
 
 #include <algorithm>
 #include <cmath>
@@ -54,9 +54,37 @@ public:
         LastLapDistanceCm = 0.0;
     }
 
+    // Trusted unchanged O(512) path: all existing callers and tests
+    // retain precisely their original route projection policy.
     WorldScalePilotDecision Step(
         const WorldScalePacePlan& plan,
         const WorldScalePilotSample& sample) noexcept
+    {
+        return StepImpl(plan, sample, nullptr);
+    }
+
+    // Experimental opt-in: the index must be built from this same
+    // immutable, long-lived plan. No Unreal adapter selects this path.
+    // An invalid, foreign or unloaded index FAILS CLOSED and clears
+    // the pilot continuity state instead of secretly falling back.
+    WorldScalePilotDecision StepIndexed(
+        const WorldScalePacePlan& plan,
+        const WorldScaleProjectionBlockIndex& index,
+        const WorldScalePilotSample& sample) noexcept
+    {
+        if (!index.Valid || index.Source != &plan)
+        {
+            Reset();
+            return {};
+        }
+        return StepImpl(plan, sample, &index);
+    }
+
+private:
+    WorldScalePilotDecision StepImpl(
+        const WorldScalePacePlan& plan,
+        const WorldScalePilotSample& sample,
+        const WorldScaleProjectionBlockIndex* index) noexcept
     {
         if (!plan.Valid || !sample.PhysicsReady || !sample.RaceGreen ||
             !std::isfinite(sample.Position.X) ||
@@ -80,7 +108,9 @@ public:
         // Never read old rectangular pavement or treat nearest centerline
         // distance as certified tire contact. The planned 9-m road union is
         // a necessary (but insufficient for Unreal physics) eligibility.
-        const auto road = ProjectWorldScaleRoute(plan, sample.Position);
+        const auto road = index == nullptr ?
+            ProjectWorldScaleRoute(plan, sample.Position) :
+            ProjectWorldScaleRouteBlocks(plan, *index, sample.Position);
         if (!road.Valid || !road.InsidePhysicalCandidateRoad)
         {
             Reset();
