@@ -2474,3 +2474,7 @@ add_latebrake_portable_research_test(SixCarCircuitSetupResearch)
 # Authenticated four-wheel tire pressure/temperature/tread setup QA for 36
 # original car/track combinations, without real inflation or garage changes.
 add_latebrake_portable_research_test(PhysicalTyreSetupTelemetry)
+
+# Six original circuits: real-source wet pit what-if strategy, 3 tyre compounds,
+# bounded measured lap confidence, tyre wear and fuel reserve; no native change.
+add_latebrake_portable_research_test(PhysicalWetPitStrategy)
