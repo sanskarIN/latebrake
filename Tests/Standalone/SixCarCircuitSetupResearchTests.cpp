@@ -52,7 +52,7 @@ int main(){
     Require(!ValidSixCarSetupSettings(settings),
             "nonfinite aero bound rejected");
     settings={};
-    Require(!ValidSixCarOriginalGarage({})==false,
+    Require(ValidSixCarOriginalGarage({}),
             "default original garage owns car zero");
     for(unsigned car=0u;car<SixCarSetupVehicleCount;++car)
         Require(ValidSixCarMechanicalSetup(
