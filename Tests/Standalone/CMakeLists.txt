@@ -2411,3 +2411,7 @@ add_latebrake_portable_research_test(WorldScaleBankedRoadPlan)
 # Future-circuit bank + grade with friction-reserve closed-loop speed planner.
 # Purely portable source; no real vehicle, Chaos control or race timing.
 add_latebrake_portable_research_test(WorldScaleBankedPacePlan)
+
+# Source-only off-road runoff, gravel, drainage and berm triangles.
+# Absolutely no live WorldStatic collision actor or playable map changes.
+add_latebrake_portable_research_test(WorldScaleRunoffTerrainPlan)
