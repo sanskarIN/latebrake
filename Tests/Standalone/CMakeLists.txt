@@ -2431,3 +2431,7 @@ add_latebrake_portable_research_test(PhysicalReplayRaceEvents)
 # Source-only six-car highlight clips from actual motion event witnesses.
 # This editor neither awards race results nor installs Unreal cameras.
 add_latebrake_portable_research_test(PhysicalReplayHighlightClips)
+
+# Original source-only six-circuit off-road 3D landscape furniture and
+# proxy mesh QA; no native actor installation or physical collision.
+add_latebrake_portable_research_test(WorldScaleTracksideScenePlan)
