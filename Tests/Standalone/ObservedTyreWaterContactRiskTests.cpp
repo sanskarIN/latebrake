@@ -126,7 +126,7 @@ int main(){
                 const auto& w=car.Wheels[j];
                 Check(w.Valid && w.OwnerActor==car.Actor &&
                       w.WheelIndex==j &&
-                      w.WaterFilmMm==7.0 &&
+                      std::abs(w.WaterFilmMm-7.0)<1e-6 &&
                       w.RiskFraction>=0.0 &&
                       w.RiskFraction<=1.0 &&
                       w.NominalHydroThresholdCmps>
