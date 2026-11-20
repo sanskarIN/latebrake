@@ -82,11 +82,22 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
         // segment's lateral bound, not only its own sampled curvature.
         result.speed_limit_mps[i] = std::min(result.speed_limit_mps[i], segment_lateral_cap);
         const double constrained_next = result.speed_limit_mps[i];
+        // Check the *squared* reachable speed before taking sqrt or min.
+        // std::min(max_double, sqrt(infinity)) is still a finite max_double;
+        // that silently admits absurd finite-length geometry and can make
+        // a later infinity <= infinity feasibility comparison return true.
+        const double optimisticDecel =
+            braking_efficiency * capacity + std::max(0.0, gravity_decel);
+        const double optimisticTravelSquared =
+            2.0 * segment_m * optimisticDecel;
+        const double reachableSpeedSquared =
+            constrained_next * constrained_next + optimisticTravelSquared;
+        if (!finite(optimisticTravelSquared) ||
+            !finite(reachableSpeedSquared) ||
+            reachableSpeedSquared < 0.0) return {};
         const double upper = std::min(
             std::min(lateral_limits[i - 1], segment_lateral_cap),
-            std::sqrt(constrained_next * constrained_next +
-                      2.0 * segment_m * (braking_efficiency * capacity +
-                                         std::max(0.0, gravity_decel))));
+            std::sqrt(reachableSpeedSquared));
         if (!finite(upper)) return {};
         // Even at zero lateral demand, insufficient downhill deceleration
         // means no feasible backward-reachable braking envelope.
