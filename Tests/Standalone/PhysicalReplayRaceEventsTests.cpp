@@ -152,8 +152,16 @@ int main()
     separating.Cars[1].WorldXcm=2200.0;
     separating.Cars[1].WorldYcm=1250.0;
     receipt=events.Observe(separating);
+    Require(receipt.Valid && events.Size()==oldSize,
+            "intermediate following frame never invents separation");
+    auto separated=MakeFrame(5u,0.25);
+    separated.Cars[0].WorldXcm=1000.0;
+    separated.Cars[0].WorldYcm=1000.0;
+    separated.Cars[1].WorldXcm=2800.0;
+    separated.Cars[1].WorldYcm=1250.0;
+    receipt=events.Observe(separated);
     Require(receipt.Valid && events.Size()>oldSize,
-            "observed pair separation creates read-only replay moment");
+            "physically continuous observed pair exit creates replay moment");
     Require(events.TryReadEvent(0u,latest) &&
             latest.Kind==
                 ReplayBroadcastEventKind::TrafficSeparated,
@@ -163,7 +171,7 @@ int main()
             !nonexistent.Valid,
             "out-of-range broadcast event never reads stale ring bytes");
 
-    auto wrong=MakeFrame(5u,0.25);
+    auto wrong=MakeFrame(6u,0.30);
     wrong.Cars[1].Actor=9999u;
     Require(!events.Observe(wrong).Valid &&
             !events.HasSource() && events.Size()==0u,
