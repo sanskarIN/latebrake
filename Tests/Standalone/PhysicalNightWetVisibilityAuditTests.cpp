@@ -31,17 +31,18 @@ latebrake::NightRaceLightingPlan Lighting(
     return scene;
 }
 latebrake::ObservedWaterResult Water(
-    latebrake::WorldScaleVariantId circuit,double film)
+    const latebrake::WorldScaleVariantRecipe& circuit,double film)
 {
     using namespace latebrake;
     ObservedWaterResult water;
     water.Valid=true;
-    water.Circuit=circuit;
+    water.Circuit=circuit.Id;
     water.Session=100u;
     water.Revision=4u;
     water.SourceFrame=12u;
     water.ClockSeconds=5.0;
-    water.CellLengthCm=100.0;
+    water.CellLengthCm=circuit.LapLengthCm/
+        static_cast<double>(latebrake::ObservedWaterCellCount);
     water.FilmMm.fill(film);
     water.RenderAdvisoryOnly=true;
     water.OriginalRaceUnaffected=true;
@@ -116,7 +117,7 @@ int main(){
         const auto circuit=WorldScaleOriginalVariantRecipes[i];
         auto source=Lighting(circuit.Id);
         const auto frame=Fleet();
-        auto water=Water(circuit.Id,1.0);
+        auto water=Water(circuit,1.0);
         auto witnesses=Witnesses();
         const auto audit=AuditNightWetSixCarSafety(
             circuit,source,water,frame,witnesses);
@@ -150,7 +151,7 @@ int main(){
                   "per-car sight geometry never changes the physical car");
         }
         const auto rain=AuditNightWetSixCarSafety(
-            circuit,source,Water(circuit.Id,12.0),frame,witnesses);
+            circuit,source,Water(circuit,12.0),frame,witnesses);
         Check(rain.Valid &&
               rain.Cars[0].EstimatedSightDistanceCm<
                   audit.Cars[0].EstimatedSightDistanceCm &&
