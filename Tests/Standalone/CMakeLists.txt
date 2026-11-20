@@ -2435,3 +2435,7 @@ add_latebrake_portable_research_test(PhysicalReplayHighlightClips)
 # Original source-only six-circuit off-road 3D landscape furniture and
 # proxy mesh QA; no native actor installation or physical collision.
 add_latebrake_portable_research_test(WorldScaleTracksideScenePlan)
+
+# Deterministic six-circuit source-only 3D scenery frustum and LOD draw budget.
+# No GPU render, real camera occlusion, engine actors, or race clock changes.
+add_latebrake_portable_research_test(WorldScaleTracksideDrawBudget)
