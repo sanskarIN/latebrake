@@ -3,7 +3,7 @@
 #include <cmath>
 #include <limits>
 using namespace latebrake::research;
-// Assertions must execute in Release builds where NDEBUG disables CHECK().
+// Assertions must execute in Release builds where NDEBUG disables assert().
 #define CHECK(expr) do { if (!(expr)) std::abort(); } while (false)
 int main() {
     ObservedGripFusion fusion;
