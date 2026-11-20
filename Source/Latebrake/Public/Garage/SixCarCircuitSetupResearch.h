@@ -262,8 +262,6 @@ inline SixCarSetupPlan BuildSixCarCircuitSetup(
         1.0-surface.MeasuredGripFraction,0.0,0.8);
     const double engineFactor=1.0+
         0.015*saved.EngineLevel;
-    const double tireFactor=1.0+
-        0.02*saved.GripLevel;
     SixCarSetupBase v=base;
     v.FrontSpringNm*=1.0-0.07*cornerSeverity;
     v.RearSpringNm*=1.0-0.08*cornerSeverity;
