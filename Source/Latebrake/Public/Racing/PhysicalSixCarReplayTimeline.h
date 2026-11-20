@@ -89,7 +89,7 @@ struct PhysicalReplayPlaybackCar final
     double Ycm=0.0;
     double Zcm=0.0;
     double HeadingRadians=0.0;
-    double SignedSpeedCmps=0.0;
+    double ObservedSpeedCmps=0.0;
     double SteeringNormalized=0.0;
     double ThrottleNormalized=0.0;
     double BrakeNormalized=0.0;
@@ -396,7 +396,7 @@ public:
             car.HeadingRadians=std::remainder(
                 first.HeadingRadians+alpha*turn,
                 2.0*3.1415926535897932384626433832795);
-            car.SignedSpeedCmps=(1.0-alpha)*
+            car.ObservedSpeedCmps=(1.0-alpha)*
                 PhysicalReplaySpeed(first)+alpha*
                 PhysicalReplaySpeed(last);
             car.SteeringNormalized=first.SteeringNormalized+
@@ -412,7 +412,7 @@ public:
                !std::isfinite(car.Ycm) ||
                !std::isfinite(car.Zcm) ||
                !std::isfinite(car.HeadingRadians) ||
-               !std::isfinite(car.SignedSpeedCmps))
+               !std::isfinite(car.ObservedSpeedCmps))
                 return {};
             car.ProvenanceMatched=true;
             out.Cars[i]=car;
