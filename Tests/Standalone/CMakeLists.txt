@@ -2403,3 +2403,7 @@ add_latebrake_portable_research_test(ProvisionalRaceControl)
 # All source-only CTest registrations retain warnings-as-errors on 3 OSes.
 add_latebrake_portable_research_test(JerkBrakeEnvelope)
 add_latebrake_portable_research_test(PitEntrySpeedEnvelopeResearch)
+
+# Original periodic bank/crest visual geometry for all six future tracks.
+# Source-only: no Unreal/Chaos collision changes or gameplay claims.
+add_latebrake_portable_research_test(WorldScaleBankedRoadPlan)
