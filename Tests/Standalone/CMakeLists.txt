@@ -2382,3 +2382,17 @@ else()
 endif()
 add_test(NAME WorldScaleConservativeGripPilot
     COMMAND latebrake_world_scale_conservative_grip_pilot)
+
+# Jerk-limited relative stopping distance: source-only, no Chaos authority.
+add_executable(latebrake_jerk_brake_envelope
+    JerkBrakeEnvelopeTests.cpp)
+target_include_directories(latebrake_jerk_brake_envelope
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_jerk_brake_envelope PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_jerk_brake_envelope PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_jerk_brake_envelope PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME JerkBrakeEnvelope COMMAND latebrake_jerk_brake_envelope)
