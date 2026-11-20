@@ -2462,3 +2462,7 @@ add_latebrake_portable_research_test(WorldScaleMeasuredWetGripPace)
 # Source-only 24-wheel hydroplaning risk from actual physical tire probes
 # and authenticated six-track water; never applies a tire or steering force.
 add_latebrake_portable_research_test(ObservedTyreWaterContactRisk)
+
+# Native-source six-track, event-based clean-lap/mission ledger; only local
+# evidence, no unverified career rewards or official racing progression.
+add_latebrake_portable_research_test(PhysicalCircuitChallengeEvidence)
