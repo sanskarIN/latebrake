@@ -2486,3 +2486,9 @@ add_latebrake_portable_research_test(PhysicalTyreServiceForecast)
 # Six-circuit source-only nighttime floodlight photometry and bounded
 # visual draw-power/road survey; no actual UE lights, shadows or physics.
 add_latebrake_portable_research_test(WorldScaleNightRaceLightingPlan)
+
+add_latebrake_portable_research_test(PhysicalWetPitStrategy)
+add_latebrake_portable_research_test(PhysicalWetPitDecisionGate)
+add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
+# Three disjoint, previously authored sibling research tests from PR #425.
+# This integration does not confer native pit, wet-grip or race authority.
