@@ -25,6 +25,14 @@ int main() {
     assert(!fusion.Observe(s));
     s.longitudinal_force_n = 300;
     assert(fusion.Observe(s));
+    // Later measured force must not be erased by a premature slip ceiling.
+    s.frame = 4; s.time_s = 0.04;
+    s.longitudinal_force_n = 900; s.lateral_force_n = 0;
+    s.slip_ratio = 0.01;
+    assert(fusion.Observe(s));
+    a = fusion.Estimate();
+    assert(a.valid && std::abs(a.demonstrated_grip - 0.9) < 1e-12);
+    assert(a.candidate_upper >= a.demonstrated_grip);
     fusion.Reset();
     assert(!fusion.Estimate().valid);
     assert(fusion.Observe(s));
