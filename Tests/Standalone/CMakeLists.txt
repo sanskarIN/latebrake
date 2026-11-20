@@ -2492,3 +2492,7 @@ add_latebrake_portable_research_test(PhysicalWetPitDecisionGate)
 add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
 # Three disjoint, previously authored sibling research tests from PR #425.
 # This integration does not confer native pit, wet-grip or race authority.
+
+# 24 cosmetic head and brake lamps over six actually witnessed chassis,
+# six source circuits and original measured nighttime source conditions.
+add_latebrake_portable_research_test(PhysicalSixCarNightLighting)
