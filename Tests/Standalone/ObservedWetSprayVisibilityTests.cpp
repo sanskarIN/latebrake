@@ -115,8 +115,8 @@ int main() {
               "all six real cars emit bounded cosmetic wet mist");
         for(const auto& spray:plan.Emitters) {
             Check(spray.Valid && spray.Actor!=0u &&
-                spray.ActualSpeedCmps==6000.0 &&
-                spray.SourceFilmMm==9.0 &&
+                std::abs(spray.ActualSpeedCmps-6000.0)<1e-6 &&
+                std::abs(spray.SourceFilmMm-9.0)<1e-6 &&
                 spray.Intensity>0.0 &&
                 spray.RecommendedRangeCm>0.0 &&
                 spray.ProposedParticleBudget<=settings.MaximumParticlesPerVehicle &&
