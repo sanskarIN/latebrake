@@ -2149,6 +2149,159 @@ add_latebrake_portable_research_test(CircuitPaceAudit)
 # Detect duplicate pit-review type names across old/new source-only APIs.
 add_latebrake_portable_research_test(PitCompatibility)
 
+# Portable original 1.3-2.4km future racing levels: distinct 68-piece
+# physical road plans, closed graphics ribbons and route pace forecasts.
+# This does NOT cook any Unreal level, grant lap or install a Win64 game.
+add_executable(latebrake_world_scale_original_circuits
+    WorldScaleOriginalCircuitsTests.cpp)
+target_include_directories(latebrake_world_scale_original_circuits PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_original_circuits PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_original_circuits PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_original_circuits PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleOriginalCircuits
+    COMMAND latebrake_world_scale_original_circuits)
+
+# Six ORIGINAL road variant 3x2 grid and signed sector planes,
+# without altering Unreal's active GameMode or race progress.
+add_executable(latebrake_world_scale_variant_grid_and_gates
+    WorldScaleVariantGridAndGatesTests.cpp)
+target_include_directories(latebrake_world_scale_variant_grid_and_gates
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variant_grid_and_gates PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variant_grid_and_gates
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variant_grid_and_gates
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariantGridAndGates
+    COMMAND latebrake_world_scale_variant_grid_and_gates)
+
+# Source-only six-real-actor observation proof across all six new
+# circuit geometries, with zero actual Unreal standings/lap authority.
+add_executable(latebrake_world_scale_variant_fleet_continuity
+    WorldScaleVariantFleetContinuityTests.cpp)
+target_include_directories(latebrake_world_scale_variant_fleet_continuity
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variant_fleet_continuity
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variant_fleet_continuity
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variant_fleet_continuity
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariantFleetContinuity
+    COMMAND latebrake_world_scale_variant_fleet_continuity)
+
+# Conservative real-world XY measured rival control proposal per original
+# variant; does not bind Chaos controls, official laps or online players.
+add_executable(latebrake_world_scale_variant_rival_pilot
+    WorldScaleVariantRivalPilotTests.cpp)
+target_include_directories(latebrake_world_scale_variant_rival_pilot
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variant_rival_pilot
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variant_rival_pilot
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variant_rival_pilot
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariantRivalPilot
+    COMMAND latebrake_world_scale_variant_rival_pilot)
+
+# Same-physics-frame six-car source-only braking and following
+# arbitration. No actual Unreal vehicle commands or multiplayer.
+add_executable(latebrake_world_scale_variant_traffic_supervisor
+    WorldScaleVariantTrafficSupervisorTests.cpp)
+target_include_directories(latebrake_world_scale_variant_traffic_supervisor
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variant_traffic_supervisor PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variant_traffic_supervisor
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variant_traffic_supervisor
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariantTrafficSupervisor
+    COMMAND latebrake_world_scale_variant_traffic_supervisor)
+
+# Source-only future 1.7km original-road scene geometry. Visual-only:
+# not cooked UE5.8, collision road, driver braking or official checkpoints.
+add_executable(latebrake_world_scale_source_scene
+    WorldScaleSourceSceneTests.cpp)
+target_include_directories(latebrake_world_scale_source_scene PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_source_scene PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_source_scene PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_source_scene PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleSourceScene
+    COMMAND latebrake_world_scale_source_scene)
+
+# Visual-only future-world-scale 1.7km road LOD. Mesh source without
+# Unreal Engine rendering, cooked original circuit or Chaos collision.
+add_executable(latebrake_world_scale_visual_lod
+    WorldScaleVisualLodTests.cpp)
+target_include_directories(latebrake_world_scale_visual_lod PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_visual_lod PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_visual_lod PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_visual_lod PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVisualLod
+    COMMAND latebrake_world_scale_visual_lod)
+
+# Nonphysical roadside 3-level rail/post proposals on original 1.7km
+# source route. No Unreal WorldStatic safety barrier actor is built.
+add_executable(latebrake_world_scale_guardrail_scene
+    WorldScaleGuardrailSceneTests.cpp)
+target_include_directories(latebrake_world_scale_guardrail_scene PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_guardrail_scene PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_guardrail_scene PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_guardrail_scene PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleGuardrailScene
+    COMMAND latebrake_world_scale_guardrail_scene)
+
+# Pure C++20 512-station candidate racing corridor and pace advisory.
+# No Unreal car steering, collisions, passing or lap authority.
+add_executable(latebrake_world_scale_candidate_racing_line
+    WorldScaleCandidateRacingLineTests.cpp)
+target_include_directories(latebrake_world_scale_candidate_racing_line
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_candidate_racing_line
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_candidate_racing_line
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_candidate_racing_line
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleCandidateRacingLine
+    COMMAND latebrake_world_scale_candidate_racing_line)
+
 # Source-only original-circuit projection: deterministic CTest smoke and
 # opt-in --profile synthetic 30/60/120 Hz measurements (not UE timing).
 add_executable(latebrake_world_scale_projection_profile
@@ -2164,3 +2317,174 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionProfile
     COMMAND latebrake_world_scale_projection_profile)
+
+# Conservative read-only broad phase; compare every returned field with
+# the unchanged O(512) route reference, not live Unreal gameplay.
+add_executable(latebrake_world_scale_projection_blocks
+    WorldScaleProjectionBlockIndexTests.cpp)
+target_include_directories(latebrake_world_scale_projection_blocks PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_projection_blocks PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_projection_blocks PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_projection_blocks PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleProjectionBlocks
+    COMMAND latebrake_world_scale_projection_blocks)
+
+# Source-only opt-in A/B performance measurements with fully identical
+# output regression; default CTest uses only a small deterministic smoke.
+add_executable(latebrake_world_scale_projection_ab_profile
+    WorldScaleProjectionABProfileTests.cpp)
+target_include_directories(latebrake_world_scale_projection_ab_profile
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_projection_ab_profile
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_projection_ab_profile PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_projection_ab_profile
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleProjectionABProfile
+    COMMAND latebrake_world_scale_projection_ab_profile)
+
+# Strict portable 512-source-station variable-friction lap speed solver.
+# Never used as live Unreal/Chaos friction or official race evidence.
+add_executable(latebrake_world_scale_variable_grip_pace
+    WorldScaleVariableGripPaceTests.cpp)
+target_include_directories(latebrake_world_scale_variable_grip_pace
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_variable_grip_pace PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_variable_grip_pace PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_variable_grip_pace PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleVariableGripPace
+    COMMAND latebrake_world_scale_variable_grip_pace)
+
+# Optional measured-grip route constraint layered over existing dry
+# world-scale rival pilot; never wired into Unreal GameMode.
+add_executable(latebrake_world_scale_conservative_grip_pilot
+    WorldScaleConservativeGripPilotTests.cpp)
+target_include_directories(latebrake_world_scale_conservative_grip_pilot
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_world_scale_conservative_grip_pilot PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_world_scale_conservative_grip_pilot PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_world_scale_conservative_grip_pilot
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME WorldScaleConservativeGripPilot
+    COMMAND latebrake_world_scale_conservative_grip_pilot)
+
+# Combined opt-in source-only brake/competition C++20 research tests.
+# This preflight does not activate Chaos gameplay or native Win64 builds.
+add_latebrake_portable_research_test(TireLoadTransferResearch)
+add_latebrake_portable_research_test(BrakeForceAllocationResearch)
+add_latebrake_portable_research_test(BrakeSlipModulationResearch)
+add_latebrake_portable_research_test(ModulatedBrakeAllocationResearch)
+add_latebrake_portable_research_test(WheelSpeedPlausibilityResearch)
+add_latebrake_portable_research_test(CompetitionSource)
+add_latebrake_portable_research_test(QualifyingGateTraceSource)
+add_latebrake_portable_research_test(QualifyingSectorReview)
+add_latebrake_portable_research_test(SeasonTitleBounds)
+add_latebrake_portable_research_test(QualifyingEvidencePipeline)
+add_latebrake_portable_research_test(QualifyingGridAudit)
+add_latebrake_portable_research_test(QualifyingStartGridPlan)
+add_latebrake_portable_research_test(ProvisionalRaceControl)
+
+# Independent research advisories; portable only, never connected to Chaos.
+# All source-only CTest registrations retain warnings-as-errors on 3 OSes.
+add_latebrake_portable_research_test(JerkBrakeEnvelope)
+add_latebrake_portable_research_test(PitEntrySpeedEnvelopeResearch)
+
+# Original periodic bank/crest visual geometry for all six future tracks.
+# Source-only: no Unreal/Chaos collision changes or gameplay claims.
+add_latebrake_portable_research_test(WorldScaleBankedRoadPlan)
+
+# Future-circuit bank + grade with friction-reserve closed-loop speed planner.
+# Purely portable source; no real vehicle, Chaos control or race timing.
+add_latebrake_portable_research_test(WorldScaleBankedPacePlan)
+
+# Source-only off-road runoff, gravel, drainage and berm triangles.
+# Absolutely no live WorldStatic collision actor or playable map changes.
+add_latebrake_portable_research_test(WorldScaleRunoffTerrainPlan)
+
+# Six real-actor source observations for bounded read-only replay.
+# No fake Unreal spawn, scoring, collision, credit or saved profile authority.
+add_latebrake_portable_research_test(PhysicalSixCarReplayTimeline)
+
+# Original read-only replay camera geometry and smoothing for six genuine
+# source actors; seven views, no Unreal camera, occlusion or result authority.
+add_latebrake_portable_research_test(PhysicalReplayCameraDirector)
+
+# Authenticated six-car broadcast highlights only; no official pass/rank,
+# scoring, Chaos force, saved profile or deterministic replay authority.
+add_latebrake_portable_research_test(PhysicalReplayRaceEvents)
+
+# Source-only six-car highlight clips from actual motion event witnesses.
+# This editor neither awards race results nor installs Unreal cameras.
+add_latebrake_portable_research_test(PhysicalReplayHighlightClips)
+
+# Original source-only six-circuit off-road 3D landscape furniture and
+# proxy mesh QA; no native actor installation or physical collision.
+add_latebrake_portable_research_test(WorldScaleTracksideScenePlan)
+
+# Deterministic six-circuit source-only 3D scenery frustum and LOD draw budget.
+# No GPU render, real camera occlusion, engine actors, or race clock changes.
+add_latebrake_portable_research_test(WorldScaleTracksideDrawBudget)
+
+# Observed-route 16-sector scenery prefetch, resident and cold capacity QA.
+# Pure source-only predictions; never unload road collision or stream UE assets.
+add_latebrake_portable_research_test(WorldScaleTracksideStreamingPlan)
+
+# Observed physical-water source only: 256-cell rain, drainage, evaporation
+# and pairwise conserved longitudinal diffusion across all six route seams.
+add_latebrake_portable_research_test(WorldScaleObservedWaterFilm)
+
+# Real-water source-only reflection and wet-sheen mesh without new road collision.
+add_latebrake_portable_research_test(WorldScaleObservedPuddleVisuals)
+
+# Source-only six-real-car mist forecast over verified measured road water.
+# No collision, native particles, actual occlusion or official race impact.
+add_latebrake_portable_research_test(ObservedWetSprayVisibility)
+
+# Actual measured wet road grip across six banked tracks, with physically
+# conservative closed-loop braking; never guesses grip from water film.
+add_latebrake_portable_research_test(WorldScaleMeasuredWetGripPace)
+
+# Source-only 24-wheel hydroplaning risk from actual physical tire probes
+# and authenticated six-track water; never applies a tire or steering force.
+add_latebrake_portable_research_test(ObservedTyreWaterContactRisk)
+
+# Native-source six-track, event-based clean-lap/mission ledger; only local
+# evidence, no unverified career rewards or official racing progression.
+add_latebrake_portable_research_test(PhysicalCircuitChallengeEvidence)
+
+# All 36 original six-car/six-track bounded setup previews; authentic
+# vehicle IDs, ownership and wet grip, no Unreal physics or credit mutation.
+add_latebrake_portable_research_test(SixCarCircuitSetupResearch)
+
+# Authenticated four-wheel tire pressure/temperature/tread setup QA for 36
+# original car/track combinations, without real inflation or garage changes.
+add_latebrake_portable_research_test(PhysicalTyreSetupTelemetry)
+
+# Six original circuits: real-source wet pit what-if strategy, 3 tyre compounds,
+# bounded measured lap confidence, tyre wear and fuel reserve; no native change.
+add_latebrake_portable_research_test(PhysicalWetPitStrategy)
+
+# True six-car road-projection pit-entry occupancy and source-only approach ETA.
+add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
+
+# Cross-source wet pit strategy and real six-car traffic continuity gate.
+add_latebrake_portable_research_test(PhysicalWetPitDecisionGate)
+
+# 32-frame ring of actual water observations, strict source continuity,
+# visual interpolation only and no extrapolated/official physics authority.
+add_latebrake_portable_research_test(PhysicalWaterFrameArchive)
