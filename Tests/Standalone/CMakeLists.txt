@@ -2496,3 +2496,7 @@ add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
 # 24 cosmetic head and brake lamps over six actually witnessed chassis,
 # six source circuits and original measured nighttime source conditions.
 add_latebrake_portable_research_test(PhysicalSixCarNightLighting)
+
+# Real four-disc heat, wear reserve and side-to-side brake balance across
+# all 36 original six-car/six-track combinations. No Chaos force mutation.
+add_latebrake_portable_research_test(PhysicalBrakeThermalReview)
