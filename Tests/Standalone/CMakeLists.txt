@@ -2164,3 +2164,13 @@ else()
 endif()
 add_test(NAME WorldScaleProjectionProfile
     COMMAND latebrake_world_scale_projection_profile)
+
+# Portable pit-entry approach envelope: source-only advisory, not UE gameplay.
+add_executable(latebrake_pit_entry_envelope_tests PitEntrySpeedEnvelopeResearchTests.cpp)
+target_compile_features(latebrake_pit_entry_envelope_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_pit_entry_envelope_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_pit_entry_envelope_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PitEntrySpeedEnvelopeResearch COMMAND latebrake_pit_entry_envelope_tests)
