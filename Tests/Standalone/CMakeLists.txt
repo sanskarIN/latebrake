@@ -2492,3 +2492,7 @@ add_latebrake_portable_research_test(PhysicalWetPitDecisionGate)
 add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
 # Three disjoint, previously authored sibling research tests from PR #425.
 # This integration does not confer native pit, wet-grip or race authority.
+
+# Physical original lamp, road-water and six-car night safety estimate;
+# no real occlusion, native braking, car collision or race-control claims.
+add_latebrake_portable_research_test(PhysicalNightWetVisibilityAudit)
