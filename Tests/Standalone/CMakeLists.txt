@@ -2443,3 +2443,7 @@ add_latebrake_portable_research_test(WorldScaleTracksideDrawBudget)
 # Observed-route 16-sector scenery prefetch, resident and cold capacity QA.
 # Pure source-only predictions; never unload road collision or stream UE assets.
 add_latebrake_portable_research_test(WorldScaleTracksideStreamingPlan)
+
+# Observed physical-water source only: 256-cell rain, drainage, evaporation
+# and pairwise conserved longitudinal diffusion across all six route seams.
+add_latebrake_portable_research_test(WorldScaleObservedWaterFilm)
