@@ -57,6 +57,9 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
         const auto& start = stations[i - 1];
         const auto& end = stations[i];
         const double segment_m = end.distance_m - start.distance_m;
+        // Finite station coordinates can still overflow when subtracted.
+        // Reject unusable geometry before evaluating any braking square roots.
+        if (!finite(segment_m) || segment_m <= 0.0) return {};
         const double grip = std::min(start.grip, end.grip);
         const double grade = std::min(start.grade_radians, end.grade_radians);
         // Use the least normal load at either endpoint. The most downhill
