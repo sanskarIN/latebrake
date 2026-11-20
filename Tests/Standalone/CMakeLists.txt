@@ -2478,3 +2478,6 @@ add_latebrake_portable_research_test(PhysicalTyreSetupTelemetry)
 # Six original circuits: real-source wet pit what-if strategy, 3 tyre compounds,
 # bounded measured lap confidence, tyre wear and fuel reserve; no native change.
 add_latebrake_portable_research_test(PhysicalWetPitStrategy)
+
+# True six-car road-projection pit-entry occupancy and source-only approach ETA.
+add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
