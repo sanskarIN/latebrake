@@ -2509,3 +2509,9 @@ add_latebrake_portable_research_test(PhysicalBrakeThermalReview)
 add_latebrake_portable_research_test(PhysicalRaceWeatherEventJournal)
 # Time-integrated source-only racing engineer wet/night exposure analysis.
 add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
+
+# Genuine six-car wet driving source observations with true road projection,
+# measured friction, physical continuity and a fixed 96-frame trace ring.
+add_latebrake_portable_research_test(PhysicalWetLapTrace)
+# Time-weighted 16-sector source-only race engineer review for six cars.
+add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
