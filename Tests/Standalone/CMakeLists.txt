@@ -2423,3 +2423,7 @@ add_latebrake_portable_research_test(PhysicalSixCarReplayTimeline)
 # Original read-only replay camera geometry and smoothing for six genuine
 # source actors; seven views, no Unreal camera, occlusion or result authority.
 add_latebrake_portable_research_test(PhysicalReplayCameraDirector)
+
+# Authenticated six-car broadcast highlights only; no official pass/rank,
+# scoring, Chaos force, saved profile or deterministic replay authority.
+add_latebrake_portable_research_test(PhysicalReplayRaceEvents)
