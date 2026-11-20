@@ -2504,3 +2504,8 @@ add_latebrake_portable_research_test(PhysicalWaterFrameArchive)
 # Source-verified four actual brake rotors for six original racing cars;
 # conservative fade/wear diagnosis, never native braking or garage credits.
 add_latebrake_portable_research_test(PhysicalBrakeThermalReview)
+
+# Verified six-car original night/wet evidence ring with stable digests.
+add_latebrake_portable_research_test(PhysicalRaceWeatherEventJournal)
+# Time-integrated source-only racing engineer wet/night exposure analysis.
+add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
