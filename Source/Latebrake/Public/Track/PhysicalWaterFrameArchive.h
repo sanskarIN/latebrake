@@ -101,6 +101,7 @@ inline bool ValidPhysicalWaterArchiveFrame(
 {
     if(!ValidPhysicalWaterArchiveSettings(settings) ||
        !frame.Valid ||
+       static_cast<unsigned>(frame.Circuit)>=WorldScaleVariantCount ||
        frame.Fault!=ObservedWaterFault::None ||
        frame.Session==0u ||
        frame.Revision==0u ||
@@ -254,7 +255,7 @@ public:
         if(top!=bottom){
             if(!std::isfinite(dt) ||
                dt<0.001 ||
-               dt>ObservedWaterMaximumMm)
+               dt>0.2)
                 return {};
             alpha=(activeClockSeconds-a.ClockSeconds)/dt;
             if(!std::isfinite(alpha) ||
