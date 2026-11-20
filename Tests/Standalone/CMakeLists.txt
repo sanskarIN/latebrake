@@ -2466,3 +2466,7 @@ add_latebrake_portable_research_test(ObservedTyreWaterContactRisk)
 # Native-source six-track, event-based clean-lap/mission ledger; only local
 # evidence, no unverified career rewards or official racing progression.
 add_latebrake_portable_research_test(PhysicalCircuitChallengeEvidence)
+
+# All 36 original six-car/six-track bounded setup previews; authentic
+# vehicle IDs, ownership and wet grip, no Unreal physics or credit mutation.
+add_latebrake_portable_research_test(SixCarCircuitSetupResearch)
