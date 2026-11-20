@@ -258,7 +258,8 @@ inline WetSprayExposure EvaluateWetSprayExposure(
                 out.ObservedIntensity,0.0,1.0);
         }
     }
-    return std::isfinite(out.ObservedIntensity);
+    if(!std::isfinite(out.ObservedIntensity))return {};
+    return out;
 }
 inline WetSprayFramePlan BuildObservedWetSpray(
     const WorldScaleVariantRecipe& circuit,
