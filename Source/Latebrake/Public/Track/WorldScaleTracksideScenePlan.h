@@ -37,7 +37,7 @@ struct TracksideSceneSettings final
     double WorldRoadClearanceCm=175.0;
     double MinimumAdjacentStationGapCm=1700.0;
     double MaximumStructureHeightCm=1600.0;
-    double MaximumProxyDrawDistanceCm=50000.0;
+    double MaximumProxyDrawDistanceCm=65000.0;
     double BaseTerrainEmbedCm=5.0;
     double MinimumShaftHeightCm=120.0;
     bool PreserveOriginalRoadBody=true;
