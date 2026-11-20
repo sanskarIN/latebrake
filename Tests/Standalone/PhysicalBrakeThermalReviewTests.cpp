@@ -148,7 +148,8 @@ int main() {
                 emergency.AxlesWithHotSplit==1u &&
                 emergency.MaximumAxleTemperatureSplitC>=600.0 &&
                 emergency.MaximumSuggestedCoolingReviewSeconds>0.0 &&
-                !emergency.Corners[1].Band==false,
+                emergency.Corners[1].Band==
+                    PhysicalBrakeThermalBand::EmergencyReview,
                 "high rotor heat and minimum measured disc thickness require review");
             auto asymmetric=data;
             asymmetric[1].MeasuredBrakeTorqueNm=100.0;
