@@ -2439,3 +2439,7 @@ add_latebrake_portable_research_test(WorldScaleTracksideScenePlan)
 # Deterministic six-circuit source-only 3D scenery frustum and LOD draw budget.
 # No GPU render, real camera occlusion, engine actors, or race clock changes.
 add_latebrake_portable_research_test(WorldScaleTracksideDrawBudget)
+
+# Observed-route 16-sector scenery prefetch, resident and cold capacity QA.
+# Pure source-only predictions; never unload road collision or stream UE assets.
+add_latebrake_portable_research_test(WorldScaleTracksideStreamingPlan)
