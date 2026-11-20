@@ -77,6 +77,7 @@ struct PhysicalTyreTrendSummary final {
     std::uint64_t Session=0u;
     std::uint64_t Revision=0u;
     std::uint64_t OwnerActor=0u;
+    WorldScaleVariantId Circuit=WorldScaleVariantId::OriginalLoop;
     std::uint64_t FirstFrame=0u;
     std::uint64_t LastFrame=0u;
     double FirstClockSeconds=0.0;
@@ -298,6 +299,7 @@ public:
         result.Session=Previous.Session;
         result.Revision=Previous.Revision;
         result.OwnerActor=Previous.OwnerActor;
+        result.Circuit=Previous.Circuit;
         result.FirstFrame=first.Frame;
         result.LastFrame=Previous.Frame;
         result.FirstClockSeconds=first.ActiveClockSeconds;
