@@ -81,6 +81,9 @@ struct WetLapEngineerSectorSummary final
     unsigned ObservedBrakingSamples=0u;
     double ObservedSeconds=0.0;
     double WetRoadSeconds=0.0;
+    double DryRoadSeconds=0.0;
+    double WetSpeedIntegralCm=0.0;
+    double DrySpeedIntegralCm=0.0;
     double MinimumMeasuredGrip=1.0;
     double PeakMeasuredWaterMm=0.0;
     double PeakObservedSpeedCmps=0.0;
@@ -509,14 +512,20 @@ inline WetLapEngineerFleetReport BuildPhysicalWetLapRaceEngineer(
             result.MeasuredTravelDistanceCm+=distance;
             result.RouteProgressDistanceCm+=routeGap;
             sector.ObservedSeconds+=elapsed;
-            sector.SpeedIntegralCm+=
+            const double observedSpeedIntegral=
                 elapsed*0.5*(car.Speed3dCmps+before.Speed3dCmps);
+            sector.SpeedIntegralCm+=observedSpeedIntegral;
             if(car.SourceRoadSector!=before.SourceRoadSector)
                 ++result.CrossedSourceSectorBoundaries;
             if(wet)
             {
                 result.WetSeconds+=elapsed;
                 sector.WetRoadSeconds+=elapsed;
+                sector.WetSpeedIntegralCm+=observedSpeedIntegral;
+            }else
+            {
+                sector.DryRoadSeconds+=elapsed;
+                sector.DrySpeedIntegralCm+=observedSpeedIntegral;
             }
             if(standing)
                 result.StandingWaterSeconds+=elapsed;
@@ -555,9 +564,9 @@ inline WetLapEngineerFleetReport BuildPhysicalWetLapRaceEngineer(
             car.WetSeconds/car.ObservedSeconds;
         car.SourceFractionBraking=
             car.BrakeInputSeconds/car.ObservedSeconds;
-        // Time-weighted means by road condition, using the trusted
-        // sector's observed speed integral only where that sector
-        // has at least one eligible wet/dry source sample.
+        // Compute wet and dry speed means from their OWN physical
+        // source intervals, never by redistributing a sector average
+        // across both weather conditions (which would hide differences).
         double wetSpeedIntegral=0.0;
         double drySpeedIntegral=0.0;
         double weightedWetTime=0.0;
@@ -570,21 +579,10 @@ inline WetLapEngineerFleetReport BuildPhysicalWetLapRaceEngineer(
             if(sector.ObservedSeconds>0.0)
                 sector.MeanObservedSpeedCmps=
                     sector.SpeedIntegralCm/sector.ObservedSeconds;
-            if(sector.WetRoadSeconds>0.0 &&
-               sector.ObservedSeconds>0.0)
-            {
-                wetSpeedIntegral+=sector.SpeedIntegralCm*
-                    sector.WetRoadSeconds/sector.ObservedSeconds;
-                weightedWetTime+=sector.WetRoadSeconds;
-            }
-            if(sector.ObservedSeconds>sector.WetRoadSeconds)
-            {
-                const double dryTime=
-                    sector.ObservedSeconds-sector.WetRoadSeconds;
-                drySpeedIntegral+=sector.SpeedIntegralCm*
-                    dryTime/sector.ObservedSeconds;
-                weightedDryTime+=dryTime;
-            }
+            wetSpeedIntegral+=sector.WetSpeedIntegralCm;
+            drySpeedIntegral+=sector.DrySpeedIntegralCm;
+            weightedWetTime+=sector.WetRoadSeconds;
+            weightedDryTime+=sector.DryRoadSeconds;
         }
         if(weightedWetTime>0.0)
             car.MeanWetSpeedCmps=
