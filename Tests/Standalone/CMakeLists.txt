@@ -2478,3 +2478,7 @@ add_latebrake_portable_research_test(PhysicalTyreSetupTelemetry)
 # Fixed-capacity 64-frame four-wheel tire pressure and wear trend source QA.
 # No live Chaos tire wear, valve correction, or career unlock authority.
 add_latebrake_portable_research_test(PhysicalTyreStintTrend)
+
+# Authentic four-wheel wear trajectory and native pit box evidence produce
+# service-only forecasts without booking, tire pressure writes or awards.
+add_latebrake_portable_research_test(PhysicalTyreServiceForecast)
