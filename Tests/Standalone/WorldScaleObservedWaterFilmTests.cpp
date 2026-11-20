@@ -152,7 +152,11 @@ int main() {
         Require(!StepObservedWaterFilm(circuit,missing).Valid,
             "station source mismatch must not corrupt physical route");
         missing=Snapshot(circuit,1.0,0.0);
-        missing.Cells[33].MeasurementClockSeconds=0.0;
+        // Clock 1.0 and measurement 0.0 is only one second old:
+        // increase the source clock so one probe genuinely exceeds
+        // the documented two-second maximum age.
+        missing=Snapshot(circuit,1.0,0.0,1u,5.0);
+        missing.Cells[33].MeasurementClockSeconds=1.0;
         Require(!StepObservedWaterFilm(circuit,missing).Valid,
             "stale weather measurements cannot generate current race advice");
         missing=Snapshot(circuit,1.0,0.0);
