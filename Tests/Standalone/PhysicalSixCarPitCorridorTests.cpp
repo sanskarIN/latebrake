@@ -36,7 +36,6 @@ latebrake::PhysicalReplayFrame Fleet(){
 }
 std::array<latebrake::PitCorridorPhysicalSource,
     latebrake::PitCorridorCarCount> Project(
-    const latebrake::WorldScaleVariantRecipe& road,
     double pit)
 {
     using namespace latebrake;
@@ -84,7 +83,7 @@ int main(){
         const auto road=WorldScaleOriginalVariantRecipes[k];
         const double pit=road.LapLengthCm*0.20;
         const auto fleet=Fleet();
-        const auto base=Project(road,pit);
+        const auto base=Project(pit);
         Check(ValidPitCorridorSource(road,fleet,base),
             "all six native projectors and independent Chaos actors exist");
         const auto direct=AssessSixCarPitCorridor(
