@@ -2482,3 +2482,7 @@ add_latebrake_portable_research_test(PhysicalTyreStintTrend)
 # Authentic four-wheel wear trajectory and native pit box evidence produce
 # service-only forecasts without booking, tire pressure writes or awards.
 add_latebrake_portable_research_test(PhysicalTyreServiceForecast)
+
+# Six-circuit source-only nighttime floodlight photometry and bounded
+# visual draw-power/road survey; no actual UE lights, shadows or physics.
+add_latebrake_portable_research_test(WorldScaleNightRaceLightingPlan)
