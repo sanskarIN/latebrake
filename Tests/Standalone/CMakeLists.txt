@@ -2470,3 +2470,7 @@ add_latebrake_portable_research_test(PhysicalCircuitChallengeEvidence)
 # All 36 original six-car/six-track bounded setup previews; authentic
 # vehicle IDs, ownership and wet grip, no Unreal physics or credit mutation.
 add_latebrake_portable_research_test(SixCarCircuitSetupResearch)
+
+# Authenticated four-wheel tire pressure/temperature/tread setup QA for 36
+# original car/track combinations, without real inflation or garage changes.
+add_latebrake_portable_research_test(PhysicalTyreSetupTelemetry)
