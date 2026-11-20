@@ -2454,3 +2454,7 @@ add_latebrake_portable_research_test(WorldScaleObservedPuddleVisuals)
 # Source-only six-real-car mist forecast over verified measured road water.
 # No collision, native particles, actual occlusion or official race impact.
 add_latebrake_portable_research_test(ObservedWetSprayVisibility)
+
+# Actual measured wet road grip across six banked tracks, with physically
+# conservative closed-loop braking; never guesses grip from water film.
+add_latebrake_portable_research_test(WorldScaleMeasuredWetGripPace)
