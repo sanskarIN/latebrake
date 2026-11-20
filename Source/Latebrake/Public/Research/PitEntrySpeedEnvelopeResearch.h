@@ -36,7 +36,8 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
     std::vector<double> lateral_limits(stations.size());
     for (std::size_t i = 0; i < stations.size(); ++i) {
         const auto& s = stations[i];
-        if (!finite(s.distance_m) || !finite(s.curvature_inv_m) ||
+        if (!finite(s.distance_m) || s.distance_m < 0.0 ||
+            !finite(s.curvature_inv_m) ||
             !finite(s.grip) || !finite(s.grade_radians) ||
             s.grip <= 0.0 || s.grip > 3.0 ||
             std::abs(s.grade_radians) > 0.5 ||
