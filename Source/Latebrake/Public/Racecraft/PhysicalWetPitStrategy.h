@@ -437,7 +437,13 @@ inline WetPitStrategyPlan PlanPhysicalWetPitStrategy(
         settings.MinimumTreadMm;
     const double water=WetPitScenarioWaterSeverity(
         scenario,0u,race.RemainingOfficialLaps);
-    out.ConservativeNoStopSeconds=currentMargin>=0.0 ?
+    const double noStopFuelMargin=race.ActualFuelLitres-
+        race.MeasuredFuelLitresPerLap*race.RemainingOfficialLaps-
+        settings.MinimumReserveFuelLitres;
+    // Pit proposals cannot refuel the car, and neither can no-stop.
+    // Do not accept an "easy" no-stop just because tire tread survives.
+    out.ConservativeNoStopSeconds=
+        currentMargin>=0.0 && noStopFuelMargin>=0.0 ?
         currentEvidence.ConservativeSeconds*
         WetPitCompoundScenarioPenalty(
             race.CurrentCompound,water)*
