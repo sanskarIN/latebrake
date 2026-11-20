@@ -2484,3 +2484,7 @@ add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
 
 # Cross-source wet pit strategy and real six-car traffic continuity gate.
 add_latebrake_portable_research_test(PhysicalWetPitDecisionGate)
+
+# 32-frame ring of actual water observations, strict source continuity,
+# visual interpolation only and no extrapolated/official physics authority.
+add_latebrake_portable_research_test(PhysicalWaterFrameArchive)
