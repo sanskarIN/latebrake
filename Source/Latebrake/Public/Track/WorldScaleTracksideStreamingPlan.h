@@ -238,10 +238,24 @@ inline TracksideStreamingCatalog BuildTracksideStreamingCatalog(
             if(object.DeterministicId==
                scene.Objects[j].DeterministicId)
                 return {};
-        const unsigned sectorIndex=std::min(
-            static_cast<unsigned>(
-                object.StationCm/out.SectorLengthCm),
-            TracksideStreamingSectorCount-1u);
+        // Source art is authored in two ordered 64-station strips.
+        // Use their exact source slots instead of a floating-point floor
+        // at a sector seam (which can mis-bucket perfectly valid XYZ).
+        // Still verify the station itself to reject forged placement.
+        constexpr unsigned stationsPerSector=
+            TracksideSceneStationsPerSide/
+                TracksideStreamingSectorCount;
+        static_assert(TracksideSceneStationsPerSide%
+            TracksideStreamingSectorCount==0u);
+        const unsigned originalStation=static_cast<unsigned>(
+            i%TracksideSceneStationsPerSide);
+        const double expectedStation=circuit.LapLengthCm*
+            static_cast<double>(originalStation)/
+                TracksideSceneStationsPerSide;
+        if(std::abs(object.StationCm-expectedStation)>1e-5)
+            return {};
+        const unsigned sectorIndex=originalStation/
+            stationsPerSector;
         auto& sector=out.Sectors[sectorIndex];
         if(sector.SourceObjects>=TracksideStreamingPropsPerSector ||
            object.StationCm+1e-7<sector.StartStationCm ||
