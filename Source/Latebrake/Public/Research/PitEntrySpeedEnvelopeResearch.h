@@ -63,14 +63,50 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
         // grade is not necessarily the steepest slope (or least cosine).
         const double normal = gravity_mps2 * std::min(
             std::cos(start.grade_radians), std::cos(end.grade_radians));
-        // Downhill gravity opposes braking; uphill gravity assists.
-        const double decel = braking_efficiency * grip * normal +
-                             gravity_mps2 * std::sin(grade);
-        if (!finite(decel) || decel <= 0.0) return {};
+        // Combined tire force budget: lateral cornering consumes capacity
+        // that cannot simultaneously be used for longitudinal braking.
+        // Use the maximum sampled curvature throughout the segment and the
+        // candidate *entry* speed for a conservative constant-force bound.
+        const double curvature = std::max(std::abs(start.curvature_inv_m),
+                                          std::abs(end.curvature_inv_m));
+        const double capacity = grip * normal;
+        const double gravity_decel = gravity_mps2 * std::sin(grade);
         const double next = result.speed_limit_mps[i];
-        const double reachable = std::sqrt(next * next + 2.0 * decel * segment_m);
-        if (!finite(reachable)) return {};
-        result.speed_limit_mps[i - 1] = std::min(lateral_limits[i - 1], reachable);
+        const double segment_lateral_cap = curvature > 0.0
+            ? std::sqrt(capacity / curvature)
+            : std::numeric_limits<double>::max();
+        if (!finite(segment_lateral_cap)) return {};
+        const double upper = std::min(
+            std::min(lateral_limits[i - 1], segment_lateral_cap),
+            std::sqrt(next * next +
+                      2.0 * segment_m * (braking_efficiency * capacity +
+                                         std::max(0.0, gravity_decel))));
+        if (!finite(upper)) return {};
+        // Even at zero lateral demand, insufficient downhill deceleration
+        // means no feasible backward-reachable braking envelope.
+        if (braking_efficiency * capacity + gravity_decel <= 0.0) return {};
+        const auto feasible = [&](double speed) {
+            const double lateral = curvature * speed * speed;
+            const double remaining = std::sqrt(
+                std::max(0.0, capacity * capacity - lateral * lateral));
+            const double decel = braking_efficiency * remaining + gravity_decel;
+            return decel >= 0.0 &&
+                   speed * speed <= next * next + 2.0 * segment_m * decel;
+        };
+        double lo = 0.0;
+        double hi = upper;
+        if (feasible(hi)) {
+            lo = hi;
+        } else {
+            // Feasibility is monotone: demand increases with entry speed
+            // while the available braking force decreases.
+            for (int iteration = 0; iteration < 64; ++iteration) {
+                const double mid = lo + (hi - lo) * 0.5;
+                if (feasible(mid)) lo = mid;
+                else hi = mid;
+            }
+        }
+        result.speed_limit_mps[i - 1] = lo;
     }
     result.initial_speed_limit_mps = result.speed_limit_mps.front();
     result.valid = true;
