@@ -71,14 +71,17 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
                                           std::abs(end.curvature_inv_m));
         const double capacity = grip * normal;
         const double gravity_decel = gravity_mps2 * std::sin(grade);
-        const double next = result.speed_limit_mps[i];
         const double segment_lateral_cap = curvature > 0.0
             ? std::sqrt(capacity / curvature)
             : std::numeric_limits<double>::max();
         if (!finite(segment_lateral_cap)) return {};
+        // The downstream station must satisfy the whole approaching
+        // segment's lateral bound, not only its own sampled curvature.
+        result.speed_limit_mps[i] = std::min(result.speed_limit_mps[i], segment_lateral_cap);
+        const double constrained_next = result.speed_limit_mps[i];
         const double upper = std::min(
             std::min(lateral_limits[i - 1], segment_lateral_cap),
-            std::sqrt(next * next +
+            std::sqrt(constrained_next * constrained_next +
                       2.0 * segment_m * (braking_efficiency * capacity +
                                          std::max(0.0, gravity_decel))));
         if (!finite(upper)) return {};
@@ -91,7 +94,7 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
                 std::max(0.0, capacity * capacity - lateral * lateral));
             const double decel = braking_efficiency * remaining + gravity_decel;
             return decel >= 0.0 &&
-                   speed * speed <= next * next + 2.0 * segment_m * decel;
+                   speed * speed <= constrained_next * constrained_next + 2.0 * segment_m * decel;
         };
         double lo = 0.0;
         double hi = upper;
