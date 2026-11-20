@@ -177,7 +177,6 @@ public:
         Count=0u;
         Head=0u;
         Rejected=0u;
-        First={};
         Previous={};
         Frames={};
         Fault=PhysicalTyreTrendFault::None;
@@ -253,8 +252,6 @@ public:
                     return false;
                 }
             }
-        }else{
-            First=sample;
         }
         Frames[Head]=sample;
         Head=(Head+1u)%PhysicalTyreTrendCapacity;
@@ -375,7 +372,6 @@ public:
 private:
     std::array<PhysicalTyreTrendSample,
         PhysicalTyreTrendCapacity> Frames{};
-    PhysicalTyreTrendSample First{};
     PhysicalTyreTrendSample Previous{};
     unsigned Count=0u;
     unsigned Head=0u;
