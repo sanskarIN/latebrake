@@ -87,18 +87,17 @@ int main() {
     REQUIRE(straightToSharp.valid);
     REQUIRE(straightToSharp.speed_limit_mps[0] <= sharpCap + 1e-9);
     REQUIRE(straightToSharp.speed_limit_mps[1] <= sharpCap + 1e-9);
-    // The coordinates themselves are finite, but their difference is not.
-    // This must fail closed rather than silently passing an infinite segment.
-    const double largest = std::numeric_limits<double>::max();
-    REQUIRE(!ComputePitEntryEnvelope(
-        {{-largest, 0, 1, 0}, {largest, 0, 1, 0}}, 15).valid);
-    // The input contract also disallows negative distance, so verify the
-    // overflowing positive-coordinate interval using the smallest subnormal
-    // spacing as a separate valid finite-distance control case.
+    // A very small but positive segment must not be rejected as a duplicate
+    // station, nor should it produce NaN or infinity in the envelope.
     const double tiny = std::numeric_limits<double>::denorm_min();
     const auto tinyInterval = ComputePitEntryEnvelope(
         {{0, 0, 1, 0}, {tiny, 0, 1, 0}}, 15);
     REQUIRE(tinyInterval.valid);
     REQUIRE(std::isfinite(tinyInterval.initial_speed_limit_mps));
+    // An extreme finite distance should fail closed if squaring the
+    // reachable speed exceeds the floating-point representation.
+    const auto hugeInterval = ComputePitEntryEnvelope(
+        {{0, 0, 1, 0}, {std::numeric_limits<double>::max(), 0, 1, 0}}, 15);
+    REQUIRE(!hugeInterval.valid);
     return EXIT_SUCCESS;
 }
