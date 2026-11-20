@@ -66,5 +66,26 @@ int main() {
     const auto zeroCurve = ComputePitEntryEnvelope(
         {{0, 0, 1, 0}, {1, 0, 1, 0}}, 1);
     REQUIRE(zeroCurve.valid && zeroCurve.speed_limit_mps[0] >= zeroCurve.speed_limit_mps[1]);
+    // Segment-wide curvature also constrains the downstream station.
+    // A straight exit sample cannot erase a sharp preceding bend.
+    const auto sharpToStraight = ComputePitEntryEnvelope(
+        {{0, .08, 1, 0}, {30, 0, 1, 0}, {130, 0, 1, 0}}, 20);
+    REQUIRE(sharpToStraight.valid);
+    const double sharpCap = std::sqrt(9.80665 / .08);
+    REQUIRE(sharpToStraight.speed_limit_mps[0] <= sharpCap + 1e-9);
+    REQUIRE(sharpToStraight.speed_limit_mps[1] <= sharpCap + 1e-9);
+    REQUIRE(sharpToStraight.speed_limit_mps[2] <= 20.0);
+    // The next straight segment can accelerate only in an independent
+    // forward planner; this backward braking advisory never adds speed.
+    const auto allStraight = ComputePitEntryEnvelope(
+        {{0, 0, 1, 0}, {30, 0, 1, 0}, {130, 0, 1, 0}}, 20);
+    REQUIRE(allStraight.valid);
+    REQUIRE(sharpToStraight.speed_limit_mps[1] < allStraight.speed_limit_mps[1]);
+    // Reverse endpoint ordering must enforce the same segment cap.
+    const auto straightToSharp = ComputePitEntryEnvelope(
+        {{0, 0, 1, 0}, {30, .08, 1, 0}, {130, 0, 1, 0}}, 20);
+    REQUIRE(straightToSharp.valid);
+    REQUIRE(straightToSharp.speed_limit_mps[0] <= sharpCap + 1e-9);
+    REQUIRE(straightToSharp.speed_limit_mps[1] <= sharpCap + 1e-9);
     return EXIT_SUCCESS;
 }
