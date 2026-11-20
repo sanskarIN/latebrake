@@ -2496,3 +2496,7 @@ add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
 # Physical original lamp, road-water and six-car night safety estimate;
 # no real occlusion, native braking, car collision or race-control claims.
 add_latebrake_portable_research_test(PhysicalNightWetVisibilityAudit)
+
+# Exact recorded 32-frame native water-film provenance ring, bounded replay,
+# no interpolation for physics and explicit no-extrapolation audit.
+add_latebrake_portable_research_test(PhysicalWaterFrameArchive)
