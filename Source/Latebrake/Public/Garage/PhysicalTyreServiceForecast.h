@@ -294,7 +294,7 @@ inline PhysicalTyreServicePlan PlanPhysicalTyreService(
        source.ObservedDurationSeconds>
            settings.MaximumQualifiedObservationSeconds)
         return out;
-    out.Circuit=WorldScaleVariantId::OriginalLoop;
+    out.Circuit=source.Circuit;
     out.Session=race.Session;
     out.SourceFrame=race.SourceFrame;
     out.DriverActor=race.DriverActor;
