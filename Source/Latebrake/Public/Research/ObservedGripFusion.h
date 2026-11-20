@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace latebrake::research {
 struct GripWitness {
@@ -30,6 +31,10 @@ public:
             s.normal_force_n < 100 || std::abs(s.slip_ratio) > 1 ||
             std::abs(s.slip_angle_rad) > 1 || !std::isfinite(plausible_max_) ||
             plausible_max_ <= 0 || plausible_max_ > 3) return false;
+        if (samples_ == std::numeric_limits<unsigned>::max() ||
+            (excited_samples_ == std::numeric_limits<unsigned>::max() &&
+             (std::abs(s.slip_ratio) >= 0.08 ||
+              std::abs(s.slip_angle_rad) >= 0.06))) return false;
         if (session_ && (s.session != session_ || s.road_cell != road_cell_ ||
                          s.frame <= frame_ || s.time_s <= time_s_)) return false;
         // hypot avoids intermediate force-squared overflow.
@@ -56,8 +61,10 @@ public:
     GripEstimate Estimate() const noexcept {
         if (!samples_) return {};
         const double lower = peak_ * 0.75;
-        if (lower > upper_ + 1e-9) return {};
-        return {true, peak_, lower, upper_, samples_, excited_samples_};
+        // An earlier excited sample cannot disprove later demonstrated grip.
+        // Preserve the observed lower bound rather than invalidating evidence.
+        return {true, peak_, lower, std::max(peak_, upper_),
+                samples_, excited_samples_};
     }
     void Reset() noexcept {
         session_ = road_cell_ = frame_ = 0;
