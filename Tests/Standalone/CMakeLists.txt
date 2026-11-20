@@ -2427,3 +2427,7 @@ add_latebrake_portable_research_test(PhysicalReplayCameraDirector)
 # Authenticated six-car broadcast highlights only; no official pass/rank,
 # scoring, Chaos force, saved profile or deterministic replay authority.
 add_latebrake_portable_research_test(PhysicalReplayRaceEvents)
+
+# Source-only six-car highlight clips from actual motion event witnesses.
+# This editor neither awards race results nor installs Unreal cameras.
+add_latebrake_portable_research_test(PhysicalReplayHighlightClips)
