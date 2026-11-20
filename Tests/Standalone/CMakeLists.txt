@@ -2419,3 +2419,7 @@ add_latebrake_portable_research_test(WorldScaleRunoffTerrainPlan)
 # Six real-actor source observations for bounded read-only replay.
 # No fake Unreal spawn, scoring, collision, credit or saved profile authority.
 add_latebrake_portable_research_test(PhysicalSixCarReplayTimeline)
+
+# Original read-only replay camera geometry and smoothing for six genuine
+# source actors; seven views, no Unreal camera, occlusion or result authority.
+add_latebrake_portable_research_test(PhysicalReplayCameraDirector)
