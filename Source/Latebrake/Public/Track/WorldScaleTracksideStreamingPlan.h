@@ -126,6 +126,8 @@ struct TracksideStreamingPlan final
     std::uint64_t SourceFrame=0u;
     double SourceClockSeconds=0.0;
     double WrappedStationCm=0.0;
+    double SourceLapLengthCm=0.0;
+    double MeasuredSpeedCmps=0.0;
     unsigned CurrentSector=0u;
     unsigned LookAheadSectors=0u;
     unsigned ResidentSectorCount=0u;
@@ -369,6 +371,8 @@ inline TracksideStreamingPlan PlanTracksideStreaming(
     if(out.WrappedStationCm<0.0)
         out.WrappedStationCm+=catalog.LapLengthCm;
     out.CurrentSector=current;
+    out.SourceLapLengthCm=catalog.LapLengthCm;
+    out.MeasuredSpeedCmps=observation.MeasuredSpeedCmps;
     out.LookAheadSectors=warmAhead;
     for(unsigned index=0u;index<TracksideStreamingSectorCount;++index)
     {
@@ -436,6 +440,32 @@ inline bool TracksideStreamingContinuity(
        next.SourceClockSeconds<=previous.SourceClockSeconds ||
        next.SourceClockSeconds-
            previous.SourceClockSeconds>0.25)
+        return false;
+    if(!std::isfinite(previous.WrappedStationCm) ||
+       !std::isfinite(next.WrappedStationCm) ||
+       !std::isfinite(previous.SourceLapLengthCm) ||
+       !std::isfinite(next.SourceLapLengthCm) ||
+       previous.SourceLapLengthCm<=0.0 ||
+       next.SourceLapLengthCm!=previous.SourceLapLengthCm ||
+       !std::isfinite(previous.MeasuredSpeedCmps) ||
+       !std::isfinite(next.MeasuredSpeedCmps) ||
+       previous.MeasuredSpeedCmps<0.0 ||
+       next.MeasuredSpeedCmps<0.0)
+        return false;
+    const double lap=previous.SourceLapLengthCm;
+    const double rawDistance=std::abs(
+        next.WrappedStationCm-previous.WrappedStationCm);
+    if(rawDistance>lap)return false;
+    const double shortest=std::min(
+        rawDistance,lap-rawDistance);
+    const double elapsed=next.SourceClockSeconds-
+        previous.SourceClockSeconds;
+    const double maximumTravel=std::max(
+        previous.MeasuredSpeedCmps,next.MeasuredSpeedCmps)*
+        elapsed+200.0; // sampled projection and contact tolerance
+    if(!std::isfinite(shortest) ||
+       !std::isfinite(maximumTravel) ||
+       shortest>maximumTravel)
         return false;
     const unsigned ahead=(next.CurrentSector+
         TracksideStreamingSectorCount-
