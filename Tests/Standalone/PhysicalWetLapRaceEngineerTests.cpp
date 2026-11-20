@@ -181,8 +181,8 @@ int main()
               wet.StandingCarsObserved==0u &&
               wet.WetBrakingCarsObserved==6u &&
               wet.TotalWetVehicleSeconds>0.0 &&
-              wet.MaximumObservedWetnessMm==1.5 &&
-              wet.MeanFleetObservedSpeedCmps==1500.0,
+              Near(wet.MaximumObservedWetnessMm,1.5) &&
+              Near(wet.MeanFleetObservedSpeedCmps,1500.0,1e-5),
               "water and braking exposure are observations, not force edits");
         for(const auto& car:wet.Cars)
         {
@@ -229,7 +229,7 @@ int main()
               standing.TotalStandingWaterVehicleSeconds>0.0 &&
               standing.TotalWetVehicleSeconds>
                   wet.TotalWetVehicleSeconds &&
-              standing.PeakObservedChassisSpeedCmps==1500.0,
+              Near(standing.PeakObservedChassisSpeedCmps,1500.0),
               "standing film and slip hazards classified independently");
         for(const auto& car:standing.Cars)
             Check(car.Valid &&
