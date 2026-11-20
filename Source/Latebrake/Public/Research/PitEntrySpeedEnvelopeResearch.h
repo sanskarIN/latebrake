@@ -59,7 +59,10 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
         const double segment_m = end.distance_m - start.distance_m;
         const double grip = std::min(start.grip, end.grip);
         const double grade = std::min(start.grade_radians, end.grade_radians);
-        // Use the least normal load at either endpoint. The most downhill\n        // grade is not necessarily the steepest slope (or least cosine).\n        const double normal = gravity_mps2 * std::min(\n            std::cos(start.grade_radians), std::cos(end.grade_radians));
+        // Use the least normal load at either endpoint. The most downhill
+        // grade is not necessarily the steepest slope (or least cosine).
+        const double normal = gravity_mps2 * std::min(
+            std::cos(start.grade_radians), std::cos(end.grade_radians));
         // Downhill gravity opposes braking; uphill gravity assists.
         const double decel = braking_efficiency * grip * normal +
                              gravity_mps2 * std::sin(grade);
