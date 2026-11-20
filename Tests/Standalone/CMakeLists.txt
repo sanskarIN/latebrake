@@ -2500,3 +2500,7 @@ add_latebrake_portable_research_test(PhysicalNightWetVisibilityAudit)
 # Exact recorded 32-frame native water-film provenance ring, bounded replay,
 # no interpolation for physics and explicit no-extrapolation audit.
 add_latebrake_portable_research_test(PhysicalWaterFrameArchive)
+
+# Source-verified four actual brake rotors for six original racing cars;
+# conservative fade/wear diagnosis, never native braking or garage credits.
+add_latebrake_portable_research_test(PhysicalBrakeThermalReview)
