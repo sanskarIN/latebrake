@@ -99,5 +99,14 @@ int main() {
     const auto hugeInterval = ComputePitEntryEnvelope(
         {{0, 0, 1, 0}, {std::numeric_limits<double>::max(), 0, 1, 0}}, 15);
     REQUIRE(!hugeInterval.valid);
+    // Force magnitudes above sqrt(DBL_MAX) must not overflow when
+    // computing the shared lateral/longitudinal friction circle.
+    // A tiny but representable segment keeps the speed bound finite.
+    const auto highForce = ComputePitEntryEnvelope(
+        {{0, 1, 1, 0}, {1e-160, 1, 1, 0}}, 1, 0.8, 1e160);
+    REQUIRE(highForce.valid);
+    REQUIRE(std::isfinite(highForce.initial_speed_limit_mps));
+    REQUIRE(highForce.initial_speed_limit_mps >= 1.0);
+    REQUIRE(highForce.initial_speed_limit_mps <= std::sqrt(2.6) + 1e-10);
     return EXIT_SUCCESS;
 }
