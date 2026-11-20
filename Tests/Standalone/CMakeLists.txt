@@ -2515,3 +2515,14 @@ add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
 add_latebrake_portable_research_test(PhysicalWetLapTrace)
 # Time-weighted 16-sector source-only race engineer review for six cars.
 add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
+
+# Read-only observed tire grip research; no Chaos vehicle control authority.
+add_executable(latebrake_observed_grip_fusion_tests ObservedGripFusionTests.cpp)
+target_include_directories(latebrake_observed_grip_fusion_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_observed_grip_fusion_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_observed_grip_fusion_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_observed_grip_fusion_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ObservedGripFusion COMMAND latebrake_observed_grip_fusion_tests)
