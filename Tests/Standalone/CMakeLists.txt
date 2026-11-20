@@ -2407,3 +2407,7 @@ add_latebrake_portable_research_test(PitEntrySpeedEnvelopeResearch)
 # Original periodic bank/crest visual geometry for all six future tracks.
 # Source-only: no Unreal/Chaos collision changes or gameplay claims.
 add_latebrake_portable_research_test(WorldScaleBankedRoadPlan)
+
+# Future-circuit bank + grade with friction-reserve closed-loop speed planner.
+# Purely portable source; no real vehicle, Chaos control or race timing.
+add_latebrake_portable_research_test(WorldScaleBankedPacePlan)
