@@ -2481,3 +2481,6 @@ add_latebrake_portable_research_test(PhysicalWetPitStrategy)
 
 # True six-car road-projection pit-entry occupancy and source-only approach ETA.
 add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
+
+# Cross-source wet pit strategy and real six-car traffic continuity gate.
+add_latebrake_portable_research_test(PhysicalWetPitDecisionGate)
