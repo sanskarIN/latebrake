@@ -103,12 +103,20 @@ inline PitEntryEnvelope ComputePitEntryEnvelope(
         // means no feasible backward-reachable braking envelope.
         if (braking_efficiency * capacity + gravity_decel <= 0.0) return {};
         const auto feasible = [&](double speed) {
-            const double lateral = curvature * speed * speed;
-            const double remaining = std::sqrt(
-                std::max(0.0, capacity * capacity - lateral * lateral));
+            const double speed_squared = speed * speed;
+            const double lateral = curvature * speed_squared;
+            if (!finite(speed_squared) || !finite(lateral)) return false;
+            // Normalize before squaring: capacity^2 and lateral^2 may
+            // overflow even when the physically meaningful ratio is finite.
+            const double lateral_fraction = lateral / capacity;
+            if (!finite(lateral_fraction) || lateral_fraction > 1.0) return false;
+            const double remaining = capacity * std::sqrt(
+                std::max(0.0, 1.0 - lateral_fraction * lateral_fraction));
             const double decel = braking_efficiency * remaining + gravity_decel;
-            return decel >= 0.0 &&
-                   speed * speed <= constrained_next * constrained_next + 2.0 * segment_m * decel;
+            const double reachable = std::fma(
+                segment_m, 2.0 * decel, constrained_next * constrained_next);
+            return finite(decel) && finite(reachable) && decel >= 0.0 &&
+                   speed_squared <= reachable;
         };
         double lo = 0.0;
         double hi = upper;
