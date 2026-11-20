@@ -240,6 +240,30 @@ int main()
                   "actual deep road film takes precedence over slip cue");
         Check(!ComparePhysicalWetLapEngineer(standing,dry).Valid,
               "time reversal cannot be presented as a new race review");
+        // A distinct native recording slows during later observed wet
+        // intervals. Verify wet and dry speeds are calculated from those
+        // exact intervals, not from a shared all-weather sector average.
+        PhysicalWetLapTraceJournal changedPace;
+        for(std::uint64_t frame=1u;frame<=8u;++frame)
+        {
+            const bool wetInterval=frame>=5u;
+            const auto observation=Frame(
+                circuit,frame,wetInterval?1.5:0.0,
+                0.0,0.1,wetInterval?1200.0:1500.0);
+            Check(observation.Valid &&
+                  changedPace.Record(observation).Accepted,
+                  "real moderate wet pace remains physically continuous");
+        }
+        const auto pace=BuildPhysicalWetLapRaceEngineer(changedPace);
+        Check(pace.Valid && pace.QualifiedPhysicalCars==6u &&
+              pace.WetCarsObserved==6u,
+              "wet-vs-dry pace sample is physically source-eligible");
+        for(const auto& car:pace.Cars)
+            Check(car.Valid &&
+                  Near(car.MeanDrySpeedCmps,1500.0,1e-5) &&
+                  Near(car.MeanWetSpeedCmps,1237.5,1e-5) &&
+                  car.MeanWetSpeedCmps<car.MeanDrySpeedCmps,
+                  "wet and dry speeds reflect separate native time intervals");
         journal.Reset();
         Check(!BuildPhysicalWetLapRaceEngineer(journal).Valid,
               "new physical racing session clears all old wet review data");
