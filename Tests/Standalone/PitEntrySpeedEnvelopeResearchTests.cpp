@@ -37,7 +37,7 @@ int main() {
     REQUIRE(!ComputePitEntryEnvelope({{-1, 0, 1, 0}, {100, 0, 1, 0}}, 15).valid);
     REQUIRE(!ComputePitEntryEnvelope({{0, 0, 1, 0}, {100, 0, 1, 0}}, 15,
                                      0.8, std::numeric_limits<double>::infinity()).valid);
-    const auto zeroCurve = ComputePitEntryEnvelope(
+    // Opposite-signed grades: use the steeper uphill endpoint's lower normal\n    // load, even though the downhill endpoint determines gravity assistance.\n    const auto mixed = ComputePitEntryEnvelope(\n        {{0, 0, 1, 0.4}, {100, 0, 1, -0.1}}, 15);\n    const auto downhillOnly = ComputePitEntryEnvelope(\n        {{0, 0, 1, -0.1}, {100, 0, 1, -0.1}}, 15);\n    REQUIRE(mixed.valid && downhillOnly.valid);\n    REQUIRE(mixed.initial_speed_limit_mps < downhillOnly.initial_speed_limit_mps);\n    const double expectedDecel = 0.8 * 9.80665 * std::cos(0.4)\n                                 - 9.80665 * std::sin(0.1);\n    REQUIRE(std::abs(mixed.initial_speed_limit_mps * mixed.initial_speed_limit_mps\n                     - (15.0 * 15.0 + 200.0 * expectedDecel)) < 1e-7);\n    const auto zeroCurve = ComputePitEntryEnvelope(
         {{0, 0, 1, 0}, {1, 0, 1, 0}}, 1);
     REQUIRE(zeroCurve.valid && zeroCurve.speed_limit_mps[0] >= zeroCurve.speed_limit_mps[1]);
     return EXIT_SUCCESS;
