@@ -2447,3 +2447,6 @@ add_latebrake_portable_research_test(WorldScaleTracksideStreamingPlan)
 # Observed physical-water source only: 256-cell rain, drainage, evaporation
 # and pairwise conserved longitudinal diffusion across all six route seams.
 add_latebrake_portable_research_test(WorldScaleObservedWaterFilm)
+
+# Real-water source-only reflection and wet-sheen mesh without new road collision.
+add_latebrake_portable_research_test(WorldScaleObservedPuddleVisuals)
