@@ -2398,3 +2398,8 @@ add_latebrake_portable_research_test(QualifyingEvidencePipeline)
 add_latebrake_portable_research_test(QualifyingGridAudit)
 add_latebrake_portable_research_test(QualifyingStartGridPlan)
 add_latebrake_portable_research_test(ProvisionalRaceControl)
+
+# Independent research advisories; portable only, never connected to Chaos.
+# All source-only CTest registrations retain warnings-as-errors on 3 OSes.
+add_latebrake_portable_research_test(JerkBrakeEnvelope)
+add_latebrake_portable_research_test(PitEntrySpeedEnvelopeResearch)
