@@ -21,6 +21,26 @@ bool Near(double a, double b, double eps = 1e-5)
     return std::isfinite(a) && std::isfinite(b) &&
            std::abs(a - b) <= eps;
 }
+bool ExactlySamePilotDecision(
+    const latebrake::WorldScalePilotDecision& a,
+    const latebrake::WorldScalePilotDecision& b)
+{
+    if (a.Valid != b.Valid ||
+        a.Command.Throttle != b.Command.Throttle ||
+        a.Command.Steering != b.Command.Steering ||
+        a.Command.Brake != b.Command.Brake ||
+        a.Command.Arrived != b.Command.Arrived)
+    {
+        return false;
+    }
+    if (!a.Valid) return true;
+    return a.WrappedLapDistanceCm == b.WrappedLapDistanceCm &&
+           a.SignedCrossTrackCm == b.SignedCrossTrackCm &&
+           a.LookaheadCm == b.LookaheadCm &&
+           a.SpeedReferenceCmps == b.SpeedReferenceCmps &&
+           a.HeadingErrorRadians == b.HeadingErrorRadians;
+}
+
 latebrake::WorldScalePilotSample OnRoad(
     double distanceCm, double velocity, double delta = 1.0 / 60.0,
     double lateral = 0.0)
@@ -154,6 +174,67 @@ int main()
     }
     Check(!pilot.Step(WorldScalePacePlan{}, grid).Valid,
           "unverified route plan fails closed");
+
+    // Opt-in accelerated projection must never change a real safety
+    // decision. Compare FULL advisory results, not merely road distance.
+    const auto sourceIndex = BuildWorldScaleProjectionBlockIndex(plan);
+    Check(sourceIndex.Valid && sourceIndex.Source == &plan,
+          "original world-scale source geometry accepts an index");
+    for (double fps : {30.0, 60.0, 120.0})
+    {
+        const double dt = 1.0 / fps;
+        const double speed = 1900.0;
+        WorldScaleCandidateRivalPilot globalPilot;
+        WorldScaleCandidateRivalPilot indexedPilot;
+        for (unsigned frame = 0; frame < 720; ++frame)
+        {
+            const double station =
+                WorldScaleCircuitLapCm - 580.0 + frame * speed * dt;
+            const double lateral =
+                160.0 * std::sin(static_cast<double>(frame) * 0.035);
+            auto observation = OnRoad(station, speed, dt, lateral);
+            // Real measured input qualification may temporarily fail.
+            // State reset and subsequent reacquisition must match too.
+            if (frame % 137u == 31u)
+            {
+                observation.PhysicsReady = false;
+            }
+            if (frame % 137u == 79u)
+            {
+                observation.ForwardSpeedCmps = -speed;
+            }
+            if (frame % 137u == 112u)
+            {
+                observation.HeadingRadians += WorldScalePilotRadiansPi;
+            }
+            const auto original = globalPilot.Step(plan, observation);
+            const auto optimized = indexedPilot.StepIndexed(
+                plan, sourceIndex, observation);
+            Check(ExactlySamePilotDecision(original, optimized),
+                  "30/60/120Hz indexed route lookup retains every "
+                  "forward/reverse/brake/steering/invalid result exactly");
+        }
+    }
+
+    WorldScaleCandidateRivalPilot indexFault;
+    Check(indexFault.StepIndexed(
+              plan, WorldScaleProjectionBlockIndex{}, grid).Valid == false,
+          "uninitialized source index refuses to authorize movement");
+    Check(indexFault.Step(plan, grid).Valid,
+          "trusted full-scan method can reacquire independently");
+    auto duplicatePlan = plan;
+    Check(!indexFault.StepIndexed(
+              duplicatePlan, sourceIndex, grid).Valid,
+          "index attached to a different plan object fails closed");
+    Check(indexFault.StepIndexed(plan, sourceIndex, grid).Valid,
+          "fresh valid index may establish a new observed baseline");
+    const auto invalidIndexed = indexFault.StepIndexed(
+        plan, sourceIndex, WorldScalePilotSample{});
+    Check(!invalidIndexed.Valid && invalidIndexed.Command.Brake &&
+          invalidIndexed.Command.Throttle == 0.0,
+          "indexed pilot preserves emergency stop on invalid observation");
+    Check(indexFault.StepIndexed(plan, sourceIndex, grid).Valid,
+          "indexed advisory may safely restart after rejected source");
     std::cout << "WorldScaleCandidateRivalPilot: 30/60/120 FPS, "
                  "real 1.7km seam, steering, overspeed, teleports and "
                  "invalid-physics safety PASS (source only).\n";
