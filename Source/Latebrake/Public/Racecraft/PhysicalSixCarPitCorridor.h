@@ -206,7 +206,14 @@ inline double PitCorridorForwardGap(
        circuit.LapLengthCm<=0.0)
         return std::numeric_limits<double>::infinity();
     double gap=to-from;
+    // The same physical station may be reported as s, s+lap or s-lap.
+    // Floating-point reduction can make their delta slightly negative:
+    // classify such values as zero before wrapping around a whole lap.
+    const double tolerance=std::max(1.0e-7,
+        circuit.LapLengthCm*1.0e-10);
+    if(std::abs(gap)<=tolerance)return 0.0;
     if(gap<0.0)gap+=circuit.LapLengthCm;
+    if(std::abs(gap-circuit.LapLengthCm)<=tolerance)return 0.0;
     return gap;
 }
 inline PitCorridorCarProjection ProjectPitCorridorCar(
