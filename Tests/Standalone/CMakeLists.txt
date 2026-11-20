@@ -2415,3 +2415,7 @@ add_latebrake_portable_research_test(WorldScaleBankedPacePlan)
 # Source-only off-road runoff, gravel, drainage and berm triangles.
 # Absolutely no live WorldStatic collision actor or playable map changes.
 add_latebrake_portable_research_test(WorldScaleRunoffTerrainPlan)
+
+# Six real-actor source observations for bounded read-only replay.
+# No fake Unreal spawn, scoring, collision, credit or saved profile authority.
+add_latebrake_portable_research_test(PhysicalSixCarReplayTimeline)
