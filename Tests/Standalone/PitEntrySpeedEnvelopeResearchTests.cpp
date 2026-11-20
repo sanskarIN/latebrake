@@ -49,6 +49,20 @@ int main() {
                                  - 9.80665 * std::sin(0.1);
     REQUIRE(std::abs(mixed.initial_speed_limit_mps * mixed.initial_speed_limit_mps
                      - (15.0 * 15.0 + 200.0 * expectedDecel)) < 1e-7);
+    // A curve at the segment exit consumes braking grip even if the
+    // entry station itself is straight. Never use full straight-line decel.
+    const auto sharedGrip = ComputePitEntryEnvelope(
+        {{0, 0, 1, 0}, {100, .025, 1, 0}}, 15);
+    const auto straightGrip = ComputePitEntryEnvelope(
+        {{0, 0, 1, 0}, {100, 0, 1, 0}}, 15);
+    REQUIRE(sharedGrip.valid && straightGrip.valid);
+    REQUIRE(sharedGrip.initial_speed_limit_mps < straightGrip.initial_speed_limit_mps);
+    REQUIRE(sharedGrip.initial_speed_limit_mps <= std::sqrt(9.80665 / .025));
+    // Reversing which endpoint carries curvature must not invent grip.
+    const auto entryCurve = ComputePitEntryEnvelope(
+        {{0, .025, 1, 0}, {100, 0, 1, 0}}, 15);
+    REQUIRE(entryCurve.valid);
+    REQUIRE(entryCurve.initial_speed_limit_mps <= sharedGrip.initial_speed_limit_mps + 1e-8);
     const auto zeroCurve = ComputePitEntryEnvelope(
         {{0, 0, 1, 0}, {1, 0, 1, 0}}, 1);
     REQUIRE(zeroCurve.valid && zeroCurve.speed_limit_mps[0] >= zeroCurve.speed_limit_mps[1]);
