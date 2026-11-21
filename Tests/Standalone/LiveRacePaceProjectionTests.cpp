@@ -90,6 +90,51 @@ int main()
             bounded.ProjectedFinishSeconds == 190.0,
             "rolling reference uses only three most recent timed laps");
 
+    // A recovery penalty can advance the official clock and create a
+    // positive timed lap without ANY driven time. It must not seed the
+    // read-only HUD's displayed estimated finish pace. The rolling
+    // three-lap window may recover once all sampled laps are authentic.
+    RaceProgress penaltyOnly(4, 6);
+    Require(penaltyOnly.AddTimePenalty(5.0),
+            "recovery-only lap legitimately charges the race clock");
+    for (int gate = 0; gate < 4; ++gate)
+    {
+        Require(penaltyOnly.PassCheckpoint(gate),
+                "penalty-only lap completes original ordered gates");
+    }
+    const auto unDriven = penaltyOnly.GetRecentTimedLap(0);
+    Require(unDriven.Valid() && !unDriven.ActiveClockEvidence &&
+            penaltyOnly.GetActiveTimedLapCount() == 0 &&
+            !ProjectLiveRacePace(penaltyOnly).Valid,
+            "positive penalty-only duration cannot invent a driven pace");
+    CompleteLap(penaltyOnly, 60.0);
+    Require(penaltyOnly.GetRecentTimedLap(0).ActiveClockEvidence &&
+            !ProjectLiveRacePace(penaltyOnly).Valid,
+            "one good lap cannot hide older unqualified sampled lap");
+    CompleteLap(penaltyOnly, 70.0);
+    Require(!ProjectLiveRacePace(penaltyOnly).Valid,
+            "two good laps cannot hide unqualified third sampled lap");
+    CompleteLap(penaltyOnly, 80.0);
+    const auto recovered = ProjectLiveRacePace(penaltyOnly);
+    Require(recovered.Valid && recovered.SampledLaps == 3 &&
+            recovered.ReferenceLapSeconds == 70.0 &&
+            recovered.ProjectedFinishSeconds == 355.0,
+            "three consecutive driven laps restore safe live HUD pace");
+
+    RaceProgress missingLap(4, 5);
+    for (int gate = 0; gate < 4; ++gate)
+    {
+        Require(missingLap.PassCheckpoint(gate),
+                "zero-duration lap cannot become recent pace sample");
+    }
+    CompleteLap(missingLap, 60.0);
+    Require(!ProjectLiveRacePace(missingLap).Valid,
+            "zero-time gap cannot merge with old driving history");
+    CompleteLap(missingLap, 70.0);
+    CompleteLap(missingLap, 80.0);
+    Require(ProjectLiveRacePace(missingLap).Valid,
+            "new contiguous driven sample window remains eligible");
+
     RaceProgress overflow(4, 2);
     CompleteLap(overflow, 604800.0);
     Require(!ProjectLiveRacePace(overflow).Valid,
