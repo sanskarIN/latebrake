@@ -36,7 +36,8 @@ class MenuDetailPaginationBindingTests(unittest.TestCase):
             self.assertIn(mark, self.hud_h)
         for mark in (
             "TArray<TPair<FString, bool>> MenuDetails;",
-            "MenuDetails.Emplace(Fitted, bAccent);",
+            "const auto Wrapped = latebrake::WrapHudDetailText(",
+            "MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);",
             "MenuPager.Synchronize(Mode->GetMenuPage(), MenuDetails.Num()",
             "const latebrake::MenuDetailWindow DetailWindow = MenuPager.Window();",
             "Index = DetailWindow.Begin;", "Index < DetailWindow.End;",
@@ -48,6 +49,8 @@ class MenuDetailPaginationBindingTests(unittest.TestCase):
             "MenuPlan.SaveWarningY",
         ):
             self.assertIn(mark, self.hud)
+        self.assertIn("HudDetailTextFlowTests.cpp", self.cmake)
+        self.assertIn("NAME HudDetailTextFlow", self.cmake)
         self.assertLess(self.hud.index("MenuDetails.Emplace("),
                         self.hud.index("switch (Mode->GetMenuPage())"))
         self.assertLess(self.hud.index("switch (Mode->GetMenuPage())"),
