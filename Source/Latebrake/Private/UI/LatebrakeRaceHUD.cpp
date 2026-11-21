@@ -48,6 +48,34 @@ void ALatebrakeRaceHUD::ScrollMenuDetails(int direction)
     }
 }
 
+bool ALatebrakeRaceHUD::TryScrollMenuMouse(
+    double x, double y, int direction)
+{
+#if PLATFORM_ANDROID
+    return false;
+#else
+    const ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Canvas || !Mode || !Mode->IsMenuOpen())
+    {
+        return false;
+    }
+    const double width = static_cast<double>(Canvas->SizeX);
+    const double height = static_cast<double>(Canvas->SizeY);
+    const auto zone = latebrake::CalculateDesktopMenuWheelZone(
+        width, height, latebrake::CalculateHudLayout(width, height),
+        false, true);
+    const auto available = latebrake::AvailableDesktopMenuDetails(
+        Mode->GetMenuPage(), MenuPager);
+    if (!latebrake::AdmitDesktopMenuWheel(
+        zone, x, y, direction, available))
+    {
+        return false;
+    }
+    return direction == 1 ? MenuPager.Next() : MenuPager.Previous();
+#endif
+}
+
 latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     double x, double y) const
 {
@@ -744,6 +772,14 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Gold, static_cast<float>(FirstButton.X),
                 static_cast<float>(FirstButton.Y - 24.0 * Layout.Scale),
                 GEngine->GetSmallFont(), 0.88f * UIScale);
+            // A discoverable mouse hint is kept below, not over,
+            // the actual clickable rectangles in the right-hand dock.
+            const auto& LastButton = MouseMenu.Buttons[5].Bounds;
+            DrawText(TEXT("WHEEL: DETAILS"), White,
+                static_cast<float>(MouseMenu.Left),
+                static_cast<float>(LastButton.Y + LastButton.Height +
+                    9.0 * Layout.Scale),
+                GEngine->GetSmallFont(), 0.82f * UIScale);
             for (const auto& Button : MouseMenu.Buttons)
             {
                 const float BX = static_cast<float>(Button.Bounds.X);
