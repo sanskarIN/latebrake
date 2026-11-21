@@ -2515,3 +2515,15 @@ add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
 add_latebrake_portable_research_test(PhysicalWetLapTrace)
 # Time-weighted 16-sector source-only race engineer review for six cars.
 add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
+
+# Explain real nitro charge, cooldown, thermal lockout and launch-speed
+# prerequisites without modifying propulsion physics or racing authority.
+add_executable(latebrake_nitro_hud_readout_tests NitroHudReadoutTests.cpp)
+target_include_directories(latebrake_nitro_hud_readout_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_nitro_hud_readout_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME NitroHudReadout COMMAND latebrake_nitro_hud_readout_tests)
