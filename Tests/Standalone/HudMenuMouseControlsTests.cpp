@@ -179,6 +179,62 @@ int main()
     Check(!DesktopMenuMouseActionEnabled(
               DesktopMenuMouseAction::None, {true, true}),
           "None is never a clickable action");
+    // Wheel events must stay inside the actual left details lane, away
+    // from menu actions and the persistent SAVE FAILED/footer baseline.
+    for (const auto& [width, height] :
+        {std::pair{240, 240}, std::pair{640, 360},
+         std::pair{900, 600}, std::pair{1280, 720},
+         std::pair{1920, 1080}, std::pair{3440, 1440}})
+    {
+        const auto l = CalculateHudLayout(width, height);
+        const auto zone = CalculateDesktopMenuWheelZone(
+            width, height, l, false, true);
+        Check(zone.Width > 0.0 && zone.Height > 0.0,
+              "desktop details wheel lane exists for supported viewports");
+        const double x = zone.X + zone.Width * 0.5;
+        const double y = zone.Y + zone.Height * 0.5;
+        Check(AdmitDesktopMenuWheel(zone, x, y, -1, {true, true}) &&
+              AdmitDesktopMenuWheel(zone, x, y, 1, {true, true}),
+              "both directions scroll when real neighboring pages exist");
+        Check(!AdmitDesktopMenuWheel(zone, x, y, 0, {true, true}) &&
+              !AdmitDesktopMenuWheel(zone, x, y, -2, {true, true}) &&
+              !AdmitDesktopMenuWheel(zone, x, y, 2, {true, true}),
+              "unknown wheel directions never scroll");
+        Check(!AdmitDesktopMenuWheel(zone, x, y, -1, {false, true}) &&
+              !AdmitDesktopMenuWheel(zone, x, y, 1, {true, false}) &&
+              !AdmitDesktopMenuWheel(zone, x, y, 1, {}),
+              "first, last and empty detail pages never scroll beyond bounds");
+        Check(!AdmitDesktopMenuWheel(zone, zone.X - 1.0, y,
+                  1, {true, true}) &&
+              !AdmitDesktopMenuWheel(zone, x, zone.Y - 1.0,
+                  1, {true, true}),
+              "wheel outside the left details area is inert");
+        Check(!AdmitDesktopMenuWheel(zone,
+              std::numeric_limits<double>::quiet_NaN(),
+              y, 1, {true, true}),
+              "invalid mouse wheel coordinates are inert");
+        Check(!CalculateDesktopMenuWheelZone(
+              width, height, l, true, true).Contains(x, y) &&
+              !CalculateDesktopMenuWheelZone(
+              width, height, l, false, false).Contains(x, y),
+              "touch UI and closed menus never admit desktop wheel");
+        const auto dock = CalculateDesktopMenuMouseLayout(
+            width, height, l, false, true);
+        if (dock.Valid)
+        {
+            for (const auto& button : dock.Buttons)
+            {
+                const auto b = button.Bounds;
+                Check(!AdmitDesktopMenuWheel(zone,
+                    b.X + b.Width * 0.5, b.Y + b.Height * 0.5,
+                    1, {true, true}),
+                    "wheel above menu action buttons cannot scroll details");
+            }
+        }
+    }
+    Check(!CalculateDesktopMenuWheelZone(0, 720, good, false, true)
+              .Contains(100, 100),
+          "invalid viewport never has an active wheel zone");
     plan.Valid = false;
     Check(HitTestDesktopMenuMouse(plan, 1200, 120) ==
         DesktopMenuMouseAction::None, "invalid layout is inert");
