@@ -43,6 +43,35 @@ class HudInstrumentClusterBindingTests(unittest.TestCase):
             self.hud.index("if (Mode->IsMenuOpen())"),
             self.hud.index("if (Instruments.Visible)\n    {"))
 
+    def test_real_font_measured_percentage_never_competes_with_label(self):
+        # Source-level Unreal binding, not a native editor screenshot.
+        panel = self.hud.split(
+            "    // Read-only instrument panel.", 1)[1].split(
+            "    // A deterministic footer", 1)[0]
+        for marker in (
+            "GetTextSize(Percentage, PercentageWidth, PercentageHeight,",
+            "CalculateHudInstrumentMeterText(",
+            "Instruments.Panel, Instruments.Scale,",
+            "MeterText.LabelMaxWidth",
+            "latebrake::ChooseHudTextPrefix(",
+            "MeterName.Left(Prefix) + Suffix",
+            "DrawText(Percentage, Ink,",
+            "MeterText.PercentX",
+            "DrawText(VisibleName, Ink,",
+            "MeterText.LabelX",
+        ):
+            self.assertIn(marker, panel)
+        self.assertLess(
+            panel.index("GetTextSize(Percentage,"),
+            panel.index("CalculateHudInstrumentMeterText("))
+        self.assertLess(
+            panel.index("CalculateHudInstrumentMeterText("),
+            panel.index("DrawText(Percentage, Ink,"))
+        self.assertIn("std::isfinite(measuredPercentWidth)", self.policy)
+        self.assertIn("labelWidth = percentX - gap - left", self.policy)
+        self.assertIn("percentRight = panel.X + panel.Width - inset",
+                      self.policy)
+
     def test_instruments_are_display_only(self):
         panel = self.hud.split(
             "    // Read-only instrument panel.", 1)[1].split(
