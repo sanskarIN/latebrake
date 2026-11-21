@@ -262,6 +262,9 @@ private:
     void MenuDetailsPrevious();
     void MenuActivate();
     void MenuMousePressed();
+    void MenuMouseWheelUp();
+    void MenuMouseWheelDown();
+    void ScrollMenuMouseWheel(int direction);
     void NextGarageVehicle();
     void UnlockGarageVehicle();
     void UpgradeGarageEngine();
