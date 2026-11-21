@@ -2195,6 +2195,47 @@ void ALatebrakeCarPawn::MenuActivate()
     Mode->MenuActivate();
 }
 
+void ALatebrakeCarPawn::MenuMouseWheelUp()
+{
+    ScrollMenuMouseWheel(-1);
+}
+
+void ALatebrakeCarPawn::MenuMouseWheelDown()
+{
+    ScrollMenuMouseWheel(1);
+}
+
+void ALatebrakeCarPawn::ScrollMenuMouseWheel(int direction)
+{
+#if !PLATFORM_ANDROID
+    // One wheel notch only affects details in an open local desktop menu.
+    // Never transfer it into steering, racing, garage, or menu selection.
+    const ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!Mode || !Mode->IsMenuOpen() || !PC ||
+        !PC->IsLocalController())
+    {
+        return;
+    }
+    float MouseX = 0.f;
+    float MouseY = 0.f;
+    if (!PC->GetMousePosition(MouseX, MouseY))
+    {
+        return;
+    }
+    if (ALatebrakeRaceHUD* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+    {
+        if (Hud->TryScrollMenuMouse(MouseX, MouseY, direction))
+        {
+            ClearDriverInputs();
+        }
+    }
+#else
+    (void)direction;
+#endif
+}
+
 void ALatebrakeCarPawn::MenuMousePressed()
 {
 #if !PLATFORM_ANDROID
@@ -2379,6 +2420,14 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
         TEXT("MenuMouseClick"), IE_Pressed,
         this, &ALatebrakeCarPawn::MenuMousePressed);
     MouseMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& WheelUp = PlayerInputComponent->BindAction(
+        TEXT("MenuMouseWheelUp"), IE_Pressed,
+        this, &ALatebrakeCarPawn::MenuMouseWheelUp);
+    WheelUp.bExecuteWhenPaused = true;
+    FInputActionBinding& WheelDown = PlayerInputComponent->BindAction(
+        TEXT("MenuMouseWheelDown"), IE_Pressed,
+        this, &ALatebrakeCarPawn::MenuMouseWheelDown);
+    WheelDown.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);

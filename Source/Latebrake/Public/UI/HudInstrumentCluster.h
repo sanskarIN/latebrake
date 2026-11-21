@@ -36,9 +36,11 @@ inline HudInstrumentCluster CalculateHudInstrumentCluster(
 {
     // The existing compact/mobile HUD owns all touch regions; never draw a
     // visual-only widget over driving pads, menu text or a finished race.
+    // For supported 900px laptop windows retain the existing gauge: its
+    // independent measured right-hand lane and footer guard still apply.
     if (touchUI || menuOpen || raceFinished || layout.Compact ||
         !std::isfinite(width) || !std::isfinite(height) ||
-        width < 1100.0 || height < 680.0 ||
+        width < 900.0 || height < 600.0 ||
         !std::isfinite(layout.Scale) || layout.Scale <= 0.0 ||
         !std::isfinite(layout.Left) || layout.Left < 0.0 ||
         !std::isfinite(speedKmH) || !std::isfinite(nitroFraction) ||
@@ -48,7 +50,9 @@ inline HudInstrumentCluster CalculateHudInstrumentCluster(
         return {};
     }
 
-    const double scale = std::clamp(layout.Scale, 0.6, 1.2);
+    // Keep speed and meter labels readable at laptop resolutions even when
+    // the ordinary text HUD uses smaller telemetry typography.
+    const double scale = std::clamp(layout.Scale, 0.85, 1.2);
     const double panelWidth = 278.0 * scale;
     const double panelHeight = 214.0 * scale;
     const double rightMargin = std::max(18.0 * scale, width * 0.018);

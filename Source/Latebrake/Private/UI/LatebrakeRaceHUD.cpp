@@ -48,6 +48,34 @@ void ALatebrakeRaceHUD::ScrollMenuDetails(int direction)
     }
 }
 
+bool ALatebrakeRaceHUD::TryScrollMenuMouse(
+    double x, double y, int direction)
+{
+#if PLATFORM_ANDROID
+    return false;
+#else
+    const ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Canvas || !Mode || !Mode->IsMenuOpen())
+    {
+        return false;
+    }
+    const double width = static_cast<double>(Canvas->SizeX);
+    const double height = static_cast<double>(Canvas->SizeY);
+    const auto zone = latebrake::CalculateDesktopMenuWheelZone(
+        width, height, latebrake::CalculateHudLayout(width, height),
+        false, true);
+    const auto available = latebrake::AvailableDesktopMenuDetails(
+        Mode->GetMenuPage(), MenuPager);
+    if (!latebrake::AdmitDesktopMenuWheel(
+        zone, x, y, direction, available))
+    {
+        return false;
+    }
+    return direction == 1 ? MenuPager.Next() : MenuPager.Previous();
+#endif
+}
+
 latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     double x, double y) const
 {
@@ -65,7 +93,10 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     const auto buttons = latebrake::CalculateDesktopMenuMouseLayout(
         width, height, latebrake::CalculateHudLayout(width, height),
         false, true);
-    return latebrake::HitTestDesktopMenuMouse(buttons, x, y);
+    const auto availability = latebrake::AvailableDesktopMenuDetails(
+        Mode->GetMenuPage(), MenuPager);
+    return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
+        availability);
 #endif
 }
 
@@ -718,35 +749,62 @@ void ALatebrakeRaceHUD::DrawHUD()
                     GEngine->GetSmallFont(), UIScale);
             }
         }
-        // Desktop menu dock: the same portable pixel bounds are used by
-        // the click dispatcher in HitTestMenuMouse. No underlying race or
-        // garage methods are invoked here while drawing.
+        // Desktop menu dock: shared enabled/disabled state also gates the
+        // actual mouse click dispatcher. Empty, first and last detail
+        // pages cannot advertise working scroll arrows.
         if (MouseMenu.Valid)
         {
+            const auto MenuAvailability =
+                latebrake::AvailableDesktopMenuDetails(
+                    Mode->GetMenuPage(), MenuPager);
             float CursorX = 0.f;
             float CursorY = 0.f;
             const bool HasCursor = PlayerOwner->GetMousePosition(
                 CursorX, CursorY);
             const latebrake::DesktopMenuMouseAction Hovered = HasCursor
                 ? latebrake::HitTestDesktopMenuMouse(
-                    MouseMenu, CursorX, CursorY)
+                    MouseMenu, CursorX, CursorY, MenuAvailability)
                 : latebrake::DesktopMenuMouseAction::None;
+            const auto& FirstButton = MouseMenu.Buttons[0].Bounds;
+            DrawText(FString::Printf(TEXT("MENU PAGE %d/%d"),
+                static_cast<int32>(Mode->GetMenuPage()),
+                static_cast<int32>(latebrake::MenuPageNames.size()) - 1),
+                Gold, static_cast<float>(FirstButton.X),
+                static_cast<float>(FirstButton.Y - 24.0 * Layout.Scale),
+                GEngine->GetSmallFont(), 0.88f * UIScale);
+            // A discoverable mouse hint is kept below, not over,
+            // the actual clickable rectangles in the right-hand dock.
+            const auto& LastButton = MouseMenu.Buttons[5].Bounds;
+            DrawText(TEXT("WHEEL: DETAILS"), White,
+                static_cast<float>(MouseMenu.Left),
+                static_cast<float>(LastButton.Y + LastButton.Height +
+                    9.0 * Layout.Scale),
+                GEngine->GetSmallFont(), 0.82f * UIScale);
             for (const auto& Button : MouseMenu.Buttons)
             {
                 const float BX = static_cast<float>(Button.Bounds.X);
                 const float BY = static_cast<float>(Button.Bounds.Y);
                 const float BW = static_cast<float>(Button.Bounds.Width);
                 const float BH = static_cast<float>(Button.Bounds.Height);
-                const bool Selected = Button.Action ==
+                const bool Enabled =
+                    latebrake::DesktopMenuMouseActionEnabled(
+                        Button.Action, MenuAvailability);
+                const bool Selected = Enabled && Button.Action ==
                     latebrake::DesktopMenuMouseAction::Activate;
-                const bool Hover = Button.Action == Hovered;
-                DrawRect(Hover
-                    ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
-                    : (Selected
-                        ? FLinearColor(0.27f, 0.20f, 0.09f, 0.9f)
-                        : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f)),
+                const bool Hover = Enabled && Button.Action == Hovered;
+                // Disabled detail controls stay visible, with readable
+                // labels but no hover highlight or live hit target.
+                const FLinearColor DisabledLabel(0.62f, 0.68f, 0.75f);
+                DrawRect(!Enabled
+                    ? FLinearColor(0.07f, 0.10f, 0.14f, 0.84f)
+                    : Hover
+                        ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
+                        : (Selected
+                            ? FLinearColor(0.27f, 0.20f, 0.09f, 0.9f)
+                            : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f)),
                     BX, BY, BW, BH);
-                DrawRect(Selected ? Gold : White, BX, BY,
+                DrawRect(!Enabled ? DisabledLabel :
+                    Selected ? Gold : White, BX, BY,
                     3.f * UIScale, BH);
                 const TCHAR* Caption = TEXT("CLOSE");
                 switch (Button.Action)
@@ -765,7 +823,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Caption = TEXT("CLOSE"); break;
                 default: break;
                 }
-                DrawText(FString(Caption), Selected ? Gold : White,
+                DrawText(FString(Caption), !Enabled ? DisabledLabel :
+                    Selected ? Gold : White,
                     BX + 10.f * UIScale, BY + 12.f * UIScale,
                     GEngine->GetSmallFont(), 0.82f * UIScale);
             }

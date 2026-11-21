@@ -63,6 +63,40 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
         self.assertIn(
             'ActionName="MenuMouseClick",Key=LeftMouseButton', self.ini)
 
+    def test_wheel_scroll_is_local_paused_menu_details_only(self):
+        # Source-level integration only, not UE5.8 device or UHT runtime QA.
+        wheel = self.pawn.split(
+            "void ALatebrakeCarPawn::ScrollMenuMouseWheel(int direction)",
+            1)[1].split(
+            "void ALatebrakeCarPawn::MenuMousePressed()", 1)[0]
+        for marker in ("#if !PLATFORM_ANDROID", "Mode->IsMenuOpen()",
+                       "PC->IsLocalController()",
+                       "PC->GetMousePosition(MouseX, MouseY)",
+                       "Hud->TryScrollMenuMouse(MouseX, MouseY, direction)",
+                       "ClearDriverInputs()"):
+            self.assertIn(marker, wheel)
+        for marker in ("Mode->MenuNext()", "Mode->MenuActivate()",
+                       "StartCareerEvent(", "GarageUnlockNext(", "EarnCredits("):
+            self.assertNotIn(marker, wheel)
+        for action, key, handler in (
+            ("MenuMouseWheelUp", "MouseScrollUp", "MenuMouseWheelUp"),
+            ("MenuMouseWheelDown", "MouseScrollDown", "MenuMouseWheelDown"),
+        ):
+            self.assertIn(
+                f'ActionName="{action}",Key={key}', self.ini)
+            self.assertIn(f'TEXT("{action}"), IE_Pressed', self.pawn)
+            self.assertIn(f'&ALatebrakeCarPawn::{handler}', self.pawn)
+        self.assertIn("WheelUp.bExecuteWhenPaused = true", self.pawn)
+        self.assertIn("WheelDown.bExecuteWhenPaused = true", self.pawn)
+        self.assertIn("TryScrollMenuMouse(double x, double y, int direction)",
+                      self.hud_header)
+        self.assertIn("latebrake::CalculateDesktopMenuWheelZone(", self.hud)
+        self.assertIn("latebrake::AdmitDesktopMenuWheel(", self.hud)
+        self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
+        self.assertIn('TEXT("WHEEL: DETAILS")', self.hud)
+        self.assertIn("CalculateHudMenuVerticalPlan(", self.policy)
+        self.assertIn("CalculateHudTextBounds(", self.policy)
+
     def test_pointer_ownership_tracks_game_mode_not_hud_render(self):
         focus = self.mode.split(
             "void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()", 1)[1].split(
@@ -75,6 +109,35 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
         self.assertGreaterEqual(
             self.mode.count("SyncDesktopMenuPointerMode();"), 2)
         self.assertNotIn("SyncDesktopMenuPointerMode();", self.hud)
+
+    def test_disabled_detail_controls_match_render_and_dispatch(self):
+        # This is a source integration contract, not proof of Unreal UHT.
+        # The displayed muted buttons and the Pawn's click result must use
+        # the exact same visible-page/pager availability policy.
+        # Click, wheel and rendering must all consult the same pager.
+        self.assertEqual(self.hud.count(
+            "latebrake::AvailableDesktopMenuDetails("), 3)
+        self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
+        self.assertIn("Mode->GetMenuPage(), MenuPager);", self.hud)
+        self.assertIn(
+            "return latebrake::HitTestDesktopMenuMouse(buttons, x, y,",
+            self.hud)
+        self.assertIn("MouseMenu, CursorX, CursorY, MenuAvailability)",
+                      self.hud)
+        self.assertIn("Button.Action, MenuAvailability", self.hud)
+        self.assertIn("const bool Hover = Enabled &&", self.hud)
+        self.assertIn("!Enabled ? DisabledLabel", self.hud)
+        self.assertIn('TEXT("MENU PAGE %d/%d")', self.hud)
+        for source_marker in (
+            "visiblePage == MenuPage::Closed",
+            "pager.GetPage() != visiblePage",
+            "window.HasPrevious, window.HasNext",
+            "DesktopMenuMouseActionEnabled(button.Action, availability)",
+            "DesktopMenuMouseAction::None",
+        ):
+            self.assertIn(source_marker, self.policy)
+        self.assertNotIn("Mode->MenuActivate(", self.hud)
+        self.assertNotIn("Mode->MenuNext(", self.hud)
 
     def test_bounded_pure_test_policy(self):
         for term in ("touchUI || !menuOpen || layout.Compact",
