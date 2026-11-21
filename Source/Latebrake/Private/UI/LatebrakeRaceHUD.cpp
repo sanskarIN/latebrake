@@ -1963,10 +1963,52 @@ void ALatebrakeRaceHUD::DrawHUD()
                                    float Row, const FLinearColor& Fill)
         {
             const float PosY = Gy + Row * S;
-            DrawText(FString::Printf(TEXT("%s  %.0f%%"),
-                Label, Fraction * 100.0), Ink,
-                Gx + 16.f * S, PosY,
-                GEngine->GetSmallFont(), 0.83f * S);
+            // Anchor the measured percentage on the right even when
+            // "ENGINE HEAT (ARCADE)" or "CHASSIS CONDITION" is longer
+            // than the left part of a laptop-width instrument panel.
+            const float FontScale = 0.83f * S;
+            UFont* Font = GEngine->GetSmallFont();
+            const FString Percentage =
+                FString::Printf(TEXT("%.0f%%"), Fraction * 100.0);
+            float PercentageWidth = 0.f;
+            float PercentageHeight = 0.f;
+            GetTextSize(Percentage, PercentageWidth, PercentageHeight,
+                Font, FontScale);
+            const auto MeterText = latebrake::CalculateHudInstrumentMeterText(
+                Instruments.Panel, Instruments.Scale,
+                static_cast<double>(PercentageWidth));
+            if (MeterText.Valid)
+            {
+                const FString MeterName(Label);
+                const FString Suffix(TEXT("..."));
+                const auto Measure = [&](const FString& Value) -> double
+                {
+                    float MeasuredWidth = 0.f;
+                    float MeasuredHeight = 0.f;
+                    GetTextSize(Value, MeasuredWidth, MeasuredHeight,
+                        Font, FontScale);
+                    return static_cast<double>(MeasuredWidth);
+                };
+                const int32 Prefix = latebrake::ChooseHudTextPrefix(
+                    MeterName.Len(), MeterText.LabelMaxWidth,
+                    Measure(MeterName), Measure(Suffix),
+                    [&](int32 Units) -> double
+                    {
+                        return Measure(MeterName.Left(Units) + Suffix);
+                    });
+                if (Prefix >= 0)
+                {
+                    const FString VisibleName =
+                        Prefix == MeterName.Len() ? MeterName :
+                        MeterName.Left(Prefix) + Suffix;
+                    DrawText(VisibleName, Ink,
+                        static_cast<float>(MeterText.LabelX), PosY,
+                        Font, FontScale);
+                }
+                DrawText(Percentage, Ink,
+                    static_cast<float>(MeterText.PercentX), PosY,
+                    Font, FontScale);
+            }
             const float BarX = Gx + 16.f * S;
             const float BarWidth = Gw - 32.f * S;
             const float BarY = PosY + 18.f * S;
