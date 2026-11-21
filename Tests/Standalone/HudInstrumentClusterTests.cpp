@@ -22,6 +22,8 @@ void VerifyViewport(double width, double height)
     const auto gauge = CalculateHudInstrumentCluster(
         width, height, layout, false, false, false, 127.5, 0.7, 0.4, 0.2);
     Require(gauge.Visible, "expected wide desktop gauge");
+    Require(gauge.Scale >= 0.85 && gauge.Scale <= 1.2,
+            "speed and meter labels retain usable laptop font scale");
     Require(gauge.Panel.X > width * 0.53, "no left text collision");
     Require(gauge.Panel.X + gauge.Panel.Width < width, "panel right bound");
     Require(gauge.Panel.Y >= 0 && gauge.Panel.Y + gauge.Panel.Height < height,
