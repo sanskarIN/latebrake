@@ -8,9 +8,10 @@
 
 namespace latebrake
 {
-// Source-only fixed navigation dock for the prototype desktop Canvas menu.
-// The returned actions map to existing authoritative GameMode menu methods:
-// this policy cannot purchase cars, award credits, start events or steer.
+// Responsive desktop navigation dock for the existing Unreal Canvas menu.
+// Pointer targets remain at least 44 pixels high even when HUD text scales
+// down on smaller laptop windows. Each action still maps to the existing
+// authoritative GameMode; this policy cannot purchase, race, save or steer.
 enum class DesktopMenuMouseAction
 {
     None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close
@@ -25,7 +26,13 @@ struct DesktopMenuMouseRect final
 
     bool Contains(double x, double y) const noexcept
     {
+        // Bounds can be supplied to the portable hit tester independently
+        // of CalculateDesktopMenuMouseLayout. Malformed rectangles must not
+        // become invisible click traps while the game menu is open.
         return std::isfinite(x) && std::isfinite(y) &&
+            std::isfinite(X) && std::isfinite(Y) &&
+            std::isfinite(Width) && std::isfinite(Height) &&
+            Width > 0.0 && Height > 0.0 &&
             x >= X && x < X + Width && y >= Y && y < Y + Height;
     }
 };
@@ -49,7 +56,7 @@ inline DesktopMenuMouseLayout CalculateDesktopMenuMouseLayout(
 {
     if (touchUI || !menuOpen || layout.Compact ||
         !std::isfinite(width) || !std::isfinite(height) ||
-        width < 1100.0 || height < 680.0 ||
+        width < 900.0 || height < 600.0 ||
         !std::isfinite(layout.Left) || layout.Left < 0.0 ||
         !std::isfinite(layout.Scale) || layout.Scale <= 0.0)
     {
@@ -57,15 +64,19 @@ inline DesktopMenuMouseLayout CalculateDesktopMenuMouseLayout(
     }
 
     const double scale = std::clamp(layout.Scale, 0.6, 1.2);
-    const double buttonW = 126.0 * scale;
-    const double buttonH = 44.0 * scale;
-    const double gap = 10.0 * scale;
-    const double left = width - (22.0 * scale + buttonW * 2.0 + gap);
-    const double top = 100.0 * scale;
+    // Preserve legible pointer targets at 900x600 and on laptop windows
+    // where text scaling is smaller. Never shrink a click below 44 px
+    // vertically, or two columns below their readable caption widths.
+    const double buttonW = std::max(112.0, 126.0 * scale);
+    const double buttonH = std::max(44.0, 44.0 * scale);
+    const double gap = std::max(8.0, 10.0 * scale);
+    const double rightMargin = std::max(16.0, 22.0 * scale);
+    const double left = width - (rightMargin + buttonW * 2.0 + gap);
+    const double top = std::max(72.0, 100.0 * scale);
     const double bottom = top + 3.0 * buttonH + 2.0 * gap;
     if (!std::isfinite(left) || !std::isfinite(bottom) ||
         left < std::max(width * 0.58, layout.Left + 270.0 * scale) ||
-        bottom > height - 140.0 * scale)
+        bottom > height - std::max(80.0, 140.0 * scale))
     {
         return {};
     }
