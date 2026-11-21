@@ -36,6 +36,10 @@ void VerifyViewport(double width, double height)
 int main()
 {
     using namespace latebrake;
+    VerifyViewport(900, 600);
+    VerifyViewport(960, 640);
+    VerifyViewport(1024, 768);
+    VerifyViewport(1100, 680);
     VerifyViewport(1280, 720);
     VerifyViewport(1920, 1080);
     VerifyViewport(3440, 1440);
@@ -53,15 +57,19 @@ int main()
             "menus own the viewport");
     Require(!gauge(false, false, true, 80, 0.5, 0.4, 0.1).Visible,
             "results own the viewport");
-    for (const double w : {0.0, 240.0, 640.0, 800.0, 1024.0})
+    for (const double w : {0.0, 240.0, 640.0, 800.0, 899.0})
     {
         Require(!CalculateHudInstrumentCluster(w, 720,
             CalculateHudLayout(w, 720), false, false, false,
             30, 0.5, 0.3, 0).Visible, "compact viewport");
     }
-    Require(!CalculateHudInstrumentCluster(1280, 600,
+    Require(!CalculateHudInstrumentCluster(1280, 599,
+        CalculateHudLayout(1280, 599), false, false, false,
+        30, 0.5, 0.3, 0).Visible, "viewport below minimum height");
+    Require(CalculateHudInstrumentCluster(1280, 600,
         CalculateHudLayout(1280, 600), false, false, false,
-        30, 0.5, 0.3, 0).Visible, "short viewport");
+        30, 0.5, 0.3, 0).Visible,
+        "short desktop retains readable right-side instrument panel");
     const double nan = std::numeric_limits<double>::quiet_NaN();
     for (int i = 0; i < 4; ++i)
     {
@@ -84,9 +92,9 @@ int main()
             high.NitroFraction == 1 && high.EngineHeatFraction == 1 &&
             high.ChassisConditionFraction == 0, "upper clamp");
     // Dense deterministic viewport sweep: never render offscreen.
-    for (int width = 1100; width <= 3600; width += 17)
+    for (int width = 900; width <= 3600; width += 17)
     {
-        for (int height = 680; height <= 1600; height += 19)
+        for (int height = 600; height <= 1600; height += 19)
         {
             const auto plan = CalculateHudInstrumentCluster(
                 width, height, CalculateHudLayout(width, height),
