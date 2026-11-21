@@ -2,6 +2,8 @@
 
 #include "UI/HudLayout.h"
 #include "UI/MenuDetailPager.h"
+#include "UI/HudMenuVerticalPlan.h"
+#include "UI/HudTextBounds.h"
 
 #include <array>
 #include <algorithm>
@@ -142,6 +144,59 @@ inline DesktopMenuMouseLayout CalculateDesktopMenuMouseLayout(
             {left + buttonW + gap, top + 2.0 * (buttonH + gap), buttonW, buttonH}}
     }};
     return result;
+}
+
+// Wheel navigation is confined to the visible left menu-detail lane.
+// Its bounds exclude the desktop button dock and the SAVE FAILED notice.
+inline DesktopMenuMouseRect CalculateDesktopMenuWheelZone(
+    double width, double height, HudLayout layout,
+    bool touchUI, bool menuOpen) noexcept
+{
+    if (touchUI || !menuOpen ||
+        !std::isfinite(width) || !std::isfinite(height) ||
+        width < 240.0 || height < 240.0)
+    {
+        return {};
+    }
+
+    const HudTextBounds text =
+        CalculateHudTextBounds(width, height, layout, false);
+    const HudMenuVerticalPlan vertical =
+        CalculateHudMenuVerticalPlan(width, height, layout, false);
+    if (!text.Valid || !vertical.Valid)
+    {
+        return {};
+    }
+    const DesktopMenuMouseLayout dock =
+        CalculateDesktopMenuMouseLayout(width, height, layout, false, true);
+    const double right = dock.Valid
+        ? std::min(text.Right, dock.Left - 12.0 * layout.Scale)
+        : text.Right;
+    const double bottom =
+        vertical.OverflowNoticeY + 10.0 * layout.Scale;
+    const double zoneWidth = right - text.Left;
+    const double zoneHeight = bottom - layout.Top;
+    if (!std::isfinite(right) || !std::isfinite(bottom) ||
+        !std::isfinite(zoneWidth) || !std::isfinite(zoneHeight) ||
+        zoneWidth <= 0.0 || zoneHeight <= 0.0 || bottom >= height)
+    {
+        return {};
+    }
+    return {text.Left, layout.Top, zoneWidth, zoneHeight};
+}
+
+// A valid pointer alone does not scroll: there must be a real adjacent
+// detail page, and the wheel direction must be exactly one step.
+inline bool AdmitDesktopMenuWheel(
+    const DesktopMenuMouseRect& zone, double x, double y, int direction,
+    DesktopMenuMouseAvailability available) noexcept
+{
+    if (!zone.Contains(x, y))
+    {
+        return false;
+    }
+    return direction == -1 ? available.DetailsUp :
+           direction == 1 ? available.DetailsDown : false;
 }
 
 inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
