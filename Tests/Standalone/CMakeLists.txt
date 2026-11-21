@@ -2515,3 +2515,6 @@ add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
 add_latebrake_portable_research_test(PhysicalWetLapTrace)
 # Time-weighted 16-sector source-only race engineer review for six cars.
 add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
+
+# Portable source-only mainline racecraft/telemetry validation.
+include("${CMAKE_CURRENT_LIST_DIR}/PortableRacecraftImport.cmake")
