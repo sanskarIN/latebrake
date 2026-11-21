@@ -18,6 +18,7 @@ class HudInstrumentClusterBindingTests(unittest.TestCase):
     def setUpClass(cls):
         cls.hud = source("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
         cls.policy = source("Source/Latebrake/Public/UI/HudInstrumentCluster.h")
+        cls.badge_policy = source("Source/Latebrake/Public/UI/HudInstrumentDriveBadge.h")
         cls.cmake = source("Tests/Standalone/CMakeLists.txt")
 
     def test_runtime_reads_actual_telemetry_and_preserves_text_lane(self):
@@ -71,6 +72,39 @@ class HudInstrumentClusterBindingTests(unittest.TestCase):
         self.assertIn("labelWidth = percentX - gap - left", self.policy)
         self.assertIn("percentRight = panel.X + panel.Width - inset",
                       self.policy)
+
+    def test_real_transmission_badge_has_font_measured_bounds(self):
+        panel = self.hud.split(
+            "    // Read-only instrument panel.", 1)[1].split(
+            "    // A deterministic footer", 1)[0]
+        for marker in (
+            '#include "UI/HudInstrumentDriveBadge.h"',
+            "Car->GetTransmissionReadout()",
+            "DriveGear.Valid",
+            "DriveGear.Shifting",
+            "GearShort + TEXT(\" SHIFT\")",
+            '"%s  %d RPM EST"',
+            "GetTextSize(SpeedReadout, SpeedWidth, SpeedHeight,",
+            "GetTextSize(GearShort, ShortWidth, ShortHeight,",
+            "GetTextSize(GearFull, FullWidth, FullHeight,",
+            "latebrake::CalculateHudInstrumentDriveBadge(",
+            "Badge.ShowExtended ? GearFull : GearShort",
+            "static_cast<float>(Badge.X)",
+        ):
+            self.assertIn(marker, panel if not marker.startswith('#include') else self.hud)
+        self.assertLess(panel.index("GetTextSize(GearFull,"),
+                        panel.index("CalculateHudInstrumentDriveBadge("))
+        self.assertLess(panel.index("CalculateHudInstrumentDriveBadge("),
+                        panel.index("if (Badge.Visible)"))
+        self.assertIn("std::isfinite(speedTextWidth)", self.badge_policy)
+        self.assertIn("available < compactTextWidth", self.badge_policy)
+        self.assertIn("compactTextHeight > 24.0 * scale", self.badge_policy)
+        self.assertIn("extendedTextHeight <= 24.0 * scale", self.badge_policy)
+        self.assertIn("HudInstrumentDriveBadgeTests.cpp", self.cmake)
+        self.assertIn("NAME HudInstrumentDriveBadge", self.cmake)
+        for forbidden in ("AddForce(", "AddTimePenalty(", "PassCheckpoint(",
+                          "SaveRecords(", "SetAutonomousControls(", "TrySpend("):
+            self.assertNotIn(forbidden, self.badge_policy)
 
     def test_instruments_are_display_only(self):
         panel = self.hud.split(
