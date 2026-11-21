@@ -350,9 +350,35 @@ inline SixCarSetupComparison CompareSixCarSetup(
     const SixCarSetupPlan& next) noexcept
 {
     SixCarSetupComparison out;
+    // Comparing settings across two different tracks, garage upgrade
+    // configurations, or untrusted physical source records creates a
+    // misleading result. Do not turn a forged preview receipt into a
+    // seemingly authentic mechanical recommendation. Different frame
+    // ordinals within ONE source session remain valid: real grip changes
+    // necessarily arrive at later physics frames.
     if(!first.Valid || !next.Valid ||
+       first.VehicleId<0 || first.VehicleId>=VehicleCount ||
        first.VehicleId!=next.VehicleId ||
+       first.Circuit!=next.Circuit ||
+       static_cast<unsigned>(first.Circuit)>=WorldScaleVariantCount ||
+       first.SourceSession==0u ||
        first.SourceSession!=next.SourceSession ||
+       first.SourceFrame==0u || next.SourceFrame==0u ||
+       first.OriginalUpgradeEngineLevel>3u ||
+       first.OriginalUpgradeGripLevel>3u ||
+       first.OriginalUpgradeEngineLevel!=next.OriginalUpgradeEngineLevel ||
+       first.OriginalUpgradeGripLevel!=next.OriginalUpgradeGripLevel ||
+       !first.SourceOnly || !next.SourceOnly ||
+       !first.NativeChaosConfigurationUnchanged ||
+       !next.NativeChaosConfigurationUnchanged ||
+       !first.OriginalGarageStateUnchanged ||
+       !next.OriginalGarageStateUnchanged ||
+       !std::isfinite(first.MeasuredGripFraction) ||
+       !std::isfinite(next.MeasuredGripFraction) ||
+       first.MeasuredGripFraction<=0.0 ||
+       first.MeasuredGripFraction>1.0 ||
+       next.MeasuredGripFraction<=0.0 ||
+       next.MeasuredGripFraction>1.0 ||
        !ValidSixCarMechanicalSetup(first.Values) ||
        !ValidSixCarMechanicalSetup(next.Values))
         return out;

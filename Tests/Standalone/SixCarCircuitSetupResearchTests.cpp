@@ -118,6 +118,67 @@ int main(){
             Require(same.Valid &&
                     Near(same.TotalAbsoluteChange,0.0),
                     "identical native-read-only setups produce zero difference");
+            // Comparisons are meaningful only for the SAME original
+            // circuit, owned vehicle, source session and garage upgrades.
+            // Source receipts are read-only evidence, not a way to apply
+            // forged settings to Chaos or mutate player progression.
+            auto other=wet;
+            other.Circuit=WorldScaleOriginalVariantRecipes[
+                (circuitIndex+1u)%WorldScaleVariantCount].Id;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "foreign circuit previews cannot be compared");
+            other=wet;
+            other.SourceSession=43u;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "foreign race sessions cannot share setup provenance");
+            other=wet;
+            other.SourceFrame=0u;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "unobserved source frame cannot be compared");
+            other=wet;
+            ++other.SourceFrame;
+            Require(CompareSixCarSetup(dry,other).Valid,
+                    "real newer frame in same session can show wet change");
+            other=wet;
+            other.OriginalUpgradeGripLevel=2u;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "different garage upgrade states need separate preview");
+            other=wet;
+            other.OriginalUpgradeEngineLevel=4u;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "corrupt original engine upgrade level rejected");
+            other=wet;
+            other.SourceOnly=false;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "native-actuating receipt cannot masquerade as preview");
+            other=wet;
+            other.NativeChaosConfigurationUnchanged=false;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "native wheel mutation invalidates advisory comparison");
+            other=wet;
+            other.OriginalGarageStateUnchanged=false;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "garage credit or selection mutation invalidates receipt");
+            other=wet;
+            other.MeasuredGripFraction=nan;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "nonfinite contact grip cannot enter comparison");
+            other=wet;
+            other.MeasuredGripFraction=-0.1;
+            Require(!CompareSixCarSetup(dry,other).Valid,
+                    "negative fabricated grip cannot enter comparison");
+            auto forgedFirst=dry;
+            auto forgedNext=wet;
+            forgedFirst.VehicleId=VehicleCount;
+            forgedNext.VehicleId=VehicleCount;
+            Require(!CompareSixCarSetup(forgedFirst,forgedNext).Valid,
+                    "matching out-of-range car IDs are not proof of ownership");
+            forgedFirst=dry;
+            forgedNext=wet;
+            forgedFirst.Circuit=static_cast<WorldScaleVariantId>(255);
+            forgedNext.Circuit=forgedFirst.Circuit;
+            Require(!CompareSixCarSetup(forgedFirst,forgedNext).Valid,
+                    "matching unknown circuit IDs are never authentic");
             auto corrupt=garage;
             corrupt.OwnedVehicleMask=(1<<car);
             if(car>0){
