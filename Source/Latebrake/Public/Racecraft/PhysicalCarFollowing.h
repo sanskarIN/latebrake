@@ -74,9 +74,6 @@ struct FollowingThreat final
     std::uint64_t Actor=0;
     double LongitudinalGapCm=0.0;
     double LateralSeparationCm=0.0;
-    // Positive if a rear car has physical bumper clearance; negative means
-    // its reported length overlaps ours. Diagnostic only, never a brake order.
-    double RearClearanceCm=0.0;
     double RelativeForwardSpeedCmS=0.0;
     double ClosingSpeedCmS=0.0;
     double DesiredGapCm=0.0;
@@ -87,8 +84,6 @@ struct FollowingThreat final
     double BrakeFloor=0.0;
     double Severity=0.0;
     bool SameLane=false;
-    bool RearProximity=false;
-    bool ForwardInteraction=false;
     bool PhysicallyClosing=false;
     bool StopImmediately=false;
     bool Valid=false;
@@ -104,12 +99,9 @@ struct FollowingDecision final
     double MaximumClosingSpeedCmS=0.0;
     double NearestLongitudinalGapCm=0.0;
     double MinimumTimeToContactSeconds=0.0;
-    double NearestRearClearanceCm=0.0;
     double RequestedSpacingCm=0.0;
     int VerifiedOpponents=0;
     int SameLaneOpponents=0;
-    int ForwardOpponents=0;
-    int RearProximityOpponents=0;
     int ClosingOpponents=0;
     bool EmergencyBrake=false;
     bool HoldingForRosterChange=false;
@@ -265,10 +257,7 @@ inline FollowingThreat EvaluateFollowingThreat(
         longitudinal,relativePosition);
     const double closing=-
         Dot(relativeVelocity,longitudinal);
-    // Finite input poses alone are insufficient: subtracting two extreme,
-    // individually finite coordinates can overflow during relative geometry.
-    if (!Finite(along) || !Finite(lateral) ||
-        !Finite(closing) ||
+    if (!Finite(closing) ||
         std::abs(closing)>p.MaximumRelativeVelocityCmS)
         return out;
     const double bodyGap=along-
@@ -278,29 +267,20 @@ inline FollowingThreat EvaluateFollowingThreat(
     out.LongitudinalGapCm=bodyGap;
     out.LateralSeparationCm=lateral;
     out.RelativeForwardSpeedCmS = -closing;
+    out.ClosingSpeedCmS=std::max(0.0,closing);
     out.SameLane=std::abs(lateral)<
         std::min(p.MaximumLateralInteractionCm,
                  p.LaneWidthCm*0.5)+
         self.HalfWidthCm+other.HalfWidthCm;
-    // This is a FOLLOWING envelope, not a rear-impact or lane-change
-    // controller. A car behind the rear axle must never become a phantom
-    // forward collision merely because its bumper is within 5 metres.
-    // Retain nearby rear source evidence for review without braking.
-    out.RearProximity=out.SameLane && along<=0.0 &&
-        along>=-p.RearwardIgnoreDistanceCm;
-    if (out.RearProximity)
-        out.RearClearanceCm=
-            -along-self.HalfLengthCm-other.HalfLengthCm;
-    out.ForwardInteraction=out.SameLane && along>0.0 &&
-        along<=p.MaximumInteractionDistanceCm;
-    if (!out.ForwardInteraction)
+    out.PhysicallyClosing=closing>
+        p.MinimumApproachSpeedCmS;
+    if (along<-p.RearwardIgnoreDistanceCm ||
+        along>p.MaximumInteractionDistanceCm ||
+        !out.SameLane)
     {
         out.Valid=true;
         return out;
     }
-    out.ClosingSpeedCmS=std::max(0.0,closing);
-    out.PhysicallyClosing=closing>
-        p.MinimumApproachSpeedCmS;
     const double speed=std::max(
         0.0,ForwardSpeed(
             self.VelocityCmS,self.Pose.HeadingRadians));
@@ -369,8 +349,6 @@ inline FollowingDecision RestrictPhysicalCarFollowing(
         std::numeric_limits<double>::infinity();
     out.MinimumTimeToContactSeconds=
         std::numeric_limits<double>::infinity();
-    out.NearestRearClearanceCm=
-        std::numeric_limits<double>::infinity();
     double severity=-1.0;
     for (int i=0;i<input.OpponentCount;++i)
     {
@@ -379,19 +357,8 @@ inline FollowingDecision RestrictPhysicalCarFollowing(
                 static_cast<std::size_t>(i)],params);
         if (!threat.Valid)return {};
         ++out.VerifiedOpponents;
-        if (threat.SameLane) ++out.SameLaneOpponents;
-        if (threat.RearProximity)
-        {
-            ++out.RearProximityOpponents;
-            out.NearestRearClearanceCm=std::min(
-                out.NearestRearClearanceCm,
-                threat.RearClearanceCm);
-        }
-        // Ignored far, lateral and rear cars never enter a limiting
-        // front-gap, time-to-contact or brake calculation. In particular,
-        // a default zero TTC from an ignored threat is not an emergency.
-        if (!threat.ForwardInteraction)continue;
-        ++out.ForwardOpponents;
+        if (!threat.SameLane)continue;
+        ++out.SameLaneOpponents;
         if (threat.PhysicallyClosing)++out.ClosingOpponents;
         out.MaximumClosingSpeedCmS=std::max(
             out.MaximumClosingSpeedCmS,threat.ClosingSpeedCmS);
