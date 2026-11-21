@@ -42,7 +42,13 @@ inline LiveRacePaceProjection ProjectLiveRacePace(
     for (int index = 0; index < samples; ++index)
     {
         const TimedLapRecord lap = race.GetRecentTimedLap(index);
-        if (!lap.Valid() || !IsValidFinishedRaceTime(lap.Seconds) ||
+        // The last up to three results must be consecutive physical laps
+        // with a real positive active-clock update in EACH one. Recovery
+        // fees can make a lap time positive without any driving, and gaps
+        // from zero-time laps cannot be silently bridged by older samples.
+        if (!lap.Valid() || !lap.ActiveClockEvidence ||
+            lap.CompletedLap != race.GetCompletedLaps() - index ||
+            !IsValidFinishedRaceTime(lap.Seconds) ||
             lap.Seconds > 604800.0 - sum)
         {
             return result;
