@@ -63,6 +63,40 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
         self.assertIn(
             'ActionName="MenuMouseClick",Key=LeftMouseButton', self.ini)
 
+    def test_wheel_scroll_is_local_paused_menu_details_only(self):
+        # Source-level integration only, not UE5.8 device or UHT runtime QA.
+        wheel = self.pawn.split(
+            "void ALatebrakeCarPawn::ScrollMenuMouseWheel(int direction)",
+            1)[1].split(
+            "void ALatebrakeCarPawn::MenuMousePressed()", 1)[0]
+        for marker in ("#if !PLATFORM_ANDROID", "Mode->IsMenuOpen()",
+                       "PC->IsLocalController()",
+                       "PC->GetMousePosition(MouseX, MouseY)",
+                       "Hud->TryScrollMenuMouse(MouseX, MouseY, direction)",
+                       "ClearDriverInputs()"):
+            self.assertIn(marker, wheel)
+        for marker in ("Mode->MenuNext()", "Mode->MenuActivate()",
+                       "StartCareerEvent(", "GarageUnlockNext(", "EarnCredits("):
+            self.assertNotIn(marker, wheel)
+        for action, key, handler in (
+            ("MenuMouseWheelUp", "MouseScrollUp", "MenuMouseWheelUp"),
+            ("MenuMouseWheelDown", "MouseScrollDown", "MenuMouseWheelDown"),
+        ):
+            self.assertIn(
+                f'ActionName="{action}",Key={key}', self.ini)
+            self.assertIn(f'TEXT("{action}"), IE_Pressed', self.pawn)
+            self.assertIn(f'&ALatebrakeCarPawn::{handler}', self.pawn)
+        self.assertIn("WheelUp.bExecuteWhenPaused = true", self.pawn)
+        self.assertIn("WheelDown.bExecuteWhenPaused = true", self.pawn)
+        self.assertIn("TryScrollMenuMouse(double x, double y, int direction)",
+                      self.hud_header)
+        self.assertIn("latebrake::CalculateDesktopMenuWheelZone(", self.hud)
+        self.assertIn("latebrake::AdmitDesktopMenuWheel(", self.hud)
+        self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
+        self.assertIn('TEXT("WHEEL: DETAILS")', self.hud)
+        self.assertIn("CalculateHudMenuVerticalPlan(", self.policy)
+        self.assertIn("CalculateHudTextBounds(", self.policy)
+
     def test_pointer_ownership_tracks_game_mode_not_hud_render(self):
         focus = self.mode.split(
             "void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()", 1)[1].split(
