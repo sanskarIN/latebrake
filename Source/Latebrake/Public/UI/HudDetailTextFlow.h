@@ -103,6 +103,11 @@ bool IsHudDetailSafeBoundary(
     if ((previous >= 0xD800u && previous <= 0xDBFFu &&
          next >= 0xDC00u && next <= 0xDFFFu) ||
         IsHudDetailExtend(next) ||
+        // Devanagari consonant conjuncts (e.g. KA + VIRAMA + SSA)
+        // must not lose their shaping connection at a hard line break.
+        (previous == 0x094Du &&
+         ((next >= 0x0915u && next <= 0x0939u) ||
+          (next >= 0x0958u && next <= 0x095Fu))) ||
         previous == 0x200Du || next == 0x200Du ||
         (previous == 0x000Du && next == 0x000Au))
     {
