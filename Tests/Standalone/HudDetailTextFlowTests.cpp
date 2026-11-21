@@ -136,6 +136,16 @@ int main()
     Check(!Wrap(u"\u0915\u093E", 1.0).Result.Complete,
           "narrow lanes do not emit isolated Hindi base letters");
 
+    // A Hindi conjunct written without an explicit ZWJ must remain
+    // one shaping cluster: KA + VIRAMA + SSA, followed by a plain X.
+    const auto conjunct = Wrap(u"\u0915\u094D\u0937X", 3.0);
+    Check(conjunct.Result.Complete && conjunct.Lines.size() == 2 &&
+          conjunct.Lines[0] == u"\u0915\u094D\u0937" &&
+          conjunct.Lines[1] == u"X",
+          "Devanagari virama conjunct remains intact");
+    Check(!Wrap(u"\u0915\u094D\u0937", 2.0).Result.Complete,
+          "too-narrow lanes cannot break a shaped Hindi conjunct");
+
     const auto joined = Wrap(u"\U0001F468\u200D\U0001F4BBZ", 5.0);
     Check(joined.Result.Complete && joined.Lines.size() == 2 &&
           joined.Lines[0] == u"\U0001F468\u200D\U0001F4BB",
