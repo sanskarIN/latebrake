@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "UI/HudInstrumentCluster.h"
+#include "UI/NitroHudReadout.h"
 #include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
 #include "Garage/GarageComparisonView.h"
@@ -2039,7 +2040,62 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Gx + 16.f * S, Gy + 64.f * S,
                 GEngine->GetSmallFont(), 0.83f * S);
         }
-        DrawMeter(TEXT("NITRO"), Instruments.NitroFraction, 99.f, Mint);
+        // The charge bar alone does not tell a driver WHY boost is
+        // unavailable. Classify an actual ArcadeNitroBoost snapshot:
+        // no independent input state, cooldown clock or gameplay authority.
+        // Do not claim "READY" from charge alone: throttle, held key and
+        // service/handbrake gates still belong to the car's real Step().
+        const bool bNitroDrivingEligible =
+            Mode->IsCircuitReadyForGameplay() &&
+            Mode->IsRestartPlacementReady() &&
+            Mode->HasLocalPlayerDriver() &&
+            Mode->IsRaceStartGreen() &&
+            Car->IsRacePhysicsReady() &&
+            !Mode->IsFocusLossGuardActive() &&
+            !Mode->IsManualRacePauseActive() &&
+            !UGameplayStatics::IsGamePaused(this);
+        const latebrake::NitroHudReadout NitroState =
+            latebrake::ReadNitroHud(Car->GetNitroBoost(),
+                static_cast<double>(Car->GetForwardSpeedKmH()),
+                bNitroDrivingEligible);
+        FString NitroMeterName(TEXT("NITRO DATA N/A"));
+        FLinearColor NitroMeterColor = Track;
+        if (NitroState.Valid)
+        {
+            switch (NitroState.Phase)
+            {
+            case latebrake::NitroHudPhase::Active:
+                NitroMeterName = TEXT("NITRO ACTIVE");
+                NitroMeterColor = Gold;
+                break;
+            case latebrake::NitroHudPhase::Cooldown:
+                NitroMeterName = FString::Printf(TEXT("NITRO COOL %.1fs"),
+                    NitroState.CooldownSeconds);
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::Overheated:
+                NitroMeterName = TEXT("NITRO HOT");
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::Empty:
+                NitroMeterName = TEXT("NITRO EMPTY");
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::BuildSpeed:
+                NitroMeterName = TEXT("NITRO BUILD SPEED");
+                NitroMeterColor = Mint;
+                break;
+            case latebrake::NitroHudPhase::Stored:
+                NitroMeterName = TEXT("NITRO STORED");
+                NitroMeterColor = Mint;
+                break;
+            default:
+                NitroMeterName = TEXT("NITRO LOCKED");
+                break;
+            }
+        }
+        DrawMeter(*NitroMeterName, Instruments.NitroFraction, 99.f,
+            NitroMeterColor);
         DrawMeter(TEXT("ENGINE HEAT (ARCADE)"),
             Instruments.EngineHeatFraction, 133.f, Coral);
         DrawMeter(TEXT("CHASSIS CONDITION"),

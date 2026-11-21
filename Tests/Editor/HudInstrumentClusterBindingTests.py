@@ -31,7 +31,7 @@ class HudInstrumentClusterBindingTests(unittest.TestCase):
             "Car->GetCollisionDamage().DamageFraction()",
             "Instruments.Panel.X - HorizontalBounds.Left",
             "Value.Len(), SafeTextWidth,",
-            'DrawMeter(TEXT("NITRO")',
+            'DrawMeter(*NitroMeterName, Instruments.NitroFraction, 99.f,',
             'DrawMeter(TEXT("ENGINE HEAT (ARCADE)")',
             'DrawMeter(TEXT("CHASSIS CONDITION")',
         ):
@@ -71,6 +71,46 @@ class HudInstrumentClusterBindingTests(unittest.TestCase):
         self.assertIn("labelWidth = percentX - gap - left", self.policy)
         self.assertIn("percentRight = panel.X + panel.Width - inset",
                       self.policy)
+
+    def test_existing_nitro_meter_explains_real_observed_ability(self):
+        panel = self.hud.split(
+            "    // Read-only instrument panel.", 1)[1].split(
+            "    // A deterministic footer", 1)[0]
+        for marker in (
+            'Car->GetNitroBoost()',
+            'Car->GetForwardSpeedKmH()',
+            'Car->IsRacePhysicsReady()',
+            'Mode->IsRaceStartGreen()',
+            'Mode->IsFocusLossGuardActive()',
+            'Mode->IsManualRacePauseActive()',
+            'UGameplayStatics::IsGamePaused(this)',
+            'latebrake::ReadNitroHud(',
+            'NitroHudPhase::Active',
+            'NitroHudPhase::Cooldown',
+            'NitroHudPhase::Overheated',
+            'NitroHudPhase::Empty',
+            'NitroHudPhase::BuildSpeed',
+            'NitroHudPhase::Stored',
+            'TEXT("NITRO STORED")',
+            'TEXT("NITRO LOCKED")',
+            'TEXT("NITRO DATA N/A")',
+            'DrawMeter(*NitroMeterName, Instruments.NitroFraction, 99.f,',
+        ):
+            self.assertIn(marker, panel)
+        self.assertIn('#include "UI/NitroHudReadout.h"', self.hud)
+        policy = source("Source/Latebrake/Public/UI/NitroHudReadout.h")
+        self.assertIn("const ArcadeNitroBoost& nitro", policy)
+        self.assertIn("if (!sample.DrivingEligible)", policy)
+        self.assertIn("sample.CooldownSeconds > 0.0", policy)
+        self.assertIn("ArcadeNitroBoost::MinForwardCmPerSecond", policy)
+        self.assertIn("NitroHudReadoutTests.cpp", self.cmake)
+        self.assertIn("NAME NitroHudReadout", self.cmake)
+        for forbidden in ("Step(", "Press(", "Release(", "RefillAtPit(",
+                          "SaveRecords(", "AddForce(", "AddTimePenalty(",
+                          "SetAutonomousControls("):
+            # Race HUD includes unrelated systems. Forbid mutations only in
+            # the new readout implementation, which must stay observational.
+            self.assertNotIn(forbidden, policy)
 
     def test_instruments_are_display_only(self):
         panel = self.hud.split(
