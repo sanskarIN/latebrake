@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/HudLayout.h"
+#include "UI/MenuDetailPager.h"
 
 #include <array>
 #include <algorithm>
@@ -49,6 +50,48 @@ struct DesktopMenuMouseLayout final
     double Left = 0.0;
     std::array<DesktopMenuMouseButton, 6> Buttons{};
 };
+
+// A menu's detail-paging arrows must advertise the SAME availability in
+// both the rendered dock and click dispatch. Header navigation and CLOSE
+// remain available even when a page has no scrollable detail rows.
+struct DesktopMenuMouseAvailability final
+{
+    bool DetailsUp = false;
+    bool DetailsDown = false;
+};
+
+inline DesktopMenuMouseAvailability AvailableDesktopMenuDetails(
+    MenuPage visiblePage, const MenuDetailPager& pager) noexcept
+{
+    // After a page switch, do not expose stale scroll actions until DrawHUD
+    // synchronizes the actual visible page. Also fail closed on a closed menu.
+    if (visiblePage == MenuPage::Closed || pager.GetPage() != visiblePage)
+    {
+        return {};
+    }
+    const MenuDetailWindow window = pager.Window();
+    return {window.HasPrevious, window.HasNext};
+}
+
+inline bool DesktopMenuMouseActionEnabled(
+    DesktopMenuMouseAction action,
+    DesktopMenuMouseAvailability availability) noexcept
+{
+    switch (action)
+    {
+    case DesktopMenuMouseAction::PreviousPage:
+    case DesktopMenuMouseAction::NextPage:
+    case DesktopMenuMouseAction::Activate:
+    case DesktopMenuMouseAction::Close:
+        return true;
+    case DesktopMenuMouseAction::DetailsUp:
+        return availability.DetailsUp;
+    case DesktopMenuMouseAction::DetailsDown:
+        return availability.DetailsDown;
+    default:
+        return false;
+    }
+}
 
 inline DesktopMenuMouseLayout CalculateDesktopMenuMouseLayout(
     double width, double height, HudLayout layout,
@@ -102,7 +145,8 @@ inline DesktopMenuMouseLayout CalculateDesktopMenuMouseLayout(
 }
 
 inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
-    const DesktopMenuMouseLayout& layout, double x, double y) noexcept
+    const DesktopMenuMouseLayout& layout, double x, double y,
+    DesktopMenuMouseAvailability availability = {true, true}) noexcept
 {
     if (!layout.Valid || !std::isfinite(x) || !std::isfinite(y))
     {
@@ -112,7 +156,10 @@ inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
     {
         if (button.Bounds.Contains(x, y))
         {
-            return button.Action;
+            // A disabled arrow has no click authority and cannot leak its
+            // action to the Pawn's menu input dispatcher.
+            return DesktopMenuMouseActionEnabled(button.Action, availability)
+                ? button.Action : DesktopMenuMouseAction::None;
         }
     }
     return DesktopMenuMouseAction::None;
