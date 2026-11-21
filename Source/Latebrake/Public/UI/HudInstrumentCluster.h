@@ -17,6 +17,49 @@ struct InstrumentRect final
     double Height = 0.0;
 };
 
+// Independently anchored percentage typography prevents long telemetry
+// labels from pushing live 0–100% values out of a small laptop panel.
+// Unreal supplies the percent's ACTUAL measured font width to this portable
+// layout; no character-count or monospaced-width assumptions are made.
+struct HudInstrumentMeterText final
+{
+    bool Valid = false;
+    double LabelX = 0.0;
+    double PercentX = 0.0;
+    double LabelMaxWidth = 0.0;
+    double PercentRight = 0.0;
+};
+
+inline HudInstrumentMeterText CalculateHudInstrumentMeterText(
+    InstrumentRect panel, double scale,
+    double measuredPercentWidth) noexcept
+{
+    if (!std::isfinite(panel.X) || !std::isfinite(panel.Y) ||
+        !std::isfinite(panel.Width) || !std::isfinite(panel.Height) ||
+        panel.Width <= 0.0 || panel.Height <= 0.0 ||
+        !std::isfinite(scale) || scale <= 0.0 ||
+        !std::isfinite(measuredPercentWidth) ||
+        measuredPercentWidth <= 0.0)
+    {
+        return {};
+    }
+
+    const double inset = 16.0 * scale;
+    const double gap = std::max(8.0, 10.0 * scale);
+    const double left = panel.X + inset;
+    const double percentRight = panel.X + panel.Width - inset;
+    const double percentX = percentRight - measuredPercentWidth;
+    const double labelWidth = percentX - gap - left;
+    if (!std::isfinite(left) || !std::isfinite(percentRight) ||
+        !std::isfinite(percentX) || !std::isfinite(labelWidth) ||
+        left < panel.X || percentRight > panel.X + panel.Width ||
+        percentX <= left || labelWidth < 4.0 * scale)
+    {
+        return {};
+    }
+    return {true, left, percentX, labelWidth, percentRight};
+}
+
 struct HudInstrumentCluster final
 {
     bool Visible = false;
