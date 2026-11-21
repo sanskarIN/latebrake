@@ -50,7 +50,9 @@ inline HudInstrumentCluster CalculateHudInstrumentCluster(
         return {};
     }
 
-    const double scale = std::clamp(layout.Scale, 0.6, 1.2);
+    // Keep speed and meter labels readable at laptop resolutions even when
+    // the ordinary text HUD uses smaller telemetry typography.
+    const double scale = std::clamp(layout.Scale, 0.85, 1.2);
     const double panelWidth = 278.0 * scale;
     const double panelHeight = 214.0 * scale;
     const double rightMargin = std::max(18.0 * scale, width * 0.018);
