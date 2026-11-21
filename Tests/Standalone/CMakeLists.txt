@@ -2515,3 +2515,15 @@ add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
 add_latebrake_portable_research_test(PhysicalWetLapTrace)
 # Time-weighted 16-sector source-only race engineer review for six cars.
 add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
+
+# Display-only adaptive gear, shift and estimated-RPM badge. Uses real
+# proportionally measured glyph widths; no Unreal runtime or race authority.
+add_executable(latebrake_hud_drive_badge_tests HudInstrumentDriveBadgeTests.cpp)
+target_include_directories(latebrake_hud_drive_badge_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_drive_badge_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudInstrumentDriveBadge COMMAND latebrake_hud_drive_badge_tests)

@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "UI/HudInstrumentCluster.h"
+#include "UI/HudInstrumentDriveBadge.h"
 #include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
 #include "Garage/GarageComparisonView.h"
@@ -1949,12 +1950,65 @@ void ALatebrakeRaceHUD::DrawHUD()
         const double DisplaySpeed = Mode->UsesMilesPerHour()
             ? Instruments.SpeedKmH * 0.621371
             : Instruments.SpeedKmH;
-        DrawText(FString::Printf(
-                Mode->UsesMilesPerHour()
-                    ? TEXT("%.0f mph") : TEXT("%.0f km/h"),
-                DisplaySpeed),
-            Ink, Gx + 16.f * S, Gy + 30.f * S,
+        const FString SpeedReadout = FString::Printf(
+            Mode->UsesMilesPerHour()
+                ? TEXT("%.0f mph") : TEXT("%.0f km/h"), DisplaySpeed);
+        DrawText(SpeedReadout, Ink, Gx + 16.f * S, Gy + 30.f * S,
             GEngine->GetMediumFont(), 1.10f * S);
+
+        // Native automatic gear *observation* shares the existing
+        // right-hand gauge's speed row. Measure the actual proportional
+        // fonts at their rendered scales so even a small desktop panel
+        // keeps speed and shifting data in separate horizontal lanes.
+        // Estimated RPM comes from the speed-based arcade transmission,
+        // not a physical engine sensor or a gameplay controller.
+        const latebrake::AutomaticTransmissionState DriveGear =
+            Car->GetTransmissionReadout();
+        if (DriveGear.Valid && DriveGear.Gear >= -1 &&
+            DriveGear.Gear <= latebrake::AutomaticTransmission::ForwardGearCount &&
+            DriveGear.Gear != 0 && DriveGear.EstimatedRpm >= 900 &&
+            DriveGear.EstimatedRpm <= 7200 &&
+            GEngine->GetMediumFont() && GEngine->GetSmallFont())
+        {
+            const FString GearShort = DriveGear.Gear < 0
+                ? FString(TEXT("R"))
+                : FString::Printf(TEXT("G%d"), DriveGear.Gear);
+            const FString GearFull = DriveGear.Shifting
+                ? GearShort + TEXT(" SHIFT")
+                : FString::Printf(TEXT("%s  %d RPM EST"),
+                    *GearShort, DriveGear.EstimatedRpm);
+            const float GearFontScale = 0.83f * S;
+            float SpeedWidth = 0.f;
+            float SpeedHeight = 0.f;
+            float ShortWidth = 0.f;
+            float ShortHeight = 0.f;
+            float FullWidth = 0.f;
+            float FullHeight = 0.f;
+            GetTextSize(SpeedReadout, SpeedWidth, SpeedHeight,
+                GEngine->GetMediumFont(), 1.10f * S);
+            GetTextSize(GearShort, ShortWidth, ShortHeight,
+                GEngine->GetSmallFont(), GearFontScale);
+            GetTextSize(GearFull, FullWidth, FullHeight,
+                GEngine->GetSmallFont(), GearFontScale);
+            const auto Badge = latebrake::CalculateHudInstrumentDriveBadge(
+                Instruments.Panel, Instruments.Scale,
+                static_cast<double>(SpeedWidth),
+                static_cast<double>(ShortWidth),
+                static_cast<double>(ShortHeight),
+                static_cast<double>(FullWidth),
+                static_cast<double>(FullHeight));
+            if (Badge.Visible)
+            {
+                DrawRect(FLinearColor(0.08f, 0.16f, 0.22f, 0.96f),
+                    static_cast<float>(Badge.X) - 5.f * S,
+                    Gy + 29.f * S,
+                    static_cast<float>(Badge.Width) + 10.f * S, 27.f * S);
+                DrawText(Badge.ShowExtended ? GearFull : GearShort,
+                    DriveGear.Shifting ? Gold : Mint,
+                    static_cast<float>(Badge.X), Gy + 33.f * S,
+                    GEngine->GetSmallFont(), GearFontScale);
+            }
+        }
 
         // Labeled percentage bars remain usable without color distinction.
         // Heat is an arcade estimate; chassis condition is derived solely
