@@ -76,6 +76,34 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
             self.mode.count("SyncDesktopMenuPointerMode();"), 2)
         self.assertNotIn("SyncDesktopMenuPointerMode();", self.hud)
 
+    def test_disabled_detail_controls_match_render_and_dispatch(self):
+        # This is a source integration contract, not proof of Unreal UHT.
+        # The displayed muted buttons and the Pawn's click result must use
+        # the exact same visible-page/pager availability policy.
+        self.assertEqual(self.hud.count(
+            "latebrake::AvailableDesktopMenuDetails("), 2)
+        self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
+        self.assertIn("Mode->GetMenuPage(), MenuPager);", self.hud)
+        self.assertIn(
+            "return latebrake::HitTestDesktopMenuMouse(buttons, x, y,",
+            self.hud)
+        self.assertIn("MouseMenu, CursorX, CursorY, MenuAvailability)",
+                      self.hud)
+        self.assertIn("Button.Action, MenuAvailability", self.hud)
+        self.assertIn("const bool Hover = Enabled &&", self.hud)
+        self.assertIn("!Enabled ? DisabledLabel", self.hud)
+        self.assertIn('TEXT("MENU PAGE %d/%d")', self.hud)
+        for source_marker in (
+            "visiblePage == MenuPage::Closed",
+            "pager.GetPage() != visiblePage",
+            "window.HasPrevious, window.HasNext",
+            "DesktopMenuMouseActionEnabled(button.Action, availability)",
+            "DesktopMenuMouseAction::None",
+        ):
+            self.assertIn(source_marker, self.policy)
+        self.assertNotIn("Mode->MenuActivate(", self.hud)
+        self.assertNotIn("Mode->MenuNext(", self.hud)
+
     def test_bounded_pure_test_policy(self):
         for term in ("touchUI || !menuOpen || layout.Compact",
                      "std::isfinite(width)", "std::isfinite(height)",
