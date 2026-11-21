@@ -149,8 +149,7 @@ inline bool ValidDamageObservation(
         (e.OriginalChaosContactVerified ||
          (e.RepairReceipt &&
           e.ActualPitServiceAuthorized)) &&
-        // DamageZone's uint8_t backing is nonnegative by definition.
-        // Still reject a deliberately cast unknown value >= Count.
+        static_cast<int>(e.PrimaryZone)>=0 &&
         static_cast<int>(e.PrimaryZone)<DamageZoneCount &&
         ValidFrameDelta(e.DeltaSeconds) &&
         e.DeltaSeconds<=p.MaximumFrameSeconds &&

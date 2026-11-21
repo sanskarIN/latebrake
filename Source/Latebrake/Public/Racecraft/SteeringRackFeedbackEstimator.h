@@ -7,9 +7,7 @@
 #include <cstdint>
 #include <limits>
 
-// Distinct measured steering-rack feedback experiment. Its rack parameter
-// schema is not the same as the core kinematic steering-rack model.
-namespace latebrake::racecraft::rackfeedback
+namespace latebrake::racecraft
 {
 // A diagnostic of measured tire alignment and rack loads. This module
 // never creates a force-feedback HID effect or manipulates actual Chaos
@@ -589,4 +587,4 @@ private:
     std::uint64_t SourceFaultFrames=0;
     bool HasEpoch=false;
 };
-} // namespace latebrake::racecraft::rackfeedback
+} // namespace latebrake::racecraft
