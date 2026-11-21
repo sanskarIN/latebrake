@@ -100,16 +100,27 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         for required in (
             "FVector::DotProduct(RivalVelocity, RivalForward)",
             "const double RivalLateralSpeed = FVector::DotProduct(",
-            "FVector(-RivalForward.Y, RivalForward.X, 0.f)",
-            "static_cast<double>(LateralSpeed)",
+            "-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
+            "const FVector FollowerPlanarRight = FVector(",
+            "-Forward.Y, Forward.X, 0.f).GetSafeNormal()",
+            "const double FollowerDraftLateralSpeed = FVector::DotProduct(",
+            "Velocity, FollowerPlanarRight)",
+            "FollowerDraftLateralSpeed,",
             "RivalLateralSpeed",
         ):
             self.assertIn(required, draft)
+        self.assertIn("const FVector RivalPlanarRight = FVector(", draft)
+        self.assertIn("RivalVelocity, RivalPlanarRight)", draft)
+        self.assertIn("const FVector FollowerPlanarRight = FVector(", draft)
+        self.assertIn("Velocity, FollowerPlanarRight)", draft)
+        # The regular chassis meter remains unchanged: only the
+        # drafting-specific right-axis sample becomes normalized XY.
+        self.assertNotIn("static_cast<double>(LateralSpeed),", draft)
         self.assertLess(
             draft.index("const double RivalLateralSpeed ="),
             draft.index("SlipstreamBoost.Observe({"))
         self.assertLess(
-            draft.index("static_cast<double>(LateralSpeed)"),
+            draft.index("FollowerDraftLateralSpeed,"),
             draft.index("RivalLateralSpeed,\n            true"))
         for required in (
             "FollowerLateralSpeedCmPerSecond",
@@ -123,6 +134,135 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
             "Reset();",
         ):
             self.assertIn(required, self.policy)
+
+
+    def test_live_rival_identity_cannot_transfer_existing_draft_credit(self):
+        state = self.mode.split(
+            "bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(", 1
+        )[1].split("int32 ALatebrakeRaceGameMode::GetRivalApproximateLaps()", 1)[0]
+        self.assertIn("uint32& OutIdentity) const", state)
+        self.assertIn("RivalCar->GetUniqueID()", state)
+        self.assertIn("if (RivalIdentity == 0)", state)
+        self.assertIn("OutIdentity = RivalIdentity;", state)
+        self.assertIn("uint32& OutIdentity) const;", self.mode_h)
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        self.assertIn("uint32 RivalIdentity = 0;", tick)
+        self.assertIn("this, RivalPosition, RivalForward, RivalVelocity,",
+                      tick)
+        self.assertIn("static_cast<std::uint64_t>(RivalIdentity)", tick)
+        for field in ("X", "Y", "Z"):
+            self.assertIn(f"static_cast<double>(Position.{field})", tick)
+        self.assertIn("PreviousFollowerWorldX = followerWorldX;", self.policy)
+        self.assertIn("PreviousFollowerWorldY = followerWorldY;", self.policy)
+        self.assertIn("PreviousFollowerWorldZ = followerWorldZ;", self.policy)
+        self.assertIn("followerResidual > MaxRelativeMotionResidualCm",
+                      self.policy)
+        self.assertIn("const double leadWorldX = followerWorldX + dx;",
+                      self.policy)
+        self.assertIn("const double leadWorldY = followerWorldY + dy;",
+                      self.policy)
+        self.assertIn("const double leadWorldZ = followerWorldZ + dz;",
+                      self.policy)
+        self.assertIn("const double predictedLeadX =", self.policy)
+        self.assertIn("const double predictedLeadY =", self.policy)
+        self.assertIn("const double predictedLeadZ =", self.policy)
+        self.assertIn("leadResidual > MaxRelativeMotionResidualCm",
+                      self.policy)
+        self.assertIn("std::abs(leadVerticalResidual)", self.policy)
+        self.assertIn("std::abs(followerVerticalResidual)", self.policy)
+        for field in ("FollowerWorldX", "FollowerWorldY", "FollowerWorldZ"):
+            self.assertIn(f"double {field} =", self.policy)
+        self.assertIn("std::uint64_t LeadIdentity = 0;", self.policy)
+        self.assertIn("sample.LeadIdentity == 0", self.policy)
+        self.assertIn("PreviousLeadIdentity != sample.LeadIdentity",
+                      self.policy)
+        self.assertIn("PreviousLeadIdentity = sample.LeadIdentity",
+                      self.policy)
+        self.assertIn("PreviousLeadIdentity = 0;", self.policy)
+        for required in (
+            "MotionWindowSeconds = 0.0",
+            "PredictedFollowerWorldX += dt * followerVx",
+            "PredictedLeadWorldX += dt * leadVx",
+            "followerWindowResidual > MaxRelativeMotionResidualCm",
+            "leadWindowResidual > MaxRelativeMotionResidualCm",
+            "hadContinuityBaseline ? dt : 0.0",
+            "followerExpectedTravel = std::hypot(",
+            "leadExpectedTravel = std::hypot(",
+            "followerWindowResidual > followerWindowCeiling",
+            "leadWindowResidual > leadWindowCeiling",
+            "WindowStartLeadWorldX = leadWorldX;",
+        ):
+            self.assertIn(required, self.policy)
+
+    def test_exact_world_xy_velocity_binding_and_grade_normalization(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        draft = tick.split("const bool bDraftTargetReady =", 1)[1].split(
+            "SlipstreamBoost.Suspend();", 1)[0]
+        self.assertIn("FVector::DotProduct(Velocity, Forward)", draft)
+        self.assertIn("FollowerSignedForwardSpeed,", draft)
+        self.assertIn("RivalSignedForwardSpeed,", draft)
+        for velocity in ("Velocity.X", "Velocity.Y",
+                         "RivalVelocity.X", "RivalVelocity.Y"):
+            self.assertIn(f"static_cast<double>({velocity})", draft)
+        for field in ("FollowerWorldVelocityX", "FollowerWorldVelocityY",
+                      "LeadWorldVelocityX", "LeadWorldVelocityY"):
+            self.assertIn(f"double {field} =", self.policy)
+            self.assertIn(f"sample.{field};", self.policy)
+        self.assertIn("const double followerVx = followerWorldVelocityX;", self.policy)
+        self.assertIn("const double followerVy = followerWorldVelocityY;", self.policy)
+        self.assertIn("const double leadVx = leadWorldVelocityX;", self.policy)
+        self.assertIn("const double leadVy = leadWorldVelocityY;", self.policy)
+        self.assertIn("followerNorm < 0.75", self.policy)
+        self.assertIn("followerPlanarForward < 0.70 * follower", self.policy)
+        for required in (
+            "const double followerWorldLateral =",
+            "const double leadWorldLateral =",
+            "followerWorldLateral - followerLateral",
+            "leadWorldLateral - leadLateral",
+            "followerSlipObservationTolerance",
+            "leadSlipObservationTolerance",
+            "std::max(std::abs(followerLateral),",
+            "std::abs(followerWorldLateral))",
+            "std::max(std::abs(leadLateral),",
+            "std::abs(leadWorldLateral))",
+        ):
+            self.assertIn(required, self.policy)
+        self.assertIn("-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal()",
+                      draft)
+        self.assertIn("leadPlanarForward < 0.70 * lead", self.policy)
+        self.assertIn("leadNorm < 0.75", self.policy)
+        self.assertNotIn("follower * fwdX - followerLateral * fwdY", self.policy)
+        for regression in (
+            "actual Chaos XY slip above cap cannot hide inside tolerated lateral telemetry skew",
+            "physically measured slip below cap keeps continuous drafting despite small observation skew",
+        ):
+            self.assertIn(regression, read("Tests/Standalone/SlipstreamDraftBoostTests.cpp"))
+        self.assertIn("gradeRadians = 0.52", read(
+            "Tests/Standalone/SlipstreamDraftBoostTests.cpp"))
+
+    def test_live_vertical_physics_is_bound_into_three_dimensional_continuity(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(", 1)[1].split(
+            "void ALatebrakeCarPawn::ApplySignalLights(", 1)[0]
+        draft = tick.split("const bool bDraftTargetReady =", 1)[1].split(
+            "SlipstreamBoost.Suspend();", 1
+        )[0]
+        self.assertIn("static_cast<double>(Velocity.Z)", draft)
+        self.assertIn("static_cast<double>(RivalVelocity.Z)", draft)
+        self.assertLess(draft.index("RivalLateralSpeed,"),
+                        draft.index("static_cast<double>(Velocity.Z)"))
+        self.assertIn("FollowerVerticalSpeedCmPerSecond", self.policy)
+        self.assertIn("LeadVerticalSpeedCmPerSecond", self.policy)
+        self.assertIn("!std::isfinite(followerVertical)", self.policy)
+        self.assertIn("!std::isfinite(leadVertical)", self.policy)
+        self.assertIn("const double predictedZ = PreviousOffsetZ +", self.policy)
+        self.assertIn("dz - predictedZ", self.policy)
+        self.assertIn("MaxVerticalMotionResidualCm = 75.0", self.policy)
+        self.assertIn("std::abs(verticalResidual) > MaxVerticalMotionResidualCm",
+                      self.policy)
+        self.assertIn("PreviousOffsetZ = dz;", self.policy)
+        self.assertIn("std::numeric_limits<double>::quiet_NaN()", self.policy)
 
     def test_real_world_obstruction_is_required_before_draft(self):
         # A usable position alone is NOT aerodynamic line of sight.
@@ -199,6 +339,37 @@ class SlipstreamDraftBindingTests(unittest.TestCase):
         self.assertIn("SlipstreamDraftBoostTests.cpp", self.cmake)
         self.assertIn("cxx_std_20", self.cmake)
         self.assertIn("Unreal Engine 5.8", self.guide)
+        self.assertIn("source-only", self.guide.lower())
+
+    def test_next_source_release_notes_cover_current_measured_physics(self):
+        notes = read("docs/releases/v0.5.100.md")
+        plan = read("docs/PLANNED_V05100_RELEASE_GATE.md")
+        for required in (
+            "SOURCE-ONLY PRE-RELEASE",
+            "NO PLAYABLE WINDOWS EXECUTABLE",
+            "measured Chaos world XY",
+            "70% real lane-aligned XY forward",
+            "rival planar right axis is normalized",
+            "50–120 cm/s",
+            "40-frame 29.8-degree high-speed",
+            "No licensed UE5.8",
+        ):
+            self.assertIn(required, notes)
+        for required in (
+            "publish-v05100-mainline-source.yml",
+            "exact reviewed main SHA",
+            "Do **not** dispatch it",
+            "70% lane-aligned",
+            "normalized rival right axis",
+        ):
+            self.assertIn(required, plan)
+        self.assertNotIn("source-only means a playable game", notes.lower())
+
+    def test_native_acceptance_points_to_current_review_not_deleted_issue(self):
+        self.assertNotIn("issues/148", self.guide)
+        self.assertIn("UNREAL_NATIVE_MERGE_READINESS.md", self.guide)
+        self.assertIn("UNREAL_DRAFT_PR_VALIDATION.md", self.guide)
+        self.assertIn("PR #377", self.guide)
         self.assertIn("source-only", self.guide.lower())
 
 

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 
 namespace latebrake
 {
@@ -29,6 +31,29 @@ struct DraftingSample final
     // Append-only so the pawn's aggregate observation keeps its existing
     // measured lateral-speed ordering. Defaults closed on missing proof.
     bool ClearPhysicalDraftPath = false;
+    // Both genuine Chaos Z velocities are required. Missing observations
+    // fail closed rather than silently treating unobserved motion as zero.
+    double FollowerVerticalSpeedCmPerSecond =
+        std::numeric_limits<double>::quiet_NaN();
+    double LeadVerticalSpeedCmPerSecond =
+        std::numeric_limits<double>::quiet_NaN();
+    // Actual live Unreal rival UObject identity, not an inferred lane slot.
+    // Missing identity cannot confirm drafting after a recovered/replaced car.
+    std::uint64_t LeadIdentity = 0;
+    // Genuine follower chassis-root world position. The relative lane
+    // offset alone cannot detect when BOTH vehicles relocate together.
+    // Missing world coordinates fail closed rather than disabling the gate.
+    double FollowerWorldX = std::numeric_limits<double>::quiet_NaN();
+    double FollowerWorldY = std::numeric_limits<double>::quiet_NaN();
+    double FollowerWorldZ = std::numeric_limits<double>::quiet_NaN();
+    // Exact world XY velocities from the two real Chaos chassis. Projecting
+    // a 3D uphill forward speed onto a unit XY heading invents horizontal
+    // displacement; the actual components keep grade/crest motion valid.
+    // Missing telemetry fails closed instead of projecting a guess.
+    double FollowerWorldVelocityX = std::numeric_limits<double>::quiet_NaN();
+    double FollowerWorldVelocityY = std::numeric_limits<double>::quiet_NaN();
+    double LeadWorldVelocityX = std::numeric_limits<double>::quiet_NaN();
+    double LeadWorldVelocityY = std::numeric_limits<double>::quiet_NaN();
 };
 
 class SlipstreamDraftBoost final
@@ -53,6 +78,10 @@ public:
     // Admit ordinary tick-order/velocity-estimation skew without carrying
     // drafting credit across an apparent rival teleport inside the lane.
     static constexpr double MaxRelativeMotionResidualCm = 200.0;
+    // A vertical jump can hide inside the wider 3D allowance while
+    // staying under the legal 2.3m height envelope. Check Z separately:
+    // an unmeasured 0.9m rise in a 50ms frame is NOT normal continuity.
+    static constexpr double MaxVerticalMotionResidualCm = 75.0;
 
     void Reset() noexcept
     {
@@ -61,6 +90,24 @@ public:
         HavePreviousOffset = false;
         PreviousOffsetX = 0.0;
         PreviousOffsetY = 0.0;
+        PreviousOffsetZ = 0.0;
+        PreviousFollowerWorldX = 0.0;
+        PreviousFollowerWorldY = 0.0;
+        PreviousFollowerWorldZ = 0.0;
+        PreviousLeadIdentity = 0;
+        MotionWindowSeconds = 0.0;
+        PredictedFollowerWorldX = 0.0;
+        PredictedFollowerWorldY = 0.0;
+        PredictedFollowerWorldZ = 0.0;
+        PredictedLeadWorldX = 0.0;
+        PredictedLeadWorldY = 0.0;
+        PredictedLeadWorldZ = 0.0;
+        WindowStartFollowerWorldX = 0.0;
+        WindowStartFollowerWorldY = 0.0;
+        WindowStartFollowerWorldZ = 0.0;
+        WindowStartLeadWorldX = 0.0;
+        WindowStartLeadWorldY = 0.0;
+        WindowStartLeadWorldZ = 0.0;
     }
     void Suspend() noexcept { Reset(); }
 
@@ -78,12 +125,22 @@ public:
         const double dx = sample.LeadOffsetX;
         const double dy = sample.LeadOffsetY;
         const double dz = sample.LeadOffsetZ;
+        const double followerWorldX = sample.FollowerWorldX;
+        const double followerWorldY = sample.FollowerWorldY;
+        const double followerWorldZ = sample.FollowerWorldZ;
+        const double followerWorldVelocityX = sample.FollowerWorldVelocityX;
+        const double followerWorldVelocityY = sample.FollowerWorldVelocityY;
+        const double leadWorldVelocityX = sample.LeadWorldVelocityX;
+        const double leadWorldVelocityY = sample.LeadWorldVelocityY;
         const double followerLateral =
             sample.FollowerLateralSpeedCmPerSecond;
         const double leadLateral = sample.LeadLateralSpeedCmPerSecond;
+        const double followerVertical =
+            sample.FollowerVerticalSpeedCmPerSecond;
+        const double leadVertical = sample.LeadVerticalSpeedCmPerSecond;
         const double throttle = sample.ForwardThrottle;
         if (!sample.EligibleHumanRace || !sample.ClearPhysicalDraftPath ||
-            sample.Braking ||
+            sample.Braking || sample.LeadIdentity == 0 ||
             !std::isfinite(dt) || dt < MinFrameSeconds ||
             dt > MaxFrameSeconds || !std::isfinite(follower) ||
             !std::isfinite(lead) || follower < MinimumFollowerSpeed ||
@@ -92,9 +149,23 @@ public:
             !std::isfinite(ax) || !std::isfinite(ay) ||
             !std::isfinite(bx) || !std::isfinite(by) ||
             !std::isfinite(dx) || !std::isfinite(dy) ||
-            !std::isfinite(dz) || !std::isfinite(throttle) ||
+            !std::isfinite(dz) ||
+            !std::isfinite(followerWorldX) ||
+            !std::isfinite(followerWorldY) ||
+            !std::isfinite(followerWorldZ) ||
+            !std::isfinite(followerWorldVelocityX) ||
+            !std::isfinite(followerWorldVelocityY) ||
+            !std::isfinite(leadWorldVelocityX) ||
+            !std::isfinite(leadWorldVelocityY) ||
+            std::hypot(followerWorldVelocityX, followerWorldVelocityY) > 12000.0 ||
+            std::hypot(leadWorldVelocityX, leadWorldVelocityY) > 12000.0 ||
+            !std::isfinite(throttle) ||
             !std::isfinite(followerLateral) ||
             !std::isfinite(leadLateral) ||
+            !std::isfinite(followerVertical) ||
+            !std::isfinite(leadVertical) ||
+            std::abs(followerVertical) > 10000.0 ||
+            std::abs(leadVertical) > 10000.0 ||
             throttle < 0.30 || throttle > 1.0)
         {
             Reset();
@@ -102,9 +173,70 @@ public:
         }
         const double followerNorm = ax * ax + ay * ay;
         const double leadNorm = bx * bx + by * by;
-        if (followerNorm < 0.95 || followerNorm > 1.05 ||
-            leadNorm < 0.95 || leadNorm > 1.05 ||
-            ax * bx + ay * by < MinimumHeadingAlignment)
+        // A real 3D unit forward vector can project to only cos(30deg)^2
+        // = 0.75 in XY on a steep grade. Treat that as physical pitch,
+        // not an invalid axis; alignment still uses normalized planar axes.
+        if (followerNorm < 0.75 || followerNorm > 1.05 ||
+            leadNorm < 0.75 || leadNorm > 1.05)
+        {
+            Reset();
+            return 0.0;
+        }
+        // The accepted projected source length does not authorize scaled heading vectors
+        // to fake alignment. Resolve BOTH measured directions to unit planar
+        // axes before any angular, gap or world-velocity calculation.
+        const double invFollowerNorm = 1.0 / std::sqrt(followerNorm);
+        const double invLeadNorm = 1.0 / std::sqrt(leadNorm);
+        const double fwdX = ax * invFollowerNorm;
+        const double fwdY = ay * invFollowerNorm;
+        const double leadX = bx * invLeadNorm;
+        const double leadY = by * invLeadNorm;
+        // Full-3D signed speed can be positive when a pitched chassis is
+        // travelling mainly VERTICALLY (for example during a bouncing
+        // crest), even if neither car advances along the physical lane.
+        // Require substantial ACTUAL world-XY forward movement for each
+        // body; a vertical-only pair must never earn aerodynamic thrust.
+        // The 70% floor leaves margin for genuine ~30-degree climbs and
+        // ordinary Chaos sampling skew, but never accepts reverse XY travel.
+        const double followerPlanarForward =
+            followerWorldVelocityX * fwdX + followerWorldVelocityY * fwdY;
+        const double leadPlanarForward =
+            leadWorldVelocityX * leadX + leadWorldVelocityY * leadY;
+        if (!std::isfinite(followerPlanarForward) ||
+            !std::isfinite(leadPlanarForward) ||
+            followerPlanarForward < 0.70 * follower ||
+            leadPlanarForward < 0.70 * lead)
+        {
+            Reset();
+            return 0.0;
+        }
+        if (fwdX * leadX + fwdY * leadY < MinimumHeadingAlignment)
+        {
+            Reset();
+            return 0.0;
+        }
+        // Both signed lateral-speed observations must agree with the
+        // independently measured Chaos world XY velocities. A stale or
+        // mis-scaled right-axis projection must not disguise a skidding
+        // chassis as a forward-only aerodynamic target. Allow small
+        // tick-order/projection error (50-120 cm/s) but never an arbitrary
+        // near-5m/s lateral slip hidden behind reported zero.
+        const double followerWorldLateral =
+            -followerWorldVelocityX * fwdY + followerWorldVelocityY * fwdX;
+        const double leadWorldLateral =
+            -leadWorldVelocityX * leadY + leadWorldVelocityY * leadX;
+        const double followerSlipObservationTolerance = std::min(
+            120.0, 50.0 + 0.02 *
+                std::hypot(followerWorldVelocityX, followerWorldVelocityY));
+        const double leadSlipObservationTolerance = std::min(
+            120.0, 50.0 + 0.02 *
+                std::hypot(leadWorldVelocityX, leadWorldVelocityY));
+        if (!std::isfinite(followerWorldLateral) ||
+            !std::isfinite(leadWorldLateral) ||
+            std::abs(followerWorldLateral - followerLateral) >
+                followerSlipObservationTolerance ||
+            std::abs(leadWorldLateral - leadLateral) >
+                leadSlipObservationTolerance)
         {
             Reset();
             return 0.0;
@@ -114,18 +246,26 @@ public:
         // actual per-body world velocity projections, not yaw estimates.
         // Qualification is revoked immediately; prior charge cannot
         // survive a single unqualified sideways-slipping physics frame.
-        if (std::abs(followerLateral) >
+        // A plausible 50-120cm/s observation difference is NOT extra
+        // allowed sideways grip. Even if the reported lateral component
+        // stays just BELOW the slip cap, the actual Chaos XY right-axis
+        // velocity must separately stay INSIDE the cap. This protects
+        // banked/pitched chassis readings from disguising threshold
+        // crossings that are smaller than the permitted sensor skew.
+        if (std::max(std::abs(followerLateral),
+                     std::abs(followerWorldLateral)) >
                 std::min(MaximumLateralSpeedCmPerSecond,
                          MaximumLateralSlipFraction * follower) ||
-            std::abs(leadLateral) >
+            std::max(std::abs(leadLateral),
+                     std::abs(leadWorldLateral)) >
                 std::min(MaximumLateralSpeedCmPerSecond,
                          MaximumLateralSlipFraction * lead))
         {
             Reset();
             return 0.0;
         }
-        const double forwardGap = dx * ax + dy * ay;
-        const double lateralGap = std::abs(dx * ay - dy * ax);
+        const double forwardGap = dx * fwdX + dy * fwdY;
+        const double lateralGap = std::abs(dx * fwdY - dy * fwdX);
         if (!std::isfinite(forwardGap) || !std::isfinite(lateralGap) ||
             forwardGap < MinForwardDistance ||
             forwardGap >= MaxForwardDistance ||
@@ -135,31 +275,211 @@ public:
             Reset();
             return 0.0;
         }
+        // A newly spawned/rehomed actor can occupy the SAME physical
+        // coordinates with the SAME velocity as the previous rival.
+        // Geometry-only continuity must never carry the old opponent's
+        // confirmation credit to a different live actor.
+        if (HavePreviousOffset && PreviousLeadIdentity != sample.LeadIdentity)
+        {
+            Reset();
+        }
+        // The first valid frame merely establishes an observed baseline.
+        // It is NOT evidence of elapsed physical motion and must not
+        // contribute an unverified dt to the 0.18s confirmation timer.
+        const bool hadContinuityBaseline = HavePreviousOffset;
         // The pair must remain physically continuous, not just pass each
         // independent in-lane snapshot. Predict relative world displacement
-        // from *both* measured planar velocity vectors over this frame.
+        // from *both* measured 3D velocity vectors over this frame.
         // A recover/teleport can preserve an otherwise eligible 7-38m gap;
         // such a jump must discard the old 0.18s confirmation window.
         if (HavePreviousOffset)
         {
-            const double followerVx = follower * ax - followerLateral * ay;
-            const double followerVy = follower * ay + followerLateral * ax;
-            const double leadVx = lead * bx - leadLateral * by;
-            const double leadVy = lead * by + leadLateral * bx;
+            // Never reconstruct XY travel from heading and signed speed:
+            // chassis pitch/bank makes that approximation overstate travel.
+            // Both cars' XY components are sampled directly from Chaos.
+            const double followerVx = followerWorldVelocityX;
+            const double followerVy = followerWorldVelocityY;
+            const double leadVx = leadWorldVelocityX;
+            const double leadVy = leadWorldVelocityY;
+            // Real-world follower continuity independently rejects common
+            // translations of BOTH cars that leave their relative lane
+            // geometry and all measured relative velocities unchanged.
+            const double predictedFollowerX = PreviousFollowerWorldX +
+                dt * followerVx;
+            const double predictedFollowerY = PreviousFollowerWorldY +
+                dt * followerVy;
+            const double predictedFollowerZ = PreviousFollowerWorldZ +
+                dt * followerVertical;
+            const double followerResidual = std::hypot(
+                std::hypot(followerWorldX - predictedFollowerX,
+                           followerWorldY - predictedFollowerY),
+                followerWorldZ - predictedFollowerZ);
+            const double followerVerticalResidual =
+                followerWorldZ - predictedFollowerZ;
+            if (!std::isfinite(followerResidual) ||
+                std::abs(followerVerticalResidual) >
+                    MaxVerticalMotionResidualCm ||
+                followerResidual > MaxRelativeMotionResidualCm)
+            {
+                Reset();
+                return 0.0;
+            }
+            // Independently authenticate the leader's absolute motion.
+            // Follower and relative offsets can EACH be under their 2m
+            // residual limit while their errors ADD to a 3-4m rival jump.
+            // Reconstruct the rival world position from the two real
+            // chassis coordinates; no additional Unreal sample is needed.
+            const double leadWorldX = followerWorldX + dx;
+            const double leadWorldY = followerWorldY + dy;
+            const double leadWorldZ = followerWorldZ + dz;
+            const double predictedLeadX =
+                PreviousFollowerWorldX + PreviousOffsetX + dt * leadVx;
+            const double predictedLeadY =
+                PreviousFollowerWorldY + PreviousOffsetY + dt * leadVy;
+            const double predictedLeadZ =
+                PreviousFollowerWorldZ + PreviousOffsetZ + dt * leadVertical;
+            const double leadResidual = std::hypot(
+                std::hypot(leadWorldX - predictedLeadX,
+                           leadWorldY - predictedLeadY),
+                leadWorldZ - predictedLeadZ);
+            const double leadVerticalResidual =
+                leadWorldZ - predictedLeadZ;
+            if (!std::isfinite(leadResidual) ||
+                std::abs(leadVerticalResidual) >
+                    MaxVerticalMotionResidualCm ||
+                leadResidual > MaxRelativeMotionResidualCm)
+            {
+                Reset();
+                return 0.0;
+            }
             const double predictedX = PreviousOffsetX + dt * (leadVx - followerVx);
             const double predictedY = PreviousOffsetY + dt * (leadVy - followerVy);
-            const double residual = std::hypot(dx - predictedX, dy - predictedY);
+            const double predictedZ = PreviousOffsetZ +
+                dt * (leadVertical - followerVertical);
+            const double residual = std::hypot(
+                std::hypot(dx - predictedX, dy - predictedY),
+                dz - predictedZ);
+            const double verticalResidual = dz - predictedZ;
             if (!std::isfinite(residual) ||
+                std::abs(verticalResidual) > MaxVerticalMotionResidualCm ||
                 residual > MaxRelativeMotionResidualCm)
             {
                 Reset();
                 return 0.0;
             }
+            // One 50ms sample at 24m/s travels 120cm, less than the 200cm
+            // per-frame residual limit. Unchanged world positions can pass
+            // that test indefinitely despite reporting fast live wheels.
+            // Integrate BOTH independent chassis predictions for one full
+            // confirmation window. A stale world-position stream, even with
+            // valid actor identity and a legal fixed gap, must never earn
+            // motor-force assistance.
+            PredictedFollowerWorldX += dt * followerVx;
+            PredictedFollowerWorldY += dt * followerVy;
+            PredictedFollowerWorldZ += dt * followerVertical;
+            PredictedLeadWorldX += dt * leadVx;
+            PredictedLeadWorldY += dt * leadVy;
+            PredictedLeadWorldZ += dt * leadVertical;
+            const double followerWindowResidual = std::hypot(
+                std::hypot(followerWorldX - PredictedFollowerWorldX,
+                           followerWorldY - PredictedFollowerWorldY),
+                followerWorldZ - PredictedFollowerWorldZ);
+            const double leadWindowResidual = std::hypot(
+                std::hypot(leadWorldX - PredictedLeadWorldX,
+                           leadWorldY - PredictedLeadWorldY),
+                leadWorldZ - PredictedLeadWorldZ);
+            if (!std::isfinite(followerWindowResidual) ||
+                !std::isfinite(leadWindowResidual) ||
+                followerWindowResidual > MaxRelativeMotionResidualCm ||
+                leadWindowResidual > MaxRelativeMotionResidualCm ||
+                std::abs(followerWorldZ - PredictedFollowerWorldZ) >
+                    MaxVerticalMotionResidualCm ||
+                std::abs(leadWorldZ - PredictedLeadWorldZ) >
+                    MaxVerticalMotionResidualCm)
+            {
+                Reset();
+                return 0.0;
+            }
+            MotionWindowSeconds += dt;
+            if (MotionWindowSeconds >= ConfirmSeconds)
+            {
+                // A slow rival reporting the MINIMUM valid 10m/s travels
+                // only 180-200cm over qualification. The absolute 200cm
+                // residual alone can certify a fully FROZEN rival at
+                // exactly that speed. At the complete observed interval,
+                // also require motion accurate to within half the
+                // velocity-integrated independent path displacement.
+                // Keep 40cm tick-order tolerance for sharp genuine turns,
+                // and never exceed the original 200cm hard ceiling.
+                const double followerExpectedTravel = std::hypot(
+                    std::hypot(
+                        PredictedFollowerWorldX - WindowStartFollowerWorldX,
+                        PredictedFollowerWorldY - WindowStartFollowerWorldY),
+                    PredictedFollowerWorldZ - WindowStartFollowerWorldZ);
+                const double leadExpectedTravel = std::hypot(
+                    std::hypot(
+                        PredictedLeadWorldX - WindowStartLeadWorldX,
+                        PredictedLeadWorldY - WindowStartLeadWorldY),
+                    PredictedLeadWorldZ - WindowStartLeadWorldZ);
+                const double followerWindowCeiling = std::min(
+                    MaxRelativeMotionResidualCm,
+                    std::max(40.0, 0.5 * followerExpectedTravel));
+                const double leadWindowCeiling = std::min(
+                    MaxRelativeMotionResidualCm,
+                    std::max(40.0, 0.5 * leadExpectedTravel));
+                if (!std::isfinite(followerExpectedTravel) ||
+                    !std::isfinite(leadExpectedTravel) ||
+                    followerWindowResidual > followerWindowCeiling ||
+                    leadWindowResidual > leadWindowCeiling)
+                {
+                    Reset();
+                    return 0.0;
+                }
+                // Refresh only AFTER completing a checked full window.
+                // Keep long races responsive to turns and acceleration,
+                // without allowing per-frame errors to hide stale samples.
+                PredictedFollowerWorldX = followerWorldX;
+                PredictedFollowerWorldY = followerWorldY;
+                PredictedFollowerWorldZ = followerWorldZ;
+                PredictedLeadWorldX = leadWorldX;
+                PredictedLeadWorldY = leadWorldY;
+                PredictedLeadWorldZ = leadWorldZ;
+                WindowStartFollowerWorldX = followerWorldX;
+                WindowStartFollowerWorldY = followerWorldY;
+                WindowStartFollowerWorldZ = followerWorldZ;
+                WindowStartLeadWorldX = leadWorldX;
+                WindowStartLeadWorldY = leadWorldY;
+                WindowStartLeadWorldZ = leadWorldZ;
+                MotionWindowSeconds = 0.0;
+            }
+        }
+        else
+        {
+            PredictedFollowerWorldX = followerWorldX;
+            PredictedFollowerWorldY = followerWorldY;
+            PredictedFollowerWorldZ = followerWorldZ;
+            PredictedLeadWorldX = followerWorldX + dx;
+            PredictedLeadWorldY = followerWorldY + dy;
+            PredictedLeadWorldZ = followerWorldZ + dz;
+            WindowStartFollowerWorldX = followerWorldX;
+            WindowStartFollowerWorldY = followerWorldY;
+            WindowStartFollowerWorldZ = followerWorldZ;
+            WindowStartLeadWorldX = followerWorldX + dx;
+            WindowStartLeadWorldY = followerWorldY + dy;
+            WindowStartLeadWorldZ = followerWorldZ + dz;
+            MotionWindowSeconds = 0.0;
         }
         PreviousOffsetX = dx;
         PreviousOffsetY = dy;
+        PreviousOffsetZ = dz;
+        PreviousFollowerWorldX = followerWorldX;
+        PreviousFollowerWorldY = followerWorldY;
+        PreviousFollowerWorldZ = followerWorldZ;
+        PreviousLeadIdentity = sample.LeadIdentity;
         HavePreviousOffset = true;
-        EligibleSeconds = std::min(ConfirmSeconds, EligibleSeconds + dt);
+        EligibleSeconds = std::min(
+            ConfirmSeconds,
+            EligibleSeconds + (hadContinuityBaseline ? dt : 0.0));
         if (EligibleSeconds < ConfirmSeconds)
         {
             ExtraForceFraction = 0.0;
@@ -183,6 +503,26 @@ private:
     double ExtraForceFraction = 0.0;
     double PreviousOffsetX = 0.0;
     double PreviousOffsetY = 0.0;
+    double PreviousOffsetZ = 0.0;
+    double PreviousFollowerWorldX = 0.0;
+    double PreviousFollowerWorldY = 0.0;
+    double PreviousFollowerWorldZ = 0.0;
+    std::uint64_t PreviousLeadIdentity = 0;
+    // Rolling observed-motion proof; no lifetime-long integration drift.
+    // Reset on a missing/changed rival, interruption or impossible motion.
+    double MotionWindowSeconds = 0.0;
+    double PredictedFollowerWorldX = 0.0;
+    double PredictedFollowerWorldY = 0.0;
+    double PredictedFollowerWorldZ = 0.0;
+    double PredictedLeadWorldX = 0.0;
+    double PredictedLeadWorldY = 0.0;
+    double PredictedLeadWorldZ = 0.0;
+    double WindowStartFollowerWorldX = 0.0;
+    double WindowStartFollowerWorldY = 0.0;
+    double WindowStartFollowerWorldZ = 0.0;
+    double WindowStartLeadWorldX = 0.0;
+    double WindowStartLeadWorldY = 0.0;
+    double WindowStartLeadWorldZ = 0.0;
     bool HavePreviousOffset = false;
 };
 } // namespace latebrake
