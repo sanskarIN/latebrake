@@ -23,6 +23,7 @@ void VerifyViewport(int w, int h)
         w, h, CalculateHudLayout(w, h), false, true);
     Check(plan.Valid, "wide desktop menu dock exists");
     Check(plan.Left > w * 0.58, "menu details have a separate left lane");
+    Check(plan.Left >= 0.0, "responsive menu never crosses the text lane");
     constexpr DesktopMenuMouseAction actions[] = {
         DesktopMenuMouseAction::PreviousPage,
         DesktopMenuMouseAction::NextPage,
@@ -39,6 +40,8 @@ void VerifyViewport(int w, int h)
         Check(b.X >= plan.Left && b.X + b.Width <= w,
             "button stays inside horizontal viewport");
         Check(b.Y >= 0 && b.Y + b.Height < h, "button stays on screen");
+        Check(b.Width >= 112.0 && b.Height >= 44.0,
+              "all desktop actions retain accessible pointer targets");
         Check(HitTestDesktopMenuMouse(plan, b.X + b.Width / 2.0,
             b.Y + b.Height / 2.0) == actions[i],
             "center hit maps to exactly one action");
@@ -56,7 +59,9 @@ int main()
 {
     using namespace latebrake;
     for (const auto& [width, height] :
-        {std::pair{1280, 720}, std::pair{1920, 1080},
+        {std::pair{900, 600}, std::pair{960, 640},
+         std::pair{1024, 768}, std::pair{1100, 680},
+         std::pair{1280, 720}, std::pair{1920, 1080},
          std::pair{2560, 1440}, std::pair{3440, 1440}})
     {
         VerifyViewport(width, height);
@@ -66,15 +71,18 @@ int main()
         1280, 720, good, true, true).Valid, "never use mouse dock on Android");
     Check(!CalculateDesktopMenuMouseLayout(
         1280, 720, good, false, false).Valid, "closed menu never clickable");
-    for (int w : {0, 320, 640, 800, 1099})
+    for (int w : {0, 320, 640, 800, 899})
     {
         Check(!CalculateDesktopMenuMouseLayout(
             w, 720, CalculateHudLayout(w, 720), false, true).Valid,
             "compact viewport disabled");
     }
     const auto shortLayout = CalculateDesktopMenuMouseLayout(
-        1280, 640, CalculateHudLayout(1280, 640), false, true);
-    Check(!shortLayout.Valid, "short viewport disabled");
+        1280, 599, CalculateHudLayout(1280, 599), false, true);
+    Check(!shortLayout.Valid, "viewport below minimum height disabled");
+    Check(CalculateDesktopMenuMouseLayout(
+        1280, 640, CalculateHudLayout(1280, 640), false, true).Valid,
+        "short but usable landscape desktop keeps keyboard and mouse dock");
     const double nan = std::numeric_limits<double>::quiet_NaN();
     Check(!CalculateDesktopMenuMouseLayout(
         nan, 720, good, false, true).Valid, "invalid width");
@@ -87,14 +95,33 @@ int main()
     Check(HitTestDesktopMenuMouse(plan,
         std::numeric_limits<double>::infinity(), 200) ==
         DesktopMenuMouseAction::None, "infinite click cannot activate");
+    // Malformed rectangles must not accept clicks even if the enclosing
+    // layout is accidentally marked valid by an external caller.
+    auto broken = plan;
+    broken.Buttons[0].Bounds.Width = 0.0;
+    Check(HitTestDesktopMenuMouse(broken,
+        plan.Buttons[0].Bounds.X + 1.0,
+        plan.Buttons[0].Bounds.Y + 1.0) ==
+        DesktopMenuMouseAction::None, "zero-width click target rejected");
+    broken = plan;
+    broken.Buttons[0].Bounds.Height =
+        std::numeric_limits<double>::infinity();
+    Check(HitTestDesktopMenuMouse(broken,
+        plan.Buttons[0].Bounds.X + 1.0,
+        plan.Buttons[0].Bounds.Y + 1.0) ==
+        DesktopMenuMouseAction::None, "nonfinite click target rejected");
+    broken = plan;
+    broken.Buttons[0].Bounds.X = nan;
+    Check(HitTestDesktopMenuMouse(broken, 100, 100) ==
+        DesktopMenuMouseAction::None, "nonfinite button origin rejected");
     plan.Valid = false;
     Check(HitTestDesktopMenuMouse(plan, 1200, 120) ==
         DesktopMenuMouseAction::None, "invalid layout is inert");
 
     // Broad resize coverage: every admitted dock stays bounded.
-    for (int w = 1100; w <= 3600; w += 17)
+    for (int w = 900; w <= 3600; w += 17)
     {
-        for (int h = 680; h <= 1600; h += 19)
+        for (int h = 600; h <= 1600; h += 19)
         {
             const auto l = CalculateDesktopMenuMouseLayout(
                 w, h, CalculateHudLayout(w, h), false, true);
@@ -103,8 +130,10 @@ int main()
             {
                 Check(button.Bounds.X >= 0 && button.Bounds.Y >= 0 &&
                     button.Bounds.X + button.Bounds.Width <= w &&
-                    button.Bounds.Y + button.Bounds.Height < h,
-                    "resize sweep stays within screen");
+                    button.Bounds.Y + button.Bounds.Height < h &&
+                    button.Bounds.Width >= 112.0 &&
+                    button.Bounds.Height >= 44.0,
+                    "resize sweep stays on screen with usable click targets");
             }
         }
     }
