@@ -64,13 +64,17 @@ inline HudInstrumentDriveBadge CalculateHudInstrumentDriveBadge(
     const double chosenWidth = expanded
         ? extendedTextWidth : compactTextWidth;
     const double x = right - chosenWidth;
-    // The background adds a five-scaled-pixel inset on each side.
-    // Preserve at least nine scaled pixels from the speed glyphs and
-    // eleven from the panel's right edge, even in the compact fallback.
-    if (!std::isfinite(x) ||
-        x - 5.0 * scale < left + speedTextWidth + 9.0 * scale ||
-        x + chosenWidth + 5.0 * scale >
-            panel.X + panel.Width - 11.0 * scale)
+    // The background adds five scaled pixels on both sides. Reserve
+    // at least eight more from the speed glyphs and ten from the edge.
+    // The geometry normally leaves 9/11; testing exactly that algebraic
+    // equality with floating-point < or > wrongly rejected some
+    // legitimate resolutions (including strict macOS CTest fixtures).
+    const double backgroundLeft = x - 5.0 * scale;
+    const double backgroundRight = right + 5.0 * scale;
+    if (!std::isfinite(x) || !std::isfinite(backgroundLeft) ||
+        !std::isfinite(backgroundRight) ||
+        backgroundLeft < left + speedTextWidth + 8.0 * scale ||
+        backgroundRight > panel.X + panel.Width - 10.0 * scale)
     {
         return {};
     }
