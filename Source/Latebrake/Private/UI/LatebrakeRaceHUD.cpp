@@ -257,6 +257,15 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 return;
             }
+            // Reserve one diagnostic row and enforce a per-entry cap.
+            // A single maliciously long car name or result string must not
+            // monopolize all 1024 pager rows and conceal later details.
+            const int32 WrapBudget = FMath::Min(32, RemainingRows - 1);
+            if (WrapBudget <= 0)
+            {
+                MenuDetails.Emplace(TEXT("DETAIL OMITTED - ROW LIMIT"), true);
+                return;
+            }
             const auto Wrapped = latebrake::WrapHudDetailText(
                 Value.Len(), SafeTextWidth,
                 [&](int Index) -> std::uint32_t
@@ -274,7 +283,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 [&](int Begin, int Count)
                 {
                     MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);
-                }, RemainingRows);
+                }, WrapBudget);
             if (!Wrapped.Complete && MenuDetails.Num() < 1024)
             {
                 // Fail visibly instead of silently discarding information
