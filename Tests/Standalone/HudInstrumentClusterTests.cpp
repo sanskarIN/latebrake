@@ -28,6 +28,19 @@ void VerifyViewport(double width, double height)
     Require(gauge.Panel.X + gauge.Panel.Width < width, "panel right bound");
     Require(gauge.Panel.Y >= 0 && gauge.Panel.Y + gauge.Panel.Height < height,
             "panel vertical bounds and footer gap");
+    // The real font supplies this width. Both the long label and the
+    // independent percent must remain within the narrow laptop panel.
+    const double percentWidth = 42.0 * gauge.Scale;
+    const auto text = CalculateHudInstrumentMeterText(
+        gauge.Panel, gauge.Scale, percentWidth);
+    Require(text.Valid, "instrument meter text has both visible lanes");
+    Require(text.LabelX >= gauge.Panel.X &&
+            text.PercentX - text.LabelX - text.LabelMaxWidth >=
+                8.0 * gauge.Scale - 0.00001 &&
+            text.PercentX + percentWidth <=
+                gauge.Panel.X + gauge.Panel.Width + 0.00001 &&
+            text.PercentRight <= gauge.Panel.X + gauge.Panel.Width,
+            "measured percent and clipped label never overlap");
     Require(gauge.NitroFraction == 0.7 &&
             gauge.EngineHeatFraction == 0.4 &&
             gauge.ChassisConditionFraction == 0.8,
@@ -93,6 +106,37 @@ int main()
     Require(high.Visible && high.SpeedKmH == 999 &&
             high.NitroFraction == 1 && high.EngineHeatFraction == 1 &&
             high.ChassisConditionFraction == 0, "upper clamp");
+    // Reject invalid font measurements and undersized panels. Never
+    // invent percentage placement from an invalid glyph width.
+    const auto panel = gauge(false, false, false,
+        105, 0.5, 0.6, 0.3).Panel;
+    Require(!CalculateHudInstrumentMeterText(panel, 1.0, nan).Valid,
+            "nonfinite glyph measurement cannot draw");
+    Require(!CalculateHudInstrumentMeterText(panel, 1.0,
+        std::numeric_limits<double>::infinity()).Valid,
+        "infinite measured width cannot draw");
+    Require(!CalculateHudInstrumentMeterText(panel, 1.0, -2).Valid &&
+            !CalculateHudInstrumentMeterText(panel, 1.0, 0).Valid,
+            "nonpositive measured width cannot draw");
+    Require(!CalculateHudInstrumentMeterText(panel, 1.0, 9999).Valid,
+            "giant percentage cannot spill off the panel");
+    Require(!CalculateHudInstrumentMeterText(panel, nan, 20).Valid &&
+            !CalculateHudInstrumentMeterText(panel, 0, 20).Valid,
+            "invalid text scale cannot draw");
+    auto brokenPanel = panel;
+    brokenPanel.X = nan;
+    Require(!CalculateHudInstrumentMeterText(brokenPanel, 1, 20).Valid,
+            "nonfinite panel position rejected");
+    brokenPanel = panel;
+    brokenPanel.Width = 1;
+    Require(!CalculateHudInstrumentMeterText(brokenPanel, 1, 20).Valid,
+            "too-narrow panel must not clip over other HUD text");
+    brokenPanel = panel;
+    brokenPanel.Height = -1;
+    Require(!CalculateHudInstrumentMeterText(brokenPanel, 1, 20).Valid,
+            "invalid panel height rejected");
+    // The C++ policy handles measurements, while the renderer uses the
+    // common UTF-16-safe ellipsis selection from HudTextBounds.
     // Dense deterministic viewport sweep: never render offscreen.
     for (int width = 900; width <= 3600; width += 17)
     {
