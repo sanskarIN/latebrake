@@ -128,7 +128,9 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
         NextCheckpoint = 0;
         ++CompletedLaps;
         const bool lapHadActiveClockEvidence = ActiveClockAdvancedThisLap;
-        if (lapHadActiveClockEvidence)
+        // Keep the explicit authoritative clock guard independently
+        // visible to source-integration checks and future UE callers.
+        if (ActiveClockAdvancedThisLap)
         {
             ++ActiveTimedLapCount;
         }
