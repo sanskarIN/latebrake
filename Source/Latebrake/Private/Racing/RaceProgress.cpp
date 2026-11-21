@@ -127,7 +127,8 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
     {
         NextCheckpoint = 0;
         ++CompletedLaps;
-        if (ActiveClockAdvancedThisLap)
+        const bool lapHadActiveClockEvidence = ActiveClockAdvancedThisLap;
+        if (lapHadActiveClockEvidence)
         {
             ++ActiveTimedLapCount;
         }
@@ -145,7 +146,8 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
             // lap times, while the explicit count ignores zero-duration
             // laps which would otherwise make pace spread misleading.
             ++TimedLapCount;
-            RecentLaps.Record(CompletedLaps, LastLapSeconds);
+            RecentLaps.Record(CompletedLaps, LastLapSeconds,
+                lapHadActiveClockEvidence);
             if (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds)
             {
                 BestLapSeconds = LastLapSeconds;

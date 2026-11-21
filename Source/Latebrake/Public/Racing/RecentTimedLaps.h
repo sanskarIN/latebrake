@@ -12,6 +12,10 @@ struct TimedLapRecord final
 {
     int CompletedLap = 0;
     double Seconds = 0.0;
+    // Set only by RaceProgress when an actual positive active-race clock
+    // update occurred within THIS lap. A recovery fee alone may produce a
+    // positive duration, but it is not evidence of driven pace.
+    bool ActiveClockEvidence = false;
     bool Valid() const noexcept { return CompletedLap > 0 && Seconds > 0.0; }
 };
 
@@ -27,7 +31,10 @@ public:
         Count = 0;
     }
 
-    bool Record(int completedLap, double seconds) noexcept
+    // Bare standalone records remain unqualified for driven-pace forecasts.
+    // Only the authoritative RaceProgress clock may pass true here.
+    bool Record(int completedLap, double seconds,
+                bool activeClockEvidence = false) noexcept
     {
         if (completedLap <= 0 || !std::isfinite(seconds) || seconds <= 0.0)
         {
@@ -41,7 +48,8 @@ public:
         {
             return false;
         }
-        Entries[static_cast<std::size_t>(Next)] = {completedLap, seconds};
+        Entries[static_cast<std::size_t>(Next)] = {
+            completedLap, seconds, activeClockEvidence};
         Next = (Next + 1) % Capacity;
         if (Count < Capacity) ++Count;
         return true;
