@@ -9,6 +9,7 @@
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "UI/HudVerticalPlan.h"
 #include "UI/HudTextBounds.h"
+#include "UI/HudDetailTextFlow.h"
 #include "UI/HudMenuVerticalPlan.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/RecentLapReview.h"
@@ -242,11 +243,48 @@ void ALatebrakeRaceHUD::DrawHUD()
         TArray<TPair<FString, bool>> MenuDetails;
         const auto MenuLine = [&](const FString& Value, bool bAccent = false)
         {
-            const FString Fitted = FitHudText(
-                Value, GEngine->GetSmallFont(), UIScale);
-            if (!Fitted.IsEmpty())
+            UFont* Font = GEngine->GetSmallFont();
+            if (!MenuPlan.Valid || !HorizontalBounds.Valid ||
+                Value.IsEmpty() || !Font || SafeTextWidth <= 0.0)
             {
-                MenuDetails.Emplace(Fitted, bAccent);
+                return;
+            }
+            // Page the *complete* measured text. Previously every detail
+            // was permanently ellipsized before MenuPager saw the content,
+            // making long garage/results descriptions impossible to read.
+            const int32 RemainingRows = FMath::Max(0, 1024 - MenuDetails.Num());
+            if (RemainingRows <= 0)
+            {
+                return;
+            }
+            const auto Wrapped = latebrake::WrapHudDetailText(
+                Value.Len(), SafeTextWidth,
+                [&](int Index) -> std::uint32_t
+                {
+                    return static_cast<std::uint32_t>(Value[Index]);
+                },
+                [&](int Begin, int Count) -> double
+                {
+                    float MeasuredWidth = 0.f;
+                    float MeasuredHeight = 0.f;
+                    GetTextSize(Value.Mid(Begin, Count), MeasuredWidth,
+                        MeasuredHeight, Font, UIScale);
+                    return static_cast<double>(MeasuredWidth);
+                },
+                [&](int Begin, int Count)
+                {
+                    MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);
+                }, RemainingRows);
+            if (!Wrapped.Complete && MenuDetails.Num() < 1024)
+            {
+                // Fail visibly instead of silently discarding information
+                // when a glyph cluster cannot fit or the row cap is hit.
+                const FString Notice = FitHudText(
+                    TEXT("DETAIL TEXT COULD NOT BE FITTED"), Font, UIScale);
+                if (!Notice.IsEmpty())
+                {
+                    MenuDetails.Emplace(Notice, true);
+                }
             }
         };
         if (MenuPlan.Valid)
