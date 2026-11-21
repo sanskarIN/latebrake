@@ -121,7 +121,8 @@ int main()
             recovered.ProjectedFinishSeconds == 355.0,
             "three consecutive driven laps restore safe live HUD pace");
 
-    RaceProgress missingLap(4, 5);
+    RaceProgress missingLap(4, 6);
+    CompleteLap(missingLap, 50.0);
     for (int gate = 0; gate < 4; ++gate)
     {
         Require(missingLap.PassCheckpoint(gate),
@@ -129,11 +130,13 @@ int main()
     }
     CompleteLap(missingLap, 60.0);
     Require(!ProjectLiveRacePace(missingLap).Valid,
-            "zero-time gap cannot merge with old driving history");
+            "zero-time gap cannot silently join older driven history");
     CompleteLap(missingLap, 70.0);
+    Require(!ProjectLiveRacePace(missingLap).Valid,
+            "stale older physical lap cannot bridge the gap");
     CompleteLap(missingLap, 80.0);
     Require(ProjectLiveRacePace(missingLap).Valid,
-            "new contiguous driven sample window remains eligible");
+            "new contiguous three-lap window restores projection");
 
     RaceProgress overflow(4, 2);
     CompleteLap(overflow, 604800.0);
