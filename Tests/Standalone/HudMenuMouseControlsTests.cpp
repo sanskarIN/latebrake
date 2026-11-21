@@ -114,6 +114,71 @@ int main()
     broken.Buttons[0].Bounds.X = nan;
     Check(HitTestDesktopMenuMouse(broken, 100, 100) ==
         DesktopMenuMouseAction::None, "nonfinite button origin rejected");
+    // Real pager lifecycle governs BOTH whether detail buttons look
+    // enabled and whether a pointer click can request page changes.
+    MenuDetailPager pager;
+    const auto disabled = AvailableDesktopMenuDetails(MenuPage::Garage,
+        pager);
+    Check(!disabled.DetailsUp && !disabled.DetailsDown,
+        "unsynchronized menu cannot expose stale detail arrows");
+    const auto detailUp = plan.Buttons[2].Bounds;
+    const auto detailDown = plan.Buttons[3].Bounds;
+    const auto click = [&](DesktopMenuMouseRect button,
+                           DesktopMenuMouseAvailability availability)
+    {
+        return HitTestDesktopMenuMouse(plan, button.X + button.Width * 0.5,
+            button.Y + button.Height * 0.5, availability);
+    };
+    Check(click(detailUp, disabled) == DesktopMenuMouseAction::None &&
+          click(detailDown, disabled) == DesktopMenuMouseAction::None,
+          "disabled detail controls are not clickable");
+    Check(click(plan.Buttons[0].Bounds, disabled) ==
+              DesktopMenuMouseAction::PreviousPage &&
+          click(plan.Buttons[4].Bounds, disabled) ==
+              DesktopMenuMouseAction::Activate &&
+          click(plan.Buttons[5].Bounds, disabled) ==
+              DesktopMenuMouseAction::Close,
+          "page, selection and close actions remain usable without details");
+    pager.Synchronize(MenuPage::Garage, 11, 3);
+    auto allowed = AvailableDesktopMenuDetails(MenuPage::Garage, pager);
+    Check(!allowed.DetailsUp && allowed.DetailsDown &&
+          click(detailUp, allowed) == DesktopMenuMouseAction::None &&
+          click(detailDown, allowed) ==
+              DesktopMenuMouseAction::DetailsDown,
+          "first page exposes only next-detail action");
+    pager.Next();
+    allowed = AvailableDesktopMenuDetails(MenuPage::Garage, pager);
+    Check(allowed.DetailsUp && allowed.DetailsDown &&
+          click(detailUp, allowed) == DesktopMenuMouseAction::DetailsUp &&
+          click(detailDown, allowed) ==
+              DesktopMenuMouseAction::DetailsDown,
+          "middle detail page enables both directions");
+    pager.Next();
+    pager.Next();
+    allowed = AvailableDesktopMenuDetails(MenuPage::Garage, pager);
+    Check(allowed.DetailsUp && !allowed.DetailsDown &&
+          click(detailUp, allowed) == DesktopMenuMouseAction::DetailsUp &&
+          click(detailDown, allowed) == DesktopMenuMouseAction::None,
+          "last detail page disables next-detail action");
+    allowed = AvailableDesktopMenuDetails(MenuPage::Results, pager);
+    Check(!allowed.DetailsUp && !allowed.DetailsDown,
+          "switching menu categories invalidates old pager authority");
+    pager.Synchronize(MenuPage::Results, 1, 4);
+    allowed = AvailableDesktopMenuDetails(MenuPage::Results, pager);
+    Check(!allowed.DetailsUp && !allowed.DetailsDown,
+          "single-page results never claim scrollable details");
+    pager.Synchronize(MenuPage::Results, 11, 0);
+    allowed = AvailableDesktopMenuDetails(MenuPage::Results, pager);
+    Check(!allowed.DetailsUp && !allowed.DetailsDown,
+          "zero visible rows cannot create clickable ghost arrows");
+    pager.Synchronize(MenuPage::Closed, 11, 3);
+    allowed = AvailableDesktopMenuDetails(MenuPage::Closed, pager);
+    Check(!allowed.DetailsUp && !allowed.DetailsDown &&
+          click(detailUp, allowed) == DesktopMenuMouseAction::None,
+          "closing clears paging controls");
+    Check(!DesktopMenuMouseActionEnabled(
+              DesktopMenuMouseAction::None, {true, true}),
+          "None is never a clickable action");
     plan.Valid = false;
     Check(HitTestDesktopMenuMouse(plan, 1200, 120) ==
         DesktopMenuMouseAction::None, "invalid layout is inert");
