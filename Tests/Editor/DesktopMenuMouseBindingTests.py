@@ -114,8 +114,9 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
         # This is a source integration contract, not proof of Unreal UHT.
         # The displayed muted buttons and the Pawn's click result must use
         # the exact same visible-page/pager availability policy.
+        # Click, wheel and rendering must all consult the same pager.
         self.assertEqual(self.hud.count(
-            "latebrake::AvailableDesktopMenuDetails("), 2)
+            "latebrake::AvailableDesktopMenuDetails("), 3)
         self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
         self.assertIn("Mode->GetMenuPage(), MenuPager);", self.hud)
         self.assertIn(
