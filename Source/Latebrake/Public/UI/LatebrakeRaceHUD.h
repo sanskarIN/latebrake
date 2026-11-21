@@ -21,6 +21,7 @@ class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
 public:
     virtual void DrawHUD() override;
     void ScrollMenuDetails(int direction);
+    bool TryScrollMenuMouse(double x, double y, int direction);
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:

@@ -2470,3 +2470,48 @@ add_latebrake_portable_research_test(PhysicalCircuitChallengeEvidence)
 # All 36 original six-car/six-track bounded setup previews; authentic
 # vehicle IDs, ownership and wet grip, no Unreal physics or credit mutation.
 add_latebrake_portable_research_test(SixCarCircuitSetupResearch)
+
+# Authenticated four-wheel tire pressure/temperature/tread setup QA for 36
+# original car/track combinations, without real inflation or garage changes.
+add_latebrake_portable_research_test(PhysicalTyreSetupTelemetry)
+
+# Fixed-capacity 64-frame four-wheel tire pressure and wear trend source QA.
+# No live Chaos tire wear, valve correction, or career unlock authority.
+add_latebrake_portable_research_test(PhysicalTyreStintTrend)
+
+# Authentic four-wheel wear trajectory and native pit box evidence produce
+# service-only forecasts without booking, tire pressure writes or awards.
+add_latebrake_portable_research_test(PhysicalTyreServiceForecast)
+
+# Six-circuit source-only nighttime floodlight photometry and bounded
+# visual draw-power/road survey; no actual UE lights, shadows or physics.
+add_latebrake_portable_research_test(WorldScaleNightRaceLightingPlan)
+
+add_latebrake_portable_research_test(PhysicalWetPitStrategy)
+add_latebrake_portable_research_test(PhysicalWetPitDecisionGate)
+add_latebrake_portable_research_test(PhysicalSixCarPitCorridor)
+# Three disjoint, previously authored sibling research tests from PR #425.
+# This integration does not confer native pit, wet-grip or race authority.
+
+# Physical original lamp, road-water and six-car night safety estimate;
+# no real occlusion, native braking, car collision or race-control claims.
+add_latebrake_portable_research_test(PhysicalNightWetVisibilityAudit)
+
+# Exact recorded 32-frame native water-film provenance ring, bounded replay,
+# no interpolation for physics and explicit no-extrapolation audit.
+add_latebrake_portable_research_test(PhysicalWaterFrameArchive)
+
+# Source-verified four actual brake rotors for six original racing cars;
+# conservative fade/wear diagnosis, never native braking or garage credits.
+add_latebrake_portable_research_test(PhysicalBrakeThermalReview)
+
+# Verified six-car original night/wet evidence ring with stable digests.
+add_latebrake_portable_research_test(PhysicalRaceWeatherEventJournal)
+# Time-integrated source-only racing engineer wet/night exposure analysis.
+add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
+
+# Genuine six-car wet driving source observations with true road projection,
+# measured friction, physical continuity and a fixed 96-frame trace ring.
+add_latebrake_portable_research_test(PhysicalWetLapTrace)
+# Time-weighted 16-sector source-only race engineer review for six cars.
+add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)

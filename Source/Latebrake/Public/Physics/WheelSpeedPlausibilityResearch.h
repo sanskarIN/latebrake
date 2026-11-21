@@ -8,6 +8,9 @@ namespace LateBrake::PhysicsResearch {
 
 // Source-only sensor plausibility review. This does not authenticate vehicle
 // telemetry or command Chaos brakes. Wheel order is FL, FR, RL, RR.
+// Wheel angular/surface speeds are signed: positive is forward rotation and
+// negative is reverse. Absolute speed limits apply in either direction;
+// acceleration checks must preserve the sign to detect abrupt reversals.
 struct WheelSpeedSample {
     double frameSeconds = 0.0;
     double vehicleSpeedMps = 0.0;
@@ -95,11 +98,11 @@ inline WheelSpeedReview ReviewWheelSpeedSample(
         const double angular = sample.angularSpeedRadPerSecond[i];
         if (!std::isfinite(radius) || !std::isfinite(angular) ||
             radius < limits.minimumRadiusMeters ||
-            radius > limits.maximumRadiusMeters || angular < 0.0)
+            radius > limits.maximumRadiusMeters)
             return WheelSpeedReview{};
         const double surface = radius * angular;
         if (!std::isfinite(surface) ||
-            surface > limits.maximumSurfaceSpeedMps)
+            std::abs(surface) > limits.maximumSurfaceSpeedMps)
             return WheelSpeedReview{};
         out.surfaceSpeedMps[i] = surface;
         bool plausible = true;
