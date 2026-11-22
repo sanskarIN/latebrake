@@ -2520,3 +2520,66 @@ add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
 add_latebrake_portable_research_test(SixCarRouteContinuityAudit)
 add_latebrake_portable_research_test(WorldScaleSweptEnvelope)
 add_latebrake_portable_research_test(ObservedGripFusion)
+
+# Measured-font full detail wrapping: readable paginated garage/results rows.
+add_executable(latebrake_hud_detail_text_flow_tests HudDetailTextFlowTests.cpp)
+target_include_directories(latebrake_hud_detail_text_flow_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_detail_text_flow_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_detail_text_flow_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_detail_text_flow_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudDetailTextFlow COMMAND latebrake_hud_detail_text_flow_tests)
+
+# Display-only adaptive gear, shift and estimated-RPM badge. Uses real
+# proportionally measured glyph widths; no Unreal runtime or race authority.
+add_executable(latebrake_hud_drive_badge_tests HudInstrumentDriveBadgeTests.cpp)
+target_include_directories(latebrake_hud_drive_badge_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_drive_badge_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudInstrumentDriveBadge COMMAND latebrake_hud_drive_badge_tests)
+
+# Explain real nitro charge, cooldown, thermal lockout and launch-speed
+# prerequisites without modifying propulsion physics or racing authority.
+add_executable(latebrake_nitro_hud_readout_tests NitroHudReadoutTests.cpp)
+target_include_directories(latebrake_nitro_hud_readout_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_nitro_hud_readout_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME NitroHudReadout COMMAND latebrake_nitro_hud_readout_tests)
+
+# Cross-component desktop UI contract: separate garage paging, speed/gear
+# instrument geometry, and real NitroBoost read-only snapshots in one build.
+add_executable(latebrake_hud_integrated_readouts_tests HudIntegratedReadoutsTests.cpp)
+target_include_directories(latebrake_hud_integrated_readouts_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_integrated_readouts_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_integrated_readouts_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_integrated_readouts_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudIntegratedReadouts COMMAND latebrake_hud_integrated_readouts_tests)
+
+# Combined desktop HUD: measured details, pager, responsive hit targets,
+# gear badge and observational nitro must remain safe together.
+add_executable(latebrake_hud_integrated_viewport_safety_tests
+    HudIntegratedViewportSafetyTests.cpp)
+target_include_directories(latebrake_hud_integrated_viewport_safety_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_integrated_viewport_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudIntegratedViewportSafety
+    COMMAND latebrake_hud_integrated_viewport_safety_tests)

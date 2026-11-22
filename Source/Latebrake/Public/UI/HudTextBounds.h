@@ -59,7 +59,8 @@ inline HudTextBounds CalculateHudTextBounds(
 // Full length means keep the original. -1 means even the suffix cannot
 // fit, and the caller must not draw a glyph. A callback evaluates the
 // actual font measurement of "source prefix + suffix" (not a guessed
-// monospaced character count). Binary search needs <= log2(n) probes.
+// monospaced character count). Binary search uses at most one validation
+// probe plus logarithmically many prefix probes.
 template<typename MeasurePrefixWithSuffix>
 int ChooseHudTextPrefix(
     int length, double maxWidth, double fullWidth,
@@ -77,6 +78,16 @@ int ChooseHudTextPrefix(
         return length;
     }
     if (suffixWidth > maxWidth)
+    {
+        return -1;
+    }
+    // Validate the exact zero-prefix rendering too. A separately sampled
+    // suffix may differ from the actual callback width (e.g. a font/layout
+    // transition). Returning zero without checking would draw text that
+    // is already wider than the permitted HUD lane.
+    const double emptyWidth = measure(0);
+    if (!std::isfinite(emptyWidth) || emptyWidth < 0.0 ||
+        emptyWidth > maxWidth)
     {
         return -1;
     }
