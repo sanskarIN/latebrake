@@ -2583,3 +2583,19 @@ else()
 endif()
 add_test(NAME HudIntegratedViewportSafety
     COMMAND latebrake_hud_integrated_viewport_safety_tests)
+
+# Real one-rival passing retry safety after composed physical traffic
+# braking. The per-gate latch cannot affect checkpoints or player input.
+add_executable(latebrake_rival_pass_gate_retry_tests
+    RivalPassGateRetryTests.cpp)
+target_include_directories(latebrake_rival_pass_gate_retry_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_pass_gate_retry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_pass_gate_retry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_pass_gate_retry_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalPassGateRetry
+    COMMAND latebrake_rival_pass_gate_retry_tests)
