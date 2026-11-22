@@ -2567,3 +2567,19 @@ else()
     target_compile_options(latebrake_hud_integrated_readouts_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME HudIntegratedReadouts COMMAND latebrake_hud_integrated_readouts_tests)
+
+# Combined desktop HUD: measured details, pager, responsive hit targets,
+# gear badge and observational nitro must remain safe together.
+add_executable(latebrake_hud_integrated_viewport_safety_tests
+    HudIntegratedViewportSafetyTests.cpp)
+target_include_directories(latebrake_hud_integrated_viewport_safety_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_integrated_viewport_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudIntegratedViewportSafety
+    COMMAND latebrake_hud_integrated_viewport_safety_tests)
