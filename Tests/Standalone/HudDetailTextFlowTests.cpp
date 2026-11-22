@@ -146,6 +146,41 @@ int main()
     Check(!Wrap(u"\u0915\u094D\u0937", 2.0).Result.Complete,
           "too-narrow lanes cannot break a shaped Hindi conjunct");
 
+    // Prevent glyphs from breaking across common Indic vowel-sign and
+    // virama-consonant clusters, beyond Devanagari/Hindi alone.
+    const std::u16string_view conjuncts[] = {
+        u"\u0995\u09CD\u09B7X", // Bengali
+        u"\u0A95\u0ACD\u0AB7X", // Gujarati
+        u"\u0B95\u0BCD\u0BB7X", // Tamil
+        u"\u0C15\u0C4D\u0C37X", // Telugu
+        u"\u0C95\u0CCD\u0CB7X", // Kannada
+        u"\u0D15\u0D4D\u0D37X"  // Malayalam
+    };
+    for (const auto conjunctText : conjuncts)
+    {
+        const auto visible = Wrap(conjunctText, 3.0);
+        Check(visible.Result.Complete && visible.Lines.size() == 2 &&
+              visible.Lines[0] == conjunctText.substr(0, 3) &&
+              visible.Lines[1] == u"X",
+              "Indic script conjuncts remain single shaped clusters");
+        const auto narrow = Wrap(conjunctText, 2.0);
+        Check(!narrow.Result.Complete && narrow.Result.Lines == 0,
+              "too-narrow lanes never emit half an Indic conjunct");
+    }
+    for (const auto vowelText : {
+        std::u16string_view(u"\u0995\u09BEZ"), // Bengali matra
+        std::u16string_view(u"\u0B95\u0BBEZ"), // Tamil matra
+        std::u16string_view(u"\u0D15\u0D3EZ")  // Malayalam matra
+    })
+    {
+        Check(!Wrap(vowelText, 1.0).Result.Complete,
+              "combining vowel sign cannot be emitted independently");
+        const auto whole = Wrap(vowelText, 2.0);
+        Check(whole.Result.Complete && whole.Lines.size() == 2 &&
+              whole.Lines[0] == vowelText.substr(0, 2),
+              "base and Indic vowel sign must stay together");
+    }
+
     const auto joined = Wrap(u"\U0001F468\u200D\U0001F4BBZ", 5.0);
     Check(joined.Result.Complete && joined.Lines.size() == 2 &&
           joined.Lines[0] == u"\U0001F468\u200D\U0001F4BB",

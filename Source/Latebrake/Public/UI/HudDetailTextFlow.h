@@ -35,7 +35,81 @@ inline bool IsHudDetailExtend(std::uint32_t scalar) noexcept
         (scalar >= 0x0900u && scalar <= 0x0903u) ||
         (scalar >= 0x093Au && scalar <= 0x094Fu) ||
         (scalar >= 0x0951u && scalar <= 0x0957u) ||
-        (scalar >= 0x0962u && scalar <= 0x0963u);
+        (scalar >= 0x0962u && scalar <= 0x0963u) ||
+        // Selected combining marks, vowel signs and viramas from major
+        // Indic scripts. This remains a conservative subset of UAX #29;
+        // these ranges prevent partial menu glyphs without inventing a
+        // complete locale-specific shaping or line-breaking engine.
+        (scalar >= 0x0981u && scalar <= 0x0983u) ||
+        scalar == 0x09BCu ||
+        (scalar >= 0x09BEu && scalar <= 0x09CDu) ||
+        scalar == 0x09D7u ||
+        (scalar >= 0x09E2u && scalar <= 0x09E3u) ||
+        (scalar >= 0x0A01u && scalar <= 0x0A03u) ||
+        scalar == 0x0A3Cu ||
+        (scalar >= 0x0A3Eu && scalar <= 0x0A4Du) ||
+        (scalar >= 0x0A70u && scalar <= 0x0A71u) ||
+        scalar == 0x0A75u ||
+        (scalar >= 0x0A81u && scalar <= 0x0A83u) ||
+        scalar == 0x0ABCu ||
+        (scalar >= 0x0ABEu && scalar <= 0x0ACDu) ||
+        (scalar >= 0x0AE2u && scalar <= 0x0AE3u) ||
+        (scalar >= 0x0B01u && scalar <= 0x0B03u) ||
+        scalar == 0x0B3Cu ||
+        (scalar >= 0x0B3Eu && scalar <= 0x0B4Du) ||
+        (scalar >= 0x0B56u && scalar <= 0x0B57u) ||
+        (scalar >= 0x0B62u && scalar <= 0x0B63u) ||
+        scalar == 0x0B82u ||
+        (scalar >= 0x0BBEu && scalar <= 0x0BCDu) ||
+        scalar == 0x0BD7u ||
+        (scalar >= 0x0C00u && scalar <= 0x0C04u) ||
+        scalar == 0x0C3Cu ||
+        (scalar >= 0x0C3Eu && scalar <= 0x0C4Du) ||
+        (scalar >= 0x0C55u && scalar <= 0x0C56u) ||
+        (scalar >= 0x0C62u && scalar <= 0x0C63u) ||
+        (scalar >= 0x0C81u && scalar <= 0x0C83u) ||
+        scalar == 0x0CBCu ||
+        (scalar >= 0x0CBEu && scalar <= 0x0CCDu) ||
+        (scalar >= 0x0CD5u && scalar <= 0x0CD6u) ||
+        (scalar >= 0x0CE2u && scalar <= 0x0CE3u) ||
+        (scalar >= 0x0D00u && scalar <= 0x0D03u) ||
+        (scalar >= 0x0D3Bu && scalar <= 0x0D4Du) ||
+        scalar == 0x0D57u ||
+        (scalar >= 0x0D62u && scalar <= 0x0D63u) ||
+        scalar == 0x200Cu; // ZWNJ stays with the preceding cluster.
+}
+
+inline bool IsHudDetailIndicVirama(std::uint32_t scalar) noexcept
+{
+    switch (scalar)
+    {
+    case 0x094Du: // Devanagari
+    case 0x09CDu: // Bengali
+    case 0x0A4Du: // Gurmukhi
+    case 0x0ACDu: // Gujarati
+    case 0x0B4Du: // Odia
+    case 0x0BCDu: // Tamil
+    case 0x0C4Du: // Telugu
+    case 0x0CCDu: // Kannada
+    case 0x0D4Du: // Malayalam
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool IsHudDetailIndicConsonant(std::uint32_t scalar) noexcept
+{
+    return (scalar >= 0x0915u && scalar <= 0x0939u) ||
+        (scalar >= 0x0958u && scalar <= 0x095Fu) ||
+        (scalar >= 0x0995u && scalar <= 0x09B9u) ||
+        (scalar >= 0x0A15u && scalar <= 0x0A39u) ||
+        (scalar >= 0x0A95u && scalar <= 0x0AB9u) ||
+        (scalar >= 0x0B15u && scalar <= 0x0B39u) ||
+        (scalar >= 0x0B95u && scalar <= 0x0BB9u) ||
+        (scalar >= 0x0C15u && scalar <= 0x0C39u) ||
+        (scalar >= 0x0C95u && scalar <= 0x0CB9u) ||
+        (scalar >= 0x0D15u && scalar <= 0x0D39u);
 }
 
 template <typename CodeUnit>
@@ -85,7 +159,7 @@ std::uint32_t HudDetailScalarBefore(
 
 // A conservative subset of Unicode extended-grapheme boundaries.
 // In particular, never cut a UTF-16 surrogate pair, a combining accent,
-// common Hindi matra, emoji skin-tone sequence, joined emoji or flag pair.
+// common Indic matras and virama conjuncts, emoji modifiers, joined emoji or flag pair.
 // This is not a full UAX #29 implementation; unsupported clusters can
 // still require full shaping-engine line breaking in a future UMG UI.
 template <typename CodeUnit>
@@ -105,9 +179,8 @@ bool IsHudDetailSafeBoundary(
         IsHudDetailExtend(next) ||
         // Devanagari consonant conjuncts (e.g. KA + VIRAMA + SSA)
         // must not lose their shaping connection at a hard line break.
-        (previous == 0x094Du &&
-         ((next >= 0x0915u && next <= 0x0939u) ||
-          (next >= 0x0958u && next <= 0x095Fu))) ||
+        (IsHudDetailIndicVirama(previous) &&
+         IsHudDetailIndicConsonant(next)) ||
         previous == 0x200Du || next == 0x200Du ||
         (previous == 0x000Du && next == 0x000Au))
     {
