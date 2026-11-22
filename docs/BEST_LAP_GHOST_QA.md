@@ -34,8 +34,17 @@ existing car pawn, RaceProgress and guarded race-start clock.
   observation with the last physically observed pose, not merely the
   last retained keyframe. Thus rapid opposite-direction movements and
   duplicate timestamps at 60/120 FPS cannot pass inside a generous
-  10Hz replay window. These intermediate samples are never recorded
-  as extra keyframes, rendered, or used for scoring.
+  10Hz replay window. The recorder now also checks the shortest
+  signed yaw turn between EVERY observed live frame: a stationary car
+  cannot make a high-FPS 180-degree heading snap and still produce a
+  best-lap ghost. Ordinary +179/-179 wraparound remains valid. The
+  deliberately generous 1800 degrees/second plus 15-degree allowance
+  affects only visual-ghost eligibility, never real car steering,
+  forces, gate timing or rewards. Full-revolution aliasing cannot be
+  detected from wrapped orientation alone; this is a conservative
+  sanity rule rather than a substitute for native physics proof.
+  These intermediate samples are never recorded as extra keyframes,
+  rendered, or used for scoring.
 - Pawn replacement, focus/menu/pause session changes and the pawn's
   teleport/recovery revision invalidate that lap. The best completed
   lap may still be displayed after a later resumed clock, without
@@ -85,7 +94,11 @@ high-FPS subframe cases reject hidden out-and-back teleport motion,
 and a separate 20,000-case sequence catches rapid opposite-direction
 motion that is individually plausible against the stored keyframe but
 impossible between adjacent live samples. Duplicate live timestamps
-also fail closed. Normal high-refresh frames retain sparse 10-Hz storage. Source
+also fail closed. New `BestLapGhostYawContinuity` tests cover
+30/60/120/240 FPS, shortest-angle seam crossings, 20,000 instantaneous
+heading snap attempts, and preservation of a previous best after a
+poisoned candidate. Normal high-refresh frames retain sparse 10-Hz
+storage. Source
 binding tests verify the real player pawn, same authoritative clock,
 ordered checkpoint transition, transient actor, zero collision and
 lack of saved score authority.
