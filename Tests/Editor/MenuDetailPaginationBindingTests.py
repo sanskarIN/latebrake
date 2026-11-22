@@ -54,6 +54,21 @@ class MenuDetailPaginationBindingTests(unittest.TestCase):
             self.assertIn(mark, self.hud)
         self.assertIn("HudDetailTextFlowTests.cpp", self.cmake)
         self.assertIn("NAME HudDetailTextFlow", self.cmake)
+        menu = self.hud.split("const auto MenuLine =", 1)[1].split(
+            "if (MenuPlan.Valid)", 1)[0]
+        self.assertIn("const auto AddMeasuredMenuNotice =", menu)
+        self.assertIn(
+            'AddMeasuredMenuNotice(TEXT("DETAIL OMITTED - ROW LIMIT"));',
+            menu)
+        self.assertIn(
+            'AddMeasuredMenuNotice(\n'
+            '                    TEXT("DETAIL TEXT COULD NOT BE FITTED"));',
+            menu)
+        self.assertIn(
+            "const FString Notice = FitHudText(Message, Font, UIScale);",
+            menu)
+        self.assertIn("MenuDetails.Emplace(Notice, true);", menu)
+        self.assertNotIn("MenuDetails.Emplace(TEXT(", menu)
         self.assertLess(self.hud.index("MenuDetails.Emplace("),
                         self.hud.index("switch (Mode->GetMenuPage())"))
         self.assertLess(self.hud.index("switch (Mode->GetMenuPage())"),

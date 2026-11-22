@@ -259,13 +259,25 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 return;
             }
+            // Every menu row, including overflow diagnostics, must use
+            // the same actual-font bounds as the normal detail rows.
+            // A raw diagnostic can overflow a narrow screen even when all
+            // wrapped content is correctly measured and paginated.
+            const auto AddMeasuredMenuNotice = [&](const TCHAR* Message)
+            {
+                const FString Notice = FitHudText(Message, Font, UIScale);
+                if (!Notice.IsEmpty() && MenuDetails.Num() < 1024)
+                {
+                    MenuDetails.Emplace(Notice, true);
+                }
+            };
             // Reserve one diagnostic row and enforce a per-entry cap.
             // A single maliciously long car name or result string must not
             // monopolize all 1024 pager rows and conceal later details.
             const int32 WrapBudget = FMath::Min(32, RemainingRows - 1);
             if (WrapBudget <= 0)
             {
-                MenuDetails.Emplace(TEXT("DETAIL OMITTED - ROW LIMIT"), true);
+                AddMeasuredMenuNotice(TEXT("DETAIL OMITTED - ROW LIMIT"));
                 return;
             }
             const auto Wrapped = latebrake::WrapHudDetailText(
@@ -286,16 +298,12 @@ void ALatebrakeRaceHUD::DrawHUD()
                 {
                     MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);
                 }, WrapBudget);
-            if (!Wrapped.Complete && MenuDetails.Num() < 1024)
+            if (!Wrapped.Complete)
             {
                 // Fail visibly instead of silently discarding information
                 // when a glyph cluster cannot fit or the row cap is hit.
-                const FString Notice = FitHudText(
-                    TEXT("DETAIL TEXT COULD NOT BE FITTED"), Font, UIScale);
-                if (!Notice.IsEmpty())
-                {
-                    MenuDetails.Emplace(Notice, true);
-                }
+                AddMeasuredMenuNotice(
+                    TEXT("DETAIL TEXT COULD NOT BE FITTED"));
             }
         };
         if (MenuPlan.Valid)
