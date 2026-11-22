@@ -253,6 +253,18 @@ HudDetailWrapResult WrapHudDetailText(
         }
         if (cut > position)
         {
+            // The final emitted slice can differ from the binary-search
+            // candidate after preferring a word break or removing trailing
+            // whitespace. Proportional shaping/ligatures need not have
+            // monotonic substring widths, so measure the ACTUAL slice.
+            // Never paint outside the lane if shaping changed its width.
+            const double emittedWidth = measure(position, cut - position);
+            if (!std::isfinite(emittedWidth) || emittedWidth < 0.0 ||
+                emittedWidth > maxWidth)
+            {
+                result.Consumed = position;
+                return result;
+            }
             emit(position, cut - position);
             ++result.Lines;
         }

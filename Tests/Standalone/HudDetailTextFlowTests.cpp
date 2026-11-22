@@ -178,6 +178,44 @@ int main()
               .Result.Complete,
           "invalid geometry fails closed");
 
+    // A shaping engine can measure the longer candidate as fitting but
+    // its shorter whole-word form as wider (different ligature context).
+    // The emitted row must be measured AFTER selecting the word boundary.
+    const std::u16string changedAfterWordBreak(u"ABCD EFGHIJ");
+    bool emittedBadWord = false;
+    const auto unsafeWord = WrapHudDetailText(
+        static_cast<int>(changedAfterWordBreak.size()), 8.0,
+        [&](int i) {
+            return static_cast<std::uint32_t>(changedAfterWordBreak[
+                static_cast<std::size_t>(i)]);
+        },
+        [](int begin, int count) -> double {
+            return begin == 0 && count == 4 ? 20.0 :
+                static_cast<double>(count);
+        },
+        [&](int, int) { emittedBadWord = true; });
+    Check(!unsafeWord.Complete && unsafeWord.Lines == 0 &&
+          unsafeWord.Consumed == 0 && !emittedBadWord,
+          "word-boundary reflow must remeasure actual emitted glyphs");
+
+    // The same property holds for the trailing spaces of an otherwise
+    // measured-as-fitting paragraph. Trimming may change shaping width.
+    const std::u16string trimmedSource(u"AB  ");
+    bool emittedBadTrim = false;
+    const auto unsafeTrim = WrapHudDetailText(
+        static_cast<int>(trimmedSource.size()), 4.0,
+        [&](int i) {
+            return static_cast<std::uint32_t>(trimmedSource[
+                static_cast<std::size_t>(i)]);
+        },
+        [](int, int count) -> double {
+            return count == 2 ? 9.0 : static_cast<double>(count);
+        },
+        [&](int, int) { emittedBadTrim = true; });
+    Check(!unsafeTrim.Complete && unsafeTrim.Lines == 0 &&
+          unsafeTrim.Consumed == 0 && !emittedBadTrim,
+          "trailing-space trim must not bypass final measured text width");
+
     const std::u16string badMeasurement(u"HELLO");
     const auto invalid = WrapHudDetailText(
         5, 10.0, [&](int i) { return badMeasurement[
