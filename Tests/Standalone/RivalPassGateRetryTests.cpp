@@ -210,8 +210,51 @@ int main()
             "corrupt live frame cannot restart passing on same gate");
     rival.Reset();
     rival.AbortUntilGateChange();
-    Require(!rival.IsRetryBlockedForGate(0),
-            "an idle controller cannot fabricate a retired gate");
+    Require(!rival.IsRetryBlockedForGate(0) &&
+            !rival.IsRetryBlockedForGate(-1) &&
+            !rival.IsRetryBlockedForGate(CircuitGateCount),
+            "idle or invalid gate queries cannot fabricate a retired route");
+
+    // A temporarily corrupt/unauthorized physical observation during an
+    // active pass also retires that attempt; only the OWNER GameMode's
+    // genuine pause/restart/recovery path may explicitly Reset the epoch.
+    Require(rival.Apply(drive, Observe()).Passing,
+            "unqualified-physics setup begins legitimate passing");
+    auto badQualification = Observe();
+    badQualification.Qualified = false;
+    const auto badObservation = rival.Apply(drive, badQualification);
+    Require(badObservation.Command.Brake && !badObservation.Passing &&
+            rival.IsRetryBlockedForGate(0) &&
+            !rival.Apply(drive, Observe()).Passing,
+            "unqualified chassis tick cannot erase same-gate retry lock");
+    rival.Reset();
+
+    // Frame-dependent state must not behave differently at common
+    // native target refresh rates; a six-second pass ends once and
+    // cannot spontaneously re-enter at 30/60/120 fps.
+    const int frameRates[] = {30, 60, 120};
+    for (const int fps : frameRates)
+    {
+        rival.Reset();
+        auto frame = Observe();
+        frame.DeltaSeconds = 1.0 / static_cast<double>(fps);
+        Require(rival.Apply(drive, frame).Passing,
+                "pass begins at a valid physical frame cadence");
+        bool timedOut = false;
+        for (int i = 0; i < fps * 7; ++i)
+        {
+            const auto step = rival.Apply(drive, frame);
+            if (!step.Passing)
+            {
+                timedOut = true;
+                break;
+            }
+        }
+        Require(timedOut && rival.IsRetryBlockedForGate(0) &&
+                !rival.Apply(drive, frame).Passing,
+                "passing duration expires without same-gate re-entry at all frame rates");
+    }
+    rival.Reset();
     const auto notQualified = Observe();
     auto blocked = notQualified;
     blocked.Qualified = false;

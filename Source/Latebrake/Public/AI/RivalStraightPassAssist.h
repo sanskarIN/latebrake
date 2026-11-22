@@ -82,7 +82,9 @@ public:
     bool IsActive() const noexcept { return ActiveGate >= 0; }
     bool IsRetryBlockedForGate(int gate) const noexcept
     {
-        return RetiredGate == gate;
+        // -1 is our internal "no retired gate" sentinel, never a real
+        // blocked checkpoint when an external diagnostic probes it.
+        return IsCircuitGate(gate) && RetiredGate == gate;
     }
 
     RivalPassOutput Apply(PilotCommand command, RivalPassSample s) noexcept
