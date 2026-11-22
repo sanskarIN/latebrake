@@ -223,6 +223,11 @@ HudDetailWrapResult WrapHudDetailText(
     }
 
     int position = 0;
+    // Remember the next newline. Without this cache, a long single
+    // paragraph is rescanned from the current row to the end on every
+    // wrapped line, producing quadratic code-unit reads on long names.
+    // Measurements of actual shaped row widths remain authoritative.
+    int paragraphEnd = 0;
     while (position < length && result.Lines < maxLines)
     {
         const auto code = static_cast<std::uint32_t>(codeUnit(position));
@@ -241,16 +246,19 @@ HudDetailWrapResult WrapHudDetailText(
             ++position;
             continue;
         }
-        int paragraphEnd = position;
-        while (paragraphEnd < length)
+        if (position >= paragraphEnd)
         {
-            const auto next =
-                static_cast<std::uint32_t>(codeUnit(paragraphEnd));
-            if (next == 0x0Au || next == 0x0Du)
+            paragraphEnd = position;
+            while (paragraphEnd < length)
             {
-                break;
+                const auto next =
+                    static_cast<std::uint32_t>(codeUnit(paragraphEnd));
+                if (next == 0x0Au || next == 0x0Du)
+                {
+                    break;
+                }
+                ++paragraphEnd;
             }
-            ++paragraphEnd;
         }
 
         int cut = paragraphEnd;

@@ -261,6 +261,40 @@ int main()
           unsafeTrim.Consumed == 0 && !emittedBadTrim,
           "trailing-space trim must not bypass final measured text width");
 
+    // The old loop rescanned the entire remaining paragraph for each
+    // wrapped row. This adversarial input must now read only ~one whole
+    // paragraph plus a bounded number of cluster/space probes.
+    const std::u16string longParagraph(16384, u'W');
+    int sourceReads = 0;
+    int emittedRows = 0;
+    const auto efficient = WrapHudDetailText(
+        static_cast<int>(longParagraph.size()), 4.0,
+        [&](int i) {
+            ++sourceReads;
+            return static_cast<std::uint32_t>(longParagraph[
+                static_cast<std::size_t>(i)]);
+        },
+        [](int, int count) { return static_cast<double>(count); },
+        [&](int, int count) {
+            Check(count == 4, "stress rows retain exact measured width");
+            ++emittedRows;
+        }, 32);
+    Check(!efficient.Complete && efficient.Lines == 32 &&
+          efficient.Consumed == 128 && emittedRows == 32,
+          "bounded sample never fabricates a completed very long detail");
+    Check(sourceReads < 20000,
+          "long single paragraphs scan source nearly linearly, not quadratically");
+
+    // Encountering a real newline must invalidate cached paragraph end.
+    const auto afterNewline = Wrap(u"AAAAAA\nBBBBBB\nCCCCCC", 3.0);
+    Check(afterNewline.Result.Complete &&
+          afterNewline.Lines.size() == 6 &&
+          afterNewline.Lines[0] == u"AAA" &&
+          afterNewline.Lines[1] == u"AAA" &&
+          afterNewline.Lines[2] == u"BBB" &&
+          afterNewline.Lines[4] == u"CCC",
+          "cached line end is refreshed independently for every paragraph");
+
     const std::u16string badMeasurement(u"HELLO");
     const auto invalid = WrapHudDetailText(
         5, 10.0, [&](int i) { return badMeasurement[
