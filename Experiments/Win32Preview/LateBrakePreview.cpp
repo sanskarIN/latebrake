@@ -3,6 +3,7 @@
 // Self-contained Win32/GDI progression prototype: no network, CRT, plugins, or Unreal assets.
 // Build and launch on Windows; --self-test runs an isolated deterministic logic check.
 #include "PreviewRaceModes.h"
+#include "PreviewViewportMath.h"
 
 extern "C" { int _fltused = 0; } // MSVC floating-point linkage marker.
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -82,7 +83,10 @@ __declspec(dllimport) int __stdcall StretchDIBits(HDC,int,int,int,int,int,int,in
 
 static const int WIDTH=960, HEIGHT=640;
 static const float CX=480.0f, CY=331.0f;
-struct CanvasViewport { int x,y,w,h; };
+using latebrake_preview::CanvasViewport;
+static_assert(WIDTH==latebrake_preview::PreviewCanvasWidth &&
+    HEIGHT==latebrake_preview::PreviewCanvasHeight,
+    "Preview input transforms must match the actual GDI framebuffer");
 // The freestanding GDI preview used to silently exit during startup and
 // silently present black frames if the desktop display blit failed. This
 // state machine only observes actual nonzero viewports; minimizing a
@@ -105,22 +109,15 @@ static bool observePresentStatus(PreviewGdiHealth& state,
     }
     return false;
 }
+// All real mouse clicks and window resizes use the same portable, strictly
+// 64-bit projection policy as the C++20 regression suite. Black borders
+// never become active UI space; malformed input leaves coordinates inert.
 static CanvasViewport fitViewport(int clientW,int clientH){
-    if(clientW<=0||clientH<=0)return {0,0,0,0};
-    long long wide=(long long)clientW*HEIGHT;
-    long long tall=(long long)clientH*WIDTH;
-    int w=clientW,h=clientH;
-    if(wide>tall)w=(int)((long long)clientH*WIDTH/HEIGHT);
-    else h=(int)((long long)clientW*HEIGHT/WIDTH);
-    if(w<1)w=1;if(h<1)h=1;
-    return {(clientW-w)/2,(clientH-h)/2,w,h};
+    return latebrake_preview::FitPreviewViewport(clientW,clientH);
 }
 static bool translateMouse(const CanvasViewport& vp,int clientX,int clientY,int& outX,int& outY){
-    if(vp.w<=0||vp.h<=0||clientX<vp.x||clientY<vp.y||
-       clientX>=vp.x+vp.w||clientY>=vp.y+vp.h)return false;
-    outX=(clientX-vp.x)*WIDTH/vp.w;
-    outY=(clientY-vp.y)*HEIGHT/vp.h;
-    return true;
+    return latebrake_preview::TranslatePreviewMouse(
+        vp,clientX,clientY,outX,outY);
 }
 static unsigned int backdrop[WIDTH*HEIGHT], frame[WIDTH*HEIGHT];
 static bool running=true, paused=false, lastPause=false, lastRestart=false;
@@ -1500,6 +1497,16 @@ static bool selftest(){
     vp=fitViewport(800,800);
     if(vp.w!=800||vp.h!=533||vp.y!=133)return false;
     if(fitViewport(0,100).w!=0)return false;
+    // Even a maximum signed Win32 viewport must not wrap pointer
+    // products. This is a pure no-window test and never clicks UI.
+    CanvasViewport extreme=fitViewport(2147483647,2147483647);
+    if(extreme.w<=0||extreme.h<=0)return false;
+    if(!translateMouse(extreme,extreme.x+extreme.w-1,
+                      extreme.y+extreme.h-1,mappedX,mappedY)||
+       mappedX!=WIDTH-1||mappedY!=HEIGHT-1)return false;
+    int lastX=431,lastY=219;
+    if(translateMouse(extreme,-1,-1,lastX,lastY)||
+       lastX!=431||lastY!=219)return false;
     XInputStateFn originalReader=xinputRead;
     xinputRead=mockXInputState;
     activePadUser=4;hasWindowFocus=true;padRequireNeutral=true;

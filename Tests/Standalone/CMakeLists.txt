@@ -2633,3 +2633,19 @@ else()
 endif()
 add_test(NAME RaceSessionCrossSystemSafety
     COMMAND latebrake_race_session_cross_system_safety_tests)
+
+
+# Experimental native Win32 2D trial: arithmetic must not activate menu
+# clicks outside the actual GDI canvas even on extreme desktop sizes.
+add_executable(latebrake_preview_viewport_math_tests
+    PreviewViewportMathTests.cpp)
+target_include_directories(latebrake_preview_viewport_math_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_viewport_math_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_viewport_math_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_viewport_math_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewViewportMath COMMAND latebrake_preview_viewport_math_tests)
