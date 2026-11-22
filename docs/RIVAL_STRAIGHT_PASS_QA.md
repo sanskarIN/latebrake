@@ -37,7 +37,12 @@ The new limited assist:
   throttle, directly modifies physics velocity or claims a gate.
 - Keeps a **per-rival lane choice** until the rival has drawn more
   than 550 cm ahead, reaches a corner or six seconds have elapsed.
-  Qualified pause, restart, recovery and race-finish branches reset it.
+  A completed, timed-out, blocked-lane or emergency-braked manoeuvre
+  now retires that checkpoint's passing attempt: the rival will not
+  immediately re-enter the same risky lane while approaching that same
+  gate. A *genuinely different verified next gate* re-arms a new attempt.
+  Qualified pause, restart, recovery and race-finish branches fully reset
+  the attempt and its gate latch so no state leaks between race sessions.
 - Cancels the assist with normal braking if the player enters the
   selected pass lane. Invalid measurements fail closed. The original
   `YieldRivalToPlayer` collision-courtesy braking still runs AFTER
@@ -62,6 +67,13 @@ physical inputs, focus interruption and 20,000 road observations.
 that the actual rival pawn supplies observed positions/velocities,
 preserves all normal road/traffic/corner/grip filters and resets
 passing state on invalid route, recovery, pause, restart or finish.
+
+The separate `RivalPassGateRetryTests.cpp` exercises genuine
+`ResolveRivalPassTraffic` emergency composition and 0.18s following
+hold, final clearance, time budget, corner limits, player-lane intrusion,
+failed physical samples, 10,000 same-gate retry frames and route-gate
+rearming. An editor-source contract asserts the actual Unreal actor
+retains the per-gate latch after collision-brake arbitration.
 
 These are source and portable C++20 verification only.
 
