@@ -2599,3 +2599,19 @@ else()
 endif()
 add_test(NAME RivalPassGateRetry
     COMMAND latebrake_rival_pass_gate_retry_tests)
+
+# Visual-only ghost integrity: reject high-FPS angular transform snaps
+# without touching physics, rewards, official laps or stored profiles.
+add_executable(latebrake_ghost_yaw_continuity_tests
+    BestLapGhostYawContinuityTests.cpp)
+target_include_directories(latebrake_ghost_yaw_continuity_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_ghost_yaw_continuity_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_ghost_yaw_continuity_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_ghost_yaw_continuity_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BestLapGhostYawContinuity
+    COMMAND latebrake_ghost_yaw_continuity_tests)
