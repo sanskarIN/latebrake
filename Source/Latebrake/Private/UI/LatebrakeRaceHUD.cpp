@@ -2,6 +2,8 @@
 
 #include "UI/HudLayout.h"
 #include "UI/HudInstrumentCluster.h"
+#include "UI/HudInstrumentDriveBadge.h"
+#include "UI/NitroHudReadout.h"
 #include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
 #include "Garage/GarageComparisonView.h"
@@ -9,6 +11,7 @@
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "UI/HudVerticalPlan.h"
 #include "UI/HudTextBounds.h"
+#include "UI/HudDetailTextFlow.h"
 #include "UI/HudMenuVerticalPlan.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/RecentLapReview.h"
@@ -242,11 +245,65 @@ void ALatebrakeRaceHUD::DrawHUD()
         TArray<TPair<FString, bool>> MenuDetails;
         const auto MenuLine = [&](const FString& Value, bool bAccent = false)
         {
-            const FString Fitted = FitHudText(
-                Value, GEngine->GetSmallFont(), UIScale);
-            if (!Fitted.IsEmpty())
+            UFont* Font = GEngine->GetSmallFont();
+            if (!MenuPlan.Valid || !HorizontalBounds.Valid ||
+                Value.IsEmpty() || !Font || SafeTextWidth <= 0.0)
             {
-                MenuDetails.Emplace(Fitted, bAccent);
+                return;
+            }
+            // Page the *complete* measured text. Previously every detail
+            // was permanently ellipsized before MenuPager saw the content,
+            // making long garage/results descriptions impossible to read.
+            const int32 RemainingRows = FMath::Max(0, 1024 - MenuDetails.Num());
+            if (RemainingRows <= 0)
+            {
+                return;
+            }
+            // Every menu row, including overflow diagnostics, must use
+            // the same actual-font bounds as the normal detail rows.
+            // A raw diagnostic can overflow a narrow screen even when all
+            // wrapped content is correctly measured and paginated.
+            const auto AddMeasuredMenuNotice = [&](const TCHAR* Message)
+            {
+                const FString Notice = FitHudText(Message, Font, UIScale);
+                if (!Notice.IsEmpty() && MenuDetails.Num() < 1024)
+                {
+                    MenuDetails.Emplace(Notice, true);
+                }
+            };
+            // Reserve one diagnostic row and enforce a per-entry cap.
+            // A single maliciously long car name or result string must not
+            // monopolize all 1024 pager rows and conceal later details.
+            const int32 WrapBudget = FMath::Min(32, RemainingRows - 1);
+            if (WrapBudget <= 0)
+            {
+                AddMeasuredMenuNotice(TEXT("DETAIL OMITTED - ROW LIMIT"));
+                return;
+            }
+            const auto Wrapped = latebrake::WrapHudDetailText(
+                Value.Len(), SafeTextWidth,
+                [&](int Index) -> std::uint32_t
+                {
+                    return static_cast<std::uint32_t>(Value[Index]);
+                },
+                [&](int Begin, int Count) -> double
+                {
+                    float MeasuredWidth = 0.f;
+                    float MeasuredHeight = 0.f;
+                    GetTextSize(Value.Mid(Begin, Count), MeasuredWidth,
+                        MeasuredHeight, Font, UIScale);
+                    return static_cast<double>(MeasuredWidth);
+                },
+                [&](int Begin, int Count)
+                {
+                    MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);
+                }, WrapBudget);
+            if (!Wrapped.Complete)
+            {
+                // Fail visibly instead of silently discarding information
+                // when a glyph cluster cannot fit or the row cap is hit.
+                AddMeasuredMenuNotice(
+                    TEXT("DETAIL TEXT COULD NOT BE FITTED"));
             }
         };
         if (MenuPlan.Valid)
@@ -1949,12 +2006,65 @@ void ALatebrakeRaceHUD::DrawHUD()
         const double DisplaySpeed = Mode->UsesMilesPerHour()
             ? Instruments.SpeedKmH * 0.621371
             : Instruments.SpeedKmH;
-        DrawText(FString::Printf(
-                Mode->UsesMilesPerHour()
-                    ? TEXT("%.0f mph") : TEXT("%.0f km/h"),
-                DisplaySpeed),
-            Ink, Gx + 16.f * S, Gy + 30.f * S,
+        const FString SpeedReadout = FString::Printf(
+            Mode->UsesMilesPerHour()
+                ? TEXT("%.0f mph") : TEXT("%.0f km/h"), DisplaySpeed);
+        DrawText(SpeedReadout, Ink, Gx + 16.f * S, Gy + 30.f * S,
             GEngine->GetMediumFont(), 1.10f * S);
+
+        // Native automatic gear *observation* shares the existing
+        // right-hand gauge's speed row. Measure the actual proportional
+        // fonts at their rendered scales so even a small desktop panel
+        // keeps speed and shifting data in separate horizontal lanes.
+        // Estimated RPM comes from the speed-based arcade transmission,
+        // not a physical engine sensor or a gameplay controller.
+        const latebrake::AutomaticTransmissionState DriveGear =
+            Car->GetTransmissionReadout();
+        if (DriveGear.Valid && DriveGear.Gear >= -1 &&
+            DriveGear.Gear <= latebrake::AutomaticTransmission::ForwardGearCount &&
+            DriveGear.Gear != 0 && DriveGear.EstimatedRpm >= 900 &&
+            DriveGear.EstimatedRpm <= 7200 &&
+            GEngine->GetMediumFont() && GEngine->GetSmallFont())
+        {
+            const FString GearShort = DriveGear.Gear < 0
+                ? FString(TEXT("R"))
+                : FString::Printf(TEXT("G%d"), DriveGear.Gear);
+            const FString GearFull = DriveGear.Shifting
+                ? GearShort + TEXT(" SHIFT")
+                : FString::Printf(TEXT("%s  %d RPM EST"),
+                    *GearShort, DriveGear.EstimatedRpm);
+            const float GearFontScale = 0.83f * S;
+            float SpeedWidth = 0.f;
+            float SpeedHeight = 0.f;
+            float ShortWidth = 0.f;
+            float ShortHeight = 0.f;
+            float FullWidth = 0.f;
+            float FullHeight = 0.f;
+            GetTextSize(SpeedReadout, SpeedWidth, SpeedHeight,
+                GEngine->GetMediumFont(), 1.10f * S);
+            GetTextSize(GearShort, ShortWidth, ShortHeight,
+                GEngine->GetSmallFont(), GearFontScale);
+            GetTextSize(GearFull, FullWidth, FullHeight,
+                GEngine->GetSmallFont(), GearFontScale);
+            const auto Badge = latebrake::CalculateHudInstrumentDriveBadge(
+                Instruments.Panel, Instruments.Scale,
+                static_cast<double>(SpeedWidth),
+                static_cast<double>(ShortWidth),
+                static_cast<double>(ShortHeight),
+                static_cast<double>(FullWidth),
+                static_cast<double>(FullHeight));
+            if (Badge.Visible)
+            {
+                DrawRect(FLinearColor(0.08f, 0.16f, 0.22f, 0.96f),
+                    static_cast<float>(Badge.X) - 5.f * S,
+                    Gy + 29.f * S,
+                    static_cast<float>(Badge.Width) + 10.f * S, 27.f * S);
+                DrawText(Badge.ShowExtended ? GearFull : GearShort,
+                    DriveGear.Shifting ? Gold : Mint,
+                    static_cast<float>(Badge.X), Gy + 33.f * S,
+                    GEngine->GetSmallFont(), GearFontScale);
+            }
+        }
 
         // Labeled percentage bars remain usable without color distinction.
         // Heat is an arcade estimate; chassis condition is derived solely
@@ -2039,7 +2149,62 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Gx + 16.f * S, Gy + 64.f * S,
                 GEngine->GetSmallFont(), 0.83f * S);
         }
-        DrawMeter(TEXT("NITRO"), Instruments.NitroFraction, 99.f, Mint);
+        // The charge bar alone does not tell a driver WHY boost is
+        // unavailable. Classify an actual ArcadeNitroBoost snapshot:
+        // no independent input state, cooldown clock or gameplay authority.
+        // Do not claim "READY" from charge alone: throttle, held key and
+        // service/handbrake gates still belong to the car's real Step().
+        const bool bNitroDrivingEligible =
+            Mode->IsCircuitReadyForGameplay() &&
+            Mode->IsRestartPlacementReady() &&
+            Mode->HasLocalPlayerDriver() &&
+            Mode->IsRaceStartGreen() &&
+            Car->IsRacePhysicsReady() &&
+            !Mode->IsFocusLossGuardActive() &&
+            !Mode->IsManualRacePauseActive() &&
+            !UGameplayStatics::IsGamePaused(this);
+        const latebrake::NitroHudReadout NitroState =
+            latebrake::ReadNitroHud(Car->GetNitroBoost(),
+                static_cast<double>(Car->GetForwardSpeedKmH()),
+                bNitroDrivingEligible);
+        FString NitroMeterName(TEXT("NITRO DATA N/A"));
+        FLinearColor NitroMeterColor = Track;
+        if (NitroState.Valid)
+        {
+            switch (NitroState.Phase)
+            {
+            case latebrake::NitroHudPhase::Active:
+                NitroMeterName = TEXT("NITRO ACTIVE");
+                NitroMeterColor = Gold;
+                break;
+            case latebrake::NitroHudPhase::Cooldown:
+                NitroMeterName = FString::Printf(TEXT("NITRO COOL %.1fs"),
+                    NitroState.CooldownSeconds);
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::Overheated:
+                NitroMeterName = TEXT("NITRO HOT");
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::Empty:
+                NitroMeterName = TEXT("NITRO EMPTY");
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::BuildSpeed:
+                NitroMeterName = TEXT("NITRO BUILD SPEED");
+                NitroMeterColor = Mint;
+                break;
+            case latebrake::NitroHudPhase::Stored:
+                NitroMeterName = TEXT("NITRO STORED");
+                NitroMeterColor = Mint;
+                break;
+            default:
+                NitroMeterName = TEXT("NITRO LOCKED");
+                break;
+            }
+        }
+        DrawMeter(*NitroMeterName, Instruments.NitroFraction, 99.f,
+            NitroMeterColor);
         DrawMeter(TEXT("ENGINE HEAT (ARCADE)"),
             Instruments.EngineHeatFraction, 133.f, Coral);
         DrawMeter(TEXT("CHASSIS CONDITION"),

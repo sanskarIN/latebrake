@@ -87,6 +87,18 @@ int main()
     Check(ChooseHudTextPrefix(0, 1.0, 10.0, 2.0,
           [](int) { return 2.0; }) == -1,
           "zero-length malformed width cannot bypass suffix policy");
+    Check(ChooseHudTextPrefix(10, 6.0, 100.0, 3.0,
+          [](int prefix) { return prefix == 0 ? 10.0 : 4.0; }) == -1,
+          "a mismeasured bare suffix must not render outside HUD bounds");
+    Check(ChooseHudTextPrefix(10, 6.0, 100.0, 3.0,
+          [](int prefix) {
+              return prefix == 0 ?
+                  std::numeric_limits<double>::infinity() : 4.0;
+          }) == -1,
+          "nonfinite zero-prefix measurement fails closed");
+    Check(ChooseHudTextPrefix(10, 6.0, 100.0, 3.0,
+          [](int prefix) { return prefix == 0 ? -1.0 : 4.0; }) == -1,
+          "negative zero-prefix measurement fails closed");
 
     int calls = 0;
     const int clipped = ChooseHudTextPrefix(
