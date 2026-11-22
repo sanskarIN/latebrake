@@ -50,8 +50,12 @@ inline HudMenuVerticalPlan CalculateHudMenuVerticalPlan(
     const double saveY = bottom - 1.8 * step;
     const double overflowY = saveY - 1.25 * step;
     const double latestDetailY = overflowY - 1.25 * step;
+    // At extreme finite coordinates, floating-point rounding can make
+    // distinct reserved baselines identical. Never expose overlapping UI.
     if (!std::isfinite(latestDetailY) || latestDetailY < layout.Top ||
-        saveY + step > bottom)
+        saveY + step > bottom ||
+        !(latestDetailY < overflowY && overflowY < saveY &&
+          saveY < bottom))
     {
         return {};
     }

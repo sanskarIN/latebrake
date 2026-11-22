@@ -100,9 +100,12 @@ int main()
           "overflowing row height fails closed");
     layout = CalculateHudLayout(1280.0, 720.0);
     const auto tall = CalculateHudMenuVerticalPlan(
-        1280.0, 1e20, layout, false);
+        1280.0, 1e12, layout, false);
     Check(tall.Valid && tall.MaxDetailsRows == 90,
           "extremely tall viewport safely saturates before integer cast");
+    Check(!CalculateHudMenuVerticalPlan(
+        1280.0, 1e20, layout, false).Valid,
+        "precision-collapsed notice baselines fail closed");
     std::cout << "HUD menu vertical tests passed (portable C++20).\n";
     return EXIT_SUCCESS;
 }
