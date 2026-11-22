@@ -91,6 +91,18 @@ int main()
     layout.Top = std::numeric_limits<double>::quiet_NaN();
     Check(!CalculateHudMenuVerticalPlan(1280.0, 720.0, layout, false).Valid,
           "invalid menu top fails closed");
+    layout = CalculateHudLayout(1280.0, 720.0);
+    layout.Scale = std::numeric_limits<double>::min();
+    Check(!CalculateHudMenuVerticalPlan(1280.0, 720.0, layout, false).Valid,
+          "subpixel row height cannot create ambiguous text baselines");
+    layout.Scale = std::numeric_limits<double>::max();
+    Check(!CalculateHudMenuVerticalPlan(1280.0, 720.0, layout, false).Valid,
+          "overflowing row height fails closed");
+    layout = CalculateHudLayout(1280.0, 720.0);
+    const auto tall = CalculateHudMenuVerticalPlan(
+        1280.0, 1e20, layout, false);
+    Check(tall.Valid && tall.MaxDetailsRows == 90,
+          "extremely tall viewport safely saturates before integer cast");
     std::cout << "HUD menu vertical tests passed (portable C++20).\n";
     return EXIT_SUCCESS;
 }

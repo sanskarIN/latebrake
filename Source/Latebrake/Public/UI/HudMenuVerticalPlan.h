@@ -31,6 +31,13 @@ inline HudMenuVerticalPlan CalculateHudMenuVerticalPlan(
     }
 
     const double step = 28.0 * layout.Scale;
+    // External callers can supply malformed scale independently of the
+    // normal [0.60, 1.20] HUD layout. A subpixel or overflowing row height
+    // cannot define reliably distinct notice/detail baselines.
+    if (!std::isfinite(step) || step < 1.0)
+    {
+        return {};
+    }
     const double bottom = touchUI
         ? CalculateTouchControlLayout(width, height).Steering.Y
         : height;
@@ -49,9 +56,17 @@ inline HudMenuVerticalPlan CalculateHudMenuVerticalPlan(
         return {};
     }
 
-    int maxRows = static_cast<int>(
-        std::floor((latestDetailY - layout.Top) / step)) + 1;
-    maxRows = std::clamp(maxRows, 0, 90);
+    const double rowIndex = std::floor(
+        (latestDetailY - layout.Top) / step);
+    if (!std::isfinite(rowIndex) || rowIndex < 0.0)
+    {
+        return {};
+    }
+    // Saturate in floating point BEFORE the integer cast: an otherwise
+    // finite but extremely tall viewport must not cause undefined
+    // out-of-range floating-point-to-int conversion.
+    const int maxRows =
+        static_cast<int>(std::min(rowIndex, 89.0)) + 1;
     return {true, maxRows, overflowY, saveY};
 }
 } // namespace latebrake

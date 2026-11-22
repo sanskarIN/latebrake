@@ -114,6 +114,21 @@ int main()
     broken.Buttons[0].Bounds.X = nan;
     Check(HitTestDesktopMenuMouse(broken, 100, 100) ==
         DesktopMenuMouseAction::None, "nonfinite button origin rejected");
+    const double max = std::numeric_limits<double>::max();
+    broken = plan;
+    broken.Buttons[0].Bounds.X = max;
+    broken.Buttons[0].Bounds.Width = max;
+    Check(HitTestDesktopMenuMouse(broken, max,
+        plan.Buttons[0].Bounds.Y + 1.0) ==
+        DesktopMenuMouseAction::None,
+        "finite origin and width with overflowing right edge rejected");
+    broken = plan;
+    broken.Buttons[0].Bounds.Y = max;
+    broken.Buttons[0].Bounds.Height = max;
+    Check(HitTestDesktopMenuMouse(broken,
+        plan.Buttons[0].Bounds.X + 1.0, max) ==
+        DesktopMenuMouseAction::None,
+        "finite origin and height with overflowing bottom edge rejected");
     // Real pager lifecycle governs BOTH whether detail buttons look
     // enabled and whether a pointer click can request page changes.
     MenuDetailPager pager;
