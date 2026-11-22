@@ -2515,6 +2515,11 @@ add_latebrake_portable_research_test(PhysicalRaceWeatherInsight)
 add_latebrake_portable_research_test(PhysicalWetLapTrace)
 # Time-weighted 16-sector source-only race engineer review for six cars.
 add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
+# Independently witnessed route, full-vehicle asphalt sweep, and tire grip
+# evidence. Engine-neutral presentation/research only; not race authority.
+add_latebrake_portable_research_test(SixCarRouteContinuityAudit)
+add_latebrake_portable_research_test(WorldScaleSweptEnvelope)
+add_latebrake_portable_research_test(ObservedGripFusion)
 
 # Measured-font full detail wrapping: readable paginated garage/results rows.
 add_executable(latebrake_hud_detail_text_flow_tests HudDetailTextFlowTests.cpp)
