@@ -2615,3 +2615,21 @@ else()
 endif()
 add_test(NAME BestLapGhostYawContinuity
     COMMAND latebrake_ghost_yaw_continuity_tests)
+
+
+# Full merged source candidate: the same authoritative race clock, active
+# rival passing and best-lap ghost must never grant each other's authority.
+add_executable(latebrake_race_session_cross_system_safety_tests
+    RaceSessionCrossSystemSafetyTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
+target_include_directories(latebrake_race_session_cross_system_safety_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_session_cross_system_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_session_cross_system_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_session_cross_system_safety_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceSessionCrossSystemSafety
+    COMMAND latebrake_race_session_cross_system_safety_tests)
