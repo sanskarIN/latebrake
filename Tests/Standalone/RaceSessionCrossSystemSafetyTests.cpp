@@ -41,7 +41,7 @@ latebrake::LapGhostPose GenuineLapPose(double t, int frame)
 {
     // Native positions and headings are sampled AFTER RaceProgress::Advance,
     // not derived from a score or from the rival's speculative route.
-    return {t, frame * 5.0, SouthY, 180.0,
+    return {t, frame * 5.0, latebrake::SouthY, 180.0,
             std::remainder(static_cast<double>(frame) * 2.0, 360.0)};
 }
 } // namespace
