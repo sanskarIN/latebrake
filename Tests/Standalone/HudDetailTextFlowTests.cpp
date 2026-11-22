@@ -165,6 +165,16 @@ int main()
           paragraphs.Lines[0] == u"FIRST" &&
           paragraphs.Lines[1] == u"SECOND",
           "CRLF, whitespace and trailing spaces never create phantom rows");
+    const auto exactBudget = Wrap(u"ONE\nTWO\n \r\n", 12.0, 2);
+    Check(exactBudget.Result.Complete && exactBudget.Result.Lines == 2 &&
+          exactBudget.Lines[0] == u"ONE" &&
+          exactBudget.Lines[1] == u"TWO",
+          "only trailing line separators cannot trigger a false omission");
+    const auto extraAfterBudget = Wrap(u"ONE\nTWO\nTHREE", 12.0, 2);
+    Check(!extraAfterBudget.Result.Complete &&
+          extraAfterBudget.Result.Lines == 2,
+          "real text past the final visible row remains incomplete");
+
     const auto limited = Wrap(u"ONE TWO THREE FOUR FIVE", 4.0, 2);
     Check(!limited.Result.Complete && limited.Result.Lines == 2 &&
           limited.Result.Consumed <

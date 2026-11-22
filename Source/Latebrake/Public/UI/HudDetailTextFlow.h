@@ -270,6 +270,21 @@ HudDetailWrapResult WrapHudDetailText(
         }
         position = nextPosition;
     }
+    // Reaching the visible row budget is not truncation if the only
+    // remaining input is formatting whitespace. Consume that tail so
+    // an exact-fit paragraph does not display a false omission notice.
+    // Nonspace content still fails closed as incomplete.
+    while (position < length)
+    {
+        const std::uint32_t code =
+            static_cast<std::uint32_t>(codeUnit(position));
+        if (code != 0x0Au && code != 0x0Du &&
+            !IsHudDetailSpace(code))
+        {
+            break;
+        }
+        ++position;
+    }
     result.Consumed = position;
     result.Complete = position == length;
     return result;
