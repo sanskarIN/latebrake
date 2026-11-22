@@ -41,6 +41,8 @@ The new limited assist:
   now retires that checkpoint's passing attempt: the rival will not
   immediately re-enter the same risky lane while approaching that same
   gate. A *genuinely different verified next gate* re-arms a new attempt.
+  A corrupt/interrupted source observation also retires an already active
+  attempt; it must not erase the latch and restart on the next good frame.
   Qualified pause, restart, recovery and race-finish branches fully reset
   the attempt and its gate latch so no state leaks between race sessions.
 - Cancels the assist with normal braking if the player enters the

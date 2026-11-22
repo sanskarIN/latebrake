@@ -105,7 +105,12 @@ public:
             !std::isfinite(command.Steering) ||
             std::abs(command.Steering) > 1.0)
         {
-            Reset();
+            // A single corrupt/missing physics observation may not
+            // erase an already aborted same-gate manoeuvre and trigger
+            // an instant retry on the following valid frame. The
+            // actual pause/restart/recovery guard explicitly calls
+            // Reset() to begin a genuinely new observation epoch.
+            AbortUntilGateChange();
             return {{}, false, 0.0}; // invalid live physics brakes, no propulsion
         }
 
@@ -266,7 +271,7 @@ public:
             std::cos(desiredHeading - s.RivalHeadingRadians));
         if (!std::isfinite(error))
         {
-            Reset();
+            AbortUntilGateChange();
             return {{}, false, 0.0};
         }
         command.Steering = std::clamp(error / 0.82, -0.65, 0.65);

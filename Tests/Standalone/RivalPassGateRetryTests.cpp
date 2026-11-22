@@ -82,7 +82,7 @@ int main()
     // The player's real vehicle slows abruptly: actual following traffic
     // policy (plus hysteresis) brakes, not merely a fabricated bool.
     const auto rapidlyClosing = Observe(
-        0, 900.0, 900.0, -250.0, 0.0, 2450.0, 1100.0);
+        0, 900.0, 900.0, -150.0, 0.0, 2450.0, 1100.0);
     const auto activePass = rival.Apply(drive, rapidlyClosing);
     Require(activePass.Passing,
             "active lane attempt exists before live emergency arbitration");
@@ -204,9 +204,14 @@ int main()
     invalid.DeltaSeconds = std::numeric_limits<double>::quiet_NaN();
     const auto rejected = rival.Apply(drive, invalid);
     Require(!rejected.Passing && rejected.Command.Brake &&
-            rejected.Command.Throttle == 0.0 && !rival.IsActive(),
-            "nonfinite chassis frame never continues speculative passing");
+            rejected.Command.Throttle == 0.0 && !rival.IsActive() &&
+            rival.IsRetryBlockedForGate(0) &&
+            !rival.Apply(drive, Observe()).Passing,
+            "corrupt live frame cannot restart passing on same gate");
     rival.Reset();
+    rival.AbortUntilGateChange();
+    Require(!rival.IsRetryBlockedForGate(0),
+            "an idle controller cannot fabricate a retired gate");
     const auto notQualified = Observe();
     auto blocked = notQualified;
     blocked.Qualified = false;
