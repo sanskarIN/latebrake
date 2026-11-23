@@ -15,6 +15,12 @@ on:
 permissions:
   contents: read
 
+# Only the latest PR revision needs another full signed-off-as-unverified
+# 2D Windows artifact. Main push and manual dispatch remain independent.
+concurrency:
+  group: win32-2d-preview-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   standalone-win32-preview:
     name: Build native V5 Win64 / run synthetic self-test (NO UE)
