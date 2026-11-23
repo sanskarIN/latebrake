@@ -2123,9 +2123,15 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
     const int32 Choice = layer == latebrake::GarageLookLayer::Paint
         ? Look.Paint : layer == latebrake::GarageLookLayer::Stripe
             ? Look.Stripe : Look.Wheels;
-    GarageFeedback = bReset ? TEXT("FACTORY LOOK RESTORED AND SAVED") :
-        FString::Printf(TEXT("LOOK SAVED: %s"),
+    if (bReset)
+    {
+        GarageFeedback = TEXT("FACTORY LOOK RESTORED AND SAVED");
+    }
+    else
+    {
+        GarageFeedback = FString::Printf(TEXT("LOOK SAVED: %s"),
             UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(layer, Choice)));
+    }
 }
 
 void ALatebrakeRaceGameMode::GarageCyclePaint()
