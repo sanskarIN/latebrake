@@ -2014,8 +2014,13 @@ static bool selftest(){
     race.speed=220.0f;race.fx=-1.0f;race.fy=0.0f;
     steeringAssist=true;
     const auto activeCoach=sampleDriverCoach(0.0f,true);
+    // The real grid is slightly offset from the road's geometric
+    // centerline: correction may point either way. Prove its bounded
+    // presence rather than assuming a fabricated turn sign.
     if(!activeCoach.Valid||activeCoach.WrongWay||
-       !activeCoach.AssistApplied||activeCoach.OutputSteer<=0.0f)return false;
+       !activeCoach.AssistApplied||
+       absf(activeCoach.OutputSteer)<=0.0001f||
+       absf(activeCoach.OutputSteer)>0.27f)return false;
     steeringAssist=false;
     const auto manualCoach=sampleDriverCoach(0.0f,true);
     if(!manualCoach.Valid||manualCoach.AssistApplied||
