@@ -545,6 +545,17 @@ void ALatebrakeRaceHUD::DrawHUD()
                     ? TEXT("CUSTOM LOOK LOCKED: OWN THE VIEWED CAR FIRST")
                     : TEXT("CUSTOM LOOK UNAVAILABLE DURING THIS CAREER RACE"), true);
             }
+            // The real paused Pawn now shows the browsed car, not the
+            // equipped car. Report source state honestly: this says which
+            // engine components are requested, NOT that pixels were QA'd.
+            const bool bLiveShowroom = Car->IsGarageShowroomPreviewActive() &&
+                Car->GetPresentedGarageVehicleId() == PreviewId;
+            MenuLine(FString::Printf(TEXT("LIVE SHOWROOM: %s | %s"),
+                bLiveShowroom ? TEXT("VIEWED CAR (VISUAL ONLY)")
+                    : TEXT("PREVIEW NOT ACTIVE"),
+                Car->IsOriginalVehicleSurfaceCommitted()
+                    ? TEXT("SOURCE 3D COMPONENTS")
+                    : TEXT("LEGACY CUBE FALLBACK")), true);
             const latebrake::GarageLook ViewedLook = Mode->GetGaragePreviewLook();
             MenuLine(FString::Printf(
                 TEXT("VIEWED LOOK: %s / %s / %s"),
