@@ -1,6 +1,6 @@
 # Original six-car Unreal visual-surface runtime — DRAFT QA
 
-**Status: source candidate / unverified 3D rendering.** LateBrake previously
+**Status: source candidate / unverified 3D rendering; no cooked Win64 build.** LateBrake previously
 had six fully deterministic original C++ surface meshes
 (`OriginalVehicleSurfaceMesh.h`), with body shape, windows, four wheels,
 brake rotors, lamps, intake, carbon aero, normal and UV data, but the live
