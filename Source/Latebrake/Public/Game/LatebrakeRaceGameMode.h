@@ -205,6 +205,7 @@ private:
     void SaveRecords();
     void RefreshRival();
     void ApplyGarageToPlayer();
+    void SyncGarageShowroomPreview();
     void GarageCycleAppearance(latebrake::GarageLookLayer layer,
                               bool bReset = false);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
