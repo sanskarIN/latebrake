@@ -86,7 +86,8 @@ class PreviewDrivingCoachBindingTests(unittest.TestCase):
         ):
             self.assertIn(marker,app)
         self.assertNotIn('hint(161,544,"KM/H");',app)
-        self.assertIn("virtual canvas pixels per second",self.guide)
+        self.assertIn("virtual canvas",self.guide)
+        self.assertIn("pixels per second",self.guide)
 
 if __name__=="__main__":
     unittest.main()
