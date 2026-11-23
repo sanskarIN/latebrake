@@ -37,7 +37,11 @@ class UnrealVehiclePaintBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::ClearDriverInputs()", 1)[0]
         self.assertIn("if (SafeId != GarageVehicleId)", tune)
         self.assertIn("ApplyVehicleVisualRecipe(SafeId);", tune)
-        self.assertIn("HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId)", tune)
+        self.assertIn("if (HasActorBegunPlay())", tune)
+        self.assertIn("RebuildOriginalVehicleVisual(SafeId);", tune)
+        self.assertIn("ApplyVehiclePaintRecipe(SafeId);", tune)
+        self.assertLess(tune.index("RebuildOriginalVehicleVisual(SafeId);"),
+                        tune.index("ApplyVehiclePaintRecipe(SafeId);"))
         self.assertIn("void ApplyVehiclePaintRecipe(int32 VehicleId);", self.header)
 
     def test_paint_materials_reuse_original_mesh_parent(self):

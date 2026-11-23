@@ -11,6 +11,11 @@ namespace latebrake::vehiclemesh
 // authored material tags to ten independent render-only material sections.
 // All vertex indices are validated before any Unreal rendering APIs run.
 // This owns triangle IDs, not a second copy of car geometry.
+// Root collision cube is located at local Z=0 with legacy decorative
+// wheel centres at Z=-22. The source mesh wheel centres are at +40cm.
+inline constexpr double OriginalVehicleVisualOffsetZCm = -62.0;
+static_assert(OriginalVehicleVisualOffsetZCm+40.0 == -22.0,
+    "Preserve visible wheel and existing physics-root alignment.");
 inline constexpr std::size_t OriginalVehicleSectionCount =
     static_cast<std::size_t>(OriginalVehicleMaterial::Count);
 

@@ -64,6 +64,10 @@ class UnrealOriginalVehicleRenderBindingTests(unittest.TestCase):
         self.assertIn("!mesh.VisualOnly || mesh.ChangesChaosContact",self.sections)
         self.assertIn("OriginalVehicleSurfaceComposer{}.ValidateMesh(mesh)",self.sections)
         self.assertIn("OriginalVehicleVisual->SetupAttachment(Chassis);",self.actor)
+        self.assertIn("OriginalVehicleVisualOffsetZCm",self.actor)
+        self.assertIn("OriginalVehicleVisualOffsetZCm+40.0 == -22.0",self.sections)
+        self.assertIn("CabinRoofHeightCm +",self.actor)
+        self.assertIn("RoofStripeLeft",self.actor)
         self.assertIn("HideLegacyVisualPrimitives(true);",self.actor)
         self.assertIn("Part->SetHiddenInGame(bHide, false);",self.actor)
 

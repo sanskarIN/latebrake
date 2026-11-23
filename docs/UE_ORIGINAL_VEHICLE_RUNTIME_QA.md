@@ -37,7 +37,7 @@ the actual Pawn via `UProceduralMeshComponent`.
 
 ## Real engine acceptance (not yet performed)
 
-1. On a licensed **UE5.8 real Windows** workstation, run UnrealHeaderTool
+1. On a licensed **UE5.8 real Windows** workstation, run UnrealHeaderTool (UHT)
    and build the full Editor for the protected source candidate. Confirm
    `ProceduralMeshComponent` exists, loads and cooks on target Windows.
 2. Launch the real Editor circuit. Compare the actual six generated
@@ -64,3 +64,15 @@ The old no-`Content/` source-only repository still lacks shipped
 professional material assets, 3D map authoring artifacts, sound and
 art-direction QA. A procedurally generated mesh is a substantial
 geometry step, **not proof of a polished or release-ready game**.
+
+## Roof stripe preservation on the generated bodies
+
+The source-generated opaque body includes normal and glazing surfaces,
+but its triangular section generator does not yet author per-car racing
+stripes. Consequently the original cosmetic roof stripes remain distinct
+small collision-free attached meshes, while the coarse cube body, old
+wheels and older aerodynamic cubes are hidden. Their height is raised
+to the original generator's 174cm roof minus the fixed -62cm visual
+offset, with a 2cm surface clearance. On native UE5.8 inspect paint
+and twin-stripe placement for all six roof shapes; physically textured
+PBR paint and correct roof curvature remain separate art tasks.

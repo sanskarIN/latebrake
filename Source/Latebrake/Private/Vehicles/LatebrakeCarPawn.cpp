@@ -125,7 +125,10 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     // Cancel the chassis cube's nonuniform physics-root scale; do not
     // replace or resize that authoritative Chaos collision shape.
     OriginalVehicleVisual->SetRelativeLocation(
-        FVector(0.f, 0.f, -62.f) / RootScale);
+        FVector(0.f, 0.f,
+            static_cast<float>(
+                latebrake::vehiclemesh::OriginalVehicleVisualOffsetZCm))
+            / RootScale);
     OriginalVehicleVisual->SetRelativeScale3D(
         FVector(1.f / RootScale.X, 1.f / RootScale.Y,
                 1.f / RootScale.Z));
@@ -552,7 +555,6 @@ void ALatebrakeCarPawn::HideLegacyVisualPrimitives(bool bHide)
     // authoritative vehicle/garage state. Every fallback restores it.
     for (UStaticMeshComponent* Part : {
         Chassis.Get(), Cabin.Get(), Hood.Get(), RearDeck.Get(),
-        RoofStripeLeft.Get(), RoofStripeRight.Get(),
         SpoilerWing.Get(), SpoilerSupportLeft.Get(),
         SpoilerSupportRight.Get(), FrontSplitter.Get(),
         LeftSideSkirt.Get(), RightSideSkirt.Get(), RearDiffuser.Get(),
@@ -763,8 +765,16 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     // Use the chassis's actual installed scale for purely decorative
     // roof marks; no new scale constants or physics-body mutations.
     const FVector ChassisScale = Chassis->GetRelativeScale3D();
-    const float StripeHeight = 52.f +
-        27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
+    // Retain visible user-selected roof stripes when the old cube panels
+    // are hidden under the new generated car surface. The generated
+    // vehicle's roof is 174cm above its original local base, shifted
+    // to match the existing -22cm decorative wheel spindle centres.
+    const float StripeHeight = bOriginalVehicleVisualReady
+        ? static_cast<float>(
+            latebrake::vehiclemesh::OriginalVehicleMeshSettings{}
+                .CabinRoofHeightCm +
+            latebrake::vehiclemesh::OriginalVehicleVisualOffsetZCm + 2.0)
+        : 52.f + 27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
     const latebrake::VehiclePaintRgb StripeRgb = Look.Paint == 7u
         ? latebrake::VehiclePaintRgb{0.10, 0.18, 0.28}
         : latebrake::VehiclePaintRgb{0.97, 0.95, 0.84};
