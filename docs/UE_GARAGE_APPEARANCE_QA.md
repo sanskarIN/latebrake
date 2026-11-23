@@ -268,7 +268,9 @@ but **cannot equip, unlock or stage upgrades while either external
 suspension latch is active**, even if a Garage page is subsequently
 shown. Enter/SELECT on a browsed owned vehicle and all F5–F8 appearance
 writes are likewise denied. The desktop customization buttons show
-this disabled state. Read-only showroom inspection still has no economy
+this disabled state. The Garage details column explicitly says
+**GARAGE SUSPENDED: RESUME TO EQUIP, BUY OR STYLE** rather than
+incorrectly claiming an already-equipped car must be equipped again. Read-only showroom inspection still has no economy
 authority. The six shared gamepad garage callbacks reject external
 suspension before touching held race inputs.
 

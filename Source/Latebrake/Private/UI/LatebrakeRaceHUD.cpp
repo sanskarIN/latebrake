@@ -407,6 +407,13 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.
             MenuLine(Mode->GetGarageFeedback(), true);
+            // A normal Garage page pauses the world, but explicit OS
+            // focus loss or standalone manual-pause is a separate gate.
+            // Avoid displaying purchasable offers without the suspension
+            // warning; this is a read-only view until explicit resume.
+            if (Mode->IsFocusLossGuardActive() ||
+                Mode->IsManualRacePauseActive())
+                MenuLine(TEXT("GARAGE SUSPENDED: RESUME TO EQUIP, BUY OR STYLE"), true);
             if (Mode->IsProfileReadOnly())
                 MenuLine(TEXT("NEWER SAVE PROFILE: READ-ONLY, NO PURCHASES"), true);
             // Read-only visual comparison may inspect any locked car. Only
@@ -463,7 +470,10 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
-            if (!Mode->CanCustomizeGarage())
+            if (!Mode->CanCustomizeGarage() &&
+                !Mode->IsFocusLossGuardActive() &&
+                !Mode->IsManualRacePauseActive() &&
+                !Mode->IsProfileReadOnly())
                 MenuLine(TEXT("CUSTOM LOOK LOCKED: EQUIP VIEWED OWNED CAR FIRST"), true);
             const latebrake::GarageLook ActiveLook =
                 Mode->GetSelectedGarageLook();

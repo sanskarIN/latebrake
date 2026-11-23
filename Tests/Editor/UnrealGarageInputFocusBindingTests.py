@@ -153,6 +153,11 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
         self.assertIn("!ManualPause.IsSuspended() && !AppFocusGuard.IsSuspended()",permission)
         preview = mode.split("bool ALatebrakeRaceGameMode::CanBrowseGarage()",1)[1].split("\n}\n",1)[0]
         self.assertNotIn("AppFocusGuard.IsSuspended()",preview)
+        hud = (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
+               ).read_text(encoding="utf-8")
+        self.assertIn("GARAGE SUSPENDED: RESUME TO EQUIP, BUY OR STYLE",hud)
+        self.assertIn("!Mode->IsFocusLossGuardActive() &&",hud)
+        self.assertIn("!Mode->IsManualRacePauseActive() &&",hud)
 
     def test_input_policy_is_fail_closed_and_pure(self):
         self.assertIn('#include "UI/MenuNavigation.h"',self.policy)
