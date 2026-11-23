@@ -313,6 +313,10 @@ private:
     // visuals. Any missing plugin/material/invalid section fails open to
     // the old visible car, never to an invisible player vehicle.
     bool bOriginalVehicleVisualReady = false;
+    // Chosen from the actually loaded parent material's vector parameters.
+    // None means the asset cannot reliably render saved per-car paint;
+    // keep the legacy car visible instead of silently showing one color.
+    FName OriginalVehicleTintParameter = NAME_None;
     latebrake::GarageLook CurrentGarageLook{};
     uint64 TeleportRevision = 0;
     bool bBraking = false;

@@ -2916,3 +2916,21 @@ else()
 endif()
 add_test(NAME GarageShowroomQuickView
     COMMAND latebrake_garage_showroom_quick_view_tests)
+
+# Render-only original 3D car: verify the actual base material offers a
+# supported color parameter before hiding the visible legacy mesh fallback.
+add_executable(latebrake_original_vehicle_tint_material_tests
+    OriginalVehicleTintMaterialPolicyTests.cpp)
+target_include_directories(latebrake_original_vehicle_tint_material_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_original_vehicle_tint_material_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_original_vehicle_tint_material_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_original_vehicle_tint_material_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalVehicleTintMaterial
+    COMMAND latebrake_original_vehicle_tint_material_tests)

@@ -35,6 +35,7 @@
 #include "UI/FocusSuspendedTouchPolicy.h"
 #include "Garage/GarageState.h"
 #include "Vehicles/OriginalVehicleRenderSections.h"
+#include "Vehicles/OriginalVehicleTintMaterialPolicy.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
@@ -44,6 +45,7 @@
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameters.h"
 #include "UObject/UObjectGlobals.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -572,6 +574,7 @@ void ALatebrakeCarPawn::HideLegacyVisualPrimitives(bool bHide)
 void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
 {
     bOriginalVehicleVisualReady = false;
+    OriginalVehicleTintParameter = NAME_None;
     if (IsValid(OriginalVehicleVisual))
     {
         OriginalVehicleVisual->SetVisibility(false, false);
@@ -590,6 +593,42 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
             nullptr,
             TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
     if (!IsValid(BaseMaterial)) return;
+
+    // UE material asset paths do not guarantee a particular vector
+    // parameter name. In some engine installations the BasicShape
+    // tint is named "Colour", not "Color". Only render the new 3D
+    // mesh if the actual loaded material reports a supported tint.
+    TArray<FMaterialParameterInfo> VectorInfo;
+    TArray<FGuid> VectorGuids;
+    BaseMaterial->GetAllVectorParameterInfo(VectorInfo, VectorGuids);
+    std::uint32_t AvailableTintMask = 0u;
+    for (std::size_t i=0;
+         i<latebrake::vehiclemesh::SupportedVehicleTintNames.size();
+         ++i)
+    {
+        const FName Candidate(UTF8_TO_TCHAR(
+            latebrake::vehiclemesh::SupportedVehicleTintNames[i]));
+        if (VectorInfo.ContainsByPredicate(
+            [&Candidate](const FMaterialParameterInfo& Info)
+            {
+                return Info.Name == Candidate;
+            }))
+        {
+            AvailableTintMask |= 1u << i;
+        }
+    }
+    const int TintIndex =
+        latebrake::vehiclemesh::SelectVehicleTintCandidate(
+            AvailableTintMask);
+    if (TintIndex < 0)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: original vehicle material has no supported color parameter; keeping visible legacy car"));
+        return;
+    }
+    const FName ResolvedTintName(UTF8_TO_TCHAR(
+        latebrake::vehiclemesh::SupportedVehicleTintNames[
+            static_cast<std::size_t>(TintIndex)]));
 
     const auto generated =
         latebrake::vehiclemesh::OriginalVehicleSurfaceComposer{}.Build(
@@ -657,7 +696,15 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         }
         bAnySection = true;
     }
-    if (!bAnySection) return;
+    if (!latebrake::vehiclemesh::CanPresentOriginalVehicleVisual(
+        bAnySection, true /* each material allocation succeeded */,
+        !ResolvedTintName.IsNone()))
+    {
+        OriginalVehicleVisual->ClearAllMeshSections();
+        HideLegacyVisualPrimitives(false);
+        return;
+    }
+    OriginalVehicleTintParameter = ResolvedTintName;
 
     // Actor-owned render component follows the real car rigid body, but
     // cannot add a Chaos mesh/collision volume or modify its physics mass.
@@ -673,6 +720,7 @@ void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
     int32 VehicleId, latebrake::GarageLook Look)
 {
     if (!bOriginalVehicleVisualReady ||
+        OriginalVehicleTintParameter.IsNone() ||
         !IsValid(OriginalVehicleVisual)) return;
     const auto paint=latebrake::PaintForGarageLook(VehicleId, Look);
     const auto rim=Look.Wheels == 2u
@@ -701,7 +749,7 @@ void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
         if (!IsValid(material)) continue;
         const auto& rgb=tones[section];
         material->SetVectorParameterValue(
-            TEXT("Color"), FLinearColor(
+            OriginalVehicleTintParameter, FLinearColor(
                 static_cast<float>(rgb.R),
                 static_cast<float>(rgb.G),
                 static_cast<float>(rgb.B), 1.f));

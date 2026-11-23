@@ -76,3 +76,34 @@ to the original generator's 174cm roof minus the fixed -62cm visual
 offset, with a 2cm surface clearance. On native UE5.8 inspect paint
 and twin-stripe placement for all six roof shapes; physically textured
 PBR paint and correct roof curvature remain separate art tasks.
+
+## Real engine material parameter verification — 23 Nov 2026
+
+The dynamic primitive-mesh renderer previously assumed the source engine
+`BasicShapeMaterial` exposes a vector named exactly `Color`, then hid all
+visible fallback meshes. That assumption can make all ten car surfaces
+untintable or washed out if the material is named `Colour`, another known
+alias, or contains no editable color vector.
+
+The current source candidate queries `UMaterialInterface::
+GetAllVectorParameterInfo` at runtime after loading the actual engine material.
+It picks the first actually-present supported vector in priority order:
+`Color`, `Colour`, `BaseColor`, `BaseColour`, `Tint`. The same resolved
+`FName` is used for all ten source-generated material sections. The new
+surface becomes visible **only** when geometry partitions validate, dynamic
+instances are allocated, and a supported vector exists. Otherwise the
+already-visible cube/cylinder fallback stays; it cannot become an invisible
+player car or silently claim garage paint was applied. Source-only
+`OriginalVehicleTintMaterial` tests cover 65,536 parameter masks, selection
+priority, unknown/future names and incomplete visual handoff states.
+
+**Required Unreal test:** Open LateBrake with genuine UE5.8 Editor and run
+the actual car scene. Log whether engine `BasicShapeMaterial` contains a
+usable vector on this installation. For all six cars, switch between factory
+and custom eight-color paint sets, inspect body/roof/wheels/lights at night and
+day, and confirm saved appearance survives restart. Temporarily substitute
+an incompatible test material and confirm the legacy primitive vehicle stays
+visible. Inspect Unreal materials for proper in-game shading and shader-cook
+usage; discovery of a vector parameter alone does not prove that it affects
+BaseColor on all RHI targets. Run packaged Win64 release QA before merging;
+source CI cannot verify shader compilation, PBR response or cooked assets.
