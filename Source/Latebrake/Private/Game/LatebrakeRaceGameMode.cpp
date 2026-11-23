@@ -1650,7 +1650,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Garage)
     {
-        GarageNextVehicle();
+        GarageSelectViewedVehicle();
     }
     else if (Page == latebrake::MenuPage::Results)
     {
@@ -2057,6 +2057,58 @@ void ALatebrakeRaceGameMode::GarageBrowsePrevious()
     GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
         UTF8_TO_TCHAR(car.Name),
         Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+}
+
+void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()
+{
+    GaragePurchaseConfirm.Reset();
+    if (!CanBrowseGarage())
+    {
+        GarageFeedback = TEXT("Open Garage to select a previewed vehicle.");
+        return;
+    }
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit this career race before equipping a vehicle.");
+        return;
+    }
+    if (bFutureSaveSchema)
+    {
+        GarageFeedback = TEXT("Cannot overwrite a newer saved profile.");
+        return;
+    }
+    if (!latebrake::CanEquipGalleryVehicle(Garage, GarageGallery))
+    {
+        GarageFeedback = TEXT("VIEW ONLY: Locked car. Q unlocks the next car in order.");
+        return;
+    }
+    const int32 Viewed = GarageGallery.Viewed();
+    if (Viewed == Garage.SelectedVehicle())
+    {
+        GarageFeedback = FString::Printf(TEXT("%s is already equipped."),
+            *GetSelectedVehicleName());
+        return;
+    }
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
+    if (!Garage.Select(Viewed))
+    {
+        GarageFeedback = TEXT("Car selection denied; ownership is unchanged.");
+        return;
+    }
+    ApplyGarageToPlayer();
+    SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        SavedProfile.Rollback();
+        ApplyGarageToPlayer();
+        GarageFeedback = TEXT("EQUIP NOT SAVED: previous owned car restored.");
+        return;
+    }
+    SavedProfile.Commit();
+    GarageFeedback = FString::Printf(TEXT("EQUIPPED %s — SAVED"),
+        *GetSelectedVehicleName());
 }
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()

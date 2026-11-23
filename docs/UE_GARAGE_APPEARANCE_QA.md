@@ -118,3 +118,17 @@ player lacks permission to edit appearance (e.g. future SaveGame read-only
 mode). The hit tester and visual disabled states use separate owner
 permissions. At 900×600 and larger the three-row dock remains inside the
 viewport; compact/mobile views retain F9/F10 or gamepad navigation.
+
+## Equipping the viewed car (no direct locked-car purchase)
+
+Press **Enter/SELECT**, or click the existing desktop menu **SELECT**
+button, while a garage showroom card is being viewed. This calls the
+GameMode's new authoritative `GarageSelectViewedVehicle` path. An owned
+car is equipped and saved; an already equipped car is a no-op; a locked
+car is explicitly rejected without charges or unlock. The old **E** key
+still cycles to the next owned car. Q continues its existing **first
+locked ID / double-confirmation** purchase policy; viewing a later car
+never permits bypassing that order. Every newly equipped car is applied
+to the true player pawn. An unsuccessful SaveGame write restores the
+previous equipped vehicle, its physics tuning and original cosmetics.
+The read-only preview cursor stays separate from saved gameplay data.

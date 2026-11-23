@@ -43,5 +43,13 @@ public:
 private:
     int ViewedId = 0;
 };
+// Only this eligibility query can be used by the GameMode to authorize
+// equipping the currently viewed car. It reads the trusted GarageState
+// owned mask rather than assigning ownership from a pointer/keyboard ID.
+inline bool CanEquipGalleryVehicle(
+    const GarageState& garage, const GarageGalleryCursor& gallery) noexcept
+{
+    return gallery.IsValid() && garage.Owns(gallery.Viewed());
+}
 static_assert(VehicleCount == 6, "Review gallery/save ID migration");
 } // namespace latebrake

@@ -184,6 +184,26 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         self.assertIn("int Viewed() const noexcept", source)
         self.assertIn("GarageGallery.Next()", self.mode)
         self.assertIn("GarageGallery.Previous()", self.mode)
+        self.assertIn("CanEquipGalleryVehicle(Garage, GarageGallery)", self.mode)
+        self.assertIn("void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()", self.mode)
+        self.assertIn("GarageSelectViewedVehicle();", self.mode)
+        self.assertIn("ENTER/SELECT: EQUIP VIEWED OWNED CAR", self.hud)
+        equip = self.mode.split(
+            "void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()", 1)[1].split(
+            "void ALatebrakeRaceGameMode::GarageNextVehicle()", 1)[0]
+        for token in (
+            "GaragePurchaseConfirm.Reset();",
+            "latebrake::CanEditGarageDuringRace",
+            "if (bFutureSaveSchema)",
+            "latebrake::CanEquipGalleryVehicle(Garage, GarageGallery)",
+            "Garage.Select(Viewed)",
+            "SaveRecords();",
+            "if (bProgressSaveFailed)",
+            "SavedProfile.Rollback();",
+            "ApplyGarageToPlayer();",
+            "SavedProfile.Commit();",
+        ):
+            self.assertIn(token, equip)
         self.assertIn("bool ALatebrakeRaceGameMode::CanBrowseGarage() const", self.mode)
         self.assertIn("GaragePurchaseConfirm.Reset();", self.mode)
         self.assertIn("GetGaragePreviewVehicleId()", self.hud)

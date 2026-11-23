@@ -26,6 +26,8 @@ int main()
     const GarageSnapshot before = authority.Snapshot();
     Verify(cursor.Viewed() == 0 && cursor.IsEquipped(0) && cursor.IsValid(),
            "starts with owned factory starter");
+    Verify(CanEquipGalleryVehicle(authority, cursor),
+           "owned starter can be equipped from gallery");
     for (int i = 0; i < VehicleCount; ++i)
     {
         Verify(cursor.Viewed() == i, "forward browsing views exact immutable IDs");
@@ -34,8 +36,12 @@ int main()
         Verify(entry.VehicleId == i && entry.Name[0] != '\0',
                "every locked or owned row has readable catalogue identity");
         if (i > 0)
+        {
             Verify(entry.Ownership != GarageCatalogOwnership::Equipped,
                    "viewing locked cars does not equip them");
+            Verify(!CanEquipGalleryVehicle(authority, cursor),
+                   "locked car preview cannot be equipped or charged");
+        }
         cursor.Next();
     }
     Verify(cursor.Viewed() == 0 && cursor.Previous() == VehicleCount-1,
@@ -61,6 +67,22 @@ int main()
                "valid owned selection can synchronize showroom focus");
     }
 
+    // Partial genuine ownership: viewer can directly equip ID 4 while
+    // IDs 1, 2, 3 and 5 stay locked. Browsing alone still must not equip.
+    GarageState partiallyOwned;
+    partiallyOwned.Load({255, (1 << 4) | 1, 0, 0, 0});
+    cursor.Reset(4);
+    Verify(CanEquipGalleryVehicle(partiallyOwned, cursor) &&
+           partiallyOwned.SelectedVehicle() == 0,
+           "owned browse target is eligible but not yet equipped");
+    cursor.Reset(3);
+    Verify(!CanEquipGalleryVehicle(partiallyOwned, cursor) &&
+           partiallyOwned.SelectedVehicle() == 0,
+           "neighboring locked target is ineligible");
+    cursor.Reset(4);
+    Verify(partiallyOwned.Select(cursor.Viewed()) &&
+           partiallyOwned.SelectedVehicle() == 4,
+           "authoritative GarageState still performs the actual selection");
     cursor.Reset(0);
     for (int frame = 0; frame < 300000; ++frame)
     {

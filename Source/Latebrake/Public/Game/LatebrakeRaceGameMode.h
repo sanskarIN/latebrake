@@ -151,6 +151,7 @@ public:
     bool CanBrowseGarage() const;
     void GarageBrowseNext();
     void GarageBrowsePrevious();
+    void GarageSelectViewedVehicle();
     latebrake::GarageLook GetSelectedGarageLook() const noexcept
     {
         return GarageLooks.Get(Garage.SelectedVehicle());
