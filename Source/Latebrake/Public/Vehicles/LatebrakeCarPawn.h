@@ -114,6 +114,14 @@ public:
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
                          int32 VehicleId, latebrake::GarageLook Look);
     void SetGarageAppearance(latebrake::GarageLook look);
+    // Read-only, transient visual showroom: no equip/physics/save writes.
+    void UpdateGarageShowroomPresentation(bool bGarageMenuVisible,
+        int32 ViewedVehicleId, latebrake::GarageLook ViewedLook);
+    bool IsGarageShowroomPreviewActive() const noexcept
+    { return bGarageShowroomPreviewActive; }
+    int32 GetPresentedGarageVehicleId() const noexcept
+    { return bGarageShowroomPreviewActive
+        ? GarageShowroomVehicleId : GarageVehicleId; }
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     // Read-only rendering diagnostics for real owner testing. A committed
     // component/material is NOT proof of visible pixels or lighting quality.
@@ -289,6 +297,8 @@ private:
     void ApplyWheelVisualPose();
     void ApplyVehicleVisualRecipe(int32 VehicleId);
     void ApplyVehiclePaintRecipe(int32 VehicleId);
+    latebrake::GarageLook GetPresentedGarageLook() const noexcept
+    { return bGarageShowroomPreviewActive ? GarageShowroomLook : CurrentGarageLook; }
     void RebuildOriginalVehicleVisual(int32 VehicleId);
     void ApplyOriginalVehiclePalette(int32 VehicleId,
                                      latebrake::GarageLook Look);
@@ -368,6 +378,9 @@ private:
     // keep the legacy car visible instead of silently showing one color.
     FName OriginalVehicleTintParameter = NAME_None;
     latebrake::GarageLook CurrentGarageLook{};
+    bool bGarageShowroomPreviewActive = false;
+    int32 GarageShowroomVehicleId = 0;
+    latebrake::GarageLook GarageShowroomLook{};
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bHandbrakeHeld = false;
