@@ -14,6 +14,7 @@
 #include "UI/HudTextBounds.h"
 #include "UI/HudDetailTextFlow.h"
 #include "UI/HudMenuVerticalPlan.h"
+#include "UI/HudMenuReadablePanel.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/RecentLapReview.h"
 #include "Racing/RecentLapPaceStatistics.h"
@@ -254,6 +255,32 @@ void ALatebrakeRaceHUD::DrawHUD()
         bool bMenuOverflow = false;
         const FLinearColor White(0.96f, 0.97f, 1.f);
         const FLinearColor Gold(1.f, 0.73f, 0.17f);
+
+        // The live 3D scene may be visually busy behind fine menu type.
+        // A responsive high-contrast backing uses the exact font-measured
+        // left menu lane, not the desktop button or Android touch lanes.
+        // Draw BEFORE the pinned heading and paginated details; no input
+        // rectangles, saved state, game clock or credit transactions change.
+        const latebrake::HudMenuReadablePanel ReadablePanel =
+            latebrake::CalculateHudMenuReadablePanel(
+                static_cast<double>(Canvas->SizeX),
+                static_cast<double>(Canvas->SizeY),
+                Layout, MenuPlan, SafeTextWidth, true);
+        if (ReadablePanel.Valid)
+        {
+            const float BX = static_cast<float>(ReadablePanel.X);
+            const float BY = static_cast<float>(ReadablePanel.Y);
+            const float BW = static_cast<float>(ReadablePanel.Width);
+            const float BH = static_cast<float>(ReadablePanel.Height);
+            DrawRect(FLinearColor(0.025f, 0.045f, 0.075f, 0.94f),
+                BX, BY, BW, BH);
+            DrawRect(FLinearColor(0.075f, 0.12f, 0.19f, 0.98f),
+                BX, BY, BW,
+                static_cast<float>(ReadablePanel.HeaderHeight));
+            DrawRect(Gold, BX, BY, 3.f * UIScale, BH);
+            DrawRect(FLinearColor(0.18f, 0.29f, 0.39f, 0.95f),
+                BX, BY + BH - 2.f * UIScale, BW, 2.f * UIScale);
+        }
 
         // Build the logical page first. The former unbounded MenuLine
         // simply discarded overflow, including essential Results details.
