@@ -32,7 +32,7 @@ class UnrealFrontLampBindingTests(unittest.TestCase):
         method=self.pawn.split("void ALatebrakeCarPawn::ApplySignalLights(",1
         )[1].split("void ALatebrakeCarPawn::ApplyWheelVisualPose()",1)[0]
         self.assertIn("bRaceDrivingAllowed, bEffectiveBraking",method)
-        self.assertIn("Signals.Enabled",method)
+        self.assertIn("Signals.RedRearIntensity > 0.0",method)
         self.assertIn("FrontLeftLamp->SetIntensity(",method)
         self.assertIn("FrontRightLamp->SetIntensity(",method)
         self.assertIn("PlanFrontLampRig(",method)
