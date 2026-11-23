@@ -65,7 +65,7 @@ void TestGarageCosmeticDock()
         const auto garage = CalculateGarageStyleMouseLayout(
             width, height, geometry, false, true, MenuPage::Garage);
         Check(garage.Valid,
-            "desktop garage provides three dedicated appearance buttons");
+            "desktop garage provides four style and two browse buttons");
         const auto dock = CalculateDesktopMenuMouseLayout(
             width, height, geometry, false, true);
         const auto& last = dock.Buttons[5].Bounds;
@@ -73,9 +73,11 @@ void TestGarageCosmeticDock()
             DesktopMenuMouseAction::GaragePaint,
             DesktopMenuMouseAction::GarageStripe,
             DesktopMenuMouseAction::GarageWheels,
-            DesktopMenuMouseAction::GarageReset
+            DesktopMenuMouseAction::GarageReset,
+            DesktopMenuMouseAction::GarageBrowsePrevious,
+            DesktopMenuMouseAction::GarageBrowseNext
         };
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 6; ++i)
         {
             const auto button = garage.Buttons[static_cast<std::size_t>(i)];
             Check(button.Action == expected[i],
@@ -111,6 +113,21 @@ void TestGarageCosmeticDock()
             blockedButton.Y+blockedButton.Height*0.5,
             false) == DesktopMenuMouseAction::None,
             "uneditable active career cannot select a style with mouse");
+        const auto browseRect = garage.Buttons[4].Bounds;
+        const double browseX = browseRect.X + browseRect.Width*0.5;
+        const double browseY = browseRect.Y + browseRect.Height*0.5;
+        Check(HitTestGarageStyleMouse(garage, browseX, browseY,
+                  false, true) ==
+                  DesktopMenuMouseAction::GarageBrowsePrevious,
+              "locked career still permits read-only browsing");
+        Check(HitTestGarageStyleMouse(garage, browseX, browseY,
+                  true, false) == DesktopMenuMouseAction::None,
+              "closed or unauthorized gallery cannot browse");
+        Check(HitTestGarageStyleMouse(garage,
+                  blockedButton.X+blockedButton.Width*0.5,
+                  blockedButton.Y+blockedButton.Height*0.5,
+                  false, true) == DesktopMenuMouseAction::None,
+              "disabled styling remains blocked while browsing is allowed");
         auto damaged = garage;
         damaged.Buttons[0].Bounds.Width =
             std::numeric_limits<double>::infinity();

@@ -18,7 +18,8 @@ namespace latebrake
 enum class DesktopMenuMouseAction
 {
     None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close,
-    GaragePaint, GarageStripe, GarageWheels, GarageReset
+    GaragePaint, GarageStripe, GarageWheels, GarageReset,
+    GarageBrowsePrevious, GarageBrowseNext
 };
 
 struct DesktopMenuMouseRect final
@@ -232,7 +233,7 @@ inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
 struct GarageStyleMouseLayout final
 {
     bool Valid = false;
-    std::array<DesktopMenuMouseButton, 4> Buttons{};
+    std::array<DesktopMenuMouseButton, 6> Buttons{};
 };
 
 inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
@@ -249,7 +250,7 @@ inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
     const double gap = std::max(8.0, 10.0 * scale);
     // Keep the existing "WHEEL: DETAILS" hint ABOVE these new controls.
     const double top = last.Y + last.Height + std::max(26.0, 28.0 * scale);
-    const double finalBottom = top + first.Height * 2.0 + gap;
+    const double finalBottom = top + first.Height * 3.0 + gap * 2.0;
     if (!std::isfinite(top) || !std::isfinite(finalBottom) ||
         finalBottom > height - 18.0)
         return {};
@@ -264,20 +265,33 @@ inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
         {DesktopMenuMouseAction::GarageWheels,
             {first.X, top + first.Height + gap, first.Width, first.Height}},
         {DesktopMenuMouseAction::GarageReset,
-            {last.X, top + first.Height + gap, last.Width, last.Height}}
+            {last.X, top + first.Height + gap, last.Width, last.Height}},
+        {DesktopMenuMouseAction::GarageBrowsePrevious,
+            {first.X, top + 2.0 * (first.Height + gap),
+             first.Width, first.Height}},
+        {DesktopMenuMouseAction::GarageBrowseNext,
+            {last.X, top + 2.0 * (first.Height + gap),
+             last.Width, last.Height}}
     }};
     return result;
 }
 
 inline DesktopMenuMouseAction HitTestGarageStyleMouse(
     const GarageStyleMouseLayout& layout,
-    double x, double y, bool enabled = true) noexcept
+    double x, double y, bool styleEnabled = true,
+    bool browseEnabled = true) noexcept
 {
-    if (!enabled || !layout.Valid ||
-        !std::isfinite(x) || !std::isfinite(y))
+    if (!layout.Valid || !std::isfinite(x) || !std::isfinite(y))
         return DesktopMenuMouseAction::None;
     for (const auto& button : layout.Buttons)
-        if (button.Bounds.Contains(x, y)) return button.Action;
+    {
+        if (!button.Bounds.Contains(x, y)) continue;
+        const bool isBrowse =
+            button.Action == DesktopMenuMouseAction::GarageBrowsePrevious ||
+            button.Action == DesktopMenuMouseAction::GarageBrowseNext;
+        return (isBrowse ? browseEnabled : styleEnabled)
+            ? button.Action : DesktopMenuMouseAction::None;
+    }
     return DesktopMenuMouseAction::None;
 }
 } // namespace latebrake

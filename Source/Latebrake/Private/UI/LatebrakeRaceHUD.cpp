@@ -104,7 +104,8 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
         false, true, Mode->GetMenuPage());
     const auto styleAction =
         latebrake::HitTestGarageStyleMouse(
-            style, x, y, Mode->CanCustomizeGarage());
+            style, x, y, Mode->CanCustomizeGarage(),
+            Mode->CanBrowseGarage());
     if (styleAction != latebrake::DesktopMenuMouseAction::None)
         return styleAction;
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
@@ -941,9 +942,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             if (GarageStyleMenu.Valid)
             {
                 const bool bCanEditLook = Mode->CanCustomizeGarage();
+                const bool bCanBrowse = Mode->CanBrowseGarage();
                 const latebrake::DesktopMenuMouseAction StyleHover =
                     HasCursor ? latebrake::HitTestGarageStyleMouse(
-                        GarageStyleMenu, CursorX, CursorY, bCanEditLook)
+                        GarageStyleMenu, CursorX, CursorY,
+                        bCanEditLook, bCanBrowse)
                         : latebrake::DesktopMenuMouseAction::None;
                 for (const auto& StyleButton : GarageStyleMenu.Buttons)
                 {
@@ -951,12 +954,19 @@ void ALatebrakeRaceHUD::DrawHUD()
                     const float BY = static_cast<float>(StyleButton.Bounds.Y);
                     const float BW = static_cast<float>(StyleButton.Bounds.Width);
                     const float BH = static_cast<float>(StyleButton.Bounds.Height);
-                    const bool Hover =
-                        bCanEditLook && StyleButton.Action == StyleHover;
-                    const FLinearColor TextColor = !bCanEditLook
+                    const bool bBrowseAction =
+                        StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageBrowsePrevious ||
+                        StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageBrowseNext;
+                    const bool Enabled = bBrowseAction
+                        ? bCanBrowse : bCanEditLook;
+                    const bool Hover = Enabled &&
+                        StyleButton.Action == StyleHover;
+                    const FLinearColor TextColor = !Enabled
                         ? FLinearColor(0.61f, 0.66f, 0.73f)
                         : Hover ? Gold : White;
-                    DrawRect(!bCanEditLook
+                    DrawRect(!Enabled
                         ? FLinearColor(0.07f, 0.10f, 0.14f, 0.84f)
                         : Hover
                             ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
@@ -972,7 +982,14 @@ void ALatebrakeRaceHUD::DrawHUD()
                             ? TEXT("STRIPES >")
                         : StyleButton.Action ==
                             latebrake::DesktopMenuMouseAction::GarageWheels
-                            ? TEXT("RIMS >") : TEXT("FACTORY");
+                            ? TEXT("RIMS >")
+                        : StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageReset
+                            ? TEXT("FACTORY")
+                        : StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageBrowsePrevious
+                            ? TEXT("< VIEW CAR")
+                            : TEXT("VIEW CAR >");
                     DrawText(Caption, TextColor, BX + 10.f * UIScale,
                         BY + 12.f * UIScale,
                         GEngine->GetSmallFont(), 0.82f * UIScale);

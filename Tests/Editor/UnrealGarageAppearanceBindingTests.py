@@ -137,7 +137,8 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "button.Bounds.Contains(x, y)",
         ):
             self.assertIn(token, self.mouse)
-        self.assertIn("style, x, y, Mode->CanCustomizeGarage()", self.hud)
+        self.assertIn("style, x, y, Mode->CanCustomizeGarage(),", self.hud)
+        self.assertIn("Mode->CanBrowseGarage()", self.hud)
         self.assertIn("latebrake::HitTestGarageStyleMouse(", self.hud)
         for token in (
             "case latebrake::DesktopMenuMouseAction::GaragePaint:",
@@ -148,7 +149,8 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             self.assertIn(token, self.pawn)
         self.assertIn("if (GarageStyleMenu.Valid)", self.hud)
         self.assertIn("const bool bCanEditLook = Mode->CanCustomizeGarage();", self.hud)
-        self.assertIn("!enabled || !layout.Valid", self.mouse)
+        self.assertIn("if (!layout.Valid || !std::isfinite(x)", self.mouse)
+        self.assertIn("isBrowse ? browseEnabled : styleEnabled", self.mouse)
 
     def test_controller_style_shortcuts_pause_only(self):
         mapping = {
@@ -185,6 +187,11 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         self.assertIn("bool ALatebrakeRaceGameMode::CanBrowseGarage() const", self.mode)
         self.assertIn("GaragePurchaseConfirm.Reset();", self.mode)
         self.assertIn("GetGaragePreviewVehicleId()", self.hud)
+        self.assertIn("GarageBrowsePrevious", self.mouse)
+        self.assertIn("GarageBrowseNext", self.mouse)
+        self.assertIn("bCanBrowse", self.hud)
+        self.assertIn("case latebrake::DesktopMenuMouseAction::GarageBrowsePrevious:", self.pawn)
+        self.assertIn("case latebrake::DesktopMenuMouseAction::GarageBrowseNext:", self.pawn)
         self.assertIn("PREVIEW EST.: ACCEL", self.hud)
         self.assertIn("LOCKED / PREVIEW ONLY", self.hud)
         self.assertIn("VIEWING", self.hud)

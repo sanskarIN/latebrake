@@ -110,3 +110,11 @@ only the next owned vehicle according to the existing GarageState rules;
 **Q** still buys only the next locked car after explicit two-step
 confirmation. Cosmetics apply to the real equipped car, not a locked
 preview. Browser pointer arrows remain in the Garage-only dock.
+
+The two extra buttons below the garage paint/stripe/rim/reset controls
+let the mouse browse the previous or next showroom car. Unlike the four
+style actions, these two browsing controls stay usable even when the
+player lacks permission to edit appearance (e.g. future SaveGame read-only
+mode). The hit tester and visual disabled states use separate owner
+permissions. At 900×600 and larger the three-row dock remains inside the
+viewport; compact/mobile views retain F9/F10 or gamepad navigation.
