@@ -47,7 +47,9 @@ class PreviewDrivingCoachBindingTests(unittest.TestCase):
                        "in.Speed>45.0f","!out.WrongWay",
                        "out.OutputSteer+correction"):
             self.assertIn(marker,self.policy)
-        self.assertIn("if(assist){steeringAssist=!steeringAssist;saveSettings();",self.app)
+        self.assertIn("if(assist){const auto before=settingsState();",self.app)
+        self.assertIn("steeringAssist=!steeringAssist;",self.app)
+        self.assertIn("if(commitSettingsChange(before))",self.app)
         self.assertIn("manualCoach.OutputSteer!=0.0f",self.app)
         self.assertIn("selfTestStage=87;",self.app)
 
