@@ -192,7 +192,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "bool ALatebrakeRaceGameMode::CanCustomizeGarage() const",
             self.mode)
         self.assertIn(
-            "Garage.Owns(Garage.SelectedVehicle())", self.mode)
+            "latebrake::CanStyleGalleryVehicle(Garage, GarageGallery)", self.mode)
         self.assertIn("PAD: R3 PAINT / L3 STRIPES / LB RIMS", self.hud)
         self.assertIn(
             '+ActionMappings=(ActionName="GarageResetLook",Key=F8)',
