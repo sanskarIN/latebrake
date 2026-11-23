@@ -1089,17 +1089,24 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
         HasActorBegunPlay());
     const int32 SafeId = Transition.VehicleId;
     if (SafeId != GarageVehicleId)
-        ApplyVehicleVisualRecipe(SafeId);
+    {
+        // Selection changes authority, not the parked showroom view.
+        if (!bGarageShowroomPreviewActive)
+            ApplyVehicleVisualRecipe(SafeId);
+    }
 
     // Commit identity and appearance atomically BEFORE the expensive 3D
     // renderer. It must never build new-car geometry in the old car's
     // saved rim style or allocate the same mesh twice on one equip action.
     GarageVehicleId = SafeId;
     CurrentGarageLook = Transition.Look;
-    if (Transition.RebuildSourceMesh)
-        RebuildOriginalVehicleVisual(SafeId);
-    if (Transition.RefreshMaterials)
-        ApplyVehiclePaintRecipe(SafeId);
+    if (!bGarageShowroomPreviewActive)
+    {
+        if (Transition.RebuildSourceMesh)
+            RebuildOriginalVehicleVisual(SafeId);
+        if (Transition.RefreshMaterials)
+            ApplyVehiclePaintRecipe(SafeId);
+    }
 }
 
 void ALatebrakeCarPawn::SetGarageAppearance(latebrake::GarageLook look)
@@ -1116,9 +1123,34 @@ void ALatebrakeCarPawn::SetGarageAppearance(latebrake::GarageLook look)
     // No mesh composition is allowed during a physics frame Tick.
     if (HasActorBegunPlay())
     {
+        if (bGarageShowroomPreviewActive) return;
         if (bRimsChanged) RebuildOriginalVehicleVisual(GarageVehicleId);
         ApplyVehiclePaintRecipe(GarageVehicleId);
     }
+}
+
+void ALatebrakeCarPawn::UpdateGarageShowroomPresentation(
+    bool bGarageMenuVisible, int32 ViewedVehicleId,
+    latebrake::GarageLook ViewedLook)
+{
+    const auto Plan=latebrake::PlanGarageShowroomPresentation({
+        bGarageMenuVisible, ViewedVehicleId, ViewedLook,
+        GarageVehicleId, CurrentGarageLook,
+        bGarageShowroomPreviewActive, GarageShowroomVehicleId,
+        GarageShowroomLook, HasActorBegunPlay()
+    });
+    // Visual identity is transient. No modifications to the selected
+    // vehicle, saved appearance, chassis, engine/grip or race authority.
+    bGarageShowroomPreviewActive=Plan.PreviewActive;
+    GarageShowroomVehicleId=Plan.DisplayVehicleId;
+    GarageShowroomLook=Plan.DisplayLook;
+    // Navigate while paused: update only on actual cosmetic differences.
+    if (Plan.ShapeChanged)
+        ApplyVehicleVisualRecipe(Plan.DisplayVehicleId);
+    if (Plan.RebuildSourceMesh)
+        RebuildOriginalVehicleVisual(Plan.DisplayVehicleId);
+    if (Plan.RefreshMaterials)
+        ApplyVehiclePaintRecipe(Plan.DisplayVehicleId);
 }
 
 void ALatebrakeCarPawn::ClearDriverInputs()
