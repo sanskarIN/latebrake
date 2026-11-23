@@ -60,7 +60,7 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
         for marker in (
             "bool paint=pressed('V',lastPaint)",
             "stripe=pressed('B',lastStripe)",
-            "bool wheels=pressed('N',lastWheels)",
+            "wheels=pressed('N',lastWheels)",
             "if(paint)cycleAppearance(0);",
             "if(stripe)cycleAppearance(1);",
             "if(wheels)cycleAppearance(2);",
