@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 
 namespace latebrake::vehiclemesh
 {
@@ -33,6 +34,34 @@ inline constexpr OriginalVehiclePoint OriginalWheelPivot(
             settings.WheelCenterHeightCm};
 }
 
+// A part's tag alone cannot determine where the actor will rotate it:
+// reject re-tagged triangles from the opposite axle/side, not just bad
+// material IDs or empty wheel groups. This is evaluated once per rebuild,
+// never in the physics/render frame update loop.
+inline bool IsSourceWheelTriangleNearPivot(
+    const OriginalVehicleMesh& mesh,
+    const OriginalVehicleTriangle& triangle) noexcept
+{
+    if(triangle.WheelSlot<0 || triangle.WheelSlot>=4)
+        return false;
+    constexpr OriginalVehicleMeshSettings settings{};
+    const auto pivot=OriginalWheelPivot(triangle.WheelSlot,settings);
+    const double radial=settings.WheelRadiusCm+1.0;
+    const double lateral=settings.TireWidthCm*0.5+2.0;
+    for(auto index:triangle.Index)
+    {
+        if(index>=mesh.Vertices.size()) return false;
+        const auto& point=mesh.Vertices[index].Position;
+        if(!std::isfinite(point.X) || !std::isfinite(point.Y) ||
+           !std::isfinite(point.Z) ||
+           std::abs(point.X-pivot.X)>radial ||
+           std::abs(point.Y-pivot.Y)>lateral ||
+           std::abs(point.Z-pivot.Z)>radial)
+            return false;
+    }
+    return true;
+}
+
 inline OriginalVehicleAnimatedParts MakeOriginalVehicleAnimatedParts(
     const OriginalVehicleMesh& mesh)
 {
@@ -54,7 +83,9 @@ inline OriginalVehicleAnimatedParts MakeOriginalVehicleAnimatedParts(
             tri.Material==OriginalVehicleMaterial::Rubber ||
             tri.Material==OriginalVehicleMaterial::Alloy ||
             tri.Material==OriginalVehicleMaterial::BrakeRotor;
-        if((tri.WheelSlot>=0)!=wheelMaterial)
+        if((tri.WheelSlot>=0)!=wheelMaterial ||
+           (wheelMaterial &&
+            !IsSourceWheelTriangleNearPivot(mesh,tri)))
             return {};
         auto& part=out.Parts[static_cast<std::size_t>(tri.WheelSlot+1)];
         part.TriangleIds[material].push_back(static_cast<std::uint32_t>(i));

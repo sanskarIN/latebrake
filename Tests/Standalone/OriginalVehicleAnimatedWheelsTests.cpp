@@ -94,6 +94,28 @@ void RejectBrokenOwnership()
         !MakeOriginalVehicleAnimatedParts(mesh).Valid,
         "orphan wheel triangle never silently becomes body mesh");
     mesh=composer.Build(3,2).Mesh;
+    // A swapped front/rear label keeps the wheel count and material
+    // distribution identical, but its triangles are now far from the
+    // pivot at which Unreal would rotate them. Reject this ambiguity.
+    for(auto& tri:mesh.Triangles)
+    {
+        if(tri.WheelSlot==0) tri.WheelSlot=2;
+        else if(tri.WheelSlot==2) tri.WheelSlot=0;
+    }
+    Require(!MakeOriginalVehicleAnimatedParts(mesh).Valid,
+        "counterfeit balanced wheel-slot swap fails actual geometry pivot");
+    mesh=composer.Build(3,2).Mesh;
+    // Even a valid slot and material must not place source wheel triangles
+    // far away from their authorized local wheel transform.
+    for(auto& tri:mesh.Triangles)
+        if(tri.WheelSlot==1)
+        {
+            mesh.Vertices[tri.Index[0]].Position.X+=250.0;
+            break;
+        }
+    Require(!MakeOriginalVehicleAnimatedParts(mesh).Valid,
+        "detached tagged wheel vertex never becomes a flying rendered tire");
+    mesh=composer.Build(3,2).Mesh;
     mesh.ChangesChaosContact=true;
     Require(!MakeOriginalVehicleAnimatedParts(mesh).Valid,
         "render-only animation can never become physics collision");
