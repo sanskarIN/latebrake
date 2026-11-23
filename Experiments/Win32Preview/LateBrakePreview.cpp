@@ -6,6 +6,7 @@
 #include "PreviewViewportMath.h"
 #include "PreviewGarageStyle.h"
 #include "PreviewKeyboardFocusGuard.h"
+#include "PreviewDrivingCoach.h"
 
 extern "C" { int _fltused = 0; } // MSVC floating-point linkage marker.
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -642,6 +643,45 @@ struct Race {
     Opponent ai[3];
 };
 static Race race;
+// Live geometry comes from exactly the same road model as the render,
+// gate order and surface-traction checks. No precomputed ideal laps,
+// off-track shortcuts, hidden physics or player-input overrides.
+static latebrake_preview::PreviewCoachResult sampleDriverCoach(
+    float manualSteer,bool requestAssist)
+{
+    latebrake_preview::PreviewCoachInput input{};
+    input.ManualSteer=manualSteer;
+    if(trackRx<=0.0f||trackRy<=0.0f)return {};
+    float c=(race.x-CX)/trackRx,s=(race.y-CY)/trackRy;
+    const float mag=fsqrt(c*c+s*s);
+    if(mag<0.1f)return {};
+    c/=mag;s/=mag;
+    // Three successive centerline positions, 0.18 radians apart;
+    // tangent/bend and lookahead use the actual selectedTrack profile.
+    // Positive travel angle matches the real gate sequence (bottom,
+    // left, top, right). The target stays ON THE ROAD and never points
+    // straight through the infield to a later checkpoint.
+    const float cosine=0.98384369f,sine=0.17902957f;
+    const float c1=c*cosine-s*sine,s1=s*cosine+c*sine;
+    const float c2=c1*cosine-s1*sine,s2=s1*cosine+c1*sine;
+    float x0,y0,x1,y1,x2,y2;
+    shapePos(c,s,&x0,&y0);
+    shapePos(c1,s1,&x1,&y1);
+    shapePos(c2,s2,&x2,&y2);
+    input.CarX=race.x;input.CarY=race.y;
+    input.ForwardX=race.fx;input.ForwardY=race.fy;
+    input.TangentX=x1-x0;input.TangentY=y1-y0;
+    input.FutureTangentX=x2-x1;input.FutureTangentY=y2-y1;
+    input.AimX=x1;input.AimY=y1;
+    input.Speed=race.speed;
+    input.TrackOffset=trackOffset(race.x,race.y);
+    input.TrackHalfWidth=trackWidth;
+    input.Grip=carGrip[selectedCar];
+    input.OnRoad=absf(input.TrackOffset)<trackWidth;
+    input.AssistEnabled=requestAssist && steeringAssist && !paused &&
+        hasWindowFocus && countdown<=0.0f && page==RACING;
+    return latebrake_preview::EvaluatePreviewCoach(input);
+}
 static latebrake_preview::RaceModePolicy selectedModePolicy(){
     return latebrake_preview::GetRaceModePolicy(selectedChallenge);
 }
@@ -812,9 +852,17 @@ static void update(float dt,bool forward,bool reverse,bool left,bool right,bool 
     // extreme high-speed rotation; it never interferes with reverse direction.
     float keyboardSteer=(right?1.0f:0.0f)-(left?1.0f:0.0f);
     float steer=absf(keyboardSteer)>0.01f?keyboardSteer:clamp(padSteer,-1,1);
-    race.smoothedSteer+=(steer-race.smoothedSteer)*clamp(dt*8.0f,0.0f,1.0f);
+    // Former "assist" only reduced steering angle, making the car
+    // unresponsive at speed. This now supplies a small optional,
+    // bounded *course-derived* correction when the player is not
+    // strongly turning. Manual counter-steer and reverse remain theirs.
+    const auto coach=sampleDriverCoach(steer,true);
+    const float effectiveSteer=coach.Valid?coach.OutputSteer:steer;
+    race.smoothedSteer+=(effectiveSteer-race.smoothedSteer)*
+        clamp(dt*8.0f,0.0f,1.0f);
     float authority=clamp(absf(race.speed)/160.0f,0,1);
-    float speedSafety=steeringAssist?1.0f-0.38f*clamp(absf(race.speed)/420.0f,0,1):1.0f;
+    float speedSafety=steeringAssist?1.0f-0.20f*
+        clamp(absf(race.speed)/420.0f,0,1):1.0f;
     float turn=race.smoothedSteer*dt*2.85f*authority*(race.speed<0?-1:1)*
         (road?1.0f:0.5f)*carGrip[selectedCar]*speedSafety;
     float fx=race.fx,fy=race.fy;
@@ -1279,10 +1327,20 @@ static void renderRaceHUDV3(){
         hint(20,594,"W/UP ACCELERATE    A/D STEER    SPACE BRAKE    SHIFT NITRO    P PAUSE");
         hint(20,616,"E PIT SERVICE    R RESTART    K RECOVER +5S    J STEER ASSIST    F1 HELP");
     }
-    hint(30,476,steeringAssist?"STEER ASSIST: ON  [J]":"STEER ASSIST: OFF [J]");
-    if(!onroad(race.x,race.y)){
-        rect(350,74,263,36,color(90,46,34));
-        text(369,85,"OFF TRACK / LOW GRIP",GOLD(),2);
+    hint(30,476,steeringAssist?
+        "ROAD GUIDE: ON  [J]":"ROAD GUIDE: OFF [J]");
+    const auto guide=sampleDriverCoach(0.0f,false);
+    if(countdown<=0.0f&&!paused&&!race.finished){
+        if(!onroad(race.x,race.y)){
+            rect(350,74,263,36,color(90,46,34));
+            text(369,85,"OFF TRACK / LOW GRIP",GOLD(),2);
+        }else if(guide.Valid && guide.WrongWay){
+            rect(331,74,310,36,color(115,38,40));
+            text(344,85,"WRONG WAY / TURN AROUND",CREAM(),2);
+        }else if(guide.Valid && guide.BrakeForCorner){
+            rect(339,74,288,36,color(93,66,31));
+            text(355,85,"SLOW DOWN FOR CORNER",GOLD(),2);
+        }
     }
     if(countdown>0){
         rect(360,247,234,139,color(16,26,37));stroke(360,247,234,139,GOLD(),3);
@@ -1304,9 +1362,10 @@ static void overlayHelp(){
     text(205,338,"P            PAUSE / RESUME",CREAM(),2);
     text(205,367,"R            RESTART RACE",CREAM(),2);
     text(205,396,"K            RECOVER / +5 SEC",CREAM(),2);
-    text(205,425,"J            STEERING ASSIST",CREAM(),2);
-    hint(205,446,"STOP INSIDE MARKED PIT AND HOLD E / PAD Y FOR 2.5 SEC");
-    hint(205,457,"PAD: RT GAS / LT BRAKE / STICK STEER / A NITRO / START PAUSE");
+    text(205,425,"J            ROAD GUIDE / GENTLE ASSIST",CREAM(),2);
+    hint(205,446,"CYAN DOTS FOLLOW THE ROAD; BRAKE / WRONG-WAY ALERTS");
+    hint(205,457,"PIT: STOP INSIDE BAY + HOLD E / PAD Y FOR 2.5 SEC");
+    hint(205,468,"PAD: RT GAS / LT BRAKE / STICK STEER / A NITRO / START PAUSE");
     uiButton(206,481,546,39,"F1 / ESC  CLOSE GUIDE",false);
 }
 static void resultsOverlayV3(){
@@ -1335,7 +1394,34 @@ static void render(){
     for(int i=0;i<WIDTH*HEIGHT;i++)frame[i]=backdrop[i];
     if(page==RACING||page==RESULTS){
         float gx,gy;gatePos(race.nextGate,&gx,&gy);
-        if(!race.finished){dot((int)gx,(int)gy,13,color(255,203,81));dot((int)gx,(int)gy,8,color(55,45,31));dot((int)gx,(int)gy,4,color(255,228,145));}
+        if(!race.finished){
+            // Subtle animated target pulse distinguishes the NEXT legitimate
+            // checkpoint without turning the full course into a screen overlay.
+            const int pulse=(int)(gameTime*6.0f)%7;
+            dot((int)gx,(int)gy,17+pulse,color(75,111,106));
+            dot((int)gx,(int)gy,13,color(255,203,81));
+            dot((int)gx,(int)gy,8,color(55,45,31));
+            dot((int)gx,(int)gy,4,color(255,228,145));
+        }
+        if(page==RACING&&!race.finished&&countdown<=0.0f&&
+           steeringAssist&&!paused){
+            // Bright, limited forward racing-line dots: follow the actual
+            // procedural road rather than a misleading direct gate arrow.
+            float c=(race.x-CX)/trackRx,s=(race.y-CY)/trackRy;
+            const float mag=fsqrt(c*c+s*s);
+            if(mag>0.1f){
+                c/=mag;s/=mag;
+                const float co=0.99755100f,si=0.06994285f;
+                for(int step=0;step<11;step++){
+                    float nc=c*co-s*si,ns=s*co+c*si;
+                    c=nc;s=ns;
+                    float px,py;shapePos(c,s,&px,&py);
+                    const int radius=step<4?3:2;
+                    dot((int)px,(int)py,radius,
+                        step<4?color(111,238,237):color(44,148,159));
+                }
+            }
+        }
         for(int i=0;i<race.rivalCount;i++){
             Opponent& a=race.ai[i];
             // Tangent to the underlying oriented racetrack; decorative AI pose.
@@ -1497,7 +1583,7 @@ static void step(float dt){
     pause=pause||pad.pause;recover=recover||pad.recover;
     if(contrast){highContrast=!highContrast;saveSettings();}
     if(assist){steeringAssist=!steeringAssist;saveSettings();
-        message(steeringAssist?"STEERING ASSIST ON":"STEERING ASSIST OFF");}
+        message(steeringAssist?"ROAD GUIDE + ASSIST ON":"MANUAL STEERING / GUIDE OFF");}
     if(help){showHelp=!showHelp;return;}
     if(showHelp){if(back||enter)showHelp=false;return;}
     if(page==RACING){
@@ -1920,6 +2006,34 @@ static bool selftest(){
     if(selectedCar!=11)return false;
     beginRace();if(page!=GARAGE)return false;
     selectedCar=0;ownedMask=1;setPage(HOME);
+    selfTestStage=87;
+    // The native --self-test must exercise the REAL integrated centerline
+    // sampler, steering path, mode limits, and J toggle, not only a header
+    // compiled in an unrelated Linux test.
+    selectedTrack=0;selectedChallenge=0;drawTrack();beginRace();countdown=0;
+    race.speed=220.0f;race.fx=-1.0f;race.fy=0.0f;
+    steeringAssist=true;
+    const auto activeCoach=sampleDriverCoach(0.0f,true);
+    if(!activeCoach.Valid||activeCoach.WrongWay||
+       !activeCoach.AssistApplied||activeCoach.OutputSteer<=0.0f)return false;
+    steeringAssist=false;
+    const auto manualCoach=sampleDriverCoach(0.0f,true);
+    if(!manualCoach.Valid||manualCoach.AssistApplied||
+       manualCoach.OutputSteer!=0.0f)return false;
+    steeringAssist=true;
+    race.fx=1.0f;race.fy=0.0f;
+    const auto backwards=sampleDriverCoach(0.0f,true);
+    if(!backwards.Valid||!backwards.WrongWay||
+       backwards.AssistApplied)return false;
+    race.fx=-1.0f;
+    for(int tr=0;tr<4;tr++){
+        selectedTrack=tr;drawTrack();beginRace();countdown=0;
+        race.speed=250.0f;
+        const auto sample=sampleDriverCoach(0.0f,true);
+        if(!sample.Valid||sample.TargetSpeed<150.0f||
+           sample.TargetSpeed>320.0f)return false;
+    }
+    selectedTrack=0;drawTrack();beginRace();countdown=0;
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);
 }

@@ -99,3 +99,32 @@ separate Editor/UHT, cook, packaged Win64 and hands-on game QA. This
 trial cannot certify those features.
 
 Source: https://github.com/sanskarIN/latebrake
+
+## Road guide and steering feedback (experimental)
+
+The optional **J** control now has an actual, bounded road-following
+function in addition to its subtle steering-speed safety scaling.
+**J ON** renders a short sequence of cyan centerline dots ahead of the
+car, computed from the *selected circuit's real procedural road* (not a
+shortcut pointing directly to a checkpoint). At road speed, a gentle
+steering hint helps when you are not already steering strongly. **J OFF**
+restores manual-only steering and hides the cyan guide dots. You retain
+full steering priority, especially during deliberate hard turns;
+there is no automatic driving. The next checkpoint has a distinct
+pulsing marker.
+
+Watch for **WRONG WAY / TURN AROUND** when moving forward against the
+course direction and **SLOW DOWN FOR CORNER** when a preview-only local
+curve estimate flags excessive approach speed. Off-road low grip takes
+priority over those warnings. The speed advice is approximate, **not
+a physical braking-distance guarantee**.
+
+For useful playtest feedback, compare two laps with J ON and OFF on
+all four courses. Report whether steering feels delayed, overcorrects,
+understeers, fights player input or creates unjustified warnings.
+Try reversing, stopping, driving off track, a fast corner, pause, Alt-Tab
+and every controller steering position. Check that gate/lap counts,
+rewards, opponents and your saved career never change merely because
+the road guide is enabled. The native `--self-test` and portable
+C++20 policy tests cover deterministic synthetic conditions, not real
+controller latency, enjoyment, Windows display or 3D Unreal gameplay.

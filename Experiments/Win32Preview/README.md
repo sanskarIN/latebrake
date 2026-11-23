@@ -1,3 +1,22 @@
+## Gameplay quality work: real 2D driver guidance (source candidate)
+
+The 2D experiment's former steering assist only suppressed turning
+authority at speed. The new `PreviewDrivingCoach.h` reads actual
+procedural-road centerline samples and current vehicle heading. With
+J enabled it applies only a small bounded steering correction when
+the player isn't steering strongly, shows cyan forward road-guide dots,
+detects sustained wrong-way orientation at speed and displays a corner
+speed caution. No input authority changes during reverse, off-track,
+closed race menu, or when J is disabled. Strong manual steer always wins.
+The next legitimate checkpoint also receives a pulsing visual marker.
+
+Strict C++20 portable tests include 100,000 varied steering, speed,
+grip and direction samples plus malformed floating-point probes;
+the native Win64 --self-test exercises the real GameState/road wiring
+across all four tracks. This improves the testable 2D trial's direction
+guidance but does not make it a 3D game or qualify UE5.8 driving.
+See [the trial quick start](TRIAL_QUICKSTART.md) for user-facing QA.
+
 # LateBrake V5 — optional controller support in the standalone Win64 preview
 
 **Development preview of an original Win32/GDI 2D racing experiment. NOT the Unreal Engine game.** No verified UE Editor compile, cooked levels, 3D assets, online multiplayer or Windows hardware testing is claimed.
