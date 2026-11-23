@@ -36,12 +36,12 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
     def test_real_race_and_showroom_use_same_selected_style(self):
         for marker in (
             "static unsigned int selectedPaint(int id)",
-            "garageStyles[id].Paint",
+            "const auto style=garageStyles[id];",
             "static void heroCar(int cx,int cy,int id)",
             "static void drawCar(float x,float y,float fx,float fy",
             "selectedPaint(id)",
-            "garageStyles[id].Vinyl",
-            "garageStyles[id].Wheels",
+            "garageStyles[model].Vinyl",
+            "garageStyles[model].Wheels",
             "drawCar(race.x,race.y,race.fx,race.fy,selectedPaint(selectedCar),color(255,220,141),selectedCar)",
         ):
             self.assertIn(marker, self.app)
@@ -59,7 +59,7 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
             self.assertIn(marker, click)
         for marker in (
             "bool paint=pressed('V',lastPaint)",
-            "bool stripe=pressed('B',lastStripe)",
+            "stripe=pressed('B',lastStripe)",
             "bool wheels=pressed('N',lastWheels)",
             "if(paint)cycleAppearance(0);",
             "if(stripe)cycleAppearance(1);",
