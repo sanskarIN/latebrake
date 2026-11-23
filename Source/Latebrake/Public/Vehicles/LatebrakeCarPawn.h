@@ -282,6 +282,7 @@ private:
     void ApplyOriginalVehiclePalette(int32 VehicleId,
                                      latebrake::GarageLook Look);
     void RefreshFrontLampPositions();
+    void RefreshRearSignalPositions();
     void HideLegacyVisualPrimitives(bool bHide);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
                            double SignedForwardSpeedCmPerSecond);

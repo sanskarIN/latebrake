@@ -5,6 +5,7 @@
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "Vehicles/VehicleRearLampLayout.h"
 #include "Vehicles/VehicleFrontLampRig.h"
+#include "Vehicles/VehicleRearSignalRenderRig.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
@@ -1005,6 +1006,7 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     }
     ApplyOriginalVehiclePalette(VehicleId, Look);
     RefreshFrontLampPositions();
+    RefreshRearSignalPositions();
 }
 
 void ALatebrakeCarPawn::RefreshFrontLampPositions()
@@ -1027,6 +1029,35 @@ void ALatebrakeCarPawn::RefreshFrontLampPositions()
         const auto& p=Plan.Mounts[static_cast<std::size_t>(i)];
         Lamps[i]->SetRelativeLocation(
             FVector(p.Xcm,p.Ycm,p.Zcm)/Scale);
+    }
+}
+
+void ALatebrakeCarPawn::RefreshRearSignalPositions()
+{
+    // The old 190cm physics Cube is shorter than the original 222cm
+    // 3D rear bumper. Reposition all three existing render-only point
+    // lights when visual shape/fallback changes, never in Tick.
+    if (!IsValid(Chassis)) return;
+    const FVector Scale=Chassis->GetRelativeScale3D();
+    if (FMath::Abs(Scale.X)<0.001f ||
+        FMath::Abs(Scale.Y)<0.001f ||
+        FMath::Abs(Scale.Z)<0.001f)
+        return;
+    const auto Positions=latebrake::PlanRearSignalVisualOffsets(
+        bOriginalVehicleVisualReady);
+    UPointLightComponent* Lamps[] = {
+        RearLeftSignal.Get(), RearRightSignal.Get(),
+        ReverseSignal.Get()};
+    for(int32 i=0;i<3;++i)
+    {
+        if (!IsValid(Lamps[i]) ||
+            !latebrake::RearSignalNearVisibleBumper(
+                bOriginalVehicleVisualReady,
+                Positions[static_cast<std::size_t>(i)]))
+            continue;
+        const auto& p=Positions[static_cast<std::size_t>(i)];
+        Lamps[i]->SetRelativeLocation(
+            FVector(p.X,p.Y,p.Z)/Scale);
     }
 }
 

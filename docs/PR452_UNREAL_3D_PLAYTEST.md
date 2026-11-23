@@ -128,6 +128,7 @@ automatically verified performance or release authorization**.
 | Animated source wheels | With 3D source mesh committed, drive/reverse/steer and verify all four original wheels physically appear to spin, fronts visibly yaw, pause freezes rotation and recovery resets phase; ensure tires remain centered under the car |
 | Save and reload | Changed owned car's paint/stripes/rims persist after close/relaunch; future-save schema is not overwritten |
 | Headlight direction | During an accepted active race, two front spotlights point forward onto the actual road and match the visible car bumper; check right-hand and left-hand turns |
+| Rear light geometry | In DAY and DUSK test brake and reversing for both generated 3D source car and legacy Cube fallback; the red/white light sources should align near each car's true rear bumper, not remain buried inside the longer car |
 | Pause/focus | Pause, open menus and Alt-Tab; headlights command off and controls do not remain latched; no unintended racing in background |
 | Dusk visual evaluation | On Settings press F3; actual sun and sky visibly change to DUSK; F3 again returns DAY; F3 must not change credits or save file |
 | Native source diagnostics | Development Settings reports fallback/source mesh, detected paint parameter, requested front beams and `3D WHEEL RIG: 4/4 COMPONENTS` if every source wheel was initialized; compare every value with actual pixels and physical rotation |

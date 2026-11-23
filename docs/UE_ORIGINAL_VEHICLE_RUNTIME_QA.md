@@ -258,3 +258,27 @@ mesh or invalid count always reports 0. This is source-observed
 render-component initialization, **not proof of actual wheel spin,
 real road contact, shaders, car grip or GPU output**. The existing
 HUD pager makes the diagnostic accessible on small monitors.
+
+## Rear brake/reverse light positioning across both visible body lengths
+
+The original scaled collision Cube ends at **X = -190 cm**. Its existing
+point-light mounts at -194/-196cm must not be altered while the source
+3D model is unavailable. The generated original car body instead
+ends at **X = -222 cm**. Leaving the old point lights at -194cm would
+put them *inside* the more realistic car body.
+
+`PlanRearSignalVisualOffsets` now places the same two red and one
+white reverse lights at **-226/-228cm** while the valid original
+source body is rendered, with left/right mounts using its actual
+half-width and the reverse beam centered. On fallback it retains the
+original offsets exactly. The real `ALatebrakeCarPawn` refreshes
+mount positions on applied appearance/equipped-body changes, not every
+Tick. This is cosmetic; the measured physical brake and reverse-light
+activation gate remains unchanged, with no new lights, physics bodies,
+collision, saved profile or scoring effects.
+
+On UE5.8 Win64 test every six-car variant and legacy fallback for
+rear source visibility, bumper alignment, brake/reverse color, shader
+exposure and black spots on DUSK. The source test checks both plans,
+200k deterministic toggles, symmetric placement and refusal of legacy
+light positions as long-source bumper mounts.

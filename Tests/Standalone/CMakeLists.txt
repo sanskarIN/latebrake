@@ -3000,3 +3000,19 @@ else()
 endif()
 add_test(NAME OriginalVehicleAnimatedWheels
     COMMAND latebrake_animated_original_wheels_tests)
+
+# Correct old Cube and generated six-car rear signal mount offsets:
+# render-only point lights, never physics or collision.
+add_executable(latebrake_rear_signal_render_tests
+    VehicleRearSignalRenderRigTests.cpp)
+target_include_directories(latebrake_rear_signal_render_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rear_signal_render_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rear_signal_render_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rear_signal_render_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VehicleRearSignalRenderRig
+    COMMAND latebrake_rear_signal_render_tests)
