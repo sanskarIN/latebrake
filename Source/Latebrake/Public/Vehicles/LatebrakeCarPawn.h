@@ -129,6 +129,10 @@ public:
     latebrake::OriginalMeshBuildTelemetry
     GetOriginalMeshBuildTelemetry() const noexcept
     { return SourceMeshBuildTelemetry; }
+    // -1 on fallback or failed rebuild; otherwise the wheel shape
+    // actually authored in the most recently COMMITTED source mesh.
+    int32 GetCommittedOriginalRimStyle() const noexcept
+    { return bOriginalVehicleVisualReady ? OriginalRenderedRimStyle : -1; }
     // Every RecoverTo (including race restart) changes this revision so
     // checkpoint actors never interpolate across an authorized teleport.
     uint64 GetTeleportRevision() const { return TeleportRevision; }
@@ -356,6 +360,7 @@ private:
     // the old visible car, never to an invisible player vehicle.
     bool bOriginalVehicleVisualReady = false;
     latebrake::OriginalMeshBuildTelemetry SourceMeshBuildTelemetry{};
+    int32 OriginalRenderedRimStyle = -1;
     // The signal command sent to both installed lights; not measured lux.
     bool bFrontLampOutputRequested = false;
     // Chosen from the actually loaded parent material's vector parameters.

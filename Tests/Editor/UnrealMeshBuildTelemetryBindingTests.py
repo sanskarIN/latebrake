@@ -29,16 +29,18 @@ class UnrealMeshBuildTelemetryBindingTests(unittest.TestCase):
                         rebuild.index("OriginalMeshBuildCommit("))
         self.assertIn("SourceMeshBuildTelemetry",self.h)
         self.assertIn("GetOriginalMeshBuildTelemetry() const noexcept",self.h)
+        self.assertIn("GetCommittedOriginalRimStyle() const noexcept",self.h)
     def test_hud_is_read_only_and_does_not_claim_pixels(self):
         settings=self.hud.split("case latebrake::MenuPage::Settings:",1)[1].split(
             "case latebrake::MenuPage::Profile:",1)[0]
         self.assertIn("3D SOURCE BUILDS:",settings)
+        self.assertIn("LIVE 3D RIM:",settings)
+        self.assertIn("Car->GetCommittedOriginalRimStyle()",settings)
         self.assertIn("Car->GetOriginalMeshBuildTelemetry()",settings)
         self.assertIn("#if !UE_BUILD_SHIPPING",settings)
         for forbidden in ("Garage.Unlock(","SaveRecords(","SetGarageTuning(",
                           "RebuildOriginalVehicleVisual(","SetSimulatePhysics("):
             self.assertNotIn(forbidden,settings)
-        self.assertIn("do NOT prove",self.policy.replace("do NOT prove","do NOT prove")) if False else None
         self.assertIn("do NOT prove Unreal UHT compilation",self.policy)
     def test_saturating_source_only_policy(self):
         self.assertIn("Committed<=value.Attempts",self.policy)

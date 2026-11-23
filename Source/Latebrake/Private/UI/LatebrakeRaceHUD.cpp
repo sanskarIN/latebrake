@@ -930,6 +930,12 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(
                 TEXT("3D SOURCE BUILDS: %u ATTEMPTS / %u READY"),
                 BuildStats.Attempts, BuildStats.Committed));
+            const int32 CommittedRim=Car->GetCommittedOriginalRimStyle();
+            MenuLine(FString::Printf(TEXT("LIVE 3D RIM: %s"),
+                CommittedRim>=0 && CommittedRim<latebrake::GarageWheelOptions
+                    ? UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                        latebrake::GarageLookLayer::Wheels,CommittedRim))
+                    : TEXT("FALLBACK / NO SOURCE MESH")));
             MenuLine(TEXT("SOURCE DIAGNOSTIC ONLY - VERIFY PIXELS IN ENGINE"));
 #endif
             break;

@@ -231,3 +231,18 @@ Owner acceptance sequence:
 The source test covers saturation, 300,000 accounting transitions,
 failure paths and no fake committed source mesh. Actual UE5.8/cooked
 Win64 test and screenshots still required.
+
+## Verify the actual built rim identity, not only the selected button
+
+Development Settings also shows `LIVE 3D RIM: STREET / SPORT /
+TRACK` using the *authored rim style of the last successfully
+committed original vehicle mesh*. Failed material creation and
+fallback geometry explicitly report `FALLBACK / NO SOURCE MESH`
+instead of repeating the desired UI choice. The value resets before
+each build, so a failed new-car equip cannot falsely report the
+previous car's successful wheel style. It still cannot prove that the
+GPU drew those triangles or that the physical wheels behave well.
+
+After changing an owned car's rim style and equipping it, compare
+this readout with the selected Style indicator, the 4/4 source-wheel
+readiness, the build-attempt counters and **actual screenshots**.

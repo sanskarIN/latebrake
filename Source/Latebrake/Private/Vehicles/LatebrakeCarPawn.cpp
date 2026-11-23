@@ -648,6 +648,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     SourceMeshBuildTelemetry =
         latebrake::OriginalMeshBuildAttempt(SourceMeshBuildTelemetry);
     bOriginalVehicleVisualReady = false;
+    OriginalRenderedRimStyle = -1;
     OriginalVehicleTintParameter = NAME_None;
     UProceduralMeshComponent* RenderParts[] = {
         OriginalVehicleVisual.Get(), OriginalFrontLeftWheel.Get(),
@@ -839,6 +840,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     for (std::size_t i=1;i<
          latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;++i)
         RenderParts[i]->SetVisibility(true, false);
+    OriginalRenderedRimStyle = generated.Mesh.RimStyle;
     SourceMeshBuildTelemetry =
         latebrake::OriginalMeshBuildCommit(SourceMeshBuildTelemetry);
     ApplyWheelVisualPose();
