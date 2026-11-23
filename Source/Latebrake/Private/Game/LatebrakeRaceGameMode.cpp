@@ -1497,6 +1497,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
+    SyncGarageShowroomPreview(); // Restore equipped car before unpause.
     SyncDesktopMenuPointerMode();
     AppFocusGuard.OnExplicitResume();
     ManualPause.OnExplicitResume();
@@ -1515,6 +1516,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     GaragePurchaseConfirm.Reset();
     SuspendBestLapGhost();
     Menu.Toggle();
+    SyncGarageShowroomPreview();
     if (!Menu.IsOpen())
     {
         AppFocusGuard.OnExplicitResume(); // Deliberate CLOSE/return to driving.
@@ -1627,12 +1629,14 @@ void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
     Menu.Next();
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::MenuPrevious()
 {
     GaragePurchaseConfirm.Reset();
     Menu.Previous();
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::MenuActivate()
@@ -2082,6 +2086,23 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     // Apply separately, including when the same vehicle receives a new
     // free paint/stripe/wheel choice. No force or collision body changes.
     Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::SyncGarageShowroomPreview()
+{
+    ALatebrakeCarPawn* Car=Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this,0));
+    if (!IsValid(Car)) return;
+    const bool bViewing=Menu.IsOpen() &&
+        Menu.Current()==latebrake::MenuPage::Garage;
+    // No work in the normal racing loop; a visual only override exists
+    // while viewing the Garage menu or restoring its equipped car.
+    if (!bViewing && !Car->IsGarageShowroomPreviewActive())
+        return;
+    const int32 Viewed=GarageGallery.Viewed();
+    Car->UpdateGarageShowroomPresentation(
+        bViewing,Viewed,GarageLooks.Get(Viewed));
 }
 
 bool ALatebrakeRaceGameMode::CanBrowseGarage() const
