@@ -39,6 +39,7 @@
 #include "Vehicles/OriginalVehicleRenderSections.h"
 #include "Vehicles/OriginalVehicleAnimatedWheels.h"
 #include "Vehicles/GarageVisualTransition.h"
+#include "Vehicles/GarageShowroomPresentation.h"
 #include "Vehicles/OriginalVehicleTintMaterialPolicy.h"
 
 #include "Camera/CameraComponent.h"
@@ -721,7 +722,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
 
     const auto generated =
         latebrake::vehiclemesh::OriginalVehicleSurfaceComposer{}.Build(
-            VehicleId,static_cast<int>(CurrentGarageLook.Wheels));
+            VehicleId,static_cast<int>(GetPresentedGarageLook().Wheels));
     if (!generated.Valid || !generated.Mesh.Ready ||
         generated.Mesh.ChangesChaosContact)
         return;
@@ -916,9 +917,10 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     // material as the parent: its physical-material/contact settings and
     // Chaos collision body are not changed. Material parameter availability
     // must still be visually verified in the licensed Unreal Editor.
+    const latebrake::GarageLook RequestedLook = GetPresentedGarageLook();
     const latebrake::GarageLook Look =
-        latebrake::ValidGarageLook(CurrentGarageLook)
-            ? CurrentGarageLook : latebrake::FactoryGarageLook(VehicleId);
+        latebrake::ValidGarageLook(RequestedLook)
+            ? RequestedLook : latebrake::FactoryGarageLook(VehicleId);
     const latebrake::VehiclePaintRecipe Paint =
         latebrake::PaintForGarageLook(VehicleId, Look);
     const auto Tint = [&](UStaticMeshComponent* Part,
