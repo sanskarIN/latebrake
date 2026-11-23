@@ -86,6 +86,29 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
         self.assertIn("garageStyles[selectedCar]=before;", self.app)
         self.assertIn("loadGarageAppearance();", self.app)
 
+    def test_future_appearance_version_never_downgrades_saved_file(self):
+        app = self.app
+        load = app.split("static void loadGarageAppearance()",1)[1].split(
+            "static bool saveGarageAppearance()",1)[0]
+        save = app.split("static bool saveGarageAppearance()",1)[1].split(
+            "// A separate additive V4 lap-record",1)[0]
+        edit = app.split("static bool setAppearance(",1)[1].split(
+            "static void cycleAppearance(",1)[0]
+        self.assertIn("IsNewerPreviewAppearanceSchema",self.policy)
+        self.assertIn("PreviewLookFileVersion = 1u;",self.policy)
+        self.assertIn("garageAppearanceReadOnly=true;return;",load)
+        self.assertLess(load.index("IsNewerPreviewAppearanceSchema"),
+                        load.index("ValidatePreviewAppearanceArray"))
+        self.assertIn("if(garageAppearanceReadOnly)return false;",save)
+        self.assertEqual(save.count("newerGarageAppearanceFileOnDisk(file)"),2)
+        self.assertIn("garageAppearanceReadOnly=true;return false;",save)
+        self.assertIn("if(garageAppearanceReadOnly)",edit)
+        self.assertIn("garageStyles[selectedCar]=before;",edit)
+        self.assertIn("NEWER LOOK SAVE: READ ONLY / FILE PRESERVED",app)
+        self.assertIn("selfTestStage=86;",app)
+        self.assertIn("TestFutureSchemaDowngradeGuard();",self.test)
+        self.assertIn("newer saved cosmetic format",self.guide)
+
     def test_independent_tests_and_trial_instructions(self):
         self.assertIn("NAME PreviewGarageStyle", self.cmake)
         self.assertIn("PreviewGarageStyleTests.cpp", self.cmake)

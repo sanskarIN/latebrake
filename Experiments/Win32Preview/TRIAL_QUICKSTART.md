@@ -60,7 +60,13 @@ Changes appear on the showroom car and in the actual 2D race. Appearance
 is saved to `%LOCALAPPDATA%\\LateBrakePreview\\garage-appearance-v1.dat`
 without changing the existing career or UI settings files. Failed saves
 roll back your cosmetic change and show a warning; a corrupt style file
-is ignored safely. Older V5 builds may not recognize newly unlocked
+is ignored safely. If this older trial sees a **newer saved cosmetic format**
+(version greater than 1 with the recognized file identity), it keeps that
+file read-only rather than replacing it with factory defaults. The Garage
+shows **NEWER LOOK SAVE: READ ONLY / FILE PRESERVED**. Use the newer
+compatible build to edit those looks; do not run both builds at once.
+The automated synthetic test does not prove simultaneous-process file
+locking, real Windows disk recovery or migration from a newer version. Older V5 builds may not recognize newly unlocked
 car IDs above 5, so do not downgrade after unlocking cars 7–12.
 
 ## Focus and input safety

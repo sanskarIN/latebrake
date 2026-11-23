@@ -174,6 +174,10 @@ static bool lastHelp=false,lastContrast=false;
 static bool lastPaint=false,lastStripe=false,lastWheels=false;
 static bool testing=false;
 static bool simulateAppearanceSaveFailure=false;
+// A v2+ look file is owned by a newer build. Keep its bytes intact
+// instead of accepting its fallback factory appearance as permission
+// to downgrade the file on the next paint/stripe/rim click.
+static bool garageAppearanceReadOnly=false;
 // Used exclusively by headless tests. A production process cannot enable this.
 static bool simulateProgressSaveFailure=false;
 // Headless self-test reports a coarse failing phase through the process exit
@@ -461,13 +465,31 @@ static bool garageAppearancePaths(char* dir,char* file,char* temp){
         joinPath(file,440,dir,"garage-appearance-v1.dat")&&
         joinPath(temp,440,dir,"garage-appearance-v1.tmp");
 }
+// Revalidate the on-disk version before writes as well as on startup.
+// A newer preview might have updated the file since this process launched.
+static bool newerGarageAppearanceFileOnDisk(const char* file){
+    HANDLE h=CreateFileA(file,0x80000000u,1,0,3,0,0);
+    if(h==(HANDLE)-1||!h)return false;
+    unsigned int header[2]={};DWORD got=0;
+    const BOOL ok=ReadFile(h,header,sizeof(header),&got,0);
+    CloseHandle(h);
+    return ok&&got==sizeof(header)&&
+        latebrake_preview::IsNewerPreviewAppearanceSchema(header[0],header[1]);
+}
 static void loadGarageAppearance(){
     char dir[400],file[440],tmp[440];if(!garageAppearancePaths(dir,file,tmp))return;
     HANDLE h=CreateFileA(file,0x80000000u,1,0,3,0,0);
     if(h==(HANDLE)-1||!h)return;
     GarageAppearanceFile d={};DWORD got=0;
     BOOL ok=ReadFile(h,&d,sizeof(d),&got,0);CloseHandle(h);
-    if(!ok||got!=sizeof(d)||d.magic!=0x3147424Cu||d.version!=1u||
+    // A future format may be larger OR shorter than our known record;
+    // its first two 32-bit fields are enough to forbid destructive writes.
+    if(ok&&got>=sizeof(unsigned int)*2u&&
+       latebrake_preview::IsNewerPreviewAppearanceSchema(d.magic,d.version)){
+        garageAppearanceReadOnly=true;return;
+    }
+    if(!ok||got!=sizeof(d)||d.magic!=latebrake_preview::PreviewLookFileMagic||
+       d.version!=latebrake_preview::PreviewLookFileVersion||
        !latebrake_preview::ValidatePreviewAppearanceArray(d.cars)||
        d.checksum!=latebrake_preview::PreviewAppearanceChecksum(
            d.magic,d.version,d.cars))return;
@@ -475,10 +497,18 @@ static void loadGarageAppearance(){
         garageStyles[i]=d.cars[i];
 }
 static bool saveGarageAppearance(){
+    if(garageAppearanceReadOnly)return false;
     if(testing)return !simulateAppearanceSaveFailure;
     char dir[400],file[440],tmp[440];if(!garageAppearancePaths(dir,file,tmp))return false;
+    // Repeat the version check at the mutation boundary; a newer
+    // program could have updated the file after our original load.
+    if(newerGarageAppearanceFileOnDisk(file)){
+        garageAppearanceReadOnly=true;return false;
+    }
     CreateDirectoryA(dir,0);
-    GarageAppearanceFile d={};d.magic=0x3147424Cu;d.version=1u;
+    GarageAppearanceFile d={};
+    d.magic=latebrake_preview::PreviewLookFileMagic;
+    d.version=latebrake_preview::PreviewLookFileVersion;
     for(int i=0;i<latebrake_preview::PreviewCarCount;i++)
         d.cars[i]=garageStyles[i];
     if(!latebrake_preview::ValidatePreviewAppearanceArray(d.cars))return false;
@@ -490,6 +520,12 @@ static bool saveGarageAppearance(){
     const bool flushed=complete&&FlushFileBuffers(h)!=0;
     const bool closed=CloseHandle(h)!=0;
     if(!flushed||!closed){DeleteFileA(tmp);return false;}
+    // A best-effort second version check immediately before replacement.
+    // This is not a cross-process file lock; don't run two preview versions
+    // against the same account directory concurrently.
+    if(newerGarageAppearanceFileOnDisk(file)){
+        garageAppearanceReadOnly=true;DeleteFileA(tmp);return false;
+    }
     if(!MoveFileExA(tmp,file,0x1u|0x8u)){
         DeleteFileA(tmp);return false;
     }
@@ -542,12 +578,17 @@ static void observeCompletedLap(float duration){
 static void message(const char* t){int i=0;while(t[i]&&i<70){toast[i]=t[i];++i;}toast[i]=0;toastTime=2.8f;}
 static bool setAppearance(int category,unsigned int choice){
     if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(selectedCar))return false;
+    if(garageAppearanceReadOnly){
+        message("NEWER LOOK SAVE: READ ONLY / NO OVERWRITE");return false;
+    }
     const auto before=garageStyles[selectedCar];
     if(!latebrake_preview::ChangePreviewAppearance(
          garageStyles[selectedCar],category,choice))return false;
     if(!saveGarageAppearance()){
         garageStyles[selectedCar]=before;
-        message("LOOK NOT SAVED / CHECK LOCAL STORAGE");
+        message(garageAppearanceReadOnly?
+            "NEWER LOOK SAVE: READ ONLY / NO OVERWRITE":
+            "LOOK NOT SAVED / CHECK LOCAL STORAGE");
         return false;
     }
     message("CUSTOM LOOK SAVED FOR THIS CAR");
@@ -1074,7 +1115,9 @@ static void renderMenuV3(){
     }else if(page==GARAGE){
         navActiveTag("12 VEHICLE SHOWROOM");
         text(48,91,"GARAGE",CREAM(),4);
-        hint(49,123,"TWELVE ORIGINAL CARS / FREE LOOK CUSTOMIZATION");
+        hint(49,123,garageAppearanceReadOnly?
+            "NEWER LOOK SAVE: READ ONLY / FILE PRESERVED":
+            "TWELVE ORIGINAL CARS / FREE LOOK CUSTOMIZATION");
         const int pageNumber=selectedCar/latebrake_preview::PreviewCarsPerPage;
         uiButton(49,143,165,23,"< PREVIOUS",false);
         uiButton(240,143,169,23,"NEXT >",false);
@@ -1860,6 +1903,16 @@ static bool selftest(){
     if(setAppearance(0,2u)||garageStyles[9].Paint!=5u)return false;
     simulateAppearanceSaveFailure=false;
     garageStyles[9]=oldLook;
+    selfTestStage=86;
+    // No disk I/O occurs in --self-test: exercise the actual mutation
+    // path to confirm future cosmetic data is never rewritten or staged.
+    garageAppearanceReadOnly=true;
+    const auto futureLook=garageStyles[9];
+    if(setAppearance(0,6u)||saveGarageAppearance()||
+       garageStyles[9].Paint!=futureLook.Paint||
+       garageStyles[9].Vinyl!=futureLook.Vinyl||
+       garageStyles[9].Wheels!=futureLook.Wheels)return false;
+    garageAppearanceReadOnly=false;
     if(latebrake_preview::PreviewAppearanceOptionCount(99)!=0u||
        setAppearance(0,999u))return false;
     // New page must expose the upper six IDs; locked cars must not race.

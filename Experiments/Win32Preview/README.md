@@ -51,7 +51,12 @@ physical handling or award credits.
 A separate versioned `garage-appearance-v1.dat` is checksum validated,
 bounded and written with a flushed atomic replacement; an unsuccessful
 cosmetic save reverts the in-memory change rather than falsely showing
-it as saved. No existing career.dat or settings.dat format was modified;
+it as saved. A recognized newer-version appearance record (v2+) becomes
+read-only in an old v1 executable: load and the subsequent disk-write
+boundary both detect its higher schema, and the Garage tells players why
+cosmetic edits are blocked. This prevents normal version downgrades but
+is **not** an inter-process file lock; do not run different preview builds
+simultaneously. No existing career.dat or settings.dat format was modified;
 the existing 32-bit V2 ownership mask supports the appended twelve IDs,
 but an older build that only understood six cars may not understand
 new car IDs when downgrading. Existing Windows CI exercises a native

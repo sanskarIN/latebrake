@@ -12,6 +12,16 @@ inline constexpr int PreviewCarsPerPage = 6;
 inline constexpr int PreviewPaintCount = 8;
 inline constexpr int PreviewVinylCount = 3;
 inline constexpr int PreviewWheelCount = 3;
+// Keep the v1 cosmetics filename stable but never downgrade a recognized
+// future record. This must be checked BEFORE a v1 save replaces the file.
+inline constexpr unsigned int PreviewLookFileMagic = 0x3147424Cu;
+inline constexpr unsigned int PreviewLookFileVersion = 1u;
+constexpr bool IsNewerPreviewAppearanceSchema(
+    unsigned int magic, unsigned int version) noexcept
+{
+    return magic == PreviewLookFileMagic &&
+           version > PreviewLookFileVersion;
+}
 inline constexpr unsigned int PreviewPaintPalette[PreviewPaintCount] = {
     0xF65745u, 0xF0C54Du, 0x44D8CEu, 0xB67FFFu,
     0xF0F0F2u, 0xFD70B3u, 0x4388F5u, 0x4FE0A3u

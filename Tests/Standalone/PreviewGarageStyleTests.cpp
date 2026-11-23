@@ -117,6 +117,27 @@ void TestIntegrityAndPerCarIsolation()
           "one invalid style must reject the entire persisted record");
 }
 
+void TestFutureSchemaDowngradeGuard()
+{
+    using namespace latebrake_preview;
+    static_assert(PreviewLookFileMagic == 0x3147424Cu);
+    static_assert(PreviewLookFileVersion == 1u);
+    static_assert(IsNewerPreviewAppearanceSchema(PreviewLookFileMagic,2u));
+    static_assert(!IsNewerPreviewAppearanceSchema(PreviewLookFileMagic,1u));
+    Check(!IsNewerPreviewAppearanceSchema(PreviewLookFileMagic,0u),
+          "legacy/invalid appearance version is not an asserted future format");
+    Check(!IsNewerPreviewAppearanceSchema(PreviewLookFileMagic,1u),
+          "same schema may be overwritten after validation");
+    for (unsigned int future=2u;future<100000u;++future)
+        Check(IsNewerPreviewAppearanceSchema(PreviewLookFileMagic,future),
+              "future version cannot be downgraded by old trial");
+    Check(IsNewerPreviewAppearanceSchema(PreviewLookFileMagic,0xffffffffu),
+          "max unsigned future version is still protected");
+    Check(!IsNewerPreviewAppearanceSchema(0u,0xffffffffu) &&
+          !IsNewerPreviewAppearanceSchema(PreviewLookFileMagic ^ 1u,2u),
+          "unrelated magic is not misinterpreted as a future schema");
+}
+
 void TestDeterministicStress()
 {
     using namespace latebrake_preview;
@@ -150,6 +171,7 @@ int main()
     TestCatalogAndOriginalIDs();
     TestChoicesCannotEscapeBounds();
     TestIntegrityAndPerCarIsolation();
+    TestFutureSchemaDowngradeGuard();
     TestDeterministicStress();
     std::cout << "12-car 2D showroom and persisted livery policy passed.\n";
     return EXIT_SUCCESS;
