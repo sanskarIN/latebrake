@@ -69,6 +69,7 @@ struct DesktopMenuMouseAvailability final
 {
     bool DetailsUp = false;
     bool DetailsDown = false;
+    bool Activate = true; // Non-Garage pages keep their existing SELECT path.
 };
 
 inline DesktopMenuMouseAvailability AvailableDesktopMenuDetails(
@@ -84,6 +85,19 @@ inline DesktopMenuMouseAvailability AvailableDesktopMenuDetails(
     return {window.HasPrevious, window.HasNext};
 }
 
+// Shared render and hit-test state. Only the Garage SELECT button becomes
+// unavailable when the viewed vehicle is locked, already equipped, or the
+// session cannot safely write a different equipped car to SaveGame.
+inline DesktopMenuMouseAvailability AvailableDesktopMenuActions(
+    MenuPage page, const MenuDetailPager& pager,
+    bool canEquipGarageViewed) noexcept
+{
+    auto availability = AvailableDesktopMenuDetails(page, pager);
+    if (page == MenuPage::Garage)
+        availability.Activate = canEquipGarageViewed;
+    return availability;
+}
+
 inline bool DesktopMenuMouseActionEnabled(
     DesktopMenuMouseAction action,
     DesktopMenuMouseAvailability availability) noexcept
@@ -93,6 +107,7 @@ inline bool DesktopMenuMouseActionEnabled(
     case DesktopMenuMouseAction::PreviousPage:
     case DesktopMenuMouseAction::NextPage:
     case DesktopMenuMouseAction::Activate:
+        return availability.Activate;
     case DesktopMenuMouseAction::Close:
         return true;
     case DesktopMenuMouseAction::DetailsUp:

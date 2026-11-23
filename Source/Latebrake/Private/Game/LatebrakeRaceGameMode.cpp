@@ -2043,6 +2043,23 @@ bool ALatebrakeRaceGameMode::CanBrowseGarage() const
     return Menu.IsOpen() && Menu.Current() == latebrake::MenuPage::Garage;
 }
 
+latebrake::GarageEquipUiState
+ALatebrakeRaceGameMode::GetGarageEquipUiState() const
+{
+    return latebrake::EvaluateGarageEquipUi(
+        Menu.IsOpen(), Menu.Current(),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended(),
+        bFutureSaveSchema,
+        latebrake::CanEditGarageDuringRace(bCareerRace, Race),
+        latebrake::CanEquipGalleryVehicle(Garage, GarageGallery),
+        GarageGallery.Viewed(), Garage.SelectedVehicle());
+}
+
+bool ALatebrakeRaceGameMode::CanEquipGarageViewed() const
+{
+    return latebrake::CanActivateGarageEquip(GetGarageEquipUiState());
+}
+
 void ALatebrakeRaceGameMode::GarageBrowseNext()
 {
     if (!CanBrowseGarage()) return;

@@ -409,3 +409,28 @@ On a real UE5.8 desktop verify text and swatch legibility at 900x600,
 1280x720, 1920x1080 and high DPI, including disabled locked-car
 preview and owned-but-unequipped car changes. Actual Canvas font fit
 and paint materials remain unverified until on-device testing.
+
+## Desktop Unreal garage Equip button eligibility (source-level)
+
+The **existing** Unreal 3D Canvas menu's bottom-right navigation dock now
+uses an explicit **EQUIP CAR** button on the Garage page rather than a generic
+**SELECT** label. When the viewed car is already equipped, locked, newer-save
+read-only, a career race is still in progress, or application/manual focus
+is suspended, the same button shows its concrete status and is disabled for
+mouse input. Browse and Close remain available for read-only inspection;
+non-Garage menu pages keep their existing SELECT action. No new paid flow,
+owner privileges, car IDs, SaveGame properties, physics or network behavior.
+Keyboard Enter/gamepad menu-select still reach the authoritative GameMode
+method and receive its existing denial message rather than receiving an
+untrusted UI-side ownership bypass.
+
+The HUD draws and hit-tests the **same** availability policy. Check in a real
+UE5.8 desktop viewport that 900×600, 1280×720, ultrawide and 4K layouts show
+a readable enabled EQUIP CAR CTA for owned unequipped cars; a locked preview
+shows LOCKED CAR, a selected owned car shows EQUIPPED, an active career shows
+CAREER LOCK, a future SaveGame shows NEWER SAVE and a backgrounded/suspended
+session shows SUSPENDED. Click disabled targets and verify **no** equip,
+spending, player physics change or SaveGame mutation; use keyboard/gamepad
+after returning to a valid Garage and verify the authoritative save/rollback
+path remains intact. Portable strict tests and Python bindings do **not**
+replace real Unreal Editor build or hardware visual QA.

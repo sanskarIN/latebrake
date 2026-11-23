@@ -2871,3 +2871,18 @@ else()
 endif()
 add_test(NAME PreviewGarageBottomAction
     COMMAND latebrake_preview_garage_bottom_action_tests)
+
+# Production Unreal 3D Garage: bound, ownership-aware EQUIP mouse CTA.
+# Portable test uses exactly the same pure policy as GameMode and Canvas HUD.
+add_executable(latebrake_garage_equip_ui_tests
+    GarageEquipUiTests.cpp)
+target_include_directories(latebrake_garage_equip_ui_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_equip_ui_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_equip_ui_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_equip_ui_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageEquipUi COMMAND latebrake_garage_equip_ui_tests)

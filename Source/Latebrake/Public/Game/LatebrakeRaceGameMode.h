@@ -21,6 +21,7 @@
 #include "Garage/GarageState.h"
 #include "Garage/GarageAppearance.h"
 #include "Garage/GarageGalleryCursor.h"
+#include "Garage/GarageEquipUiPolicy.h"
 #include "Garage/GaragePurchaseConfirmation.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
@@ -155,6 +156,8 @@ public:
         return GarageLooks.Get(GarageGallery.Viewed());
     }
     bool CanBrowseGarage() const;
+    latebrake::GarageEquipUiState GetGarageEquipUiState() const;
+    bool CanEquipGarageViewed() const;
     void GarageBrowseNext();
     void GarageBrowsePrevious();
     void GarageSelectViewedVehicle();
