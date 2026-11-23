@@ -35,6 +35,29 @@ source branches share a candidate PR.** Genuine Unreal gameplay
 requires the separately licensed-engine Windows Editor/UHT and native
 packaging QA described in the production build documentation.
 
+## Twelve-car garage and per-vehicle appearance (draft 2D trial)
+
+The standalone preview now offers **12 selectable fictional cars** in
+two accessible pages, retaining the original six save IDs. Additional
+cars require earned credits; existing progression still determines actual
+race permissions, and different car profiles affect the 2D simulation.
+The enlarged garage shows live per-car power/speed/grip and a visually
+distinct original silhouette. Each model can independently choose
+8 paint colors, clean/center/twin vinyl, and street/sport/track rims,
+visible both in the showroom and on the actual 2D track. Choose with
+the mouse or V/B/N keys. These are **cosmetic only** and never modify
+physical handling or award credits.
+
+A separate versioned `garage-appearance-v1.dat` is checksum validated,
+bounded and written with a flushed atomic replacement; an unsuccessful
+cosmetic save reverts the in-memory change rather than falsely showing
+it as saved. No existing career.dat or settings.dat format was modified;
+the existing 32-bit V2 ownership mask supports the appended twelve IDs,
+but an older build that only understood six cars may not understand
+new car IDs when downgrading. Existing Windows CI exercises a native
+standalone game self-test and strict portable C++20 + source contracts.
+No tested UE Engine 5.8 3D car models or mesh customization are implied.
+
 ## V5 development changes
 
 - **Mode-correct rival sessions:** Time Attack (one lap) and Checkpoint Rush (two laps) now run as actual solo clock events; no AI cars are initialized, advanced, collision-tested or drawn in these modes. Circuit Race (three laps) and Rival Duel (two laps) retain three local scripted AI drivers. A per-attempt rival-count snapshot prevents menu selections from silently changing active physics, and the minimap explicitly labels solo/rival events. Rival Duel detects any rival that completes the required laps, rather than assuming a fixed AI slot is always fastest. Strict portable mode-policy tests and Windows synthetic self-tests cover this source change. This does not qualify real Windows hardware, AI quality or the Unreal game. [Mode-isolation QA](../../docs/PREVIEW_SOLO_EVENT_ISOLATION_QA.md).
@@ -72,6 +95,9 @@ packaging QA described in the production build documentation.
 | Driver guide | F1 | F1 |
 | Steering assist | J | J |
 | High contrast | H | H |
+| Garage paint (next) | V | Mouse |
+| Garage vinyl (next) | B | Mouse |
+| Garage wheels (next) | N | Mouse |
 
 The input fallback is designed for optional XInput devices; compatibility with specific gamepads, adapters, Bluetooth setups, trigger ranges, and Windows graphics/drivers **requires hands-on Windows testing**.
 

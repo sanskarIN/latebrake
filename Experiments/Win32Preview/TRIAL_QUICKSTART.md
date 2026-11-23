@@ -41,6 +41,28 @@ display or drive correctly on your PC.
    A real installation, uninstall and saved-career persistence test
    must be performed on your own Windows account.
 
+## Twelve original cars and personal paint styling
+
+Open **YOUR GARAGE** from the home screen. There are now **12 fictional
+cars** arranged in two pages of six. Use the previous/next page buttons,
+arrow keys, or click a car row. The first six cars preserve their old IDs;
+the extra six have separate unlock prices and driving characteristics.
+The garage shows actual acceleration, maximum speed and grip differences,
+with a live top-down silhouette for the selected car. Your chosen car must
+be unlocked with career credits before it can enter a race.
+
+Customize each car independently in the garage. Click one of **8 paint
+swatches**, choose **clean / center / twin** racing stripes, and choose
+**street / sport / track** wheels. Alternatively press **V** to cycle paint,
+**B** to cycle stripes, or **N** to cycle wheels. These are **free visual
+changes only**, not performance upgrades or real 3D vehicle assets.
+Changes appear on the showroom car and in the actual 2D race. Appearance
+is saved to `%LOCALAPPDATA%\\LateBrakePreview\\garage-appearance-v1.dat`
+without changing the existing career or UI settings files. Failed saves
+roll back your cosmetic change and show a warning; a corrupt style file
+is ignored safely. Older V5 builds may not recognize newly unlocked
+car IDs above 5, so do not downgrade after unlocking cars 7–12.
+
 ## Focus and input safety
 
 Switching away from the preview automatically pauses a running race. When

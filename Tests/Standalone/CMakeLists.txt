@@ -2665,3 +2665,19 @@ else()
 endif()
 add_test(NAME PreviewKeyboardFocusGuard
     COMMAND latebrake_preview_keyboard_focus_guard_tests)
+
+# Original native Windows 2D trial: strict append-only 12-car catalog,
+# allocation-free per-car paint/vinyl/rim policy and save integrity.
+add_executable(latebrake_preview_garage_style_tests
+    PreviewGarageStyleTests.cpp)
+target_include_directories(latebrake_preview_garage_style_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_garage_style_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_garage_style_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_garage_style_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGarageStyle
+    COMMAND latebrake_preview_garage_style_tests)
