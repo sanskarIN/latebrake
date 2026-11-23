@@ -2795,3 +2795,17 @@ else()
 endif()
 add_test(NAME PreviewGarageSelection
     COMMAND latebrake_preview_garage_selection_tests)
+
+# Responsive Unreal Canvas menu contrast geometry, independent of engine.
+add_executable(latebrake_hud_menu_readable_panel_tests
+    HudMenuReadablePanelTests.cpp)
+target_include_directories(latebrake_hud_menu_readable_panel_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_menu_readable_panel_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_menu_readable_panel_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_menu_readable_panel_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudMenuReadablePanel COMMAND latebrake_hud_menu_readable_panel_tests)
