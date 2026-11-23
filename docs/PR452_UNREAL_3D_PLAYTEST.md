@@ -246,3 +246,46 @@ GPU drew those triangles or that the physical wheels behave well.
 After changing an owned car's rim style and equipping it, compare
 this readout with the selected Style indicator, the 4/4 source-wheel
 readiness, the build-attempt counters and **actual screenshots**.
+
+## Live browsed-car 3D showroom (visual only, still needs real GPU QA)
+
+The old Garage catalogue drew the browsed car as a Canvas schematic
+while the full source-generated Unreal Pawn kept showing the
+authoritatively equipped vehicle. Browsing a locked car did not change
+the actual body in the world. This source change now applies the
+VIEWED car's original 3D body, four non-colliding wheels, saved
+paint, stripes and rim shapes as a transient cosmetic preview.
+
+The Pawn keeps independent authoritative GarageVehicleId and
+CurrentGarageLook values. Preview presentation cannot change owned
+vehicles, selected driving identity, physical forces, saved credits,
+career results or the SaveGame appearance schema. The GameMode
+updates the preview synchronously when browsing the six showroom
+cars, changing menus, equipping or styling a vehicle. A locked car
+remains explicitly locked and cannot be customized or driven.
+
+Owner testing sequence:
+
+1. Start a normal race, then open Garage and browse all six cars.
+   Check the live 3D body changes in the background along with the
+   text catalogue; if the fallback cube appears, report it honestly.
+2. Browse a locked car without unlocking. Confirm that car can be
+   VIEWED but is still not owned or equipped for the next race.
+3. Browse an owned parked car, change paint, stripe and rim. Verify
+   these visually change the viewed car, but the driving car's
+   current performance and selected ID remain unchanged.
+4. Equip a different owned car. Confirm selection/save authority is
+   handled by the normal equipped-car flow, not by just browsing.
+5. Leave Garage with PAGE navigation or TAB close. The selected
+   car must be restored before the world is unpaused for driving.
+6. Repeat with denied/failed appearance writes, quick-car hotkey,
+   focus suspensions, active-race pause and recovery/restart.
+7. In Garage confirm the LIVE SHOWROOM diagnostic reports VIEWED CAR
+   and identifies SOURCE 3D COMPONENTS versus LEGACY CUBE FALLBACK.
+   These are source observations, not shader or framerate proof.
+
+This is an asset-light source integration rather than a finished UMG
+showroom scene. A genuine Unreal 5.8 Editor/UHT compile, cooked
+Win64 executable, visual screenshots and owner gameplay verification
+are still required. Pure C++ policy tests cover menu enter/exit and
+the full six-car, eight-paint, three-stripe, three-rim state space.
