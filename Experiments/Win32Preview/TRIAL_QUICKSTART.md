@@ -190,3 +190,13 @@ Test rapid repeated clicks, holding U continuously, insufficient
 credits, page changes, mouse/keyboard/controller, timeout, app focus
 loss, and failed saves. Headless tests simulate time/focus changes
 without actual Windows user interaction; verify on a real machine.
+
+## Precision timing display
+
+The 2D HUD now displays elapsed time, best lap, stored personal best
+and result time to **hundredths of a second** (e.g. 65.99), not
+truncated whole seconds. An unset best or stored PB reads **--.--**.
+Personal best millisecond records are rounded deterministically into
+hundredths for display; their actual saved millisecond values and the
+race clock, credited gates, rewards and physics remain unchanged.
+The window still presents experimental virtual PX/S for speed.

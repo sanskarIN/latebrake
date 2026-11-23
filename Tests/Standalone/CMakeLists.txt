@@ -2825,3 +2825,19 @@ else()
 endif()
 add_test(NAME PreviewGaragePurchaseConsent
     COMMAND latebrake_preview_purchase_consent_tests)
+
+# Win32 trial: actual timing HUD must show centiseconds and never
+# fabricate record availability. Portable source and Win64 executable.
+add_executable(latebrake_preview_race_time_text_tests
+    PreviewRaceTimeTextTests.cpp)
+target_include_directories(latebrake_preview_race_time_text_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_race_time_text_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_race_time_text_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_race_time_text_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewRaceTimeText
+    COMMAND latebrake_preview_race_time_text_tests)

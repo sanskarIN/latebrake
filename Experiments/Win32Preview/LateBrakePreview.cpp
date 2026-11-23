@@ -7,6 +7,7 @@
 #include "PreviewGarageStyle.h"
 #include "PreviewGarageSelection.h"
 #include "PreviewGaragePurchaseConsent.h"
+#include "PreviewRaceTimeText.h"
 #include "PreviewKeyboardFocusGuard.h"
 #include "PreviewDrivingCoach.h"
 
@@ -1347,7 +1348,11 @@ static void renderRaceHUDV3(){
     text(31,115,"LAP",MUTED(),2);number(118,109,race.lap,CREAM(),3);
     text(164,122,"/",MUTED(),1);number(180,117,totalLaps,GOLD(),2);
     hint(31,154,"NEXT CHECKPOINT");number(202,148,race.nextGate+1,CYAN(),2);
-    hint(31,181,"ELAPSED SECONDS");number(181,177,(int)race.elapsed,CREAM(),2);
+    hint(31,181,"ELAPSED SECONDS");
+    char liveTime[16]={};
+    latebrake_preview::FormatPreviewRaceSeconds(
+        race.elapsed,true,liveTime);
+    text(130,177,liveTime,CREAM(),2);
     if(race.pitHold>0.0f){
         hint(31,207,"PIT SERVICE");progressBar(133,203,93,12,(int)(race.pitHold*40.0f),CYAN());
     }else hint(31,207,"PIT: STOP + HOLD E / Y");
@@ -1356,10 +1361,16 @@ static void renderRaceHUDV3(){
     text(744,108,carNames[selectedCar],CREAM(),1);
     hint(744,135,"NITRO");progressBar(806,134,122,13,(int)race.nitro,CYAN());
     hint(744,157,"DAMAGE");progressBar(806,156,122,13,(int)race.damage,color(240,113,89));
-    hint(744,188,"BEST LAP");number(837,184,(int)race.best,GOLD(),2);
+    hint(744,188,"BEST LAP");
+    char bestLap[16]={};
+    latebrake_preview::FormatPreviewRaceSeconds(
+        race.best,race.best>0.0f,bestLap);
+    text(837,184,bestLap,GOLD(),2);
     hint(743,212,"TRACK PB");
-    if(personalTrackBestMs[selectedTrack]>0)number(842,209,personalTrackBestMs[selectedTrack]/1000,CYAN(),2);
-    else text(847,214,"--",MUTED(),1);
+    char savedPb[16]={};
+    latebrake_preview::FormatPreviewRecordMilliseconds(
+        personalTrackBestMs[selectedTrack],savedPb);
+    text(842,209,savedPb,CYAN(),2);
     tile(18,506,225,62,true);
     hint(34,516,"SPEED / SIMULATED");number(36,537,(int)absf(race.speed),CREAM(),3);
     // This freestanding GDI physics loop measures virtual canvas pixels
@@ -1427,8 +1438,13 @@ static void resultsOverlayV3(){
         race.won&&!progressSaveFailed?CYAN():GOLD(),3);
     hint(264,231,progressSaveFailed?"REWARD NOT SAVED. CHECK LOCAL STORAGE.":
         race.won?"CAREER WIN SAVED ON THIS PC.":"YOU CAN RETRY THE SAME EVENT.");
-    hint(264,259,"RACE TIME");number(468,253,(int)race.elapsed,CREAM(),3);
-    hint(264,289,"BEST LAP");number(468,286,(int)race.best,CYAN(),2);
+    char finishTime[16]={},finishBest[16]={};
+    latebrake_preview::FormatPreviewRaceSeconds(
+        race.elapsed,true,finishTime);
+    latebrake_preview::FormatPreviewRaceSeconds(
+        race.best,race.best>0.0f,finishBest);
+    hint(264,259,"RACE TIME");text(468,253,finishTime,CREAM(),3);
+    hint(264,289,"BEST LAP");text(468,286,finishBest,CYAN(),2);
     hint(264,322,"REWARD CREDITS");number(476,315,bonusCredits,GOLD(),3);
     hint(264,344,"PIT STOPS");number(383,341,race.pitStops,CYAN(),1);
     uiButton(263,359,429,43,"ENTER  RETRY EVENT",true);
@@ -2195,6 +2211,17 @@ static bool selftest(){
     unlockSelectedCar();
     if(credits!=550||!(ownedMask&(1<<3))||selectedCar!=0)return false;
     selectedCar=0;ownedMask=1;setPage(HOME);
+    selfTestStage=91;
+    // Native headless regression uses the real HUD formatter. Times
+    // shown in Results/Laps are centiseconds, not truncated seconds.
+    char timeSample[16]={};
+    if(!latebrake_preview::FormatPreviewRaceSeconds(
+           65.99f,true,timeSample) ||
+       timeSample[0]!='6'||timeSample[1]!='5'||
+       timeSample[2]!='.'||timeSample[3]!='9'||
+       timeSample[4]!='9'||timeSample[5]!=0)return false;
+    if(latebrake_preview::FormatPreviewRecordMilliseconds(0,timeSample) ||
+       timeSample[0]!='-')return false;
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);
 }
