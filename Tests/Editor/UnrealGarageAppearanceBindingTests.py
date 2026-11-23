@@ -97,7 +97,9 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "Look.Wheels == 2u",
             "FrontLeftSpoke.Get(), FrontRightSpoke.Get()",
             "Tint(Rim, RimRgb);",
-            "if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(GarageVehicleId)",
+            "if (HasActorBegunPlay())",
+            "if (bRimsChanged) RebuildOriginalVehicleVisual(GarageVehicleId);",
+            "ApplyVehiclePaintRecipe(GarageVehicleId);",
         ):
             self.assertIn(token, self.pawn)
         self.assertIn("Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()))",
