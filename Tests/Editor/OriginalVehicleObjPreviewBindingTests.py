@@ -31,7 +31,6 @@ class OriginalVehicleObjPreviewBindingTests(unittest.TestCase):
         self.assertIn("$GITHUB_SHA",self.workflow)
         self.assertIn("UNVERIFIED-LateBrake-3D-source-OBJ-",self.workflow)
         self.assertNotIn("actions/create-release",self.workflow)
-        self.assertIn("Name",self.workflow) if False else None
         self.assertIn("NAME OriginalVehicleObjPreview",self.cmake)
     def test_docs_do_not_misrepresent_as_unreal_game(self):
         self.assertIn("NOT a running Unreal Engine",self.docs)

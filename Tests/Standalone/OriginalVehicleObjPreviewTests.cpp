@@ -68,14 +68,25 @@ int main()
             for(const char* group:OriginalPreviewParts)
                 Check(o.find(std::string("g ")+group+"\n")!=std::string::npos,
                     "OBJ retains body and four independently authored wheels");
-            for(const char* material:OriginalPreviewMaterials)
+            for(std::size_t material=0;
+                material<OriginalPreviewMaterials.size();++material)
             {
-                Check(o.find(std::string("usemtl ")+material+"\n")!=
+                const auto* name=OriginalPreviewMaterials[material];
+                bool authored=false;
+                for(const auto& triangle:built.Mesh.Triangles)
+                    if(static_cast<std::size_t>(triangle.Material)==material)
+                    {
+                        authored=true;
+                        break;
+                    }
+                const bool objUsesMaterial=
+                    o.find(std::string("usemtl ")+name+"\n")!=
+                        std::string::npos;
+                Check(objUsesMaterial==authored,
+                    "OBJ uses exactly authored source material groups, not fabricated ones");
+                Check(m.find(std::string("newmtl ")+name+"\n")!=
                         std::string::npos,
-                    "actual source car uses each original material group");
-                Check(m.find(std::string("newmtl ")+material+"\n")!=
-                        std::string::npos,
-                    "MTL provides each original color surface");
+                    "MTL always provides the full ten-color material palette");
             }
             Check(CountLines(m,"newmtl ")==OriginalVehicleSectionCount,
                 "10 material definitions, no duplicate or fake identity");
