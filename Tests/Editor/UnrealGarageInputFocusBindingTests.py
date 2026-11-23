@@ -65,6 +65,8 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
                 self.assertLess(refusal,clear)
                 self.assertLess(clear,dispatch)
                 self.assertIn("if (!Mode ||",function)
+                self.assertIn("Mode->IsFocusLossGuardActive()",function[:refusal])
+                self.assertIn("Mode->IsManualRacePauseActive()",function[:refusal])
                 self.assertNotIn("Mode->" + action + "();",function[:refusal])
 
     def test_paused_e_q_u_i_and_hidden_selection_authority(self):
@@ -110,6 +112,7 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
                 self.assertIn("UGameplayStatics::IsGamePaused(this)",body)
                 self.assertIn("ManualPause.IsSuspended()",body)
                 self.assertIn("AppFocusGuard.IsSuspended()",body)
+                self.assertIn("UGameplayStatics::IsGamePaused(this),\n        ManualPause.IsSuspended()",body)
                 self.assertIn("GaragePurchaseConfirm.Reset();",body)
                 self.assertIn("return;",body)
         self.assertIn("bool standaloneRacePaused = false",self.policy)
@@ -138,12 +141,27 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
                 self.assertLess(section.index("if (bFutureSaveSchema)"),
                                 section.index(mutation))
 
+    def test_external_suspension_blocks_mutation_but_preserves_preview(self):
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        for method in ("GarageSelectViewedVehicle", "GarageCycleAppearance"):
+            signature = ("void ALatebrakeRaceGameMode::" + method + "(")
+            body = mode.split(signature,1)[1].split("\n}\n",1)[0]
+            self.assertIn("ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()",body)
+            self.assertIn("return;",body)
+        permission = mode.split("bool ALatebrakeRaceGameMode::CanCustomizeGarage()",1)[1].split("\n}\n",1)[0]
+        self.assertIn("!ManualPause.IsSuspended() && !AppFocusGuard.IsSuspended()",permission)
+        preview = mode.split("bool ALatebrakeRaceGameMode::CanBrowseGarage()",1)[1].split("\n}\n",1)[0]
+        self.assertNotIn("AppFocusGuard.IsSuspended()",preview)
+
     def test_input_policy_is_fail_closed_and_pure(self):
         self.assertIn('#include "UI/MenuNavigation.h"',self.policy)
         self.assertIn("inline constexpr bool CanConsumeGarageShortcut",self.policy)
-        self.assertIn("return menuOpen && visiblePage == MenuPage::Garage;",self.policy)
-        self.assertIn("return menuOpen ? visiblePage == MenuPage::Garage",self.policy)
-        self.assertIn(": !standaloneRacePaused;",self.policy)
+        self.assertIn("bool externallySuspended = false",self.policy)
+        self.assertIn("return !externallySuspended && menuOpen &&",self.policy)
+        self.assertIn("return !externallySuspended &&",self.policy)
+        self.assertIn("(menuOpen ? visiblePage == MenuPage::Garage",self.policy)
+        self.assertIn(": !standaloneRacePaused);",self.policy)
         for effect in ("ClearDriverInputs(", "SaveRecords(", "Garage.Unlock(",
                        "Garage.Select(", "SetThrottle(", "AddForce("):
             self.assertNotIn(effect,self.policy)

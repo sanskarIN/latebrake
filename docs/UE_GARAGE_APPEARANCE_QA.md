@@ -258,3 +258,26 @@ F9/F10 browse should still work, but Q, U, I, E, F5–F8 must not
 change in-memory profile state, activate purchase staging, change
 credits or overwrite the newer slot. Legacy and same-version saves
 retain confirmed purchased upgrades with rollback on write failure.
+
+## Explicit pause and focus-loss suspension (P0)
+
+The ordinary Unreal world pause created by opening the Garage must not
+be confused with the independent manual race pause and OS focus-loss
+latches. E/Q/U/I are allowed during a visible, normally paused Garage,
+but **cannot equip, unlock or stage upgrades while either external
+suspension latch is active**, even if a Garage page is subsequently
+shown. Enter/SELECT on a browsed owned vehicle and all F5–F8 appearance
+writes are likewise denied. The desktop customization buttons show
+this disabled state. Read-only showroom inspection still has no economy
+authority. The six shared gamepad garage callbacks reject external
+suspension before touching held race inputs.
+
+Verify in genuine UE5.8 on a real desktop/controller: open Garage while
+normally menu-paused and confirm approved E/Q/U/I, F5–F8 and owned-car
+selection still work; then suspend the race with the standalone pause
+or an OS focus interruption, open/navigate to Garage, and confirm **no
+selection, spending, cosmetic save, or invisible driver-input reset**.
+Resume explicitly and verify the controls become available again.
+Also repeat for another menu page and for a newer read-only SaveGame.
+Portable C++/Python tests cover policy and source order, not engine
+focus-event delivery or controller hardware.

@@ -12,9 +12,11 @@ namespace latebrake
 // edit paint. GameMode independently validates ownership, future SaveGame
 // protection, career race restrictions and current preview selection.
 inline constexpr bool CanConsumeGarageShortcut(
-    bool menuOpen, MenuPage visiblePage) noexcept
+    bool menuOpen, MenuPage visiblePage,
+    bool externallySuspended = false) noexcept
 {
-    return menuOpen && visiblePage == MenuPage::Garage;
+    return !externallySuspended && menuOpen &&
+           visiblePage == MenuPage::Garage;
 }
 
 // The existing E hotkey may cycle owned cars during an eligible quick
@@ -22,12 +24,15 @@ inline constexpr bool CanConsumeGarageShortcut(
 // This is focus, not approval to own or purchase any car.
 inline constexpr bool CanUseGarageVehicleHotkey(
     bool menuOpen, MenuPage visiblePage,
-    bool standaloneRacePaused = false) noexcept
+    bool standaloneRacePaused = false,
+    bool externallySuspended = false) noexcept
 {
-    // A separate Pause key, OS deactivation or manually suspended race
-    // must not grant spending/equip access merely because E/Q/U/I now
-    // execute when Unreal is paused.
-    return menuOpen ? visiblePage == MenuPage::Garage
-                    : !standaloneRacePaused;
+    // Unreal pauses the world for an ordinary open Garage. That world
+    // pause is allowed, but explicit manual-pause/focus-loss latches are
+    // independent safety gates, even if the Garage is later opened.
+    // A suspended session cannot stage purchases or equip a different car.
+    return !externallySuspended &&
+        (menuOpen ? visiblePage == MenuPage::Garage
+                  : !standaloneRacePaused);
 }
 } // namespace latebrake

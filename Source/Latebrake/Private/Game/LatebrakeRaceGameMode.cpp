@@ -2068,6 +2068,11 @@ void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()
         GarageFeedback = TEXT("Open Garage to select a previewed vehicle.");
         return;
     }
+    if (ManualPause.IsSuspended() || AppFocusGuard.IsSuspended())
+    {
+        GarageFeedback = TEXT("Garage selection suspended: resume the race first.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GarageFeedback = TEXT("Finish or exit this career race before equipping a vehicle.");
@@ -2119,8 +2124,8 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
     // change the equipped vehicle while the world is menu-paused.
     if (!latebrake::CanUseGarageVehicleHotkey(
         Menu.IsOpen(), Menu.Current(),
-        UGameplayStatics::IsGamePaused(this) ||
-            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+        UGameplayStatics::IsGamePaused(this),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GarageFeedback = TEXT("Open Garage before selecting another vehicle.");
         return;
@@ -2169,6 +2174,7 @@ bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
 {
     return Menu.IsOpen() &&
         Menu.Current() == latebrake::MenuPage::Garage &&
+        !ManualPause.IsSuspended() && !AppFocusGuard.IsSuspended() &&
         latebrake::CanEditGarageDuringRace(bCareerRace, Race) &&
         !bFutureSaveSchema &&
         Garage.Owns(Garage.SelectedVehicle()) &&
@@ -2182,6 +2188,11 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
     if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
     {
         GarageFeedback = TEXT("Open the Garage menu to customize your car.");
+        return;
+    }
+    if (ManualPause.IsSuspended() || AppFocusGuard.IsSuspended())
+    {
+        GarageFeedback = TEXT("Customization suspended: resume the race first.");
         return;
     }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
@@ -2264,8 +2275,8 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
     // race pause/focus loss must never authorize hidden paid operations.
     if (!latebrake::CanUseGarageVehicleHotkey(
         Menu.IsOpen(), Menu.Current(),
-        UGameplayStatics::IsGamePaused(this) ||
-            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+        UGameplayStatics::IsGamePaused(this),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Vehicle purchase temporarily unavailable while race paused.");
@@ -2343,8 +2354,8 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
     // race pause/focus loss must never authorize hidden paid operations.
     if (!latebrake::CanUseGarageVehicleHotkey(
         Menu.IsOpen(), Menu.Current(),
-        UGameplayStatics::IsGamePaused(this) ||
-            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+        UGameplayStatics::IsGamePaused(this),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Engine upgrade temporarily unavailable while race paused.");
@@ -2421,8 +2432,8 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
     // race pause/focus loss must never authorize hidden paid operations.
     if (!latebrake::CanUseGarageVehicleHotkey(
         Menu.IsOpen(), Menu.Current(),
-        UGameplayStatics::IsGamePaused(this) ||
-            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+        UGameplayStatics::IsGamePaused(this),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Grip upgrade temporarily unavailable while race paused.");

@@ -34,6 +34,8 @@ int main()
         const bool accepted = CanConsumeGarageShortcut(true,page);
         Verify(accepted == (page == MenuPage::Garage),
             "only open visible Garage can consume gamepad/keyboard routes");
+        Verify(!CanConsumeGarageShortcut(true,page,true),
+            "focus loss/manual pause forbids even a visible Garage shortcut");
         Verify(CanUseGarageVehicleHotkey(false,page),
             "legacy E car-select remains available with no menu");
         Verify(CanUseGarageVehicleHotkey(true,page) ==
@@ -44,6 +46,10 @@ int main()
         Verify(CanUseGarageVehicleHotkey(true,page,true) ==
                 (page == MenuPage::Garage),
             "visible Garage remains eligible even when engine world paused");
+        Verify(!CanUseGarageVehicleHotkey(true,page,true,true) &&
+               !CanUseGarageVehicleHotkey(true,page,false,true) &&
+               !CanUseGarageVehicleHotkey(false,page,false,true),
+            "an explicit suspension supersedes every menu and engine pause state");
     }
     MenuNavigation navigator;
     Verify(!navigator.IsOpen(), "new navigation starts closed");
@@ -67,6 +73,11 @@ int main()
         Verify(CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current())==(i%4==0),
             "300k menu changes never leak garage actions to driving");
+        Verify(!CanConsumeGarageShortcut(navigator.IsOpen(),
+            navigator.Current(),true) &&
+            !CanUseGarageVehicleHotkey(navigator.IsOpen(),
+            navigator.Current(),true,true),
+            "300k suspension transitions forbid garage input and spending");
         navigator.Close();
         Verify(!CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current()), "close always revokes shortcut authority");

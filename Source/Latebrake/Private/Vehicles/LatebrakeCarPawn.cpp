@@ -2439,7 +2439,9 @@ void ALatebrakeCarPawn::CycleGaragePaint()
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !latebrake::CanConsumeGarageShortcut(
-        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
         return;
     ClearDriverInputs();
     Mode->GarageCyclePaint();
@@ -2452,7 +2454,9 @@ void ALatebrakeCarPawn::CycleGarageStripe()
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !latebrake::CanConsumeGarageShortcut(
-        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
         return;
     ClearDriverInputs();
     Mode->GarageCycleStripe();
@@ -2465,7 +2469,9 @@ void ALatebrakeCarPawn::CycleGarageWheels()
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !latebrake::CanConsumeGarageShortcut(
-        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
         return;
     ClearDriverInputs();
     Mode->GarageCycleWheels();
@@ -2479,7 +2485,9 @@ void ALatebrakeCarPawn::ResetGarageLook()
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !latebrake::CanConsumeGarageShortcut(
-        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
         return;
     ClearDriverInputs();
     Mode->GarageResetAppearance();
@@ -2493,7 +2501,9 @@ void ALatebrakeCarPawn::BrowseGarageNext()
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !latebrake::CanConsumeGarageShortcut(
-        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
         return;
     ClearDriverInputs();
     Mode->GarageBrowseNext();
@@ -2506,7 +2516,9 @@ void ALatebrakeCarPawn::BrowseGaragePrevious()
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !latebrake::CanConsumeGarageShortcut(
-        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
         return;
     ClearDriverInputs();
     Mode->GarageBrowsePrevious();
