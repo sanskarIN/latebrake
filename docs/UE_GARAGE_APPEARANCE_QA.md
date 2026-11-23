@@ -283,3 +283,30 @@ Resume explicitly and verify the controls become available again.
 Also repeat for another menu page and for a newer read-only SaveGame.
 Portable C++/Python tests cover policy and source order, not engine
 focus-event delivery or controller hardware.
+
+## Paid shortcut routing: visible Garage is required
+
+Q, U and I may **only** stage or confirm a purchase while the Garage
+page is visibly open and not externally suspended. Normal Unreal
+`SetGamePaused(true)` by the Garage does not disable these routes.
+Pressing Q/U/I while actually driving, while viewing another menu
+page, or while under a standalone pause/focus-loss latch now rejects
+before `ConfirmOrStage` and resets any pending purchase. This is a
+player-facing correction: racing should never secretly stage a paid
+transaction with no visible price or confirmation message.
+
+E deliberately **retains** its existing eligible quick-race ability to
+cycle owned cars with the menu closed and the world unpaused. This
+exception is not extended to paid commands; an owned switch never
+unlocks or charges the driver. Enter/SELECT still equips the *viewed*
+owned garage car through the separately guarded showroom route.
+
+Manual UE5.8 acceptance: in a live quick race, press Q/U/I twice and
+verify no credits, upgrades or ownership change. Open a non-Garage
+menu and repeat. Open the actual paused Garage, confirm that Q/U/I
+display the price and two-press confirmation and can purchase only
+when allowed by profile schema/credits. Exit Garage between the first
+and second press, return, and verify the former staged offer was
+cancelled. Confirm E still cycles owned cars in eligible live quick
+races. The new portable 300,000-transition test and editor source
+binding checks supplement, but do not replace, real controller QA.

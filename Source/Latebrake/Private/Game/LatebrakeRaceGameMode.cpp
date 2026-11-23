@@ -2271,15 +2271,14 @@ void ALatebrakeRaceGameMode::GarageResetAppearance()
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
-    // E/Q/U/I are pause-capable so they work in the Garage. A standalone
-    // race pause/focus loss must never authorize hidden paid operations.
-    if (!latebrake::CanUseGarageVehicleHotkey(
+    // Q/U/I are pause-capable for an open Garage; never allow a paid
+    // two-press offer during live racing, another menu or focus loss.
+    if (!latebrake::CanUseGaragePurchaseHotkey(
         Menu.IsOpen(), Menu.Current(),
-        UGameplayStatics::IsGamePaused(this),
         ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Vehicle purchase temporarily unavailable while race paused.");
+        GarageFeedback = TEXT("Open the Garage to unlock vehicles (not available while racing or suspended).");
         return;
     }
     // Future save schemas are read-only. Do not even stage an offer,
@@ -2294,14 +2293,6 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before buying vehicles.");
-        return;
-    }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
-    {
-        GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
         return;
     }
     const int32 Next = Garage.NextLockedVehicle();
@@ -2350,15 +2341,14 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
-    // E/Q/U/I are pause-capable so they work in the Garage. A standalone
-    // race pause/focus loss must never authorize hidden paid operations.
-    if (!latebrake::CanUseGarageVehicleHotkey(
+    // Q/U/I are pause-capable for an open Garage; never allow a paid
+    // two-press offer during live racing, another menu or focus loss.
+    if (!latebrake::CanUseGaragePurchaseHotkey(
         Menu.IsOpen(), Menu.Current(),
-        UGameplayStatics::IsGamePaused(this),
         ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Engine upgrade temporarily unavailable while race paused.");
+        GarageFeedback = TEXT("Open the Garage to upgrade the engine (not during racing or suspension).");
         return;
     }
     // Future save schemas are read-only. Do not even stage an offer,
@@ -2373,14 +2363,6 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before upgrading engine.");
-        return;
-    }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
-    {
-        GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
         return;
     }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
@@ -2428,15 +2410,14 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
-    // E/Q/U/I are pause-capable so they work in the Garage. A standalone
-    // race pause/focus loss must never authorize hidden paid operations.
-    if (!latebrake::CanUseGarageVehicleHotkey(
+    // Q/U/I are pause-capable for an open Garage; never allow a paid
+    // two-press offer during live racing, another menu or focus loss.
+    if (!latebrake::CanUseGaragePurchaseHotkey(
         Menu.IsOpen(), Menu.Current(),
-        UGameplayStatics::IsGamePaused(this),
         ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Grip upgrade temporarily unavailable while race paused.");
+        GarageFeedback = TEXT("Open the Garage to upgrade grip (not during racing or suspension).");
         return;
     }
     // Future save schemas are read-only. Do not even stage an offer,
@@ -2451,14 +2432,6 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before upgrading grip.");
-        return;
-    }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
-    {
-        GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
         return;
     }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);

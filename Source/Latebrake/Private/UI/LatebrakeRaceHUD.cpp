@@ -465,7 +465,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     *OfferText(EngineOffer), *OfferText(GripOffer)));
             }
             MenuLine(TEXT("ENTER/SELECT: EQUIP VIEWED OWNED CAR | E: NEXT OWNED"));
-            MenuLine(TEXT("Q: UNLOCK NEXT IN ORDER | U/I: UPGRADES"));
+            MenuLine(TEXT("GARAGE ONLY: Q UNLOCKS | U/I UPGRADES"));
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);

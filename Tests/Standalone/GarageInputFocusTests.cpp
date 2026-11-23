@@ -42,7 +42,7 @@ int main()
                 (page == MenuPage::Garage),
             "only visible Garage may select a car with the menu open");
         Verify(!CanUseGarageVehicleHotkey(false,page,true),
-            "standalone race pause/focus loss forbids hidden paid hotkeys");
+            "standalone race pause/focus loss forbids hidden E selection");
         Verify(CanUseGarageVehicleHotkey(true,page,true) ==
                 (page == MenuPage::Garage),
             "visible Garage remains eligible even when engine world paused");
@@ -50,6 +50,16 @@ int main()
                !CanUseGarageVehicleHotkey(true,page,false,true) &&
                !CanUseGarageVehicleHotkey(false,page,false,true),
             "an explicit suspension supersedes every menu and engine pause state");
+        // Paid offers NEVER exist behind a closed menu. E intentionally
+        // retains its unpaused quick-race owned-car cycling behavior.
+        Verify(!CanUseGaragePurchaseHotkey(false,page) &&
+               !CanUseGaragePurchaseHotkey(false,page,true),
+            "Q/U/I cannot stage or commit purchases during live driving");
+        Verify(CanUseGaragePurchaseHotkey(true,page) ==
+               (page == MenuPage::Garage),
+            "Q/U/I require visible Garage, including during menu pause");
+        Verify(!CanUseGaragePurchaseHotkey(true,page,true),
+            "manual suspension or focus loss revokes even open Garage spending");
     }
     MenuNavigation navigator;
     Verify(!navigator.IsOpen(), "new navigation starts closed");
@@ -58,9 +68,13 @@ int main()
     navigator.Open(MenuPage::Garage);
     Verify(CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current()), "open Garage accepts a garage action");
+    Verify(CanUseGaragePurchaseHotkey(navigator.IsOpen(),
+            navigator.Current()), "visible Garage grants paid shortcut focus");
     navigator.Next();
     Verify(!CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current()), "page change immediately rejects action");
+    Verify(!CanUseGaragePurchaseHotkey(navigator.IsOpen(),
+            navigator.Current()), "leaving Garage cancels purchase hotkey focus");
     navigator.Open(MenuPage::Garage);
     navigator.Close();
     Verify(!CanConsumeGarageShortcut(navigator.IsOpen(),
@@ -73,6 +87,9 @@ int main()
         Verify(CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current())==(i%4==0),
             "300k menu changes never leak garage actions to driving");
+        Verify(CanUseGaragePurchaseHotkey(navigator.IsOpen(),
+            navigator.Current())==(i%4==0),
+            "300k transitions require open Garage for purchases");
         Verify(!CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current(),true) &&
             !CanUseGarageVehicleHotkey(navigator.IsOpen(),
@@ -81,12 +98,14 @@ int main()
         navigator.Close();
         Verify(!CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current()), "close always revokes shortcut authority");
+        Verify(!CanUseGaragePurchaseHotkey(navigator.IsOpen(),
+            navigator.Current()), "menu close always revokes purchase focus");
         Verify(CanUseGarageVehicleHotkey(navigator.IsOpen(),
             navigator.Current()),
             "closed menu restores legacy quick-race selection");
         Verify(!CanUseGarageVehicleHotkey(navigator.IsOpen(),
             navigator.Current(),true),
-            "standalone race pause revokes E/Q/U/I while menu is closed");
+            "standalone race pause revokes E while menu is closed");
     }
     std::cout << "Garage input focus is menu/page gated.\n";
     return EXIT_SUCCESS;
