@@ -2136,6 +2136,7 @@ void ALatebrakeRaceGameMode::GarageBrowseNext()
     GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
         UTF8_TO_TCHAR(car.Name),
         Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
@@ -2149,6 +2150,7 @@ void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
     GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
         UTF8_TO_TCHAR(Car.Name),
         Garage.Owns(VehicleId) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::GarageBrowsePrevious()
@@ -2160,6 +2162,7 @@ void ALatebrakeRaceGameMode::GarageBrowsePrevious()
     GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
         UTF8_TO_TCHAR(car.Name),
         Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()
@@ -2269,6 +2272,7 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
             SavedProfile.Commit();
             GarageGallery.Reset(Garage.SelectedVehicle());
         }
+        SyncGarageShowroomPreview();
     }
 }
 
@@ -2335,9 +2339,11 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
         GarageLooks = Before;
         if (Viewed == Garage.SelectedVehicle())
             ApplyGarageToPlayer();
+        SyncGarageShowroomPreview();
         GarageFeedback = TEXT("Appearance NOT saved; previous car look restored.");
         return;
     }
+    SyncGarageShowroomPreview();
     const latebrake::GarageLook Look = GarageLooks.Get(Viewed);
     const int32 Choice = layer == latebrake::GarageLookLayer::Paint
         ? Look.Paint : layer == latebrake::GarageLookLayer::Stripe
