@@ -76,7 +76,7 @@ No tested UE Engine 5.8 3D car models or mesh customization are implied.
 - Controller status and control mappings appear in HUD/footer when connected.
 - Resizable Windows game viewport now preserves the original 3:2 canvas with pillarboxing/letterboxing. Click and hover coordinates use the visible canvas only; black bars do not activate UI actions.
 - Added synthetic input-level tests for axis extremes/deadzones, trigger scaling, button edges/held buttons, unplug/reconnect and focus re-entry. These do not constitute real controller hardware QA.
-- Keeps V2 career saves and V3/V4 settings compatibility, six vehicle tuning profiles, four procedural tracks/events, rivals, 120Hz fixed-step simulation, checkpoint direction, race records and the personal installer.
+- Keeps V2 career saves and V3/V4 settings compatibility, twelve 2D vehicle profiles, four procedural tracks/events, rivals, 120Hz fixed-step simulation, checkpoint direction, race records and the personal installer.
 
 ## Controls
 
