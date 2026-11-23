@@ -6,6 +6,8 @@
 namespace latebrake_preview
 {
 inline constexpr int PreviewCarCount = 12;
+inline constexpr unsigned int PreviewKnownCarMask =
+    (1u << PreviewCarCount) - 1u;
 inline constexpr int PreviewCarsPerPage = 6;
 inline constexpr int PreviewPaintCount = 8;
 inline constexpr int PreviewVinylCount = 3;
