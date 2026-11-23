@@ -115,8 +115,15 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
         # The displayed muted buttons and the Pawn's click result must use
         # the exact same visible-page/pager availability policy.
         # Click, wheel and rendering must all consult the same pager.
+        # Wheel remains pager-only. Click and drawing now share the
+        # stricter Garage-equipping availability (other pages unchanged).
         self.assertEqual(self.hud.count(
-            "latebrake::AvailableDesktopMenuDetails("), 3)
+            "latebrake::AvailableDesktopMenuDetails("), 1)
+        self.assertEqual(self.hud.count(
+            "latebrake::AvailableDesktopMenuActions("), 2)
+        self.assertIn("Mode->CanEquipGarageViewed()", self.hud)
+        self.assertIn("availability.Activate = canEquipGarageViewed;",
+                      self.policy)
         self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
         self.assertIn("Mode->GetMenuPage(), MenuPager);", self.hud)
         self.assertIn(
