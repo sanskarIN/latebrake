@@ -57,7 +57,10 @@ class HudMenuVerticalBindingTests(unittest.TestCase):
             "CalculateTouchControlLayout(width, height).Steering.Y",
             "step = 28.0 * layout.Scale",
             "saveY + step > bottom",
-            "std::clamp(maxRows, 0, 90)",
+            "std::min(rowIndex, 89.0)",
+            "std::isfinite(rowIndex)",
+            "step < 1.0",
+            "overflowY < saveY",
             "latestDetailY < layout.Top",
         ):
             self.assertIn(marker, self.plan)

@@ -142,7 +142,10 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
     def test_bounded_pure_test_policy(self):
         for term in ("touchUI || !menuOpen || layout.Compact",
                      "std::isfinite(width)", "std::isfinite(height)",
-                     "x < X + Width", "y < Y + Height",
+                     "const double right = X + Width;",
+                     "const double bottom = Y + Height;",
+                     "std::isfinite(right)", "std::isfinite(bottom)",
+                     "x < right", "y < bottom",
                      "HitTestDesktopMenuMouse(", "MouseAction"):
             if term == "MouseAction":
                 continue

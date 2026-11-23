@@ -2,6 +2,39 @@
 
 **Development preview of an original Win32/GDI 2D racing experiment. NOT the Unreal Engine game.** No verified UE Editor compile, cooked levels, 3D assets, online multiplayer or Windows hardware testing is claimed.
 
+## Latest trial build and Win64 canvas-input correctness
+
+A **2D Windows trial artifact** can be built without Unreal by opening a
+pull request that changes this experiment's source. The existing
+`experimental-win32-preview.yml` GitHub workflow compiles the native
+Windows x64 `LateBrakePreviewV5.exe` and `LateBrakeSetupV5.exe`,
+runs isolated headless self-tests, validates actual PE32+ x64 binaries
+and the installer's embedded game payload, and uploads the ZIP as an
+**UNVERIFIED 2D Win64 trial**, not a release.
+
+The trial ZIP now includes `TRIAL_QUICKSTART.md` plus a generated
+`TRIAL_BUILD_SHA256.txt` containing both executable SHA-256 hashes,
+the source PR head and CI checkout SHA. These are useful for identifying
+the exact binary being tested; the runner's synthetic test **does not**
+certify a real user-facing desktop game.
+
+The original GDI viewport now delegates all letterbox/pillarbox mouse
+mapping to `PreviewViewportMath.h`. Intermediate client coordinate
+calculations use 64-bit integers, so extremely large resized windows
+cannot overflow signed 32-bit hit-test products and activate unrelated
+menu controls. The exact real Win32 `WM_MOUSEMOVE` and
+`WM_LBUTTONDOWN` path uses this shared policy, not an isolated copy.
+A portable strict C++20 `PreviewViewportMath` test covers normal
+Windows resolutions, invalid rectangles, black bars, large-client
+limits, 100,000 deterministic cases and 32-bit overflow boundaries.
+The Windows GUI preview's `--self-test` also checks the maximum viewport
+edge. See [trial quick start](TRIAL_QUICKSTART.md).
+
+**These changes do not become UE5.8 features simply because the
+source branches share a candidate PR.** Genuine Unreal gameplay
+requires the separately licensed-engine Windows Editor/UHT and native
+packaging QA described in the production build documentation.
+
 ## V5 development changes
 
 - **Mode-correct rival sessions:** Time Attack (one lap) and Checkpoint Rush (two laps) now run as actual solo clock events; no AI cars are initialized, advanced, collision-tested or drawn in these modes. Circuit Race (three laps) and Rival Duel (two laps) retain three local scripted AI drivers. A per-attempt rival-count snapshot prevents menu selections from silently changing active physics, and the minimap explicitly labels solo/rival events. Rival Duel detects any rival that completes the required laps, rather than assuming a fixed AI slot is always fastest. Strict portable mode-policy tests and Windows synthetic self-tests cover this source change. This does not qualify real Windows hardware, AI quality or the Unreal game. [Mode-isolation QA](../../docs/PREVIEW_SOLO_EVENT_ISOLATION_QA.md).
