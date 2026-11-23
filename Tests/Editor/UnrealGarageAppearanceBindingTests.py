@@ -174,6 +174,32 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         self.assertIn("Mode->GarageResetAppearance();", self.pawn)
         self.assertIn("GarageLooks.ResetVehicle(Selected)", self.mode)
         self.assertIn("FACTORY LOOK RESTORED AND SAVED", self.mode)
+    def test_gallery_is_read_only_and_separate_from_owned_selection(self):
+        path = ROOT / "Source/Latebrake/Public/Garage/GarageGalleryCursor.h"
+        source = path.read_text(encoding="utf-8")
+        self.assertIn("class GarageGalleryCursor final", source)
+        self.assertIn("static_assert(VehicleCount == 6", source)
+        self.assertIn("int Viewed() const noexcept", source)
+        self.assertIn("GarageGallery.Next()", self.mode)
+        self.assertIn("GarageGallery.Previous()", self.mode)
+        self.assertIn("bool ALatebrakeRaceGameMode::CanBrowseGarage() const", self.mode)
+        self.assertIn("GaragePurchaseConfirm.Reset();", self.mode)
+        self.assertIn("GetGaragePreviewVehicleId()", self.hud)
+        self.assertIn("PREVIEW EST.: ACCEL", self.hud)
+        self.assertIn("LOCKED / PREVIEW ONLY", self.hud)
+        self.assertIn("VIEWING", self.hud)
+        self.assertIn("GarageGalleryCursorTests.cpp", self.cmake)
+        for name, key in (("GarageBrowseNext", "F9"),
+                          ("GarageBrowsePrevious", "F10"),
+                          ("GarageBrowseNext", "Gamepad_RightShoulder"),
+                          ("GarageBrowsePrevious", "Gamepad_FaceButton_Right")):
+            self.assertIn(
+                f'+ActionMappings=(ActionName="{name}",Key={key})',
+                self.input)
+        self.assertIn("BrowseNextKey.bExecuteWhenPaused = true", self.pawn)
+        self.assertIn("BrowsePreviousKey.bExecuteWhenPaused = true", self.pawn)
+        self.assertIn("Mode->GarageBrowseNext();", self.pawn)
+        self.assertIn("Mode->GarageBrowsePrevious();", self.pawn)
 
 
 if __name__ == "__main__":

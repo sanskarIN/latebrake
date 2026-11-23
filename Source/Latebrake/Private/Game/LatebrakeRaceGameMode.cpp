@@ -2032,6 +2032,33 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()));
 }
 
+bool ALatebrakeRaceGameMode::CanBrowseGarage() const
+{
+    return Menu.IsOpen() && Menu.Current() == latebrake::MenuPage::Garage;
+}
+
+void ALatebrakeRaceGameMode::GarageBrowseNext()
+{
+    if (!CanBrowseGarage()) return;
+    GaragePurchaseConfirm.Reset();
+    const int32 id = GarageGallery.Next();
+    const auto car = latebrake::GarageState::Definition(id);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(car.Name),
+        Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+}
+
+void ALatebrakeRaceGameMode::GarageBrowsePrevious()
+{
+    if (!CanBrowseGarage()) return;
+    GaragePurchaseConfirm.Reset();
+    const int32 id = GarageGallery.Previous();
+    const auto car = latebrake::GarageState::Definition(id);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(car.Name),
+        Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+}
+
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
     GaragePurchaseConfirm.Reset();
@@ -2059,11 +2086,13 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
         {
             SavedProfile.Rollback();
             ApplyGarageToPlayer();
+            GarageGallery.Reset(Garage.SelectedVehicle());
             GarageFeedback = TEXT("Vehicle selection not saved. Previous vehicle restored.");
         }
         else
         {
             SavedProfile.Commit();
+            GarageGallery.Reset(Garage.SelectedVehicle());
         }
     }
 }
@@ -2546,6 +2575,7 @@ void ALatebrakeRaceGameMode::LoadRecords()
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
                      Save->SelectedVehicleId, Save->EngineUpgradeLevel,
                      Save->GripUpgradeLevel});
+        GarageGallery.Reset(Garage.SelectedVehicle());
         if (Save->GarageAppearanceSchemaVersion >
             latebrake::GarageAppearanceState::SaveVersion)
         {

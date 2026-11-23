@@ -20,6 +20,7 @@
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageAppearance.h"
+#include "Garage/GarageGalleryCursor.h"
 #include "Garage/GaragePurchaseConfirmation.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
@@ -146,6 +147,10 @@ public:
     // Read-only copy for the offline catalogue. No ownership or save mutation.
     latebrake::GarageSnapshot GetGarageSnapshot() const { return Garage.Snapshot(); }
     int32 GetSelectedVehicleId() const { return Garage.SelectedVehicle(); }
+    int32 GetGaragePreviewVehicleId() const { return GarageGallery.Viewed(); }
+    bool CanBrowseGarage() const;
+    void GarageBrowseNext();
+    void GarageBrowsePrevious();
     latebrake::GarageLook GetSelectedGarageLook() const noexcept
     {
         return GarageLooks.Get(Garage.SelectedVehicle());
@@ -248,6 +253,7 @@ private:
     int32 CompletedRaceCount = 0;
     latebrake::GarageState Garage;
     latebrake::GarageAppearanceState GarageLooks;
+    latebrake::GarageGalleryCursor GarageGallery;
     latebrake::GaragePurchaseConfirmation GaragePurchaseConfirm;
     latebrake::GarageTuningKey LastAppliedTuning;
     TWeakObjectPtr<ALatebrakeCarPawn> LastTunedPawn;

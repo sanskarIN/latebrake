@@ -2368,6 +2368,10 @@ void ALatebrakeCarPawn::MenuMousePressed()
         Mode->GarageCycleWheels(); break;
     case latebrake::DesktopMenuMouseAction::GarageReset:
         Mode->GarageResetAppearance(); break;
+    case latebrake::DesktopMenuMouseAction::GarageBrowsePrevious:
+        Mode->GarageBrowsePrevious(); break;
+    case latebrake::DesktopMenuMouseAction::GarageBrowseNext:
+        Mode->GarageBrowseNext(); break;
     default: break;
     }
 #endif
@@ -2454,6 +2458,21 @@ void ALatebrakeCarPawn::ResetGarageLook()
     if (ALatebrakeRaceGameMode* Mode =
         GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
         Mode->GarageResetAppearance();
+}
+
+void ALatebrakeCarPawn::BrowseGarageNext()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        Mode->GarageBrowseNext();
+}
+void ALatebrakeCarPawn::BrowseGaragePrevious()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        Mode->GarageBrowsePrevious();
 }
 
 void ALatebrakeCarPawn::SelectArcade()
@@ -2563,6 +2582,12 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& GarageResetKey = PlayerInputComponent->BindAction(
         TEXT("GarageResetLook"), IE_Pressed, this, &ALatebrakeCarPawn::ResetGarageLook);
     GarageResetKey.bExecuteWhenPaused = true;
+    FInputActionBinding& BrowseNextKey = PlayerInputComponent->BindAction(
+        TEXT("GarageBrowseNext"), IE_Pressed, this, &ALatebrakeCarPawn::BrowseGarageNext);
+    BrowseNextKey.bExecuteWhenPaused = true;
+    FInputActionBinding& BrowsePreviousKey = PlayerInputComponent->BindAction(
+        TEXT("GarageBrowsePrevious"), IE_Pressed, this, &ALatebrakeCarPawn::BrowseGaragePrevious);
+    BrowsePreviousKey.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }

@@ -280,6 +280,8 @@ private:
     void CycleGarageStripe();
     void CycleGarageWheels();
     void ResetGarageLook();
+    void BrowseGarageNext();
+    void BrowseGaragePrevious();
     void SelectArcade();
     void SelectSimulation();
 

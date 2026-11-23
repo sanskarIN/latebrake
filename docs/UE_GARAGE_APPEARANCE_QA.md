@@ -96,3 +96,17 @@ not imported production car meshes, licensed car brands, a complete
 UMG showroom, physically modeled wheels, advanced liveries, wheels
 or body-kit marketplace, or multiplayer replication. Material parameter
 support and final art fidelity remain unverified until engine QA.
+
+## Read-only multi-vehicle showroom
+
+Open the Garage and press **F9/F10** (gamepad **RB/B**) to browse all
+six original Unreal prototypes, including vehicles not yet owned.
+The Canvas HUD displays the viewed car name, ownership/locked status,
+cost in the existing catalogue and estimated effective acceleration,
+grip and speed. A VIEWING marker distinguishes this inspection from
+the actually equipped car; browsing cannot equip, purchase, spawn,
+modify Chaos physics or serialize a locked car. **E/SELECT** still equips
+only the next owned vehicle according to the existing GarageState rules;
+**Q** still buys only the next locked car after explicit two-step
+confirmation. Cosmetics apply to the real equipped car, not a locked
+preview. Browser pointer arrows remain in the Garage-only dock.

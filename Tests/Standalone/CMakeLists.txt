@@ -2698,3 +2698,17 @@ else()
 endif()
 add_test(NAME GarageAppearance
     COMMAND latebrake_garage_appearance_tests)
+
+# Production Unreal six-car read-only showroom browse policy. Strictly
+# separates locked-car viewing from the one equipped/owned gameplay car.
+add_executable(latebrake_garage_gallery_tests GarageGalleryCursorTests.cpp)
+target_include_directories(latebrake_garage_gallery_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_gallery_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_gallery_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_gallery_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageGalleryCursor COMMAND latebrake_garage_gallery_tests)

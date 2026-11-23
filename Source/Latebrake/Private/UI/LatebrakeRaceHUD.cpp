@@ -405,6 +405,26 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.
             MenuLine(Mode->GetGarageFeedback(), true);
+            // Read-only visual comparison may inspect any locked car. Only
+            // the owned car in GarageState can ever be equipped/raced.
+            const int32 PreviewId = Mode->GetGaragePreviewVehicleId();
+            const auto& Preview = Catalog.Cars[
+                static_cast<std::size_t>(PreviewId)];
+            MenuLine(FString::Printf(
+                TEXT("VIEWING %d/%d: %s | %s"),
+                PreviewId + 1, latebrake::VehicleCount,
+                UTF8_TO_TCHAR(Preview.Name),
+                Preview.Ownership == latebrake::GarageCatalogOwnership::Equipped
+                    ? TEXT("EQUIPPED")
+                    : Preview.Ownership == latebrake::GarageCatalogOwnership::Owned
+                        ? TEXT("OWNED / NOT EQUIPPED")
+                        : TEXT("LOCKED / PREVIEW ONLY")), true);
+            MenuLine(FString::Printf(
+                TEXT("PREVIEW EST.: ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
+                Preview.Effective.Acceleration, Preview.Effective.Grip,
+                Preview.Effective.TopSpeed));
+            MenuLine(TEXT("F9/F10 or mouse: BROWSE ALL (READ-ONLY)"));
+            MenuLine(TEXT("PAD: RB FORWARD / B BACK | E EQUIPS NEXT OWNED"));
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
                 Catalog.EngineLevel, Catalog.GripLevel));
             // Prices and relative tuning are read-only summaries of the
@@ -475,10 +495,12 @@ void ALatebrakeRaceHUD::DrawHUD()
                 // later affordable cars can be bought directly from rows.
                 const TCHAR* NextFlag = Entry.VehicleId == Catalog.NextUnlockId
                     ? TEXT(" | Q NEXT") : TEXT("");
-                MenuLine(FString::Printf(TEXT("%d. %s | %s%s"),
+                MenuLine(FString::Printf(TEXT("%d. %s | %s%s%s"),
                     Entry.VehicleId + 1, UTF8_TO_TCHAR(Entry.Name),
-                    *State, NextFlag),
-                    Entry.Ownership == latebrake::GarageCatalogOwnership::Equipped);
+                    *State, NextFlag,
+                    Entry.VehicleId == PreviewId ? TEXT(" | VIEWING") : TEXT("")),
+                    Entry.Ownership == latebrake::GarageCatalogOwnership::Equipped ||
+                    Entry.VehicleId == PreviewId);
                 if (!bCompact)
                 {
                     MenuLine(FString::Printf(

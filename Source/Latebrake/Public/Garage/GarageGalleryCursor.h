@@ -1,0 +1,47 @@
+#pragma once
+
+#include "Garage/GarageState.h"
+
+namespace latebrake
+{
+// View-only cursor over all six original Unreal prototype cars. Browsing a
+// locked profile does not select it, unlock it, charge credits, apply physics
+// or mutate SaveGame. The actual selected (owned) vehicle is separate.
+class GarageGalleryCursor final
+{
+public:
+    constexpr void Reset(int currentId) noexcept
+    {
+        ViewedId = GarageState::IsVehicle(currentId) ? currentId : 0;
+    }
+
+    constexpr int Viewed() const noexcept { return ViewedId; }
+
+    constexpr int Next() noexcept
+    {
+        ViewedId = (ViewedId + 1) % VehicleCount;
+        return ViewedId;
+    }
+
+    constexpr int Previous() noexcept
+    {
+        ViewedId = (ViewedId + VehicleCount - 1) % VehicleCount;
+        return ViewedId;
+    }
+
+    constexpr bool IsEquipped(int selectedId) const noexcept
+    {
+        return ViewedId == selectedId;
+    }
+
+    // Deliberately never returns permission to purchase or equip a car.
+    constexpr bool IsValid() const noexcept
+    {
+        return GarageState::IsVehicle(ViewedId);
+    }
+
+private:
+    int ViewedId = 0;
+};
+static_assert(VehicleCount == 6, "Review gallery/save ID migration");
+} // namespace latebrake
