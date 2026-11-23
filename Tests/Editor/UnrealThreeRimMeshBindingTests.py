@@ -21,7 +21,7 @@ class UnrealThreeRimMeshBindingTests(unittest.TestCase):
         self.assertIn("ThreeActualWheelDesigns();",self.tests)
         self.assertIn("MakeOriginalVehicleRenderSections(mesh)",self.tests)
     def test_real_pawn_rebuilds_on_rim_change_not_on_tick(self):
-        self.assertIn("VehicleId,static_cast<int>(CurrentGarageLook.Wheels)",
+        self.assertIn("VehicleId,static_cast<int>(GetPresentedGarageLook().Wheels)",
                       self.pawn)
         appearance=self.pawn.split(
             "void ALatebrakeCarPawn::SetGarageAppearance(",1
