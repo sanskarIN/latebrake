@@ -2182,8 +2182,7 @@ bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
         !ManualPause.IsSuspended() && !AppFocusGuard.IsSuspended() &&
         latebrake::CanEditGarageDuringRace(bCareerRace, Race) &&
         !bFutureSaveSchema &&
-        Garage.Owns(Garage.SelectedVehicle()) &&
-        GarageGallery.Viewed() == Garage.SelectedVehicle();
+        latebrake::CanStyleGalleryVehicle(Garage, GarageGallery);
 }
 
 void ALatebrakeRaceGameMode::GarageCycleAppearance(
@@ -2210,49 +2209,50 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
         GarageFeedback = TEXT("Newer saved profile: this version cannot edit its appearance.");
         return;
     }
-    const int32 Selected = Garage.SelectedVehicle();
-    if (!Garage.Owns(Selected))
+    // The edited car is ALWAYS the one the player can see. An owned
+    // parked car can be styled without swapping the race pawn or changing
+    // saved selection/physics. Locked previews are strictly read-only.
+    if (!latebrake::CanStyleGalleryVehicle(Garage, GarageGallery))
     {
-        GarageFeedback = TEXT("Cannot customize a vehicle you do not own.");
+        GarageFeedback = TEXT("LOCKED CAR: unlock this vehicle before styling.");
         return;
     }
-    // Styling a hidden equipped car while previewing a different/locked
-    // car is surprising UX. Require SHOWROOM VIEWING == EQUIPPED.
-    // Preview navigation never transfers style authority to a locked ID.
-    if (GarageGallery.Viewed() != Selected)
-    {
-        GarageFeedback = TEXT(
-            "VIEWING NOT EQUIPPED: press ENTER to equip an owned car first.");
-        return;
-    }
+    const int32 Viewed = GarageGallery.Viewed();
     const latebrake::GarageAppearanceState Before = GarageLooks;
-    const bool bChanged = bReset ? GarageLooks.ResetVehicle(Selected) :
-        GarageLooks.Cycle(Selected, layer);
+    const bool bChanged = bReset ? GarageLooks.ResetVehicle(Viewed) :
+        GarageLooks.Cycle(Viewed, layer);
     if (!bChanged)
     {
         GarageFeedback = TEXT("Unknown appearance option; no change saved.");
         return;
     }
-    ApplyGarageToPlayer();
+    // Only the currently equipped car needs a live 3D Pawn update.
+    // The Canvas showroom reads GarageLooks for the viewed ID directly.
+    if (Viewed == Garage.SelectedVehicle())
+        ApplyGarageToPlayer();
     SaveRecords();
     if (bProgressSaveFailed)
     {
         GarageLooks = Before;
-        ApplyGarageToPlayer();
+        if (Viewed == Garage.SelectedVehicle())
+            ApplyGarageToPlayer();
         GarageFeedback = TEXT("Appearance NOT saved; previous car look restored.");
         return;
     }
-    const latebrake::GarageLook Look = GarageLooks.Get(Selected);
+    const latebrake::GarageLook Look = GarageLooks.Get(Viewed);
     const int32 Choice = layer == latebrake::GarageLookLayer::Paint
         ? Look.Paint : layer == latebrake::GarageLookLayer::Stripe
             ? Look.Stripe : Look.Wheels;
     if (bReset)
     {
-        GarageFeedback = TEXT("FACTORY LOOK RESTORED AND SAVED");
+        GarageFeedback = FString::Printf(
+            TEXT("FACTORY LOOK RESTORED AND SAVED: %s"),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Viewed).Name));
     }
     else
     {
-        GarageFeedback = FString::Printf(TEXT("LOOK SAVED: %s"),
+        GarageFeedback = FString::Printf(TEXT("LOOK SAVED: %s / %s"),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Viewed).Name),
             UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(layer, Choice)));
     }
 }

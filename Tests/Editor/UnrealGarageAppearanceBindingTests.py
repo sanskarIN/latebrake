@@ -70,10 +70,10 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         for token in (
             "Menu.Current() != latebrake::MenuPage::Garage",
             "latebrake::CanEditGarageDuringRace",
-            "Garage.Owns(Selected)",
+            "CanStyleGalleryVehicle(Garage, GarageGallery)",
             "GaragePurchaseConfirm.Reset();",
             "const latebrake::GarageAppearanceState Before = GarageLooks;",
-            "GarageLooks.Cycle(Selected, layer)",
+            "GarageLooks.Cycle(Viewed, layer)",
             "ApplyGarageToPlayer();",
             "SaveRecords();",
             "if (bProgressSaveFailed)",
@@ -123,6 +123,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             self.assertIn("Mode->" + method + "();", self.pawn)
         self.assertIn("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY", self.hud)
         self.assertIn("EQUIPPED LOOK: %s / %s / %s", self.hud)
+        self.assertIn("VIEWED LOOK: %s / %s / %s", self.hud)
 
     def test_pointer_buttons_share_accurate_hit_bounds(self):
         for token in (
@@ -152,6 +153,30 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         self.assertIn("if (!layout.Valid || !std::isfinite(x)", self.mouse)
         self.assertIn("isBrowse ? browseEnabled : styleEnabled", self.mouse)
 
+    def test_unequipped_owned_car_styling_never_changes_race_pawn(self):
+        header = (BASE / "Public/Garage/GarageGalleryCursor.h").read_text(encoding="utf-8")
+        self.assertIn("inline bool CanStyleGalleryVehicle(", header)
+        self.assertIn("garage.Owns(gallery.Viewed())", header)
+        method = self.mode.split(
+            "void ALatebrakeRaceGameMode::GarageCycleAppearance(",1
+        )[1].split("void ALatebrakeRaceGameMode::GarageCyclePaint()",1)[0]
+        self.assertIn("const int32 Viewed = GarageGallery.Viewed();", method)
+        self.assertNotIn("Garage.Select(", method)
+        self.assertNotIn("Garage.Unlock(", method)
+        self.assertIn("GarageLooks.Cycle(Viewed, layer)", method)
+        self.assertIn("GarageLooks.ResetVehicle(Viewed)", method)
+        self.assertEqual(method.count("if (Viewed == Garage.SelectedVehicle())"), 2)
+        self.assertEqual(method.count("ApplyGarageToPlayer();"), 2)
+        self.assertIn("SaveRecords();", method)
+        self.assertIn("GarageLooks = Before;", method)
+        self.assertLess(method.index("CanStyleGalleryVehicle("),
+                        method.index("GarageLooks.Cycle(Viewed, layer)"))
+        self.assertIn("VIEWED LOOK: %s / %s / %s", self.hud)
+        self.assertIn("CUSTOM LOOK LOCKED: OWN THE VIEWED CAR FIRST", self.hud)
+        self.assertIn("CanStyleGalleryVehicle(partiallyOwned, cursor)",
+                      (ROOT / "Tests/Standalone/GarageGalleryCursorTests.cpp"
+                       ).read_text(encoding="utf-8"))
+
     def test_controller_style_shortcuts_pause_only(self):
         mapping = {
             "GarageCyclePaint": "Gamepad_RightThumbstick",
@@ -174,7 +199,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             self.input)
         self.assertIn("GarageResetKey.bExecuteWhenPaused = true", self.pawn)
         self.assertIn("Mode->GarageResetAppearance();", self.pawn)
-        self.assertIn("GarageLooks.ResetVehicle(Selected)", self.mode)
+        self.assertIn("GarageLooks.ResetVehicle(Viewed)", self.mode)
         self.assertIn("FACTORY LOOK RESTORED AND SAVED", self.mode)
     def test_gallery_is_read_only_and_separate_from_owned_selection(self):
         path = ROOT / "Source/Latebrake/Public/Garage/GarageGalleryCursor.h"
@@ -183,10 +208,10 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         self.assertIn("static_assert(VehicleCount == 6", source)
         self.assertIn("int Viewed() const noexcept", source)
         self.assertIn("GarageGallery.Next()", self.mode)
-        self.assertIn("GarageGallery.Viewed() == Garage.SelectedVehicle()", self.mode)
-        self.assertIn("if (GarageGallery.Viewed() != Selected)", self.mode)
-        self.assertIn("VIEWING NOT EQUIPPED", self.mode)
-        self.assertIn("CUSTOM LOOK LOCKED: EQUIP VIEWED OWNED CAR FIRST", self.hud)
+        self.assertIn("CanStyleGalleryVehicle(Garage, GarageGallery)", self.mode)
+        self.assertIn("const int32 Viewed = GarageGallery.Viewed();", self.mode)
+        self.assertIn("LOCKED CAR: unlock this vehicle before styling.", self.mode)
+        self.assertIn("CUSTOM LOOK LOCKED: OWN THE VIEWED CAR FIRST", self.hud)
         self.assertIn("GarageGallery.Previous()", self.mode)
         self.assertIn("CanEquipGalleryVehicle(Garage, GarageGallery)", self.mode)
         self.assertIn("void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()", self.mode)

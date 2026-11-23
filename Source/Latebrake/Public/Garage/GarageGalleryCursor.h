@@ -51,5 +51,14 @@ inline bool CanEquipGalleryVehicle(
 {
     return gallery.IsValid() && garage.Owns(gallery.Viewed());
 }
+// Appearance editing can target any OWNED browsed car without equipping it.
+// This is eligibility only: the caller must separately check menu focus,
+// profile-schema compatibility, career restrictions and save rollback.
+// An unowned showroom preview never grants the ability to edit a style.
+inline bool CanStyleGalleryVehicle(
+    const GarageState& garage, const GarageGalleryCursor& gallery) noexcept
+{
+    return gallery.IsValid() && garage.Owns(gallery.Viewed());
+}
 static_assert(VehicleCount == 6, "Review gallery/save ID migration");
 } // namespace latebrake

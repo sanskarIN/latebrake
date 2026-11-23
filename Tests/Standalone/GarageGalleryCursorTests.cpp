@@ -1,5 +1,6 @@
 #include "Garage/GarageGalleryCursor.h"
 #include "Garage/GarageCatalogView.h"
+#include "Garage/GarageAppearance.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -75,10 +76,43 @@ int main()
     Verify(CanEquipGalleryVehicle(partiallyOwned, cursor) &&
            partiallyOwned.SelectedVehicle() == 0,
            "owned browse target is eligible but not yet equipped");
+    // Parked-car styling is not car selection. The UI can target the
+    // owned browsed ID while the real selected car remains unchanged.
+    GarageAppearanceState appearance;
+    const GarageLook equippedBefore = appearance.Get(0);
+    const GarageSnapshot styleBefore = partiallyOwned.Snapshot();
+    Verify(CanStyleGalleryVehicle(partiallyOwned, cursor),
+           "owned unequipped showroom car is style-eligible");
+    Verify(appearance.Choose(cursor.Viewed(), GarageLookLayer::Paint, 7) &&
+           appearance.Choose(cursor.Viewed(), GarageLookLayer::Stripe, 2) &&
+           appearance.Choose(cursor.Viewed(), GarageLookLayer::Wheels, 2),
+           "owned unequipped car can hold an independent complete style");
+    Verify(appearance.Get(4).Paint == 7 &&
+           appearance.Get(4).Stripe == 2 &&
+           appearance.Get(4).Wheels == 2,
+           "all three cosmetic layers target viewed owned car");
+    Verify(appearance.Get(0).Paint == equippedBefore.Paint &&
+           appearance.Get(0).Stripe == equippedBefore.Stripe &&
+           appearance.Get(0).Wheels == equippedBefore.Wheels,
+           "styling unequipped owned vehicle leaves equipped look intact");
+    const GarageSnapshot styleAfter = partiallyOwned.Snapshot();
+    Verify(styleAfter.Credits == styleBefore.Credits &&
+           styleAfter.OwnedVehicleMask == styleBefore.OwnedVehicleMask &&
+           styleAfter.SelectedVehicle == styleBefore.SelectedVehicle &&
+           styleAfter.EngineLevel == styleBefore.EngineLevel &&
+           styleAfter.GripLevel == styleBefore.GripLevel,
+           "viewed-car customization never edits economy or selected driving car");
+    GarageAppearanceState restoredAppearance;
+    const auto packedAppearance = appearance.Serialize();
+    Verify(restoredAppearance.Load(packedAppearance.data(), packedAppearance.size()) &&
+           restoredAppearance.Get(4).Paint == 7 &&
+           restoredAppearance.Get(0).Paint == equippedBefore.Paint,
+           "parked-car look survives existing 18-byte save format");
     cursor.Reset(3);
     Verify(!CanEquipGalleryVehicle(partiallyOwned, cursor) &&
+           !CanStyleGalleryVehicle(partiallyOwned, cursor) &&
            partiallyOwned.SelectedVehicle() == 0,
-           "neighboring locked target is ineligible");
+           "neighboring locked target can neither equip nor style");
     cursor.Reset(4);
     Verify(partiallyOwned.Select(cursor.Viewed()) &&
            partiallyOwned.SelectedVehicle() == 4,
@@ -89,6 +123,9 @@ int main()
         if ((frame & 1) == 0) cursor.Next();
         else cursor.Previous();
         Verify(cursor.IsValid(), "300k cycles never exceed fixed IDs");
+        Verify(CanStyleGalleryVehicle(authority, cursor) ==
+               (cursor.Viewed() == 0),
+               "300k browse transitions only authorize style of owned car");
         const GarageSnapshot now = authority.Snapshot();
         Verify(now.Credits == before.Credits &&
                now.OwnedVehicleMask == before.OwnedVehicleMask &&

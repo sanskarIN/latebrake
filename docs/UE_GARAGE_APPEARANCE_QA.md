@@ -24,7 +24,7 @@ meshes or that a cooked 3D package exists.
   appearance schemas make the entire profile read-only to prevent
   accidental loss of future style and career fields.
 - The authoritative GameMode gates changes to the *open Garage menu*,
-  verifies the selected car is owned, cancels pending purchase
+  verifies the viewed car is owned, cancels pending purchase
   confirmations, applies the visual change and calls the existing
   SaveGame write. A failed write restores the original appearance in
   memory and shows explicit not-saved feedback.
@@ -42,7 +42,7 @@ roof stripes, or use **LB** for rim trims while the Garage menu is open
 and paused. Those same controller buttons remain assigned to their old
 driving actions outside the garage, and stale driving input is cleared.
 Use **F8** or the separate **FACTORY** mouse button to reset only
-the currently equipped car's paint, stripes and rims. This reset has
+the currently viewed owned car's paint, stripes and rims. This reset has
 the same persisted-save confirmation and failure rollback, and never
 resets another car's styling or purchases.
 On desktop Canvas HUD the lower-right garage-only
@@ -108,8 +108,9 @@ the actually equipped car; browsing cannot equip, purchase, spawn,
 modify Chaos physics or serialize a locked car. **E/SELECT** still equips
 only the next owned vehicle according to the existing GarageState rules;
 **Q** still buys only the next locked car after explicit two-step
-confirmation. Cosmetics apply to the real equipped car, not a locked
-preview. Browser pointer arrows remain in the Garage-only dock.
+confirmation. Cosmetics apply to the currently viewed car only if that car is owned,
+without needing to equip it. Locked previews remain read-only.
+Browser pointer arrows remain in the Garage-only dock.
 
 The two extra buttons below the garage paint/stripe/rim/reset controls
 let the mouse browse the previous or next showroom car. Unlike the four
@@ -133,17 +134,24 @@ to the true player pawn. An unsuccessful SaveGame write restores the
 previous equipped vehicle, its physics tuning and original cosmetics.
 The read-only preview cursor stays separate from saved gameplay data.
 
-## Prevent invisible customization of the wrong car
+## Style the viewed owned car without changing the equipped car
 
-The browsed showroom ID and the equipped car ID are intentionally
-separate. **Paint, stripe, rim and factory reset become unavailable
-whenever those two IDs differ.** A preview of a locked or differently
-owned car remains readable, but pressing F5/F6/F7/F8 cannot silently
-repaint the equipped car. The input dispatcher and on-screen button
-availability share this condition. Players should first use
-**Enter/SELECT to equip an owned viewed car**, after which its own
-stored look can be edited. The equipped car label is explicit in the
-Canvas HUD, and a denied key press displays a clear explanation.
+The browsed showroom ID and the equipped car ID remain intentionally
+separate. **F5/F6/F7/F8 and matching controller/mouse buttons target
+exactly the currently VIEWED car, provided it is owned.** No equip step
+is needed to customize another owned vehicle. A locked preview is still
+read-only, and a denied style action reports why it cannot be applied.
+The Canvas details now show **VIEWED LOOK** alongside **EQUIPPED LOOK**,
+so browsing cannot silently repaint a hidden car.
+
+The authoritative GameMode checks an explicit pure ownership helper
+before editing. It persists all six per-car looks in the existing 18-byte
+schema and uses SaveRecords rollback on failure. It calls
+`ApplyGarageToPlayer` only when the newly styled car is actually the
+equipped car, preventing the race pawn's paint and physical setup from
+changing while parked-car styling. The preview schematic uses the
+viewed car's look without touching collision, physics, credits,
+career state or SaveGame selected vehicle. Browsing still writes nothing.
 
 ## Canvas showroom vehicle schematic (view-only, not 3D capture)
 
@@ -329,3 +337,24 @@ Repeat with U and I, across all six cars and with an external controller.
 Portable C++ tests exercise reset/re-consent semantics; source-binding
 tests verify the real GameMode focus event calls Reset before its early
 return. OS callback delivery must still be verified in the native Editor.
+
+## Acceptance matrix: owned parked-car style
+
+In real UE5.8, own Arrow (0) and Glider (4), but keep Arrow equipped.
+Open Garage and browse to Glider. F5/F6/F7 and the desktop style dock
+must be **enabled**, show Glider's new paint/stripes/rims on the 2D
+schematic and persist those choices without changing Arrow's active
+3D Pawn, selected vehicle, engine/grip upgrades or credits. On return
+to Glider, the look must remain. After quit/relaunch, opening the
+same SaveGame must restore BOTH cars' independent cosmetic choices
+under the unchanged appearance schema version 1.
+
+Browse locked Phantom (2). F5/F6/F7/F8, the corresponding controller
+bindings and desktop style buttons must be denied/disabled; previewing
+must not grant ownership or write to its saved look. Repeat when a
+career race denies editing, on manual suspension, focus loss and a
+future SaveGame schema. Simulate failed save writes and confirm
+the previous parked-car look is restored without applying a different
+look to the active Pawn. Verify no hidden, accidental editing when
+showroom pages change. These are engine/hardware acceptance tasks;
+portable C++ and source-binding tests are not proof of actual visuals.

@@ -468,13 +468,30 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("GARAGE ONLY: Q UNLOCKS | U/I UPGRADES"));
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
+            MenuLine(TEXT("STYLE VIEWED OWNED CAR: F5/F6/F7 | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
             if (!Mode->CanCustomizeGarage() &&
                 !Mode->IsFocusLossGuardActive() &&
                 !Mode->IsManualRacePauseActive() &&
                 !Mode->IsProfileReadOnly())
-                MenuLine(TEXT("CUSTOM LOOK LOCKED: EQUIP VIEWED OWNED CAR FIRST"), true);
+            {
+                const bool bLockedPreview =
+                    Preview.Ownership == latebrake::GarageCatalogOwnership::LockedAffordable ||
+                    Preview.Ownership == latebrake::GarageCatalogOwnership::LockedInsufficientCredits;
+                MenuLine(bLockedPreview
+                    ? TEXT("CUSTOM LOOK LOCKED: OWN THE VIEWED CAR FIRST")
+                    : TEXT("CUSTOM LOOK UNAVAILABLE DURING THIS CAREER RACE"), true);
+            }
+            const latebrake::GarageLook ViewedLook = Mode->GetGaragePreviewLook();
+            MenuLine(FString::Printf(
+                TEXT("VIEWED LOOK: %s / %s / %s"),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Paint, ViewedLook.Paint)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Stripe, ViewedLook.Stripe)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Wheels, ViewedLook.Wheels))), true);
             const latebrake::GarageLook ActiveLook =
                 Mode->GetSelectedGarageLook();
             MenuLine(FString::Printf(
