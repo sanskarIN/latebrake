@@ -162,6 +162,19 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
                             section.index("GaragePurchaseConfirm.ConfirmOrStage("))
             self.assertNotIn("CanUseGarageVehicleHotkey(",section)
 
+    def test_app_deactivation_cancels_staged_paid_consent(self):
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        focus = mode.split(
+            "void ALatebrakeRaceGameMode::PauseForAppInterruption()",1
+        )[1].split("\n}\n",1)[0]
+        self.assertLess(focus.index("GaragePurchaseConfirm.Reset();"),
+                        focus.index("AppFocusGuard.OnFocusLost("))
+        self.assertLess(focus.index("GaragePurchaseConfirm.Reset();"),
+                        focus.index("FocusLossTransition::Ignored"))
+        self.assertIn("void ALatebrakeRaceGameMode::MenuNext()",mode)
+        self.assertIn("void ALatebrakeRaceGameMode::ToggleMenu()",mode)
+
     def test_external_suspension_blocks_mutation_but_preserves_preview(self):
         mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
                 ).read_text(encoding="utf-8")

@@ -310,3 +310,22 @@ and second press, return, and verify the former staged offer was
 cancelled. Confirm E still cycles owned cars in eligible live quick
 races. The new portable 300,000-transition test and editor source
 binding checks supplement, but do not replace, real controller QA.
+
+## Focus interruption cancels pending purchases
+
+If Q/U/I has displayed the first of two purchase-confirmation prompts,
+an application deactivation immediately invalidates that transient offer.
+This cancellation runs *before* the existing focus guard decides whether
+the game was in its paused Garage menu; the focus guard correctly skips
+race-time suspension when the menu was already open, but must **not**
+preserve previous spending consent. On return, the first new Q/U/I press
+may only stage a fresh offer, and a second within the normal consent
+window is still required. Browsing and saved ownership remain unchanged.
+
+Test with real UE5.8 on Windows: open Garage, press Q once, Alt-Tab out
+and return within eight seconds, then press Q once. The first post-focus
+press must **not** debit credits or unlock; it must show a new offer.
+Repeat with U and I, across all six cars and with an external controller.
+Portable C++ tests exercise reset/re-consent semantics; source-binding
+tests verify the real GameMode focus event calls Reset before its early
+return. OS callback delivery must still be verified in the native Editor.

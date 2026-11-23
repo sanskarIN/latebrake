@@ -1547,6 +1547,11 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
 
 void ALatebrakeRaceGameMode::PauseForAppInterruption()
 {
+    // A first Q/U/I press must never authorize a second press after the
+    // user has switched apps, even when Garage is already menu-paused.
+    // AppFocusRaceGuard intentionally ignores menu-open focus loss for
+    // race timing; consent cancellation must happen BEFORE that early return.
+    GaragePurchaseConfirm.Reset();
     // Losing focus can happen without Unreal itself pausing the game loop.
     // Keep a separate fail-closed gate even if SetGamePaused returns false.
     // A foreground notification alone must NEVER resume competition.
