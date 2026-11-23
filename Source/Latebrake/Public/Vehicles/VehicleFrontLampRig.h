@@ -44,9 +44,14 @@ inline constexpr FrontLampRig PlanFrontLampRig(
     const double z=originalSurfaceReady
         ? 85.0+vehiclemesh::OriginalVehicleVisualOffsetZCm
         : 23.0;
-    return {{{x,-y,z},{x,y,z}},
-        -3.0,12.0,24.0,7500.0,1100.0,
-        drivingAllowed?1100.0:0.0,originalSurfaceReady};
+    FrontLampRig rig{};
+    // Explicit element assignments are portable in constexpr C++20 and
+    // avoid aggregate-brace differences between Clang, MSVC and GCC.
+    rig.Mounts[0]={x,-y,z};
+    rig.Mounts[1]={x,y,z};
+    rig.OutputIntensity=drivingAllowed?rig.ActiveIntensity:0.0;
+    rig.OriginalSurface=originalSurfaceReady;
+    return rig;
 }
 
 constexpr bool FrontLampPoseIsSafe(FrontLampPose p) noexcept
