@@ -113,6 +113,26 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         ConfigureDecorativeMesh(Cabin, Cube.Object, FVector(-20.f, 0.f, 52.f), FVector(1.75f, 1.48f, 0.55f));
     }
 
+    // Two lightweight visible roof stripes, attached to the chassis.
+    // Neither uses overlap/collision, body simulation, or gameplay forces.
+    RoofStripeLeft = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoofStripeLeft"));
+    RoofStripeRight = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoofStripeRight"));
+    for (UStaticMeshComponent* Stripe :
+         {RoofStripeLeft.Get(), RoofStripeRight.Get()})
+    {
+        Stripe->SetupAttachment(Chassis);
+        Stripe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Stripe->SetGenerateOverlapEvents(false);
+        Stripe->SetSimulatePhysics(false);
+        Stripe->SetCastShadow(false);
+        Stripe->SetVisibility(false, true);
+        if (Cube.Succeeded())
+        {
+            ConfigureDecorativeMesh(Stripe, Cube.Object,
+                FVector(-20.f, 0.f, 83.f), FVector(1.2f, 0.05f, 0.035f));
+        }
+    }
+
     // Original, collision-free procedural body accents. These shapes do not
     // replace the physically simulated chassis or change its contact body.
     Hood = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Hood"));
@@ -504,8 +524,11 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     // material as the parent: its physical-material/contact settings and
     // Chaos collision body are not changed. Material parameter availability
     // must still be visually verified in the licensed Unreal Editor.
+    const latebrake::GarageLook Look =
+        latebrake::ValidGarageLook(CurrentGarageLook)
+            ? CurrentGarageLook : latebrake::FactoryGarageLook(VehicleId);
     const latebrake::VehiclePaintRecipe Paint =
-        latebrake::PaintForVehicle(VehicleId);
+        latebrake::PaintForGarageLook(VehicleId, Look);
     const auto Tint = [&](UStaticMeshComponent* Part,
                           latebrake::VehiclePaintRgb Rgb)
     {
@@ -544,6 +567,55 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     Tint(SpoilerWing, Paint.Accent);
     Tint(SpoilerSupportLeft, Paint.Accent);
     Tint(SpoilerSupportRight, Paint.Accent);
+
+    // Actual attached visible stripe geometry: center/twin/clean.
+    // Its top surface follows the selected car's roof height and length.
+    const latebrake::VehicleSpec Spec =
+        latebrake::GarageState::Definition(VehicleId);
+    const FVector ChassisScale(
+        static_cast<float>(latebrake::VehicleRootScaleX),
+        static_cast<float>(latebrake::VehicleRootScaleY),
+        static_cast<float>(latebrake::VehicleRootScaleZ));
+    const float StripeHeight = 52.f +
+        27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
+    const latebrake::VehiclePaintRgb StripeRgb = Look.Paint == 7u
+        ? latebrake::VehiclePaintRgb{0.10, 0.18, 0.28}
+        : latebrake::VehiclePaintRgb{0.97, 0.95, 0.84};
+    const auto ApplyStripe = [&](UStaticMeshComponent* Part, bool Visible,
+                                  float SideCm)
+    {
+        if (!IsValid(Part)) return;
+        Part->SetVisibility(Visible && Part->GetStaticMesh() != nullptr, true);
+        Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        if (!Visible) return;
+        Part->SetRelativeLocation(
+            FVector(-20.f, SideCm, StripeHeight) / ChassisScale);
+        Part->SetRelativeScale3D(
+            FVector(1.2 * Spec.CabinLength, 0.045, 0.035) / ChassisScale);
+        Tint(Part, StripeRgb);
+    };
+    ApplyStripe(RoofStripeLeft, Look.Stripe != 0u,
+        Look.Stripe == 1u ? 0.f : -21.f);
+    ApplyStripe(RoofStripeRight, Look.Stripe == 2u, 21.f);
+
+    // Trim/rim finishes change ONLY the four decorative spoke meshes,
+    // not wheel contacts, tire grip, physics, or the actual Chaos chassis.
+    const latebrake::VehiclePaintRgb RimRgb = Look.Wheels == 2u
+        ? latebrake::VehiclePaintRgb{0.10, 0.82, 0.91}
+        : Look.Wheels == 1u
+            ? latebrake::VehiclePaintRgb{0.91, 0.92, 0.94}
+            : latebrake::VehiclePaintRgb{0.23, 0.28, 0.33};
+    for (UStaticMeshComponent* Rim :
+         {FrontLeftSpoke.Get(), FrontRightSpoke.Get(),
+          RearLeftSpoke.Get(), RearRightSpoke.Get()})
+    {
+        if (!IsValid(Rim)) continue;
+        const float Width = Look.Wheels == 2u ? 0.24f :
+            Look.Wheels == 1u ? 0.19f : 0.14f;
+        Rim->SetRelativeScale3D(FVector(Width, 0.24f, 0.09f));
+        Rim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Tint(Rim, RimRgb);
+    }
 }
 
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
@@ -568,6 +640,18 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
         if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId);
     }
     GarageVehicleId = SafeId;
+}
+
+void ALatebrakeCarPawn::SetGarageAppearance(latebrake::GarageLook look)
+{
+    if (!latebrake::ValidGarageLook(look)) return;
+    if (look.Paint == CurrentGarageLook.Paint &&
+        look.Stripe == CurrentGarageLook.Stripe &&
+        look.Wheels == CurrentGarageLook.Wheels)
+        return;
+    CurrentGarageLook = look;
+    // Cosmetic material and component updates never run on Tick.
+    if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(GarageVehicleId);
 }
 
 void ALatebrakeCarPawn::ClearDriverInputs()
@@ -2337,6 +2421,28 @@ void ALatebrakeCarPawn::UpgradeGarageGrip()
     }
 }
 
+void ALatebrakeCarPawn::CycleGaragePaint()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        Mode->GarageCyclePaint();
+}
+void ALatebrakeCarPawn::CycleGarageStripe()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        Mode->GarageCycleStripe();
+}
+void ALatebrakeCarPawn::CycleGarageWheels()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        Mode->GarageCycleWheels();
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -2432,6 +2538,15 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
     PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
     PlayerInputComponent->BindAction(TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
+    FInputActionBinding& GaragePaintKey = PlayerInputComponent->BindAction(
+        TEXT("GarageCyclePaint"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGaragePaint);
+    GaragePaintKey.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageStripeKey = PlayerInputComponent->BindAction(
+        TEXT("GarageCycleStripe"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGarageStripe);
+    GarageStripeKey.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageWheelsKey = PlayerInputComponent->BindAction(
+        TEXT("GarageCycleWheels"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGarageWheels);
+    GarageWheelsKey.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }

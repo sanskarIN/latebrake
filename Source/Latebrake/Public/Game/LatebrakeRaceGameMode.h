@@ -19,6 +19,7 @@
 #include "Racing/ManualRacePauseGuard.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
+#include "Garage/GarageAppearance.h"
 #include "Garage/GaragePurchaseConfirmation.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
@@ -145,6 +146,10 @@ public:
     // Read-only copy for the offline catalogue. No ownership or save mutation.
     latebrake::GarageSnapshot GetGarageSnapshot() const { return Garage.Snapshot(); }
     int32 GetSelectedVehicleId() const { return Garage.SelectedVehicle(); }
+    latebrake::GarageLook GetSelectedGarageLook() const noexcept
+    {
+        return GarageLooks.Get(Garage.SelectedVehicle());
+    }
     FString GetSelectedVehicleName() const;
     int32 GetEngineUpgradeLevel() const { return Garage.EngineLevel(); }
     int32 GetGripUpgradeLevel() const { return Garage.GripLevel(); }
@@ -157,6 +162,9 @@ public:
     void GarageUnlockNext();
     void GarageUpgradeEngine();
     void GarageUpgradeGrip();
+    void GarageCyclePaint();
+    void GarageCycleStripe();
+    void GarageCycleWheels();
     int32 GetLastRaceCredits() const { return LastRaceCredits; }
 
     static FVector GetStartPosition();
@@ -174,6 +182,7 @@ private:
     void SaveRecords();
     void RefreshRival();
     void ApplyGarageToPlayer();
+    void GarageCycleAppearance(latebrake::GarageLookLayer layer);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();
@@ -235,6 +244,7 @@ private:
     float AttemptPreviousBestSeconds = 0.f;
     int32 CompletedRaceCount = 0;
     latebrake::GarageState Garage;
+    latebrake::GarageAppearanceState GarageLooks;
     latebrake::GaragePurchaseConfirmation GaragePurchaseConfirm;
     latebrake::GarageTuningKey LastAppliedTuning;
     TWeakObjectPtr<ALatebrakeCarPawn> LastTunedPawn;

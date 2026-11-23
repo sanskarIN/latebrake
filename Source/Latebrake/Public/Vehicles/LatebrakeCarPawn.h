@@ -27,6 +27,7 @@
 #include "Vehicles/ArcadeNitroBoost.h"
 #include "Vehicles/HumanSpinAssistMeter.h"
 #include "Vehicles/WheelVisualMotion.h"
+#include "Garage/GarageAppearance.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
@@ -106,6 +107,7 @@ public:
     void HandleAppFocusLost();
 
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
+    void SetGarageAppearance(latebrake::GarageLook look);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     // Every RecoverTo (including race restart) changes this revision so
     // checkpoint actors never interpolate across an authorized teleport.
@@ -149,6 +151,11 @@ protected:
     TObjectPtr<UStaticMeshComponent> Hood;
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
     TObjectPtr<UStaticMeshComponent> RearDeck;
+    // Attached/collision-free stripe geometry: live switchable cosmetic.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RoofStripeLeft;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RoofStripeRight;
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
     TObjectPtr<UStaticMeshComponent> SpoilerWing;
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
@@ -269,6 +276,9 @@ private:
     void UnlockGarageVehicle();
     void UpgradeGarageEngine();
     void UpgradeGarageGrip();
+    void CycleGaragePaint();
+    void CycleGarageStripe();
+    void CycleGarageWheels();
     void SelectArcade();
     void SelectSimulation();
 
@@ -284,6 +294,7 @@ private:
     float GarageGrip = 1.f;
     float GarageTopSpeed = 1.f;
     int32 GarageVehicleId = 0;
+    latebrake::GarageLook CurrentGarageLook{};
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bHandbrakeHeld = false;

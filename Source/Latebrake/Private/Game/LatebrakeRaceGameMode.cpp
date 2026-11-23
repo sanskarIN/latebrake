@@ -2014,19 +2014,22 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
         return;
     }
     const latebrake::GarageTuningKey Requested = latebrake::MakeGarageTuningKey(Garage.Snapshot());
-    if (LastTunedPawn.Get() == Car && Requested == LastAppliedTuning)
+    if (LastTunedPawn.Get() != Car || !(Requested == LastAppliedTuning))
     {
-        // Credits and garage ownership alone do not affect live handling.
-        return;
+        // Cosmetic changes must NEVER alter physics multiplier authority;
+        // only actual garage tuning/selection changes call SetGarageTuning.
+        const latebrake::VehiclePerformance Performance = Garage.Performance();
+        Car->SetGarageTuning(
+            static_cast<float>(Performance.Acceleration),
+            static_cast<float>(Performance.Grip),
+            static_cast<float>(Performance.TopSpeed),
+            Garage.SelectedVehicle());
+        LastTunedPawn = Car;
+        LastAppliedTuning = Requested;
     }
-    const latebrake::VehiclePerformance Performance = Garage.Performance();
-    Car->SetGarageTuning(
-        static_cast<float>(Performance.Acceleration),
-        static_cast<float>(Performance.Grip),
-        static_cast<float>(Performance.TopSpeed),
-        Garage.SelectedVehicle());
-    LastTunedPawn = Car;
-    LastAppliedTuning = Requested;
+    // Apply separately, including when the same vehicle receives a new
+    // free paint/stripe/wheel choice. No force or collision body changes.
+    Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()));
 }
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
@@ -2063,6 +2066,67 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
             SavedProfile.Commit();
         }
     }
+}
+
+void ALatebrakeRaceGameMode::GarageCycleAppearance(
+    latebrake::GarageLookLayer layer)
+{
+    GaragePurchaseConfirm.Reset(); // A cosmetic click cancels pending spend.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
+    {
+        GarageFeedback = TEXT("Open the Garage menu to customize your car.");
+        return;
+    }
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit the career race before customizing.");
+        return;
+    }
+    if (bFutureSaveSchema)
+    {
+        GarageFeedback = TEXT("Newer saved profile: this version cannot edit its appearance.");
+        return;
+    }
+    const int32 Selected = Garage.SelectedVehicle();
+    if (!Garage.Owns(Selected))
+    {
+        GarageFeedback = TEXT("Cannot customize a vehicle you do not own.");
+        return;
+    }
+    const latebrake::GarageAppearanceState Before = GarageLooks;
+    if (!GarageLooks.Cycle(Selected, layer))
+    {
+        GarageFeedback = TEXT("Unknown appearance option; no change saved.");
+        return;
+    }
+    ApplyGarageToPlayer();
+    SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        GarageLooks = Before;
+        ApplyGarageToPlayer();
+        GarageFeedback = TEXT("Appearance NOT saved; previous car look restored.");
+        return;
+    }
+    const latebrake::GarageLook Look = GarageLooks.Get(Selected);
+    const int32 Choice = layer == latebrake::GarageLookLayer::Paint
+        ? Look.Paint : layer == latebrake::GarageLookLayer::Stripe
+            ? Look.Stripe : Look.Wheels;
+    GarageFeedback = FString::Printf(TEXT("LOOK SAVED: %s"),
+        UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(layer, Choice)));
+}
+
+void ALatebrakeRaceGameMode::GarageCyclePaint()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Paint);
+}
+void ALatebrakeRaceGameMode::GarageCycleStripe()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Stripe);
+}
+void ALatebrakeRaceGameMode::GarageCycleWheels()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Wheels);
 }
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
@@ -2460,6 +2524,38 @@ void ALatebrakeRaceGameMode::LoadRecords()
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
                      Save->SelectedVehicleId, Save->EngineUpgradeLevel,
                      Save->GripUpgradeLevel});
+        if (Save->GarageAppearanceSchemaVersion >
+            latebrake::GarageAppearanceState::SaveVersion)
+        {
+            // A future appearance format may contain unknown information.
+            // Do not write older saves over that newer person's choices.
+            bFutureSaveSchema = true;
+            bProgressSaveFailed = true;
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: newer garage appearance schema - profile is read-only"));
+        }
+        else if (Save->GarageAppearanceSchemaVersion ==
+                 latebrake::GarageAppearanceState::SaveVersion)
+        {
+            latebrake::GarageAppearanceState::Packed packed{};
+            bool bValid = Save->GarageAppearanceBytes.Num() ==
+                static_cast<int32>(packed.size());
+            if (bValid)
+            {
+                for (int32 i = 0; i < static_cast<int32>(packed.size()); ++i)
+                    packed[static_cast<std::size_t>(i)] =
+                        Save->GarageAppearanceBytes[i];
+                bValid = Save->GarageAppearanceChecksum ==
+                    latebrake::GarageAppearanceState::Checksum(packed) &&
+                    GarageLooks.Load(packed.data(), packed.size());
+            }
+            if (!bValid)
+            {
+                GarageLooks.Reset();
+                UE_LOG(LogTemp, Warning,
+                    TEXT("Latebrake: garage appearance invalid; factory cosmetics restored"));
+            }
+        }
 
         if (Save->SaveSchemaVersion > latebrake::CareerSaveSchema)
         {
@@ -2515,6 +2611,18 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->SelectedVehicleId = Profile.SelectedVehicle;
     Save->EngineUpgradeLevel = Profile.EngineLevel;
     Save->GripUpgradeLevel = Profile.GripLevel;
+    // Visual data is additional to the existing career schema: no car ID,
+    // economy, results or medal fields are repurposed.
+    const auto packedLooks = GarageLooks.Serialize();
+    Save->GarageAppearanceSchemaVersion =
+        latebrake::GarageAppearanceState::SaveVersion;
+    Save->GarageAppearanceBytes.SetNumUninitialized(
+        static_cast<int32>(packedLooks.size()));
+    for (int32 i = 0; i < static_cast<int32>(packedLooks.size()); ++i)
+        Save->GarageAppearanceBytes[i] =
+            packedLooks[static_cast<std::size_t>(i)];
+    Save->GarageAppearanceChecksum =
+        latebrake::GarageAppearanceState::Checksum(packedLooks);
     const latebrake::CareerSnapshot CareerData = Career.Snapshot();
     Save->SaveSchemaVersion = latebrake::CareerSaveSchema;
     Save->bSpeedInMilesPerHour = bMilesPerHour;
