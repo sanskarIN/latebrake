@@ -2778,3 +2778,20 @@ else()
 endif()
 add_test(NAME OriginalVehicleRenderSections
     COMMAND latebrake_original_vehicle_render_sections_tests)
+
+# The optional 2D trial showroom must never silently change the selected
+# race car on browse or an unpaid/locked preview.
+add_executable(latebrake_preview_garage_selection_tests
+    PreviewGarageSelectionTests.cpp)
+target_include_directories(latebrake_preview_garage_selection_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_garage_selection_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_garage_selection_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_garage_selection_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGarageSelection
+    COMMAND latebrake_preview_garage_selection_tests)
