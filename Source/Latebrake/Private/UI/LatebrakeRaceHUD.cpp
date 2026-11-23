@@ -993,6 +993,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 const bool bCanEditLook = Mode->CanCustomizeGarage();
                 const bool bCanBrowse = Mode->CanBrowseGarage();
+                const int32 PreviewVehicle = Mode->GetGaragePreviewVehicleId();
+                const latebrake::GarageLook PreviewLook =
+                    Mode->GetGaragePreviewLook();
+                const latebrake::VehiclePaintRecipe StylePaint =
+                    latebrake::PaintForGarageLook(PreviewVehicle, PreviewLook);
                 const latebrake::DesktopMenuMouseAction StyleHover =
                     HasCursor ? latebrake::HitTestGarageStyleMouse(
                         GarageStyleMenu, CursorX, CursorY,
@@ -1023,35 +1028,44 @@ void ALatebrakeRaceHUD::DrawHUD()
                             : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f),
                         BX, BY, BW, BH);
                     DrawRect(TextColor, BX, BY, 3.f * UIScale, BH);
-                    const TCHAR* Caption =
-                        StyleButton.Action ==
-                            latebrake::DesktopMenuMouseAction::GaragePaint
-                            ? TEXT("PAINT >")
-                        : StyleButton.Action ==
-                            latebrake::DesktopMenuMouseAction::GarageStripe
-                            ? TEXT("STRIPES >")
-                        : StyleButton.Action ==
-                            latebrake::DesktopMenuMouseAction::GarageWheels
-                            ? TEXT("RIMS >")
-                        : StyleButton.Action ==
-                            latebrake::DesktopMenuMouseAction::GarageReset
-                            ? TEXT("FACTORY")
-                        : StyleButton.Action ==
-                            latebrake::DesktopMenuMouseAction::GarageBrowsePrevious
-                            ? TEXT("< VIEW CAR")
-                            : TEXT("VIEW CAR >");
+                    const auto Indicator =
+                        latebrake::DescribeGarageStyleButton(
+                            StyleButton.Action, PreviewVehicle, PreviewLook);
+                    // The 1-based option counter updates immediately on
+                    // the viewed car, including an owned parked car.
+                    // Factory state is explicit, not another cycle slot.
+                    if (!Indicator.Valid) continue;
+                    const FString Caption = Indicator.Total > 0
+                        ? FString::Printf(TEXT("%s %d/%d"),
+                            UTF8_TO_TCHAR(Indicator.Caption),
+                            Indicator.Ordinal, Indicator.Total)
+                        : FString(UTF8_TO_TCHAR(Indicator.Caption));
                     DrawText(Caption, TextColor, BX + 10.f * UIScale,
                         BY + 12.f * UIScale,
                         GEngine->GetSmallFont(), 0.82f * UIScale);
+                    if (StyleButton.Action ==
+                        latebrake::DesktopMenuMouseAction::GaragePaint)
+                    {
+                        // A bounded preview swatch is visual-only: it is
+                        // inside the existing hit rectangle, with no new
+                        // pointer target, material allocation or input.
+                        const float Swatch = FMath::Clamp(
+                            12.f * UIScale, 8.f, 14.f);
+                        const auto Rgb = StylePaint.Body;
+                        DrawRect(FLinearColor(
+                            static_cast<float>(Rgb.R),
+                            static_cast<float>(Rgb.G),
+                            static_cast<float>(Rgb.B), 1.f),
+                            BX + BW - Swatch - 6.f * UIScale,
+                            BY + 0.5f * (BH - Swatch),
+                            Swatch, Swatch);
+                    }
                 }
 
                 // Grounded SCREEN-SPACE TOP VIEW of the browsed prototype.
                 // It uses the same six vehicle geometry/paint recipes as
                 // the source Pawn. Unlike a 3D car actor, this costs no
                 // physics, asset loads, capture camera or saved ownership.
-                const int32 PreviewVehicle = Mode->GetGaragePreviewVehicleId();
-                const latebrake::GarageLook PreviewLook =
-                    Mode->GetGaragePreviewLook();
                 const auto Diagram = latebrake::CalculateGarageSchematic(
                     static_cast<double>(Canvas->SizeX),
                     static_cast<double>(Canvas->SizeY),

@@ -177,6 +177,29 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
                       (ROOT / "Tests/Standalone/GarageGalleryCursorTests.cpp"
                        ).read_text(encoding="utf-8"))
 
+    def test_live_dock_displays_viewed_cosmetics_and_factory_noop(self):
+        self.assertIn("DescribeGarageStyleButton(", self.mouse)
+        self.assertIn("GarageStyleButtonIndicator final", self.mouse)
+        self.assertIn("SameGarageLook(look, FactoryGarageLook(viewedId))", self.mouse)
+        self.assertIn("FACTORY OK", self.mouse)
+        self.assertIn("RESET LOOK", self.mouse)
+        self.assertIn("DescribeGarageStyleButton(", self.hud)
+        self.assertIn("Mode->GetGaragePreviewVehicleId()", self.hud)
+        self.assertIn("Mode->GetGaragePreviewLook()", self.hud)
+        self.assertIn("Indicator.Ordinal, Indicator.Total", self.hud)
+        self.assertIn("StylePaint.Body", self.hud)
+        self.assertIn("12.f * UIScale, 8.f, 14.f", self.hud)
+        self.assertIn("FACTORY LOOK ALREADY ACTIVE: no new save needed.", self.mode)
+        style_method = self.mode.split(
+            "void ALatebrakeRaceGameMode::GarageCycleAppearance(", 1
+        )[1].split("void ALatebrakeRaceGameMode::GarageCyclePaint()", 1)[0]
+        self.assertLess(style_method.index("if (!bChanged)"),
+                        style_method.index("SaveRecords();"))
+        self.assertIn("if (SameGarageLook(current, factory)) return false;", self.policy)
+        self.assertIn("TestGarageStyleIndicators();",
+            (ROOT / "Tests/Standalone/HudMenuMouseControlsTests.cpp"
+             ).read_text(encoding="utf-8"))
+
     def test_controller_style_shortcuts_pause_only(self):
         mapping = {
             "GarageCyclePaint": "Gamepad_RightThumbstick",

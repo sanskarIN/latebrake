@@ -387,3 +387,25 @@ the UI says **Kestrel** is Q's target; press Q once and verify the
 second-step offer names Kestrel. Do NOT press twice unless testing
 purchase flow with disposable career credits. Also verify the
 all-owned state has no misleading buy prompt.
+
+## Live garage button labels and idempotent factory reset
+
+The desktop six-button showroom dock now displays each viewed car's
+selected **PAINT 1/8**, **STRIPE 1/3**, and **RIMS 1/3** positions
+and the actual paint as a small bounded color swatch. Counts use
+1-based numbers; changing the viewed owned car updates them immediately.
+The factory button says **FACTORY OK** when already at factory colors
+and **RESET LOOK** when a reset would change the style. All labels
+come from the same validated, read-only appearance state used by the
+screen-space preview; none of these visual indicators can authorize
+car ownership, spending, selection, or save writes.
+
+A duplicate factory reset now reports that no change is needed and
+does **not** call SaveRecords or update the active Pawn. This avoids
+unnecessary disk activity and deceptive "saved" feedback. Portable
+tests cover every 6 x 8 x 3 x 3 valid showroom combination, invalid
+IDs/looks, six button types, and no-change factory reset bytes.
+On a real UE5.8 desktop verify text and swatch legibility at 900x600,
+1280x720, 1920x1080 and high DPI, including disabled locked-car
+preview and owned-but-unequipped car changes. Actual Canvas font fit
+and paint materials remain unverified until on-device testing.

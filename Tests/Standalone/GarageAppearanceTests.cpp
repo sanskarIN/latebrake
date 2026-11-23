@@ -97,6 +97,18 @@ void TestSelectionsAndIsolation()
           Same(restore.Get(2), FactoryGarageLook(2)) &&
           Same(restore.Get(3), neighbor),
           "reset factory affects just one car");
+    const auto factorySnapshot = restore.Serialize();
+    Check(!restore.ResetVehicle(2) &&
+          restore.Serialize() == factorySnapshot,
+          "second factory reset is a no-op and leaves save bytes unchanged");
+    GarageAppearanceState defaults;
+    const auto defaultBytes = defaults.Serialize();
+    for (int carId = 0; carId < VehicleCount; ++carId)
+    {
+        Check(!defaults.ResetVehicle(carId) &&
+              defaults.Serialize() == defaultBytes,
+              "factory defaults never register a spurious change");
+    }
     Check(!restore.ResetVehicle(-1) &&
           !restore.ResetVehicle(VehicleCount),
           "invalid reset ID is inert");

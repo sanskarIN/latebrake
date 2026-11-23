@@ -1,6 +1,7 @@
 #include "UI/HudMenuMouseControls.h"
 
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <utility>
@@ -53,6 +54,76 @@ void VerifyViewport(int w, int h)
     Check(HitTestDesktopMenuMouse(plan, -1.0, -1.0)
         == DesktopMenuMouseAction::None, "negative coordinates rejected");
 }
+void TestGarageStyleIndicators()
+{
+    using namespace latebrake;
+    constexpr DesktopMenuMouseAction styleActions[] = {
+        DesktopMenuMouseAction::GaragePaint,
+        DesktopMenuMouseAction::GarageStripe,
+        DesktopMenuMouseAction::GarageWheels,
+        DesktopMenuMouseAction::GarageReset,
+        DesktopMenuMouseAction::GarageBrowsePrevious,
+        DesktopMenuMouseAction::GarageBrowseNext
+    };
+    for (int vehicle = 0; vehicle < VehicleCount; ++vehicle)
+    {
+        const auto factory = FactoryGarageLook(vehicle);
+        for (int paint = 0; paint < GaragePaintOptions; ++paint)
+        for (int stripe = 0; stripe < GarageStripeOptions; ++stripe)
+        for (int wheels = 0; wheels < GarageWheelOptions; ++wheels)
+        {
+            const GarageLook look{
+                static_cast<std::uint8_t>(paint),
+                static_cast<std::uint8_t>(stripe),
+                static_cast<std::uint8_t>(wheels)};
+            const bool isFactory = SameGarageLook(look, factory);
+            for (auto action : styleActions)
+            {
+                const auto info =
+                    DescribeGarageStyleButton(action, vehicle, look);
+                Check(info.Valid && info.Caption && info.Caption[0] != '\0',
+                    "every valid showroom choice has a readable button");
+                Check(info.Factory == isFactory,
+                    "factory status follows viewed car, not equipped car");
+                if (action == DesktopMenuMouseAction::GaragePaint)
+                    Check(info.Ordinal == paint+1 &&
+                          info.Total == GaragePaintOptions,
+                          "paint button indicates actual current shade");
+                else if (action == DesktopMenuMouseAction::GarageStripe)
+                    Check(info.Ordinal == stripe+1 &&
+                          info.Total == GarageStripeOptions,
+                          "stripe button indicates exact pattern index");
+                else if (action == DesktopMenuMouseAction::GarageWheels)
+                    Check(info.Ordinal == wheels+1 &&
+                          info.Total == GarageWheelOptions,
+                          "rim button indicates exact visible trim index");
+                else if (action == DesktopMenuMouseAction::GarageReset)
+                    Check(info.Total == 0 &&
+                          std::strcmp(info.Caption,
+                              isFactory ? "FACTORY OK" : "RESET LOOK") == 0,
+                          "factory button explains whether a reset is needed");
+                else
+                    Check(info.Total == 0 && info.Ordinal == 0,
+                          "browse action never borrows styling option count");
+            }
+        }
+    }
+    const auto factory = FactoryGarageLook(0);
+    for (int badId : {-1, VehicleCount, 99999})
+        Check(!DescribeGarageStyleButton(
+            DesktopMenuMouseAction::GaragePaint, badId, factory).Valid,
+            "future/invalid car ID cannot supply a fake style caption");
+    for (GarageLook bad : {GarageLook{255u,0u,0u},
+                          GarageLook{0u,255u,0u},
+                          GarageLook{0u,0u,255u}})
+        Check(!DescribeGarageStyleButton(
+            DesktopMenuMouseAction::GarageReset, 0, bad).Valid,
+            "corrupt cosmetic record has no reset-button presentation");
+    Check(!DescribeGarageStyleButton(
+        DesktopMenuMouseAction::None, 0, factory).Valid,
+        "unrecognized control gets no fabricated garage label");
+}
+
 void TestGarageCosmeticDock()
 {
     using namespace latebrake;
@@ -143,6 +214,7 @@ void TestGarageCosmeticDock()
 int main()
 {
     TestGarageCosmeticDock();
+    TestGarageStyleIndicators();
     using namespace latebrake;
     for (const auto& [width, height] :
         {std::pair{900, 600}, std::pair{960, 640},

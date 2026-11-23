@@ -50,6 +50,13 @@ inline constexpr GarageLook FactoryGarageLook(int id) noexcept
     return {static_cast<std::uint8_t>(
         GarageState::IsVehicle(id) ? id : 0), 0u, 0u};
 }
+// Value equality is shared by factory-reset idempotence and by the UI
+// presentation. Never use bytewise struct comparisons (padding may differ).
+inline constexpr bool SameGarageLook(GarageLook a, GarageLook b) noexcept
+{
+    return a.Paint == b.Paint && a.Stripe == b.Stripe &&
+           a.Wheels == b.Wheels;
+}
 inline constexpr int GarageLookChoiceCount(GarageLookLayer layer) noexcept
 {
     switch (layer)
@@ -110,12 +117,17 @@ public:
         return true;
     }
 
-    // Restore a single owned/preview vehicle's original visual preset.
-    // This never touches another car, its owned bit, or any economy state.
+    // Restore exactly one vehicle's original visual preset. Return true
+    // ONLY for an actual change, so a repeated factory action does not
+    // cause needless SaveGame writes or false success messages.
+    // Ownership checks belong to GameMode; this is pure cosmetic state.
     bool ResetVehicle(int id) noexcept
     {
         if (!GarageState::IsVehicle(id)) return false;
-        Styles[static_cast<std::size_t>(id)] = FactoryGarageLook(id);
+        GarageLook& current = Styles[static_cast<std::size_t>(id)];
+        const GarageLook factory = FactoryGarageLook(id);
+        if (SameGarageLook(current, factory)) return false;
+        current = factory;
         return true;
     }
 

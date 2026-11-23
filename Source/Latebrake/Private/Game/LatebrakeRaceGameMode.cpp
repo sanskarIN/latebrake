@@ -2223,7 +2223,9 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
         GarageLooks.Cycle(Viewed, layer);
     if (!bChanged)
     {
-        GarageFeedback = TEXT("Unknown appearance option; no change saved.");
+        GarageFeedback = bReset
+            ? TEXT("FACTORY LOOK ALREADY ACTIVE: no new save needed.")
+            : TEXT("Unknown appearance option; no change saved.");
         return;
     }
     // Only the currently equipped car needs a live 3D Pawn update.

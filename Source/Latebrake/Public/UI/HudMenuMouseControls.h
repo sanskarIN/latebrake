@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Garage/GarageAppearance.h"
 #include "UI/HudLayout.h"
 #include "UI/MenuDetailPager.h"
 #include "UI/HudMenuVerticalPlan.h"
@@ -227,6 +228,47 @@ inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
     }
     return DesktopMenuMouseAction::None;
 }
+// The option displayed in the Garage dock comes from the VIEWED car's
+// saved cosmetic state, never from the equipped race pawn. This is
+// presentation only: disabled buttons cannot gain click authority here.
+struct GarageStyleButtonIndicator final
+{
+    const char* Caption = "";
+    int Ordinal = 0; // human-readable, 1-based for cycling options
+    int Total = 0;   // zero for non-cycling actions
+    bool Valid = false;
+    bool Factory = false;
+};
+
+inline constexpr GarageStyleButtonIndicator DescribeGarageStyleButton(
+    DesktopMenuMouseAction action, int viewedId, GarageLook look) noexcept
+{
+    if (!GarageState::IsVehicle(viewedId) || !ValidGarageLook(look))
+        return {};
+    const bool factory = SameGarageLook(
+        look, FactoryGarageLook(viewedId));
+    switch (action)
+    {
+    case DesktopMenuMouseAction::GaragePaint:
+        return {"PAINT", static_cast<int>(look.Paint) + 1,
+                GaragePaintOptions, true, factory};
+    case DesktopMenuMouseAction::GarageStripe:
+        return {"STRIPE", static_cast<int>(look.Stripe) + 1,
+                GarageStripeOptions, true, factory};
+    case DesktopMenuMouseAction::GarageWheels:
+        return {"RIMS", static_cast<int>(look.Wheels) + 1,
+                GarageWheelOptions, true, factory};
+    case DesktopMenuMouseAction::GarageReset:
+        return {factory ? "FACTORY OK" : "RESET LOOK", 0, 0, true, factory};
+    case DesktopMenuMouseAction::GarageBrowsePrevious:
+        return {"< VIEW CAR", 0, 0, true, factory};
+    case DesktopMenuMouseAction::GarageBrowseNext:
+        return {"VIEW CAR >", 0, 0, true, factory};
+    default:
+        return {};
+    }
+}
+
 // Optional fourth/fifth dock row, only when the visible page is Garage.
 // The pre-existing six menu buttons and their paging semantics are
 // unchanged. Every cosmetic pointer hit maps to one owner-gated action.
