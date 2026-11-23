@@ -143,6 +143,15 @@ static void MaterialAndGeometryIntegrity()
     mesh.ChangesChaosContact=true;
     Check(!build.ValidateMesh(mesh),
           "render-only model cannot claim to change contact physics");
+    mesh=build.Build(3).Mesh;
+    mesh.Triangles[0].WheelSlot=5;
+    Check(!build.ValidateMesh(mesh),
+          "source authoring never lets an invalid wheel slot reach UE");
+    mesh=build.Build(3).Mesh;
+    for(auto& triangle:mesh.Triangles)
+        if(triangle.WheelSlot==0){triangle.WheelSlot=-1;break;}
+    Check(!build.ValidateMesh(mesh),
+          "Rubber/Alloy/BrakeRotor cannot be reclassified as static body");
 }
 static void ThreeActualWheelDesigns()
 {

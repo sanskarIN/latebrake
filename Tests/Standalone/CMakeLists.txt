@@ -2982,3 +2982,21 @@ else()
 endif()
 add_test(NAME VisualPlaytestReadout
     COMMAND latebrake_visual_playtest_readout_tests)
+
+# Actual 3D car authoring: conservation of all geometry while separating
+# four render-only rolling/steering components from the static body.
+add_executable(latebrake_animated_original_wheels_tests
+    OriginalVehicleAnimatedWheelsTests.cpp)
+target_include_directories(latebrake_animated_original_wheels_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_animated_original_wheels_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_animated_original_wheels_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_animated_original_wheels_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalVehicleAnimatedWheels
+    COMMAND latebrake_animated_original_wheels_tests)

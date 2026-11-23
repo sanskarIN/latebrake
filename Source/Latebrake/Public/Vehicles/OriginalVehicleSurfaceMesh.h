@@ -49,6 +49,10 @@ struct OriginalVehicleTriangle final
 {
     std::array<std::uint32_t,3> Index{};
     OriginalVehicleMaterial Material=OriginalVehicleMaterial::BodyPaint;
+    // -1 means non-animated car body; [0..3] are individually articulated
+    // LF, RF, LR, RR source wheels. Only the authoring MeshWriter assigns it.
+    // Native render sections may not infer ownership from triangle position.
+    std::int8_t WheelSlot=-1;
 };
 struct OriginalVehicleBounds final
 {
@@ -280,6 +284,14 @@ public:
         }
         for(const auto& triangle:mesh.Triangles)
         {
+            if(triangle.WheelSlot < -1 || triangle.WheelSlot >= 4)
+                return false;
+            const bool isWheelMaterial =
+                triangle.Material==OriginalVehicleMaterial::Rubber ||
+                triangle.Material==OriginalVehicleMaterial::Alloy ||
+                triangle.Material==OriginalVehicleMaterial::BrakeRotor;
+            if((triangle.WheelSlot>=0)!=isWheelMaterial)
+                return false;
             if(static_cast<std::size_t>(triangle.Material)>=
                    static_cast<std::size_t>(OriginalVehicleMaterial::Count))
                 return false;
@@ -353,7 +365,9 @@ private:
             Mesh.Vertices.push_back({a,normal,uvA});
             Mesh.Vertices.push_back({b,normal,uvB});
             Mesh.Vertices.push_back({c,normal,uvC});
-            Mesh.Triangles.push_back({{base,base+1,base+2},material});
+            Mesh.Triangles.push_back({
+                {base,base+1,base+2},material,
+                static_cast<std::int8_t>(WheelSlot)});
             Track(a);
             Track(b);
             Track(c);
@@ -397,6 +411,7 @@ private:
             Mesh.DetailQuads+=6;
         }
         OriginalVehicleMesh& Mesh;
+        int WheelSlot=-1;
         OriginalVehicleMeshFault Fault=OriginalVehicleMeshFault::None;
     };
     struct BodyStation final
@@ -524,8 +539,12 @@ private:
         }
     }
     void BuildWheel(
-        MeshWriter& writer,double wheelX,int side,int rimStyle) const
+        MeshWriter& writer,double wheelX,int side,int rimStyle,
+        int wheelSlot) const
     {
+        // Exactly this wheel's authored Rubber/Alloy/BrakeRotor triangles
+        // enter one independently transformable Unreal render component.
+        writer.WheelSlot=wheelSlot;
         const double centerY=static_cast<double>(side)*
             Settings.HalfWidthCm;
         const double halfTire=Settings.TireWidthCm*0.5;
@@ -614,14 +633,17 @@ private:
                 OriginalVehicleMaterial::Alloy))
                 ++writer.Mesh.RimSpokeQuads;
         }
+        writer.WheelSlot=-1;
     }
     void BuildFourWheels(MeshWriter& writer,int rimStyle) const
     {
         const double axle=Settings.WheelbaseCm*0.5;
         for(int side:{-1,1})
         {
-            BuildWheel(writer,-axle,side,rimStyle);
-            BuildWheel(writer,+axle,side,rimStyle);
+            // Canonical UI/motion order: front-left, front-right,
+            // rear-left, rear-right, independently of authoring order.
+            BuildWheel(writer,-axle,side,rimStyle,side<0?2:3);
+            BuildWheel(writer,+axle,side,rimStyle,side<0?0:1);
         }
     }
     void BuildLights(MeshWriter& writer) const
