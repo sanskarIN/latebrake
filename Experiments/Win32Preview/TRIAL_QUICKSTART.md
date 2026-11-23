@@ -41,6 +41,18 @@ display or drive correctly on your PC.
    A real installation, uninstall and saved-career persistence test
    must be performed on your own Windows account.
 
+## Focus and input safety
+
+Switching away from the preview automatically pauses a running race. When
+you return, **release held driving and menu keys for two input frames**
+before pressing P (or using the paused menu) to resume. Holding throttle,
+steering, Shift, Enter or another control while Alt-Tabbing back will not
+drive or select a menu option until released. Clicking a button in an
+inactive window only activates the game window on the first click; use
+another deliberate click to activate that button. Controller reconnects
+have a separate neutral-input guard. The preview never races in the
+background.
+
 ## Share actionable bug evidence
 
 Record Windows version, GPU, display scaling, screen resolution, input

@@ -4,6 +4,7 @@
 // Build and launch on Windows; --self-test runs an isolated deterministic logic check.
 #include "PreviewRaceModes.h"
 #include "PreviewViewportMath.h"
+#include "PreviewKeyboardFocusGuard.h"
 
 extern "C" { int _fltused = 0; } // MSVC floating-point linkage marker.
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -140,6 +141,10 @@ typedef DWORD (__stdcall *XInputStateFn)(DWORD,PadPacket*);
 static HINSTANCE xinputModule=0;
 static XInputStateFn xinputRead=0;
 static bool padConnected=false,hasWindowFocus=true;
+// Keyboard and pad rearm independently. A key held through Alt-Tab may not
+// accelerate or trigger a menu action on the first foreground frame.
+static latebrake_preview::PreviewKeyboardFocusGuard keyboardFocus{};
+static bool keyboardInputArmed=true;
 static unsigned short lastPadButtons=0;
 static bool stickMenuLatch=false,padRequireNeutral=true;
 static DWORD activePadUser=4;
@@ -1134,7 +1139,9 @@ static void render(){
     if(showHelp)overlayHelp();
     if(toastTime>0&&!showHelp){rect(270,546,420,30,color(50,73,82));stroke(270,546,420,30,CYAN(),1);text(286,554,toast,CREAM(),1);}
 }
-static bool key(int k){return (GetAsyncKeyState(k)&0x8000)!=0;}
+static bool key(int k){
+    return keyboardInputArmed && (GetAsyncKeyState(k)&0x8000)!=0;
+}
 static bool pressed(int k,bool& previous){bool down=key(k);bool edge=down&&!previous;previous=down;return edge;}
 static void setPage(Page target){
     page=target;paused=false;
@@ -1208,12 +1215,27 @@ static void advanceRaceFixed(float wallDt,bool gas,bool reverse,bool left,bool r
     }
     if(page!=RACING)fixedFrameCarry=0;
 }
+// Only gameplay/menu keys are considered for focus rearm. Unrelated held
+// keys (e.g. screen-reader shortcuts) must not prevent playing the trial.
+static bool trackedKeyboardHeld(){
+    static const int watched[]={
+        'W','A','S','D','E','K','P','R','U','G','T','C','O','M','H','J',
+        0x25,0x26,0x27,0x28, // arrows
+        0x0D,0x1B,0x10,0x20,0x70 // Enter, Escape, Shift, Space, F1
+    };
+    const int count=(int)(sizeof(watched)/sizeof(watched[0]));
+    for(int i=0;i<count;i++)
+        if((GetAsyncKeyState(watched[i])&0x8000)!=0)return true;
+    return false;
+}
 static void step(float dt){
     if(toastTime>0)toastTime-=dt;
     PadControls pad=pollPad();
     // GetAsyncKeyState sees global keyboard state; never drive or navigate
     // the game behind a different foreground window.
     if(!hasWindowFocus)return;
+    keyboardInputArmed=keyboardFocus.Sample(
+        hasWindowFocus,trackedKeyboardHeld());
     bool enter=pressed(0x0D,lastEnter),back=pressed(0x1B,lastBack);
     bool g=pressed('G',lastGarage),t=pressed('T',lastTracks);
     bool ch=pressed('C',lastChallenge),on=pressed('O',lastOnline);
@@ -1276,6 +1298,12 @@ static void step(float dt){
     }
 }
 static LRESULT __stdcall WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
+    // WM_MOUSEACTIVATE: the first client click on an inactive game window
+    // only activates it; it must not buy a car, restart or unpause a race.
+    // HTCLIENT=1; MA_ACTIVATEANDEAT=2. Non-client titlebar drags survive.
+    if(msg==0x0021&&!hasWindowFocus &&
+       (unsigned short)(l&0xffff)==1u)return 2;
+    if(msg==0x0201&&!hasWindowFocus)return 0;
     if(msg==0x0200||msg==0x0201){
         RECT client={};GetClientRect(hwnd,&client);
         int cw=client.right-client.left,ch=client.bottom-client.top;
@@ -1293,9 +1321,13 @@ static LRESULT __stdcall WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
     }
     if(msg==0x0008){ // WM_KILLFOCUS: no background gamepad racing.
         hasWindowFocus=false;padRequireNeutral=true;
+        keyboardFocus.OnFocusLost();keyboardInputArmed=false;
         if(page==RACING)paused=true;
     }
-    if(msg==0x0007)hasWindowFocus=true; // WM_SETFOCUS
+    if(msg==0x0007){ // WM_SETFOCUS
+        hasWindowFocus=true;
+        if(page==RACING)message("RELEASE KEYS THEN PRESS P TO RESUME");
+    }
     if(msg==0x0010||msg==0x0002){running=false;PostQuitMessage(0);return 0;}
     return DefWindowProcA(hwnd,msg,w,l);
 }
@@ -1595,6 +1627,16 @@ static bool selftest(){
     if(!observePresentStatus(presentation,true,false)||
         !presentation.warningIssued||
         observePresentStatus(presentation,true,false))return false;
+    selfTestStage=84;
+    // Native Win64 self-test also compiles and executes the focus guard.
+    latebrake_preview::PreviewKeyboardFocusGuard focusSmoke{};
+    if(!focusSmoke.Sample(true,true))return false;
+    focusSmoke.OnFocusLost();
+    if(focusSmoke.Sample(false,false)||
+       focusSmoke.Sample(true,true)||
+       focusSmoke.Sample(true,false)||
+       !focusSmoke.Sample(true,false)||
+       !focusSmoke.Sample(true,true))return false;
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }

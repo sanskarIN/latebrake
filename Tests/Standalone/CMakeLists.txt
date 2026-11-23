@@ -2649,3 +2649,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME PreviewViewportMath COMMAND latebrake_preview_viewport_math_tests)
+
+# Optional Windows 2D trial: Alt-Tab/key-hold focus recovery is portable,
+# independently checked and wired into the real GetAsyncKeyState path.
+add_executable(latebrake_preview_keyboard_focus_guard_tests
+    PreviewKeyboardFocusGuardTests.cpp)
+target_include_directories(latebrake_preview_keyboard_focus_guard_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_keyboard_focus_guard_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_keyboard_focus_guard_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_keyboard_focus_guard_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewKeyboardFocusGuard
+    COMMAND latebrake_preview_keyboard_focus_guard_tests)
