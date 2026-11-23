@@ -34,13 +34,17 @@
 #include "UI/TouchResidualSafety.h"
 #include "UI/FocusSuspendedTouchPolicy.h"
 #include "Garage/GarageState.h"
+#include "Vehicles/OriginalVehicleRenderSections.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
+#include "UObject/UObjectGlobals.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -106,6 +110,25 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         static_cast<float>(latebrake::VehicleRootScaleY),
         static_cast<float>(latebrake::VehicleRootScaleZ));
     Chassis->SetRelativeScale3D(RootScale);
+
+    OriginalVehicleVisual =
+        CreateDefaultSubobject<UProceduralMeshComponent>(
+            TEXT("OriginalVehicleVisual"));
+    OriginalVehicleVisual->SetupAttachment(Chassis);
+    OriginalVehicleVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalVehicleVisual->SetGenerateOverlapEvents(false);
+    OriginalVehicleVisual->SetSimulatePhysics(false);
+    OriginalVehicleVisual->SetVisibility(false, false);
+    OriginalVehicleVisual->SetCastShadow(true);
+    // Real source mesh uses centimetres in the car's original local space,
+    // wheel centres at Z=40. Existing prototype wheel centres are Z=-22.
+    // Cancel the chassis cube's nonuniform physics-root scale; do not
+    // replace or resize that authoritative Chaos collision shape.
+    OriginalVehicleVisual->SetRelativeLocation(
+        FVector(0.f, 0.f, -62.f) / RootScale);
+    OriginalVehicleVisual->SetRelativeScale3D(
+        FVector(1.f / RootScale.X, 1.f / RootScale.Y,
+                1.f / RootScale.Z));
 
     Cabin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Cabin"));
     Cabin->SetupAttachment(Chassis);
@@ -300,6 +323,9 @@ void ALatebrakeCarPawn::BeginPlay()
     Super::BeginPlay();
     // Dynamic material instances belong to these mesh components, and are
     // initialized only when the actor is live (not in the CDO constructor).
+    // Build the existing source-generated original car once per owned
+    // identity and keep its material slots alive for free style changes.
+    RebuildOriginalVehicleVisual(GarageVehicleId);
     ApplyVehiclePaintRecipe(GarageVehicleId);
     Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
@@ -519,6 +545,167 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         Kit.HasRearFins);
 }
 
+void ALatebrakeCarPawn::HideLegacyVisualPrimitives(bool bHide)
+{
+    // Do NOT propagate hiding from physics root to procedural child.
+    // HiddenInGame affects presentation, not collision, force, speed or
+    // authoritative vehicle/garage state. Every fallback restores it.
+    for (UStaticMeshComponent* Part : {
+        Chassis.Get(), Cabin.Get(), Hood.Get(), RearDeck.Get(),
+        RoofStripeLeft.Get(), RoofStripeRight.Get(),
+        SpoilerWing.Get(), SpoilerSupportLeft.Get(),
+        SpoilerSupportRight.Get(), FrontSplitter.Get(),
+        LeftSideSkirt.Get(), RightSideSkirt.Get(), RearDiffuser.Get(),
+        HoodScoop.Get(), LeftRearFin.Get(), RightRearFin.Get(),
+        FrontLeftWheel.Get(), FrontRightWheel.Get(),
+        RearLeftWheel.Get(), RearRightWheel.Get(),
+        FrontLeftSpoke.Get(), FrontRightSpoke.Get(),
+        RearLeftSpoke.Get(), RearRightSpoke.Get()
+    })
+    {
+        if (IsValid(Part)) Part->SetHiddenInGame(bHide, false);
+    }
+}
+
+void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
+{
+    bOriginalVehicleVisualReady = false;
+    if (IsValid(OriginalVehicleVisual))
+    {
+        OriginalVehicleVisual->SetVisibility(false, false);
+        OriginalVehicleVisual->ClearAllMeshSections();
+    }
+    HideLegacyVisualPrimitives(false);
+    if (!IsValid(OriginalVehicleVisual) ||
+        !latebrake::GarageState::IsVehicle(VehicleId))
+        return;
+
+    // Use the exact engine material that the starter Cube expects, but
+    // never claim this is a professionally authored PBR material. If
+    // missing in a target UE build, preserve the old visible fallback.
+    UMaterialInterface* BaseMaterial =
+        LoadObject<UMaterialInterface>(
+            nullptr,
+            TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+    if (!IsValid(BaseMaterial)) return;
+
+    const auto generated =
+        latebrake::vehiclemesh::OriginalVehicleSurfaceComposer{}.Build(
+            VehicleId);
+    if (!generated.Valid || !generated.Mesh.Ready ||
+        generated.Mesh.ChangesChaosContact)
+        return;
+    const auto sections =
+        latebrake::vehiclemesh::MakeOriginalVehicleRenderSections(
+            generated.Mesh);
+    if (!sections.Valid ||
+        sections.TotalTriangles != generated.Mesh.Triangles.size())
+        return;
+
+    bool bAnySection = false;
+    for (std::size_t section=0;
+         section<latebrake::vehiclemesh::OriginalVehicleSectionCount;
+         ++section)
+    {
+        const auto& triangleIds=sections.TriangleIds[section];
+        if (triangleIds.empty()) continue;
+        TArray<FVector> Positions;
+        TArray<int32> Indices;
+        TArray<FVector> Normals;
+        TArray<FVector2D> UV0;
+        TArray<FColor> VertexColors;
+        TArray<FProcMeshTangent> Tangents;
+        const int32 Capacity=static_cast<int32>(triangleIds.size()*3u);
+        Positions.Reserve(Capacity);
+        Indices.Reserve(Capacity);
+        Normals.Reserve(Capacity);
+        UV0.Reserve(Capacity);
+        VertexColors.Reserve(Capacity);
+        for (const auto triangleId:triangleIds)
+        {
+            const auto& triangle=generated.Mesh.Triangles[triangleId];
+            for (const auto index:triangle.Index)
+            {
+                const auto& vertex=generated.Mesh.Vertices[index];
+                const int32 next=Positions.Num();
+                Positions.Add(FVector(vertex.Position.X,
+                                      vertex.Position.Y,
+                                      vertex.Position.Z));
+                Normals.Add(FVector(vertex.Normal.X,
+                                    vertex.Normal.Y,
+                                    vertex.Normal.Z));
+                UV0.Add(FVector2D(vertex.TexCoord.U,
+                                   vertex.TexCoord.V));
+                VertexColors.Add(FColor::White);
+                Indices.Add(next);
+            }
+        }
+        OriginalVehicleVisual->CreateMeshSection(
+            static_cast<int32>(section),
+            Positions, Indices, Normals, UV0, VertexColors,
+            Tangents, false /* no collision, ever */);
+        UMaterialInstanceDynamic* Instance =
+            OriginalVehicleVisual->CreateDynamicMaterialInstance(
+                static_cast<int32>(section), BaseMaterial);
+        if (!IsValid(Instance))
+        {
+            OriginalVehicleVisual->ClearAllMeshSections();
+            HideLegacyVisualPrimitives(false);
+            return;
+        }
+        bAnySection = true;
+    }
+    if (!bAnySection) return;
+
+    // Actor-owned render component follows the real car rigid body, but
+    // cannot add a Chaos mesh/collision volume or modify its physics mass.
+    OriginalVehicleVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalVehicleVisual->SetGenerateOverlapEvents(false);
+    OriginalVehicleVisual->SetSimulatePhysics(false);
+    bOriginalVehicleVisualReady = true;
+    HideLegacyVisualPrimitives(true);
+    OriginalVehicleVisual->SetVisibility(true, false);
+}
+
+void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
+    int32 VehicleId, latebrake::GarageLook Look)
+{
+    if (!bOriginalVehicleVisualReady ||
+        !IsValid(OriginalVehicleVisual)) return;
+    const auto paint=latebrake::PaintForGarageLook(VehicleId, Look);
+    const auto rim=Look.Wheels == 2u
+        ? latebrake::VehiclePaintRgb{0.10,0.82,0.91}
+        : Look.Wheels == 1u
+            ? latebrake::VehiclePaintRgb{0.87,0.89,0.92}
+            : latebrake::VehiclePaintRgb{0.30,0.33,0.38};
+    const latebrake::VehiclePaintRgb tones[] = {
+        paint.Body, paint.Accent, paint.Canopy,
+        {0.030,0.033,0.038}, rim,
+        {0.30,0.32,0.36}, {0.95,0.95,0.81},
+        {0.90,0.06,0.045}, {0.04,0.06,0.07},
+        {0.12,0.14,0.17}
+    };
+    static_assert(sizeof(tones)/sizeof(tones[0]) ==
+        latebrake::vehiclemesh::OriginalVehicleSectionCount,
+        "Material palette and original surface groups must match");
+    for (int32 section=0;
+         section<static_cast<int32>(
+             latebrake::vehiclemesh::OriginalVehicleSectionCount);
+         ++section)
+    {
+        UMaterialInstanceDynamic* material =
+            Cast<UMaterialInstanceDynamic>(
+                OriginalVehicleVisual->GetMaterial(section));
+        if (!IsValid(material)) continue;
+        const auto& rgb=tones[section];
+        material->SetVectorParameterValue(
+            TEXT("Color"), FLinearColor(
+                static_cast<float>(rgb.R),
+                static_cast<float>(rgb.G),
+                static_cast<float>(rgb.B), 1.f));
+    }
+}
+
 void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
 {
     // These are cosmetic colors only. Retain each built-in mesh's original
@@ -614,6 +801,7 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
         Rim->SetRelativeScale3D(FVector(Width, 0.24f, 0.09f));
         Tint(Rim, RimRgb);
     }
+    ApplyOriginalVehiclePalette(VehicleId, Look);
 }
 
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
@@ -633,9 +821,13 @@ void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float To
         // Garage selection changes visible body proportions only.
         // Vehicle force multipliers above are unchanged and remain bounded.
         ApplyVehicleVisualRecipe(SafeId);
-        // Reuse existing component material instances on car switching;
-        // never construct meshes or update paint on the per-frame Tick.
-        if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId);
+        // Original source-generated surfaces are only rebuilt when the
+        // actually equipped owned car identity changes, never on Tick.
+        if (HasActorBegunPlay())
+        {
+            RebuildOriginalVehicleVisual(SafeId);
+            ApplyVehiclePaintRecipe(SafeId);
+        }
     }
     GarageVehicleId = SafeId;
 }

@@ -36,6 +36,7 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class UProceduralMeshComponent;
 class UPointLightComponent;
 class UPrimitiveComponent;
 struct FHitResult;
@@ -142,6 +143,13 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Chassis;
 
+    // Original ten-material / six-car render-only surface. The legacy
+    // visible cube model remains the fallback until a fully valid render
+    // section and a tintable base material are available in UE5.8.
+    // Always a non-colliding child of the authoritative Chaos chassis.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalVehicleVisual;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Cabin;
 
@@ -238,6 +246,10 @@ private:
     void ApplyWheelVisualPose();
     void ApplyVehicleVisualRecipe(int32 VehicleId);
     void ApplyVehiclePaintRecipe(int32 VehicleId);
+    void RebuildOriginalVehicleVisual(int32 VehicleId);
+    void ApplyOriginalVehiclePalette(int32 VehicleId,
+                                     latebrake::GarageLook Look);
+    void HideLegacyVisualPrimitives(bool bHide);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
                            double SignedForwardSpeedCmPerSecond);
     void RecoverPressed();
@@ -297,6 +309,10 @@ private:
     float GarageGrip = 1.f;
     float GarageTopSpeed = 1.f;
     int32 GarageVehicleId = 0;
+    // Only a successful whole-mesh build may hide the old cube/cylinder
+    // visuals. Any missing plugin/material/invalid section fails open to
+    // the old visible car, never to an invisible player vehicle.
+    bool bOriginalVehicleVisualReady = false;
     latebrake::GarageLook CurrentGarageLook{};
     uint64 TeleportRevision = 0;
     bool bBraking = false;
