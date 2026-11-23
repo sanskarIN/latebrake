@@ -247,3 +247,14 @@ hierarchy under yaw/roll, normal orientation and material lighting.
 Check all 18 car/rim variants, black-frame failures and framerate.
 This new source adapter still requires actual UE5.8/UHT compile,
 cooked Win64, GPU rendering and installed driving verification.
+
+## Four-part wheel initialization telemetry for real Development playtest
+
+Settings now prints `3D WHEEL RIG: 0/4 ... 4/4 COMPONENTS (NOT PIXELS)`
+from live `UProceduralMeshComponent` section presence and component
+visibility. A positive value requires the full original surface
+commit and recognized paint parameter; a missing Pawn, fallback
+mesh or invalid count always reports 0. This is source-observed
+render-component initialization, **not proof of actual wheel spin,
+real road contact, shaders, car grip or GPU output**. The existing
+HUD pager makes the diagnostic accessible on small monitors.

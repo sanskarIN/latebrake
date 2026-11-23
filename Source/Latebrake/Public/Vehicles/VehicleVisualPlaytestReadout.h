@@ -19,19 +19,25 @@ struct VisualPlaytestReport final
     bool PaintParameterDiscovered = false;
     bool FrontLampsRequested = false;
     bool DuskPreviewSelected = false;
+    // Source-observed initialized native wheel meshes, never GPU pixels.
+    int AnimatedWheelPartsCommitted = 0;
     bool VerifiedByEngineRendering = false;
 };
 
 constexpr VisualPlaytestReport ReportVisualPlaytest(
     bool hasDriver, bool generatedMeshCommitted,
     bool tintParameterDiscovered, bool frontLampsRequested,
-    bool duskPreviewSelected) noexcept
+    bool duskPreviewSelected, int nativeWheelCount=0) noexcept
 {
     VisualPlaytestReport report{};
     report.PaintParameterDiscovered =
         hasDriver && tintParameterDiscovered;
     report.FrontLampsRequested = hasDriver && frontLampsRequested;
     report.DuskPreviewSelected = duskPreviewSelected;
+    report.AnimatedWheelPartsCommitted =
+        hasDriver && generatedMeshCommitted && tintParameterDiscovered &&
+        nativeWheelCount>=0 && nativeWheelCount<=4
+            ? nativeWheelCount : 0;
     report.VerifiedByEngineRendering = false;
     if (!hasDriver) return report;
     report.Surface = generatedMeshCommitted

@@ -911,7 +911,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                 true, Car->IsOriginalVehicleSurfaceCommitted(),
                 !Car->GetOriginalVehicleTintParameter().IsNone(),
                 Car->AreFrontLampsRequestedOn(),
-                Mode->IsDuskLightingPreview());
+                Mode->IsDuskLightingPreview(),
+                Car->GetCommittedOriginalWheelParts());
             MenuLine(FString::Printf(TEXT("LIVE CAR MESH: %s"),
                 UTF8_TO_TCHAR(latebrake::VisualPlaytestSurfaceLabel(
                     VisualReport.Surface))),true);
@@ -922,6 +923,9 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(TEXT("FRONT BEAMS REQUESTED: %s"),
                 VisualReport.FrontLampsRequested ? TEXT("ON")
                     : TEXT("OFF (PAUSED OR INACTIVE)")));
+            MenuLine(FString::Printf(
+                TEXT("3D WHEEL RIG: %d/4 COMPONENTS (NOT PIXELS)"),
+                VisualReport.AnimatedWheelPartsCommitted));
             MenuLine(TEXT("SOURCE DIAGNOSTIC ONLY - VERIFY PIXELS IN ENGINE"));
 #endif
             break;

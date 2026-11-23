@@ -39,6 +39,18 @@ int main()
         const std::string_view name=VisualPlaytestSurfaceLabel(r.Surface);
         Require(!name.empty() && name!="UNKNOWN",
             "every observed state has a readable explicit label");
+        for(int wheels=-2;wheels<=7;++wheels)
+        {
+            const auto counted=ReportVisualPlaytest(
+                pawn,mesh,color,lamps,dusk,wheels);
+            const int expectedCount=
+                pawn&&mesh&&color&&wheels>=0&&wheels<=4
+                    ? wheels : 0;
+            Require(counted.AnimatedWheelPartsCommitted==expectedCount,
+                "wheels are counted only on valid committed 3D meshes");
+            Require(!counted.VerifiedByEngineRendering,
+                "0/4 through 4/4 component status cannot claim GPU proof");
+        }
         ++observed;
     }
     const auto unknown=VisualPlaytestSurfaceLabel(

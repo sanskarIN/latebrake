@@ -119,6 +119,9 @@ public:
     { return OriginalVehicleTintParameter; }
     bool AreFrontLampsRequestedOn() const noexcept
     { return bFrontLampOutputRequested; }
+    // Counts live, initialized *render-only source components*, NOT
+    // physically moving wheels or GPU-verified paint/animation.
+    int32 GetCommittedOriginalWheelParts() const noexcept;
     // Every RecoverTo (including race restart) changes this revision so
     // checkpoint actors never interpolate across an authorized teleport.
     uint64 GetTeleportRevision() const { return TeleportRevision; }

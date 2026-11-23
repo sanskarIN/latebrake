@@ -836,6 +836,20 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     ApplyWheelVisualPose();
 }
 
+int32 ALatebrakeCarPawn::GetCommittedOriginalWheelParts() const noexcept
+{
+    if (!bOriginalVehicleVisualReady) return 0;
+    const UProceduralMeshComponent* Wheels[] = {
+        OriginalFrontLeftWheel.Get(), OriginalFrontRightWheel.Get(),
+        OriginalRearLeftWheel.Get(), OriginalRearRightWheel.Get()};
+    int32 count=0;
+    for (const auto* Part : Wheels)
+        if (IsValid(Part) && Part->IsVisible() &&
+            Part->GetNumSections()>0)
+            ++count;
+    return count;
+}
+
 void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
     int32 VehicleId, latebrake::GarageLook Look)
 {

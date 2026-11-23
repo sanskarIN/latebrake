@@ -130,7 +130,7 @@ automatically verified performance or release authorization**.
 | Headlight direction | During an accepted active race, two front spotlights point forward onto the actual road and match the visible car bumper; check right-hand and left-hand turns |
 | Pause/focus | Pause, open menus and Alt-Tab; headlights command off and controls do not remain latched; no unintended racing in background |
 | Dusk visual evaluation | On Settings press F3; actual sun and sky visibly change to DUSK; F3 again returns DAY; F3 must not change credits or save file |
-| Native source diagnostics | Development Settings reports fallback/source mesh, detected paint parameter and requested front beams; compare with actual rendered pixels |
+| Native source diagnostics | Development Settings reports fallback/source mesh, detected paint parameter, requested front beams and `3D WHEEL RIG: 4/4 COMPONENTS` if every source wheel was initialized; compare every value with actual pixels and physical rotation |
 | Race and rival | Real acceleration/braking, collision, GO countdown, sequential checkpoints, lap/finish and offline rival still work |
 | Display and performance | 900x600, 1280x720, 1920x1080, ultrawide where available; observe readable HUD, mouse hitboxes and frame-time/latency on your actual GPU |
 | Correct exit evidence | Preserve real runtime log, source/engine/cook manifest and user QA notes; no unexpected post-run changes to sealed package |

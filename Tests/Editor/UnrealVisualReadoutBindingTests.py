@@ -17,7 +17,8 @@ class UnrealVisualReadoutBindingTests(unittest.TestCase):
     def test_engine_derived_observation_not_3d_claim(self):
         for name in ("IsOriginalVehicleSurfaceCommitted",
                      "GetOriginalVehicleTintParameter",
-                     "AreFrontLampsRequestedOn"):
+                     "AreFrontLampsRequestedOn",
+                     "GetCommittedOriginalWheelParts"):
             self.assertIn(name,self.header)
             self.assertIn("Car->"+name+"()",self.hud)
         self.assertIn("bFrontLampOutputRequested = FrontPlan.OutputIntensity",self.pawn)
@@ -27,6 +28,9 @@ class UnrealVisualReadoutBindingTests(unittest.TestCase):
         self.assertIn("LIVE CAR MESH:",self.hud)
         self.assertIn("PAINT PARAM:",self.hud)
         self.assertIn("FRONT BEAMS REQUESTED:",self.hud)
+        self.assertIn("3D WHEEL RIG:",self.hud)
+        self.assertIn("AnimatedWheelPartsCommitted",self.hud)
+        self.assertIn("Part->GetNumSections()>0",self.pawn)
         self.assertIn("VERIFY PIXELS IN ENGINE",self.hud)
     def test_fail_closed_policy_and_standalone_build(self):
         for token in ("VisualPlaytestSurface::LegacyCubeFallback",
