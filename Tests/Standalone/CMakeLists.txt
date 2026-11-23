@@ -2934,3 +2934,17 @@ else()
 endif()
 add_test(NAME OriginalVehicleTintMaterial
     COMMAND latebrake_original_vehicle_tint_material_tests)
+
+# Real Unreal 3D actor lamps: four offline geometry/state combinations and
+# 200k pause/resume invariants; does not substitute for UE shader/RHI QA.
+add_executable(latebrake_front_lamp_rig_tests FrontLampRigTests.cpp)
+target_include_directories(latebrake_front_lamp_rig_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_front_lamp_rig_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_front_lamp_rig_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_front_lamp_rig_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FrontLampRig COMMAND latebrake_front_lamp_rig_tests)

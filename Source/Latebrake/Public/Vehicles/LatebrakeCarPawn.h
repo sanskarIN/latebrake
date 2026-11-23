@@ -38,6 +38,7 @@ class USpringArmComponent;
 class UStaticMeshComponent;
 class UProceduralMeshComponent;
 class UPointLightComponent;
+class USpotLightComponent;
 class UPrimitiveComponent;
 struct FHitResult;
 
@@ -224,6 +225,13 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
     TObjectPtr<UPointLightComponent> ReverseSignal;
 
+    // Two attached non-shadowing road-facing beams. Cosmetic only:
+    // they cannot participate in chassis collision, energy or race state.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
+    TObjectPtr<USpotLightComponent> FrontLeftLamp;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
+    TObjectPtr<USpotLightComponent> FrontRightLamp;
+
 private:
     UFUNCTION()
     void HandleChassisHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
@@ -249,6 +257,7 @@ private:
     void RebuildOriginalVehicleVisual(int32 VehicleId);
     void ApplyOriginalVehiclePalette(int32 VehicleId,
                                      latebrake::GarageLook Look);
+    void RefreshFrontLampPositions();
     void HideLegacyVisualPrimitives(bool bHide);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
                            double SignedForwardSpeedCmPerSecond);

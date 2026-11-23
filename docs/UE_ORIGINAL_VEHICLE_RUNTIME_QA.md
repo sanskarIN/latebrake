@@ -107,3 +107,34 @@ visible. Inspect Unreal materials for proper in-game shading and shader-cook
 usage; discovery of a vector parameter alone does not prove that it affects
 BaseColor on all RHI targets. Run packaged Win64 release QA before merging;
 source CI cannot verify shader compilation, PBR response or cooked assets.
+
+## Native two-front-spotlight visual candidate (not source-only simulation)
+
+The real Unreal CarPawn now owns two `USpotLightComponent` descendants
+attached to the existing physics root, alongside the three original rear
+signal point lights. They are constructed once, have no collision/physics
+body, cast no dynamic/volumetric shadows, and do not contribute to global
+illumination or reflections. They use a bounded 7,500cm cone (12° inner,
+24° outer), with 1,100 intensity units when and only when the existing
+race driving gate permits it. The already-installed pause, menu, focus-loss,
+manual suspension, and race shutdown paths call `ApplySignalLights(false)`
+and extinguish front and rear lamps synchronously; this introduces no
+driver controls, credits, weather simulation, time-of-day or saved settings.
+
+Lamp mounts follow the visible bumper. The source-generated longer car
+uses its actual mesh length, width and -62cm render offset; when the
+procedural material/mesh cannot render and the fallback Cube is retained,
+the lamps move back to the actual stock 190cm front bumper. On a vehicle
+equip/change, transforms refresh once, not every Tick. Portable
+`FrontLampRig` C++ tests verify alignment, cone bounds and 200,000
+alternating valid/invalid drive states, but these are **not** screenshots or
+Unreal runtime proof.
+
+**Manual UE5.8 validation:** compare accepted night/dusk/bright scenes,
+both local player and opponent pawns, front beam direction and sign, road
+illumination in the built-in level, and installed Win64 GPU performance.
+Verify headlights extinguish instantly on menu/pause, lost focus, finish,
+recovery and removed player control, never clip into either the generated
+body or its legacy fallback, and never brighten the track unrealistically.
+A physically based lumens/candela calibration, exposure pipeline, shadows,
+and actual night tracks remain out of scope for this candidate.

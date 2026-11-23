@@ -4,6 +4,7 @@
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "Vehicles/VehicleRearLampLayout.h"
+#include "Vehicles/VehicleFrontLampRig.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
@@ -42,6 +43,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "ProceduralMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -304,6 +306,39 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         Lamps[Index]->SetLightColor(Index == 2
             ? FLinearColor(0.95f, 0.97f, 1.0f)
             : FLinearColor(1.f, 0.012f, 0.008f));
+    }
+
+    // Real movable Unreal SpotLight components: two road-facing lamps
+    // follow the owned car's visible front bumper. Cosmetic light only.
+    // No new actors, collision components, dynamic shadows or tick loops.
+    FrontLeftLamp = CreateDefaultSubobject<USpotLightComponent>(
+        TEXT("FrontLeftLamp"));
+    FrontRightLamp = CreateDefaultSubobject<USpotLightComponent>(
+        TEXT("FrontRightLamp"));
+    const auto FrontPlan = latebrake::PlanFrontLampRig(false,false);
+    USpotLightComponent* FrontLamps[] = {
+        FrontLeftLamp.Get(), FrontRightLamp.Get()};
+    for (int32 i=0;i<2;++i)
+    {
+        USpotLightComponent* Lamp=FrontLamps[i];
+        Lamp->SetupAttachment(Chassis);
+        Lamp->SetMobility(EComponentMobility::Movable);
+        const auto& P=FrontPlan.Mounts[static_cast<std::size_t>(i)];
+        Lamp->SetRelativeLocation(FVector(P.Xcm,P.Ycm,P.Zcm)/ChassisScale);
+        Lamp->SetRelativeRotation(FRotator(
+            static_cast<float>(FrontPlan.PitchDegrees),0.f,0.f));
+        Lamp->SetInnerConeAngle(
+            static_cast<float>(FrontPlan.BeamInnerDegrees));
+        Lamp->SetOuterConeAngle(
+            static_cast<float>(FrontPlan.BeamOuterDegrees));
+        Lamp->SetAttenuationRadius(
+            static_cast<float>(FrontPlan.AttenuationRadiusCm));
+        Lamp->SetCastShadows(false);
+        Lamp->SetCastVolumetricShadow(false);
+        Lamp->SetAffectGlobalIllumination(false);
+        Lamp->SetAffectReflection(false);
+        Lamp->SetLightColor(FLinearColor(0.90f,0.95f,1.f));
+        Lamp->SetIntensity(0.f);
     }
 
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -860,6 +895,30 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
         Tint(Rim, RimRgb);
     }
     ApplyOriginalVehiclePalette(VehicleId, Look);
+    RefreshFrontLampPositions();
+}
+
+void ALatebrakeCarPawn::RefreshFrontLampPositions()
+{
+    // Reposition only when the actual vehicle mesh is rebuilt/equipped
+    // or when its look changes; never allocate/update transforms on Tick.
+    if (!IsValid(Chassis)) return;
+    const FVector Scale=Chassis->GetRelativeScale3D();
+    if (FMath::Abs(Scale.X)<0.001f ||
+        FMath::Abs(Scale.Y)<0.001f ||
+        FMath::Abs(Scale.Z)<0.001f)
+        return;
+    const auto Plan=latebrake::PlanFrontLampRig(
+        bOriginalVehicleVisualReady,false);
+    USpotLightComponent* Lamps[] = {
+        FrontLeftLamp.Get(), FrontRightLamp.Get()};
+    for (int32 i=0;i<2;++i)
+    {
+        if (!IsValid(Lamps[i])) continue;
+        const auto& p=Plan.Mounts[static_cast<std::size_t>(i)];
+        Lamps[i]->SetRelativeLocation(
+            FVector(p.Xcm,p.Ycm,p.Zcm)/Scale);
+    }
 }
 
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
@@ -1702,6 +1761,18 @@ void ALatebrakeCarPawn::ApplySignalLights(
         ReverseSignal->SetIntensity(
             static_cast<float>(Signals.WhiteReverseIntensity));
     }
+
+    // A real pair of short, fixed-budget road-facing spotlights. The
+    // existing authoritative race/focus/pause guard controls both light
+    // outputs: no light remains latched during OS suspension or menu pause.
+    const auto FrontPlan = latebrake::PlanFrontLampRig(
+        bOriginalVehicleVisualReady, Signals.Enabled);
+    if (IsValid(FrontLeftLamp))
+        FrontLeftLamp->SetIntensity(
+            static_cast<float>(FrontPlan.OutputIntensity));
+    if (IsValid(FrontRightLamp))
+        FrontRightLamp->SetIntensity(
+            static_cast<float>(FrontPlan.OutputIntensity));
 }
 
 void ALatebrakeCarPawn::ApplyWheelVisualPose()
