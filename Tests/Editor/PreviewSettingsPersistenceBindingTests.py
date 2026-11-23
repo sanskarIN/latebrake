@@ -47,7 +47,7 @@ class PreviewSettingsPersistenceBindingTests(unittest.TestCase):
 
     def test_real_actions_rollback_and_headless_native_smoke(self):
         for marker in (
-            "if(before.Car!=selectedCar&&!commitSettingsChange(before))return;",
+            "if(before.Car!=selectedCar&&!commitSettingsChange(before))return false;",
             "selectedTrack=i;commitSettingsChange(before);",
             "selectedChallenge=i;commitSettingsChange(before);",
             "highContrast=!highContrast;commitSettingsChange(before);",

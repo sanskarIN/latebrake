@@ -6,6 +6,7 @@
 #include "PreviewViewportMath.h"
 #include "PreviewGarageStyle.h"
 #include "PreviewGarageSelection.h"
+#include "PreviewGarageBottomAction.h"
 #include "PreviewGaragePurchaseConsent.h"
 #include "PreviewSettingsPersistence.h"
 #include "PreviewRaceTimeText.h"
@@ -180,6 +181,7 @@ static latebrake_preview::PreviewGaragePurchaseConsent garagePurchase{};
 static bool progressSaveFailed=false; // Never advertise unsaved career awards.
 static float trackRx=291.0f,trackRy=161.0f,trackWidth=0.235f;
 static bool lastEnter=false,lastBack=false,lastGarage=false,lastTracks=false,lastChallenge=false,lastOnline=false,lastMenu=false;
+static bool lastEquip=false;
 static bool lastLeft=false,lastRight=false,lastUp=false,lastDown=false,lastUnlock=false;
 static bool lastHelp=false,lastContrast=false;
 static bool lastPaint=false,lastStripe=false,lastWheels=false;
@@ -1155,11 +1157,13 @@ static void footerNav(){
     rect(0,583,WIDTH,57,NAVY());rect(0,583,WIDTH,1,BORDER());
     if(padConnected){
         hint(22,594,"CONTROLLER READY  /  D-PAD OR STICK NAVIGATE   A SELECT   B BACK");
-        hint(22,615,"RT GAS   LT BRAKE   LEFT STICK STEER   START PAUSE   F1 HELP");
+        hint(22,615,page==GARAGE?
+            "X EQUIP ONLY   A RACE   U UNLOCK   V/B/N STYLE   F1 HELP":
+            "RT GAS   LT BRAKE   LEFT STICK STEER   START PAUSE   F1 HELP");
     } else {
         hint(22,594,"ARROWS NAVIGATE     ENTER SELECT     M HOME     F1 HELP     H CONTRAST");
         hint(22,615,page==GARAGE?
-            "ARROWS VIEW   ENTER EQUIP + RACE   U UNLOCK   V/B/N STYLE   ESC BACK":
+            "ARROWS VIEW   E EQUIP ONLY   ENTER RACE   U UNLOCK   V/B/N STYLE":
             "WASD DRIVE   SPACE BRAKE   SHIFT NITRO   P PAUSE   ESC BACK/EXIT");
     }
 }
@@ -1283,7 +1287,7 @@ static void renderMenuV3(){
         heroCar(675,229,garageViewCar);
         text(470,279,carNames[garageViewCar],CREAM(),3);
         hint(471,309,garageViewCar==selectedCar?"EQUIPPED / RACE READY":
-            (ownedMask&(1<<garageViewCar))?"OWNED / ENTER TO EQUIP + RACE":
+            (ownedMask&(1<<garageViewCar))?"OWNED / E OR PAD X EQUIP / ENTER RACE":
             "LOCKED PREVIEW / EQUIPPED CAR UNCHANGED");
         cardStat(473,327,"POWER",carAccel[garageViewCar]/1.5f,color(247,144,105));
         cardStat(473,347,"SPEED",carSpeed[garageViewCar]/1.5f,CYAN());
@@ -1319,9 +1323,13 @@ static void renderMenuV3(){
             uiButton(477,520,393,34,garagePurchase.PendingFor(garageViewCar)
                 ?"U / CLICK AGAIN: CONFIRM UNLOCK":"U  UNLOCK THIS CAR",false,
                      credits>=carPrices[garageViewCar]);
+        }else if(garageViewCar!=selectedCar){
+            // Distinct EQUIP and RACE targets: a player can select a car,
+            // customize it and continue browsing without launching an event.
+            uiButton(477,520,185,34,"E/X EQUIP",false);
+            uiButton(672,520,198,34,"ENTER RACE",false);
         }else uiButton(477,520,393,34,
-            garageViewCar==selectedCar?"ENTER  RACE WITH EQUIPPED CAR":
-            "ENTER  EQUIP + RACE THIS CAR",false);
+            "ENTER  RACE WITH EQUIPPED CAR",false);
     }else if(page==TRACKS){
         navActiveTag("4 DISTINCT LAYOUTS");
         text(48,93,"SELECT CIRCUIT",CREAM(),4);
@@ -1608,16 +1616,21 @@ static void unlockSelectedCar(){
         }
     }else message("WIN RACES TO EARN MORE CREDITS");
 }
-static void raceWithViewedOwnedCar(){
-    if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return;
+static bool equipViewedCarOnly(){
+    if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return false;
     const auto before=settingsState();
     if(!equipGarageViewed()){
-        message("LOCKED CAR / PRESS U TO UNLOCK");return;
+        message("LOCKED CAR / PRESS U TO UNLOCK");return false;
     }
-    // An owned-car switch is not equipped until the settings file commits.
-    // On failure keep Garage open, preserve VIEWED and restore the racer.
-    if(before.Car!=selectedCar&&!commitSettingsChange(before))return;
-    beginRace();
+    // Equipping and racing share one durable commit path. On a failed
+    // settings write, restore the previous car and stay in the showroom.
+    if(before.Car!=selectedCar&&!commitSettingsChange(before))return false;
+    message(before.Car==selectedCar?"ALREADY EQUIPPED / READY TO RACE":
+        "CAR EQUIPPED / READY TO RACE");
+    return true;
+}
+static void raceWithViewedOwnedCar(){
+    if(equipViewedCarOnly())beginRace();
 }
 static void activateSelection(){
     if(page==HOME)chooseHome(homeFocus);
@@ -1663,9 +1676,19 @@ static void mouseClick(int x,int y){
             if(within(x,y,580+i*97,450,91,25)){
                 setAppearance(2,(unsigned)i);return;
             }
-        if(within(x,y,477,520,393,34)){
-            if(ownedMask&(1<<garageViewCar))raceWithViewedOwnedCar();
-            else if(credits>=carPrices[garageViewCar])unlockSelectedCar();
+        // Hit-testing and drawn split-button geometry use the same
+        // portable, independently tested page/ownership action policy.
+        const auto bottom=latebrake_preview::PreviewGarageButtonAction(
+            x,y,garageViewCar,selectedCar,
+            static_cast<unsigned int>(ownedMask));
+        if(bottom==latebrake_preview::PreviewGarageBottomAction::EquipOnly){
+            equipViewedCarOnly();return;
+        }
+        if(bottom==latebrake_preview::PreviewGarageBottomAction::Race){
+            raceWithViewedOwnedCar();return;
+        }
+        if(bottom==latebrake_preview::PreviewGarageBottomAction::Unlock){
+            if(credits>=carPrices[garageViewCar])unlockSelectedCar();
             else message("INSUFFICIENT CREDITS / KEEP RACING");
             return;
         }
@@ -1730,6 +1753,7 @@ static void step(float dt){
     bool l=pressed(0x25,lastLeft),rgt=pressed(0x27,lastRight);
     bool up=pressed(0x26,lastUp),down=pressed(0x28,lastDown);
     bool unlock=pressed('U',lastUnlock);
+    bool equipOnly=pressed('E',lastEquip);
     bool rp=pressed('R',lastRestart),pause=pressed('P',lastPause);
     bool help=pressed(0x70,lastHelp),contrast=pressed('H',lastContrast);
     bool paint=pressed('V',lastPaint),stripe=pressed('B',lastStripe),
@@ -1773,6 +1797,7 @@ static void step(float dt){
             if(down||rgt)homeFocus=(homeFocus+1)%5;
             if(up||l)homeFocus=(homeFocus+4)%5;
         }else if(page==GARAGE){
+            if(equipOnly||pad.recover)equipViewedCarOnly();
             if(rgt||down)browseGarageDelta(1);
             if(l||up)browseGarageDelta(-1);
             if(paint)cycleAppearance(0);
@@ -2306,6 +2331,22 @@ static bool selftest(){
     if(commitSettingsChange(beforeSettings)||
        selectedTrack!=beforeSettings.Track)return false;
     settingsReadOnly=false;ownedMask=1;selectedCar=0;setPage(HOME);
+    selfTestStage=93;
+    // Real clickable split-button geometry: the central gap must not
+    // equip, while the left target must equip WITHOUT starting a race.
+    ownedMask=1|(1<<5);credits=700;setPage(GARAGE);browseGarageCar(5);
+    mouseClick(666,534);
+    if(page!=GARAGE||selectedCar!=0||garageViewCar!=5)return false;
+    mouseClick(500,534);
+    if(page!=GARAGE||selectedCar!=5||garageViewCar!=5)return false;
+    selectedCar=0;setPage(GARAGE);browseGarageCar(5);
+    mouseClick(730,534);
+    if(page!=RACING||selectedCar!=5)return false;
+    // The mouse EQUIP path also rolls back on a real settings failure.
+    selectedCar=0;setPage(GARAGE);browseGarageCar(5);
+    simulateSettingsSaveFailure=true;mouseClick(500,534);
+    if(page!=GARAGE||selectedCar!=0||garageViewCar!=5)return false;
+    simulateSettingsSaveFailure=false;ownedMask=1;setPage(HOME);
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);
 }

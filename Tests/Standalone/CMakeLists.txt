@@ -2856,3 +2856,18 @@ else()
 endif()
 add_test(NAME PreviewSettingsPersistence
     COMMAND latebrake_preview_settings_persistence_tests)
+
+# Separate EQUIP (no automatic race) from RACE/UNLOCK in 2D showroom.
+add_executable(latebrake_preview_garage_bottom_action_tests
+    PreviewGarageBottomActionTests.cpp)
+target_include_directories(latebrake_preview_garage_bottom_action_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_garage_bottom_action_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_garage_bottom_action_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_garage_bottom_action_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGarageBottomAction
+    COMMAND latebrake_preview_garage_bottom_action_tests)

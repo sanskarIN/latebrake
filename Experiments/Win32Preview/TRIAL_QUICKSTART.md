@@ -224,3 +224,21 @@ newer V5+ settings records, not arbitrary unknown file formats.
 This is **not** an Unreal Engine 5.8 build or certified Windows visual QA.
 The portable C++ tests, Python source contracts and native `--self-test`
 validate the change paths; a real Windows interactive test is still required.
+
+## Equip without launching a race (2D trial)
+
+In the experimental 12-car Garage, browse any owned car and press **E** on
+the keyboard, **X** on a connected XInput controller, or click the **E/X EQUIP**
+button. The chosen car becomes your saved equipped racer while the Garage
+remains open, so you can keep checking cars and customizing styles. The
+separate **ENTER RACE** button (or Enter/controller A) equips the owned car
+and launches a race in one deliberate action. If it is already equipped,
+there is one full-width Race button. Locked cars still use the separate
+8-second double-confirm purchase path; no equip/race action is available
+until they are owned. If settings cannot be saved, equip-only or equip-and-
+race both roll back to the prior racer and keep Garage open. Mouse input
+in the 10-pixel gap between two buttons is deliberately inert.
+
+The same hit-test partition is exercised by portable C++ tests and the real
+Win64 `--self-test`; these do **not** prove physical controller quality,
+input latency or visual polish without interactive Windows hardware QA.

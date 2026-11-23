@@ -35,11 +35,14 @@ class PreviewGarageSelectionBindingTests(unittest.TestCase):
         self.assertIn("same V4 settings field",self.quickstart)
 
     def test_viewing_and_equip_are_separate_live_input_paths(self):
-        selected=self.app.split("static void raceWithViewedOwnedCar()",1)[1].split(
-            "static void activateSelection()",1)[0]
+        selected=self.app.split("static bool equipViewedCarOnly()",1)[1].split(
+            "static void raceWithViewedOwnedCar()",1)[0]
         self.assertIn("if(!equipGarageViewed())",selected)
-        self.assertIn("if(before.Car!=selectedCar&&!commitSettingsChange(before))return;",selected)
-        self.assertIn("beginRace();",selected)
+        self.assertIn("if(before.Car!=selectedCar&&!commitSettingsChange(before))return false;",selected)
+        self.assertIn("return true;",selected)
+        race=self.app.split("static void raceWithViewedOwnedCar()",1)[1].split(
+            "static void activateSelection()",1)[0]
+        self.assertIn("if(equipViewedCarOnly())beginRace();",race)
         actual=self.app.split("static void activateSelection()",1)[1].split(
             "static void mouseClick(",1)[0]
         self.assertIn("else if(page==GARAGE)raceWithViewedOwnedCar();",actual)
@@ -77,7 +80,8 @@ class PreviewGarageSelectionBindingTests(unittest.TestCase):
         self.assertIn("cursor.EquipViewed(static_cast<unsigned int>(ownedMask))",self.app)
         self.assertIn("EQUIPPED / OWNED",self.app)
         self.assertIn("LOCKED / EARN CREDITS",self.app)
-        self.assertIn("ENTER  EQUIP + RACE THIS CAR",self.app)
+        self.assertIn("E/X EQUIP",self.app)
+        self.assertIn("ENTER RACE",self.app)
 
 if __name__=="__main__":
     unittest.main()
