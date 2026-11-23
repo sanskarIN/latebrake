@@ -27,7 +27,7 @@ class Pr452VisualTestPlanBindingTests(unittest.TestCase):
                      "Review-WindowsPlaytest.py"):
             self.assertIn(item,self.doc)
         self.assertIn("NOT the six-car UE5.8 racing game",self.doc)
-        self.assertIn("does not qualify 3D",self.doc)
+        self.assertIn("cannot qualify 3D",self.doc)
     def test_workflow_and_build_scripts_are_existing_real_paths(self):
         for path in (".github/workflows/validate-draft-unreal-pr.yml",
                      "scripts/Build-WindowsPlaytest.ps1",
