@@ -22,6 +22,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
+#include "Progression/ProfileSaveWriteGuard.h"
 #include "Progression/RecordValidation.h"
 #include "Career/CareerLaunchSelection.h"
 #include "Career/CareerReplayPreparation.h"
@@ -2784,6 +2785,35 @@ void ALatebrakeRaceGameMode::SaveRecords()
     {
         bProgressSaveFailed = true;
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: refusing to overwrite future save schema"));
+        return;
+    }
+    // The profile may have changed since BeginPlay (for example, a newer
+    // build was opened separately). Never write an old schema over an
+    // on-disk profile we can no longer understand or even deserialize.
+    // This is a best-effort preflight, NOT an interprocess atomic lock:
+    // two concurrent game instances must still be avoided.
+    const bool bSlotPresent =
+        UGameplayStatics::DoesSaveGameExist(SaveSlot, SaveUser);
+    const ULatebrakePlayerSave* DiskProfile = bSlotPresent
+        ? Cast<ULatebrakePlayerSave>(
+            UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser))
+        : nullptr;
+    const latebrake::ProfileSaveWriteState DiskState =
+        latebrake::AssessProfileSaveWrite(
+            bSlotPresent, DiskProfile != nullptr,
+            DiskProfile ? DiskProfile->SaveSchemaVersion : 0,
+            DiskProfile ? DiskProfile->GarageAppearanceSchemaVersion : 0);
+    if (!latebrake::CanWriteProfileSave(DiskState))
+    {
+        bProgressSaveFailed = true;
+        if (DiskState == latebrake::ProfileSaveWriteState::NewerCareer ||
+            DiskState == latebrake::ProfileSaveWriteState::NewerAppearance)
+        {
+            bFutureSaveSchema = true;
+        }
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: refusing SaveGame overwrite of a newer, corrupt or unreadable on-disk profile (%d)"),
+            static_cast<int32>(DiskState));
         return;
     }
     ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(

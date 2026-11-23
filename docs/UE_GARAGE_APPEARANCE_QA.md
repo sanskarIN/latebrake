@@ -434,3 +434,24 @@ spending, player physics change or SaveGame mutation; use keyboard/gamepad
 after returning to a valid Garage and verify the authoritative save/rollback
 path remains intact. Portable strict tests and Python bindings do **not**
 replace real Unreal Editor build or hardware visual QA.
+
+## Pre-write SaveGame preservation gate (source-only)
+
+A running Unreal client now re-reads the real named player slot immediately
+before `SaveGameToSlot`, rather than relying only on the schema observed
+when `BeginPlay` loaded it. If an existing file is unreadable/corrupt or has
+an unsupported newer career/cosmetic schema, the write is rejected and the
+normal save-failure rollback applies; when the newer schema is recognized,
+that session becomes read-only to prevent repeated destructive attempts.
+Legacy absent/zero-schema saves and current known profiles may still save.
+
+This preflight protects against **observed** on-disk format changes. It is
+not an atomic interprocess transaction or a file lock: two game instances
+that race between check and write are not protected. Close other running
+versions when transferring saves. For manual QA, back up a test slot, load
+and save a legacy profile, then replace it externally with a future-schema
+or corrupt disposable slot while this game remains running and attempt an
+unlock or free cosmetic write. The newly written file must not replace the
+original data, the game should report save failure, and any staged
+selection/credits/styles must roll back. Test real UE5.8/Windows save APIs;
+portable source CI alone cannot verify file locking, races or disk I/O.
