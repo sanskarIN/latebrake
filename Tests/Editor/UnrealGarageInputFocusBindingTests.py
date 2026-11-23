@@ -113,6 +113,30 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
                 self.assertIn("GaragePurchaseConfirm.Reset();",body)
                 self.assertIn("return;",body)
         self.assertIn("bool standaloneRacePaused = false",self.policy)
+        mode_header = (ROOT / "Source/Latebrake/Public/Game/LatebrakeRaceGameMode.h"
+                       ).read_text(encoding="utf-8")
+        hud = (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
+               ).read_text(encoding="utf-8")
+        self.assertIn("bool IsProfileReadOnly() const { return bFutureSaveSchema; }",
+                      mode_header)
+        self.assertIn("Mode->IsProfileReadOnly()",hud)
+        self.assertIn("NEWER SAVE PROFILE: READ-ONLY, NO PURCHASES",hud)
+        for action,mutation in (
+            ("GarageUnlockNext", "Garage.Unlock(Next)"),
+            ("GarageUpgradeEngine", "Garage.Upgrade(latebrake::UpgradeKind::Engine)"),
+            ("GarageUpgradeGrip", "Garage.Upgrade(latebrake::UpgradeKind::Grip)"),
+        ):
+            with self.subTest(action=action):
+                section = mode.split(
+                    f"void ALatebrakeRaceGameMode::{action}()",1)[1].split(
+                        "\n}\n",1)[0]
+                self.assertIn("if (bFutureSaveSchema)",section)
+                self.assertIn("GaragePurchaseConfirm.Reset();",section)
+                self.assertIn(mutation,section)
+                self.assertLess(section.index("if (bFutureSaveSchema)"),
+                                section.index("GaragePurchaseConfirm.ConfirmOrStage("))
+                self.assertLess(section.index("if (bFutureSaveSchema)"),
+                                section.index(mutation))
 
     def test_input_policy_is_fail_closed_and_pure(self):
         self.assertIn('#include "UI/MenuNavigation.h"',self.policy)

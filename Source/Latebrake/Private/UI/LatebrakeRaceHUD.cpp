@@ -407,6 +407,8 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.
             MenuLine(Mode->GetGarageFeedback(), true);
+            if (Mode->IsProfileReadOnly())
+                MenuLine(TEXT("NEWER SAVE PROFILE: READ-ONLY, NO PURCHASES"), true);
             // Read-only visual comparison may inspect any locked car. Only
             // the owned car in GarageState can ever be equipped/raced.
             const int32 PreviewId = Mode->GetGaragePreviewVehicleId();

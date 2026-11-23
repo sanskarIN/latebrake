@@ -241,3 +241,20 @@ closed quick-race while active, closed quick-race while paused, all
 11 pages and 300k transitions. Editor QA should explicitly press
 Escape to pause with **no menu**, then try E/Q/U/I and verify
 credits, selected car and upgrades remain unchanged.
+
+## Future SaveGame profile: do not stage transactions
+
+A saved profile written by a newer schema must remain read-only. In
+addition to E selection and appearance editing, all **Q/U/I**
+vehicle-unlock/engine/grip purchase handlers now reject
+`bFutureSaveSchema` BEFORE even staging the two-press purchase
+confirmation or mutating any credits/tuning. The Garage HUD displays
+a visible "NEWER SAVE PROFILE: READ-ONLY, NO PURCHASES" notice.
+The read-only car gallery still supports browsing, but no write may
+silently downgrade a newer SaveGame or create a false success.
+
+Manual UE QA: load a newer cosmetic/career schema, open Garage;
+F9/F10 browse should still work, but Q, U, I, E, F5–F8 must not
+change in-memory profile state, activate purchase staging, change
+credits or overwrite the newer slot. Legacy and same-version saves
+retain confirmed purchased upgrades with rollback on write failure.

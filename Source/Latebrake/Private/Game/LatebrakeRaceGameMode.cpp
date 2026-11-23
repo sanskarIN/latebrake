@@ -2271,6 +2271,14 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
         GarageFeedback = TEXT("Vehicle purchase temporarily unavailable while race paused.");
         return;
     }
+    // Future save schemas are read-only. Do not even stage an offer,
+    // transiently charge credits or mutate tuning before SaveRecords fails.
+    if (bFutureSaveSchema)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("READ-ONLY PROFILE: newer save version; vehicle unlock disabled.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2342,6 +2350,14 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
         GarageFeedback = TEXT("Engine upgrade temporarily unavailable while race paused.");
         return;
     }
+    // Future save schemas are read-only. Do not even stage an offer,
+    // transiently charge credits or mutate tuning before SaveRecords fails.
+    if (bFutureSaveSchema)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("READ-ONLY PROFILE: newer save version; engine upgrade disabled.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2410,6 +2426,14 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Grip upgrade temporarily unavailable while race paused.");
+        return;
+    }
+    // Future save schemas are read-only. Do not even stage an offer,
+    // transiently charge credits or mutate tuning before SaveRecords fails.
+    if (bFutureSaveSchema)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("READ-ONLY PROFILE: newer save version; grip upgrade disabled.");
         return;
     }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))

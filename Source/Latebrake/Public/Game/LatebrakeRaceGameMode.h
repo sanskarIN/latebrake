@@ -169,6 +169,7 @@ public:
     int32 GetNextLockedVehicleCost() const;
     FString GetGarageFeedback() const { return GarageFeedback; }
     bool HasProgressSaveError() const { return bProgressSaveFailed; }
+    bool IsProfileReadOnly() const { return bFutureSaveSchema; }
     int32 GetNextEngineUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine); }
     int32 GetNextGripUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip); }
     void GarageNextVehicle();
