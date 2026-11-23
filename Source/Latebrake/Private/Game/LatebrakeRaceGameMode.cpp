@@ -26,6 +26,7 @@
 #include "Career/CareerLaunchSelection.h"
 #include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
+#include "UI/GarageInputFocusPolicy.h"
 #include "HAL/PlatformTime.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
@@ -2114,6 +2115,19 @@ void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
     GaragePurchaseConfirm.Reset();
+    // E preserves quick-race behavior with no menu. Only Garage may
+    // change the equipped vehicle while the world is menu-paused.
+    if (!latebrake::CanUseGarageVehicleHotkey(
+        Menu.IsOpen(), Menu.Current()))
+    {
+        GarageFeedback = TEXT("Open Garage before selecting another vehicle.");
+        return;
+    }
+    if (bFutureSaveSchema)
+    {
+        GarageFeedback = TEXT("Newer saved profile: vehicle changes are read-only.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GarageFeedback = TEXT("Finish or exit this career race before changing vehicles.");

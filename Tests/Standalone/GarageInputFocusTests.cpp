@@ -34,6 +34,11 @@ int main()
         const bool accepted = CanConsumeGarageShortcut(true,page);
         Verify(accepted == (page == MenuPage::Garage),
             "only open visible Garage can consume gamepad/keyboard routes");
+        Verify(CanUseGarageVehicleHotkey(false,page),
+            "legacy E car-select remains available with no menu");
+        Verify(CanUseGarageVehicleHotkey(true,page) ==
+                (page == MenuPage::Garage),
+            "only visible Garage may select a car with the menu open");
     }
     MenuNavigation navigator;
     Verify(!navigator.IsOpen(), "new navigation starts closed");
@@ -60,6 +65,9 @@ int main()
         navigator.Close();
         Verify(!CanConsumeGarageShortcut(navigator.IsOpen(),
             navigator.Current()), "close always revokes shortcut authority");
+        Verify(CanUseGarageVehicleHotkey(navigator.IsOpen(),
+            navigator.Current()),
+            "closed menu restores legacy quick-race selection");
     }
     std::cout << "Garage input focus is menu/page gated.\n";
     return EXIT_SUCCESS;

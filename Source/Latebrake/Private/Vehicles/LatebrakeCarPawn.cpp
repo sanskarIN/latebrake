@@ -2603,10 +2603,26 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
         TEXT("MenuMouseWheelDown"), IE_Pressed,
         this, &ALatebrakeCarPawn::MenuMouseWheelDown);
     WheelDown.bExecuteWhenPaused = true;
-    PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
-    PlayerInputComponent->BindAction(TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageSelectKey = PlayerInputComponent->BindAction(
+        TEXT("GarageNextVehicle"), IE_Pressed, this,
+        &ALatebrakeCarPawn::NextGarageVehicle);
+    GarageSelectKey.bExecuteWhenPaused = true;
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageUnlockKey = PlayerInputComponent->BindAction(
+        TEXT("GarageUnlockVehicle"), IE_Pressed, this,
+        &ALatebrakeCarPawn::UnlockGarageVehicle);
+    GarageUnlockKey.bExecuteWhenPaused = true;
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageEngineKey = PlayerInputComponent->BindAction(
+        TEXT("GarageEngineUpgrade"), IE_Pressed, this,
+        &ALatebrakeCarPawn::UpgradeGarageEngine);
+    GarageEngineKey.bExecuteWhenPaused = true;
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageGripKey = PlayerInputComponent->BindAction(
+        TEXT("GarageGripUpgrade"), IE_Pressed, this,
+        &ALatebrakeCarPawn::UpgradeGarageGrip);
+    GarageGripKey.bExecuteWhenPaused = true;
     FInputActionBinding& GaragePaintKey = PlayerInputComponent->BindAction(
         TEXT("GarageCyclePaint"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGaragePaint);
     GaragePaintKey.bExecuteWhenPaused = true;

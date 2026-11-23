@@ -199,3 +199,26 @@ nitro, handbrake, camera and recovery behave as before; open the
 Garage, confirm UI actions work; close it and verify racing inputs
 resume without stale values. The menu remains authoritative over
 cosmetic edits; this fix cannot grant cars or credits.
+
+## Paused garage E / Q / U / I controls
+
+The actual Unreal garage menu calls `SetGamePaused(true)`. Existing
+E/Q/U/I bindings were missing `bExecuteWhenPaused = true`, despite
+the visible Garage HUD promising E to select the next owned car, Q to
+unlock the next car, U to upgrade its engine and I to upgrade grip.
+All four Pawn action bindings now execute while the menu is paused.
+Q/U/I preserve their prior paid double-confirm authority checks.
+
+The E hotkey still cycles owned vehicles in eligible quick races with
+NO menu open. When a menu IS open, E now accepts only the Garage page,
+so Settings/Career/Results/Main cannot silently equip a car.
+Future-schema SaveGame is denied before any transient selection.
+Purchase authorization, career race protection, SaveGame rollback and
+the Enter/SELECT showroom target remain independently enforced.
+
+QA in licensed UE5.8: pause and open Garage; test E/Q/U/I (including
+the existing two-click spend confirmation), verify credits and selected
+vehicle after restart. Change to non-Garage pages and verify E cannot
+equip cars behind the menu. Close the menu in Quick Race and verify E
+retains original ownership-only cycling. Run the real controller focus
+QA separately; standalone tests verify only source contracts.

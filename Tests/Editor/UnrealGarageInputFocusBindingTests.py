@@ -67,10 +67,41 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
                 self.assertIn("if (!Mode ||",function)
                 self.assertNotIn("Mode->" + action + "();",function[:refusal])
 
+    def test_paused_e_q_u_i_and_hidden_selection_authority(self):
+        for action, callback, binding in (
+            ("GarageNextVehicle", "NextGarageVehicle", "GarageSelectKey"),
+            ("GarageUnlockVehicle", "UnlockGarageVehicle", "GarageUnlockKey"),
+            ("GarageEngineUpgrade", "UpgradeGarageEngine", "GarageEngineKey"),
+            ("GarageGripUpgrade", "UpgradeGarageGrip", "GarageGripKey"),
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'TEXT("{action}"), IE_Pressed, this,',self.pawn)
+                self.assertIn("&ALatebrakeCarPawn::" + callback, self.pawn)
+                self.assertIn(binding+".bExecuteWhenPaused = true;",self.pawn)
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        scope = mode.split(
+            "void ALatebrakeRaceGameMode::GarageNextVehicle()",1)[1].split(
+            "bool ALatebrakeRaceGameMode::CanCustomizeGarage()",1)[0]
+        for token in (
+            "latebrake::CanUseGarageVehicleHotkey(",
+            "Menu.IsOpen(), Menu.Current()",
+            "if (bFutureSaveSchema)",
+            "Garage.Select(Next)",
+            "SaveRecords();",
+            "SavedProfile.Rollback();",
+        ):
+            self.assertIn(token,scope)
+        self.assertLess(scope.index("CanUseGarageVehicleHotkey"),
+                        scope.index("Garage.Select(Next)"))
+        self.assertLess(scope.index("if (bFutureSaveSchema)"),
+                        scope.index("Garage.Select(Next)"))
+
     def test_input_policy_is_fail_closed_and_pure(self):
         self.assertIn('#include "UI/MenuNavigation.h"',self.policy)
         self.assertIn("inline constexpr bool CanConsumeGarageShortcut",self.policy)
         self.assertIn("return menuOpen && visiblePage == MenuPage::Garage;",self.policy)
+        self.assertIn("return !menuOpen || visiblePage == MenuPage::Garage;",self.policy)
         for effect in ("ClearDriverInputs(", "SaveRecords(", "Garage.Unlock(",
                        "Garage.Select(", "SetThrottle(", "AddForce("):
             self.assertNotIn(effect,self.policy)

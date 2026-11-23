@@ -16,4 +16,13 @@ inline constexpr bool CanConsumeGarageShortcut(
 {
     return menuOpen && visiblePage == MenuPage::Garage;
 }
+
+// The existing E hotkey may cycle owned cars during an eligible quick
+// race when no menu is open. A paused menu routes it ONLY on Garage.
+// This is focus, not approval to own or purchase any car.
+inline constexpr bool CanUseGarageVehicleHotkey(
+    bool menuOpen, MenuPage visiblePage) noexcept
+{
+    return !menuOpen || visiblePage == MenuPage::Garage;
+}
 } // namespace latebrake
