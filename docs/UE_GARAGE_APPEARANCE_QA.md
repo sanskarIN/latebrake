@@ -144,3 +144,33 @@ availability share this condition. Players should first use
 **Enter/SELECT to equip an owned viewed car**, after which its own
 stored look can be edited. The equipped car label is explicit in the
 Canvas HUD, and a denied key press displays a clear explanation.
+
+## Canvas showroom vehicle schematic (view-only, not 3D capture)
+
+The production Unreal Canvas Garage renders a **car top-view 2D
+schematic** beneath the six existing desktop actions in the right dock.
+The drawing is derived from the SAME source definitions as the prototype
+pawn: `VehicleVisualRecipe`, `VehicleBodyKitRecipe`,
+`PaintForGarageLook`, `GarageAppearanceState`, and immutable six-car
+`GarageState`. It reacts to browsed locked/owned car IDs and to every
+valid paint/stripe/rim selection, including clean/center/twin roof stripe
+count and three distinguishable wheel trims.
+
+This is a screen-space, noninteractive display list: it never spawns
+a locked vehicle into the course, creates a physics body, changes the
+camera, charges credits or updates saved ownership. The diagram
+deliberately uses Canvas `DrawRect` tinting so the palette can always
+be visually inspected, even if the installed Unreal built-in primitive
+material does NOT expose a parameter named `Color`. This is **NOT a
+photorealistic vehicle mesh, native 3D rotating car viewer, texture
+render target, or screenshot of UE's actual 3D scene**.
+
+The allocation-free C++20 layout policy checks the actual pixel bounds
+of the style/browse dock and reserves only spare space underneath.
+It fails closed on compact/touch windows, insufficient panel height,
+nonfinite coordinates and invalid/future vehicle/look IDs. Strict C++20
+`GarageShowroomSchematic` tests enumerate all 6 × 8 × 3 × 3
+car/look combinations on seven desktop viewports; an additional resize
+sweep and corruption probes guard the visual pane from overlapping the
+mouse buttons. Manual UE Editor verification remains necessary for
+Canvas font scale, high-DPI legibility, material parameter and input QA.

@@ -1,6 +1,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "UI/GarageShowroomSchematic.h"
 #include "UI/HudInstrumentCluster.h"
 #include "UI/HudInstrumentDriveBadge.h"
 #include "UI/NitroHudReadout.h"
@@ -994,6 +995,90 @@ void ALatebrakeRaceHUD::DrawHUD()
                     DrawText(Caption, TextColor, BX + 10.f * UIScale,
                         BY + 12.f * UIScale,
                         GEngine->GetSmallFont(), 0.82f * UIScale);
+                }
+
+                // Grounded SCREEN-SPACE TOP VIEW of the browsed prototype.
+                // It uses the same six vehicle geometry/paint recipes as
+                // the source Pawn. Unlike a 3D car actor, this costs no
+                // physics, asset loads, capture camera or saved ownership.
+                const int32 PreviewVehicle = Mode->GetGaragePreviewVehicleId();
+                const latebrake::GarageLook PreviewLook =
+                    Mode->GetGaragePreviewLook();
+                const auto Diagram = latebrake::CalculateGarageSchematic(
+                    static_cast<double>(Canvas->SizeX),
+                    static_cast<double>(Canvas->SizeY),
+                    Layout, GarageStyleMenu, PreviewVehicle, PreviewLook);
+                if (Diagram.Valid)
+                {
+                    const auto& Frame = Diagram.Panel;
+                    const float FrameX = static_cast<float>(Frame.X);
+                    const float FrameY = static_cast<float>(Frame.Y);
+                    const float FrameW = static_cast<float>(Frame.Width);
+                    const float FrameH = static_cast<float>(Frame.Height);
+                    DrawRect(FLinearColor(0.045f, 0.085f, 0.13f, 0.97f),
+                        FrameX, FrameY, FrameW, FrameH);
+                    DrawRect(Gold, FrameX, FrameY,
+                        FrameW, 2.f * Layout.Scale);
+                    DrawText(TEXT("CAR TOP VIEW | 2D SCHEMATIC"), Gold,
+                        FrameX + 8.f * Layout.Scale,
+                        FrameY + 7.f * Layout.Scale,
+                        GEngine->GetSmallFont(), 0.78f * UIScale);
+
+                    const latebrake::VehiclePaintRecipe Colors =
+                        latebrake::PaintForGarageLook(
+                            PreviewVehicle, PreviewLook);
+                    const auto Convert = [](latebrake::VehiclePaintRgb rgb)
+                    {
+                        return FLinearColor(
+                            static_cast<float>(rgb.R),
+                            static_cast<float>(rgb.G),
+                            static_cast<float>(rgb.B), 1.f);
+                    };
+                    // The schematic is deliberately reliable even when a
+                    // built-in primitive's Unreal material has no editable
+                    // "Color" parameter. Real 3D material QA is separate.
+                    for (std::size_t i = 0; i < Diagram.Count; ++i)
+                    {
+                        const auto& Piece = Diagram.Pieces[i];
+                        FLinearColor Ink(0.07f, 0.10f, 0.15f, 0.92f);
+                        switch (Piece.Ink)
+                        {
+                        case latebrake::GarageSchematicInk::Shadow:
+                            Ink = FLinearColor(0.f, 0.f, 0.f, 0.45f);
+                            break;
+                        case latebrake::GarageSchematicInk::Tire:
+                            Ink = FLinearColor(0.06f, 0.07f, 0.09f, 1.f);
+                            break;
+                        case latebrake::GarageSchematicInk::Rim:
+                            Ink = PreviewLook.Wheels == 2u
+                                ? FLinearColor(0.10f, 0.82f, 0.91f, 1.f)
+                                : PreviewLook.Wheels == 1u
+                                    ? FLinearColor(0.91f, 0.92f, 0.94f, 1.f)
+                                    : FLinearColor(0.23f, 0.28f, 0.33f, 1.f);
+                            break;
+                        case latebrake::GarageSchematicInk::Body:
+                            Ink = Convert(Colors.Body);
+                            break;
+                        case latebrake::GarageSchematicInk::Accent:
+                            Ink = Convert(Colors.Accent);
+                            break;
+                        case latebrake::GarageSchematicInk::Canopy:
+                            Ink = Convert(Colors.Canopy);
+                            break;
+                        case latebrake::GarageSchematicInk::Stripe:
+                            Ink = PreviewLook.Paint == 7u
+                                ? FLinearColor(0.10f, 0.18f, 0.28f, 1.f)
+                                : FLinearColor(0.97f, 0.95f, 0.84f, 1.f);
+                            break;
+                        default:
+                            continue;
+                        }
+                        DrawRect(Ink,
+                            static_cast<float>(Piece.Bounds.X),
+                            static_cast<float>(Piece.Bounds.Y),
+                            static_cast<float>(Piece.Bounds.Width),
+                            static_cast<float>(Piece.Bounds.Height));
+                    }
                 }
             }
         }

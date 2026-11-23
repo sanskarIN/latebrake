@@ -148,6 +148,12 @@ public:
     latebrake::GarageSnapshot GetGarageSnapshot() const { return Garage.Snapshot(); }
     int32 GetSelectedVehicleId() const { return Garage.SelectedVehicle(); }
     int32 GetGaragePreviewVehicleId() const { return GarageGallery.Viewed(); }
+    // Read-only style for the SHOWROOM car (may be locked), never the
+    // authoritative equipped-car physics or ownership selection.
+    latebrake::GarageLook GetGaragePreviewLook() const noexcept
+    {
+        return GarageLooks.Get(GarageGallery.Viewed());
+    }
     bool CanBrowseGarage() const;
     void GarageBrowseNext();
     void GarageBrowsePrevious();
