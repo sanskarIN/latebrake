@@ -75,8 +75,8 @@ class UnrealAnimatedWheelRenderBindingTests(unittest.TestCase):
                           "SetCollisionProfileName(", "CreateMeshSection("):
             self.assertNotIn(forbidden,pose)
     def test_docs_explicit_not_physics_verified(self):
-        self.assertIn("licensed UE5.8",self.qa)
-        self.assertIn("five",self.parts.lower() if isinstance(self.parts,str) else "")
+        self.assertIn("actual UE5.8/UHT compile",self.qa)
+        self.assertIn("OriginalVehicleAnimatedPartCount=5u",self.parts)
         self.assertIn("18 car/rim",self.qa)
 if __name__=="__main__":
     unittest.main()

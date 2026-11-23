@@ -33,8 +33,8 @@ class UnrealOriginalVehicleRenderBindingTests(unittest.TestCase):
         self.assertIn("Part->CreateMeshSection(",self.actor)
         self.assertIn("Part->CreateDynamicMaterialInstance(",self.actor)
         self.assertIn("MakeOriginalVehicleAnimatedParts(",self.actor)
-        self.assertIn("OriginalFrontLeftWheel->",self.actor)
-        self.assertIn("OriginalVehicleVisual->ClearAllMeshSections();",self.actor)
+        self.assertIn("OriginalFrontLeftWheel.Get()",self.actor)
+        self.assertIn("Part->ClearAllMeshSections();",self.actor)
         self.assertIn("ProceduralMeshComponent",self.module)
         self.assertIn("ProceduralMeshComponent",
             [entry["Name"] for entry in self.project["Plugins"] if entry["Enabled"]])

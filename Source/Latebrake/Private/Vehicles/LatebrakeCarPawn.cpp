@@ -656,6 +656,12 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         }
         Part->SetVisibility(false, false);
         Part->ClearAllMeshSections();
+        // This is a visual adapter, including all four articulated
+        // wheels: defensively re-apply NO collision/overlap/physics even
+        // if an Editor component override was changed on this Pawn.
+        Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Part->SetGenerateOverlapEvents(false);
+        Part->SetSimulatePhysics(false);
     }
     HideLegacyVisualPrimitives(false);
     if (!latebrake::GarageState::IsVehicle(VehicleId))
