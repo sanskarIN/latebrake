@@ -2575,6 +2575,14 @@ void ALatebrakeCarPawn::MenuMousePressed()
         Mode->GarageBrowsePrevious(); break;
     case latebrake::DesktopMenuMouseAction::GarageBrowseNext:
         Mode->GarageBrowseNext(); break;
+    case latebrake::DesktopMenuMouseAction::GarageQuickView0:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView1:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView2:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView3:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView4:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView5:
+        Mode->GarageBrowseVehicle(
+            latebrake::GarageQuickViewIndex(Action)); break;
     default: break;
     }
 #endif

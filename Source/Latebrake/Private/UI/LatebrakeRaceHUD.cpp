@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "UI/GarageShowroomSchematic.h"
+#include "UI/GarageShowroomQuickView.h"
 #include "UI/HudInstrumentCluster.h"
 #include "UI/HudInstrumentDriveBadge.h"
 #include "UI/NitroHudReadout.h"
@@ -104,6 +105,19 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     const auto style = latebrake::CalculateGarageStyleMouseLayout(
         width, height, latebrake::CalculateHudLayout(width, height),
         false, true, Mode->GetMenuPage());
+    // Same six-chip geometry is used by DrawHUD and input hit tests.
+    if (Mode->GetMenuPage() == latebrake::MenuPage::Garage)
+    {
+        const auto diagram = latebrake::CalculateGarageSchematic(
+            width, height, latebrake::CalculateHudLayout(width, height),
+            style, Mode->GetGaragePreviewVehicleId(),
+            Mode->GetGaragePreviewLook());
+        const auto quick = latebrake::CalculateGarageQuickViewLayout(diagram);
+        const auto selected = latebrake::HitTestGarageQuickView(
+            quick, x, y, Mode->CanBrowseGarage());
+        if (selected != latebrake::DesktopMenuMouseAction::None)
+            return selected;
+    }
     const auto styleAction =
         latebrake::HitTestGarageStyleMouse(
             style, x, y, Mode->CanCustomizeGarage(),
@@ -480,6 +494,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 MenuLine(TEXT("ALL CARS OWNED: Q HAS NO UNLOCK TARGET"), true);
             }
+            MenuLine(TEXT("CLICK 1-6 ABOVE TOP VIEW: DIRECT CAR PREVIEW ONLY"));
             MenuLine(TEXT("F9/F10 or mouse: BROWSE ALL / ENTER: EQUIP IF OWNED"));
             MenuLine(TEXT("PAD: RB FORWARD / B BACK | E EQUIPS NEXT OWNED"));
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
@@ -1114,10 +1129,52 @@ void ALatebrakeRaceHUD::DrawHUD()
                         FrameX, FrameY, FrameW, FrameH);
                     DrawRect(Gold, FrameX, FrameY,
                         FrameW, 2.f * Layout.Scale);
+                    // Read-only numbered vehicle selectors in the
+                    // reserved 27px title region of the actual diagram.
+                    const auto QuickView =
+                        latebrake::CalculateGarageQuickViewLayout(Diagram);
+                    const auto QuickSnapshot = Mode->GetGarageSnapshot();
+                    float PickX=0.f,PickY=0.f;
+                    const bool bHasPickCursor=PlayerOwner->GetMousePosition(
+                        PickX,PickY);
+                    const auto HoverPick=bHasPickCursor
+                        ? latebrake::HitTestGarageQuickView(
+                            QuickView,PickX,PickY,Mode->CanBrowseGarage())
+                        : latebrake::DesktopMenuMouseAction::None;
+                    if (QuickView.Valid)
+                    {
+                        for(std::size_t i=0;i<QuickView.Buttons.size();++i)
+                        {
+                            const auto& Button=QuickView.Buttons[i];
+                            const float BX=static_cast<float>(Button.Bounds.X);
+                            const float BY=static_cast<float>(Button.Bounds.Y);
+                            const float BW=static_cast<float>(Button.Bounds.Width);
+                            const float BH=static_cast<float>(Button.Bounds.Height);
+                            const bool bViewed=static_cast<int32>(i)==PreviewVehicle;
+                            const bool bEquipped=static_cast<int32>(i)==
+                                Mode->GetSelectedVehicleId();
+                            const bool bOwned=(QuickSnapshot.OwnedVehicleMask &
+                                (1 << static_cast<int32>(i))) != 0;
+                            const bool bHovered=HoverPick==Button.Action;
+                            const FLinearColor Ink=bViewed ? Gold :
+                                bEquipped ? FLinearColor(0.21f,0.85f,0.94f) :
+                                bOwned ? White : FLinearColor(0.49f,0.55f,0.63f);
+                            DrawRect(bViewed
+                                ? FLinearColor(0.31f,0.25f,0.09f,1.f)
+                                : bHovered
+                                    ? FLinearColor(0.19f,0.31f,0.43f,1.f)
+                                    : FLinearColor(0.08f,0.13f,0.19f,1.f),
+                                BX,BY,BW,BH);
+                            DrawRect(Ink,BX,BY,BW,2.f);
+                            DrawText(FString::FromInt(static_cast<int32>(i)+1),
+                                Ink,BX+0.35f*BW,BY+3.f,
+                                GEngine->GetSmallFont(),0.78f*UIScale);
+                        }
+                    }
                     DrawText(TEXT("CAR TOP VIEW | 2D SCHEMATIC"), Gold,
                         FrameX + 8.f * Layout.Scale,
-                        FrameY + 7.f * Layout.Scale,
-                        GEngine->GetSmallFont(), 0.78f * UIScale);
+                        FrameY + FrameH - 14.f * Layout.Scale,
+                        GEngine->GetSmallFont(), 0.63f * UIScale);
 
                     const latebrake::VehiclePaintRecipe Colors =
                         latebrake::PaintForGarageLook(

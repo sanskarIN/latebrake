@@ -2072,6 +2072,19 @@ void ALatebrakeRaceGameMode::GarageBrowseNext()
         Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
 }
 
+void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
+{
+    // VIEW is never EQUIP: this handler cannot spend, select or save.
+    if (!CanBrowseGarage() || !latebrake::GarageState::IsVehicle(VehicleId))
+        return;
+    if (!GarageGallery.Browse(VehicleId)) return;
+    GaragePurchaseConfirm.Reset();
+    const auto& Car = latebrake::GarageState::Definition(VehicleId);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(Car.Name),
+        Garage.Owns(VehicleId) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+}
+
 void ALatebrakeRaceGameMode::GarageBrowsePrevious()
 {
     if (!CanBrowseGarage()) return;

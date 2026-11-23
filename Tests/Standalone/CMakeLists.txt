@@ -2901,3 +2901,18 @@ else()
 endif()
 add_test(NAME ProfileSaveWriteGuard
     COMMAND latebrake_profile_save_write_guard_tests)
+
+# Production Unreal Canvas showroom: six view-only numeric mouse chips.
+add_executable(latebrake_garage_showroom_quick_view_tests
+    GarageShowroomQuickViewTests.cpp)
+target_include_directories(latebrake_garage_showroom_quick_view_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_showroom_quick_view_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_showroom_quick_view_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_showroom_quick_view_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageShowroomQuickView
+    COMMAND latebrake_garage_showroom_quick_view_tests)

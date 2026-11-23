@@ -17,6 +17,14 @@ public:
 
     constexpr int Viewed() const noexcept { return ViewedId; }
 
+    // Read-only jump to any of the fixed six original Unreal car IDs.
+    constexpr bool Browse(int vehicleId) noexcept
+    {
+        if (!GarageState::IsVehicle(vehicleId)) return false;
+        ViewedId = vehicleId;
+        return true;
+    }
+
     constexpr int Next() noexcept
     {
         ViewedId = (ViewedId + 1) % VehicleCount;

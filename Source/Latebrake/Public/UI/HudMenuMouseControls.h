@@ -20,8 +20,26 @@ enum class DesktopMenuMouseAction
 {
     None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close,
     GaragePaint, GarageStripe, GarageWheels, GarageReset,
-    GarageBrowsePrevious, GarageBrowseNext
+    GarageBrowsePrevious, GarageBrowseNext,
+    GarageQuickView0, GarageQuickView1, GarageQuickView2,
+    GarageQuickView3, GarageQuickView4, GarageQuickView5
 };
+
+constexpr DesktopMenuMouseAction GarageQuickViewAction(int id) noexcept
+{
+    return id >= 0 && id < VehicleCount
+        ? static_cast<DesktopMenuMouseAction>(
+            static_cast<int>(DesktopMenuMouseAction::GarageQuickView0) + id)
+        : DesktopMenuMouseAction::None;
+}
+constexpr int GarageQuickViewIndex(DesktopMenuMouseAction action) noexcept
+{
+    const int index = static_cast<int>(action) -
+        static_cast<int>(DesktopMenuMouseAction::GarageQuickView0);
+    return index >= 0 && index < VehicleCount ? index : -1;
+}
+static_assert(GarageQuickViewIndex(GarageQuickViewAction(5)) == 5);
+static_assert(GarageQuickViewAction(VehicleCount) == DesktopMenuMouseAction::None);
 
 struct DesktopMenuMouseRect final
 {

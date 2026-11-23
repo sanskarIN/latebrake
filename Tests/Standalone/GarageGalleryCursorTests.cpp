@@ -68,6 +68,24 @@ int main()
                "valid owned selection can synchronize showroom focus");
     }
 
+    // Six direct showroom jumps must not change selection, credits or tuning.
+    for(int id=0;id<VehicleCount;id++)
+    {
+        Verify(cursor.Browse(id) && cursor.Viewed()==id,
+            "valid direct car preview picks exact fixed vehicle ID");
+        const auto now=authority.Snapshot();
+        Verify(now.SelectedVehicle==before.SelectedVehicle &&
+               now.Credits==before.Credits &&
+               now.OwnedVehicleMask==before.OwnedVehicleMask,
+            "direct preview never equips, charges or unlocks");
+    }
+    for(int invalid:{-3,-1,VehicleCount,9999})
+    {
+        const int old=cursor.Viewed();
+        Verify(!cursor.Browse(invalid) && cursor.Viewed()==old,
+            "invalid direct preview ID leaves prior view unchanged");
+    }
+
     // Partial genuine ownership: viewer can directly equip ID 4 while
     // IDs 1, 2, 3 and 5 stay locked. Browsing alone still must not equip.
     GarageState partiallyOwned;

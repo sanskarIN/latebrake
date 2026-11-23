@@ -455,3 +455,23 @@ unlock or free cosmetic write. The newly written file must not replace the
 original data, the game should report save failure, and any staged
 selection/credits/styles must roll back. Test real UE5.8/Windows save APIs;
 portable source CI alone cannot verify file locking, races or disk I/O.
+
+## Six direct numbered car-preview chips in the Unreal Canvas showroom
+
+The production **source-only** Unreal garage now includes direct numbered
+1–6 preview chips in the existing top-view schematic header. Clicking one
+updates only the viewed car and read-only specifications/livery schematic.
+This is NOT a 3D rendering or a new asset/car model. Locked previews remain
+locked; a click does **not** equip or purchase, modify physics, earn credits,
+or write SaveGame. Clicking any valid chip cancels pending two-press purchases
+to prevent a stale unlock offer from surviving the gallery jump. Existing
+F9/F10, RB/B, and keyboard navigation continue to work in compact windows.
+
+The exact same validated chip geometry drives rendering and mouse hit tests;
+the portable C++ tests verify car IDs, click boundaries and no overlaps with
+style buttons, the schematic body or other chips across five resolutions.
+For real Unreal verification, test 900x600, 1280x720, 1920x1080, 3440x1440,
+high-DPI and resized windows; confirm the digits are legible, locked/equipped
+colors are distinguishable, and neither direct preview nor its click on a
+locked car changes the selected pawn, upgrade levels, credits or save file.
+A source CI pass does not establish working UE5.8/Windows 3D playability.

@@ -160,6 +160,7 @@ public:
     bool CanEquipGarageViewed() const;
     void GarageBrowseNext();
     void GarageBrowsePrevious();
+    void GarageBrowseVehicle(int32 VehicleId);
     void GarageSelectViewedVehicle();
     latebrake::GarageLook GetSelectedGarageLook() const noexcept
     {
