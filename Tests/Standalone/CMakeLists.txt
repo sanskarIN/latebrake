@@ -2841,3 +2841,18 @@ else()
 endif()
 add_test(NAME PreviewRaceTimeText
     COMMAND latebrake_preview_race_time_text_tests)
+
+# Version-aware and transactional settings.dat for the native Windows 2D trial.
+add_executable(latebrake_preview_settings_persistence_tests
+    PreviewSettingsPersistenceTests.cpp)
+target_include_directories(latebrake_preview_settings_persistence_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_settings_persistence_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_settings_persistence_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_settings_persistence_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewSettingsPersistence
+    COMMAND latebrake_preview_settings_persistence_tests)

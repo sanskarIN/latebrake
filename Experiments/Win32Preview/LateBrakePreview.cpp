@@ -7,6 +7,7 @@
 #include "PreviewGarageStyle.h"
 #include "PreviewGarageSelection.h"
 #include "PreviewGaragePurchaseConsent.h"
+#include "PreviewSettingsPersistence.h"
 #include "PreviewRaceTimeText.h"
 #include "PreviewKeyboardFocusGuard.h"
 #include "PreviewDrivingCoach.h"
@@ -190,6 +191,9 @@ static bool simulateAppearanceSaveFailure=false;
 static bool garageAppearanceReadOnly=false;
 // Used exclusively by headless tests. A production process cannot enable this.
 static bool simulateProgressSaveFailure=false;
+static bool simulateSettingsSaveFailure=false;
+// A settings.dat created by a newer V5+ trial must never be downgraded.
+static bool settingsReadOnly=false;
 // Headless self-test reports a coarse failing phase through the process exit
 // code. This makes CI failures actionable without changing GUI output/saves.
 static unsigned int selfTestStage=3;
@@ -451,6 +455,12 @@ static void loadSettings(){
     UISettingsV4 d={};DWORD got=0;
     BOOL ok=ReadFile(h,&d,sizeof(d),&got,0);CloseHandle(h);
     if(!ok)return;
+    // Preserve even a larger/shorter future settings record. Read its
+    // recognized UIB family/version before interpreting the V3/V4 payload.
+    if(got>=sizeof(unsigned int)*2u &&
+       latebrake_preview::IsNewerPreviewSettingsSchema(d.magic,d.version)){
+        settingsReadOnly=true;return;
+    }
     if(got==sizeof(UISettings)){
         // Exact V3 settings shape: d.assist carries the legacy checksum.
         UISettings old={d.magic,d.version,d.car,d.track,d.event,d.contrast,d.assist};
@@ -471,17 +481,42 @@ static void loadSettings(){
         selectedCar,static_cast<unsigned int>(ownedMask));
     garageViewCar=selectedCar;
 }
-static void saveSettings(){
-    if(testing)return;
-    char dir[400],file[440],tmp[440];if(!settingsPath(dir,file,tmp))return;
+// Recheck the actual file on each mutation: a newer build may have
+// updated settings.dat since this game was launched.
+static bool newerSettingsFileOnDisk(const char* file){
+    HANDLE h=CreateFileA(file,0x80000000u,1,0,3,0,0);
+    if(h==(HANDLE)-1||!h)return false;
+    unsigned int header[2]={};DWORD got=0;
+    const BOOL ok=ReadFile(h,header,sizeof(header),&got,0);
+    CloseHandle(h);
+    return ok&&got==sizeof(header)&&
+        latebrake_preview::IsNewerPreviewSettingsSchema(header[0],header[1]);
+}
+static bool saveSettings(){
+    if(settingsReadOnly)return false;
+    // Native --self-test never touches a real player's local profile.
+    if(testing)return !simulateSettingsSaveFailure;
+    char dir[400],file[440],tmp[440];
+    if(!settingsPath(dir,file,tmp))return false;
+    if(newerSettingsFileOnDisk(file)){
+        settingsReadOnly=true;return false;
+    }
     CreateDirectoryA(dir,0);
     UISettingsV4 d={0x34424955u,4u,(unsigned)selectedCar,(unsigned)selectedTrack,
         (unsigned)selectedChallenge,highContrast?1u:0u,steeringAssist?1u:0u,0};
     d.checksum=uiChecksumV4(d);
-    HANDLE h=CreateFileA(tmp,0x40000000u,0,0,2,0x80,0);
-    if(h==(HANDLE)-1||!h)return;
-    DWORD written=0;BOOL ok=WriteFile(h,&d,sizeof(d),&written,0);CloseHandle(h);
-    if(ok&&written==sizeof(d))MoveFileExA(tmp,file,0x1u|0x8u);
+    HANDLE h=CreateFileA(tmp,0x40000000u,0,0,2,0x80u,0);
+    if(h==(HANDLE)-1||!h)return false;
+    DWORD written=0;
+    const bool complete=WriteFile(h,&d,sizeof(d),&written,0)!=0 &&
+        written==sizeof(d);
+    const bool flushed=complete&&FlushFileBuffers(h)!=0;
+    const bool closed=CloseHandle(h)!=0;
+    if(!flushed||!closed){DeleteFileA(tmp);return false;}
+    if(!MoveFileExA(tmp,file,0x1u|0x8u)){
+        DeleteFileA(tmp);return false;
+    }
+    return true;
 }
 // Independent livery save: never rewrite the V2 career or V3/V4 UI records.
 // A corrupted or truncated file resets only cosmetics, not earned ownership.
@@ -613,6 +648,25 @@ static void observeCompletedLap(float duration){
     }
 }
 static void message(const char* t){int i=0;while(t[i]&&i<70){toast[i]=t[i];++i;}toast[i]=0;toastTime=2.8f;}
+static latebrake_preview::PreviewSettingsState settingsState(){
+    return {selectedCar,selectedTrack,selectedChallenge,
+            highContrast,steeringAssist};
+}
+static void restoreSettingsState(
+    const latebrake_preview::PreviewSettingsState& s){
+    selectedCar=s.Car;selectedTrack=s.Track;selectedChallenge=s.Event;
+    highContrast=s.Contrast;steeringAssist=s.Assist;
+}
+static bool commitSettingsChange(
+    const latebrake_preview::PreviewSettingsState& previous){
+    const bool persisted=saveSettings();
+    restoreSettingsState(latebrake_preview::ResolvePreviewSettingsSave(
+        previous,settingsState(),persisted));
+    if(!persisted)message(settingsReadOnly?
+        "NEWER SETTINGS SAVE: READ ONLY":
+        "SETTINGS SAVE FAILED / CHANGE REVERTED");
+    return persisted;
+}
 static bool setAppearance(int category,unsigned int choice){
     if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return false;
     if(garageAppearanceReadOnly){
@@ -1194,6 +1248,8 @@ static void renderMenuV3(){
         text(558,324,trackNames[selectedTrack],GOLD(),2);
         trackThumbnail(724,302,170,111,selectedTrack);
         hint(559,421,"PERSONAL SAVE  /  THIS PC ONLY");
+        if(settingsReadOnly)
+            hint(50,458,"NEWER SETTINGS FILE: OPTIONS READ ONLY / PLAY IS SAFE");
         tile(50,480,864,81,false);
         hint(75,493,"CAREER CREDITS");number(77,516,credits,GOLD(),3);
         hint(335,493,"EVENT WINS");number(338,516,completed,CREAM(),3);
@@ -1203,6 +1259,7 @@ static void renderMenuV3(){
         text(48,91,"GARAGE",CREAM(),4);
         hint(49,123,garageAppearanceReadOnly?
             "NEWER LOOK SAVE: READ ONLY / FILE PRESERVED":
+            settingsReadOnly?"NEWER SETTINGS: EQUIP/OPTIONS READ ONLY":
             "BROWSE ONLY / YOUR RACE CAR STAYS EQUIPPED");
         const int pageNumber=garageViewCar/latebrake_preview::PreviewCarsPerPage;
         uiButton(49,143,165,23,"< PREVIOUS",false);
@@ -1553,11 +1610,13 @@ static void unlockSelectedCar(){
 }
 static void raceWithViewedOwnedCar(){
     if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return;
-    const int previous=selectedCar;
+    const auto before=settingsState();
     if(!equipGarageViewed()){
         message("LOCKED CAR / PRESS U TO UNLOCK");return;
     }
-    if(previous!=selectedCar)saveSettings();
+    // An owned-car switch is not equipped until the settings file commits.
+    // On failure keep Garage open, preserve VIEWED and restore the racer.
+    if(before.Car!=selectedCar&&!commitSettingsChange(before))return;
     beginRace();
 }
 static void activateSelection(){
@@ -1612,11 +1671,15 @@ static void mouseClick(int x,int y){
         }
     }else if(page==TRACKS){
         for(int i=0;i<4;i++)if(within(x,y,49+(i%2)*444,172+(i/2)*191,418,169)){
-            selectedTrack=i;saveSettings();drawTrack();return;
+            if(selectedTrack!=i){const auto before=settingsState();
+                selectedTrack=i;commitSettingsChange(before);}
+            drawTrack();return;
         }
     }else if(page==CHALLENGES){
         for(int i=0;i<4;i++)if(within(x,y,48,171+i*95,862,84)){
-            selectedChallenge=i;saveSettings();return;
+            if(selectedChallenge!=i){const auto before=settingsState();
+                selectedChallenge=i;commitSettingsChange(before);}
+            return;
         }
     }else if(page==ONLINE_INFO){if(y>505)setPage(HOME);}
     else if(page==RESULTS){
@@ -1676,9 +1739,12 @@ static void step(float dt){
     up=up||pad.navUp;down=down||pad.navDown;
     l=l||pad.navLeft;rgt=rgt||pad.navRight;
     pause=pause||pad.pause;recover=recover||pad.recover;
-    if(contrast){highContrast=!highContrast;saveSettings();}
-    if(assist){steeringAssist=!steeringAssist;saveSettings();
-        message(steeringAssist?"ROAD GUIDE + ASSIST ON":"MANUAL STEERING / GUIDE OFF");}
+    if(contrast){const auto before=settingsState();
+        highContrast=!highContrast;commitSettingsChange(before);}
+    if(assist){const auto before=settingsState();
+        steeringAssist=!steeringAssist;
+        if(commitSettingsChange(before))
+            message(steeringAssist?"ROAD GUIDE + ASSIST ON":"MANUAL STEERING / GUIDE OFF");}
     if(help){garagePurchase.Reset();showHelp=!showHelp;return;}
     if(showHelp){if(back||enter)showHelp=false;return;}
     if(page==RACING){
@@ -1714,13 +1780,16 @@ static void step(float dt){
             if(wheels)cycleAppearance(2);
             if(unlock)unlockSelectedCar();
         }else if(page==TRACKS){
-            if(rgt||down){selectedTrack=(selectedTrack+1)%4;drawTrack();}
-            if(l||up){selectedTrack=(selectedTrack+3)%4;drawTrack();}
-            if(l||rgt||up||down)saveSettings();
+            const auto before=settingsState();
+            if(rgt||down)selectedTrack=(selectedTrack+1)%4;
+            if(l||up)selectedTrack=(selectedTrack+3)%4;
+            if(selectedTrack!=before.Track){
+                commitSettingsChange(before);drawTrack();}
         }else if(page==CHALLENGES){
+            const auto before=settingsState();
             if(down||rgt)selectedChallenge=(selectedChallenge+1)%4;
             if(up||l)selectedChallenge=(selectedChallenge+3)%4;
-            if(up||l||down||rgt)saveSettings();
+            if(selectedChallenge!=before.Event)commitSettingsChange(before);
         }
         if(enter)activateSelection();
     }
@@ -2222,6 +2291,21 @@ static bool selftest(){
        timeSample[4]!='9'||timeSample[5]!=0)return false;
     if(latebrake_preview::FormatPreviewRecordMilliseconds(0,timeSample) ||
        timeSample[0]!='-')return false;
+    selfTestStage=92;
+    // Exercise the real equip + persistence path with a simulated failure:
+    // no false race transition, and the previous owned racer stays selected.
+    selectedCar=0;ownedMask=1|(1<<5);setPage(GARAGE);
+    browseGarageCar(5);simulateSettingsSaveFailure=true;
+    raceWithViewedOwnedCar();
+    if(page!=GARAGE||selectedCar!=0||garageViewCar!=5)return false;
+    simulateSettingsSaveFailure=false;settingsReadOnly=true;
+    raceWithViewedOwnedCar();
+    if(page!=GARAGE||selectedCar!=0||garageViewCar!=5)return false;
+    const auto beforeSettings=settingsState();
+    selectedTrack=(beforeSettings.Track+1)%4;
+    if(commitSettingsChange(beforeSettings)||
+       selectedTrack!=beforeSettings.Track)return false;
+    settingsReadOnly=false;ownedMask=1;selectedCar=0;setPage(HOME);
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);
 }

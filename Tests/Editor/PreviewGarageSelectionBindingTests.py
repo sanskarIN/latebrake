@@ -38,7 +38,7 @@ class PreviewGarageSelectionBindingTests(unittest.TestCase):
         selected=self.app.split("static void raceWithViewedOwnedCar()",1)[1].split(
             "static void activateSelection()",1)[0]
         self.assertIn("if(!equipGarageViewed())",selected)
-        self.assertIn("if(previous!=selectedCar)saveSettings();",selected)
+        self.assertIn("if(before.Car!=selectedCar&&!commitSettingsChange(before))return;",selected)
         self.assertIn("beginRace();",selected)
         actual=self.app.split("static void activateSelection()",1)[1].split(
             "static void mouseClick(",1)[0]

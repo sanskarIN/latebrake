@@ -200,3 +200,27 @@ Personal best millisecond records are rounded deterministically into
 hundredths for display; their actual saved millisecond values and the
 race clock, credited gates, rewards and physics remain unchanged.
 The window still presents experimental virtual PX/S for speed.
+
+## Settings save failure and downgrade protection (2D trial)
+
+The separate Win32 2D trial stores the equipped car, selected circuit/event,
+contrast and steering assist in `%LOCALAPPDATA%\\LateBrakePreview\\settings.dat`.
+These options are now committed with a flush, checked close and atomic file
+replacement. If Windows denies that write or the storage is unavailable, the
+changed preference is **rolled back** immediately and the trial displays
+`SETTINGS SAVE FAILED / CHANGE REVERTED`. Equipping a different owned car
+also stays in Garage instead of silently starting a race under a car that
+will be forgotten at restart. Browsing locked cars and race rewards remain
+independent of the settings file.
+
+If this version detects a recognized newer settings format (UIB family,
+version greater than 4), it preserves the existing file, leaves selection and
+options read-only, and displays `NEWER SETTINGS SAVE: READ ONLY` on an
+attempted change. You can still race with the safe current/default selection.
+Never delete or edit another version's save just to make the warning disappear;
+back up the local profile before experimenting. This protects recognized
+newer V5+ settings records, not arbitrary unknown file formats.
+
+This is **not** an Unreal Engine 5.8 build or certified Windows visual QA.
+The portable C++ tests, Python source contracts and native `--self-test`
+validate the change paths; a real Windows interactive test is still required.
