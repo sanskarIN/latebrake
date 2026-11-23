@@ -3067,3 +3067,20 @@ else()
 endif()
 add_test(NAME OriginalVehicleObjPreview
     COMMAND latebrake_original_obj_preview_tests)
+
+# Source UI/UX policy for read-only visual preview of any garage car.
+# Never changes equipped/owned car, tuning, credits or SaveGame.
+add_executable(latebrake_showroom_presentation_tests
+    GarageShowroomPresentationTests.cpp)
+target_include_directories(latebrake_showroom_presentation_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_showroom_presentation_tests
+    PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_showroom_presentation_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_showroom_presentation_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageShowroomPresentation
+    COMMAND latebrake_showroom_presentation_tests)
