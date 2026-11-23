@@ -2729,3 +2729,17 @@ else()
 endif()
 add_test(NAME GarageShowroomSchematic
     COMMAND latebrake_garage_schematic_tests)
+
+# Controller buttons overlap real race controls. An open/visible Garage
+# focus predicate is required before any cosmetic callback clears inputs.
+add_executable(latebrake_garage_input_focus_tests GarageInputFocusTests.cpp)
+target_include_directories(latebrake_garage_input_focus_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_input_focus_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_input_focus_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_input_focus_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageInputFocus COMMAND latebrake_garage_input_focus_tests)

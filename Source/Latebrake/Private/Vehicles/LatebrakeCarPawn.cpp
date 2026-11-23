@@ -28,6 +28,7 @@
 #include "UI/TouchControlLayout.h"
 #include "UI/GhostTouchPolicy.h"
 #include "UI/LatebrakeRaceHUD.h"
+#include "UI/GarageInputFocusPolicy.h"
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
 #include "UI/TouchResidualSafety.h"
@@ -2432,47 +2433,83 @@ void ALatebrakeCarPawn::UpgradeGarageGrip()
 
 void ALatebrakeCarPawn::CycleGaragePaint()
 {
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode =
-        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        Mode->GarageCyclePaint();
+    Mode->GarageCyclePaint();
 }
 void ALatebrakeCarPawn::CycleGarageStripe()
 {
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode =
-        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        Mode->GarageCycleStripe();
+    Mode->GarageCycleStripe();
 }
 void ALatebrakeCarPawn::CycleGarageWheels()
 {
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode =
-        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        Mode->GarageCycleWheels();
+    Mode->GarageCycleWheels();
 }
 
 void ALatebrakeCarPawn::ResetGarageLook()
 {
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode =
-        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        Mode->GarageResetAppearance();
+    Mode->GarageResetAppearance();
 }
 
 void ALatebrakeCarPawn::BrowseGarageNext()
 {
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode =
-        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        Mode->GarageBrowseNext();
+    Mode->GarageBrowseNext();
 }
 void ALatebrakeCarPawn::BrowseGaragePrevious()
 {
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage()))
+        return;
     ClearDriverInputs();
-    if (ALatebrakeRaceGameMode* Mode =
-        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
-        Mode->GarageBrowsePrevious();
+    Mode->GarageBrowsePrevious();
 }
 
 void ALatebrakeCarPawn::SelectArcade()

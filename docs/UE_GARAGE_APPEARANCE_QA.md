@@ -174,3 +174,28 @@ car/look combinations on seven desktop viewports; an additional resize
 sweep and corruption probes guard the visual pane from overlapping the
 mouse buttons. Manual UE Editor verification remains necessary for
 Canvas font scale, high-DPI legibility, material parameter and input QA.
+
+## Garage gamepad driving-input isolation
+
+**P0 regression addressed in source:** The same controller inputs are
+intentionally mapped to garage operations and driving controls: R3 /
+handbrake, L3 / nitro, LB / look-back, RB / camera, and B / recover.
+Previously the new `CycleGarage*`, reset and gallery browse pawn
+callbacks called `ClearDriverInputs()` **unconditionally** even when
+racing with the menu closed. A shared `CanConsumeGarageShortcut`
+source-only predicate now checks **both** `Mode->IsMenuOpen()` and
+`Mode->GetMenuPage()==Garage` **before** any live driving-input clear
+or GameMode mutation. Invalid GameMode and hidden page also fail closed.
+Each of six callbacks retains its existing authoritative GameMode
+economy/ownership/saved-look gates when it is legitimately focused.
+
+Standalone strict C++20 tests cover all 11 menu pages, contradictory
+closed/open states and 300,000 menu transitions; Python source-contract
+tests verify every real Pawn callback's guard order and the five
+overlapping gamepad button mappings. These prove source behavior and
+policy correctness but do not replace actual gamepad testing: in UE
+Editor, drive with R3/L3/LB/RB/B held and verify throttle, steering,
+nitro, handbrake, camera and recovery behave as before; open the
+Garage, confirm UI actions work; close it and verify racing inputs
+resume without stale values. The menu remains authoritative over
+cosmetic edits; this fix cannot grant cars or credits.
