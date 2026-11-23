@@ -172,3 +172,21 @@ car 0 must still race. Only after selecting ENTER on that newly owned
 car should the racing vehicle switch. Test both pages, mouse, keyboard,
 controller, resizing, older V3/V4 settings, save failures and Alt-Tab.
 These automated tests do not certify real Windows UX or UE5.8 gameplay.
+
+## Safe two-step garage unlock consent
+
+A locked viewed car can be purchased with earned credits only from
+the Garage. Press **U** or click **UNLOCK THIS CAR** once to display
+the explicit offer. The Garage changes its button to **U / CLICK
+AGAIN: CONFIRM UNLOCK** and shows the remaining seconds. Press U or
+click the same button again **within eight seconds** to actually spend
+credits and attempt the transactional career save. The first action
+never spends funds. If the save fails, the old credit balance and
+ownership are restored. Changing the viewed car, entering another
+page, opening F1 help, Alt-Tabbing/focus loss or the eight-second
+timeout cancels the offer. A purchase never automatically equips.
+
+Test rapid repeated clicks, holding U continuously, insufficient
+credits, page changes, mouse/keyboard/controller, timeout, app focus
+loss, and failed saves. Headless tests simulate time/focus changes
+without actual Windows user interaction; verify on a real machine.

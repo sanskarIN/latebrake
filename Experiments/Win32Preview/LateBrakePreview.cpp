@@ -6,6 +6,7 @@
 #include "PreviewViewportMath.h"
 #include "PreviewGarageStyle.h"
 #include "PreviewGarageSelection.h"
+#include "PreviewGaragePurchaseConsent.h"
 #include "PreviewKeyboardFocusGuard.h"
 #include "PreviewDrivingCoach.h"
 
@@ -171,6 +172,9 @@ static Page page=HOME;
 static int selectedCar=0,garageViewCar=0;
 static int selectedTrack=0,selectedChallenge=0,credits=0,completed=0;
 static int ownedMask=1,careerStars=0,bonusCredits=0;
+// Paid car unlocks need a second deliberate action within eight seconds.
+// The offer never changes credits, ownership, equipped vehicle or saves.
+static latebrake_preview::PreviewGaragePurchaseConsent garagePurchase{};
 static bool progressSaveFailed=false; // Never advertise unsaved career awards.
 static float trackRx=291.0f,trackRy=161.0f,trackWidth=0.235f;
 static bool lastEnter=false,lastBack=false,lastGarage=false,lastTracks=false,lastChallenge=false,lastOnline=false,lastMenu=false;
@@ -218,12 +222,14 @@ static latebrake_preview::PreviewAppearance garageStyles[
 static bool browseGarageCar(int id){
     latebrake_preview::PreviewGarageSelection cursor{selectedCar,garageViewCar};
     if(!cursor.Browse(id))return false;
+    if(garageViewCar!=cursor.Viewed)garagePurchase.Reset();
     garageViewCar=cursor.Viewed;
     return true;
 }
 static bool browseGarageDelta(int direction){
     latebrake_preview::PreviewGarageSelection cursor{selectedCar,garageViewCar};
     if(!cursor.BrowseDelta(direction))return false;
+    if(garageViewCar!=cursor.Viewed)garagePurchase.Reset();
     garageViewCar=cursor.Viewed;
     return true;
 }
@@ -721,6 +727,7 @@ static bool rivalDuelAlreadyLost(){
     return false;
 }
 static void beginRace(){
+    garagePurchase.Reset();
     race={};
     progressSaveFailed=false;
     const latebrake_preview::RaceModePolicy mode=selectedModePolicy();
@@ -1247,7 +1254,12 @@ static void renderMenuV3(){
         hint(473,486,"CREDITS");number(473,498,credits,GOLD(),2);
         if(!(ownedMask&(1<<garageViewCar))){
             hint(651,486,"UNLOCK PRICE");number(652,498,carPrices[garageViewCar],CREAM(),2);
-            uiButton(477,520,393,34,"U  UNLOCK THIS CAR",false,
+            if(garagePurchase.PendingFor(garageViewCar)){
+                hint(788,486,"EXPIRES");
+                number(817,498,(int)(garagePurchase.Remaining+0.99f),GOLD(),1);
+            }
+            uiButton(477,520,393,34,garagePurchase.PendingFor(garageViewCar)
+                ?"U / CLICK AGAIN: CONFIRM UNLOCK":"U  UNLOCK THIS CAR",false,
                      credits>=carPrices[garageViewCar]);
         }else uiButton(477,520,393,34,
             garageViewCar==selectedCar?"ENTER  RACE WITH EQUIPPED CAR":
@@ -1485,6 +1497,7 @@ static bool key(int k){
 }
 static bool pressed(int k,bool& previous){bool down=key(k);bool edge=down&&!previous;previous=down;return edge;}
 static void setPage(Page target){
+    garagePurchase.Reset();
     page=target;paused=false;
     if(target==GARAGE)garageViewCar=selectedCar;
     if(target==TRACKS)drawTrack();
@@ -1500,8 +1513,19 @@ static void unlockSelectedCar(){
     // Spending only comes from the visible Garage. Browsing itself has
     // ZERO monetary authority and never mutates the equipped racer.
     if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return;
-    if(ownedMask&(1<<garageViewCar))message("ALREADY IN YOUR GARAGE");
-    else if(credits>=carPrices[garageViewCar]){
+    const auto choice=garagePurchase.Request(
+        garageViewCar,static_cast<unsigned int>(ownedMask),
+        credits,carPrices[garageViewCar]);
+    if(choice==latebrake_preview::PreviewPurchaseChoice::Rejected){
+        message(ownedMask&(1<<garageViewCar)?"ALREADY IN YOUR GARAGE":
+            "NOT ENOUGH CREDITS / KEEP RACING");
+        return;
+    }
+    if(choice==latebrake_preview::PreviewPurchaseChoice::Offer){
+        message("UNLOCK OFFER: U / CLICK AGAIN WITHIN 8 SEC");
+        return;
+    }
+    if(choice==latebrake_preview::PreviewPurchaseChoice::Confirm){
         const int oldCredits=credits,oldMask=ownedMask;
         credits-=carPrices[garageViewCar];ownedMask|=1<<garageViewCar;
         if(saveProgress())message("CAR UNLOCKED / ENTER TO EQUIP");
@@ -1613,6 +1637,7 @@ static bool trackedKeyboardHeld(){
 }
 static void step(float dt){
     if(toastTime>0)toastTime-=dt;
+    garagePurchase.Advance(dt);
     PadControls pad=pollPad();
     // GetAsyncKeyState sees global keyboard state; never drive or navigate
     // the game behind a different foreground window.
@@ -1638,7 +1663,7 @@ static void step(float dt){
     if(contrast){highContrast=!highContrast;saveSettings();}
     if(assist){steeringAssist=!steeringAssist;saveSettings();
         message(steeringAssist?"ROAD GUIDE + ASSIST ON":"MANUAL STEERING / GUIDE OFF");}
-    if(help){showHelp=!showHelp;return;}
+    if(help){garagePurchase.Reset();showHelp=!showHelp;return;}
     if(showHelp){if(back||enter)showHelp=false;return;}
     if(page==RACING){
         if(back||home||g||t||ch){setPage((back||home)?HOME:g?GARAGE:t?TRACKS:CHALLENGES);return;}
@@ -1707,6 +1732,7 @@ static LRESULT __stdcall WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
         }
     }
     if(msg==0x0008){ // WM_KILLFOCUS: no background gamepad racing.
+        garagePurchase.Reset();
         hasWindowFocus=false;padRequireNeutral=true;
         keyboardFocus.OnFocusLost();keyboardInputArmed=false;
         if(page==RACING)paused=true;
@@ -1984,10 +2010,14 @@ static bool selftest(){
     garageViewCar=1;
     simulateProgressSaveFailure=true;
     unlockSelectedCar();
-    if(credits!=1000||ownedMask!=1)return false;
+    if(credits!=1000||ownedMask!=1||!garagePurchase.PendingFor(1))return false;
+    unlockSelectedCar();
+    if(credits!=1000||ownedMask!=1||garagePurchase.PendingFor(1))return false;
     simulateProgressSaveFailure=false;
     unlockSelectedCar();
-    if(credits!=860||ownedMask!=3)return false;
+    if(credits!=1000||ownedMask!=1||!garagePurchase.PendingFor(1))return false;
+    unlockSelectedCar();
+    if(credits!=860||ownedMask!=3||garagePurchase.PendingFor(1))return false;
     unlockSelectedCar();
     if(credits!=860||ownedMask!=3)return false;
     selfTestStage=82;
@@ -2138,6 +2168,32 @@ static bool selftest(){
     if(page!=RACING||selectedCar!=5)return false;
     setPage(GARAGE);browseGarageCar(7);activateSelection();
     if(page!=GARAGE||selectedCar!=5)return false;
+    selectedCar=0;ownedMask=1;setPage(HOME);
+    selfTestStage=90;
+    // The live two-action unlock path must reject switching showroom
+    // targets, losing focus or waiting beyond the exact offer timeout.
+    credits=1000;ownedMask=1;selectedCar=0;setPage(GARAGE);
+    browseGarageCar(2);
+    unlockSelectedCar();
+    if(!garagePurchase.PendingFor(2)||credits!=1000)return false;
+    browseGarageCar(3);
+    if(garagePurchase.PendingFor(2)||garagePurchase.PendingFor(3))return false;
+    unlockSelectedCar();
+    if(!garagePurchase.PendingFor(3)||credits!=1000)return false;
+    garagePurchase.Advance(8.01f);
+    if(garagePurchase.PendingFor(3))return false;
+    unlockSelectedCar();
+    if(!garagePurchase.PendingFor(3)||credits!=1000)return false;
+    garagePurchase.Reset(); // Same focus-loss cancellation as WM_KILLFOCUS.
+    unlockSelectedCar();
+    if(credits!=1000||ownedMask!=1||!garagePurchase.PendingFor(3))return false;
+    setPage(HOME);
+    if(garagePurchase.PendingFor(3)||selectedCar!=0)return false;
+    // Returning to the garage always requires a fresh deliberate offer.
+    setPage(GARAGE);browseGarageCar(3);unlockSelectedCar();
+    if(credits!=1000||!garagePurchase.PendingFor(3))return false;
+    unlockSelectedCar();
+    if(credits!=550||!(ownedMask&(1<<3))||selectedCar!=0)return false;
     selectedCar=0;ownedMask=1;setPage(HOME);
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);

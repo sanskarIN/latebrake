@@ -1,7 +1,8 @@
 
 #pragma once
 #include "PreviewGarageStyle.h"
-#include <cmath>
+// No C runtime dependency: the actual Win64 GDI trial links /NODEFAULTLIB.
+// Comparisons reject NaN/infinity and overlarge durations without CRT calls.
 
 namespace latebrake_preview
 {
@@ -22,12 +23,12 @@ struct PreviewGaragePurchaseConsent final
     bool PendingFor(int id) const noexcept
     {
         return ValidPreviewCar(id) && Target==id &&
-               std::isfinite(Remaining) && Remaining>0.0f &&
+               Remaining>=0.0f && Remaining>0.0f &&
                Remaining<=OfferLifetimeSeconds;
     }
     void Advance(float dt) noexcept
     {
-        if(!std::isfinite(dt)||dt<0.0f){Reset();return;}
+        if(!(dt>=0.0f && dt<=1000000.0f)){Reset();return;}
         if(Target<0)return;
         if(dt>=Remaining){Reset();return;}
         Remaining-=dt;

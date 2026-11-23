@@ -1,3 +1,16 @@
+## Explicit virtual-credit purchase confirmation
+
+To prevent accidental unlocks, the 2D Win64 preview now requires two
+deliberate U/click actions within eight seconds for a locked-car
+purchase. The first action displays an expiring offer and makes no
+career mutation; a second action checks current price/credits and only
+then attempts the existing atomic save. Change showroom car, leave the
+Garage, open help, let the timer expire or lose app focus to cancel.
+No unlock automatically equips the car. A freestanding source policy
+and 250000 synthetic action stress tests cover replay, wrong-car,
+expiry and malformed timing, while the actual game --self-test checks
+the integrated path. No real Windows UI or Unreal game QA is implied.
+
 ## Garage focus and transparent player selection
 
 The experimental V5 2D trial now separates VIEWED showroom cars from
