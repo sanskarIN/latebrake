@@ -204,3 +204,30 @@ paint-only changes, upgrades, reload and rollback after failed save.
 Source-only tests cover every car/car/rim/rim/paint/stripe
 transition, idempotence, invalid IDs and invalid saved styles, not
 actual UHT/Editor/Windows frame-time certification.
+
+## Debug a double-build hitch while equipping a car
+
+The DEVELOPMENT-only Settings page now reports:
+`3D SOURCE BUILDS: X ATTEMPTS / Y READY`. These counters change only
+when `RebuildOriginalVehicleVisual` actually starts constructing its
+five-part source car and once after all source materials are allocated
+and the body/four wheels are committed. Attempts that hit missing
+materials or fail mesh validation never count as READY. These are
+**source-method counters**, not a profiler, GPU proof or a 3D game
+verification receipt; they saturate instead of overflowing.
+
+Owner acceptance sequence:
+1. After normal player startup, inspect the initial attempts/ready.
+2. Equip another **owned** vehicle whose wheel style differs: return
+   to Settings and verify the attempt count grew by **one**, not two.
+3. Change only F5 paint or F6 stripes on the equipped car: verify no
+   additional mesh attempts.
+4. Change F7 rims: expect exactly **one** new source attempt.
+5. Change only engine/grip upgrade: do not reconstruct source mesh.
+6. Force a missing tint/material in an isolated developer copy:
+   attempts may rise without a ready build; legacy car stays visible.
+7. Confirm the HUD report never claims actual GPU/hardware quality.
+
+The source test covers saturation, 300,000 accounting transitions,
+failure paths and no fake committed source mesh. Actual UE5.8/cooked
+Win64 test and screenshots still required.

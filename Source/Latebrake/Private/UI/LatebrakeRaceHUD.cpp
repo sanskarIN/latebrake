@@ -926,6 +926,10 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(
                 TEXT("3D WHEEL RIG: %d/4 COMPONENTS (NOT PIXELS)"),
                 VisualReport.AnimatedWheelPartsCommitted));
+            const auto BuildStats=Car->GetOriginalMeshBuildTelemetry();
+            MenuLine(FString::Printf(
+                TEXT("3D SOURCE BUILDS: %u ATTEMPTS / %u READY"),
+                BuildStats.Attempts, BuildStats.Committed));
             MenuLine(TEXT("SOURCE DIAGNOSTIC ONLY - VERIFY PIXELS IN ENGINE"));
 #endif
             break;

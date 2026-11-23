@@ -3032,3 +3032,21 @@ else()
 endif()
 add_test(NAME GarageVisualTransition
     COMMAND latebrake_garage_visual_transition_tests)
+
+# Pure source renderer work accounting. Dev HUD cannot falsely report
+# a successful original 3D build when material creation failed.
+add_executable(latebrake_original_mesh_build_telemetry_tests
+    OriginalMeshBuildTelemetryTests.cpp)
+target_include_directories(latebrake_original_mesh_build_telemetry_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_original_mesh_build_telemetry_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_original_mesh_build_telemetry_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_original_mesh_build_telemetry_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalMeshBuildTelemetry
+    COMMAND latebrake_original_mesh_build_telemetry_tests)

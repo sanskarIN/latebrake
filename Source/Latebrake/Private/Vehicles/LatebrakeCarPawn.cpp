@@ -643,6 +643,10 @@ void ALatebrakeCarPawn::HideLegacyVisualPrimitives(bool bHide)
 
 void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
 {
+    // Actual 3D source rebuild attempts are counted once at entry.
+    // Failure paths never increment the committed metric.
+    SourceMeshBuildTelemetry =
+        latebrake::OriginalMeshBuildAttempt(SourceMeshBuildTelemetry);
     bOriginalVehicleVisualReady = false;
     OriginalVehicleTintParameter = NAME_None;
     UProceduralMeshComponent* RenderParts[] = {
@@ -835,6 +839,8 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     for (std::size_t i=1;i<
          latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;++i)
         RenderParts[i]->SetVisibility(true, false);
+    SourceMeshBuildTelemetry =
+        latebrake::OriginalMeshBuildCommit(SourceMeshBuildTelemetry);
     ApplyWheelVisualPose();
 }
 

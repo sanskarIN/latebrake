@@ -28,6 +28,7 @@
 #include "Vehicles/HumanSpinAssistMeter.h"
 #include "Vehicles/WheelVisualMotion.h"
 #include "Garage/GarageAppearance.h"
+#include "Vehicles/OriginalMeshBuildTelemetry.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
@@ -125,6 +126,9 @@ public:
     // Counts live, initialized *render-only source components*, NOT
     // physically moving wheels or GPU-verified paint/animation.
     int32 GetCommittedOriginalWheelParts() const noexcept;
+    latebrake::OriginalMeshBuildTelemetry
+    GetOriginalMeshBuildTelemetry() const noexcept
+    { return SourceMeshBuildTelemetry; }
     // Every RecoverTo (including race restart) changes this revision so
     // checkpoint actors never interpolate across an authorized teleport.
     uint64 GetTeleportRevision() const { return TeleportRevision; }
@@ -351,6 +355,7 @@ private:
     // visuals. Any missing plugin/material/invalid section fails open to
     // the old visible car, never to an invisible player vehicle.
     bool bOriginalVehicleVisualReady = false;
+    latebrake::OriginalMeshBuildTelemetry SourceMeshBuildTelemetry{};
     // The signal command sent to both installed lights; not measured lux.
     bool bFrontLampOutputRequested = false;
     // Chosen from the actually loaded parent material's vector parameters.
