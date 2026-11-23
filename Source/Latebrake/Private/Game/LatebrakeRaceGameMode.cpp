@@ -2155,7 +2155,8 @@ bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
         Menu.Current() == latebrake::MenuPage::Garage &&
         latebrake::CanEditGarageDuringRace(bCareerRace, Race) &&
         !bFutureSaveSchema &&
-        Garage.Owns(Garage.SelectedVehicle());
+        Garage.Owns(Garage.SelectedVehicle()) &&
+        GarageGallery.Viewed() == Garage.SelectedVehicle();
 }
 
 void ALatebrakeRaceGameMode::GarageCycleAppearance(
@@ -2181,6 +2182,15 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
     if (!Garage.Owns(Selected))
     {
         GarageFeedback = TEXT("Cannot customize a vehicle you do not own.");
+        return;
+    }
+    // Styling a hidden equipped car while previewing a different/locked
+    // car is surprising UX. Require SHOWROOM VIEWING == EQUIPPED.
+    // Preview navigation never transfers style authority to a locked ID.
+    if (GarageGallery.Viewed() != Selected)
+    {
+        GarageFeedback = TEXT(
+            "VIEWING NOT EQUIPPED: press ENTER to equip an owned car first.");
         return;
     }
     const latebrake::GarageAppearanceState Before = GarageLooks;

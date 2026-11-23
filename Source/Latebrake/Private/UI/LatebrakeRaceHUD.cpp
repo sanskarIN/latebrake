@@ -461,11 +461,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
             if (!Mode->CanCustomizeGarage())
-                MenuLine(TEXT("CUSTOM LOOK UNAVAILABLE UNTIL GARAGE CAN BE EDITED"), true);
+                MenuLine(TEXT("CUSTOM LOOK LOCKED: EQUIP VIEWED OWNED CAR FIRST"), true);
             const latebrake::GarageLook ActiveLook =
                 Mode->GetSelectedGarageLook();
             MenuLine(FString::Printf(
-                TEXT("SAVED LOOK: %s / %s / %s"),
+                TEXT("EQUIPPED LOOK: %s / %s / %s"),
                 UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
                     latebrake::GarageLookLayer::Paint, ActiveLook.Paint)),
                 UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(

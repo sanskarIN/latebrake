@@ -122,7 +122,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
                        "GarageCycleWheels"):
             self.assertIn("Mode->" + method + "();", self.pawn)
         self.assertIn("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY", self.hud)
-        self.assertIn("SAVED LOOK: %s / %s / %s", self.hud)
+        self.assertIn("EQUIPPED LOOK: %s / %s / %s", self.hud)
 
     def test_pointer_buttons_share_accurate_hit_bounds(self):
         for token in (
@@ -183,6 +183,10 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         self.assertIn("static_assert(VehicleCount == 6", source)
         self.assertIn("int Viewed() const noexcept", source)
         self.assertIn("GarageGallery.Next()", self.mode)
+        self.assertIn("GarageGallery.Viewed() == Garage.SelectedVehicle()", self.mode)
+        self.assertIn("if (GarageGallery.Viewed() != Selected)", self.mode)
+        self.assertIn("VIEWING NOT EQUIPPED", self.mode)
+        self.assertIn("CUSTOM LOOK LOCKED: EQUIP VIEWED OWNED CAR FIRST", self.hud)
         self.assertIn("GarageGallery.Previous()", self.mode)
         self.assertIn("CanEquipGalleryVehicle(Garage, GarageGallery)", self.mode)
         self.assertIn("void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()", self.mode)

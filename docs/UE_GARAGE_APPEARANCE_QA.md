@@ -132,3 +132,15 @@ never permits bypassing that order. Every newly equipped car is applied
 to the true player pawn. An unsuccessful SaveGame write restores the
 previous equipped vehicle, its physics tuning and original cosmetics.
 The read-only preview cursor stays separate from saved gameplay data.
+
+## Prevent invisible customization of the wrong car
+
+The browsed showroom ID and the equipped car ID are intentionally
+separate. **Paint, stripe, rim and factory reset become unavailable
+whenever those two IDs differ.** A preview of a locked or differently
+owned car remains readable, but pressing F5/F6/F7/F8 cannot silently
+repaint the equipped car. The input dispatcher and on-screen button
+availability share this condition. Players should first use
+**Enter/SELECT to equip an owned viewed car**, after which its own
+stored look can be edited. The equipped car label is explicit in the
+Canvas HUD, and a denied key press displays a clear explanation.
