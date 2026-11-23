@@ -44,7 +44,7 @@ class UnrealAtomicGarageVisualBindingTests(unittest.TestCase):
         self.assertIn("int32 VehicleId, latebrake::GarageLook Look);",self.h)
         source=self.pawn.split("void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(",1
         )[1].split("void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(",1)[0]
-        self.assertIn("CurrentGarageLook.Wheels",source)
+        self.assertIn("GetPresentedGarageLook().Wheels",source)
     def test_color_only_still_does_not_tune_or_rebuild(self):
         appearance=self.pawn.split("void ALatebrakeCarPawn::SetGarageAppearance(",1
         )[1].split("void ALatebrakeCarPawn::ClearDriverInputs()",1)[0]
