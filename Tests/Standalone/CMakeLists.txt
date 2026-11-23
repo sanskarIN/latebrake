@@ -2809,3 +2809,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME HudMenuReadablePanel COMMAND latebrake_hud_menu_readable_panel_tests)
+
+# The 2D Windows Garage unlock action requires a timed two-press consent;
+# credits and transactional saves remain owned by the actual Win32 game.
+add_executable(latebrake_preview_purchase_consent_tests
+    PreviewGaragePurchaseConsentTests.cpp)
+target_include_directories(latebrake_preview_purchase_consent_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_purchase_consent_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_purchase_consent_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_purchase_consent_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGaragePurchaseConsent
+    COMMAND latebrake_preview_purchase_consent_tests)
