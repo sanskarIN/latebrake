@@ -1766,7 +1766,8 @@ void ALatebrakeCarPawn::ApplySignalLights(
     // existing authoritative race/focus/pause guard controls both light
     // outputs: no light remains latched during OS suspension or menu pause.
     const auto FrontPlan = latebrake::PlanFrontLampRig(
-        bOriginalVehicleVisualReady, Signals.Enabled);
+        bOriginalVehicleVisualReady,
+        Signals.RedRearIntensity > 0.0);
     if (IsValid(FrontLeftLamp))
         FrontLeftLamp->SetIntensity(
             static_cast<float>(FrontPlan.OutputIntensity));
