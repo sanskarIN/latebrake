@@ -125,6 +125,7 @@ automatically verified performance or release authorization**.
 | Explicit equip | Select ENTER only on an owned car; compare returned actual race pawn to the intended equipped ID |
 | Paint and stripes | F5 cycles eight paints; F6 cycles clean/center/twin stripes; inspect roof, panels and front/back at night and day |
 | Three real rim geometries | F7 switches STREET 7, SPORT 5, TRACK 12 spokes across all four visible wheels; 3D model changes, not only material color |
+| Animated source wheels | With 3D source mesh committed, drive/reverse/steer and verify all four original wheels physically appear to spin, fronts visibly yaw, pause freezes rotation and recovery resets phase; ensure tires remain centered under the car |
 | Save and reload | Changed owned car's paint/stripes/rims persist after close/relaunch; future-save schema is not overwritten |
 | Headlight direction | During an accepted active race, two front spotlights point forward onto the actual road and match the visible car bumper; check right-hand and left-hand turns |
 | Pause/focus | Pause, open menus and Alt-Tab; headlights command off and controls do not remain latched; no unintended racing in background |

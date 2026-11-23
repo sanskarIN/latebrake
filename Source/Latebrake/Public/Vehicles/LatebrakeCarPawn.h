@@ -159,6 +159,19 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
     TObjectPtr<UProceduralMeshComponent> OriginalVehicleVisual;
 
+    // Four separately rotating source-wheel surfaces. They inherit the
+    // original car's inverse root scale + -62cm visual offset, so their
+    // authored pivots remain true to the existing Chaos chassis. Always
+    // render-only; no new wheel bodies, collisions or constraint simulation.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalFrontLeftWheel;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalFrontRightWheel;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalRearLeftWheel;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalRearRightWheel;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Cabin;
 

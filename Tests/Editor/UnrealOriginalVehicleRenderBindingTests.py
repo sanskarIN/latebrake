@@ -30,8 +30,10 @@ class UnrealOriginalVehicleRenderBindingTests(unittest.TestCase):
         self.assertIn('TEXT("OriginalVehicleVisual")',self.actor)
         self.assertIn("OriginalVehicleSurfaceComposer{}.Build(",self.actor)
         self.assertIn("MakeOriginalVehicleRenderSections(",self.actor)
-        self.assertIn("OriginalVehicleVisual->CreateMeshSection(",self.actor)
-        self.assertIn("OriginalVehicleVisual->CreateDynamicMaterialInstance(",self.actor)
+        self.assertIn("Part->CreateMeshSection(",self.actor)
+        self.assertIn("Part->CreateDynamicMaterialInstance(",self.actor)
+        self.assertIn("MakeOriginalVehicleAnimatedParts(",self.actor)
+        self.assertIn("OriginalFrontLeftWheel->",self.actor)
         self.assertIn("OriginalVehicleVisual->ClearAllMeshSections();",self.actor)
         self.assertIn("ProceduralMeshComponent",self.module)
         self.assertIn("ProceduralMeshComponent",
@@ -95,7 +97,7 @@ class UnrealOriginalVehicleRenderBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(",1
         )[1].split("void ALatebrakeCarPawn::SetGarageTuning(",1)[0]
         self.assertIn("ApplyOriginalVehiclePalette(VehicleId, Look);",style)
-        self.assertIn("OriginalVehicleVisual->GetMaterial(section)",self.actor)
+        self.assertIn("Part->GetMaterial(section)",self.actor)
         self.assertIn('TEXT("Color")',self.actor)
 
     def test_use_editor_verified_assets_before_release(self):

@@ -207,3 +207,43 @@ surfaces**, checks their 10 native material sections, deterministic
 vertex/triangle counts, valid original tire shells, distinct Alloy
 topology, bounds and invalid metadata. Actual wheel appearance and
 garage save/reload must still be checked with UE5.8 Editor/cooked Win64.
+
+## Independently animated original mesh wheels (native source, not Unreal QA)
+
+The six source-authored 3D cars previously included all four tire/rim
+meshes **inside one rigid body render component**. Although they had
+three real spoke shapes, the tires did not visibly rotate or steer.
+The renderer now partitions their tagged triangles into **five**
+separately attached non-colliding `UProceduralMeshComponent` surfaces:
+one source body, front-left, front-right, rear-left and rear-right.
+Each wheel's authored vertices are offset by its original pivot once
+at build time, not rebuilt or reuploaded during each physics Tick.
+
+The Pawn retains the existing Chaos rigid-body chassis, original
+`WheelVisualMotion` policy and fallback wheel cylinders. Both front
+generated wheels yaw using the *same* bounded, filtered player
+steering sample; all four roll about source wheel axle **Y** using the
+signed physical forward chassis speed. Backward driving spins opposite.
+Source wheel radius **39 cm** controls animation speed when the
+generated mesh is committed, versus the old fallback **29 cm**
+cylinder radius. Pause/restart/recovery use the existing reset/suspend
+mechanism; no suspension/tire simulation, new collision body or
+gameplay authority has been created.
+
+All 5 surfaces must contain authored valid geometry/materials before
+the complete source render is made visible; otherwise all partial
+pieces are cleared and the full original cube/cylinder fallback
+stays visible. Six cars, three rim shapes and all ten surface tones
+retain the same garage SaveGame appearance schema. A paint-only
+change updates the body AND all four source wheel material instances
+without rebuilding geometry. A rim change or equipped-car change
+regenerates the renderer once.
+
+**Real UE5.8 device QA:** verify the front wheels steer, wheel spokes
+turn as the player drives, reversing makes opposite rotation,
+pause freezes the phase, and recovery resets; look closely for
+wheel detachments caused by inverse root scaling or component
+hierarchy under yaw/roll, normal orientation and material lighting.
+Check all 18 car/rim variants, black-frame failures and framerate.
+This new source adapter still requires actual UE5.8/UHT compile,
+cooked Win64, GPU rendering and installed driving verification.

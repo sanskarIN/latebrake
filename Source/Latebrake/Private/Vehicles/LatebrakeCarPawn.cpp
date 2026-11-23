@@ -36,6 +36,7 @@
 #include "UI/FocusSuspendedTouchPolicy.h"
 #include "Garage/GarageState.h"
 #include "Vehicles/OriginalVehicleRenderSections.h"
+#include "Vehicles/OriginalVehicleAnimatedWheels.h"
 #include "Vehicles/OriginalVehicleTintMaterialPolicy.h"
 
 #include "Camera/CameraComponent.h"
@@ -136,6 +137,38 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     OriginalVehicleVisual->SetRelativeScale3D(
         FVector(1.f / RootScale.X, 1.f / RootScale.Y,
                 1.f / RootScale.Z));
+
+    // Each source wheel is a distinct child of the inverse-scaled body
+    // render root. Its relative location is the true mesh wheel center,
+    // and uploaded triangle positions are centered on that pivot. This
+    // enables rolling around local Y + front steering around local Z
+    // with NO expensive geometry uploads during vehicle Tick.
+    OriginalFrontLeftWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalFrontLeftWheel"));
+    OriginalFrontRightWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalFrontRightWheel"));
+    OriginalRearLeftWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalRearLeftWheel"));
+    OriginalRearRightWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalRearRightWheel"));
+    UProceduralMeshComponent* AnimatedWheels[] = {
+        OriginalFrontLeftWheel.Get(), OriginalFrontRightWheel.Get(),
+        OriginalRearLeftWheel.Get(), OriginalRearRightWheel.Get()};
+    for (int32 i=0;i<4;++i)
+    {
+        auto* Wheel = AnimatedWheels[i];
+        Wheel->SetupAttachment(OriginalVehicleVisual);
+        const auto Pivot = latebrake::vehiclemesh::OriginalWheelPivot(i);
+        Wheel->SetRelativeLocation(FVector(
+            static_cast<float>(Pivot.X),
+            static_cast<float>(Pivot.Y),
+            static_cast<float>(Pivot.Z)));
+        Wheel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Wheel->SetGenerateOverlapEvents(false);
+        Wheel->SetSimulatePhysics(false);
+        Wheel->SetVisibility(false, false);
+        Wheel->SetCastShadow(true);
+    }
 
     Cabin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Cabin"));
     Cabin->SetupAttachment(Chassis);
@@ -610,14 +643,22 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
 {
     bOriginalVehicleVisualReady = false;
     OriginalVehicleTintParameter = NAME_None;
-    if (IsValid(OriginalVehicleVisual))
+    UProceduralMeshComponent* RenderParts[] = {
+        OriginalVehicleVisual.Get(), OriginalFrontLeftWheel.Get(),
+        OriginalFrontRightWheel.Get(), OriginalRearLeftWheel.Get(),
+        OriginalRearRightWheel.Get()};
+    for (auto* Part : RenderParts)
     {
-        OriginalVehicleVisual->SetVisibility(false, false);
-        OriginalVehicleVisual->ClearAllMeshSections();
+        if (!IsValid(Part))
+        {
+            HideLegacyVisualPrimitives(false);
+            return;
+        }
+        Part->SetVisibility(false, false);
+        Part->ClearAllMeshSections();
     }
     HideLegacyVisualPrimitives(false);
-    if (!IsValid(OriginalVehicleVisual) ||
-        !latebrake::GarageState::IsVehicle(VehicleId))
+    if (!latebrake::GarageState::IsVehicle(VehicleId))
         return;
 
     // Use the exact engine material that the starter Cube expects, but
@@ -678,64 +719,98 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         sections.TotalTriangles != generated.Mesh.Triangles.size())
         return;
 
+    const auto animated =
+        latebrake::vehiclemesh::MakeOriginalVehicleAnimatedParts(
+            generated.Mesh);
+    if (!animated.Valid ||
+        animated.TotalTriangles != generated.Mesh.Triangles.size())
+        return;
+
+    // All 5 components are invisible until EVERY live part has complete
+    // material sections. On an allocation failure, clear the entire
+    // attempted group and retain the previously working primitive car.
     bool bAnySection = false;
-    for (std::size_t section=0;
-         section<latebrake::vehiclemesh::OriginalVehicleSectionCount;
-         ++section)
+    bool bAllMaterialsReady = true;
+    for (std::size_t partIndex=0;
+         partIndex<latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;
+         ++partIndex)
     {
-        const auto& triangleIds=sections.TriangleIds[section];
-        if (triangleIds.empty()) continue;
-        TArray<FVector> Positions;
-        TArray<int32> Indices;
-        TArray<FVector> Normals;
-        TArray<FVector2D> UV0;
-        TArray<FColor> VertexColors;
-        TArray<FProcMeshTangent> Tangents;
-        const int32 Capacity=static_cast<int32>(triangleIds.size()*3u);
-        Positions.Reserve(Capacity);
-        Indices.Reserve(Capacity);
-        Normals.Reserve(Capacity);
-        UV0.Reserve(Capacity);
-        VertexColors.Reserve(Capacity);
-        for (const auto triangleId:triangleIds)
+        UProceduralMeshComponent* Part = RenderParts[partIndex];
+        const auto& part=animated.Parts[partIndex];
+        const auto Pivot=partIndex==0u
+            ? latebrake::vehiclemesh::OriginalVehiclePoint{}
+            : latebrake::vehiclemesh::OriginalWheelPivot(
+                static_cast<int>(partIndex)-1);
+        for (std::size_t section=0;
+             section<latebrake::vehiclemesh::OriginalVehicleSectionCount;
+             ++section)
         {
-            const auto& triangle=generated.Mesh.Triangles[triangleId];
-            for (const auto index:triangle.Index)
+            const auto& triangleIds=part.TriangleIds[section];
+            if (triangleIds.empty()) continue;
+            TArray<FVector> Positions;
+            TArray<int32> Indices;
+            TArray<FVector> Normals;
+            TArray<FVector2D> UV0;
+            TArray<FColor> VertexColors;
+            TArray<FProcMeshTangent> Tangents;
+            const int32 Capacity=static_cast<int32>(triangleIds.size()*3u);
+            Positions.Reserve(Capacity);
+            Indices.Reserve(Capacity);
+            Normals.Reserve(Capacity);
+            UV0.Reserve(Capacity);
+            VertexColors.Reserve(Capacity);
+            for (const auto triangleId:triangleIds)
             {
-                const auto& vertex=generated.Mesh.Vertices[index];
-                const int32 next=Positions.Num();
-                Positions.Add(FVector(vertex.Position.X,
-                                      vertex.Position.Y,
-                                      vertex.Position.Z));
-                Normals.Add(FVector(vertex.Normal.X,
-                                    vertex.Normal.Y,
-                                    vertex.Normal.Z));
-                UV0.Add(FVector2D(vertex.TexCoord.U,
-                                   vertex.TexCoord.V));
-                VertexColors.Add(FColor::White);
-                Indices.Add(next);
+                const auto& triangle=generated.Mesh.Triangles[triangleId];
+                for (const auto index:triangle.Index)
+                {
+                    const auto& vertex=generated.Mesh.Vertices[index];
+                    const int32 next=Positions.Num();
+                    // Wheels are authored in full source-car coordinates;
+                    // subtract their exact authoring pivot ONCE at
+                    // mesh build time. Never re-upload them per physics tick.
+                    Positions.Add(FVector(
+                        vertex.Position.X-Pivot.X,
+                        vertex.Position.Y-Pivot.Y,
+                        vertex.Position.Z-Pivot.Z));
+                    Normals.Add(FVector(vertex.Normal.X,
+                                        vertex.Normal.Y,
+                                        vertex.Normal.Z));
+                    UV0.Add(FVector2D(vertex.TexCoord.U,
+                                       vertex.TexCoord.V));
+                    VertexColors.Add(FColor::White);
+                    Indices.Add(next);
+                }
             }
+            Part->CreateMeshSection(
+                static_cast<int32>(section),
+                Positions, Indices, Normals, UV0, VertexColors,
+                Tangents, false /* no collision, ever */);
+            UMaterialInstanceDynamic* Instance =
+                Part->CreateDynamicMaterialInstance(
+                    static_cast<int32>(section), BaseMaterial);
+            if (!IsValid(Instance))
+            {
+                bAllMaterialsReady = false;
+                break;
+            }
+            bAnySection = true;
         }
-        OriginalVehicleVisual->CreateMeshSection(
-            static_cast<int32>(section),
-            Positions, Indices, Normals, UV0, VertexColors,
-            Tangents, false /* no collision, ever */);
-        UMaterialInstanceDynamic* Instance =
-            OriginalVehicleVisual->CreateDynamicMaterialInstance(
-                static_cast<int32>(section), BaseMaterial);
-        if (!IsValid(Instance))
-        {
-            OriginalVehicleVisual->ClearAllMeshSections();
-            HideLegacyVisualPrimitives(false);
-            return;
-        }
-        bAnySection = true;
+        if (!bAllMaterialsReady) break;
+    }
+    if (!bAllMaterialsReady)
+    {
+        for (auto* Part : RenderParts)
+            Part->ClearAllMeshSections();
+        HideLegacyVisualPrimitives(false);
+        return;
     }
     if (!latebrake::vehiclemesh::CanPresentOriginalVehicleVisual(
         bAnySection, true /* each material allocation succeeded */,
         !ResolvedTintName.IsNone()))
     {
-        OriginalVehicleVisual->ClearAllMeshSections();
+        for (auto* Part : RenderParts)
+            Part->ClearAllMeshSections();
         HideLegacyVisualPrimitives(false);
         return;
     }
@@ -749,6 +824,10 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     bOriginalVehicleVisualReady = true;
     HideLegacyVisualPrimitives(true);
     OriginalVehicleVisual->SetVisibility(true, false);
+    for (std::size_t i=1;i<
+         latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;++i)
+        RenderParts[i]->SetVisibility(true, false);
+    ApplyWheelVisualPose();
 }
 
 void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
@@ -773,21 +852,31 @@ void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
     static_assert(sizeof(tones)/sizeof(tones[0]) ==
         latebrake::vehiclemesh::OriginalVehicleSectionCount,
         "Material palette and original surface groups must match");
-    for (int32 section=0;
-         section<static_cast<int32>(
-             latebrake::vehiclemesh::OriginalVehicleSectionCount);
-         ++section)
+    UProceduralMeshComponent* RenderParts[] = {
+        OriginalVehicleVisual.Get(), OriginalFrontLeftWheel.Get(),
+        OriginalFrontRightWheel.Get(), OriginalRearLeftWheel.Get(),
+        OriginalRearRightWheel.Get()};
+    // Body and independently animated wheel sections use the SAME
+    // ten-slot paint contract; F5/F7 update every material exactly once
+    // with no new triangles/mesh allocation on paint-only changes.
+    for (auto* Part : RenderParts)
     {
-        UMaterialInstanceDynamic* material =
-            Cast<UMaterialInstanceDynamic>(
-                OriginalVehicleVisual->GetMaterial(section));
-        if (!IsValid(material)) continue;
-        const auto& rgb=tones[section];
-        material->SetVectorParameterValue(
-            OriginalVehicleTintParameter, FLinearColor(
-                static_cast<float>(rgb.R),
-                static_cast<float>(rgb.G),
-                static_cast<float>(rgb.B), 1.f));
+        if (!IsValid(Part)) continue;
+        for (int32 section=0;
+             section<static_cast<int32>(
+                 latebrake::vehiclemesh::OriginalVehicleSectionCount);
+             ++section)
+        {
+            UMaterialInstanceDynamic* material =
+                Cast<UMaterialInstanceDynamic>(Part->GetMaterial(section));
+            if (!IsValid(material)) continue;
+            const auto& rgb=tones[section];
+            material->SetVectorParameterValue(
+                OriginalVehicleTintParameter, FLinearColor(
+                    static_cast<float>(rgb.R),
+                    static_cast<float>(rgb.G),
+                    static_cast<float>(rgb.B), 1.f));
+        }
     }
 }
 
@@ -1807,13 +1896,36 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
             Wheels[Index]->SetRelativeRotation(Visual.Rotator());
         }
     }
+
+    if (!bOriginalVehicleVisualReady) return;
+    UProceduralMeshComponent* OriginalWheels[] = {
+        OriginalFrontLeftWheel.Get(), OriginalFrontRightWheel.Get(),
+        OriginalRearLeftWheel.Get(), OriginalRearRightWheel.Get()};
+    // Source mesh wheels are authored in X/Z circular planes with axle Y,
+    // not the legacy cylinder's local-Z spindle. A +Y roll gives the
+    // negative contact velocity needed for physically forward +X motion.
+    const FQuat SourceRoll(FVector::RightVector,
+        Pose.RollDegrees * Radians);
+    for (int32 Index=0;Index<4;++Index)
+    {
+        if (IsValid(OriginalWheels[Index]))
+        {
+            const FQuat Visual =
+                (Index<2 ? Steering : FQuat::Identity)*SourceRoll;
+            OriginalWheels[Index]->SetRelativeRotation(Visual);
+        }
+    }
 }
 
 void ALatebrakeCarPawn::UpdateWheelVisuals(
     double DeltaSeconds, double ForwardSpeedCmPerSecond, double VisualSteering)
 {
     if (WheelMotion.Advance({
-            DeltaSeconds, ForwardSpeedCmPerSecond, VisualSteering, 29.0}))
+            DeltaSeconds, ForwardSpeedCmPerSecond, VisualSteering,
+            bOriginalVehicleVisualReady
+                ? latebrake::vehiclemesh::OriginalVehicleMeshSettings{}
+                    .WheelRadiusCm
+                : 29.0}))
     {
         ApplyWheelVisualPose();
     }

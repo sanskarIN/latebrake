@@ -74,6 +74,17 @@ class WheelVisualBindingTests(unittest.TestCase):
             self.assertNotIn(invalid, self.policy)
         self.assertIn("WheelVisualMotionTests.cpp", self.cmake)
         self.assertIn("NAME WheelVisualMotion", self.cmake)
+        # Source-generated wheel geometry is now independently animated,
+        # never uploaded as one static body with frozen spoke positions.
+        for token in (
+            "OriginalFrontLeftWheel.Get()", "OriginalRearRightWheel.Get()",
+            "OriginalVehicleAnimatedPartCount", "ApplyWheelVisualPose();",
+            "FQuat SourceRoll(FVector::RightVector,",
+            "OriginalWheels[Index]->SetRelativeRotation(Visual)",
+            "OriginalVehicleMeshSettings{}",
+            "WheelRadiusCm",
+        ):
+            self.assertIn(token, self.pawn)
 
     def test_pause_teleport_and_restart_have_explicit_motion_boundaries(self):
         blocked = self.pawn.split(
