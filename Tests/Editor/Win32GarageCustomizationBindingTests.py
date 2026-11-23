@@ -93,7 +93,7 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
         self.assertIn("selfTestStage=85;", self.app)
         self.assertIn("Twelve", self.guide)
         self.assertIn("V", self.guide)
-        self.assertIn("not unreal", self.guide.lower())
+        self.assertIn("not a trial", self.guide.lower())
 
 if __name__ == "__main__":
     unittest.main()
