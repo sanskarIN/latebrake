@@ -2762,7 +2762,7 @@ add_test(NAME PreviewDrivingCoach
     COMMAND latebrake_preview_driving_coach_tests)
 
 # Partition the six existing tested original car meshes into validated,
-// ten-material, collision-free Unreal render sections before engine upload.
+# ten-material, collision-free Unreal render sections before engine upload.
 add_executable(latebrake_original_vehicle_render_sections_tests
     OriginalVehicleRenderSectionsTests.cpp)
 target_include_directories(latebrake_original_vehicle_render_sections_tests
