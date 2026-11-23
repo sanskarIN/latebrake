@@ -572,10 +572,9 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     // Its top surface follows the selected car's roof height and length.
     const latebrake::VehicleSpec Spec =
         latebrake::GarageState::Definition(VehicleId);
-    const FVector ChassisScale(
-        static_cast<float>(latebrake::VehicleRootScaleX),
-        static_cast<float>(latebrake::VehicleRootScaleY),
-        static_cast<float>(latebrake::VehicleRootScaleZ));
+    // Use the chassis's actual installed scale for purely decorative
+    // roof marks; no new scale constants or physics-body mutations.
+    const FVector ChassisScale = Chassis->GetRelativeScale3D();
     const float StripeHeight = 52.f +
         27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
     const latebrake::VehiclePaintRgb StripeRgb = Look.Paint == 7u
@@ -586,7 +585,6 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     {
         if (!IsValid(Part)) return;
         Part->SetVisibility(Visible && Part->GetStaticMesh() != nullptr, true);
-        Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         if (!Visible) return;
         Part->SetRelativeLocation(
             FVector(-20.f, SideCm, StripeHeight) / ChassisScale);
@@ -613,7 +611,6 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
         const float Width = Look.Wheels == 2u ? 0.24f :
             Look.Wheels == 1u ? 0.19f : 0.14f;
         Rim->SetRelativeScale3D(FVector(Width, 0.24f, 0.09f));
-        Rim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         Tint(Rim, RimRgb);
     }
 }

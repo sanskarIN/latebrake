@@ -45,7 +45,7 @@ class UnrealVehiclePaintBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)", 1
         )[1].split("void ALatebrakeCarPawn::SetGarageTuning(", 1)[0]
         for expected in (
-            "latebrake::PaintForVehicle(VehicleId)",
+            "latebrake::PaintForGarageLook(VehicleId, Look)",
             "Cast<UMaterialInstanceDynamic>(Part->GetMaterial(0))",
             "Part->CreateDynamicMaterialInstance(0)",
             'TEXT("Color")',
