@@ -2118,7 +2118,9 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
     // E preserves quick-race behavior with no menu. Only Garage may
     // change the equipped vehicle while the world is menu-paused.
     if (!latebrake::CanUseGarageVehicleHotkey(
-        Menu.IsOpen(), Menu.Current()))
+        Menu.IsOpen(), Menu.Current(),
+        UGameplayStatics::IsGamePaused(this) ||
+            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
     {
         GarageFeedback = TEXT("Open Garage before selecting another vehicle.");
         return;
@@ -2258,6 +2260,17 @@ void ALatebrakeRaceGameMode::GarageResetAppearance()
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
+    // E/Q/U/I are pause-capable so they work in the Garage. A standalone
+    // race pause/focus loss must never authorize hidden paid operations.
+    if (!latebrake::CanUseGarageVehicleHotkey(
+        Menu.IsOpen(), Menu.Current(),
+        UGameplayStatics::IsGamePaused(this) ||
+            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Vehicle purchase temporarily unavailable while race paused.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2318,6 +2331,17 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
+    // E/Q/U/I are pause-capable so they work in the Garage. A standalone
+    // race pause/focus loss must never authorize hidden paid operations.
+    if (!latebrake::CanUseGarageVehicleHotkey(
+        Menu.IsOpen(), Menu.Current(),
+        UGameplayStatics::IsGamePaused(this) ||
+            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Engine upgrade temporarily unavailable while race paused.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2377,6 +2401,17 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
+    // E/Q/U/I are pause-capable so they work in the Garage. A standalone
+    // race pause/focus loss must never authorize hidden paid operations.
+    if (!latebrake::CanUseGarageVehicleHotkey(
+        Menu.IsOpen(), Menu.Current(),
+        UGameplayStatics::IsGamePaused(this) ||
+            ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Grip upgrade temporarily unavailable while race paused.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();

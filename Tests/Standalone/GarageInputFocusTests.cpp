@@ -39,6 +39,11 @@ int main()
         Verify(CanUseGarageVehicleHotkey(true,page) ==
                 (page == MenuPage::Garage),
             "only visible Garage may select a car with the menu open");
+        Verify(!CanUseGarageVehicleHotkey(false,page,true),
+            "standalone race pause/focus loss forbids hidden paid hotkeys");
+        Verify(CanUseGarageVehicleHotkey(true,page,true) ==
+                (page == MenuPage::Garage),
+            "visible Garage remains eligible even when engine world paused");
     }
     MenuNavigation navigator;
     Verify(!navigator.IsOpen(), "new navigation starts closed");
@@ -68,6 +73,9 @@ int main()
         Verify(CanUseGarageVehicleHotkey(navigator.IsOpen(),
             navigator.Current()),
             "closed menu restores legacy quick-race selection");
+        Verify(!CanUseGarageVehicleHotkey(navigator.IsOpen(),
+            navigator.Current(),true),
+            "standalone race pause revokes E/Q/U/I while menu is closed");
     }
     std::cout << "Garage input focus is menu/page gated.\n";
     return EXIT_SUCCESS;

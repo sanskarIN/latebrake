@@ -21,8 +21,13 @@ inline constexpr bool CanConsumeGarageShortcut(
 // race when no menu is open. A paused menu routes it ONLY on Garage.
 // This is focus, not approval to own or purchase any car.
 inline constexpr bool CanUseGarageVehicleHotkey(
-    bool menuOpen, MenuPage visiblePage) noexcept
+    bool menuOpen, MenuPage visiblePage,
+    bool standaloneRacePaused = false) noexcept
 {
-    return !menuOpen || visiblePage == MenuPage::Garage;
+    // A separate Pause key, OS deactivation or manually suspended race
+    // must not grant spending/equip access merely because E/Q/U/I now
+    // execute when Unreal is paused.
+    return menuOpen ? visiblePage == MenuPage::Garage
+                    : !standaloneRacePaused;
 }
 } // namespace latebrake

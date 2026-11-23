@@ -222,3 +222,22 @@ vehicle after restart. Change to non-Garage pages and verify E cannot
 equip cars behind the menu. Close the menu in Quick Race and verify E
 retains original ownership-only cycling. Run the real controller focus
 QA separately; standalone tests verify only source contracts.
+
+## Standalone PAUSE / focus loss cannot authorize E/Q/U/I
+
+After making E/Q/U/I usable during the Garage's world pause, the
+same input actions also become eligible for Unreal's standalone
+race PAUSE and focus-loss fallback. Added a **GameMode-level**
+`CanUseGarageVehicleHotkey` predicate with an explicit suspended
+race flag, covering `IsGamePaused`, `ManualPause.IsSuspended()`
+and `AppFocusGuard.IsSuspended()`. It authorizes E/Q/U/I in the
+visible Garage only, or during eligible active quick-race driving with
+no menu and no pause. Other menus and standalone pause fail closed,
+including for any direct GameMode invocations. The existing paid
+double-confirm, save rollback and future-schema guards remain intact.
+
+Standalone C++ tests include open Garage while engine is paused,
+closed quick-race while active, closed quick-race while paused, all
+11 pages and 300k transitions. Editor QA should explicitly press
+Escape to pause with **no menu**, then try E/Q/U/I and verify
+credits, selected car and upgrades remain unchanged.

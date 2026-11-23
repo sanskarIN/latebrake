@@ -97,11 +97,29 @@ class UnrealGarageInputFocusBindingTests(unittest.TestCase):
         self.assertLess(scope.index("if (bFutureSaveSchema)"),
                         scope.index("Garage.Select(Next)"))
 
+    def test_classic_garage_actions_reject_standalone_pause(self):
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        for action in ("GarageNextVehicle", "GarageUnlockNext",
+                       "GarageUpgradeEngine", "GarageUpgradeGrip"):
+            with self.subTest(action=action):
+                marker = f"void ALatebrakeRaceGameMode::{action}()"
+                self.assertIn(marker,mode)
+                body = mode.split(marker,1)[1].split("\n}\n",1)[0]
+                self.assertIn("CanUseGarageVehicleHotkey(",body)
+                self.assertIn("UGameplayStatics::IsGamePaused(this)",body)
+                self.assertIn("ManualPause.IsSuspended()",body)
+                self.assertIn("AppFocusGuard.IsSuspended()",body)
+                self.assertIn("GaragePurchaseConfirm.Reset();",body)
+                self.assertIn("return;",body)
+        self.assertIn("bool standaloneRacePaused = false",self.policy)
+
     def test_input_policy_is_fail_closed_and_pure(self):
         self.assertIn('#include "UI/MenuNavigation.h"',self.policy)
         self.assertIn("inline constexpr bool CanConsumeGarageShortcut",self.policy)
         self.assertIn("return menuOpen && visiblePage == MenuPage::Garage;",self.policy)
-        self.assertIn("return !menuOpen || visiblePage == MenuPage::Garage;",self.policy)
+        self.assertIn("return menuOpen ? visiblePage == MenuPage::Garage",self.policy)
+        self.assertIn(": !standaloneRacePaused;",self.policy)
         for effect in ("ClearDriverInputs(", "SaveRecords(", "Garage.Unlock(",
                        "Garage.Select(", "SetThrottle(", "AddForce("):
             self.assertNotIn(effect,self.policy)
