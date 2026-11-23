@@ -111,6 +111,14 @@ public:
     void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
     void SetGarageAppearance(latebrake::GarageLook look);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
+    // Read-only rendering diagnostics for real owner testing. A committed
+    // component/material is NOT proof of visible pixels or lighting quality.
+    bool IsOriginalVehicleSurfaceCommitted() const noexcept
+    { return bOriginalVehicleVisualReady; }
+    FName GetOriginalVehicleTintParameter() const noexcept
+    { return OriginalVehicleTintParameter; }
+    bool AreFrontLampsRequestedOn() const noexcept
+    { return bFrontLampOutputRequested; }
     // Every RecoverTo (including race restart) changes this revision so
     // checkpoint actors never interpolate across an authorized teleport.
     uint64 GetTeleportRevision() const { return TeleportRevision; }
@@ -323,6 +331,8 @@ private:
     // visuals. Any missing plugin/material/invalid section fails open to
     // the old visible car, never to an invisible player vehicle.
     bool bOriginalVehicleVisualReady = false;
+    // The signal command sent to both installed lights; not measured lux.
+    bool bFrontLampOutputRequested = false;
     // Chosen from the actually loaded parent material's vector parameters.
     // None means the asset cannot reliably render saved per-car paint;
     // keep the legacy car visible instead of silently showing one color.

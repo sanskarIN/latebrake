@@ -2964,3 +2964,21 @@ else()
 endif()
 add_test(NAME CircuitLightingPreview
     COMMAND latebrake_circuit_lighting_preview_tests)
+
+# Source-observed engine visual status; never report shader/runtime
+# correctness based only on scene component or material requests.
+add_executable(latebrake_visual_playtest_readout_tests
+    VisualPlaytestReadoutTests.cpp)
+target_include_directories(latebrake_visual_playtest_readout_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_visual_playtest_readout_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_visual_playtest_readout_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_visual_playtest_readout_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VisualPlaytestReadout
+    COMMAND latebrake_visual_playtest_readout_tests)

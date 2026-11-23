@@ -1768,6 +1768,8 @@ void ALatebrakeCarPawn::ApplySignalLights(
     const auto FrontPlan = latebrake::PlanFrontLampRig(
         bOriginalVehicleVisualReady,
         Signals.RedRearIntensity > 0.0);
+    bFrontLampOutputRequested = FrontPlan.OutputIntensity > 0.0 &&
+        IsValid(FrontLeftLamp) && IsValid(FrontRightLamp);
     if (IsValid(FrontLeftLamp))
         FrontLeftLamp->SetIntensity(
             static_cast<float>(FrontPlan.OutputIntensity));

@@ -39,6 +39,7 @@
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/PlayerController.h"
 #include "Vehicles/LatebrakeCarPawn.h"
+#include "Vehicles/VehicleVisualPlaytestReadout.h"
 
 void ALatebrakeRaceHUD::ScrollMenuDetails(int direction)
 {
@@ -902,6 +903,27 @@ void ALatebrakeRaceHUD::DrawHUD()
                 ? TEXT("LIGHTING: DUSK (SESSION PREVIEW ONLY)")
                 : TEXT("LIGHTING: DAY (SESSION PREVIEW ONLY)"), true);
             MenuLine(TEXT("F3: TOGGLE DAY/DUSK | NOT SAVED | VISUAL ONLY"));
+#if !UE_BUILD_SHIPPING
+            // Real pawn component/material/light-request state. This is a
+            // diagnostic of source commands, NOT proof of rendered pixels,
+            // physically accurate light or adequate frame rate.
+            const auto VisualReport = latebrake::ReportVisualPlaytest(
+                true, Car->IsOriginalVehicleSurfaceCommitted(),
+                !Car->GetOriginalVehicleTintParameter().IsNone(),
+                Car->AreFrontLampsRequestedOn(),
+                Mode->IsDuskLightingPreview());
+            MenuLine(FString::Printf(TEXT("LIVE CAR MESH: %s"),
+                UTF8_TO_TCHAR(latebrake::VisualPlaytestSurfaceLabel(
+                    VisualReport.Surface))),true);
+            MenuLine(FString::Printf(TEXT("PAINT PARAM: %s"),
+                VisualReport.PaintParameterDiscovered
+                    ? *Car->GetOriginalVehicleTintParameter().ToString()
+                    : TEXT("NONE / FALLBACK")));
+            MenuLine(FString::Printf(TEXT("FRONT BEAMS REQUESTED: %s"),
+                VisualReport.FrontLampsRequested ? TEXT("ON")
+                    : TEXT("OFF (PAUSED OR INACTIVE)")));
+            MenuLine(TEXT("SOURCE DIAGNOSTIC ONLY - VERIFY PIXELS IN ENGINE"));
+#endif
             break;
         case latebrake::MenuPage::Profile:
             MenuLine(FString::Printf(TEXT("Completed races: %d | Career medals: %d"),

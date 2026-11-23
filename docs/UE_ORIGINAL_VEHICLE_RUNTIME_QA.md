@@ -163,3 +163,23 @@ the game and confirm DAY is restored without modifying saved credits,
 paint, speed units, records, or career medals. Source C++ and Python
 binding checks cannot prove shader rendering, calibrated scene exposure,
 actual dusk visibility or Windows packaged GPU performance.
+
+## Read-only visible visual-diagnostics panel in Development settings
+
+The real Unreal HUD's **Settings** details now show additional
+non-shipping diagnostics derived directly from the current player
+Pawn. These labels report **SOURCE MESH COMMITTED** or **LEGACY CUBE
+FALLBACK**, the precise detected paint parameter name (or none),
+and whether both real front lamp components were *commanded* on.
+Use the existing Up/Down detail controls to see overflow when the
+screen is compact. This makes an installed Windows playtest useful
+for diagnosing fallback materials without mistaking a green CMake
+compile for a functioning material.
+
+These flags **do not sample the GPU, shader output, sky illuminance,
+frame-time or actual road pixels**. The readout explicitly says
+`SOURCE DIAGNOSTIC ONLY - VERIFY PIXELS IN ENGINE`. Source-only
+`VisualPlaytestReadout` regression checks reject a missing player,
+an incomplete mesh/material handoff and false certification.
+No new debug command mutates credits, career progression,
+selection, SaveGame, camera, road collision or Chaos physics.
