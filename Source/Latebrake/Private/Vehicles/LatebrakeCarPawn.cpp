@@ -667,7 +667,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
 
     const auto generated =
         latebrake::vehiclemesh::OriginalVehicleSurfaceComposer{}.Build(
-            VehicleId);
+            VehicleId,static_cast<int>(CurrentGarageLook.Wheels));
     if (!generated.Valid || !generated.Mesh.Ready ||
         generated.Mesh.ChangesChaosContact)
         return;
@@ -956,9 +956,16 @@ void ALatebrakeCarPawn::SetGarageAppearance(latebrake::GarageLook look)
         look.Stripe == CurrentGarageLook.Stripe &&
         look.Wheels == CurrentGarageLook.Wheels)
         return;
+    const bool bRimsChanged = look.Wheels != CurrentGarageLook.Wheels;
     CurrentGarageLook = look;
-    // Cosmetic material and component updates never run on Tick.
-    if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(GarageVehicleId);
+    // Changing rim STYLE updates actual Alloy triangles once. Colors and
+    // stripes reuse materials; neither change can rebuild the geometry.
+    // No mesh composition is allowed during a physics frame Tick.
+    if (HasActorBegunPlay())
+    {
+        if (bRimsChanged) RebuildOriginalVehicleVisual(GarageVehicleId);
+        ApplyVehiclePaintRecipe(GarageVehicleId);
+    }
 }
 
 void ALatebrakeCarPawn::ClearDriverInputs()

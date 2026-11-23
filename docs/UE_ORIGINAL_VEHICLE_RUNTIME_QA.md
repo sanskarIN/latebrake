@@ -183,3 +183,27 @@ frame-time or actual road pixels**. The readout explicitly says
 an incomplete mesh/material handoff and false certification.
 No new debug command mutates credits, career progression,
 selection, SaveGame, camera, road collision or Chaos physics.
+
+## All three saved rim choices now change the real 3D spoke mesh
+
+Previously the generated original-car Alloy section used the same
+seven spokes for every garage wheel option, so "sport" and "aero" only
+changed color. The same six-car source generator now accepts bounded
+`rimStyle` (default factory = 0) matching the existing three saved
+`GarageLook.Wheels` options: **7 slim factory**, **5 broad sport**,
+and **12 slim aero** spokes on all four wheels. The tire radius,
+outer rubber shell, inner brake rotor and physics-root body are
+unchanged. No separate asset/vehicle ID or SaveGame migration is needed.
+
+When a player changes only wheel style, the live Pawn rebuilds the
+render-only `UProceduralMeshComponent` exactly once and reapplies
+current paint/stripes. Paint-only or stripe-only changes still reuse
+the same dynamic material instances; no source regeneration occurs
+on `Tick`. Invalid/future saved rim IDs reject mesh generation and
+the engine fallback remains visible.
+
+Real C++ regression coverage generates **18 complete original car/rim
+surfaces**, checks their 10 native material sections, deterministic
+vertex/triangle counts, valid original tire shells, distinct Alloy
+topology, bounds and invalid metadata. Actual wheel appearance and
+garage save/reload must still be checked with UE5.8 Editor/cooked Win64.

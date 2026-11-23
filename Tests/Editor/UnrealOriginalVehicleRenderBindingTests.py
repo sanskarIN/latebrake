@@ -83,6 +83,14 @@ class UnrealOriginalVehicleRenderBindingTests(unittest.TestCase):
         )[1].split("void ALatebrakeCarPawn::SetGarageAppearance(",1)[0]
         self.assertIn("if (SafeId != GarageVehicleId)",selected)
         self.assertIn("RebuildOriginalVehicleVisual(SafeId);",selected)
+        appearance=self.actor.split(
+            "void ALatebrakeCarPawn::SetGarageAppearance(",1
+        )[1].split("void ALatebrakeCarPawn::",1)[0]
+        self.assertIn("const bool bRimsChanged =",appearance)
+        self.assertIn("if (bRimsChanged) RebuildOriginalVehicleVisual(",appearance)
+        self.assertIn("ApplyVehiclePaintRecipe(GarageVehicleId);",appearance)
+        self.assertLess(appearance.index("RebuildOriginalVehicleVisual("),
+                        appearance.index("ApplyVehiclePaintRecipe("))
         style=self.actor.split(
             "void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(",1
         )[1].split("void ALatebrakeCarPawn::SetGarageTuning(",1)[0]
