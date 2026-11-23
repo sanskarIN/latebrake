@@ -5,6 +5,7 @@
 #include "PreviewRaceModes.h"
 #include "PreviewViewportMath.h"
 #include "PreviewGarageStyle.h"
+#include "PreviewGarageSelection.h"
 #include "PreviewKeyboardFocusGuard.h"
 #include "PreviewDrivingCoach.h"
 
@@ -165,7 +166,10 @@ static unsigned int seed=0x6a09e667u;
 // NOT available, and there are no socket imports or network dependencies.
 enum Page { HOME, GARAGE, TRACKS, CHALLENGES, RACING, RESULTS, ONLINE_INFO };
 static Page page=HOME;
-static int selectedCar=0,selectedTrack=0,selectedChallenge=0,credits=0,completed=0;
+// Persist selectedCar (actually equipped) in the unchanged V4 settings.
+// garageViewCar is a temporary showroom cursor, never an economy action.
+static int selectedCar=0,garageViewCar=0;
+static int selectedTrack=0,selectedChallenge=0,credits=0,completed=0;
 static int ownedMask=1,careerStars=0,bonusCredits=0;
 static bool progressSaveFailed=false; // Never advertise unsaved career awards.
 static float trackRx=291.0f,trackRy=161.0f,trackWidth=0.235f;
@@ -210,6 +214,26 @@ static latebrake_preview::PreviewAppearance garageStyles[
     {4u,0u,0u},{5u,0u,0u},{6u,0u,0u},{7u,0u,0u},
     {1u,0u,0u},{2u,0u,0u},{0u,0u,0u},{4u,0u,0u}
 };
+// Both mouse and keyboard use the same fail-closed, tested selection policy.
+static bool browseGarageCar(int id){
+    latebrake_preview::PreviewGarageSelection cursor{selectedCar,garageViewCar};
+    if(!cursor.Browse(id))return false;
+    garageViewCar=cursor.Viewed;
+    return true;
+}
+static bool browseGarageDelta(int direction){
+    latebrake_preview::PreviewGarageSelection cursor{selectedCar,garageViewCar};
+    if(!cursor.BrowseDelta(direction))return false;
+    garageViewCar=cursor.Viewed;
+    return true;
+}
+static bool equipGarageViewed(){
+    latebrake_preview::PreviewGarageSelection cursor{selectedCar,garageViewCar};
+    if(!cursor.EquipViewed(static_cast<unsigned int>(ownedMask)))
+        return false;
+    selectedCar=cursor.Equipped;
+    return true;
+}
 static unsigned int selectedPaint(int id){
     return latebrake_preview::PreviewPaintColor(
         garageStyles[latebrake_preview::ValidPreviewCar(id)?id:0]);
@@ -434,6 +458,11 @@ static void loadSettings(){
         selectedChallenge=(int)d.event;highContrast=d.contrast!=0;
         steeringAssist=d.assist!=0;
     }
+    // Older builds saved merely-browsed locked cars. Reconcile V3/V4
+    // selectedCar with actual career ownership before any quick race.
+    selectedCar=latebrake_preview::SafeEquippedPreviewCar(
+        selectedCar,static_cast<unsigned int>(ownedMask));
+    garageViewCar=selectedCar;
 }
 static void saveSettings(){
     if(testing)return;
@@ -578,15 +607,15 @@ static void observeCompletedLap(float duration){
 }
 static void message(const char* t){int i=0;while(t[i]&&i<70){toast[i]=t[i];++i;}toast[i]=0;toastTime=2.8f;}
 static bool setAppearance(int category,unsigned int choice){
-    if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(selectedCar))return false;
+    if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return false;
     if(garageAppearanceReadOnly){
         message("NEWER LOOK SAVE: READ ONLY / NO OVERWRITE");return false;
     }
-    const auto before=garageStyles[selectedCar];
+    const auto before=garageStyles[garageViewCar];
     if(!latebrake_preview::ChangePreviewAppearance(
-         garageStyles[selectedCar],category,choice))return false;
+         garageStyles[garageViewCar],category,choice))return false;
     if(!saveGarageAppearance()){
-        garageStyles[selectedCar]=before;
+        garageStyles[garageViewCar]=before;
         message(garageAppearanceReadOnly?
             "NEWER LOOK SAVE: READ ONLY / NO OVERWRITE":
             "LOOK NOT SAVED / CHECK LOCAL STORAGE");
@@ -596,11 +625,11 @@ static bool setAppearance(int category,unsigned int choice){
     return true;
 }
 static void cycleAppearance(int category){
-    if(!latebrake_preview::ValidPreviewCar(selectedCar))return;
+    if(!latebrake_preview::ValidPreviewCar(garageViewCar))return;
     const unsigned int count=latebrake_preview::PreviewAppearanceOptionCount(category);
     if(count==0u)return;
     setAppearance(category,(
-      latebrake_preview::PreviewAppearanceValue(garageStyles[selectedCar],category)+1u)%count);
+      latebrake_preview::PreviewAppearanceValue(garageStyles[garageViewCar],category)+1u)%count);
 }
 static float trackProfile(float c,float s){
     float c2=c*c-s*s,s2=2*c*s,c3=4*c*c*c-3*c,s3=3*s-4*s*s*s;
@@ -1165,54 +1194,60 @@ static void renderMenuV3(){
         text(48,91,"GARAGE",CREAM(),4);
         hint(49,123,garageAppearanceReadOnly?
             "NEWER LOOK SAVE: READ ONLY / FILE PRESERVED":
-            "TWELVE ORIGINAL CARS / FREE LOOK CUSTOMIZATION");
-        const int pageNumber=selectedCar/latebrake_preview::PreviewCarsPerPage;
+            "BROWSE ONLY / YOUR RACE CAR STAYS EQUIPPED");
+        const int pageNumber=garageViewCar/latebrake_preview::PreviewCarsPerPage;
         uiButton(49,143,165,23,"< PREVIOUS",false);
         uiButton(240,143,169,23,"NEXT >",false);
         number(385,126,pageNumber+1,CYAN(),1);
         for(int i=0;i<latebrake_preview::PreviewCarsPerPage;i++){
             const int id=pageNumber*latebrake_preview::PreviewCarsPerPage+i;
             const int y=169+i*63;
-            const bool active=selectedCar==id;
+            const bool active=garageViewCar==id;
             tile(49,y,360,55,active);
             rect(61,y+12,26,28,selectedPaint(id));
             text(101,y+10,carNames[id],CREAM(),2);
-            hint(102,y+35,(ownedMask&(1<<id))?"OWNED / RACE READY":"LOCKED / EARN CREDITS");
+            hint(102,y+35,id==selectedCar?"EQUIPPED / OWNED":
+                (ownedMask&(1<<id))?"OWNED / AVAILABLE":"LOCKED / EARN CREDITS");
             if(active)text(372,y+21,">",GOLD(),2);
         }
         tile(433,169,478,392,true);
-        heroCar(675,229,selectedCar);
-        text(470,279,carNames[selectedCar],CREAM(),3);
-        hint(471,309,(ownedMask&(1<<selectedCar))?"READY / SELECT TO RACE":"PREVIEW ONLY UNTIL UNLOCKED");
-        cardStat(473,327,"POWER",carAccel[selectedCar]/1.5f,color(247,144,105));
-        cardStat(473,347,"SPEED",carSpeed[selectedCar]/1.5f,CYAN());
-        cardStat(473,367,"GRIP",carGrip[selectedCar]/1.5f,color(149,223,171));
+        heroCar(675,229,garageViewCar);
+        text(470,279,carNames[garageViewCar],CREAM(),3);
+        hint(471,309,garageViewCar==selectedCar?"EQUIPPED / RACE READY":
+            (ownedMask&(1<<garageViewCar))?"OWNED / ENTER TO EQUIP + RACE":
+            "LOCKED PREVIEW / EQUIPPED CAR UNCHANGED");
+        cardStat(473,327,"POWER",carAccel[garageViewCar]/1.5f,color(247,144,105));
+        cardStat(473,347,"SPEED",carSpeed[garageViewCar]/1.5f,CYAN());
+        cardStat(473,367,"GRIP",carGrip[garageViewCar]/1.5f,color(149,223,171));
         hint(473,400,"PAINT");
         for(int i=0;i<latebrake_preview::PreviewPaintCount;i++){
             const int x=586+i*35;
             rect(x,393,25,23,latebrake_preview::PreviewPaintPalette[i]);
-            stroke(x-2,391,29,27,garageStyles[selectedCar].Paint==(unsigned)i?
-                GOLD():BORDER(),garageStyles[selectedCar].Paint==(unsigned)i?3:1);
+            stroke(x-2,391,29,27,garageStyles[garageViewCar].Paint==(unsigned)i?
+                GOLD():BORDER(),garageStyles[garageViewCar].Paint==(unsigned)i?3:1);
         }
         hint(473,430,"STRIPES");
         static const char* vinylLabels[3]={"CLEAN","CENTER","TWIN"};
         for(int i=0;i<latebrake_preview::PreviewVinylCount;i++){
             int x=580+i*97;
             uiButton(x,421,91,25,vinylLabels[i],
-                garageStyles[selectedCar].Vinyl==(unsigned)i);
+                garageStyles[garageViewCar].Vinyl==(unsigned)i);
         }
         hint(473,459,"WHEELS");
         static const char* wheelLabels[3]={"STREET","SPORT","TRACK"};
         for(int i=0;i<latebrake_preview::PreviewWheelCount;i++){
             int x=580+i*97;
             uiButton(x,450,91,25,wheelLabels[i],
-                garageStyles[selectedCar].Wheels==(unsigned)i);
+                garageStyles[garageViewCar].Wheels==(unsigned)i);
         }
         hint(473,486,"CREDITS");number(473,498,credits,GOLD(),2);
-        if(!(ownedMask&(1<<selectedCar))){
-            hint(651,486,"UNLOCK PRICE");number(652,498,carPrices[selectedCar],CREAM(),2);
-            uiButton(477,520,393,34,"U  UNLOCK CAR",false,credits>=carPrices[selectedCar]);
-        }else uiButton(477,520,393,34,"ENTER  DRIVE THIS CAR",false);
+        if(!(ownedMask&(1<<garageViewCar))){
+            hint(651,486,"UNLOCK PRICE");number(652,498,carPrices[garageViewCar],CREAM(),2);
+            uiButton(477,520,393,34,"U  UNLOCK THIS CAR",false,
+                     credits>=carPrices[garageViewCar]);
+        }else uiButton(477,520,393,34,
+            garageViewCar==selectedCar?"ENTER  RACE WITH EQUIPPED CAR":
+            "ENTER  EQUIP + RACE THIS CAR",false);
     }else if(page==TRACKS){
         navActiveTag("4 DISTINCT LAYOUTS");
         text(48,93,"SELECT CIRCUIT",CREAM(),4);
@@ -1447,6 +1482,7 @@ static bool key(int k){
 static bool pressed(int k,bool& previous){bool down=key(k);bool edge=down&&!previous;previous=down;return edge;}
 static void setPage(Page target){
     page=target;paused=false;
+    if(target==GARAGE)garageViewCar=selectedCar;
     if(target==TRACKS)drawTrack();
 }
 static void chooseHome(int id){
@@ -1457,23 +1493,33 @@ static void chooseHome(int id){
     else if(id==4)setPage(ONLINE_INFO);
 }
 static void unlockSelectedCar(){
-    if(ownedMask&(1<<selectedCar))message("ALREADY IN YOUR GARAGE");
-    else if(credits>=carPrices[selectedCar]){
+    // Spending only comes from the visible Garage. Browsing itself has
+    // ZERO monetary authority and never mutates the equipped racer.
+    if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return;
+    if(ownedMask&(1<<garageViewCar))message("ALREADY IN YOUR GARAGE");
+    else if(credits>=carPrices[garageViewCar]){
         const int oldCredits=credits,oldMask=ownedMask;
-        credits-=carPrices[selectedCar];ownedMask|=1<<selectedCar;
-        if(saveProgress())message("CAR UNLOCKED - ENTER TO DRIVE");
+        credits-=carPrices[garageViewCar];ownedMask|=1<<garageViewCar;
+        if(saveProgress())message("CAR UNLOCKED / ENTER TO EQUIP");
         else{
             credits=oldCredits;ownedMask=oldMask;
             message("SAVE FAILED - UNLOCK AND CREDITS RESTORED");
         }
     }else message("WIN RACES TO EARN MORE CREDITS");
 }
+static void raceWithViewedOwnedCar(){
+    if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(garageViewCar))return;
+    const int previous=selectedCar;
+    if(!equipGarageViewed()){
+        message("LOCKED CAR / PRESS U TO UNLOCK");return;
+    }
+    if(previous!=selectedCar)saveSettings();
+    beginRace();
+}
 static void activateSelection(){
     if(page==HOME)chooseHome(homeFocus);
-    else if(page==GARAGE){
-        if(ownedMask&(1<<selectedCar))beginRace();
-        else message("PRESS U TO UNLOCK CAR FIRST");
-    }else if(page==TRACKS||page==CHALLENGES)beginRace();
+    else if(page==GARAGE)raceWithViewedOwnedCar();
+    else if(page==TRACKS||page==CHALLENGES)beginRace();
     else if(page==RESULTS)beginRace();
 }
 static void mouseClick(int x,int y){
@@ -1486,21 +1532,21 @@ static void mouseClick(int x,int y){
         else if(within(x,y,275,388,208,48))chooseHome(4);
     }else if(page==GARAGE){
         if(within(x,y,49,143,165,23)){
-            selectedCar=(selectedCar+latebrake_preview::PreviewCarCount-
+            browseGarageCar((garageViewCar+latebrake_preview::PreviewCarCount-
                 latebrake_preview::PreviewCarsPerPage)%
-                latebrake_preview::PreviewCarCount;
-            saveSettings();return;
+                latebrake_preview::PreviewCarCount);
+            return;
         }
         if(within(x,y,240,143,169,23)){
-            selectedCar=(selectedCar+latebrake_preview::PreviewCarsPerPage)%
-                latebrake_preview::PreviewCarCount;
-            saveSettings();return;
+            browseGarageCar((garageViewCar+latebrake_preview::PreviewCarsPerPage)%
+                latebrake_preview::PreviewCarCount);
+            return;
         }
-        const int page=selectedCar/latebrake_preview::PreviewCarsPerPage;
+        const int page=garageViewCar/latebrake_preview::PreviewCarsPerPage;
         for(int i=0;i<latebrake_preview::PreviewCarsPerPage;i++)
             if(within(x,y,49,169+i*63,360,55)){
-                selectedCar=page*latebrake_preview::PreviewCarsPerPage+i;
-                saveSettings();return;
+                browseGarageCar(page*latebrake_preview::PreviewCarsPerPage+i);
+                return;
             }
         for(int i=0;i<latebrake_preview::PreviewPaintCount;i++)
             if(within(x,y,584+i*35,391,29,27)){
@@ -1515,7 +1561,9 @@ static void mouseClick(int x,int y){
                 setAppearance(2,(unsigned)i);return;
             }
         if(within(x,y,477,520,393,34)){
-            if(ownedMask&(1<<selectedCar))beginRace();else unlockSelectedCar();
+            if(ownedMask&(1<<garageViewCar))raceWithViewedOwnedCar();
+            else if(credits>=carPrices[garageViewCar])unlockSelectedCar();
+            else message("INSUFFICIENT CREDITS / KEEP RACING");
             return;
         }
     }else if(page==TRACKS){
@@ -1614,9 +1662,8 @@ static void step(float dt){
             if(down||rgt)homeFocus=(homeFocus+1)%5;
             if(up||l)homeFocus=(homeFocus+4)%5;
         }else if(page==GARAGE){
-            if(rgt||down)selectedCar=(selectedCar+1)%latebrake_preview::PreviewCarCount;
-            if(l||up)selectedCar=(selectedCar+latebrake_preview::PreviewCarCount-1)%latebrake_preview::PreviewCarCount;
-            if(l||rgt||up||down)saveSettings();
+            if(rgt||down)browseGarageDelta(1);
+            if(l||up)browseGarageDelta(-1);
             if(paint)cycleAppearance(0);
             if(stripe)cycleAppearance(1);
             if(wheels)cycleAppearance(2);
@@ -1685,7 +1732,7 @@ static DWORD __stdcall mockXInputState(DWORD user,PadPacket* state){
 }
 static bool selftest(){
     testing=true;selfTestStage=10;
-    selectedTrack=0;selectedCar=0;selectedChallenge=0;
+    selectedTrack=0;selectedCar=0;garageViewCar=0;selectedChallenge=0;
     beginRace();
     if(page!=RACING||race.lap!=1||race.nextGate!=0||race.nitro!=100)return false;
     countdown=0;update(0.015f,true,false,false,false,false,true);
@@ -1758,8 +1805,9 @@ static bool selftest(){
     mouseClick(600,400);if(selectedTrack!=3)return false;
     setPage(HOME);homeFocus=1;activateSelection();
     if(page!=GARAGE)return false;
-    mouseClick(90,169+4*63+10);if(selectedCar!=4)return false;
-    int previousMoney=credits;selectedCar=5;unlockSelectedCar();
+    mouseClick(90,169+4*63+10);
+    if(garageViewCar!=4||selectedCar!=0)return false;
+    int previousMoney=credits;garageViewCar=5;unlockSelectedCar();
     if(credits>previousMoney)return false;
     setPage(HOME);showHelp=true;mouseClick(250,300);
     if(showHelp||page!=HOME)return false;
@@ -1928,7 +1976,8 @@ static bool selftest(){
     if(!race.awarded||progressSaveFailed||bonusCredits!=100||
        credits!=400||completed!=8||careerStars!=18)return false;
     selfTestStage=81;
-    credits=1000;ownedMask=1;selectedCar=1;
+    credits=1000;ownedMask=1;selectedCar=0;setPage(GARAGE);
+    garageViewCar=1;
     simulateProgressSaveFailure=true;
     unlockSelectedCar();
     if(credits!=1000||ownedMask!=1)return false;
@@ -1981,7 +2030,8 @@ static bool selftest(){
            carAccel[id]<=0.0f||carGrip[id]<=0.0f||
            !latebrake_preview::ValidPreviewAppearance(garageStyles[id]))return false;
     }
-    selectedCar=9;ownedMask=1;setPage(GARAGE);
+    selectedCar=0;ownedMask=1;setPage(GARAGE);
+    garageViewCar=9;
     const auto oldLook=garageStyles[9];
     if(!setAppearance(0,5u)||garageStyles[9].Paint!=5u||
        !setAppearance(1,2u)||garageStyles[9].Vinyl!=2u||
@@ -2004,9 +2054,9 @@ static bool selftest(){
     if(latebrake_preview::PreviewAppearanceOptionCount(99)!=0u||
        setAppearance(0,999u))return false;
     // New page must expose the upper six IDs; locked cars must not race.
-    selectedCar=6;mouseClick(83,169+5*63+10);
-    if(selectedCar!=11)return false;
-    beginRace();if(page!=GARAGE)return false;
+    garageViewCar=6;mouseClick(83,169+5*63+10);
+    if(garageViewCar!=11||selectedCar!=0)return false;
+    raceWithViewedOwnedCar();if(page!=GARAGE||selectedCar!=0)return false;
     selectedCar=0;ownedMask=1;setPage(HOME);
     selfTestStage=87;
     // The native --self-test must exercise the REAL integrated centerline
@@ -2068,6 +2118,23 @@ static bool selftest(){
     if(frame[74*WIDTH+332]!=color(115,38,40))return false;
     selectedChallenge=0;steeringAssist=true;
     selectedTrack=0;drawTrack();beginRace();countdown=0;
+    selfTestStage=89;
+    // Live mouse and career UX: visiting a locked showroom preview must
+    // not steal our equipped race car or alter saved credits.
+    selectedCar=0;ownedMask=1;credits=250;setPage(GARAGE);
+    mouseClick(90,169+3*63+10);
+    if(garageViewCar!=3||selectedCar!=0||credits!=250)return false;
+    activateSelection();
+    if(page!=GARAGE||selectedCar!=0||credits!=250)return false;
+    setPage(HOME);beginRace();
+    if(page!=RACING||selectedCar!=0||credits!=250)return false;
+    // Only deliberate Enter on an OWNED preview changes selectedCar.
+    setPage(GARAGE);ownedMask|=1<<5;browseGarageCar(5);
+    activateSelection();
+    if(page!=RACING||selectedCar!=5)return false;
+    setPage(GARAGE);browseGarageCar(7);activateSelection();
+    if(page!=GARAGE||selectedCar!=5)return false;
+    selectedCar=0;ownedMask=1;setPage(HOME);
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);
 }
