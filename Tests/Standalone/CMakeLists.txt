@@ -2681,3 +2681,20 @@ else()
 endif()
 add_test(NAME PreviewGarageStyle
     COMMAND latebrake_preview_garage_style_tests)
+
+# Production Unreal garage cosmetic source policy. Strict pure C++20
+# compilation guards six legacy IDs, 8 paints, 3 stripes, 3 rims, and
+# deterministic read-only/no-economy SaveGame style serialization.
+add_executable(latebrake_garage_appearance_tests
+    GarageAppearanceTests.cpp)
+target_include_directories(latebrake_garage_appearance_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_appearance_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_appearance_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_appearance_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageAppearance
+    COMMAND latebrake_garage_appearance_tests)
