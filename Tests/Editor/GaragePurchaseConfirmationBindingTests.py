@@ -19,6 +19,7 @@ class GaragePurchaseConfirmationBindingTests(unittest.TestCase):
         cls.mode = source("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
         cls.header = source("Source/Latebrake/Public/Game/LatebrakeRaceGameMode.h")
         cls.policy = source("Source/Latebrake/Public/Garage/GaragePurchaseConfirmation.h")
+        cls.focus_policy = source("Source/Latebrake/Public/UI/GarageInputFocusPolicy.h")
         cls.tests = source("Tests/Standalone/GaragePurchaseConfirmationTests.cpp")
         cls.cmake = source("Tests/Standalone/CMakeLists.txt")
         cls.hud = source("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
@@ -40,13 +41,22 @@ class GaragePurchaseConfirmationBindingTests(unittest.TestCase):
                     f"void ALatebrakeRaceGameMode::{start}()", 1)[1].split(
                     f"void ALatebrakeRaceGameMode::{end}()", 1)[0]
                 for marker in ("CanEditGarageDuringRace(",
-                               "Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage",
+                               "CanUseGaragePurchaseHotkey(",
+                               "Menu.IsOpen(), Menu.Current()",
                                "GaragePurchaseConfirm.ConfirmOrStage(",
                                "Garage.Snapshot()", "FPlatformTime::Seconds()",
                                "ProfileWriteCheckpoint SavedProfile(",
                                "SaveRecords()", "SavedProfile.Rollback()"):
                     self.assertIn(marker, body)
                 self.assertIn(kind, body)
+                # The new focus policy is stronger than the removed
+                # redundant in-function check: it rejects CLOSED menus,
+                # not just open menus showing another page.
+                self.assertIn("return !externallySuspended && menuOpen &&",
+                              self.focus_policy)
+                self.assertIn("visiblePage == MenuPage::Garage;", self.focus_policy)
+                self.assertLess(body.index("CanUseGaragePurchaseHotkey("),
+                                body.index("GaragePurchaseConfirm.ConfirmOrStage("))
                 self.assertLess(
                     body.index("GaragePurchaseConfirm.ConfirmOrStage("),
                     body.index(mutation))
