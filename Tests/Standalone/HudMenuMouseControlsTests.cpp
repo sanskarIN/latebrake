@@ -104,6 +104,12 @@ void TestGarageCosmeticDock()
         Check(HitTestGarageStyleMouse(garage, -1.0, -1.0) ==
               DesktopMenuMouseAction::None,
               "invalid garage pointer is inert");
+        const auto blockedButton = garage.Buttons[0].Bounds;
+        Check(HitTestGarageStyleMouse(garage,
+            blockedButton.X+blockedButton.Width*0.5,
+            blockedButton.Y+blockedButton.Height*0.5,
+            false) == DesktopMenuMouseAction::None,
+            "uneditable active career cannot select a style with mouse");
         auto damaged = garage;
         damaged.Buttons[0].Bounds.Width =
             std::numeric_limits<double>::infinity();

@@ -269,9 +269,10 @@ inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
 
 inline DesktopMenuMouseAction HitTestGarageStyleMouse(
     const GarageStyleMouseLayout& layout,
-    double x, double y) noexcept
+    double x, double y, bool enabled = true) noexcept
 {
-    if (!layout.Valid || !std::isfinite(x) || !std::isfinite(y))
+    if (!enabled || !layout.Valid ||
+        !std::isfinite(x) || !std::isfinite(y))
         return DesktopMenuMouseAction::None;
     for (const auto& button : layout.Buttons)
         if (button.Bounds.Contains(x, y)) return button.Action;

@@ -2068,6 +2068,15 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
     }
 }
 
+bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
+{
+    return Menu.IsOpen() &&
+        Menu.Current() == latebrake::MenuPage::Garage &&
+        latebrake::CanEditGarageDuringRace(bCareerRace, Race) &&
+        !bFutureSaveSchema &&
+        Garage.Owns(Garage.SelectedVehicle());
+}
+
 void ALatebrakeRaceGameMode::GarageCycleAppearance(
     latebrake::GarageLookLayer layer)
 {

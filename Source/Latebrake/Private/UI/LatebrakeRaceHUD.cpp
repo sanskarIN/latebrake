@@ -103,7 +103,8 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
         width, height, latebrake::CalculateHudLayout(width, height),
         false, true, Mode->GetMenuPage());
     const auto styleAction =
-        latebrake::HitTestGarageStyleMouse(style, x, y);
+        latebrake::HitTestGarageStyleMouse(
+            style, x, y, Mode->CanCustomizeGarage());
     if (styleAction != latebrake::DesktopMenuMouseAction::None)
         return styleAction;
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
@@ -436,6 +437,9 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS (COSMETIC / FREE)"), true);
+            MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
+            if (!Mode->CanCustomizeGarage())
+                MenuLine(TEXT("CUSTOM LOOK UNAVAILABLE UNTIL GARAGE CAN BE EDITED"), true);
             const latebrake::GarageLook ActiveLook =
                 Mode->GetSelectedGarageLook();
             MenuLine(FString::Printf(
@@ -914,21 +918,27 @@ void ALatebrakeRaceHUD::DrawHUD()
             // these buttons do not have economy or race authority.
             if (GarageStyleMenu.Valid)
             {
-                const latebrake::DesktopMenuMouseAction StyleHover = HasCursor
-                    ? latebrake::HitTestGarageStyleMouse(
-                        GarageStyleMenu, CursorX, CursorY)
-                    : latebrake::DesktopMenuMouseAction::None;
+                const bool bCanEditLook = Mode->CanCustomizeGarage();
+                const latebrake::DesktopMenuMouseAction StyleHover =
+                    HasCursor ? latebrake::HitTestGarageStyleMouse(
+                        GarageStyleMenu, CursorX, CursorY, bCanEditLook)
+                        : latebrake::DesktopMenuMouseAction::None;
                 for (const auto& StyleButton : GarageStyleMenu.Buttons)
                 {
                     const float BX = static_cast<float>(StyleButton.Bounds.X);
                     const float BY = static_cast<float>(StyleButton.Bounds.Y);
                     const float BW = static_cast<float>(StyleButton.Bounds.Width);
                     const float BH = static_cast<float>(StyleButton.Bounds.Height);
-                    const bool Hover = StyleButton.Action == StyleHover;
-                    const FLinearColor TextColor = Hover ? Gold : White;
-                    DrawRect(Hover
-                        ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
-                        : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f),
+                    const bool Hover =
+                        bCanEditLook && StyleButton.Action == StyleHover;
+                    const FLinearColor TextColor = !bCanEditLook
+                        ? FLinearColor(0.61f, 0.66f, 0.73f)
+                        : Hover ? Gold : White;
+                    DrawRect(!bCanEditLook
+                        ? FLinearColor(0.07f, 0.10f, 0.14f, 0.84f)
+                        : Hover
+                            ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
+                            : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f),
                         BX, BY, BW, BH);
                     DrawRect(TextColor, BX, BY, 3.f * UIScale, BH);
                     const TCHAR* Caption =

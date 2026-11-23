@@ -136,7 +136,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "button.Bounds.Contains(x, y)",
         ):
             self.assertIn(token, self.mouse)
-        self.assertIn("latebrake::HitTestGarageStyleMouse(style, x, y)", self.hud)
+        self.assertIn("style, x, y, Mode->CanCustomizeGarage()", self.hud)
         self.assertIn("latebrake::HitTestGarageStyleMouse(", self.hud)
         for token in (
             "case latebrake::DesktopMenuMouseAction::GaragePaint:",
@@ -145,6 +145,26 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         ):
             self.assertIn(token, self.pawn)
         self.assertIn("if (GarageStyleMenu.Valid)", self.hud)
+        self.assertIn("const bool bCanEditLook = Mode->CanCustomizeGarage();", self.hud)
+        self.assertIn("!enabled || !layout.Valid", self.mouse)
+
+    def test_controller_style_shortcuts_pause_only(self):
+        mapping = {
+            "GarageCyclePaint": "Gamepad_RightThumbstick",
+            "GarageCycleStripe": "Gamepad_LeftThumbstick",
+            "GarageCycleWheels": "Gamepad_LeftShoulder",
+        }
+        for action, button in mapping.items():
+            self.assertIn(
+                f'+ActionMappings=(ActionName="{action}",Key={button})',
+                self.input)
+        self.assertIn("bool CanCustomizeGarage() const;", self.mode_h)
+        self.assertIn(
+            "bool ALatebrakeRaceGameMode::CanCustomizeGarage() const",
+            self.mode)
+        self.assertIn(
+            "Garage.Owns(Garage.SelectedVehicle())", self.mode)
+        self.assertIn("PAD: R3 PAINT / L3 STRIPES / LB RIMS", self.hud)
 
 
 if __name__ == "__main__":

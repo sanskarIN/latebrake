@@ -37,8 +37,14 @@ meshes or that a cooked 3D package exists.
 
 Open the real Unreal garage menu, **not** the Win32 2D preview.
 Press **F5** to cycle paint, **F6** for roof stripes or **F7** for
-decorative rims. On desktop Canvas HUD the lower-right garage-only
-dock also has separate mouse-hit buttons for each. Appearance controls
+decorative rims. On gamepad, click **R3** for paint, click **L3** for
+roof stripes, or use **LB** for rim trims while the Garage menu is open
+and paused. Those same controller buttons remain assigned to their old
+driving actions outside the garage, and stale driving input is cleared.
+On desktop Canvas HUD the lower-right garage-only
+dock also has separate mouse-hit buttons for each. The dock disables
+its appearance targets when a career race or newer SaveGame schema
+prevents editing; the same condition is enforced by GameMode. Appearance controls
 are inactive when another menu page is open, after garage closure,
 and while editing is not permitted by active career rules. Each
 successful change shows its saved label. All cosmetics are free.
