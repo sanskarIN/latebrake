@@ -1311,7 +1311,9 @@ static void renderRaceHUDV3(){
     else text(847,214,"--",MUTED(),1);
     tile(18,506,225,62,true);
     hint(34,516,"SPEED / SIMULATED");number(36,537,(int)absf(race.speed),CREAM(),3);
-    hint(161,544,"KM/H");
+    // This freestanding GDI physics loop measures virtual canvas pixels
+    // per second, NOT physical distance or calibrated real-world km/h.
+    hint(161,544,"PX/S");
     renderRaceMiniMap();
     tile(732,500,208,68,false);
     hint(748,509,"GATE PROGRESS");
@@ -2038,6 +2040,33 @@ static bool selftest(){
         if(!sample.Valid||sample.TargetSpeed<150.0f||
            sample.TargetSpeed>320.0f)return false;
     }
+    selectedTrack=0;drawTrack();beginRace();countdown=0;
+    selfTestStage=88;
+    // Exercise the real renderer with NO GDI/desktop window/disk writes:
+    // guidance is actually colored on the playable track, J hides it,
+    // and the wrong-way warning is visible above the track. This guards
+    // actual frame pixels rather than only string contracts.
+    selectedChallenge=1;drawTrack();beginRace();countdown=0;
+    race.speed=220.0f;race.fx=-1.0f;race.fy=0.0f;
+    steeringAssist=true;showHelp=false;toastTime=0.0f;
+    float c=(race.x-CX)/trackRx,s=(race.y-CY)/trackRy;
+    const float mag=fsqrt(c*c+s*s);
+    if(mag<0.1f)return false;
+    c/=mag;s/=mag;
+    const float gc=c*0.99755100f-s*0.06994285f;
+    const float gs=s*0.99755100f+c*0.06994285f;
+    float guideX,guideY;
+    shapePos(gc,gs,&guideX,&guideY);
+    const int gi=(int)guideY*WIDTH+(int)guideX;
+    if(gi<0||gi>=WIDTH*HEIGHT)return false;
+    render();
+    if(frame[gi]!=color(111,238,237))return false;
+    steeringAssist=false;render();
+    if(frame[gi]==color(111,238,237))return false;
+    steeringAssist=true;race.fx=1.0f;
+    render();
+    if(frame[74*WIDTH+332]!=color(115,38,40))return false;
+    selectedChallenge=0;steeringAssist=true;
     selectedTrack=0;drawTrack();beginRace();countdown=0;
     // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);

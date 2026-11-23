@@ -128,3 +128,19 @@ rewards, opponents and your saved career never change merely because
 the road guide is enabled. The native `--self-test` and portable
 C++20 policy tests cover deterministic synthetic conditions, not real
 controller latency, enjoyment, Windows display or 3D Unreal gameplay.
+
+## Native framebuffer rendering check and speed-unit honesty
+
+The `--self-test` now additionally calls the real in-memory 960x640
+renderer **without opening a Windows window or writing a save**. It
+checks an expected forward cyan guide pixel, verifies that switching
+J OFF removes it, and confirms the wrong-way banner's actual colored
+region. This detects regressions in UI wiring that unit tests cannot
+see. It is a pixel-level synthetic smoke test, **not** an actual GPU,
+DPI, Windows input, human-factors or interactive desktop visual test.
+
+The HUD's speed figure now labels **PX/S**: it measures **virtual canvas
+pixels per second**, not kilometers per hour. It would be misleading
+to advertise this 2D prototype's simulation speed as calibrated real
+world km/h. Unreal's future physically scaled telemetry must be
+validated independently.

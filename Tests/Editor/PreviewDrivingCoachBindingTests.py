@@ -74,5 +74,19 @@ class PreviewDrivingCoachBindingTests(unittest.TestCase):
         self.assertIn("for(int tr=0;tr<4;tr++)",self.app)
         self.assertIn("no automatic driving",self.guide)
 
+    def test_real_framebuffer_visual_regression_and_honest_speed_units(self):
+        app=self.app
+        for marker in (
+            "selfTestStage=88;",
+            "const int gi=(int)guideY*WIDTH+(int)guideX;",
+            "if(frame[gi]!=color(111,238,237))return false;",
+            "if(frame[gi]==color(111,238,237))return false;",
+            "if(frame[74*WIDTH+332]!=color(115,38,40))return false;",
+            'hint(161,544,"PX/S");',
+        ):
+            self.assertIn(marker,app)
+        self.assertNotIn('hint(161,544,"KM/H");',app)
+        self.assertIn("virtual canvas pixels per second",self.guide)
+
 if __name__=="__main__":
     unittest.main()

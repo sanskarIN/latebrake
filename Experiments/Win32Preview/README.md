@@ -13,7 +13,9 @@ The next legitimate checkpoint also receives a pulsing visual marker.
 Strict C++20 portable tests include 100,000 varied steering, speed,
 grip and direction samples plus malformed floating-point probes;
 the native Win64 --self-test exercises the real GameState/road wiring
-across all four tracks. This improves the testable 2D trial's direction
+across all four tracks, plus deterministic in-memory rendered guidance
+pixels. The UI truthfully labels the simulation's speed in PX/S
+(virtual canvas pixels per second), not real-world km/h. This improves the testable 2D trial's direction
 guidance but does not make it a 3D game or qualify UE5.8 driving.
 See [the trial quick start](TRIAL_QUICKSTART.md) for user-facing QA.
 
