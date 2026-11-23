@@ -898,6 +898,10 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(Mode->UsesMilesPerHour()
                 ? TEXT("Speed display: MPH") : TEXT("Speed display: KM/H"));
             MenuLine(TEXT("Select to switch speed units and save."));
+            MenuLine(Mode->IsDuskLightingPreview()
+                ? TEXT("LIGHTING: DUSK (SESSION PREVIEW ONLY)")
+                : TEXT("LIGHTING: DAY (SESSION PREVIEW ONLY)"), true);
+            MenuLine(TEXT("F3: TOGGLE DAY/DUSK | NOT SAVED | VISUAL ONLY"));
             break;
         case latebrake::MenuPage::Profile:
             MenuLine(FString::Printf(TEXT("Completed races: %d | Career medals: %d"),

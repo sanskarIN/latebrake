@@ -2854,6 +2854,21 @@ void ALatebrakeCarPawn::BrowseGaragePrevious()
     Mode->GarageBrowsePrevious();
 }
 
+void ALatebrakeCarPawn::ToggleCircuitLighting()
+{
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    // This paused input belongs only to Settings. No driving action
+    // should run while another UI page or OS focus guard is active.
+    if (!Mode || !Mode->IsMenuOpen() ||
+        Mode->GetMenuPage()!=latebrake::MenuPage::Settings ||
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive())
+        return;
+    ClearDriverInputs();
+    Mode->ToggleCircuitLightingPreview();
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -2933,6 +2948,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& ConfirmMenu = PlayerInputComponent->BindAction(
         TEXT("MenuActivate"), IE_Pressed, this, &ALatebrakeCarPawn::MenuActivate);
     ConfirmMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& DuskView = PlayerInputComponent->BindAction(
+        TEXT("CircuitLightingPreview"), IE_Pressed,
+        this, &ALatebrakeCarPawn::ToggleCircuitLighting);
+    DuskView.bExecuteWhenPaused = true;
     FInputActionBinding& MouseMenu = PlayerInputComponent->BindAction(
         TEXT("MenuMouseClick"), IE_Pressed,
         this, &ALatebrakeCarPawn::MenuMousePressed);

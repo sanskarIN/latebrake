@@ -30,6 +30,8 @@
 
 class AController;
 class APlayerStart;
+class ADirectionalLight;
+class ASkyLight;
 class AStaticMeshActor;
 class ALatebrakeCarPawn;
 class ALatebrakeRivalCar;
@@ -76,6 +78,8 @@ public:
     void MenuNext();
     void MenuPrevious();
     void MenuActivate();
+    void ToggleCircuitLightingPreview();
+    bool IsDuskLightingPreview() const noexcept { return bDuskLightingPreview; }
     bool IsMenuOpen() const { return Menu.IsOpen(); }
     latebrake::MenuPage GetMenuPage() const { return Menu.Current(); }
     FString GetMenuPageTitle() const { return FString(UTF8_TO_TCHAR(Menu.Title())); }
@@ -207,6 +211,7 @@ private:
     void SuspendBestLapGhost();
     void CloseMenuForRace();
     void SyncDesktopMenuPointerMode();
+    void ApplyCircuitLightingPreview();
 #if !UE_BUILD_SHIPPING
     // Event-only, no per-frame telemetry, no effect on scoring or saves.
     void StartRaceAuditAttempt(int32 GridAtBegin);
@@ -217,6 +222,8 @@ private:
     latebrake::CareerProgress Career;
     latebrake::MenuNavigation Menu;
     bool bMilesPerHour = false;
+    // Rendering-only session toggle. Never written to ULatebrakePlayerSave.
+    bool bDuskLightingPreview = false;
     latebrake::CareerAward LastCareerAward;
     bool bCareerRace = false;
     bool bFutureSaveSchema = false;
@@ -273,6 +280,13 @@ private:
     FString GarageFeedback = TEXT("E select | Q/U/I twice to confirm spending");
     int32 LastRaceCredits = 0;
     int32 RecoveriesThisRace = 0;
+
+    // The two existing source-spawned track lights are retained for
+    // Settings preview; no additional light actors on each toggle.
+    UPROPERTY(Transient)
+    TObjectPtr<ADirectionalLight> RuntimeSun;
+    UPROPERTY(Transient)
+    TObjectPtr<ASkyLight> RuntimeSky;
 
     UPROPERTY(Transient)
     TObjectPtr<APlayerStart> RuntimePlayerStart;

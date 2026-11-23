@@ -27,6 +27,7 @@
 #include "Career/CareerLaunchSelection.h"
 #include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
+#include "Track/CircuitLightingPreview.h"
 #include "UI/GarageInputFocusPolicy.h"
 #include "HAL/PlatformTime.h"
 #include "Racing/LatebrakeCheckpoint.h"
@@ -850,6 +851,55 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::ApplyCircuitLightingPreview()
+{
+    // One-time and explicit Settings actions only, never regular Tick.
+    // This alters render light color/intensity, not road collision or
+    // timing; all real lights still need UE Editor and packaged QA.
+    const auto Scene = latebrake::LightingForMood(
+        bDuskLightingPreview
+            ? latebrake::CircuitLightingMood::Dusk
+            : latebrake::CircuitLightingMood::Day);
+    if (!latebrake::ValidCircuitLightingPreset(Scene))
+        return;
+    if (IsValid(RuntimeSun) && IsValid(RuntimeSun->GetLightComponent()))
+    {
+        RuntimeSun->SetActorRotation(FRotator(
+            static_cast<float>(Scene.SunPitchDeg),
+            static_cast<float>(Scene.SunYawDeg),0.f));
+        RuntimeSun->GetLightComponent()->SetIntensity(
+            static_cast<float>(Scene.SunIntensity));
+        RuntimeSun->GetLightComponent()->SetLightColor(FLinearColor(
+            static_cast<float>(Scene.SunColor.R),
+            static_cast<float>(Scene.SunColor.G),
+            static_cast<float>(Scene.SunColor.B)));
+    }
+    if (IsValid(RuntimeSky) && IsValid(RuntimeSky->GetLightComponent()))
+    {
+        RuntimeSky->GetLightComponent()->SetIntensity(
+            static_cast<float>(Scene.SkyIntensity));
+        RuntimeSky->GetLightComponent()->SetLightColor(FLinearColor(
+            static_cast<float>(Scene.SkyColor.R),
+            static_cast<float>(Scene.SkyColor.G),
+            static_cast<float>(Scene.SkyColor.B)));
+    }
+}
+
+void ALatebrakeRaceGameMode::ToggleCircuitLightingPreview()
+{
+    if (!latebrake::CanChangeCircuitLighting(
+        Menu.IsOpen(),Menu.Current()==latebrake::MenuPage::Settings,
+        AppFocusGuard.IsSuspended(),ManualPause.IsSuspended(),
+        IsValid(RuntimeSun) && IsValid(RuntimeSky) &&
+        IsValid(RuntimeSun->GetLightComponent()) &&
+        IsValid(RuntimeSky->GetLightComponent())))
+        return;
+    bDuskLightingPreview = !bDuskLightingPreview;
+    ApplyCircuitLightingPreview();
+    // Deliberately no SaveRecords: this is an optional current-session
+    // rendering test, not a new SaveGame schema or permanent unlock.
+}
+
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
@@ -866,15 +916,9 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         return Block;
     };
     // Runtime sunlight so the starter track remains visible without map assets.
-    if (ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>())
-    {
-        Sun->SetActorRotation(FRotator(-55.f, -30.f, 0.f));
-        Sun->GetLightComponent()->SetIntensity(6.f);
-    }
-    if (ASkyLight* Sky = GetWorld()->SpawnActor<ASkyLight>())
-    {
-        Sky->GetLightComponent()->SetIntensity(1.f);
-    }
+    RuntimeSun = GetWorld()->SpawnActor<ADirectionalLight>();
+    RuntimeSky = GetWorld()->SpawnActor<ASkyLight>();
+    ApplyCircuitLightingPreview();
 
     // This portable single-source-of-truth plan reproduces the prior nine
     // world-space collision actors exactly; it never adds Epic asset copies.

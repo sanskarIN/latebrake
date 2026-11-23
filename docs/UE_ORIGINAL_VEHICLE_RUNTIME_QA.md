@@ -138,3 +138,28 @@ recovery and removed player control, never clip into either the generated
 body or its legacy fallback, and never brighten the track unrealistically.
 A physically based lumens/candela calibration, exposure pipeline, shadows,
 and actual night tracks remain out of scope for this candidate.
+
+## Two-state real Unreal track lighting preview, strictly Settings-only
+
+F3 while the **Settings** menu is open now reversibly toggles the actual
+`ADirectionalLight` and `ASkyLight` spawned for the starter circuit
+between original bright **DAY** (default) and a lower-sun **DUSK** visual
+preview. The game reuses the existing two light actors, never spawns
+replacement lights during toggles, and never changes collision, tire grip,
+race timing, AI, awards, vehicle ownership or the stored profile. The
+setting is current-session only: new launches return to original DAY, and
+the existing Select key continues to change persisted KM/H/MPH as before.
+F3 outside the open Settings page, during explicit manual pause or focus
+loss, or with an unavailable engine sun/sky is ignored. This is not a
+full night cycle, physically calibrated exposure or weather simulation.
+
+**Mandatory UE5.8 visual QA:** open the actual Settings page and toggle F3.
+Verify both native light actors update and no new actors appear, the
+player's forward spotlights illuminate the road in DUSK, the track is
+still navigable, sunlight is not reversed, the sky tint is stable,
+headlights extinguish while paused, and F3 has no effect in Garage,
+results, Quick Race, live driving or background focus loss. Restart
+the game and confirm DAY is restored without modifying saved credits,
+paint, speed units, records, or career medals. Source C++ and Python
+binding checks cannot prove shader rendering, calibrated scene exposure,
+actual dusk visibility or Windows packaged GPU performance.

@@ -303,6 +303,7 @@ private:
     void ResetGarageLook();
     void BrowseGarageNext();
     void BrowseGaragePrevious();
+    void ToggleCircuitLighting();
     void SelectArcade();
     void SelectSimulation();
 

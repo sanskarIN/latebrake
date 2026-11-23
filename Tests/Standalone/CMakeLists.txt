@@ -2948,3 +2948,19 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME FrontLampRig COMMAND latebrake_front_lamp_rig_tests)
+
+# Actual Unreal day/dusk track-light render preset and menu-only authority.
+add_executable(latebrake_circuit_lighting_preview_tests
+    CircuitLightingPreviewTests.cpp)
+target_include_directories(latebrake_circuit_lighting_preview_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_circuit_lighting_preview_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_circuit_lighting_preview_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_circuit_lighting_preview_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CircuitLightingPreview
+    COMMAND latebrake_circuit_lighting_preview_tests)
