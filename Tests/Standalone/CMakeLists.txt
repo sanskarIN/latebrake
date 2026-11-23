@@ -3016,3 +3016,19 @@ else()
 endif()
 add_test(NAME VehicleRearSignalRenderRig
     COMMAND latebrake_rear_signal_render_tests)
+
+# Pure selection + appearance atomic transition policy. Prevent visual
+# double rebuild and applying the prior vehicle's wheel style on equip.
+add_executable(latebrake_garage_visual_transition_tests
+    GarageVisualTransitionTests.cpp)
+target_include_directories(latebrake_garage_visual_transition_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_visual_transition_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_visual_transition_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_visual_transition_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageVisualTransition
+    COMMAND latebrake_garage_visual_transition_tests)

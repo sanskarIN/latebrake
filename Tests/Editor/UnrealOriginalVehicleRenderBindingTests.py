@@ -85,6 +85,11 @@ class UnrealOriginalVehicleRenderBindingTests(unittest.TestCase):
         )[1].split("void ALatebrakeCarPawn::SetGarageAppearance(",1)[0]
         self.assertIn("if (SafeId != GarageVehicleId)",selected)
         self.assertIn("RebuildOriginalVehicleVisual(SafeId);",selected)
+        self.assertIn("PlanGarageVisualTransition(",selected)
+        self.assertIn("GarageVehicleId = SafeId;",selected)
+        self.assertIn("CurrentGarageLook = Transition.Look;",selected)
+        self.assertLess(selected.index("CurrentGarageLook = Transition.Look;"),
+                        selected.index("RebuildOriginalVehicleVisual(SafeId);"))
         appearance=self.actor.split(
             "void ALatebrakeCarPawn::SetGarageAppearance(",1
         )[1].split("void ALatebrakeCarPawn::",1)[0]

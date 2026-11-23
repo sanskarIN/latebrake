@@ -108,7 +108,10 @@ public:
     void HandleAppInputInterruption();
     void HandleAppFocusLost();
 
-    void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
+    // Apply selected identity AND that car's saved look together, before
+    // any 3D geometry/material work. Prevents two rebuilds on equip.
+    void SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
+                         int32 VehicleId, latebrake::GarageLook Look);
     void SetGarageAppearance(latebrake::GarageLook look);
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
     // Read-only rendering diagnostics for real owner testing. A committed

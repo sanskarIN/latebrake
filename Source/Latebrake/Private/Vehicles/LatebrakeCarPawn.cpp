@@ -38,6 +38,7 @@
 #include "Garage/GarageState.h"
 #include "Vehicles/OriginalVehicleRenderSections.h"
 #include "Vehicles/OriginalVehicleAnimatedWheels.h"
+#include "Vehicles/GarageVisualTransition.h"
 #include "Vehicles/OriginalVehicleTintMaterialPolicy.h"
 
 #include "Camera/CameraComponent.h"
@@ -1062,31 +1063,33 @@ void ALatebrakeCarPawn::RefreshRearSignalPositions()
 }
 
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
-                                     int32 VehicleId)
+                                     int32 VehicleId, latebrake::GarageLook Look)
 {
-    // The garage uses bounded, engine-independent multipliers; defend the
-    // physics integration from corrupt or nonfinite gameplay state anyway.
-    GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
-    GarageGrip = FMath::IsFinite(Grip) ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
-    GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
-    // New garage IDs are append-only. A corrupt/future ID falls back to the
-    // free starter instead of silently showing another purchased car.
-    const int32 SafeId = latebrake::GarageState::IsVehicle(VehicleId)
-        ? VehicleId : 0;
+    // This method is called only on an actual vehicle/tuning selection,
+    // not on a paint-only change. Keep physics multipliers independent of
+    // the free cosmetic options, and preserve finite value guards.
+    GarageAcceleration = FMath::IsFinite(Acceleration)
+        ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
+    GarageGrip = FMath::IsFinite(Grip)
+        ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
+    GarageTopSpeed = FMath::IsFinite(TopSpeed)
+        ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
+    const auto Transition = latebrake::PlanGarageVisualTransition(
+        GarageVehicleId, CurrentGarageLook, VehicleId, Look,
+        HasActorBegunPlay());
+    const int32 SafeId = Transition.VehicleId;
     if (SafeId != GarageVehicleId)
-    {
-        // Garage selection changes visible body proportions only.
-        // Vehicle force multipliers above are unchanged and remain bounded.
         ApplyVehicleVisualRecipe(SafeId);
-        // Original source-generated surfaces are only rebuilt when the
-        // actually equipped owned car identity changes, never on Tick.
-        if (HasActorBegunPlay())
-        {
-            RebuildOriginalVehicleVisual(SafeId);
-            ApplyVehiclePaintRecipe(SafeId);
-        }
-    }
+
+    // Commit identity and appearance atomically BEFORE the expensive 3D
+    // renderer. It must never build new-car geometry in the old car's
+    // saved rim style or allocate the same mesh twice on one equip action.
     GarageVehicleId = SafeId;
+    CurrentGarageLook = Transition.Look;
+    if (Transition.RebuildSourceMesh)
+        RebuildOriginalVehicleVisual(SafeId);
+    if (Transition.RefreshMaterials)
+        ApplyVehiclePaintRecipe(SafeId);
 }
 
 void ALatebrakeCarPawn::SetGarageAppearance(latebrake::GarageLook look)

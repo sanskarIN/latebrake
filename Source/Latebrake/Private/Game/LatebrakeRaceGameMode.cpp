@@ -2074,7 +2074,8 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
             static_cast<float>(Performance.Acceleration),
             static_cast<float>(Performance.Grip),
             static_cast<float>(Performance.TopSpeed),
-            Garage.SelectedVehicle());
+            Garage.SelectedVehicle(),
+            GarageLooks.Get(Garage.SelectedVehicle()));
         LastTunedPawn = Car;
         LastAppliedTuning = Requested;
     }

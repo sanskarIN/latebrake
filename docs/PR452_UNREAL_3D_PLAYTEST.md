@@ -173,3 +173,34 @@ artifact on the PR and follow
 Its 12 top-down cars and setup EXE are NOT the six-car UE5.8 racing game;
 a successful trial here cannot qualify 3D performance, shaders, wheels
 or native race physics.
+
+## Atomic car-selection + rim-style visual handoff
+
+The former GameMode update first changed the selected car using
+`SetGarageTuning`, which built its 3D body with the **previous**
+car's `CurrentGarageLook.Wheels`, then delivered its actual saved look
+using `SetGarageAppearance`. If the rim styles differed, this could
+generate the native procedural car/4-wheel set **twice** on one equip
+and briefly show a mismatched saved look.
+
+The GameMode now passes the **selected vehicle's own validated saved
+appearance** into the same tuning call. The real Pawn commits
+`GarageVehicleId` and `CurrentGarageLook` first, then runs *at most
+one* original 3D source-mesh rebuild and one palette update, according
+to the engine-independent `GarageVisualTransition` policy. Pure
+paint/stripe choices still only recolor/reposition materials; a
+rim-only style change still rebuilds exactly once; tuning-only
+upgrades change bounded performance multipliers without redoing
+visual geometry. Invalid/future IDs fail closed to starter+factory
+look. The 18-byte appearance SaveGame schema, ownership, purchase
+authority, physics root and scoring logic are unchanged.
+
+**Manual Unreal acceptance:** equip a newly owned car whose saved
+TRACK rims differ from the currently equipped STREET rims. On the
+first frame the car and all four wheel shapes must match the new
+car's saved style; no factory-rim flash, incomplete material, or
+double-rebuild hitch. Repeat with same rim style but different car,
+paint-only changes, upgrades, reload and rollback after failed save.
+Source-only tests cover every car/car/rim/rim/paint/stripe
+transition, idempotence, invalid IDs and invalid saved styles, not
+actual UHT/Editor/Windows frame-time certification.
