@@ -2712,3 +2712,20 @@ else()
         -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GarageGalleryCursor COMMAND latebrake_garage_gallery_tests)
+
+# Production Unreal Canvas showroom: deterministic 2D schematics derived
+# from each actual UE prototype's silhouette, paint, stripe and rim recipe.
+# Pure source tests DO NOT certify real 3D render/material parameters.
+add_executable(latebrake_garage_schematic_tests
+    GarageShowroomSchematicTests.cpp)
+target_include_directories(latebrake_garage_schematic_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_schematic_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_schematic_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_schematic_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageShowroomSchematic
+    COMMAND latebrake_garage_schematic_tests)
