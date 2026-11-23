@@ -368,3 +368,22 @@ the previous parked-car look is restored without applying a different
 look to the active Pawn. Verify no hidden, accidental editing when
 showroom pages change. These are engine/hardware acceptance tasks;
 portable C++ and source-binding tests are not proof of actual visuals.
+
+## Distinguish previewed car from the sequential Q purchase target
+
+A locked showroom preview can be a different ID from the first locked
+vehicle in the legacy career purchase order. The garage Canvas now
+prominently shows **Q UNLOCK TARGET: [name] | [price] CR** and whether
+that target is the currently viewed car or a different one. If every
+car is owned, it instead announces that Q has no unlock target.
+
+This is an informational source-only UI change. It does **not** let
+Q buy a later locked showroom preview, bypass sequential ownership,
+charge credits from a browsing action, or stage a purchase from
+another menu. The authoritative Q handler and two-press, read-only
+future-schema, focus and save-rollback protections remain unchanged.
+For manual QA browse Nova while Kestrel is first locked, then confirm
+the UI says **Kestrel** is Q's target; press Q once and verify the
+second-step offer names Kestrel. Do NOT press twice unless testing
+purchase flow with disposable career credits. Also verify the
+all-owned state has no misleading buy prompt.

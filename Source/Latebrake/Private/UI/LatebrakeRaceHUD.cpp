@@ -434,6 +434,25 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("PREVIEW EST.: ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
                 Preview.Effective.Acceleration, Preview.Effective.Grip,
                 Preview.Effective.TopSpeed));
+            // Sequential career unlocks intentionally do not follow the
+            // preview cursor. Identify the actual paid target NEXT TO the
+            // viewed car so browsing later locked IDs cannot mislead users
+            // into thinking Q will buy the pictured prototype.
+            if (latebrake::GarageState::IsVehicle(Catalog.NextUnlockId))
+            {
+                const auto& NextUnlock = Catalog.Cars[
+                    static_cast<std::size_t>(Catalog.NextUnlockId)];
+                const bool bViewingUnlockTarget = PreviewId == Catalog.NextUnlockId;
+                MenuLine(FString::Printf(
+                    TEXT("Q UNLOCK TARGET: %s | %d CR | %s"),
+                    UTF8_TO_TCHAR(NextUnlock.Name), NextUnlock.UnlockCost,
+                    bViewingUnlockTarget ? TEXT("CURRENT VIEW")
+                        : TEXT("DIFFERENT FROM VIEWED CAR")), true);
+            }
+            else
+            {
+                MenuLine(TEXT("ALL CARS OWNED: Q HAS NO UNLOCK TARGET"), true);
+            }
             MenuLine(TEXT("F9/F10 or mouse: BROWSE ALL / ENTER: EQUIP IF OWNED"));
             MenuLine(TEXT("PAD: RB FORWARD / B BACK | E EQUIPS NEXT OWNED"));
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
