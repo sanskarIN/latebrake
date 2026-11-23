@@ -30,8 +30,8 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
         self.assertIn("d.unlocked>latebrake_preview::PreviewKnownCarMask", self.app)
         self.assertIn("old.car>=latebrake_preview::PreviewCarCount", self.app)
         self.assertIn("d.car>=latebrake_preview::PreviewCarCount", self.app)
-        self.assertIn("selectedCar=(selectedCar+1)%latebrake_preview::PreviewCarCount", self.app)
-        self.assertIn("selectedCar=(selectedCar+latebrake_preview::PreviewCarCount-1)%latebrake_preview::PreviewCarCount", self.app)
+        self.assertIn("if(rgt||down)browseGarageDelta(1);", self.app)
+        self.assertIn("if(l||up)browseGarageDelta(-1);", self.app)
 
     def test_real_race_and_showroom_use_same_selected_style(self):
         for marker in (
@@ -53,7 +53,7 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
             "setAppearance(0,(unsigned)i)",
             "setAppearance(1,(unsigned)i)",
             "setAppearance(2,(unsigned)i)",
-            "selectedCar=page*latebrake_preview::PreviewCarsPerPage+i",
+            "browseGarageCar(page*latebrake_preview::PreviewCarsPerPage+i)",
             "unlockSelectedCar()",
         ):
             self.assertIn(marker, click)
@@ -64,7 +64,7 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
             "if(paint)cycleAppearance(0);",
             "if(stripe)cycleAppearance(1);",
             "if(wheels)cycleAppearance(2);",
-            "if(!(ownedMask&(1<<selectedCar)))",
+            "if(!(ownedMask&(1<<garageViewCar)))",
         ):
             self.assertIn(marker, self.app)
 
@@ -82,8 +82,8 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
             "DeleteFileA(tmp);return false;",
         ):
             self.assertIn(marker, section)
-        self.assertIn("const auto before=garageStyles[selectedCar];", self.app)
-        self.assertIn("garageStyles[selectedCar]=before;", self.app)
+        self.assertIn("const auto before=garageStyles[garageViewCar];", self.app)
+        self.assertIn("garageStyles[garageViewCar]=before;", self.app)
         self.assertIn("loadGarageAppearance();", self.app)
 
     def test_future_appearance_version_never_downgrades_saved_file(self):
@@ -103,7 +103,7 @@ class Win32GarageCustomizationBindingTests(unittest.TestCase):
         self.assertEqual(save.count("newerGarageAppearanceFileOnDisk(file)"),2)
         self.assertIn("garageAppearanceReadOnly=true;return false;",save)
         self.assertIn("if(garageAppearanceReadOnly)",edit)
-        self.assertIn("garageStyles[selectedCar]=before;",edit)
+        self.assertIn("garageStyles[garageViewCar]=before;",edit)
         self.assertIn("NEWER LOOK SAVE: READ ONLY / FILE PRESERVED",app)
         self.assertIn("selfTestStage=86;",app)
         self.assertIn("TestFutureSchemaDowngradeGuard();",self.test)

@@ -1,3 +1,19 @@
+## Garage focus and transparent player selection
+
+The experimental V5 2D trial now separates VIEWED showroom cars from
+the actually equipped car persisted in the existing V4 UI settings.
+Mouse, keyboard and pad navigation may preview all twelve vehicle
+profiles without stealing the active racer, affecting credits or
+writing settings. ENTER explicitly equips a car the user actually
+owns and starts the race. U only purchases the viewed locked car
+and checks transactional career save before acknowledging ownership;
+it does not silently equip. Old V3/V4 settings pointing at a locked
+viewed vehicle are safely reconciled with the unchanged career mask.
+A strict portable C++20 policy with 300,000 deterministic navigation
+and ownership samples and the actual Win64 game --self-test provide
+logic and source evidence. This does not prove real user satisfaction
+or qualify the Unreal 3D game.
+
 ## Gameplay quality work: real 2D driver guidance (source candidate)
 
 The 2D experiment's former steering assist only suppressed turning

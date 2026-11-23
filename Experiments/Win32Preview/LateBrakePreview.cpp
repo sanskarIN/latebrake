@@ -726,7 +726,8 @@ static void beginRace(){
     const latebrake_preview::RaceModePolicy mode=selectedModePolicy();
     if(!mode.Valid){page=HOME;message("INVALID RACE EVENT");return;}
     if(!(ownedMask&(1<<selectedCar))){
-        page=GARAGE;message("UNLOCK THIS CAR TO DRIVE IT");return;
+        page=GARAGE;garageViewCar=selectedCar;
+        message("UNLOCK THIS CAR TO DRIVE IT");return;
     }
     race.nitro=100.0f;race.lap=1;race.nextGate=0;
     totalLaps=totalLapsForMode();race.rivalCount=mode.RivalCount;
@@ -1096,7 +1097,7 @@ static void footerNav(){
     } else {
         hint(22,594,"ARROWS NAVIGATE     ENTER SELECT     M HOME     F1 HELP     H CONTRAST");
         hint(22,615,page==GARAGE?
-            "V PAINT   B STRIPE   N WHEELS   U UNLOCK   ENTER RACE   ESC BACK":
+            "ARROWS VIEW   ENTER EQUIP + RACE   U UNLOCK   V/B/N STYLE   ESC BACK":
             "WASD DRIVE   SPACE BRAKE   SHIFT NITRO   P PAUSE   ESC BACK/EXIT");
     }
 }
@@ -1177,7 +1178,7 @@ static void renderMenuV3(){
         uiButton(50,388,208,48,"EVENTS / TASKS",homeFocus==3);
         uiButton(275,388,208,48,"ONLINE PLANS",homeFocus==4);
         tile(530,121,384,335,true);
-        hint(556,143,"CURRENT RIDE");
+        hint(556,143,"EQUIPPED CAR");
         text(556,170,carNames[selectedCar],CREAM(),2);
         heroCar(716,244,selectedCar);
         hint(557,282,(ownedMask&(1<<selectedCar))?"READY TO DRIVE":"LOCKED / VISIT GARAGE TO UNLOCK");
@@ -1211,6 +1212,9 @@ static void renderMenuV3(){
             if(active)text(372,y+21,">",GOLD(),2);
         }
         tile(433,169,478,392,true);
+        hint(470,186,"SHOWROOM VIEW");
+        hint(470,200,"EQUIPPED:");
+        text(536,200,carNames[selectedCar],GOLD(),1);
         heroCar(675,229,garageViewCar);
         text(470,279,carNames[garageViewCar],CREAM(),3);
         hint(471,309,garageViewCar==selectedCar?"EQUIPPED / RACE READY":

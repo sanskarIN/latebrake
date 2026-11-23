@@ -144,3 +144,31 @@ pixels per second**, not kilometers per hour. It would be misleading
 to advertise this 2D prototype's simulation speed as calibrated real
 world km/h. Unreal's future physically scaled telemetry must be
 validated independently.
+
+## Showroom VIEWED versus equipped race car (V5 UX update)
+
+The Garage cursor is **VIEWED**, not the saved/equipped racer. You can
+browse all **12 cars**, including locked previews, without changing the
+car you will drive from **START QUICK RACE**. Rows distinguish
+**EQUIPPED / OWNED**, **OWNED / AVAILABLE**, and
+**LOCKED / EARN CREDITS**. The detail card shows the currently viewed
+car, while the side label identifies your equipped vehicle.
+
+Press **ENTER** or the bottom garage button on an owned car to explicitly
+equip it and begin a race. **U** (or the unlock button) buys the currently
+viewed locked car only if you have enough credits; a successful purchase
+**does not auto-equip**. Free paint, stripe and rim choices customize the
+viewed car without changing the equipped racer or physics upgrades.
+
+Earlier V3/V4 settings could store whatever car was last browsed, even
+when still locked. On launch, an unowned saved selection is now repaired
+using actual `career.dat` ownership. The current equipped car is saved
+in the **same V4 settings field**. No career, settings or appearance
+on-disk schema was modified.
+
+**Hands-on QA:** with only car 0 owned, browse car 11, return HOME,
+then start Quick Race: car 0 must race. Unlock another car, return HOME:
+car 0 must still race. Only after selecting ENTER on that newly owned
+car should the racing vehicle switch. Test both pages, mouse, keyboard,
+controller, resizing, older V3/V4 settings, save failures and Alt-Tab.
+These automated tests do not certify real Windows UX or UE5.8 gameplay.

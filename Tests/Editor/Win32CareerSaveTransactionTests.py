@@ -57,7 +57,7 @@ class Win32CareerSaveTransactionTests(unittest.TestCase):
             "static void activateSelection()", 1)[0]
         for marker in (
             "const int oldCredits=credits,oldMask=ownedMask;",
-            "credits-=carPrices[selectedCar];ownedMask|=1<<selectedCar;",
+            "credits-=carPrices[garageViewCar];ownedMask|=1<<garageViewCar;",
             "if(saveProgress())",
             "credits=oldCredits;ownedMask=oldMask;",
             "SAVE FAILED - UNLOCK AND CREDITS RESTORED",
