@@ -2520,3 +2520,164 @@ add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
 add_latebrake_portable_research_test(SixCarRouteContinuityAudit)
 add_latebrake_portable_research_test(WorldScaleSweptEnvelope)
 add_latebrake_portable_research_test(ObservedGripFusion)
+
+# Measured-font full detail wrapping: readable paginated garage/results rows.
+add_executable(latebrake_hud_detail_text_flow_tests HudDetailTextFlowTests.cpp)
+target_include_directories(latebrake_hud_detail_text_flow_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_detail_text_flow_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_detail_text_flow_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_detail_text_flow_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudDetailTextFlow COMMAND latebrake_hud_detail_text_flow_tests)
+
+# Display-only adaptive gear, shift and estimated-RPM badge. Uses real
+# proportionally measured glyph widths; no Unreal runtime or race authority.
+add_executable(latebrake_hud_drive_badge_tests HudInstrumentDriveBadgeTests.cpp)
+target_include_directories(latebrake_hud_drive_badge_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_drive_badge_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudInstrumentDriveBadge COMMAND latebrake_hud_drive_badge_tests)
+
+# Explain real nitro charge, cooldown, thermal lockout and launch-speed
+# prerequisites without modifying propulsion physics or racing authority.
+add_executable(latebrake_nitro_hud_readout_tests NitroHudReadoutTests.cpp)
+target_include_directories(latebrake_nitro_hud_readout_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_nitro_hud_readout_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME NitroHudReadout COMMAND latebrake_nitro_hud_readout_tests)
+
+# Cross-component desktop UI contract: separate garage paging, speed/gear
+# instrument geometry, and real NitroBoost read-only snapshots in one build.
+add_executable(latebrake_hud_integrated_readouts_tests HudIntegratedReadoutsTests.cpp)
+target_include_directories(latebrake_hud_integrated_readouts_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_integrated_readouts_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_integrated_readouts_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_integrated_readouts_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudIntegratedReadouts COMMAND latebrake_hud_integrated_readouts_tests)
+
+# Combined desktop HUD: measured details, pager, responsive hit targets,
+# gear badge and observational nitro must remain safe together.
+add_executable(latebrake_hud_integrated_viewport_safety_tests
+    HudIntegratedViewportSafetyTests.cpp)
+target_include_directories(latebrake_hud_integrated_viewport_safety_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_integrated_viewport_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudIntegratedViewportSafety
+    COMMAND latebrake_hud_integrated_viewport_safety_tests)
+
+# Real one-rival passing retry safety after composed physical traffic
+# braking. The per-gate latch cannot affect checkpoints or player input.
+add_executable(latebrake_rival_pass_gate_retry_tests
+    RivalPassGateRetryTests.cpp)
+target_include_directories(latebrake_rival_pass_gate_retry_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_pass_gate_retry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_pass_gate_retry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_pass_gate_retry_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalPassGateRetry
+    COMMAND latebrake_rival_pass_gate_retry_tests)
+
+# Visual-only ghost integrity: reject high-FPS angular transform snaps
+# without touching physics, rewards, official laps or stored profiles.
+add_executable(latebrake_ghost_yaw_continuity_tests
+    BestLapGhostYawContinuityTests.cpp)
+target_include_directories(latebrake_ghost_yaw_continuity_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_ghost_yaw_continuity_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_ghost_yaw_continuity_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_ghost_yaw_continuity_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BestLapGhostYawContinuity
+    COMMAND latebrake_ghost_yaw_continuity_tests)
+
+
+# Full merged source candidate: the same authoritative race clock, active
+# rival passing and best-lap ghost must never grant each other's authority.
+add_executable(latebrake_race_session_cross_system_safety_tests
+    RaceSessionCrossSystemSafetyTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
+target_include_directories(latebrake_race_session_cross_system_safety_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_session_cross_system_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_session_cross_system_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_session_cross_system_safety_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceSessionCrossSystemSafety
+    COMMAND latebrake_race_session_cross_system_safety_tests)
+
+
+# Experimental native Win32 2D trial: arithmetic must not activate menu
+# clicks outside the actual GDI canvas even on extreme desktop sizes.
+add_executable(latebrake_preview_viewport_math_tests
+    PreviewViewportMathTests.cpp)
+target_include_directories(latebrake_preview_viewport_math_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_viewport_math_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_viewport_math_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_viewport_math_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewViewportMath COMMAND latebrake_preview_viewport_math_tests)
+
+# Optional Windows 2D trial: Alt-Tab/key-hold focus recovery is portable,
+# independently checked and wired into the real GetAsyncKeyState path.
+add_executable(latebrake_preview_keyboard_focus_guard_tests
+    PreviewKeyboardFocusGuardTests.cpp)
+target_include_directories(latebrake_preview_keyboard_focus_guard_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_keyboard_focus_guard_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_keyboard_focus_guard_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_keyboard_focus_guard_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewKeyboardFocusGuard
+    COMMAND latebrake_preview_keyboard_focus_guard_tests)
+
+# Original native Windows 2D trial: strict append-only 12-car catalog,
+# allocation-free per-car paint/vinyl/rim policy and save integrity.
+add_executable(latebrake_preview_garage_style_tests
+    PreviewGarageStyleTests.cpp)
+target_include_directories(latebrake_preview_garage_style_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_garage_style_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_garage_style_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_garage_style_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGarageStyle
+    COMMAND latebrake_preview_garage_style_tests)

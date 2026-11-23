@@ -2,6 +2,62 @@
 
 **Development preview of an original Win32/GDI 2D racing experiment. NOT the Unreal Engine game.** No verified UE Editor compile, cooked levels, 3D assets, online multiplayer or Windows hardware testing is claimed.
 
+## Latest trial build and Win64 canvas-input correctness
+
+A **2D Windows trial artifact** can be built without Unreal by opening a
+pull request that changes this experiment's source. The existing
+`experimental-win32-preview.yml` GitHub workflow compiles the native
+Windows x64 `LateBrakePreviewV5.exe` and `LateBrakeSetupV5.exe`,
+runs isolated headless self-tests, validates actual PE32+ x64 binaries
+and the installer's embedded game payload, and uploads the ZIP as an
+**UNVERIFIED 2D Win64 trial**, not a release.
+
+The trial ZIP now includes `TRIAL_QUICKSTART.md` plus a generated
+`TRIAL_BUILD_SHA256.txt` containing both executable SHA-256 hashes,
+the source PR head and CI checkout SHA. These are useful for identifying
+the exact binary being tested; the runner's synthetic test **does not**
+certify a real user-facing desktop game.
+
+The original GDI viewport now delegates all letterbox/pillarbox mouse
+mapping to `PreviewViewportMath.h`. Intermediate client coordinate
+calculations use 64-bit integers, so extremely large resized windows
+cannot overflow signed 32-bit hit-test products and activate unrelated
+menu controls. The exact real Win32 `WM_MOUSEMOVE` and
+`WM_LBUTTONDOWN` path uses this shared policy, not an isolated copy.
+A portable strict C++20 `PreviewViewportMath` test covers normal
+Windows resolutions, invalid rectangles, black bars, large-client
+limits, 100,000 deterministic cases and 32-bit overflow boundaries.
+The Windows GUI preview's `--self-test` also checks the maximum viewport
+edge. See [trial quick start](TRIAL_QUICKSTART.md).
+
+**These changes do not become UE5.8 features simply because the
+source branches share a candidate PR.** Genuine Unreal gameplay
+requires the separately licensed-engine Windows Editor/UHT and native
+packaging QA described in the production build documentation.
+
+## Twelve-car garage and per-vehicle appearance (draft 2D trial)
+
+The standalone preview now offers **12 selectable fictional cars** in
+two accessible pages, retaining the original six save IDs. Additional
+cars require earned credits; existing progression still determines actual
+race permissions, and different car profiles affect the 2D simulation.
+The enlarged garage shows live per-car power/speed/grip and a visually
+distinct original silhouette. Each model can independently choose
+8 paint colors, clean/center/twin vinyl, and street/sport/track rims,
+visible both in the showroom and on the actual 2D track. Choose with
+the mouse or V/B/N keys. These are **cosmetic only** and never modify
+physical handling or award credits.
+
+A separate versioned `garage-appearance-v1.dat` is checksum validated,
+bounded and written with a flushed atomic replacement; an unsuccessful
+cosmetic save reverts the in-memory change rather than falsely showing
+it as saved. No existing career.dat or settings.dat format was modified;
+the existing 32-bit V2 ownership mask supports the appended twelve IDs,
+but an older build that only understood six cars may not understand
+new car IDs when downgrading. Existing Windows CI exercises a native
+standalone game self-test and strict portable C++20 + source contracts.
+No tested UE Engine 5.8 3D car models or mesh customization are implied.
+
 ## V5 development changes
 
 - **Mode-correct rival sessions:** Time Attack (one lap) and Checkpoint Rush (two laps) now run as actual solo clock events; no AI cars are initialized, advanced, collision-tested or drawn in these modes. Circuit Race (three laps) and Rival Duel (two laps) retain three local scripted AI drivers. A per-attempt rival-count snapshot prevents menu selections from silently changing active physics, and the minimap explicitly labels solo/rival events. Rival Duel detects any rival that completes the required laps, rather than assuming a fixed AI slot is always fastest. Strict portable mode-policy tests and Windows synthetic self-tests cover this source change. This does not qualify real Windows hardware, AI quality or the Unreal game. [Mode-isolation QA](../../docs/PREVIEW_SOLO_EVENT_ISOLATION_QA.md).
@@ -20,7 +76,7 @@
 - Controller status and control mappings appear in HUD/footer when connected.
 - Resizable Windows game viewport now preserves the original 3:2 canvas with pillarboxing/letterboxing. Click and hover coordinates use the visible canvas only; black bars do not activate UI actions.
 - Added synthetic input-level tests for axis extremes/deadzones, trigger scaling, button edges/held buttons, unplug/reconnect and focus re-entry. These do not constitute real controller hardware QA.
-- Keeps V2 career saves and V3/V4 settings compatibility, six vehicle tuning profiles, four procedural tracks/events, rivals, 120Hz fixed-step simulation, checkpoint direction, race records and the personal installer.
+- Keeps V2 career saves and V3/V4 settings compatibility, twelve 2D vehicle profiles, four procedural tracks/events, rivals, 120Hz fixed-step simulation, checkpoint direction, race records and the personal installer.
 
 ## Controls
 
@@ -39,6 +95,9 @@
 | Driver guide | F1 | F1 |
 | Steering assist | J | J |
 | High contrast | H | H |
+| Garage paint (next) | V | Mouse |
+| Garage vinyl (next) | B | Mouse |
+| Garage wheels (next) | N | Mouse |
 
 The input fallback is designed for optional XInput devices; compatibility with specific gamepads, adapters, Bluetooth setups, trigger ranges, and Windows graphics/drivers **requires hands-on Windows testing**.
 

@@ -3,6 +3,9 @@
 // Self-contained Win32/GDI progression prototype: no network, CRT, plugins, or Unreal assets.
 // Build and launch on Windows; --self-test runs an isolated deterministic logic check.
 #include "PreviewRaceModes.h"
+#include "PreviewViewportMath.h"
+#include "PreviewGarageStyle.h"
+#include "PreviewKeyboardFocusGuard.h"
 
 extern "C" { int _fltused = 0; } // MSVC floating-point linkage marker.
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -82,7 +85,10 @@ __declspec(dllimport) int __stdcall StretchDIBits(HDC,int,int,int,int,int,int,in
 
 static const int WIDTH=960, HEIGHT=640;
 static const float CX=480.0f, CY=331.0f;
-struct CanvasViewport { int x,y,w,h; };
+using latebrake_preview::CanvasViewport;
+static_assert(WIDTH==latebrake_preview::PreviewCanvasWidth &&
+    HEIGHT==latebrake_preview::PreviewCanvasHeight,
+    "Preview input transforms must match the actual GDI framebuffer");
 // The freestanding GDI preview used to silently exit during startup and
 // silently present black frames if the desktop display blit failed. This
 // state machine only observes actual nonzero viewports; minimizing a
@@ -105,22 +111,15 @@ static bool observePresentStatus(PreviewGdiHealth& state,
     }
     return false;
 }
+// All real mouse clicks and window resizes use the same portable, strictly
+// 64-bit projection policy as the C++20 regression suite. Black borders
+// never become active UI space; malformed input leaves coordinates inert.
 static CanvasViewport fitViewport(int clientW,int clientH){
-    if(clientW<=0||clientH<=0)return {0,0,0,0};
-    long long wide=(long long)clientW*HEIGHT;
-    long long tall=(long long)clientH*WIDTH;
-    int w=clientW,h=clientH;
-    if(wide>tall)w=(int)((long long)clientH*WIDTH/HEIGHT);
-    else h=(int)((long long)clientW*HEIGHT/WIDTH);
-    if(w<1)w=1;if(h<1)h=1;
-    return {(clientW-w)/2,(clientH-h)/2,w,h};
+    return latebrake_preview::FitPreviewViewport(clientW,clientH);
 }
 static bool translateMouse(const CanvasViewport& vp,int clientX,int clientY,int& outX,int& outY){
-    if(vp.w<=0||vp.h<=0||clientX<vp.x||clientY<vp.y||
-       clientX>=vp.x+vp.w||clientY>=vp.y+vp.h)return false;
-    outX=(clientX-vp.x)*WIDTH/vp.w;
-    outY=(clientY-vp.y)*HEIGHT/vp.h;
-    return true;
+    return latebrake_preview::TranslatePreviewMouse(
+        vp,clientX,clientY,outX,outY);
 }
 static unsigned int backdrop[WIDTH*HEIGHT], frame[WIDTH*HEIGHT];
 static bool running=true, paused=false, lastPause=false, lastRestart=false;
@@ -143,6 +142,10 @@ typedef DWORD (__stdcall *XInputStateFn)(DWORD,PadPacket*);
 static HINSTANCE xinputModule=0;
 static XInputStateFn xinputRead=0;
 static bool padConnected=false,hasWindowFocus=true;
+// Keyboard and pad rearm independently. A key held through Alt-Tab may not
+// accelerate or trigger a menu action on the first foreground frame.
+static latebrake_preview::PreviewKeyboardFocusGuard keyboardFocus{};
+static bool keyboardInputArmed=true;
 static unsigned short lastPadButtons=0;
 static bool stickMenuLatch=false,padRequireNeutral=true;
 static DWORD activePadUser=4;
@@ -168,19 +171,44 @@ static float trackRx=291.0f,trackRy=161.0f,trackWidth=0.235f;
 static bool lastEnter=false,lastBack=false,lastGarage=false,lastTracks=false,lastChallenge=false,lastOnline=false,lastMenu=false;
 static bool lastLeft=false,lastRight=false,lastUp=false,lastDown=false,lastUnlock=false;
 static bool lastHelp=false,lastContrast=false;
+static bool lastPaint=false,lastStripe=false,lastWheels=false;
 static bool testing=false;
+static bool simulateAppearanceSaveFailure=false;
 // Used exclusively by headless tests. A production process cannot enable this.
 static bool simulateProgressSaveFailure=false;
 // Headless self-test reports a coarse failing phase through the process exit
 // code. This makes CI failures actionable without changing GUI output/saves.
 static unsigned int selfTestStage=3;
 static char toast[72]="";
-static const char* carNames[6]={"COMET GT","DUNE BUGGY","NIGHTFALL","VOLT RALLY","APEX V12","PHANTOM R"};
-static const int carPrices[6]={0,140,280,450,750,1100};
-static const unsigned int carPaints[6]={0xF65745,0xF0C54D,0x44D8CE,0xB67FFF,0xF0F0F2,0xFD70B3};
-static const float carAccel[6]={1.00f,0.89f,1.13f,0.99f,1.24f,1.32f};
-static const float carSpeed[6]={1.00f,0.88f,1.05f,1.12f,1.18f,1.28f};
-static const float carGrip[6]={1.00f,1.24f,1.01f,1.18f,0.91f,1.11f};
+static const char* carNames[latebrake_preview::PreviewCarCount]={
+    "COMET GT","DUNE BUGGY","NIGHTFALL","VOLT RALLY","APEX V12","PHANTOM R",
+    "DUSTLINE","SOLARIS","TITAN RS","VORTEX XR","RAPTOR GT","ION BLADE"
+};
+static const int carPrices[latebrake_preview::PreviewCarCount]={
+    0,140,280,450,750,1100,1450,1850,2350,3000,3900,5100
+};
+static const float carAccel[latebrake_preview::PreviewCarCount]={
+    1.00f,0.89f,1.13f,0.99f,1.24f,1.32f,
+    0.98f,1.12f,1.05f,1.31f,1.37f,1.42f
+};
+static const float carSpeed[latebrake_preview::PreviewCarCount]={
+    1.00f,0.88f,1.05f,1.12f,1.18f,1.28f,
+    0.95f,1.08f,1.13f,1.22f,1.30f,1.38f
+};
+static const float carGrip[latebrake_preview::PreviewCarCount]={
+    1.00f,1.24f,1.01f,1.18f,0.91f,1.11f,
+    1.27f,1.15f,1.33f,1.08f,1.04f,1.19f
+};
+static latebrake_preview::PreviewAppearance garageStyles[
+    latebrake_preview::PreviewCarCount]={
+    {0u,0u,0u},{1u,0u,0u},{2u,0u,0u},{3u,0u,0u},
+    {4u,0u,0u},{5u,0u,0u},{6u,0u,0u},{7u,0u,0u},
+    {1u,0u,0u},{2u,0u,0u},{0u,0u,0u},{4u,0u,0u}
+};
+static unsigned int selectedPaint(int id){
+    return latebrake_preview::PreviewPaintColor(
+        garageStyles[latebrake_preview::ValidPreviewCar(id)?id:0]);
+}
 static const char* trackNames[4]={"GREEN LOOP","CANYON RUN","COASTAL CURVE","NEON NIGHT"};
 static const char* challengeNames[4]={"CIRCUIT RACE","TIME ATTACK","RIVAL DUEL","CHECKPOINT RUSH"};
 static const char* challengeSub[4]={"FINISH 3 LAPS","BEAT 65 SEC","BEAT RIVAL IN 2 LAPS","2 LAPS UNDER 95 SEC"};
@@ -336,7 +364,7 @@ static void loadProgress(){
     ProgressFile d={};DWORD got=0;
     BOOL ok=ReadFile(h,&d,sizeof(d),&got,0);CloseHandle(h);
     if(!ok||got!=sizeof(d)||d.magic!=0x32424C4Cu||d.version!=2||d.checksum!=saveChecksum(d))return;
-    if((d.unlocked&1u)==0||d.unlocked>63||d.money>500000||d.wins>100000||d.stars>100000)return;
+    if((d.unlocked&1u)==0||d.unlocked>latebrake_preview::PreviewKnownCarMask||d.money>500000||d.wins>100000||d.stars>100000)return;
     ownedMask=(int)d.unlocked;credits=(int)d.money;completed=(int)d.wins;careerStars=(int)d.stars;
 }
 static bool saveProgress(){
@@ -391,12 +419,12 @@ static void loadSettings(){
         // Exact V3 settings shape: d.assist carries the legacy checksum.
         UISettings old={d.magic,d.version,d.car,d.track,d.event,d.contrast,d.assist};
         if(old.magic!=0x33424955u||old.version!=3||old.checksum!=uiChecksum(old)||
-            old.car>=6||old.track>=4||old.event>=4||old.contrast>1)return;
+            old.car>=latebrake_preview::PreviewCarCount||old.track>=4||old.event>=4||old.contrast>1)return;
         selectedCar=(int)old.car;selectedTrack=(int)old.track;
         selectedChallenge=(int)old.event;highContrast=old.contrast!=0;
     }else if(got==sizeof(UISettingsV4)){
         if(d.magic!=0x34424955u||d.version!=4||d.checksum!=uiChecksumV4(d)||
-           d.car>=6||d.track>=4||d.event>=4||d.contrast>1||d.assist>1)return;
+           d.car>=latebrake_preview::PreviewCarCount||d.track>=4||d.event>=4||d.contrast>1||d.assist>1)return;
         selectedCar=(int)d.car;selectedTrack=(int)d.track;
         selectedChallenge=(int)d.event;highContrast=d.contrast!=0;
         steeringAssist=d.assist!=0;
@@ -413,6 +441,59 @@ static void saveSettings(){
     if(h==(HANDLE)-1||!h)return;
     DWORD written=0;BOOL ok=WriteFile(h,&d,sizeof(d),&written,0);CloseHandle(h);
     if(ok&&written==sizeof(d))MoveFileExA(tmp,file,0x1u|0x8u);
+}
+// Independent livery save: never rewrite the V2 career or V3/V4 UI records.
+// A corrupted or truncated file resets only cosmetics, not earned ownership.
+// The old six profile IDs remain exactly the same; appended IDs use safe
+// unsigned bit positions in the existing 32-bit V2 ownership word.
+struct GarageAppearanceFile {
+    unsigned int magic,version;
+    latebrake_preview::PreviewAppearance cars[latebrake_preview::PreviewCarCount];
+    unsigned int checksum;
+};
+static_assert(sizeof(GarageAppearanceFile) ==
+    12u + sizeof(latebrake_preview::PreviewAppearance) *
+    latebrake_preview::PreviewCarCount, "Unexpected appearance save layout");
+static bool garageAppearancePaths(char* dir,char* file,char* temp){
+    char home[320]={};
+    DWORD n=GetEnvironmentVariableA("LOCALAPPDATA",home,319);
+    return n>0&&n<319&&joinPath(dir,400,home,"LateBrakePreview")&&
+        joinPath(file,440,dir,"garage-appearance-v1.dat")&&
+        joinPath(temp,440,dir,"garage-appearance-v1.tmp");
+}
+static void loadGarageAppearance(){
+    char dir[400],file[440],tmp[440];if(!garageAppearancePaths(dir,file,tmp))return;
+    HANDLE h=CreateFileA(file,0x80000000u,1,0,3,0,0);
+    if(h==(HANDLE)-1||!h)return;
+    GarageAppearanceFile d={};DWORD got=0;
+    BOOL ok=ReadFile(h,&d,sizeof(d),&got,0);CloseHandle(h);
+    if(!ok||got!=sizeof(d)||d.magic!=0x3147424Cu||d.version!=1u||
+       !latebrake_preview::ValidatePreviewAppearanceArray(d.cars)||
+       d.checksum!=latebrake_preview::PreviewAppearanceChecksum(
+           d.magic,d.version,d.cars))return;
+    for(int i=0;i<latebrake_preview::PreviewCarCount;i++)
+        garageStyles[i]=d.cars[i];
+}
+static bool saveGarageAppearance(){
+    if(testing)return !simulateAppearanceSaveFailure;
+    char dir[400],file[440],tmp[440];if(!garageAppearancePaths(dir,file,tmp))return false;
+    CreateDirectoryA(dir,0);
+    GarageAppearanceFile d={};d.magic=0x3147424Cu;d.version=1u;
+    for(int i=0;i<latebrake_preview::PreviewCarCount;i++)
+        d.cars[i]=garageStyles[i];
+    if(!latebrake_preview::ValidatePreviewAppearanceArray(d.cars))return false;
+    d.checksum=latebrake_preview::PreviewAppearanceChecksum(d.magic,d.version,d.cars);
+    HANDLE h=CreateFileA(tmp,0x40000000u,0,0,2,0x80,0);
+    if(h==(HANDLE)-1||!h)return false;
+    DWORD written=0;
+    bool complete=WriteFile(h,&d,sizeof(d),&written,0)!=0&&written==sizeof(d);
+    const bool flushed=complete&&FlushFileBuffers(h)!=0;
+    const bool closed=CloseHandle(h)!=0;
+    if(!flushed||!closed){DeleteFileA(tmp);return false;}
+    if(!MoveFileExA(tmp,file,0x1u|0x8u)){
+        DeleteFileA(tmp);return false;
+    }
+    return true;
 }
 // A separate additive V4 lap-record file preserves V2/V3 progress/settings.
 // Milliseconds avoid platform-dependent float representations in the save.
@@ -459,6 +540,26 @@ static void observeCompletedLap(float duration){
     }
 }
 static void message(const char* t){int i=0;while(t[i]&&i<70){toast[i]=t[i];++i;}toast[i]=0;toastTime=2.8f;}
+static bool setAppearance(int category,unsigned int choice){
+    if(page!=GARAGE||!latebrake_preview::ValidPreviewCar(selectedCar))return false;
+    const auto before=garageStyles[selectedCar];
+    if(!latebrake_preview::ChangePreviewAppearance(
+         garageStyles[selectedCar],category,choice))return false;
+    if(!saveGarageAppearance()){
+        garageStyles[selectedCar]=before;
+        message("LOOK NOT SAVED / CHECK LOCAL STORAGE");
+        return false;
+    }
+    message("CUSTOM LOOK SAVED FOR THIS CAR");
+    return true;
+}
+static void cycleAppearance(int category){
+    if(!latebrake_preview::ValidPreviewCar(selectedCar))return;
+    const unsigned int count=latebrake_preview::PreviewAppearanceOptionCount(category);
+    if(count==0u)return;
+    setAppearance(category,(
+      latebrake_preview::PreviewAppearanceValue(garageStyles[selectedCar],category)+1u)%count);
+}
 static float trackProfile(float c,float s){
     float c2=c*c-s*s,s2=2*c*s,c3=4*c*c*c-3*c,s3=3*s-4*s*s*s;
     if(selectedTrack==1)return 1.0f+0.085f*c3+0.040f*s2;
@@ -763,22 +864,46 @@ static void drawTrack(){
     text((int)px-10,(int)py-4,"PIT",color(245,242,215),1);
     for(int i=0;i<WIDTH*HEIGHT;i++)backdrop[i]=frame[i];
 }
-static void drawCar(float x,float y,float fx,float fy,unsigned int body,unsigned int nose){
-    // Longitudinal axis = unit forward. Draw rotated body and contrasting nose.
+static void drawCar(float x,float y,float fx,float fy,
+                    unsigned int body,unsigned int nose,int model=-1){
+    // 2D original vehicle silhouette. Player model owns its livery;
+    // rivals stay unaffected by the garage's cosmetic save.
+    const bool player=latebrake_preview::ValidPreviewCar(model);
+    const int len=player?(13+model%4):14;
+    const int halfW=player?(7+(model/4)%3):8;
+    const unsigned vinyl=player?garageStyles[model].Vinyl:0u;
+    const unsigned wheels=player?garageStyles[model].Wheels:0u;
+    const unsigned int stripe=player?
+        (garageStyles[model].Paint==4u?color(28,58,79):color(241,245,224)):body;
     float sx=-fy,sy=fx;
-    for(int a=-14;a<=17;a++)for(int b=-9;b<=9;b++){
-        int px=(int)(x+fx*a+sx*b+1.9f),py=(int)(y+fy*a+sy*b+2.7f);
-        if(absf((float)b)<7.0f)put(px,py,color(16,21,28));
+    for(int a=-len-1;a<=len+1;a++)for(int b=-halfW-2;b<=halfW+2;b++){
+        if(absf((float)b)<halfW+1){
+            put((int)(x+fx*a+sx*b+1.5f),
+                (int)(y+fy*a+sy*b+2.0f),color(12,18,25));
+        }
     }
-    for(int a=-14;a<=15;a++)for(int b=-8;b<=8;b++){
-        int px=(int)(x+fx*a+sx*b),py=(int)(y+fy*a+sy*b);
-        if(a<0&&absf((float)b)>6.0f)continue;
-        unsigned int c=(a>=9)?nose:((a>=-3&&a<=7&&absf((float)b)<6)?color(36,51,65):body);
-        put(px,py,c);
+    for(int a=-len;a<=len;a++)for(int b=-halfW;b<=halfW;b++){
+        if(a<-len+5&&absf((float)b)>halfW-2)continue;
+        const bool cockpit=(a>=-4&&a<=6&&absf((float)b)<halfW-2);
+        unsigned int c=(a>=len-4)?nose:
+           (cockpit?color(33,62,81):body);
+        if(a>-len+3&&a<len-5){
+            if(vinyl==1u&&absf((float)b)<=1)c=stripe;
+            if(vinyl==2u&&(b==-3||b==3))c=stripe;
+        }
+        put((int)(x+fx*a+sx*b),(int)(y+fy*a+sy*b),c);
     }
     for(int z=-1;z<=1;z+=2){
-        dot((int)(x+fx*13+sx*z*6),(int)(y+fy*13+sy*z*6),2,color(255,255,193));
-        dot((int)(x-fx*12+sx*z*6),(int)(y-fy*12+sy*z*6),2,color(241,73,74));
+        const unsigned int rim=wheels==2u?color(78,224,238):
+                                wheels==1u?color(235,236,227):color(62,68,77);
+        dot((int)(x+fx*8+sx*z*(halfW+1)),
+            (int)(y+fy*8+sy*z*(halfW+1)),wheels?3:2,rim);
+        dot((int)(x-fx*9+sx*z*(halfW+1)),
+            (int)(y-fy*9+sy*z*(halfW+1)),wheels?3:2,rim);
+        dot((int)(x+fx*(len-1)+sx*z*(halfW-2)),
+            (int)(y+fy*(len-1)+sy*z*(halfW-2)),2,color(255,255,193));
+        dot((int)(x-fx*(len-1)+sx*z*(halfW-2)),
+            (int)(y-fy*(len-1)+sy*z*(halfW-2)),2,color(241,73,74));
     }
 }
 static void progressBar(int x,int y,int w,int h,int pct,unsigned int fg){
@@ -805,7 +930,7 @@ static void carCard(int x,int y,int index,bool active){
     rect(x,y,246,122,active?color(46,66,78):color(22,31,43));
     if(active){rect(x,y,246,3,color(253,198,95));}
     text(x+15,y+12,carNames[index],color(247,223,182),2);
-    drawCar((float)x+47,(float)y+76,1.0f,0.0f,carPaints[index],color(255,239,170));
+    drawCar((float)x+47,(float)y+76,1.0f,0.0f,selectedPaint(index),color(255,239,170),index);
     text(x+85,y+49,"POWER",color(145,177,190),1);bar(x+134,y+49,99,(int)(carAccel[index]*76),color(245,132,97));
     text(x+85,y+67,"SPEED",color(145,177,190),1);bar(x+134,y+67,99,(int)(carSpeed[index]*73),color(118,209,246));
     text(x+85,y+85,"GRIP",color(145,177,190),1);bar(x+134,y+85,99,(int)(carGrip[index]*70),color(132,226,166));
@@ -852,7 +977,9 @@ static void footerNav(){
         hint(22,615,"RT GAS   LT BRAKE   LEFT STICK STEER   START PAUSE   F1 HELP");
     } else {
         hint(22,594,"ARROWS NAVIGATE     ENTER SELECT     M HOME     F1 HELP     H CONTRAST");
-        hint(22,615,"WASD DRIVE   SPACE BRAKE   SHIFT NITRO   P PAUSE   ESC BACK/EXIT");
+        hint(22,615,page==GARAGE?
+            "V PAINT   B STRIPE   N WHEELS   U UNLOCK   ENTER RACE   ESC BACK":
+            "WASD DRIVE   SPACE BRAKE   SHIFT NITRO   P PAUSE   ESC BACK/EXIT");
     }
 }
 static void trackThumbnail(int x,int y,int w,int h,int idx){
@@ -872,22 +999,39 @@ static void trackThumbnail(int x,int y,int w,int h,int idx){
     dot((int)(cx),(int)(cy+ry),4,GOLD());
 }
 static void heroCar(int cx,int cy,int id){
-    unsigned int paint=carPaints[id];
-    // Wide readable concept illustration for selection. It is NOT 3D art.
-    rect(cx-70,cy-31,139,65,color(7,13,22));
-    for(int sign=-1;sign<=1;sign+=2){
-        rect(cx-56,cy+sign*35-5,34,10,color(12,17,22));
-        rect(cx+28,cy+sign*35-5,31,10,color(12,17,22));
+    if(!latebrake_preview::ValidPreviewCar(id))return;
+    const auto style=garageStyles[id];
+    const unsigned int paint=selectedPaint(id);
+    const unsigned int stripe=style.Paint==4u?color(27,53,74):color(248,242,214);
+    // Twelve original silhouette variants with persistent per-car
+    // paint/stripe/wheel differences. This is a raster concept car, NOT UE art.
+    const int length=119+(id%4)*7;
+    const int tall=43+(id/4)%3*6;
+    const int x=cx-length/2,y=cy-tall/2;
+    rect(x+5,y+7,length,tall,color(7,13,22));
+    for(int pos=0;pos<2;pos++){
+        const int wx=pos==0?x+17:x+length-41;
+        const int wheelH=style.Wheels==2u?15:style.Wheels==1u?13:11;
+        for(int sign=-1;sign<=1;sign+=2){
+            rect(wx,cy+sign*(tall/2+5)-wheelH/2,25,wheelH,color(11,17,23));
+            rect(wx+5,cy+sign*(tall/2+5)-3,15,6,
+                style.Wheels==2u?CYAN():style.Wheels==1u?color(235,238,233):color(82,95,106));
+        }
     }
-    rect(cx-66,cy-27,133,54,paint);
-    rect(cx-20,cy-22,42,44,color(33,65,81));
-    rect(cx-59,cy-20,16,40,shade(paint,0.70f));
-    rect(cx+50,cy-17,10,34,color(244,203,130));
-    rect(cx-55,cy-3,112,6,color(244,246,232));
-    rect(cx-63,cy-26,12,9,color(249,100,84));
-    rect(cx-63,cy+17,12,9,color(249,100,84));
-    rect(cx+60,cy-25,8,13,color(255,242,181));
-    rect(cx+60,cy+12,8,13,color(255,242,181));
+    rect(x,y,length,tall,paint);
+    rect(x+12,y+6,13,tall-12,shade(paint,0.70f));
+    rect(x+length/3,y+5,42,tall-10,color(29,65,82));
+    rect(x+length/3+3,y+7,8,tall-14,color(50,96,114));
+    rect(x+length-18,y+5,7,tall-10,color(243,206,147));
+    if(style.Vinyl==1u)rect(x+8,cy-3,length-16,6,stripe);
+    if(style.Vinyl==2u){
+        rect(x+8,cy-9,length-16,3,stripe);
+        rect(x+8,cy+6,length-16,3,stripe);
+    }
+    rect(x,y+5,8,9,color(247,100,86));
+    rect(x,y+tall-14,8,9,color(247,100,86));
+    rect(x+length-7,y+5,7,9,color(255,243,182));
+    rect(x+length-7,y+tall-14,7,9,color(255,243,182));
 }
 static void cardStat(int x,int y,const char* name,float proportion,unsigned int accent){
     text(x,y,name,MUTED(),1);
@@ -918,6 +1062,7 @@ static void renderMenuV3(){
         hint(556,143,"CURRENT RIDE");
         text(556,170,carNames[selectedCar],CREAM(),2);
         heroCar(716,244,selectedCar);
+        hint(557,282,(ownedMask&(1<<selectedCar))?"READY TO DRIVE":"LOCKED / VISIT GARAGE TO UNLOCK");
         hint(558,302,"CURRENT CIRCUIT");
         text(558,324,trackNames[selectedTrack],GOLD(),2);
         trackThumbnail(724,302,170,111,selectedTrack);
@@ -927,28 +1072,56 @@ static void renderMenuV3(){
         hint(335,493,"EVENT WINS");number(338,516,completed,CREAM(),3);
         hint(571,493,"CAREER STARS");number(575,516,careerStars,CYAN(),3);
     }else if(page==GARAGE){
-        navActiveTag("VEHICLE SHOWROOM");
-        text(48,92,"GARAGE",CREAM(),4);
-        hint(49,135,"SIX CAR TUNES  /  RACE TO EARN CREDITS  /  U TO UNLOCK");
-        for(int i=0;i<6;i++){
-            int y=169+i*63;bool active=selectedCar==i;
+        navActiveTag("12 VEHICLE SHOWROOM");
+        text(48,91,"GARAGE",CREAM(),4);
+        hint(49,123,"TWELVE ORIGINAL CARS / FREE LOOK CUSTOMIZATION");
+        const int pageNumber=selectedCar/latebrake_preview::PreviewCarsPerPage;
+        uiButton(49,143,165,23,"< PREVIOUS",false);
+        uiButton(240,143,169,23,"NEXT >",false);
+        number(385,126,pageNumber+1,CYAN(),1);
+        for(int i=0;i<latebrake_preview::PreviewCarsPerPage;i++){
+            const int id=pageNumber*latebrake_preview::PreviewCarsPerPage+i;
+            const int y=169+i*63;
+            const bool active=selectedCar==id;
             tile(49,y,360,55,active);
-            rect(61,y+12,26,28,carPaints[i]);
-            text(103,y+10,carNames[i],CREAM(),2);
-            hint(103,y+35,(ownedMask&(1<<i))?"OWNED / READY TO DRIVE":"LOCKED / USE CREDITS");
-            if(active)text(370,y+21,">",GOLD(),2);
+            rect(61,y+12,26,28,selectedPaint(id));
+            text(101,y+10,carNames[id],CREAM(),2);
+            hint(102,y+35,(ownedMask&(1<<id))?"OWNED / RACE READY":"LOCKED / EARN CREDITS");
+            if(active)text(372,y+21,">",GOLD(),2);
         }
         tile(433,169,478,392,true);
-        heroCar(674,251,selectedCar);
-        text(471,320,carNames[selectedCar],CREAM(),3);
-        cardStat(473,365,"POWER",carAccel[selectedCar]/1.4f,color(247,144,105));
-        cardStat(473,390,"SPEED",carSpeed[selectedCar]/1.4f,CYAN());
-        cardStat(473,415,"GRIP",carGrip[selectedCar]/1.4f,color(149,223,171));
-        hint(474,465,"YOUR CREDITS");number(477,481,credits,GOLD(),2);
+        heroCar(675,229,selectedCar);
+        text(470,279,carNames[selectedCar],CREAM(),3);
+        hint(471,309,(ownedMask&(1<<selectedCar))?"READY / SELECT TO RACE":"PREVIEW ONLY UNTIL UNLOCKED");
+        cardStat(473,327,"POWER",carAccel[selectedCar]/1.5f,color(247,144,105));
+        cardStat(473,347,"SPEED",carSpeed[selectedCar]/1.5f,CYAN());
+        cardStat(473,367,"GRIP",carGrip[selectedCar]/1.5f,color(149,223,171));
+        hint(473,400,"PAINT");
+        for(int i=0;i<latebrake_preview::PreviewPaintCount;i++){
+            const int x=586+i*35;
+            rect(x,393,25,23,latebrake_preview::PreviewPaintPalette[i]);
+            stroke(x-2,391,29,27,garageStyles[selectedCar].Paint==(unsigned)i?
+                GOLD():BORDER(),garageStyles[selectedCar].Paint==(unsigned)i?3:1);
+        }
+        hint(473,430,"STRIPES");
+        static const char* vinylLabels[3]={"CLEAN","CENTER","TWIN"};
+        for(int i=0;i<latebrake_preview::PreviewVinylCount;i++){
+            int x=580+i*97;
+            uiButton(x,421,91,25,vinylLabels[i],
+                garageStyles[selectedCar].Vinyl==(unsigned)i);
+        }
+        hint(473,459,"WHEELS");
+        static const char* wheelLabels[3]={"STREET","SPORT","TRACK"};
+        for(int i=0;i<latebrake_preview::PreviewWheelCount;i++){
+            int x=580+i*97;
+            uiButton(x,450,91,25,wheelLabels[i],
+                garageStyles[selectedCar].Wheels==(unsigned)i);
+        }
+        hint(473,486,"CREDITS");number(473,498,credits,GOLD(),2);
         if(!(ownedMask&(1<<selectedCar))){
-            hint(635,465,"UNLOCK PRICE");number(636,481,carPrices[selectedCar],CREAM(),2);
-            uiButton(477,515,393,36,"U  UNLOCK CAR",false,credits>=carPrices[selectedCar]);
-        }else uiButton(477,515,393,36,"ENTER  DRIVE THIS CAR",false);
+            hint(651,486,"UNLOCK PRICE");number(652,498,carPrices[selectedCar],CREAM(),2);
+            uiButton(477,520,393,34,"U  UNLOCK CAR",false,credits>=carPrices[selectedCar]);
+        }else uiButton(477,520,393,34,"ENTER  DRIVE THIS CAR",false);
     }else if(page==TRACKS){
         navActiveTag("4 DISTINCT LAYOUTS");
         text(48,93,"SELECT CIRCUIT",CREAM(),4);
@@ -1127,7 +1300,7 @@ static void render(){
             static const unsigned int rivalColors[3]={0x4CB6F4,0xE7BE67,0xBF89F1};
             drawCar(a.x,a.y,fx,fy,rivalColors[i],color(240,243,223));
         }
-        drawCar(race.x,race.y,race.fx,race.fy,carPaints[selectedCar],color(255,220,141));
+        drawCar(race.x,race.y,race.fx,race.fy,selectedPaint(selectedCar),color(255,220,141),selectedCar);
     }
     if(page==RACING||page==RESULTS){
         renderRaceHUDV3();
@@ -1137,7 +1310,9 @@ static void render(){
     if(showHelp)overlayHelp();
     if(toastTime>0&&!showHelp){rect(270,546,420,30,color(50,73,82));stroke(270,546,420,30,CYAN(),1);text(286,554,toast,CREAM(),1);}
 }
-static bool key(int k){return (GetAsyncKeyState(k)&0x8000)!=0;}
+static bool key(int k){
+    return keyboardInputArmed && (GetAsyncKeyState(k)&0x8000)!=0;
+}
 static bool pressed(int k,bool& previous){bool down=key(k);bool edge=down&&!previous;previous=down;return edge;}
 static void setPage(Page target){
     page=target;paused=false;
@@ -1179,9 +1354,38 @@ static void mouseClick(int x,int y){
         else if(within(x,y,50,388,208,48))chooseHome(3);
         else if(within(x,y,275,388,208,48))chooseHome(4);
     }else if(page==GARAGE){
-        for(int i=0;i<6;i++)if(within(x,y,49,169+i*63,360,55)){selectedCar=i;saveSettings();return;}
-        if(within(x,y,477,515,393,36)){
+        if(within(x,y,49,143,165,23)){
+            selectedCar=(selectedCar+latebrake_preview::PreviewCarCount-
+                latebrake_preview::PreviewCarsPerPage)%
+                latebrake_preview::PreviewCarCount;
+            saveSettings();return;
+        }
+        if(within(x,y,240,143,169,23)){
+            selectedCar=(selectedCar+latebrake_preview::PreviewCarsPerPage)%
+                latebrake_preview::PreviewCarCount;
+            saveSettings();return;
+        }
+        const int page=selectedCar/latebrake_preview::PreviewCarsPerPage;
+        for(int i=0;i<latebrake_preview::PreviewCarsPerPage;i++)
+            if(within(x,y,49,169+i*63,360,55)){
+                selectedCar=page*latebrake_preview::PreviewCarsPerPage+i;
+                saveSettings();return;
+            }
+        for(int i=0;i<latebrake_preview::PreviewPaintCount;i++)
+            if(within(x,y,584+i*35,391,29,27)){
+                setAppearance(0,(unsigned)i);return;
+            }
+        for(int i=0;i<latebrake_preview::PreviewVinylCount;i++)
+            if(within(x,y,580+i*97,421,91,25)){
+                setAppearance(1,(unsigned)i);return;
+            }
+        for(int i=0;i<latebrake_preview::PreviewWheelCount;i++)
+            if(within(x,y,580+i*97,450,91,25)){
+                setAppearance(2,(unsigned)i);return;
+            }
+        if(within(x,y,477,520,393,34)){
             if(ownedMask&(1<<selectedCar))beginRace();else unlockSelectedCar();
+            return;
         }
     }else if(page==TRACKS){
         for(int i=0;i<4;i++)if(within(x,y,49+(i%2)*444,172+(i/2)*191,418,169)){
@@ -1211,12 +1415,27 @@ static void advanceRaceFixed(float wallDt,bool gas,bool reverse,bool left,bool r
     }
     if(page!=RACING)fixedFrameCarry=0;
 }
+// Only gameplay/menu keys are considered for focus rearm. Unrelated held
+// keys (e.g. screen-reader shortcuts) must not prevent playing the trial.
+static bool trackedKeyboardHeld(){
+    static const int watched[]={
+        'W','A','S','D','E','K','P','R','U','G','T','C','O','M','H','J','V','B','N',
+        0x25,0x26,0x27,0x28, // arrows
+        0x0D,0x1B,0x10,0x20,0x70 // Enter, Escape, Shift, Space, F1
+    };
+    const int count=(int)(sizeof(watched)/sizeof(watched[0]));
+    for(int i=0;i<count;i++)
+        if((GetAsyncKeyState(watched[i])&0x8000)!=0)return true;
+    return false;
+}
 static void step(float dt){
     if(toastTime>0)toastTime-=dt;
     PadControls pad=pollPad();
     // GetAsyncKeyState sees global keyboard state; never drive or navigate
     // the game behind a different foreground window.
     if(!hasWindowFocus)return;
+    keyboardInputArmed=keyboardFocus.Sample(
+        hasWindowFocus,trackedKeyboardHeld());
     bool enter=pressed(0x0D,lastEnter),back=pressed(0x1B,lastBack);
     bool g=pressed('G',lastGarage),t=pressed('T',lastTracks);
     bool ch=pressed('C',lastChallenge),on=pressed('O',lastOnline);
@@ -1226,6 +1445,8 @@ static void step(float dt){
     bool unlock=pressed('U',lastUnlock);
     bool rp=pressed('R',lastRestart),pause=pressed('P',lastPause);
     bool help=pressed(0x70,lastHelp),contrast=pressed('H',lastContrast);
+    bool paint=pressed('V',lastPaint),stripe=pressed('B',lastStripe),
+         wheels=pressed('N',lastWheels);
     bool assist=pressed('J',lastAssist),recover=pressed('K',lastRecover);
     enter=enter||pad.confirm;back=back||pad.back;
     up=up||pad.navUp;down=down||pad.navDown;
@@ -1262,9 +1483,12 @@ static void step(float dt){
             if(down||rgt)homeFocus=(homeFocus+1)%5;
             if(up||l)homeFocus=(homeFocus+4)%5;
         }else if(page==GARAGE){
-            if(rgt||down)selectedCar=(selectedCar+1)%6;
-            if(l||up)selectedCar=(selectedCar+5)%6;
+            if(rgt||down)selectedCar=(selectedCar+1)%latebrake_preview::PreviewCarCount;
+            if(l||up)selectedCar=(selectedCar+latebrake_preview::PreviewCarCount-1)%latebrake_preview::PreviewCarCount;
             if(l||rgt||up||down)saveSettings();
+            if(paint)cycleAppearance(0);
+            if(stripe)cycleAppearance(1);
+            if(wheels)cycleAppearance(2);
             if(unlock)unlockSelectedCar();
         }else if(page==TRACKS){
             if(rgt||down){selectedTrack=(selectedTrack+1)%4;drawTrack();}
@@ -1279,6 +1503,12 @@ static void step(float dt){
     }
 }
 static LRESULT __stdcall WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
+    // WM_MOUSEACTIVATE: the first client click on an inactive game window
+    // only activates it; it must not buy a car, restart or unpause a race.
+    // HTCLIENT=1; MA_ACTIVATEANDEAT=2. Non-client titlebar drags survive.
+    if(msg==0x0021&&!hasWindowFocus &&
+       (unsigned short)(l&0xffff)==1u)return 2;
+    if(msg==0x0201&&!hasWindowFocus)return 0;
     if(msg==0x0200||msg==0x0201){
         RECT client={};GetClientRect(hwnd,&client);
         int cw=client.right-client.left,ch=client.bottom-client.top;
@@ -1296,9 +1526,13 @@ static LRESULT __stdcall WindowProc(HWND hwnd,UINT msg,WPARAM w,LPARAM l){
     }
     if(msg==0x0008){ // WM_KILLFOCUS: no background gamepad racing.
         hasWindowFocus=false;padRequireNeutral=true;
+        keyboardFocus.OnFocusLost();keyboardInputArmed=false;
         if(page==RACING)paused=true;
     }
-    if(msg==0x0007)hasWindowFocus=true; // WM_SETFOCUS
+    if(msg==0x0007){ // WM_SETFOCUS
+        hasWindowFocus=true;
+        if(page==RACING)message("RELEASE KEYS THEN PRESS P TO RESUME");
+    }
     if(msg==0x0010||msg==0x0002){running=false;PostQuitMessage(0);return 0;}
     return DefWindowProcA(hwnd,msg,w,l);
 }
@@ -1500,6 +1734,16 @@ static bool selftest(){
     vp=fitViewport(800,800);
     if(vp.w!=800||vp.h!=533||vp.y!=133)return false;
     if(fitViewport(0,100).w!=0)return false;
+    // Even a maximum signed Win32 viewport must not wrap pointer
+    // products. This is a pure no-window test and never clicks UI.
+    CanvasViewport extreme=fitViewport(2147483647,2147483647);
+    if(extreme.w<=0||extreme.h<=0)return false;
+    if(!translateMouse(extreme,extreme.x+extreme.w-1,
+                      extreme.y+extreme.h-1,mappedX,mappedY)||
+       mappedX!=WIDTH-1||mappedY!=HEIGHT-1)return false;
+    int lastX=431,lastY=219;
+    if(translateMouse(extreme,-1,-1,lastX,lastY)||
+       lastX!=431||lastY!=219)return false;
     XInputStateFn originalReader=xinputRead;
     xinputRead=mockXInputState;
     activePadUser=4;hasWindowFocus=true;padRequireNeutral=true;
@@ -1588,12 +1832,47 @@ static bool selftest(){
     if(!observePresentStatus(presentation,true,false)||
         !presentation.warningIssued||
         observePresentStatus(presentation,true,false))return false;
+    selfTestStage=84;
+    // Native Win64 self-test also compiles and executes the focus guard.
+    latebrake_preview::PreviewKeyboardFocusGuard focusSmoke{};
+    if(!focusSmoke.Sample(true,true))return false;
+    focusSmoke.OnFocusLost();
+    if(focusSmoke.Sample(false,false)||
+       focusSmoke.Sample(true,true)||
+       focusSmoke.Sample(true,false)||
+       !focusSmoke.Sample(true,false)||
+       !focusSmoke.Sample(true,true))return false;
+    selfTestStage=85;
+    // The actual Win32 game must exercise all twelve cars and three
+    // appearance layers without touching a player's on-disk profile.
+    for(int id=0;id<latebrake_preview::PreviewCarCount;id++){
+        if(carPrices[id]<(id?carPrices[id-1]:0)||
+           carAccel[id]<=0.0f||carGrip[id]<=0.0f||
+           !latebrake_preview::ValidPreviewAppearance(garageStyles[id]))return false;
+    }
+    selectedCar=9;ownedMask=1;setPage(GARAGE);
+    const auto oldLook=garageStyles[9];
+    if(!setAppearance(0,5u)||garageStyles[9].Paint!=5u||
+       !setAppearance(1,2u)||garageStyles[9].Vinyl!=2u||
+       !setAppearance(2,1u)||garageStyles[9].Wheels!=1u)return false;
+    // A failed atomic save rolls back just the player's attempted style.
+    simulateAppearanceSaveFailure=true;
+    if(setAppearance(0,2u)||garageStyles[9].Paint!=5u)return false;
+    simulateAppearanceSaveFailure=false;
+    garageStyles[9]=oldLook;
+    if(latebrake_preview::PreviewAppearanceOptionCount(99)!=0u||
+       setAppearance(0,999u))return false;
+    // New page must expose the upper six IDs; locked cars must not race.
+    selectedCar=6;mouseClick(83,169+5*63+10);
+    if(selectedCar!=11)return false;
+    beginRace();if(page!=GARAGE)return false;
+    selectedCar=0;ownedMask=1;setPage(HOME);
     // No GUI is shown or Windows window APIs called by this logic test.
-    return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
+    return (carPrices[11]>carPrices[5] && carAccel[10]>carAccel[1]);
 }
 extern "C" void mainCRTStartup(){
     if(hasSelfTestFlag(GetCommandLineA()))ExitProcess(selftest()?0:selfTestStage);
-    loadProgress();loadSettings();loadLapRecords();drawTrack();initializePad();
+    loadProgress();loadSettings();loadGarageAppearance();loadLapRecords();drawTrack();initializePad();
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSA wc={};wc.style=0x0003;wc.proc=WindowProc;wc.instance=instance;wc.name="LateBrakePreviewNative";
     if(!RegisterClassA(&wc)){
