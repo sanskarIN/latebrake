@@ -2363,6 +2363,12 @@ void ALatebrakeCarPawn::MenuMousePressed()
         Mode->MenuActivate(); break;
     case latebrake::DesktopMenuMouseAction::Close:
         Mode->ToggleMenu(); break;
+    case latebrake::DesktopMenuMouseAction::GaragePaint:
+        Mode->GarageCyclePaint(); break;
+    case latebrake::DesktopMenuMouseAction::GarageStripe:
+        Mode->GarageCycleStripe(); break;
+    case latebrake::DesktopMenuMouseAction::GarageWheels:
+        Mode->GarageCycleWheels(); break;
     default: break;
     }
 #endif

@@ -98,6 +98,14 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
         false, true);
     const auto availability = latebrake::AvailableDesktopMenuDetails(
         Mode->GetMenuPage(), MenuPager);
+    // Style buttons exist only on the actual visible Garage page.
+    const auto style = latebrake::CalculateGarageStyleMouseLayout(
+        width, height, latebrake::CalculateHudLayout(width, height),
+        false, true, Mode->GetMenuPage());
+    const auto styleAction =
+        latebrake::HitTestGarageStyleMouse(style, x, y);
+    if (styleAction != latebrake::DesktopMenuMouseAction::None)
+        return styleAction;
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
         availability);
 #endif
@@ -162,6 +170,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             static_cast<double>(Canvas->SizeX),
             static_cast<double>(Canvas->SizeY),
             Layout, bTouchHUD, Mode->IsMenuOpen());
+    const latebrake::GarageStyleMouseLayout GarageStyleMenu =
+        latebrake::CalculateGarageStyleMouseLayout(
+            static_cast<double>(Canvas->SizeX),
+            static_cast<double>(Canvas->SizeY),
+            Layout, bTouchHUD, Mode->IsMenuOpen(), Mode->GetMenuPage());
     // Both the instruments and the interactive menu dock own distinct
     // right-hand lanes; truncate measured text before either rectangle.
     const double InstrumentTextWidth = Instruments.Visible
@@ -422,7 +435,18 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("E/SELECT: NEXT OWNED | Q: NEXT LOCKED | U/I: UPGRADES"));
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
-            MenuLine(TEXT("SIX FICTIONAL CARS (NOT FULL 3D VEHICLE MODELS)"), true);
+            MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS (COSMETIC / FREE)"), true);
+            const latebrake::GarageLook ActiveLook =
+                Mode->GetSelectedGarageLook();
+            MenuLine(FString::Printf(
+                TEXT("SAVED LOOK: %s / %s / %s"),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Paint, ActiveLook.Paint)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Stripe, ActiveLook.Stripe)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Wheels, ActiveLook.Wheels))), true);
+            MenuLine(TEXT("SIX UE PROTOTYPE CARS / 12-CAR 2D TRIAL IS SEPARATE"), true);
             for (const latebrake::GarageCatalogEntry& Entry : Catalog.Cars)
             {
                 FString State;
@@ -454,7 +478,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 if (!bCompact)
                 {
                     MenuLine(FString::Printf(
-                        TEXT("   KIT %s | PAINT %s | ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
+                        TEXT("   KIT %s | FACTORY PAINT %s | ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
                         UTF8_TO_TCHAR(
                             latebrake::BodyKitForVehicle(Entry.VehicleId).Name),
                         UTF8_TO_TCHAR(
@@ -884,6 +908,40 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Selected ? Gold : White,
                     BX + 10.f * UIScale, BY + 12.f * UIScale,
                     GEngine->GetSmallFont(), 0.82f * UIScale);
+            }
+            // Only the Garage shows separate clickable cosmetic actions.
+            // Uses exactly the same bounded rectangles as mouse hit tests;
+            // these buttons do not have economy or race authority.
+            if (GarageStyleMenu.Valid)
+            {
+                const latebrake::DesktopMenuMouseAction StyleHover = HasCursor
+                    ? latebrake::HitTestGarageStyleMouse(
+                        GarageStyleMenu, CursorX, CursorY)
+                    : latebrake::DesktopMenuMouseAction::None;
+                for (const auto& StyleButton : GarageStyleMenu.Buttons)
+                {
+                    const float BX = static_cast<float>(StyleButton.Bounds.X);
+                    const float BY = static_cast<float>(StyleButton.Bounds.Y);
+                    const float BW = static_cast<float>(StyleButton.Bounds.Width);
+                    const float BH = static_cast<float>(StyleButton.Bounds.Height);
+                    const bool Hover = StyleButton.Action == StyleHover;
+                    const FLinearColor TextColor = Hover ? Gold : White;
+                    DrawRect(Hover
+                        ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
+                        : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f),
+                        BX, BY, BW, BH);
+                    DrawRect(TextColor, BX, BY, 3.f * UIScale, BH);
+                    const TCHAR* Caption =
+                        StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GaragePaint
+                            ? TEXT("PAINT >")
+                        : StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageStripe
+                            ? TEXT("STRIPES >") : TEXT("RIMS >");
+                    DrawText(Caption, TextColor, BX + 10.f * UIScale,
+                        BY + 12.f * UIScale,
+                        GEngine->GetSmallFont(), 0.82f * UIScale);
+                }
             }
         }
 

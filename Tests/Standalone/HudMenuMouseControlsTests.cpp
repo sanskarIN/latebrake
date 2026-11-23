@@ -53,10 +53,72 @@ void VerifyViewport(int w, int h)
     Check(HitTestDesktopMenuMouse(plan, -1.0, -1.0)
         == DesktopMenuMouseAction::None, "negative coordinates rejected");
 }
+void TestGarageCosmeticDock()
+{
+    using namespace latebrake;
+    for (const auto& [width, height] :
+        {std::pair{900, 600}, std::pair{960, 640},
+         std::pair{1280, 720}, std::pair{1920, 1080},
+         std::pair{2560, 1440}})
+    {
+        const auto geometry = CalculateHudLayout(width, height);
+        const auto garage = CalculateGarageStyleMouseLayout(
+            width, height, geometry, false, true, MenuPage::Garage);
+        Check(garage.Valid,
+            "desktop garage provides three dedicated appearance buttons");
+        const auto dock = CalculateDesktopMenuMouseLayout(
+            width, height, geometry, false, true);
+        const auto& last = dock.Buttons[5].Bounds;
+        const DesktopMenuMouseAction expected[] = {
+            DesktopMenuMouseAction::GaragePaint,
+            DesktopMenuMouseAction::GarageStripe,
+            DesktopMenuMouseAction::GarageWheels
+        };
+        for (int i = 0; i < 3; ++i)
+        {
+            const auto button = garage.Buttons[static_cast<std::size_t>(i)];
+            Check(button.Action == expected[i],
+                  "fixed style action order");
+            const auto b = button.Bounds;
+            Check(b.Width >= 112.0 && b.Height >= 44.0 &&
+                  b.X + b.Width <= width && b.Y + b.Height < height &&
+                  b.Y >= last.Y + last.Height,
+                  "style buttons fit below older menu controls");
+            Check(HitTestGarageStyleMouse(garage,
+                b.X+b.Width*0.5, b.Y+b.Height*0.5) == expected[i],
+                "exact drawn center selects intended style");
+            Check(HitTestDesktopMenuMouse(dock,
+                b.X+b.Width*0.5, b.Y+b.Height*0.5) ==
+                  DesktopMenuMouseAction::None,
+                "old menu buttons cannot capture style clicks");
+        }
+        Check(!CalculateGarageStyleMouseLayout(
+            width, height, geometry, false, true, MenuPage::Results).Valid,
+            "Results menu does not allow cosmetic inputs");
+        Check(!CalculateGarageStyleMouseLayout(
+            width, height, geometry, false, false, MenuPage::Garage).Valid,
+            "closed garage is not clickable");
+        Check(!CalculateGarageStyleMouseLayout(
+            width, height, geometry, true, true, MenuPage::Garage).Valid,
+            "desktop pointer controls do not overlay touch HUD");
+        Check(HitTestGarageStyleMouse(garage, -1.0, -1.0) ==
+              DesktopMenuMouseAction::None,
+              "invalid garage pointer is inert");
+        auto damaged = garage;
+        damaged.Buttons[0].Bounds.Width =
+            std::numeric_limits<double>::infinity();
+        const auto b = garage.Buttons[0].Bounds;
+        Check(HitTestGarageStyleMouse(damaged,
+            b.X+b.Width*0.5, b.Y+b.Height*0.5) ==
+              DesktopMenuMouseAction::None,
+            "nonfinite garage rectangle never captures clicks");
+    }
+}
 } // namespace
 
 int main()
 {
+    TestGarageCosmeticDock();
     using namespace latebrake;
     for (const auto& [width, height] :
         {std::pair{900, 600}, std::pair{960, 640},

@@ -17,7 +17,8 @@ namespace latebrake
 // authoritative GameMode; this policy cannot purchase, race, save or steer.
 enum class DesktopMenuMouseAction
 {
-    None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close
+    None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close,
+    GaragePaint, GarageStripe, GarageWheels
 };
 
 struct DesktopMenuMouseRect final
@@ -223,6 +224,57 @@ inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
                 ? button.Action : DesktopMenuMouseAction::None;
         }
     }
+    return DesktopMenuMouseAction::None;
+}
+// Optional fourth/fifth dock row, only when the visible page is Garage.
+// The pre-existing six menu buttons and their paging semantics are
+// unchanged. Every cosmetic pointer hit maps to one owner-gated action.
+struct GarageStyleMouseLayout final
+{
+    bool Valid = false;
+    std::array<DesktopMenuMouseButton, 3> Buttons{};
+};
+
+inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
+    double width, double height, HudLayout hud,
+    bool touchUI, bool menuOpen, MenuPage page) noexcept
+{
+    if (page != MenuPage::Garage) return {};
+    const auto dock = CalculateDesktopMenuMouseLayout(
+        width, height, hud, touchUI, menuOpen);
+    if (!dock.Valid) return {};
+    const auto& first = dock.Buttons[4].Bounds;
+    const auto& last = dock.Buttons[5].Bounds;
+    const double scale = std::clamp(hud.Scale, 0.6, 1.2);
+    const double gap = std::max(8.0, 10.0 * scale);
+    // Keep the existing "WHEEL: DETAILS" hint ABOVE these new controls.
+    const double top = last.Y + last.Height + std::max(26.0, 28.0 * scale);
+    const double finalBottom = top + first.Height * 2.0 + gap;
+    if (!std::isfinite(top) || !std::isfinite(finalBottom) ||
+        finalBottom > height - 18.0)
+        return {};
+
+    GarageStyleMouseLayout result;
+    result.Valid = true;
+    result.Buttons = {{
+        {DesktopMenuMouseAction::GaragePaint,
+            {first.X, top, first.Width, first.Height}},
+        {DesktopMenuMouseAction::GarageStripe,
+            {last.X, top, last.Width, last.Height}},
+        {DesktopMenuMouseAction::GarageWheels,
+            {first.X, top + first.Height + gap, first.Width, first.Height}}
+    }};
+    return result;
+}
+
+inline DesktopMenuMouseAction HitTestGarageStyleMouse(
+    const GarageStyleMouseLayout& layout,
+    double x, double y) noexcept
+{
+    if (!layout.Valid || !std::isfinite(x) || !std::isfinite(y))
+        return DesktopMenuMouseAction::None;
+    for (const auto& button : layout.Buttons)
+        if (button.Bounds.Contains(x, y)) return button.Action;
     return DesktopMenuMouseAction::None;
 }
 } // namespace latebrake
