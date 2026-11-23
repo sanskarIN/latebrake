@@ -279,6 +279,7 @@ private:
     void CycleGaragePaint();
     void CycleGarageStripe();
     void CycleGarageWheels();
+    void ResetGarageLook();
     void SelectArcade();
     void SelectSimulation();
 

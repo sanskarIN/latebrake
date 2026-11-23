@@ -72,9 +72,10 @@ void TestGarageCosmeticDock()
         const DesktopMenuMouseAction expected[] = {
             DesktopMenuMouseAction::GaragePaint,
             DesktopMenuMouseAction::GarageStripe,
-            DesktopMenuMouseAction::GarageWheels
+            DesktopMenuMouseAction::GarageWheels,
+            DesktopMenuMouseAction::GarageReset
         };
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 4; ++i)
         {
             const auto button = garage.Buttons[static_cast<std::size_t>(i)];
             Check(button.Action == expected[i],

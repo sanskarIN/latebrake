@@ -110,6 +110,15 @@ public:
         return true;
     }
 
+    // Restore a single owned/preview vehicle's original visual preset.
+    // This never touches another car, its owned bit, or any economy state.
+    bool ResetVehicle(int id) noexcept
+    {
+        if (!GarageState::IsVehicle(id)) return false;
+        Styles[static_cast<std::size_t>(id)] = FactoryGarageLook(id);
+        return true;
+    }
+
     bool Cycle(int id, GarageLookLayer layer) noexcept
     {
         const int count = GarageLookChoiceCount(layer);

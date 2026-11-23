@@ -166,6 +166,7 @@ public:
     void GarageCyclePaint();
     void GarageCycleStripe();
     void GarageCycleWheels();
+    void GarageResetAppearance();
     int32 GetLastRaceCredits() const { return LastRaceCredits; }
 
     static FVector GetStartPosition();
@@ -183,7 +184,8 @@ private:
     void SaveRecords();
     void RefreshRival();
     void ApplyGarageToPlayer();
-    void GarageCycleAppearance(latebrake::GarageLookLayer layer);
+    void GarageCycleAppearance(latebrake::GarageLookLayer layer,
+                              bool bReset = false);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();

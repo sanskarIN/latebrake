@@ -84,6 +84,23 @@ void TestSelectionsAndIsolation()
         Check(!styles.Choose(id, static_cast<GarageLookLayer>(88), 0),
               "unknown layer is inert");
     }
+    // Factory reset affects the requested car only, even after that
+    // car had all three layers altered and a neighbor was customized.
+    GarageAppearanceState restore;
+    Check(restore.Choose(2, GarageLookLayer::Paint, 7) &&
+          restore.Choose(2, GarageLookLayer::Stripe, 2) &&
+          restore.Choose(2, GarageLookLayer::Wheels, 2) &&
+          restore.Choose(3, GarageLookLayer::Paint, 6),
+          "stage two different custom vehicles");
+    const auto neighbor = restore.Get(3);
+    Check(restore.ResetVehicle(2) &&
+          Same(restore.Get(2), FactoryGarageLook(2)) &&
+          Same(restore.Get(3), neighbor),
+          "reset factory affects just one car");
+    Check(!restore.ResetVehicle(-1) &&
+          !restore.ResetVehicle(VehicleCount),
+          "invalid reset ID is inert");
+
     const auto before = styles.Serialize();
     Check(!styles.Choose(-1, GarageLookLayer::Paint, 0) &&
           !styles.Choose(VehicleCount, GarageLookLayer::Paint, 0),

@@ -436,7 +436,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("E/SELECT: NEXT OWNED | Q: NEXT LOCKED | U/I: UPGRADES"));
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
-            MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS (COSMETIC / FREE)"), true);
+            MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
             if (!Mode->CanCustomizeGarage())
                 MenuLine(TEXT("CUSTOM LOOK UNAVAILABLE UNTIL GARAGE CAN BE EDITED"), true);
@@ -947,7 +947,10 @@ void ALatebrakeRaceHUD::DrawHUD()
                             ? TEXT("PAINT >")
                         : StyleButton.Action ==
                             latebrake::DesktopMenuMouseAction::GarageStripe
-                            ? TEXT("STRIPES >") : TEXT("RIMS >");
+                            ? TEXT("STRIPES >")
+                        : StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageWheels
+                            ? TEXT("RIMS >") : TEXT("FACTORY");
                     DrawText(Caption, TextColor, BX + 10.f * UIScale,
                         BY + 12.f * UIScale,
                         GEngine->GetSmallFont(), 0.82f * UIScale);

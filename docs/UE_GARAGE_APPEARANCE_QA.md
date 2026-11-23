@@ -41,6 +41,10 @@ decorative rims. On gamepad, click **R3** for paint, click **L3** for
 roof stripes, or use **LB** for rim trims while the Garage menu is open
 and paused. Those same controller buttons remain assigned to their old
 driving actions outside the garage, and stale driving input is cleared.
+Use **F8** or the separate **FACTORY** mouse button to reset only
+the currently equipped car's paint, stripes and rims. This reset has
+the same persisted-save confirmation and failure rollback, and never
+resets another car's styling or purchases.
 On desktop Canvas HUD the lower-right garage-only
 dock also has separate mouse-hit buttons for each. The dock disables
 its appearance targets when a career race or newer SaveGame schema

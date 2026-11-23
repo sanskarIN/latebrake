@@ -18,7 +18,7 @@ namespace latebrake
 enum class DesktopMenuMouseAction
 {
     None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close,
-    GaragePaint, GarageStripe, GarageWheels
+    GaragePaint, GarageStripe, GarageWheels, GarageReset
 };
 
 struct DesktopMenuMouseRect final
@@ -232,7 +232,7 @@ inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
 struct GarageStyleMouseLayout final
 {
     bool Valid = false;
-    std::array<DesktopMenuMouseButton, 3> Buttons{};
+    std::array<DesktopMenuMouseButton, 4> Buttons{};
 };
 
 inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
@@ -262,7 +262,9 @@ inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
         {DesktopMenuMouseAction::GarageStripe,
             {last.X, top, last.Width, last.Height}},
         {DesktopMenuMouseAction::GarageWheels,
-            {first.X, top + first.Height + gap, first.Width, first.Height}}
+            {first.X, top + first.Height + gap, first.Width, first.Height}},
+        {DesktopMenuMouseAction::GarageReset,
+            {last.X, top + first.Height + gap, last.Width, last.Height}}
     }};
     return result;
 }

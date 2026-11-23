@@ -2369,6 +2369,8 @@ void ALatebrakeCarPawn::MenuMousePressed()
         Mode->GarageCycleStripe(); break;
     case latebrake::DesktopMenuMouseAction::GarageWheels:
         Mode->GarageCycleWheels(); break;
+    case latebrake::DesktopMenuMouseAction::GarageReset:
+        Mode->GarageResetAppearance(); break;
     default: break;
     }
 #endif
@@ -2447,6 +2449,14 @@ void ALatebrakeCarPawn::CycleGarageWheels()
     if (ALatebrakeRaceGameMode* Mode =
         GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
         Mode->GarageCycleWheels();
+}
+
+void ALatebrakeCarPawn::ResetGarageLook()
+{
+    ClearDriverInputs();
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+        Mode->GarageResetAppearance();
 }
 
 void ALatebrakeCarPawn::SelectArcade()
@@ -2553,6 +2563,9 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& GarageWheelsKey = PlayerInputComponent->BindAction(
         TEXT("GarageCycleWheels"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGarageWheels);
     GarageWheelsKey.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageResetKey = PlayerInputComponent->BindAction(
+        TEXT("GarageResetLook"), IE_Pressed, this, &ALatebrakeCarPawn::ResetGarageLook);
+    GarageResetKey.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }

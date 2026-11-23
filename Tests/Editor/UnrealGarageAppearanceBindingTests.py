@@ -121,7 +121,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         for method in ("GarageCyclePaint", "GarageCycleStripe",
                        "GarageCycleWheels"):
             self.assertIn("Mode->" + method + "();", self.pawn)
-        self.assertIn("F5 PAINT | F6 STRIPES | F7 RIMS", self.hud)
+        self.assertIn("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY", self.hud)
         self.assertIn("SAVED LOOK: %s / %s / %s", self.hud)
 
     def test_pointer_buttons_share_accurate_hit_bounds(self):
@@ -133,6 +133,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "DesktopMenuMouseAction::GaragePaint",
             "DesktopMenuMouseAction::GarageStripe",
             "DesktopMenuMouseAction::GarageWheels",
+            "DesktopMenuMouseAction::GarageReset",
             "button.Bounds.Contains(x, y)",
         ):
             self.assertIn(token, self.mouse)
@@ -142,6 +143,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "case latebrake::DesktopMenuMouseAction::GaragePaint:",
             "case latebrake::DesktopMenuMouseAction::GarageStripe:",
             "case latebrake::DesktopMenuMouseAction::GarageWheels:",
+            "case latebrake::DesktopMenuMouseAction::GarageReset:",
         ):
             self.assertIn(token, self.pawn)
         self.assertIn("if (GarageStyleMenu.Valid)", self.hud)
@@ -165,6 +167,13 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
         self.assertIn(
             "Garage.Owns(Garage.SelectedVehicle())", self.mode)
         self.assertIn("PAD: R3 PAINT / L3 STRIPES / LB RIMS", self.hud)
+        self.assertIn(
+            '+ActionMappings=(ActionName="GarageResetLook",Key=F8)',
+            self.input)
+        self.assertIn("GarageResetKey.bExecuteWhenPaused = true", self.pawn)
+        self.assertIn("Mode->GarageResetAppearance();", self.pawn)
+        self.assertIn("GarageLooks.ResetVehicle(Selected)", self.mode)
+        self.assertIn("FACTORY LOOK RESTORED AND SAVED", self.mode)
 
 
 if __name__ == "__main__":
