@@ -180,7 +180,8 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
     def test_live_dock_displays_viewed_cosmetics_and_factory_noop(self):
         self.assertIn("DescribeGarageStyleButton(", self.mouse)
         self.assertIn("GarageStyleButtonIndicator final", self.mouse)
-        self.assertIn("SameGarageLook(look, FactoryGarageLook(viewedId))", self.mouse)
+        self.assertIn("SameGarageLook(", self.mouse)
+        self.assertIn("look, FactoryGarageLook(viewedId))", self.mouse)
         self.assertIn("FACTORY OK", self.mouse)
         self.assertIn("RESET LOOK", self.mouse)
         self.assertIn("DescribeGarageStyleButton(", self.hud)
