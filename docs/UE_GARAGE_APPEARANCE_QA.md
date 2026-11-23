@@ -105,12 +105,14 @@ The Canvas HUD displays the viewed car name, ownership/locked status,
 cost in the existing catalogue and estimated effective acceleration,
 grip and speed. A VIEWING marker distinguishes this inspection from
 the actually equipped car; browsing cannot equip, purchase, spawn,
-modify Chaos physics or serialize a locked car. **E/SELECT** still equips
-only the next owned vehicle according to the existing GarageState rules;
-**Q** still buys only the next locked car after explicit two-step
-confirmation. Cosmetics apply to the currently viewed car only if that car is owned,
-without needing to equip it. Locked previews remain read-only.
-Browser pointer arrows remain in the Garage-only dock.
+modify Chaos physics or serialize a locked car. **E** cycles to the
+next owned car during an eligible quick race or from the visible Garage;
+**Enter/SELECT** specifically equips the owned car currently being
+viewed. **Q** still buys only the first locked ID after two explicit
+confirmation presses while the Garage is visibly open; viewing a later
+locked car does not bypass that purchase order. Cosmetics apply to the
+currently viewed car only if it is owned, without needing to equip it.
+Locked previews remain read-only; browsing arrows remain in the dock.
 
 The two extra buttons below the garage paint/stripe/rim/reset controls
 let the mouse browse the previous or next showroom car. Unlike the four
@@ -231,24 +233,32 @@ equip cars behind the menu. Close the menu in Quick Race and verify E
 retains original ownership-only cycling. Run the real controller focus
 QA separately; standalone tests verify only source contracts.
 
-## Standalone PAUSE / focus loss cannot authorize E/Q/U/I
+## Separate E selection from Q/U/I spending and standalone PAUSE
 
-After making E/Q/U/I usable during the Garage's world pause, the
-same input actions also become eligible for Unreal's standalone
-race PAUSE and focus-loss fallback. Added a **GameMode-level**
-`CanUseGarageVehicleHotkey` predicate with an explicit suspended
-race flag, covering `IsGamePaused`, `ManualPause.IsSuspended()`
-and `AppFocusGuard.IsSuspended()`. It authorizes E/Q/U/I in the
-visible Garage only, or during eligible active quick-race driving with
-no menu and no pause. Other menus and standalone pause fail closed,
-including for any direct GameMode invocations. The existing paid
-double-confirm, save rollback and future-schema guards remain intact.
+The ordinary Garage menu calls `SetGamePaused(true)`, so these
+bindings must work while the Garage is open. However, **E** is the
+only allowed menu-closed shortcut: it cycles already-owned cars during
+an eligible active quick race and never charges credits. A shared
+`CanUseGarageVehicleHotkey` helper rejects E when another menu
+owns focus or when standalone pause/focus-loss is latched.
 
-Standalone C++ tests include open Garage while engine is paused,
-closed quick-race while active, closed quick-race while paused, all
-11 pages and 300k transitions. Editor QA should explicitly press
-Escape to pause with **no menu**, then try E/Q/U/I and verify
-credits, selected car and upgrades remain unchanged.
+**Q/U/I can stage or confirm a transaction ONLY in the visibly open
+Garage page.** The stricter `CanUseGaragePurchaseHotkey` rejects a
+closed menu (even in an otherwise active quick race), any non-Garage
+menu page, and independently latched manual pause or OS focus loss.
+Unreal's ordinary Garage menu world pause remains allowed; there is
+still no way to spend outside the two-step, unchanged-snapshot,
+eight-second confirmation gate. An application deactivation also
+cancels any previously staged purchase offer immediately, even when
+the open Garage was already world-paused.
+
+Standalone C++ tests cover 11 pages and 300,000 menu transitions.
+In real UE5.8 QA: verify E alone still changes eligible owned cars
+during active quick races; confirm Q/U/I while driving never stage
+an offer or alter credits; check all four keys during standalone
+race pause with **no menu**, then in non-Garage menus and the actual
+Garage. A focus-loss between the first and second purchase press must
+require two fresh keypresses after return, with no hidden purchase.
 
 ## Future SaveGame profile: do not stage transactions
 
