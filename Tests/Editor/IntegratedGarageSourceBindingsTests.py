@@ -35,6 +35,8 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
             "Entry.RouteBudgetReady", "Entry.RouteCost",
             "Entry.RouteCars", "Entry.RouteCreditsShort",
             "Q NEXT", "VS EQUIPPED", "CTRL+1..6: EQUIP OWNED CARS",
+            "ROUTE %d CR | NEED %d CR", "ROUTE %d CR | BUDGET READY",
+            "VIA %d SEQUENTIAL Q UNLOCK(S)",
             "Mode->GetGarageFeedback()", "MenuLine(", "bTouchHUD",
             'FString::Printf(TEXT("CTRL+%d")',
             'FString::Printf(TEXT("%d.")',

@@ -383,7 +383,12 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("SIX FICTIONAL CARS (NOT FULL 3D VEHICLE MODELS)"), true);
             for (const latebrake::GarageCatalogEntry& Entry : Catalog.Cars)
             {
+                // A separate short identity line prevents very long route
+                // budgets from pushing EQUIPPED/LOCKED or Q NEXT off-screen.
                 FString State;
+                const bool bLocked =
+                    Entry.Ownership == latebrake::GarageCatalogOwnership::LockedAffordable ||
+                    Entry.Ownership == latebrake::GarageCatalogOwnership::LockedInsufficientCredits;
                 switch (Entry.Ownership)
                 {
                 case latebrake::GarageCatalogOwnership::Equipped:
@@ -394,29 +399,43 @@ void ALatebrakeRaceHUD::DrawHUD()
                     break;
                 case latebrake::GarageCatalogOwnership::LockedAffordable:
                 case latebrake::GarageCatalogOwnership::LockedInsufficientCredits:
-                    if (!Entry.RouteValid)
-                        State = TEXT("LOCKED | ROUTE UNAVAILABLE");
-                    else if (Entry.RouteBudgetReady)
-                        State = FString::Printf(TEXT("LOCKED | %d CAR(S) | %d CR TOTAL | BUDGET OK"),
-                            Entry.RouteCars, Entry.RouteCost);
-                    else
-                        State = FString::Printf(TEXT("LOCKED | %d CR TOTAL | NEED %d"),
-                            Entry.RouteCost, Entry.RouteCreditsShort);
+                    State = TEXT("LOCKED");
                     break;
                 }
-                // Q buys the *first* locked ID only. Do not suggest that
-                // later affordable cars can be bought directly from rows.
+                // Only the first locked car is actionable with Q. Display
+                // that control on the short identity line, not after a long
+                // route estimate where the measured HUD clip could hide it.
                 const TCHAR* NextFlag = Entry.VehicleId == Catalog.NextUnlockId
                     ? TEXT(" | Q NEXT") : TEXT("");
-                // Desktop uses Ctrl+digit shortcuts; touch retains
-                // platform-neutral numbered slots with no false key hint.
                 const FString SlotLabel = bTouchHUD
                     ? FString::Printf(TEXT("%d."), Entry.VehicleId + 1)
                     : FString::Printf(TEXT("CTRL+%d"), Entry.VehicleId + 1);
                 MenuLine(FString::Printf(TEXT("%s %s | %s%s"),
-                    *SlotLabel, UTF8_TO_TCHAR(Entry.Name),
-                    *State, NextFlag),
+                    *SlotLabel, UTF8_TO_TCHAR(Entry.Name), *State, NextFlag),
                     Entry.Ownership == latebrake::GarageCatalogOwnership::Equipped);
+                if (bLocked)
+                {
+                    if (!Entry.RouteValid)
+                    {
+                        MenuLine(TEXT("   SEQUENTIAL UNLOCK ROUTE UNAVAILABLE"));
+                    }
+                    else
+                    {
+                        // A short companion line keeps the exact total and
+                        // missing balance readable on compact touch screens.
+                        MenuLine(Entry.RouteBudgetReady
+                            ? FString::Printf(TEXT("   ROUTE %d CR | BUDGET READY"),
+                                Entry.RouteCost)
+                            : FString::Printf(TEXT("   ROUTE %d CR | NEED %d CR"),
+                                Entry.RouteCost, Entry.RouteCreditsShort));
+                        if (!bCompact)
+                        {
+                            MenuLine(FString::Printf(
+                                TEXT("   VIA %d SEQUENTIAL Q UNLOCK(S)"),
+                                Entry.RouteCars));
+                        }
+                    }
+                }
                 if (!bCompact)
                 {
                     MenuLine(FString::Printf(
