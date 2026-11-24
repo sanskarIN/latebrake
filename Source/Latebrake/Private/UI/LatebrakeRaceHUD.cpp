@@ -2,6 +2,7 @@
 
 #include "UI/HudLayout.h"
 #include "UI/HudInstrumentCluster.h"
+#include "UI/NitroHudReadout.h"
 #include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
 #include "Garage/GarageComparisonView.h"
@@ -1082,12 +1083,40 @@ void ALatebrakeRaceHUD::DrawHUD()
     // or authoritative time/checkpoint status on narrow viewports.
     // Keep boost meter in the speed row; compact touch layouts preserve
     // their existing gate/time priority with no new optional overlays.
+    // The policy reads actual charge, heat, cooldown and signed forward speed
+    // without touching boost physics, checkpoint timing, or player controls.
+    // A held key/charged tank alone must never be displayed as immediately
+    // usable when the game is paused, finished or track isn't ready.
+    const latebrake::NitroHudReadout BoostStatus = latebrake::ReadNitroHud(
+        Car->GetNitroBoost(), static_cast<double>(Car->GetForwardSpeedKmH()),
+        !Mode->IsMenuOpen() && !Mode->IsManualRacePauseActive() &&
+        !UGameplayStatics::IsGamePaused(this) &&
+        Mode->IsCircuitReadyForGameplay() && !Race.IsFinished());
+    FString BoostStatusText;
+    switch (BoostStatus.Phase)
+    {
+    case latebrake::NitroHudPhase::Active:
+        BoostStatusText = TEXT("ACTIVE"); break;
+    case latebrake::NitroHudPhase::Cooldown:
+        BoostStatusText = FString::Printf(
+            TEXT("COOLDOWN %.1fs"), BoostStatus.CooldownSeconds); break;
+    case latebrake::NitroHudPhase::Overheated:
+        BoostStatusText = TEXT("OVERHEAT"); break;
+    case latebrake::NitroHudPhase::Empty:
+        BoostStatusText = TEXT("EMPTY"); break;
+    case latebrake::NitroHudPhase::BuildSpeed:
+        BoostStatusText = TEXT("BUILD SPEED"); break;
+    case latebrake::NitroHudPhase::Stored:
+        BoostStatusText = TEXT("STORED"); break;
+    default:
+        BoostStatusText = TEXT("UNAVAILABLE"); break;
+    }
+    const double RawBoostCharge = Car->GetNitroBoost().ChargeFraction();
+    const double DisplayBoostCharge = FMath::IsFinite(RawBoostCharge)
+        ? FMath::Clamp(RawBoostCharge, 0.0, 1.0) : 0.0;
     const FString NitroLabel = !bCompact
-        ? FString::Printf(TEXT(" | NITRO %.0f%% %s"),
-            Car->GetNitroBoost().ChargeFraction() * 100.0,
-            Car->GetNitroBoost().IsActive() ? TEXT("ACTIVE") :
-                (Car->GetNitroBoost().CooldownRemainingSeconds() > 0.0
-                    ? TEXT("COOL") : TEXT("B HOLD")))
+        ? FString::Printf(TEXT(" | NITRO %s %.0f%%"),
+            *BoostStatusText, DisplayBoostCharge * 100.0)
         : FString();
     Line((Car->IsHandbrakeHeld() && !bCompact
         ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine) + NitroLabel, Primary);
