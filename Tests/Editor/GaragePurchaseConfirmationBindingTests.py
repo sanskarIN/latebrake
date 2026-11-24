@@ -95,7 +95,7 @@ class GaragePurchaseConfirmationBindingTests(unittest.TestCase):
             "CanEditGarageDuringRace(",
             "GaragePurchaseConfirm.Preview(Garage.Snapshot(), FPlatformTime::Seconds())",
             "Preview.IsPending()", "Preview.SecondsRemaining",
-            "Offer expired or garage changed", "PRESS %s AGAIN",
+            "Offer expired or garage changed", "PRESS %s AGAIN (%.1fs)",
             "GaragePurchaseKind::UnlockVehicle",
             "GaragePurchaseKind::UpgradeEngine",
             "GaragePurchaseKind::UpgradeGrip",
