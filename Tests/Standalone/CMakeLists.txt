@@ -2529,3 +2529,6 @@ add_latebrake_portable_research_test(WorldScaleVariantReferenceClock)
 
 # Main integration: sequential garage purchase planning.
 add_latebrake_portable_research_test(GaragePurchasePlanner)
+
+# Main integration: adaptive original-vehicle showroom camera.
+add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
