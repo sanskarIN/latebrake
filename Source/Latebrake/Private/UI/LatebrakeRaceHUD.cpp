@@ -334,6 +334,17 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.
             MenuLine(Mode->GetGarageFeedback(), true);
+            if (latebrake::GarageState::IsVehicle(Catalog.NextUnlockId))
+            {
+                const auto& Next = Catalog.Cars[static_cast<std::size_t>(Catalog.NextUnlockId)];
+                MenuLine(FString::Printf(TEXT("Q NEXT: %s | %d CR | NEED %d"),
+                    UTF8_TO_TCHAR(Next.Name), Next.UnlockCost, Next.RouteCreditsShort), true);
+                MenuLine(TEXT("LOCKED ROWS SHOW TOTAL SEQUENTIAL ROUTE COST."));
+            }
+            else
+            {
+                MenuLine(TEXT("ALL CARS OWNED: NO NEXT UNLOCK"), true);
+            }
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
                 Catalog.EngineLevel, Catalog.GripLevel));
             // Prices and relative tuning are read-only summaries of the
@@ -378,12 +389,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                     State = TEXT("OWNED");
                     break;
                 case latebrake::GarageCatalogOwnership::LockedAffordable:
-                    State = FString::Printf(TEXT("LOCKED %d CR | AFFORDABLE"),
-                        Entry.UnlockCost);
-                    break;
                 case latebrake::GarageCatalogOwnership::LockedInsufficientCredits:
-                    State = FString::Printf(TEXT("LOCKED %d CR | NEED %d"),
-                        Entry.UnlockCost, Entry.CreditsShort);
+                    if (!Entry.RouteValid)
+                        State = TEXT("LOCKED | ROUTE UNAVAILABLE");
+                    else if (Entry.RouteBudgetReady)
+                        State = FString::Printf(TEXT("LOCKED | %d CAR(S) | %d CR TOTAL | BUDGET OK"),
+                            Entry.RouteCars, Entry.RouteCost);
+                    else
+                        State = FString::Printf(TEXT("LOCKED | %d CR TOTAL | NEED %d"),
+                            Entry.RouteCost, Entry.RouteCreditsShort);
                     break;
                 }
                 // Q buys the *first* locked ID only. Do not suggest that
