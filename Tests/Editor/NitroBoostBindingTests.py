@@ -88,7 +88,13 @@ class NitroBoostBindingTests(unittest.TestCase):
 
     def test_hud_policy_and_source_qa_are_honest(self):
         self.assertIn("Car->GetNitroBoost().ChargeFraction()", self.hud)
-        self.assertIn("Car->GetNitroBoost().IsActive()", self.hud)
+        # The HUD now delegates active-state observation to the live readout.
+        readout = read("Source/Latebrake/Public/UI/NitroHudReadout.h")
+        self.assertIn("latebrake::ReadNitroHud(", self.hud)
+        self.assertIn("Car->GetNitroBoost()", self.hud.split(
+            "latebrake::ReadNitroHud(", 1)[1].split(");", 1)[0])
+        self.assertIn("nitro.IsActive(), drivingEligible", readout)
+        self.assertIn("NitroHudPhase::Active", self.hud)
         self.assertIn("!bCompact", self.hud)
         self.assertIn("ArcadeNitroBoostTests.cpp", self.cmake)
         self.assertIn("NAME ArcadeNitroBoost", self.cmake)
