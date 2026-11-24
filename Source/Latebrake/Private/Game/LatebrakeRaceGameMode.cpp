@@ -2001,6 +2001,52 @@ FString ALatebrakeRaceGameMode::GetSelectedVehicleName() const
     return FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Garage.SelectedVehicle()).Name));
 }
 
+FString ALatebrakeRaceGameMode::GetGaragePurchaseDisplayFeedback() const
+{
+    // HUD observation never refreshes, authorizes, or consumes an offer.
+    // The authorization window uses FPlatformTime while the world is paused.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage ||
+        !GaragePurchaseConfirm.HasPending())
+    {
+        return GarageFeedback;
+    }
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        return TEXT("Finish or exit the career race before spending credits.");
+    }
+    const latebrake::GaragePendingPurchaseView Preview =
+        GaragePurchaseConfirm.Preview(Garage.Snapshot(), FPlatformTime::Seconds());
+    if (!Preview.IsPending())
+    {
+        return TEXT("Offer expired or garage changed. Press Q/U/I to preview again.");
+    }
+
+    const TCHAR* Action = nullptr;
+    const TCHAR* Key = nullptr;
+    switch (Preview.Kind)
+    {
+    case latebrake::GaragePurchaseKind::UnlockVehicle:
+        Action = TEXT("UNLOCK");
+        Key = TEXT("Q");
+        break;
+    case latebrake::GaragePurchaseKind::UpgradeEngine:
+        Action = TEXT("ENGINE");
+        Key = TEXT("U");
+        break;
+    case latebrake::GaragePurchaseKind::UpgradeGrip:
+        Action = TEXT("GRIP");
+        Key = TEXT("I");
+        break;
+    default:
+        return GarageFeedback;
+    }
+    // FitHudText clips from the RIGHT in narrow viewports: put the required
+    // confirmation key and expiring timer FIRST, before price/detail.
+    return FString::Printf(
+        TEXT("PRESS %s AGAIN (%.1fs) | %s %d CR"),
+        Key, Preview.SecondsRemaining, Action, Preview.Price);
+}
+
 int32 ALatebrakeRaceGameMode::GetNextLockedVehicleCost() const
 {
     const int32 NextId = Garage.NextLockedVehicle();

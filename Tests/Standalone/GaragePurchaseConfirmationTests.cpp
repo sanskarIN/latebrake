@@ -28,9 +28,50 @@ int main()
         before, 1, price, 10.0), "first press only offers");
     Require(gate.HasPending() && !garage.Owns(1) &&
         garage.Credits() == 3000, "preview changes no currency or ownership");
+    const GaragePendingPurchaseView firstPreview = gate.Preview(before, 10.0);
+    Require(firstPreview.IsPending() &&
+        firstPreview.Kind == GaragePurchaseKind::UnlockVehicle &&
+        firstPreview.Subject == 1 && firstPreview.Price == price &&
+        firstPreview.SecondsRemaining == 8.0,
+        "initial countdown reflects exactly eight seconds, without spending");
+    Require(gate.Preview(before, 12.25).IsPending() &&
+        gate.Preview(before, 12.25).SecondsRemaining == 5.75,
+        "remaining time is read-only and uses monotonic elapsed seconds");
+    Require(gate.Preview(before, 18.0).IsPending() &&
+        gate.Preview(before, 18.0).SecondsRemaining == 0.0,
+        "deadline is inclusive, matching ConfirmOrStage exactly");
+    Require(!gate.Preview(before, 18.0001).IsPending() &&
+        !gate.Preview(before, 9.999).IsPending(),
+        "expired and regressing clocks hide the confirmation affordance");
+    auto changedBefore = before;
+    changedBefore.Credits += 1;
+    Require(!gate.Preview(changedBefore, 11.0).IsPending(),
+        "credit changes hide an offer that can no longer authorize");
+    changedBefore = before;
+    changedBefore.SelectedVehicle = 2;
+    Require(!gate.Preview(changedBefore, 11.0).IsPending(),
+        "selection changes hide a stale offer");
+    changedBefore = before;
+    changedBefore.OwnedVehicleMask |= 4;
+    Require(!gate.Preview(changedBefore, 11.0).IsPending(),
+        "ownership changes hide an old offer");
+    changedBefore = before;
+    changedBefore.EngineLevel = 1;
+    Require(!gate.Preview(changedBefore, 11.0).IsPending(),
+        "upgrade changes hide an offer");
+    for (double badTime : {std::numeric_limits<double>::quiet_NaN(),
+                           std::numeric_limits<double>::infinity(), -1.0})
+    {
+        Require(!gate.Preview(before, badTime).IsPending(),
+            "nonfinite or negative inspection time cannot expose a purchase");
+    }
+    Require(gate.HasPending() && !garage.Owns(1) &&
+        garage.Credits() == 3000, "observation does not consume or mutate an offer");
     Require(gate.ConfirmOrStage(GaragePurchaseKind::UnlockVehicle,
         before, 1, price, 11.0), "same second press authorizes");
     Require(!gate.HasPending(), "authorization consumed exactly once");
+    Require(!gate.Preview(before, 11.0).IsPending(),
+        "used authorization cannot remain visible in the HUD");
     Require(garage.Unlock(1) && garage.Owns(1) &&
         garage.Credits() == 2400, "underlying garage still spends exactly once");
     Require(!gate.ConfirmOrStage(GaragePurchaseKind::UnlockVehicle,
@@ -42,6 +83,10 @@ int main()
         fresh, 0, 200, 20.0), "engine first key stages");
     Require(!gate.ConfirmOrStage(GaragePurchaseKind::UpgradeGrip,
         fresh, 0, 150, 21.0), "other purchase cannot confirm pending engine");
+    Require(gate.Preview(fresh, 21.0).IsPending() &&
+        gate.Preview(fresh, 21.0).Kind == GaragePurchaseKind::UpgradeGrip &&
+        gate.Preview(fresh, 21.0).Price == 150,
+        "switching a preview key changes the displayed offer instead of charging");
     Require(!gate.ConfirmOrStage(GaragePurchaseKind::UpgradeEngine,
         fresh, 0, 200, 21.2), "switching back starts new engine offer");
     Require(gate.ConfirmOrStage(GaragePurchaseKind::UpgradeEngine,

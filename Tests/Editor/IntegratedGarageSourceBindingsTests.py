@@ -37,7 +37,7 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
             "Q NEXT", "VS EQUIPPED", "CTRL+1..6: EQUIP OWNED CARS",
             "ROUTE %d CR | NEED %d CR", "ROUTE %d CR | BUDGET READY",
             "VIA %d SEQUENTIAL Q UNLOCK(S)",
-            "Mode->GetGarageFeedback()", "MenuLine(", "bTouchHUD",
+            "Mode->GetGaragePurchaseDisplayFeedback()", "MenuLine(", "bTouchHUD",
             'FString::Printf(TEXT("CTRL+%d")',
             'FString::Printf(TEXT("%d.")',
         ):
@@ -49,13 +49,13 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
             "MenuPager.Synchronize(Mode->GetMenuPage()", 1)[0]
         self.assertIn("if (Mode->GetMenuPage() == latebrake::MenuPage::Garage)",
                       before_pager)
-        self.assertIn("DrawPinned(Mode->GetGarageFeedback(), true);",
+        self.assertIn("DrawPinned(Mode->GetGaragePurchaseDisplayFeedback(), true);",
                       before_pager)
         self.assertLess(
-            before_pager.index("DrawPinned(Mode->GetGarageFeedback(), true);"),
+            before_pager.index("DrawPinned(Mode->GetGaragePurchaseDisplayFeedback(), true);"),
             before_pager.index("switch (Mode->GetMenuPage())"))
-        self.assertEqual(before_pager.count("DrawPinned(Mode->GetGarageFeedback(), true);"), 1)
-        self.assertLess(page.index("Mode->GetGarageFeedback()"),
+        self.assertEqual(before_pager.count("DrawPinned(Mode->GetGaragePurchaseDisplayFeedback(), true);"), 1)
+        self.assertLess(page.index("Mode->GetGaragePurchaseDisplayFeedback()"),
                         page.index("for (const latebrake::GarageCatalogEntry&"),
                         "transaction feedback must appear ahead of six car rows")
         for forbidden in ("Garage.Unlock(", "Garage.Upgrade(",
