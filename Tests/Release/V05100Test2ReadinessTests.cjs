@@ -207,6 +207,13 @@ const rejects=[
     /Partial test.2/],
   ['half-created candidate release',f=>{f.state.newRelease={tag_name:guard.TAG};},
     /Partial test.2/],
+  ['internally consistent old tag and release cannot qualify new main',f=>{
+    const old = 'd'.repeat(40);
+    f.state.newTag={object:{type:'commit',sha:old}};
+    f.state.newRelease={tag_name:guard.TAG,body:NOTES,name:guard.NAME,
+      target_commitish:old,assets:[],draft:false,prerelease:true,
+      published_at:'2026-11-17T11:30:00Z'};
+  }, /candidate exact immutable source tag SHA/],
   ['wrong candidate exact tag',f=>{
     f.state.newTag={object:{type:'commit',sha:'d'.repeat(40)}};
     f.state.newRelease={tag_name:guard.TAG,body:NOTES,name:guard.NAME,
