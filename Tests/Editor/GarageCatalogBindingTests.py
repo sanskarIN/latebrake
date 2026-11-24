@@ -36,9 +36,9 @@ class GarageCatalogBindingTests(unittest.TestCase):
             "GarageCatalogOwnership::Owned",
             "GarageCatalogOwnership::LockedAffordable",
             "GarageCatalogOwnership::LockedInsufficientCredits",
-            "Catalog.NextUnlockId", "Entry.CreditsShort",
+            "Catalog.NextUnlockId", "Entry.RouteCreditsShort",
             "Entry.Effective.Acceleration", "Entry.Effective.Grip",
-            "Entry.Effective.TopSpeed", "Mode->GetGarageFeedback()"
+            "Entry.Effective.TopSpeed", "Mode->GetGaragePurchaseDisplayFeedback()"
         ):
             self.assertIn(marker, garage_page)
         for forbidden in ("Garage.Unlock(", "Garage.Select(",
@@ -46,9 +46,31 @@ class GarageCatalogBindingTests(unittest.TestCase):
                           "ApplyGarageToPlayer(", "RestartRace(",
                           "RegisterCheckpoint(", "EarnCredits("):
             self.assertNotIn(forbidden, garage_page)
-        self.assertLess(garage_page.index("Mode->GetGarageFeedback()"),
+        self.assertLess(garage_page.index("Mode->GetGaragePurchaseDisplayFeedback()"),
                         garage_page.index("for (const latebrake::GarageCatalogEntry&"),
                         "purchase confirmation remains visible near first page")
+
+    def test_live_catalogue_discloses_sequential_budget_not_sticker_affordability(self):
+        garage_page = self.hud.split("case latebrake::MenuPage::Garage:", 1
+        )[1].split("case latebrake::MenuPage::Results:", 1)[0]
+        self.assertIn("PlanGaragePurchasePath(garage.Snapshot()", self.policy)
+        self.assertIn("entry.Effective = route.Projected;", self.policy)
+        for marker in ("Q NEXT: %s | %d CR | NEED %d",
+                       "Next.UnlockCost, Next.RouteCreditsShort",
+                       "LOCKED ROWS SHOW TOTAL SEQUENTIAL ROUTE COST.",
+                       "Entry.RouteValid", "Entry.RouteBudgetReady",
+                       "Entry.RouteCars",
+                       "VIA %d SEQUENTIAL Q UNLOCK(S)",
+                       "ROUTE %d CR | BUDGET READY",
+                       "ROUTE %d CR | NEED %d CR",
+                       "Entry.RouteCost, Entry.RouteCreditsShort"):
+            self.assertIn(marker, garage_page)
+        self.assertNotIn("LOCKED %d CR | AFFORDABLE", garage_page)
+        self.assertNotIn("Entry.CreditsShort", garage_page)
+        self.assertIn("Nova sticker affordability is not sequential route affordability",
+                      self.test_file)
+        self.assertIn("complete unlock route matches independent ownership/cost oracle",
+                      self.test_file)
 
     def test_catalogue_uses_existing_paginated_menu_and_no_save_schema(self):
         self.assertIn("MenuPager.Synchronize(Mode->GetMenuPage()", self.hud)

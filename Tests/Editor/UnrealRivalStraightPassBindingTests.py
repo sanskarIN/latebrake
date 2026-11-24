@@ -72,7 +72,15 @@ class UnrealRivalStraightPassBindingTests(unittest.TestCase):
             self.assertIn(marker, RIVAL)
         self.assertGreaterEqual(RIVAL.count("StraightPassAssist.Reset();"), 6)
         self.assertIn("ActiveGate = -1;", POLICY)
+        self.assertIn("RetiredGate = -1;", POLICY)
         self.assertIn("if (ActiveGate != -1 && ActiveGate != s.NextGate)", POLICY)
+        self.assertIn("if (RetiredGate != -1 && RetiredGate != s.NextGate)", POLICY)
+        self.assertIn("if (RetiredGate == s.NextGate)", POLICY)
+        self.assertIn("void AbortUntilGateChange() noexcept", POLICY)
+        emergency = RIVAL.split("if (PassResolution.AbortPassing)", 1)[1].split(
+            "const latebrake::PilotCommand FollowingCommand", 1)[0]
+        self.assertIn("StraightPassAssist.AbortUntilGateChange();", emergency)
+        self.assertNotIn("StraightPassAssist.Reset();", emergency)
 
     def test_no_passing_off_track_near_corners_or_into_player(self):
         for marker in (

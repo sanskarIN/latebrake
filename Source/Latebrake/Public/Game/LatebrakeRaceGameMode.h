@@ -151,10 +151,14 @@ public:
     int32 GetGripUpgradeLevel() const { return Garage.GripLevel(); }
     int32 GetNextLockedVehicleCost() const;
     FString GetGarageFeedback() const { return GarageFeedback; }
+    // Read-only live countdown or expiration feedback for the paused Garage UI.
+    FString GetGaragePurchaseDisplayFeedback() const;
     bool HasProgressSaveError() const { return bProgressSaveFailed; }
     int32 GetNextEngineUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine); }
     int32 GetNextGripUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip); }
     void GarageNextVehicle();
+    // Explicit six-slot equip is menu-only and never buys a car.
+    void GarageSelectVehicle(int32 VehicleId);
     void GarageUnlockNext();
     void GarageUpgradeEngine();
     void GarageUpgradeGrip();
@@ -175,6 +179,7 @@ private:
     void SaveRecords();
     void RefreshRival();
     void ApplyGarageToPlayer();
+    void CommitGarageVehicleSelection(int32 VehicleId);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();

@@ -262,7 +262,17 @@ private:
     void MenuDetailsPrevious();
     void MenuActivate();
     void MenuMousePressed();
+    void MenuMouseWheelUp();
+    void MenuMouseWheelDown();
+    void ScrollMenuMouseWheel(int direction);
     void NextGarageVehicle();
+    void SelectGarageSlot(int32 VehicleId);
+    void GarageSlot1();
+    void GarageSlot2();
+    void GarageSlot3();
+    void GarageSlot4();
+    void GarageSlot5();
+    void GarageSlot6();
     void UnlockGarageVehicle();
     void UpgradeGarageEngine();
     void UpgradeGarageGrip();

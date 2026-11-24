@@ -348,7 +348,11 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Command, Passing, HeldTrafficCommand);
     if (PassResolution.AbortPassing)
     {
-        StraightPassAssist.Reset();
+        // The original Reset erased the aborted lane's history, allowing
+        // a fresh pass toward the same player on the very next Tick.
+        // Keep this gate blocked until verified route progression; pause,
+        // restart and recovery paths still call the full Reset().
+        StraightPassAssist.AbortUntilGateChange();
     }
     const latebrake::PilotCommand FollowingCommand = PassResolution.Command;
 

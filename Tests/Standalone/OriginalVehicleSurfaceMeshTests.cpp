@@ -1,4 +1,5 @@
 #include "Vehicles/OriginalVehicleSurfaceMesh.h"
+#include "Vehicles/OriginalVehicleRenderSections.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -74,6 +75,11 @@ static std::array<std::size_t,6> AllSixOriginalCars()
 static void InvalidBoundsAndIDsFailClosed()
 {
     OriginalVehicleSurfaceComposer build;
+    Check(!build.Build(0,-1).Valid &&
+          build.Build(0,-1).Fault==
+              OriginalVehicleMeshFault::InvalidConfiguration &&
+          !build.Build(0,OriginalVehicleRimStyleCount).Valid,
+          "bad/future saved rim style cannot fabricate a cosmetic mesh");
     Check(!build.Build(-1).Valid &&
           build.Build(-1).Fault==OriginalVehicleMeshFault::InvalidVehicle &&
           !build.Build(6).Valid,
@@ -137,6 +143,55 @@ static void MaterialAndGeometryIntegrity()
     mesh.ChangesChaosContact=true;
     Check(!build.ValidateMesh(mesh),
           "render-only model cannot claim to change contact physics");
+    mesh=build.Build(3).Mesh;
+    mesh.Triangles[0].WheelSlot=5;
+    Check(!build.ValidateMesh(mesh),
+          "source authoring never lets an invalid wheel slot reach UE");
+    mesh=build.Build(3).Mesh;
+    for(auto& triangle:mesh.Triangles)
+        if(triangle.WheelSlot==0){triangle.WheelSlot=-1;break;}
+    Check(!build.ValidateMesh(mesh),
+          "Rubber/Alloy/BrakeRotor cannot be reclassified as static body");
+}
+static void ThreeActualWheelDesigns()
+{
+    OriginalVehicleSurfaceComposer build;
+    for(int car=0;car<6;++car)
+    {
+        std::array<std::size_t,OriginalVehicleRimStyleCount> counts{};
+        for(int rim=0;rim<OriginalVehicleRimStyleCount;++rim)
+        {
+            const auto result=build.Build(car,rim);
+            const auto& mesh=result.Mesh;
+            Check(result.Valid && mesh.Ready &&
+                  mesh.RimStyle==rim && mesh.VehicleId==car,
+                  "every six-car and three-rim combination generates valid 3D");
+            Check(mesh.RimSpokeQuads==
+                  4*OriginalVehicleSpokesForStyle(rim),
+                  "all four wheels use the selected true Alloy spoke geometry");
+            Check(mesh.WheelTireQuads==OriginalVehicleWheelSides*4*3,
+                  "tire surface and authoritative wheel envelope stay fixed");
+            Check(build.ValidateMesh(mesh),
+                  "correct rim metadata passes complete 3D validation");
+            const auto render=MakeOriginalVehicleRenderSections(mesh);
+            Check(render.Valid &&
+                  render.TotalTriangles==mesh.Triangles.size(),
+                  "original UE 10-material partitions preserve real rim triangles");
+            const auto again=build.Build(car,rim);
+            Check(again.Valid &&
+                  again.Mesh.Vertices.size()==mesh.Vertices.size() &&
+                  again.Mesh.Triangles.size()==mesh.Triangles.size(),
+                  "same car/rim output deterministically regenerates");
+            counts[static_cast<std::size_t>(rim)]=mesh.Triangles.size();
+        }
+        Check(counts[0]!=counts[1] &&
+              counts[0]!=counts[2] && counts[1]!=counts[2],
+              "7/5/12-spoke variants are truly different vertex topology");
+    }
+    auto invalid=build.Build(2,2).Mesh;
+    invalid.RimSpokeQuads=0;
+    Check(!build.ValidateMesh(invalid),
+          "corrupted rim count is never admitted to Unreal GPU render adapter");
 }
 static void ConfigurableGeometryLimits()
 {
@@ -162,6 +217,7 @@ int main()
     const auto triangleCounts=AllSixOriginalCars();
     InvalidBoundsAndIDsFailClosed();
     MaterialAndGeometryIntegrity();
+    ThreeActualWheelDesigns();
     ConfigurableGeometryLimits();
     std::cout<<"Original six-car visual surfaces validated: "<<
         triangleCounts[0]<<" triangles in baseline model\n";

@@ -38,7 +38,7 @@ class GarageComparisonViewBindingTests(unittest.TestCase):
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, section)
-        self.assertLess(section.index("Mode->GetGarageFeedback()"),
+        self.assertLess(section.index("Mode->GetGaragePurchaseDisplayFeedback()"),
                         section.index("for (const latebrake::GarageCatalogEntry&"))
 
     def test_no_hidden_purchase_or_save_authority(self):

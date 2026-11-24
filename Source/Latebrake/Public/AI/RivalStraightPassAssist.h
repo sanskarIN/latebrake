@@ -58,11 +58,34 @@ public:
     void Reset() noexcept
     {
         ActiveGate = -1;
+        RetiredGate = -1;
+        LaneSign = 0.0;
+        Elapsed = 0.0;
+    }
+
+    // A traffic brake, player lane intrusion or timed-out pass must not
+    // instantly start the same risky lateral manoeuvre on the next Tick.
+    // Keep a small per-gate latch until the route has actually advanced.
+    // A genuine race restart, teleport, focus loss or pause uses Reset()
+    // and clears the old session's history instead.
+    void AbortUntilGateChange() noexcept
+    {
+        if (ActiveGate >= 0)
+        {
+            RetiredGate = ActiveGate;
+        }
+        ActiveGate = -1;
         LaneSign = 0.0;
         Elapsed = 0.0;
     }
 
     bool IsActive() const noexcept { return ActiveGate >= 0; }
+    bool IsRetryBlockedForGate(int gate) const noexcept
+    {
+        // -1 is our internal "no retired gate" sentinel, never a real
+        // blocked checkpoint when an external diagnostic probes it.
+        return IsCircuitGate(gate) && RetiredGate == gate;
+    }
 
     RivalPassOutput Apply(PilotCommand command, RivalPassSample s) noexcept
     {
@@ -84,7 +107,12 @@ public:
             !std::isfinite(command.Steering) ||
             std::abs(command.Steering) > 1.0)
         {
-            Reset();
+            // A single corrupt/missing physics observation may not
+            // erase an already aborted same-gate manoeuvre and trigger
+            // an instant retry on the following valid frame. The
+            // actual pause/restart/recovery guard explicitly calls
+            // Reset() to begin a genuinely new observation epoch.
+            AbortUntilGateChange();
             return {{}, false, 0.0}; // invalid live physics brakes, no propulsion
         }
 
@@ -92,7 +120,7 @@ public:
         // redirect a braking rival across traffic or a checkpoint.
         if (command.Arrived || command.Brake)
         {
-            Reset();
+            AbortUntilGateChange();
             return {command, false, 0.0};
         }
 
@@ -149,6 +177,13 @@ public:
         {
             Reset();
         }
+        // The actual verified next checkpoint is the only normal re-arm
+        // signal. Merely seeing one safe-looking frame on the same
+        // straight cannot erase an earlier emergency brake or aborted pass.
+        if (RetiredGate != -1 && RetiredGate != s.NextGate)
+        {
+            RetiredGate = -1;
+        }
         if (length < MinimumPassingStraightLengthCm ||
             toGate < MinimumCornerClearanceCm ||
             toGate > length + 200.0 ||
@@ -162,12 +197,16 @@ public:
             std::abs(playerSideVelocity) > 300.0 ||
             std::abs(rivalSideVelocity) > 600.0)
         {
-            Reset();
+            AbortUntilGateChange();
             return {command, false, 0.0};
         }
 
         if (!IsActive())
         {
+            if (RetiredGate == s.NextGate)
+            {
+                return {command, false, 0.0};
+            }
             const double closingSpeed = rivalForward - playerForward;
             const double emergencyRunway = std::max(
                 0.0, playerAhead - SafetySeparationCm);
@@ -199,7 +238,7 @@ public:
             Elapsed >= MaximumPassDurationSeconds ||
             playerAhead > StartAheadMaximumCm + 400.0)
         {
-            Reset();
+            AbortUntilGateChange();
             return {command, false, 0.0};
         }
 
@@ -207,9 +246,9 @@ public:
         if (std::abs(playerSide - selectedLane) < 310.0 &&
             playerAhead > -200.0 && playerAhead < 1250.0)
         {
-            // Player drifted across the selected passing lane. Yield
-            // rather than commanding a speculative collision path.
-            Reset();
+            // Player drifted across the selected passing lane. Yield,
+            // and do not re-enter this gate's same compromised lane.
+            AbortUntilGateChange();
             command.Throttle = 0.0;
             command.Brake = true;
             return {command, false, 0.0};
@@ -224,7 +263,7 @@ public:
         };
         if (!IsOnPavedSurface(aim))
         {
-            Reset();
+            AbortUntilGateChange();
             return {command, false, 0.0};
         }
         const double desiredHeading =
@@ -234,7 +273,7 @@ public:
             std::cos(desiredHeading - s.RivalHeadingRadians));
         if (!std::isfinite(error))
         {
-            Reset();
+            AbortUntilGateChange();
             return {{}, false, 0.0};
         }
         command.Steering = std::clamp(error / 0.82, -0.65, 0.65);
@@ -245,6 +284,7 @@ public:
 
 private:
     int ActiveGate = -1;
+    int RetiredGate = -1;
     double LaneSign = 0.0;
     double Elapsed = 0.0;
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -12,6 +13,14 @@ struct TimedLapRecord final
 {
     int CompletedLap = 0;
     double Seconds = 0.0;
+    // Set only by RaceProgress when an actual positive active-race clock
+    // update occurred within THIS lap. A recovery fee alone may produce a
+    // positive duration, but it is not evidence of driven pace.
+    bool ActiveClockEvidence = false;
+    // Actual charged fees, already INCLUDED in Seconds. Attribution
+    // never replaces the measured lap or creates a faster saved record.
+    double PenaltySeconds = 0.0;
+    bool PenaltyAttributionKnown = false;
     bool Valid() const noexcept { return CompletedLap > 0 && Seconds > 0.0; }
 };
 
@@ -27,12 +36,25 @@ public:
         Count = 0;
     }
 
-    bool Record(int completedLap, double seconds) noexcept
+    // Bare standalone records remain unqualified for driven-pace forecasts.
+    // Only the authoritative RaceProgress clock may pass true here.
+    bool Record(int completedLap, double seconds,
+                bool activeClockEvidence = false,
+                double penaltySeconds = 0.0,
+                bool penaltyAttributionKnown = false) noexcept
     {
         if (completedLap <= 0 || !std::isfinite(seconds) || seconds <= 0.0)
         {
             return false;
         }
+        // Reject invalid claims before advancing the bounded history.
+        // A tiny subtraction discrepancy is possible when the cumulative
+        // penalty and total clocks have different floating-point spacing.
+        // Unknown attribution must never masquerade as zero charged fees.
+        if (!std::isfinite(penaltySeconds) || penaltySeconds < 0.0 ||
+            penaltySeconds > seconds + 1e-7 ||
+            (!penaltyAttributionKnown && penaltySeconds != 0.0))
+            return false;
         // This buffer models completed laps in one uninterrupted race, not
         // an editable leaderboard. Reject duplicate/backdated numbers so
         // recent-lap comparisons and pace estimates cannot silently pair
@@ -41,7 +63,9 @@ public:
         {
             return false;
         }
-        Entries[static_cast<std::size_t>(Next)] = {completedLap, seconds};
+        Entries[static_cast<std::size_t>(Next)] = {
+            completedLap, seconds, activeClockEvidence,
+            std::min(penaltySeconds, seconds), penaltyAttributionKnown};
         Next = (Next + 1) % Capacity;
         if (Count < Capacity) ++Count;
         return true;

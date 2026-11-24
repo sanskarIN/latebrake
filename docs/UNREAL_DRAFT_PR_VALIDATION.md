@@ -15,8 +15,10 @@ validated the PR number or source commit.
 
 The original `compile-unreal-editor.yml` and
 `build-unreal-candidate.yml` workflows intentionally run against
-`main` only. A major physics candidate such as **PR #295** must not
-merge before real UE compilation and driving tests. A main-only build
+`main` only. A native gameplay candidate such as **PR #377** (the v0.5.100
+physical drafting change) must not merge before real UE compilation and
+driving tests. The separate suspension experiment PR #295 has its own
+native qualification obligation. A main-only build
 gate otherwise cannot compile the draft candidate on an engine machine.
 
 `.github/workflows/validate-draft-unreal-pr.yml` closes that gap
@@ -37,10 +39,13 @@ self-hosted runner, or accept source from outside this repository.
    tokens. Supply `LATEBRAKE_UNREAL_ROOT` as a runner environment
    variable containing the absolute UE 5.8 installation directory.
    Do not configure publishing credentials or unrelated user data.
-2. Review the exact diff and current head commit SHA of
-   [PR #295](https://github.com/sanskarIN/latebrake/pull/295).
-   In particular review scripts called by the engine workflow; an
-   approved PR can execute arbitrary code on the local engine runner.
+2. Review the exact diff and **live current head** of the PR being tested.
+   For the proposed v0.5.100 drafting change, that is
+   [PR #377](https://github.com/sanskarIN/latebrake/pull/377);
+   for the unrelated suspension experiment, [PR #295](https://github.com/sanskarIN/latebrake/pull/295).
+   Copy the complete head SHA directly from the PR at dispatch time.
+   Review all scripts called by the engine workflow: approved PR source
+   executes native code on the owner-managed runner.
 3. Open GitHub **Actions → Manual trusted Unreal 5.8 PR validation
    (NO release) → Run workflow**, select **main** (not the feature
    branch). Enter the open PR number, exact reviewed **40-character
@@ -55,20 +60,64 @@ self-hosted runner, or accept source from outside this repository.
    must compile, cook, and generate a source- and engine-hashed
    **UNVERIFIED Win64 candidate artifact**. It is retained for only
    **3 days**, never published as a GitHub Release.
-6. Download the complete cooked archive onto a Windows test machine,
+6. After the native job succeeds, a **separate GitHub-hosted post-build
+   identity job** reads the current live owner PR again. It rejects any
+   PR whose head was replaced, closed, retargeted, moved to a fork or is
+   no longer the exact built SHA. The job deliberately checks metadata
+   on a clean hosted runner, **not the self-hosted machine that ran PR
+   scripts**, and never downloads candidate artifacts. A failed final
+   recheck invalidates that workflow run as evidence for the current PR,
+   even if an older UNVERIFIED artifact was uploaded. The Win64 artifact
+   name includes the **full exact built 40-character SHA** and run attempt.
+7. Download the complete cooked archive onto a Windows test machine,
    verify its manifest, then follow
-   [Windows personal playtesting](WINDOWS_PERSONAL_PLAYTEST.md)
-   and [sprung-chassis QA](https://github.com/sanskarIN/latebrake/blob/feat/chaos-four-corner-suspension/docs/SPRUNG_CHASSIS_QA.md). Capture true hardware
-   FPS, car stability, steering, braking, AI, body/wheel attitude,
-   starts, focus/pause and recovery. Inspect
-   `LATEBRAKE_SUSPENSION v=1` debug logs from an actual Development
-   build. This is a separate human acceptance gate.
+   [Windows personal playtesting](WINDOWS_PERSONAL_PLAYTEST.md).
+   For PR #377 specifically, follow the
+   [v0.5.100 physical drafting acceptance matrix](UNREAL_V05100_DRAFTING_ACCEPTANCE.md)
+   with authentic observed gaps, vehicle Z motion, obstacle traces and
+   the actual expanded-HUD applied boost, across 30/60/120 FPS.
+   For PR #295 use its separate sprung-chassis qualification instead.
+   Capture real runtime logs, hardware and manifest hashes; never
+   substitute portable C++20 tests for installed gameplay.
+
+### Optional local diagnostics when the trusted runner is unavailable
+
+The [Windows personal playtest guide](WINDOWS_PERSONAL_PLAYTEST.md) now
+documents fetching the **live head of draft PR #377** in a fresh Windows
+clone, verifying its exact reviewed SHA and invoking the existing real
+UE5.8 Editor/Win64 build commands. This can identify compiler/cook issues
+early. It **does not replace** the trusted manual Editor-then-Win64
+workflow, installed-game acceptance or exact-main source release approval.
+No GitHub pre-release is created by local diagnostics.
 
 **Do not merge the PR just because Editor/UHT passes.** Win64 cooking,
 installed driving, real collision/suspension stability and issue
 [native merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md) remain
 mandatory. The separate ~200 KB native 2D preview is not the Unreal
 game package.
+
+## Current v0.5.100 manual dispatch (no release)
+
+The owner-controlled main-branch workflow has three inputs. Its values
+must be filled from **the live open PR**, not from an old release note:
+
+| Workflow input | Value for the current drafting candidate |
+| --- | --- |
+| `pr_number` | `377` |
+| `expected_head_sha` | Full **current** 40-character [PR #377](https://github.com/sanskarIN/latebrake/pull/377) head SHA, rechecked immediately before dispatch |
+| `validation` | `Editor` first; after success dispatch `Win64` at that same SHA |
+
+Select the **main branch** in the workflow UI, not the PR branch.
+An Editor-only success does not certify the cooked map, installed game,
+nor physical 3D slipstream. An uploaded Win64 artifact remains
+**UNVERIFIED**, never a public pre-release or installer.
+A subsequent commit to PR #377 invalidates earlier exact-head native
+results and requires the native validation sequence again.
+
+See [PR #377 real-driving acceptance](UNREAL_V05100_DRAFTING_ACCEPTANCE.md)
+and the [native merge checklist](UNREAL_NATIVE_MERGE_READINESS.md).
+The explicit release source SHA authorization and source-only publication
+policy are separate from this manual game-candidate workflow.
 
 ## Security boundaries
 
@@ -84,6 +133,10 @@ game package.
 - A genuinely trusted owner PR can still contain malicious build
   scripts or C++ source. The automatic checks cannot replace
   **manual source review and an isolated runner**.
+- Native build success alone is insufficient if the PR changes during
+  compilation: the hosted post-build check reauthenticates exact SHA
+  after every successful Editor or Win64 native job. A stale result is
+  **not** accepted as evidence even if an artifact has already uploaded.
 - Candidate output is created under `RUNNER_TEMP` with a unique
   run/attempt name, never reused, and temporary cleanup refuses
   junctions/symlinks. The artifact has a short retention period.
@@ -92,4 +145,4 @@ game package.
 
 This documentation describes an **available manual verification
 mechanism**, not a claim that an Unreal 5.8 machine has run it or that
-PR #295 has passed real hardware QA.
+any specific draft PR has passed real hardware QA.

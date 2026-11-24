@@ -21,6 +21,8 @@ void RaceProgress::Reset() noexcept
     ActiveTimedLapCount = 0;
     ActiveClockAdvancedThisLap = false;
     RecentLaps.Reset();
+    ActiveClockAdvancedThisSector = false;
+    MeasuredSplits.Reset(CheckpointCount);
     ElapsedSeconds = 0.0;
     TimePenaltyCount = 0;
     TotalPenaltySeconds = 0.0;
@@ -50,6 +52,7 @@ void RaceProgress::Advance(double deltaSeconds) noexcept
         {
             ElapsedSeconds = updated;
             ActiveClockAdvancedThisLap = true;
+            ActiveClockAdvancedThisSector = true;
         }
     }
 }
@@ -121,12 +124,19 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
             best = LastSectorSeconds;
         }
     }
+    MeasuredSplits.Observe(CompletedLaps+1, checkpointIndex,
+        GetCurrentLapSeconds(), GetCurrentLapPenaltySeconds(),
+        ActiveClockAdvancedThisSector);
+    ActiveClockAdvancedThisSector = false;
     LastCheckpointSeconds = ElapsedSeconds;
     ++NextCheckpoint;
     if (NextCheckpoint == CheckpointCount)
     {
         NextCheckpoint = 0;
         ++CompletedLaps;
+        const bool lapHadActiveClockEvidence = ActiveClockAdvancedThisLap;
+        // Keep the explicit authoritative clock guard independently
+        // visible to source-integration checks and future UE callers.
         if (ActiveClockAdvancedThisLap)
         {
             ++ActiveTimedLapCount;
@@ -139,13 +149,22 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
         // the measured lap: the next lap begins at zero charged fees.
         LastLapPenaltySeconds = TotalPenaltySeconds - LapPenaltyStartSeconds;
         LapPenaltyStartSeconds = TotalPenaltySeconds;
+        MeasuredSplits.Complete(CompletedLaps, LastLapSeconds, LastLapPenaltySeconds);
         if (std::isfinite(LastLapSeconds) && LastLapSeconds > 0.0)
         {
             // Existing best/slowest semantics stay unchanged for legitimate
             // lap times, while the explicit count ignores zero-duration
             // laps which would otherwise make pace spread misleading.
             ++TimedLapCount;
-            RecentLaps.Record(CompletedLaps, LastLapSeconds);
+            // Preserve the valid timed-lap history even if extreme clock
+            // precision makes penalty attribution unrepresentable. In
+            // that case record the lap with explicitly unknown attribution.
+            if (!RecentLaps.Record(CompletedLaps, LastLapSeconds,
+                lapHadActiveClockEvidence, LastLapPenaltySeconds, true))
+            {
+                RecentLaps.Record(CompletedLaps, LastLapSeconds,
+                    lapHadActiveClockEvidence);
+            }
             if (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds)
             {
                 BestLapSeconds = LastLapSeconds;

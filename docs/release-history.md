@@ -25,9 +25,11 @@ readiness plan. Neither tag contains a compiled Windows/Android game.
 
 Real UE5.8 Editor/UHT compilation, original cooked circuit, validated
 Win64 installer and installed driving remain blocked on physical-engine
-qualification; [playable issue #148](https://github.com/sanskarIN/latebrake/issues/148)
-is still outstanding. Main-branch improvements are tracked separately
-and cannot be presented as already included in the draft-source snapshot.
+qualification. The former qualification issue #148 was deleted;
+use the maintained [native merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md)
+and [owner-trusted Editor/Win64 validation](UNREAL_DRAFT_PR_VALIDATION.md)
+instead. Main-branch improvements are tracked separately and cannot
+be presented as already included in an earlier source-tag snapshot.
 
 ## Published source previews
 

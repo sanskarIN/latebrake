@@ -53,14 +53,38 @@ usefulness of code still require human review. This is a lexical source
 audit, not a language compiler, semantic complexity score or proof that
 all measured code is functional. Never add padding to satisfy the number.
 
-## Audited baseline
+## Latest independently verified mainline scale (November 14, 2026)
 
-At `51052bb856da498db9897292faef2b1389388c37` (`main`, November 8, 2026),
-schema 2 reports **177 C++ production files**, **21,154 physical lines**,
-**19,640 nonblank lines**, and **17,410 nonblank noncomment lines**.
-The remaining quantity is **182,590**. The three Unreal build-rule files
-(41 physical lines) are separate. Unmerged physics, road and steward
-branches are independent candidates and must never be summed together.
+The exact protected-main source CI at
+[`aeb5a885412b2ad8ceb1de0091dbf6c462811878`](https://github.com/sanskarIN/latebrake/commit/aeb5a885412b2ad8ceb1de0091dbf6c462811878)
+ran `python3 scripts/MeasureSourceScale.py --json` and reported:
+
+| Metric | Verified value |
+| --- | ---: |
+| Tracked authored C++ production files | **291** |
+| Production C++ physical lines | **76,644** |
+| Production C++ nonblank lines | **74,167** |
+| **Qualifying production C++ lines (nonblank, noncomment)** | **71,567** |
+| Remaining to v0.6.0 minimum of 200,000 | **128,433** |
+| Duplicate game-source files excluded | **0** |
+
+These are counts from **that immutable commit**, not an estimate of
+unmerged PR contributions or an assurance that additional unreviewed
+source is functional. A newer code-bearing commit requires a fresh
+audit. The source set includes previously developed portable
+racecraft/telemetry/audio/geometry research; **those libraries are not
+automatically connected to real UE5.8 gameplay**. The repository has
+not demonstrated actual Editor/UHT compilation, a cooked original map
+or a playable installed Win64 game on the basis of source quantity.
+
+## Historical baseline (November 8, 2026)
+
+At `51052bb856da498db9897292faef2b1389388c37`, schema 2 recorded
+**177 C++ production files**, **21,154 physical lines**, **19,640 nonblank
+lines** and **17,410 nonblank noncomment lines**, then **182,590**
+remaining. Preserve this baseline as historical context rather than
+presenting it as the current mainline size. Unmerged physics, road and
+steward branches must never be summed with main or counted twice.
 
 Schema 1 used physical source lines, including C# build rules, to calculate
 its goal. Its historical 21,195-line main result remains a physical count;
@@ -68,5 +92,9 @@ it does not satisfy this stricter production-code milestone.
 
 Keep system completion and runtime acceptance alongside size: real UE5.8
 wheel contact and handling, an original cooked circuit, AI, race progression,
-art/audio/UI, performance and genuine installed Windows packages. See
-[playable gate #148](https://github.com/sanskarIN/latebrake/issues/148).
+art/audio/UI, performance and genuine installed Windows packages.
+The former GitHub qualification issue #148 was deleted and is **not**
+a valid release sign-off. Follow the maintained
+[native Unreal merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md),
+[manual Editor/Win64 workflow](UNREAL_DRAFT_PR_VALIDATION.md)
+and [installed Windows playtest](WINDOWS_PERSONAL_PLAYTEST.md).

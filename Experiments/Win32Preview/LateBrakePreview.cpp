@@ -74,6 +74,8 @@ __declspec(dllimport) void __stdcall PostQuitMessage(int);
 __declspec(dllimport) short __stdcall GetAsyncKeyState(int);
 __declspec(dllimport) HDC __stdcall GetDC(HWND);
 __declspec(dllimport) int __stdcall ReleaseDC(HWND,HDC);
+__declspec(dllimport) int __stdcall MessageBoxA(HWND,const char*,const char*,UINT);
+__declspec(dllimport) void __stdcall OutputDebugStringA(const char*);
 __declspec(dllimport) BOOL __stdcall GetClientRect(HWND,RECT*);
 __declspec(dllimport) int __stdcall StretchDIBits(HDC,int,int,int,int,int,int,int,int,const void*,const BITMAPINFO*,UINT,DWORD);
 }
@@ -81,6 +83,28 @@ __declspec(dllimport) int __stdcall StretchDIBits(HDC,int,int,int,int,int,int,in
 static const int WIDTH=960, HEIGHT=640;
 static const float CX=480.0f, CY=331.0f;
 struct CanvasViewport { int x,y,w,h; };
+// The freestanding GDI preview used to silently exit during startup and
+// silently present black frames if the desktop display blit failed. This
+// state machine only observes actual nonzero viewports; minimizing a
+// window must never count as a broken graphics device.
+struct PreviewGdiHealth {
+    unsigned consecutiveFailures=0;
+    bool warningIssued=false;
+};
+static bool observePresentStatus(PreviewGdiHealth& state,
+                                bool visibleViewport,bool rendered){
+    if(!visibleViewport||rendered){
+        state.consecutiveFailures=0;
+        return false;
+    }
+    if(state.warningIssued)return false;
+    if(state.consecutiveFailures<45u)++state.consecutiveFailures;
+    if(state.consecutiveFailures>=45u){
+        state.warningIssued=true;
+        return true;
+    }
+    return false;
+}
 static CanvasViewport fitViewport(int clientW,int clientH){
     if(clientW<=0||clientH<=0)return {0,0,0,0};
     long long wide=(long long)clientW*HEIGHT;
@@ -1546,6 +1570,25 @@ static bool selftest(){
     beginRace();finishRace(true);
     if(!race.awarded||bonusCredits!=5||credits!=500000||
        completed!=100000||careerStars!=100000)return false;
+    selfTestStage=83;
+    // GDI presentation failure policy must never report a minimized
+    // viewport or one transient failed desktop draw as a fatal startup.
+    PreviewGdiHealth presentation{};
+    for(unsigned k=0;k<44u;k++)
+        if(observePresentStatus(presentation,true,false))return false;
+    if(presentation.consecutiveFailures!=44u||
+        observePresentStatus(presentation,false,false)||
+        presentation.consecutiveFailures!=0u)return false;
+    for(unsigned k=0;k<44u;k++)
+        if(observePresentStatus(presentation,true,false))return false;
+    if(observePresentStatus(presentation,true,true))return false;
+    if(presentation.consecutiveFailures!=0u)return false;
+    for(unsigned k=0;k<44u;k++)
+        if(observePresentStatus(presentation,true,false))return false;
+    if(!observePresentStatus(presentation,true,false)||
+        !presentation.warningIssued||
+        observePresentStatus(presentation,true,false))return false;
+    // No GUI is shown or Windows window APIs called by this logic test.
     return (carPrices[5]>carPrices[1] && carAccel[4]>carAccel[1]);
 }
 extern "C" void mainCRTStartup(){
@@ -1553,14 +1596,27 @@ extern "C" void mainCRTStartup(){
     loadProgress();loadSettings();loadLapRecords();drawTrack();initializePad();
     HINSTANCE instance=GetModuleHandleA(0);
     WNDCLASSA wc={};wc.style=0x0003;wc.proc=WindowProc;wc.instance=instance;wc.name="LateBrakePreviewNative";
-    if(!RegisterClassA(&wc))ExitProcess(5);
+    if(!RegisterClassA(&wc)){
+        OutputDebugStringA("LateBrake V5: RegisterClassA failed. Window not created.\n");
+        MessageBoxA(0,"Unable to register LateBrake's Windows window class. "
+            "This standalone 2D preview cannot start. Please check the "
+            "Windows desktop session.","LateBrake V5 - Window startup error",0x10u);
+        ExitProcess(5);
+    }
     HWND wnd=CreateWindowExA(0,wc.name,"LateBrake V5 - Controller Edition (2D Preview, Not Unreal)",0x00CF0000,70,70,980,710,0,0,instance,0);
-    if(!wnd)ExitProcess(6);
+    if(!wnd){
+        OutputDebugStringA("LateBrake V5: CreateWindowExA failed. Window not created.\n");
+        MessageBoxA(0,"Unable to create the LateBrake preview window. "
+            "Please check that a Windows desktop session is available. "
+            "The racing game was not started.","LateBrake V5 - Window startup error",0x10u);
+        ExitProcess(6);
+    }
     windowHandle=wnd;ShowWindow(wnd,5);UpdateWindow(wnd);
     BITMAPINFO bi={};bi.header.size=40;bi.header.width=WIDTH;bi.header.height=-HEIGHT;bi.header.planes=1;bi.header.bits=32;
     long long frequency=0,last=0,now=0;
     QueryPerformanceFrequency(&frequency);QueryPerformanceCounter(&last);
     if(frequency<=0)frequency=1000000;
+    PreviewGdiHealth presentation{};
     while(running){
         MSG msg={};while(PeekMessageA(&msg,0,0,0,1)){
             if(msg.message==0x0012){running=false;break;}
@@ -1571,9 +1627,11 @@ extern "C" void mainCRTStartup(){
         last=now;
         step(dt);render();
         RECT rc={};GetClientRect(wnd,&rc);
+        CanvasViewport vp=fitViewport(rc.right-rc.left,rc.bottom-rc.top);
+        const bool viewportVisible=vp.w>0&&vp.h>0;
+        bool presentedFrame=false;
         HDC dc=GetDC(wnd);
         if(dc){
-            CanvasViewport vp=fitViewport(rc.right-rc.left,rc.bottom-rc.top);
             // Letterbox/pillarbox to retain 3:2 geometry, including after
             // arbitrary window resizing. This is not a 3D view transformation.
             BITMAPINFO solid={};solid.header.size=40;
@@ -1582,9 +1640,21 @@ extern "C" void mainCRTStartup(){
             const unsigned int black=0x09121Bu;
             StretchDIBits(dc,0,0,rc.right-rc.left,rc.bottom-rc.top,
                 0,0,1,1,&black,&solid,0,0x00CC0020);
-            if(vp.w>0&&vp.h>0)
-                StretchDIBits(dc,vp.x,vp.y,vp.w,vp.h,0,0,WIDTH,HEIGHT,frame,&bi,0,0x00CC0020);
+            if(viewportVisible){
+                const int copied=StretchDIBits(dc,vp.x,vp.y,vp.w,vp.h,
+                    0,0,WIDTH,HEIGHT,frame,&bi,0,0x00CC0020);
+                presentedFrame=copied!=0&&copied!=-1;
+            }
             ReleaseDC(wnd,dc);
+        }
+        if(observePresentStatus(presentation,viewportVisible,presentedFrame)){
+            OutputDebugStringA("LateBrake V5: 45 consecutive GDI frame presentation failures.\n");
+            MessageBoxA(wnd,"The Windows desktop graphics surface failed to "
+                "present LateBrake's 2D frames repeatedly. Try restarting "
+                "the preview in an active Windows desktop session. "
+                "No Unreal Engine or 3D game is running.",
+                "LateBrake V5 - Graphics presentation error",0x10u);
+            ExitProcess(26);
         }
         Sleep(7);
     }

@@ -1,6 +1,7 @@
-// Compile the coherent first-generation research telemetry domain together.
-// The stacked strategy generation has incompatible coaching names and has
-// been isolated from this mainline port instead of hiding ODR conflicts.
+// Compile all interoperable portable telemetry headers together. The
+// historical strategy/coach/fuel/pit types now have separate meaningful
+// names, so ODR collisions cannot hide behind isolated test executables.
+// This is C++20 source validation only, not Unreal integration.
 #include "Telemetry/TelemetryBrakeTrace.h"
 #include "Telemetry/TelemetryBraking.h"
 #include "Telemetry/TelemetryCornerSequence.h"
@@ -33,9 +34,28 @@
 #include "Telemetry/TelemetryValidation.h"
 #include "Telemetry/TelemetryVehicleBalance.h"
 #include "Telemetry/TelemetryWeatherTrend.h"
+#include "Telemetry/TelemetryCoach.h"
+#include "Telemetry/TelemetryDashboard.h"
+#include "Telemetry/TelemetryDeltaComparison.h"
+#include "Telemetry/TelemetryDriverComparison.h"
+#include "Telemetry/TelemetryEnvironmentModel.h"
+#include "Telemetry/TelemetryEventJournal.h"
+#include "Telemetry/TelemetryExport.h"
+#include "Telemetry/TelemetryFuelStrategy.h"
+#include "Telemetry/TelemetryLapAnalysis.h"
+#include "Telemetry/TelemetryPitStrategyReview.h"
+#include "Telemetry/TelemetryRaceStrategy.h"
+#include "Telemetry/TelemetryReliability.h"
+#include "Telemetry/TelemetryReplayBuffer.h"
+#include "Telemetry/TelemetrySafetyAudit.h"
+#include "Telemetry/TelemetrySectorAnalysis.h"
+#include "Telemetry/TelemetrySessionTimeline.h"
+#include "Telemetry/TelemetryStintPerformance.h"
+#include "Telemetry/TelemetryTrainingDrills.h"
+#include "Telemetry/TelemetryVehicleHealth.h"
 #include <iostream>
 int main()
 {
-    std::cout << "Telemetry: all 32 interoperable headers compiled.\n";
+    std::cout << "Telemetry: all 51 interoperable headers compiled.\n";
     return 0;
 }

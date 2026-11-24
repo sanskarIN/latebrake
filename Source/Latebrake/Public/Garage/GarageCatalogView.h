@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Garage/GarageState.h"
+#include "Garage/GaragePurchasePlanner.h"
 
 #include <array>
 
@@ -27,12 +28,21 @@ struct GarageCatalogEntry final
     // Read-only theoretical multipliers with the CURRENT shared upgrades.
     // These are not verified performance metrics or independent tuning.
     VehiclePerformance Effective{};
+    // Sticker price and individual affordability above are retained for
+    // older clients. The actual Q sequence may require earlier cars.
+    bool RouteValid = false;
+    int RouteCars = 0;
+    int RouteCost = 0;
+    int RouteCreditsShort = 0;
+    bool RouteBudgetReady = false;
+    bool IsNextUnlock = false;
 };
 
 struct GarageCatalogView final
 {
     std::array<GarageCatalogEntry, VehicleCount> Cars{};
     int SelectedVehicle = 0;
+    int OwnedVehicleCount = 0;
     int Credits = 0;
     int NextUnlockId = -1;
     int EngineLevel = 0;
@@ -59,6 +69,11 @@ inline GarageCatalogView BuildGarageCatalogView(GarageSnapshot persisted) noexce
         GarageCatalogEntry& entry = view.Cars[static_cast<std::size_t>(id)];
         entry.VehicleId = id;
         entry.Name = spec.Name;
+        if (garage.Owns(id))
+        {
+            // Count only sanitized ownership, never unknown future SaveGame bits.
+            ++view.OwnedVehicleCount;
+        }
         entry.UnlockCost = spec.UnlockCost;
         entry.CreditsShort = garage.Owns(id)
             ? 0 : std::max(0, spec.UnlockCost - view.Credits);
@@ -68,13 +83,22 @@ inline GarageCatalogView BuildGarageCatalogView(GarageSnapshot persisted) noexce
             : garage.CanUnlock(id) ? GarageCatalogOwnership::LockedAffordable
                                    : GarageCatalogOwnership::LockedInsufficientCredits;
 
-        // Match GarageState::Performance, except for the observed row's
-        // vehicle rather than only the selected one. This is a preview.
-        entry.Effective = {
-            spec.Acceleration * (1.0 + 0.06 * view.EngineLevel),
-            spec.Grip * (1.0 + 0.05 * view.GripLevel),
-            spec.TopSpeed * (1.0 + 0.02 * view.EngineLevel)
-        };
+        entry.IsNextUnlock = id == view.NextUnlockId;
+        // Single authority for both cumulative costs and projected
+        // performance. Do not duplicate the shared upgrade multipliers
+        // or assume that Q can directly buy any locked catalogue entry.
+        const auto route = PlanGaragePurchasePath(garage.Snapshot(),
+            {id, view.EngineLevel, view.GripLevel, 0});
+        if (route.Status != GaragePlanStatus::Invalid)
+        {
+            entry.RouteValid = true;
+            entry.RouteCars = route.AdditionalCarsUnlocked;
+            entry.RouteCost = route.UnlockCost;
+            // Zero reserve, bounded car prices, and no upgrade changes.
+            entry.RouteCreditsShort = static_cast<int>(route.CreditsShort);
+            entry.RouteBudgetReady = route.Status == GaragePlanStatus::Affordable;
+            entry.Effective = route.Projected;
+        }
     }
     return view;
 }

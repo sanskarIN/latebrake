@@ -61,7 +61,10 @@ provide the Epic Engine, Editor/UHT, cooked .umap or installed gameplay.
    available runner is online, or eventually expires the queued job.
 8. The workflow accepts **only an owner-dispatched, main-targeted,
    same-repository, open PR with an exact reviewed 40-character head SHA**.
-   For the current six-car candidate, see
+   For v0.5.100 physical drafting, review
+   [draft PR #377](https://github.com/sanskarIN/latebrake/pull/377)
+   and the [dedicated acceptance matrix](UNREAL_V05100_DRAFTING_ACCEPTANCE.md).
+   The unrelated six-car candidate remains
    [draft PR #341](https://github.com/sanskarIN/latebrake/pull/341).
    Review the *current head* before dispatching; do not assume any
    SHA printed in old documentation is still correct. Select
@@ -87,7 +90,8 @@ provide the Epic Engine, Editor/UHT, cooked .umap or installed gameplay.
   UE Editor/UHT, native Win64 cook, original `.umap`, installed
   gameplay, six-car AI/physics and 30/60/120 FPS. The former qualification issue #148 has been deleted. Use the maintained
   [native merge-evidence checklist](UNREAL_NATIVE_MERGE_READINESS.md) and
-  the active [six-car review candidate PR #341](https://github.com/sanskarIN/latebrake/pull/341)
+  the relevant active review PR (for drafting, [PR #377](https://github.com/sanskarIN/latebrake/pull/377);
+  for the six-car experiment, [PR #341](https://github.com/sanskarIN/latebrake/pull/341))
   to record evidence; a deleted issue cannot satisfy gameplay approval.
 - GitHub documents:
   [adding self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),

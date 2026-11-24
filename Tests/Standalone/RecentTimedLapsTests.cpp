@@ -36,7 +36,8 @@ int main()
             "duplicate and out-of-order lap numbers rejected");
     Require(history.Size() == 1 &&
             history.GetRecent(0).CompletedLap == 1 &&
-            history.GetRecent(0).Seconds == 2.5,
+            history.GetRecent(0).Seconds == 2.5 &&
+            !history.GetRecent(0).ActiveClockEvidence,
             "rejected lap must preserve the previous duration and count");
     Require(history.Record(3, 4.0), "skipped but increasing lap index allowed");
     Require(!history.Record(2, 4.0) && !history.Record(3, 4.0),
@@ -79,6 +80,21 @@ int main()
             history.GetRecent(0).CompletedLap == 1 &&
             !history.GetRecent(1).Valid(),
             "post-restart history does not expose previous session");
+    Require(history.Record(2, 10.0, true) &&
+            history.GetRecent(0).ActiveClockEvidence &&
+            !history.GetRecent(1).ActiveClockEvidence,
+            "explicit per-lap evidence never changes earlier records");
+    Require(!history.Record(3, 10.0, true, 11.0, true) &&
+            !history.Record(3, 10.0, true, -1.0, true) &&
+            !history.Record(3, 10.0, true, 1.0, false) &&
+            !history.Record(3, 10.0, true,
+                std::numeric_limits<double>::quiet_NaN(), true),
+            "invalid fee attribution does not advance history");
+    Require(history.Record(3, 10.0, true, 2.0, true) &&
+            history.GetRecent(0).PenaltyAttributionKnown &&
+            history.GetRecent(0).PenaltySeconds == 2.0 &&
+            !history.GetRecent(1).PenaltyAttributionKnown,
+            "per-lap attribution is retained independently");
     std::cout << "Bounded timed-lap ring regression passed.\n";
     return EXIT_SUCCESS;
 }

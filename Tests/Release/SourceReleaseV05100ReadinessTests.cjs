@@ -1,0 +1,469 @@
+'use strict';
+// All fixtures are offline. This file never imports a GitHub token or writes.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const guard = require('../../scripts/SourceReleaseV05100Readiness.cjs');
+const notes = fs.readFileSync(path.join(
+  __dirname, '../../docs/releases/v0.5.100.candidate.md'), 'utf8');
+const SHA = 'c'.repeat(40);
+const MERGE = 'b'.repeat(40);
+const data = value => ({data: structuredClone(value)});
+function missing() {
+  const e = new Error('not found'); e.status = 404; throw e;
+}
+function fixture() {
+  const state = {
+    main: {protected:true,commit:{sha:SHA}},
+    notes: {type:'file',encoding:'base64',content:Buffer.from(notes).toString('base64')},
+    policy: {type:'file',encoding:'base64',content:Buffer.from(
+      'FollowerVerticalSpeedCmPerSecond LeadVerticalSpeedCmPerSecond ' +
+      'dz - predictedZ !std::isfinite(followerVertical) ' +
+      'MaxVerticalMotionResidualCm = 75.0 ' +
+      'std::abs(verticalResidual) > MaxVerticalMotionResidualCm ' +
+      'std::uint64_t LeadIdentity = 0 sample.LeadIdentity == 0 ' +
+      'PreviousLeadIdentity != sample.LeadIdentity ' +
+      'FollowerWorldX FollowerWorldY FollowerWorldZ ' +
+      '!std::isfinite(followerWorldX) !std::isfinite(followerWorldY) ' +
+      '!std::isfinite(followerWorldZ) ' +
+      'PreviousFollowerWorldX = followerWorldX ' +
+      'PreviousFollowerWorldY = followerWorldY ' +
+      'PreviousFollowerWorldZ = followerWorldZ ' +
+      'followerResidual > MaxRelativeMotionResidualCm ' +
+      'std::abs(followerVerticalResidual) ' +
+      'const double leadWorldX = followerWorldX + dx; ' +
+      'const double leadWorldY = followerWorldY + dy; ' +
+      'const double leadWorldZ = followerWorldZ + dz; ' +
+      'const double predictedLeadX = const double predictedLeadY = ' +
+      'const double predictedLeadZ = ' +
+      'leadResidual > MaxRelativeMotionResidualCm ' +
+      'std::abs(leadVerticalResidual) ' +
+      'const bool hadContinuityBaseline = HavePreviousOffset; ' +
+      'hadContinuityBaseline ? dt : 0.0 ' +
+      'PredictedFollowerWorldX += dt * followerVx; ' +
+      'PredictedLeadWorldX += dt * leadVx; ' +
+      'followerWindowResidual > MaxRelativeMotionResidualCm ' +
+      'leadWindowResidual > MaxRelativeMotionResidualCm ' +
+      'MotionWindowSeconds >= ConfirmSeconds ' +
+      'followerExpectedTravel = std::hypot( ' +
+      'leadExpectedTravel = std::hypot( ' +
+      '0.5 * followerExpectedTravel ' +
+      '0.5 * leadExpectedTravel ' +
+      'followerWindowResidual > followerWindowCeiling ' +
+      'leadWindowResidual > leadWindowCeiling ' +
+      'WindowStartLeadWorldX = leadWorldX;').toString('base64')},
+    pawn: {type:'file',encoding:'base64',content:Buffer.from(
+      'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
+      'static_cast<std::uint64_t>(RivalIdentity) ' +
+      'static_cast<double>(Position.X) ' +
+      'static_cast<double>(Position.Y) ' +
+      'static_cast<double>(Position.Z)'
+    ).toString('base64')},
+    mode: {type:'file',encoding:'base64',content:Buffer.from(
+      'RivalCar->GetUniqueID() OutIdentity = RivalIdentity;'
+    ).toString('base64')},
+    tests: {type:'file',encoding:'base64',content:Buffer.from(
+      'same-lane vertical relocation identical-geometry replacement ' +
+      'rapid opponent swaps cannot inherit drafting charge ' +
+      'common-mode X relocation common-mode lateral relocation ' +
+      'common-mode vertical relocation ' +
+      'genuine measured follower world movement ' +
+      'hidden 255cm lead relocation denied ' +
+      'combined 120cm rival Z jump rejected ' +
+      'independent rival continuity rejects rearward hidden relocation ' +
+      'physically predicted lead and follower motion retains drafting ' +
+      'initial drafting sample establishes baseline with zero time ' +
+      'stale world positions cannot earn drafting at 24m/s ' +
+      'stale lead chassis cannot hide behind moving follower ' +
+      '30/60/120 FPS physically integrated drafting follows elapsed time ' +
+      '10m/s frozen rival must not pass 2m absolute drift allowance ' +
+      'real 10m/s rival correctly qualifies after 0.20s ' +
+      'bounded slow-leader tick skew remains accepted').toString('base64')},
+    pr: {state:'closed',merged:true,merge_commit_sha:MERGE,
+      base:{ref:'main'},head:{repo:{full_name:'sanskarIN/latebrake'}}},
+    compare: {status:'ahead',behind_by:0,ahead_by:1},
+    checks: {check_runs:guard.REQUIRED_CHECKS.map((name,i) => ({
+      id:i+1,name,status:'completed',conclusion:'success',
+      app:{slug:'github-actions'},head_sha:SHA,
+    }))},
+    oldRelease: {tag_name:guard.PREVIOUS_TAG,
+      target_commitish:guard.PREVIOUS_SHA,prerelease:true,draft:false,assets:[]},
+    oldTag: {object:{type:'commit',sha:guard.PREVIOUS_SHA}},
+    tag:null, release:null, reads:[], writes:0, onRead:()=>{},
+  };
+
+  // Independent fixture for the later, integrated grade/XY and slip-source
+  // requirements. Intentionally do not derive tokens from the gate: omission
+  // of a production binding must produce a failing negative mutation test.
+  for (const [key, extension] of Object.entries({
+    policy: [
+      'double FollowerWorldVelocityX =',
+      'double FollowerWorldVelocityY =',
+      'double LeadWorldVelocityX =',
+      'double LeadWorldVelocityY =',
+      'const double followerVx = followerWorldVelocityX;',
+      'const double followerVy = followerWorldVelocityY;',
+      'const double leadVx = leadWorldVelocityX;',
+      'const double leadVy = leadWorldVelocityY;',
+      'followerNorm < 0.75', 'leadNorm < 0.75',
+      'followerPlanarForward < 0.70 * follower',
+      'leadPlanarForward < 0.70 * lead',
+      'followerWorldLateral - followerLateral',
+      'leadWorldLateral - leadLateral',
+      'followerSlipObservationTolerance',
+      'leadSlipObservationTolerance',
+      'std::max(std::abs(followerLateral),',
+      'std::abs(followerWorldLateral))',
+      'std::max(std::abs(leadLateral),',
+      'std::abs(leadWorldLateral))',
+    ].join(' '),
+    pawn: [
+      'FVector::DotProduct(Velocity, Forward)',
+      'const FVector RivalPlanarRight = FVector(',
+      '-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();',
+      'const FVector FollowerPlanarRight = FVector(',
+      '-Forward.Y, Forward.X, 0.f).GetSafeNormal();',
+      'const double FollowerDraftLateralSpeed = FVector::DotProduct(',
+      'Velocity, FollowerPlanarRight)',
+      'FollowerDraftLateralSpeed,',
+      'const double RivalLateralSpeed = FVector::DotProduct(',
+      'RivalVelocity, RivalPlanarRight)',
+      'static_cast<double>(Velocity.X)',
+      'static_cast<double>(Velocity.Y)',
+      'static_cast<double>(RivalVelocity.X)',
+      'static_cast<double>(RivalVelocity.Y)',
+    ].join(' '),
+    tests: [
+      'genuine high-speed climbing Chaos motion keeps drafting across windows',
+      'vertical-only pitched motion is not forward drafting',
+      'independent XY velocity rejects concealed lateral sliding',
+      'actual Chaos XY slip above cap cannot hide inside tolerated lateral telemetry skew',
+      'physically measured slip below cap keeps continuous drafting despite small observation skew',
+      'small measured XY lateral offset retains physically continuous draft',
+    ].join(' '),
+  })) {
+    const original = Buffer.from(state[key].content, 'base64').toString('utf8');
+    state[key].content = Buffer.from(original + ' ' + extension).toString('base64');
+  }
+  const context = {
+    repo:{owner:'sanskarIN',repo:'latebrake'},
+    actor:'sanskarIN',eventName:'workflow_dispatch',
+    ref:'refs/heads/main',sha:SHA,payload:{inputs:{candidate_sha:SHA}},
+  };
+  const github = {rest:{
+    repos:{
+      getBranch: async () => {
+        state.reads.push('main');
+        state.onRead();
+        return data(state.main);
+      },
+      getContent: async ({path:filename,ref}) => {
+        assert.equal(ref,SHA);
+        state.reads.push(filename);
+        if (filename===guard.NOTES_PATH) return data(state.notes);
+        if (filename==='Source/Latebrake/Public/Racing/SlipstreamDraftBoost.h')
+          return data(state.policy);
+        if (filename==='Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp')
+          return data(state.pawn);
+        if (filename==='Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp')
+          return data(state.mode);
+        if (filename==='Tests/Standalone/SlipstreamDraftBoostTests.cpp')
+          return data(state.tests);
+        throw new Error('unexpected file: '+filename);
+      },
+      compareCommits: async ({base,head}) => {
+        assert.equal(base,MERGE);assert.equal(head,SHA);
+        return data(state.compare);
+      },
+      getReleaseByTag: async ({tag}) => {
+        state.reads.push('release:'+tag);
+        if (tag===guard.PREVIOUS_TAG) return data(state.oldRelease);
+        assert.equal(tag,guard.TAG);
+        return state.release?data(state.release):missing();
+      },
+    },
+    pulls:{get:async({pull_number})=>{
+      assert.equal(pull_number,377);return data(state.pr);
+    }},
+    checks:{listForRef:async({ref})=>{
+      assert.equal(ref,SHA);return data(state.checks);
+    }},
+    git:{getRef:async({ref})=>{
+      state.reads.push(ref);
+      if (ref==='tags/'+guard.PREVIOUS_TAG) return data(state.oldTag);
+      assert.equal(ref,'tags/'+guard.TAG);
+      return state.tag?data(state.tag):missing();
+    }},
+  }};
+  return {github,context,candidateSha:SHA,notes,state};
+}
+async function reject(change,regex=/./) {
+  const f=fixture();change(f);
+  await assert.rejects(guard.inspectReadiness(f),regex);
+  assert.equal(f.state.writes,0,'preflight must never mutate GitHub');
+}
+test('valid exact-main source readiness returns no writes or game claims',async()=>{
+  const f=fixture();const r=await guard.inspectReadiness(f);
+  assert.equal(r.writesPerformed,0);
+  assert.equal(r.existingTag,false);
+  assert.equal(r.existingRelease,false);
+  assert.equal(r.sourceChecks,7);
+  assert.equal(r.nativeUnrealQualified,false);
+  assert.equal(r.playableWindowsQualified,false);
+  assert.equal(f.state.reads.filter(x=>x==='main').length,2);
+});
+test('verified existing identical tag/release is read-only',async()=>{
+  const f=fixture();
+  f.state.tag={object:{type:'commit',sha:SHA}};
+  f.state.release={tag_name:guard.TAG,target_commitish:SHA,
+    name:guard.NAME,body:notes,draft:false,prerelease:true,assets:[]};
+  const result=await guard.inspectReadiness(f);
+  assert.equal(result.existingTag,true);
+  assert.equal(result.existingRelease,true);
+  assert.equal(result.writesPerformed,0);
+});
+test('matching standalone tag is observed but not modified',async()=>{
+  const f=fixture();f.state.tag={object:{type:'commit',sha:SHA}};
+  const r=await guard.inspectReadiness(f);
+  assert.equal(r.existingTag,true);assert.equal(r.existingRelease,false);
+});
+for (const [label,modify,error] of [
+  ['wrong repo',f=>{f.context.repo.repo='other';},/owner manual/],
+  ['wrong actor',f=>{f.context.actor='intruder';},/owner manual/],
+  ['automatic PR event',f=>{f.context.eventName='pull_request';},/owner manual/],
+  ['wrong ref',f=>{f.context.ref='refs/heads/feature';},/owner manual/],
+  ['invalid candidate sha',f=>{f.candidateSha='123';},/owner manual/],
+  ['input not exact checkout',f=>{f.candidateSha='f'.repeat(40);},/owner manual/],
+  ['unprotected main',f=>{f.state.main.protected=false;},/Protected main/],
+  ['moved main',f=>{f.state.main.commit.sha='f'.repeat(40);},/Protected main/],
+  ['tampered note bytes',f=>{f.state.notes.content=Buffer.from(notes+'!').toString('base64');},/notes do not match/],
+  ['symlink note path',f=>{f.state.notes.type='symlink';},/regular source file/],
+  ['missing reviewed merge',f=>{f.state.pr.merged=false;},/not merged/],
+  ['closed unmerged PR',f=>{f.state.pr.state='open';},/not merged/],
+  ['merged on foreign base',f=>{f.state.pr.base.ref='other';},/not merged/],
+  ['merged from fork',f=>{f.state.pr.head.repo.full_name='fork/repo';},/not merged/],
+  ['diverged from PR merge',f=>{f.state.compare.status='diverged';},/not a descendant/],
+  ['behind PR merge',f=>{f.state.compare.behind_by=1;},/not a descendant/],
+  ['missing 3D policy',f=>{f.state.policy.content=Buffer.from('no Z').toString('base64');},/physical-3D/],
+  ['missing Unreal integration',f=>{f.state.pawn.content=Buffer.from('fake').toString('base64');},/physical-3D/],
+  ['missing 3D regression',f=>{f.state.tests.content=Buffer.from('fake').toString('base64');},/physical-3D/],
+  ['missing rival actor binding',f=>{f.state.mode.content=Buffer.from('fake').toString('base64');},/physical-3D/],
+  ['missing actor identity policy',f=>{
+    f.state.policy.content=Buffer.from(
+      'FollowerVerticalSpeedCmPerSecond LeadVerticalSpeedCmPerSecond dz - predictedZ ' +
+      '!std::isfinite(followerVertical) MaxVerticalMotionResidualCm = 75.0 ' +
+      'std::abs(verticalResidual) > MaxVerticalMotionResidualCm'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing actor identity regression',f=>{
+    f.state.tests.content=Buffer.from('same-lane vertical relocation').toString('base64');
+  },/physical-3D/],
+  ['missing follower world-position policy',f=>{
+    f.state.policy.content=Buffer.from(
+      'FollowerVerticalSpeedCmPerSecond LeadVerticalSpeedCmPerSecond ' +
+      'dz - predictedZ !std::isfinite(followerVertical) ' +
+      'MaxVerticalMotionResidualCm = 75.0 ' +
+      'std::abs(verticalResidual) > MaxVerticalMotionResidualCm ' +
+      'std::uint64_t LeadIdentity = 0 sample.LeadIdentity == 0 ' +
+      'PreviousLeadIdentity != sample.LeadIdentity'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing follower world-position Unreal callsite',f=>{
+    f.state.pawn.content=Buffer.from(
+      'static_cast<double>(Velocity.Z) static_cast<double>(RivalVelocity.Z) ' +
+      'static_cast<std::uint64_t>(RivalIdentity)'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing common-mode teleport regression',f=>{
+    f.state.tests.content=Buffer.from(
+      'same-lane vertical relocation identical-geometry replacement ' +
+      'rapid opponent swaps cannot inherit drafting charge'
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing independently reconstructed rival world guard',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'leadResidual > MaxRelativeMotionResidualCm','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing independent lead Z ceiling',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'std::abs(leadVerticalResidual)','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing hidden lead relocation regression',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'hidden 255cm lead relocation denied','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['no measured-motion window on follower',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'followerWindowResidual > MaxRelativeMotionResidualCm','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['no measured-motion window on rival',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'leadWindowResidual > MaxRelativeMotionResidualCm','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['first sample wrongly adds unobserved time',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'hadContinuityBaseline ? dt : 0.0','dt')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing frozen-position replay denial test',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'stale world positions cannot earn drafting at 24m/s','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing stale-leader replay denial test',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'stale lead chassis cannot hide behind moving follower','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing speed-normalized leader window ceiling',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        '0.5 * leadExpectedTravel','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing slow-rival motion identity reset',f=>{
+    f.state.policy.content=Buffer.from(
+      Buffer.from(f.state.policy.content,'base64').toString('utf8').replace(
+        'WindowStartLeadWorldX = leadWorldX;','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing minimum-speed frozen-lead regression',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        '10m/s frozen rival must not pass 2m absolute drift allowance','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['missing positive low-speed regression',f=>{
+    f.state.tests.content=Buffer.from(
+      Buffer.from(f.state.tests.content,'base64').toString('utf8').replace(
+        'real 10m/s rival correctly qualifies after 0.20s','')
+    ).toString('base64');
+  },/physical-3D/],
+  ['spoofed GitHub checks app',f=>{f.state.checks.check_runs[0].app.slug='untrusted';},/untrusted app/],
+  ['check belongs to other commit',f=>{f.state.checks.check_runs[0].head_sha=MERGE;},/commit identity/],
+  ['newest check spoofed by another app',f=>{
+    f.state.checks.check_runs.push({id:100,name:guard.REQUIRED_CHECKS[0],
+      status:'completed',conclusion:'success',
+      app:{slug:'untrusted'},head_sha:SHA});
+  },/untrusted app/],
+  ['missing Windows check',f=>{f.state.checks.check_runs=f.state.checks.check_runs.filter(
+    row=>row.name!=='Portable C++20 tests / windows-latest');},/Windows|windows/],
+  ['pending macOS check',f=>{f.state.checks.check_runs[2].status='in_progress';},/macos/],
+  ['failed Linux check',f=>{f.state.checks.check_runs[1].conclusion='failure';},/ubuntu/],
+  ['newer failed check masks older pass',f=>{
+    f.state.checks.check_runs.push({id:100,name:guard.REQUIRED_CHECKS[0],
+      status:'completed',conclusion:'failure',
+      app:{slug:'github-actions'},head_sha:SHA});
+  },/windows/],
+  ['wrong predecessor SHA',f=>{f.state.oldRelease.target_commitish=SHA;},/Pre-release identity/],
+  ['old tag changed',f=>{f.state.oldTag.object.sha=SHA;},/Source tag/],
+  ['old release contains binary',f=>{f.state.oldRelease.assets=[{name:'game.exe'}];},/zero-assets/],
+  ['future tag moved',f=>{f.state.tag={object:{type:'commit',sha:MERGE}};},/Source tag/],
+  ['future annotated tag',f=>{f.state.tag={object:{type:'tag',sha:SHA}};},/Source tag/],
+  ['release without tag',f=>{f.state.release={
+    tag_name:guard.TAG,target_commitish:SHA,name:guard.NAME,body:notes,
+    prerelease:true,draft:false,assets:[]};},/without immutable source tag/],
+  ['existing release bytes mismatch',f=>{
+    f.state.tag={object:{type:'commit',sha:SHA}};
+    f.state.release={tag_name:guard.TAG,target_commitish:SHA,
+      name:guard.NAME,body:notes+'!',prerelease:true,draft:false,assets:[]};
+  },/note bytes differ/],
+  ['existing release executable',f=>{
+    f.state.tag={object:{type:'commit',sha:SHA}};
+    f.state.release={tag_name:guard.TAG,target_commitish:SHA,
+      name:guard.NAME,body:notes,prerelease:true,draft:false,assets:[{name:'installer.exe'}]};
+  },/zero-assets/],
+]) test('deny '+label,async()=>reject(modify,error));
+
+for (const [label,key,missingToken] of [
+  ['missing actual follower X velocity field','policy','double FollowerWorldVelocityX ='],
+  ['missing actual leader Y velocity field','policy','double LeadWorldVelocityY ='],
+  ['XY motion replaced with inferred follower travel','policy','const double followerVx = followerWorldVelocityX;'],
+  ['XY motion replaced with inferred rival travel','policy','const double leadVx = leadWorldVelocityX;'],
+  ['pitched heading gate missing','policy','followerNorm < 0.75'],
+  ['vertical-only follower accepted','policy','followerPlanarForward < 0.70 * follower'],
+  ['vertical-only rival accepted','policy','leadPlanarForward < 0.70 * lead'],
+  ['follower hidden slip no longer cross-checked','policy','followerWorldLateral - followerLateral'],
+  ['rival hidden slip no longer cross-checked','policy','leadWorldLateral - leadLateral'],
+  ['follower slip tolerance removed','policy','followerSlipObservationTolerance'],
+  ['rival slip tolerance removed','policy','leadSlipObservationTolerance'],
+  ['live rival planar axis no longer normalized','pawn','-RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();'],
+  ['live rival normalized lateral projection removed','pawn','RivalVelocity, RivalPlanarRight)'],
+  ['real follower Chaos X not bound','pawn','static_cast<double>(Velocity.X)'],
+  ['real rival Chaos Y not bound','pawn','static_cast<double>(RivalVelocity.Y)'],
+  ['uphill physical convoy acceptance test removed','tests','genuine high-speed climbing Chaos motion keeps drafting across windows'],
+  ['vertical-only phantom draft regression removed','tests','vertical-only pitched motion is not forward drafting'],
+  ['concealed sideways slide regression removed','tests','independent XY velocity rejects concealed lateral sliding'],
+  ['small lateral observation noise regression removed','tests','small measured XY lateral offset retains physically continuous draft'],
+]) {
+  test('reject v0.5.100 '+label,async()=>{
+    await reject(f=>{
+      const original=Buffer.from(f.state[key].content,'base64').toString('utf8');
+      assert.ok(original.includes(missingToken),label+' fixture must contain source');
+      f.state[key].content=Buffer.from(
+        original.replace(missingToken,'')).toString('base64');
+    },/actual Chaos XY\/slope\/lateral-slip/);
+  });
+}
+
+
+for (const [label,key,token] of [
+  ['follower authoritative true slip limit','policy',
+    'std::max(std::abs(followerLateral),'],
+  ['follower physical world slip operand','policy',
+    'std::abs(followerWorldLateral))'],
+  ['rival authoritative true slip limit','policy',
+    'std::max(std::abs(leadLateral),'],
+  ['rival physical world slip operand','policy',
+    'std::abs(leadWorldLateral))'],
+  ['human normalized right axis','pawn',
+    '-Forward.Y, Forward.X, 0.f).GetSafeNormal();'],
+  ['human real XY drafting lateral observation','pawn',
+    'Velocity, FollowerPlanarRight)'],
+  ['actual human slip used in draft sample','pawn',
+    'FollowerDraftLateralSpeed,'],
+  ['concealed cap-crossing regression','tests',
+    'actual Chaos XY slip above cap cannot hide inside tolerated lateral telemetry skew'],
+  ['legal near-cap physical motion regression','tests',
+    'physically measured slip below cap keeps continuous drafting despite small observation skew'],
+]) {
+  test('deny v0.5.100 release without '+label,async()=>{
+    await reject(f=>{
+      const source=Buffer.from(f.state[key].content,'base64').toString('utf8');
+      assert.ok(source.includes(token), 'test fixture must carry '+label);
+      f.state[key].content=Buffer.from(source.replace(token,'')).toString('base64');
+    },/actual Chaos XY\/slope\/lateral-slip/);
+  });
+}
+
+test('reject stale final protected-main read',async()=>{
+  const f=fixture();let calls=0;
+  f.state.onRead=()=>{calls+=1;if(calls===2)f.state.main.commit.sha=MERGE;};
+  await assert.rejects(guard.inspectReadiness(f),/changed during read-only preflight/);
+  assert.equal(f.state.writes,0);
+});
+test('rate limit is not mistaken for an absent future tag',async()=>{
+  await reject(f=>{f.github.rest.git.getRef=async()=>{throw new Error('rate limit');};},
+    /rate limit/);
+});
+test('draft-warning tokens cannot be omitted',()=>{
+  assert.doesNotThrow(()=>guard.validateNotes(notes));
+  assert.throws(()=>guard.validateNotes(notes.replace('NO PLAYABLE WINDOWS EXECUTABLE','')),
+    /warning absent/);
+  assert.throws(()=>guard.validateNotes(notes+' DRAFT NOTES PLACEHOLDER'),
+    /placeholder/);
+});

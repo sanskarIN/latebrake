@@ -32,7 +32,7 @@ neither proves that a licensed Unreal Editor or cooked binary worked.
 ## Required steps for native gameplay PRs
 
 1. **Pin the source:** record the candidate PR number, target branch
-   (\`main\` for owner-trusted validation), full 40-character head SHA and
+   (`main` for owner-trusted validation), full 40-character head SHA and
    checkout tree. Do not accept tests from a different commit or a recycled
    receipt.
 2. **Hosted source gate:** obtain the completed passing exact-head CI matrix;
@@ -40,18 +40,18 @@ neither proves that a licensed Unreal Editor or cooked binary worked.
    source-binding tests, workflow guards and PowerShell syntax checks. Note
    failed or cancelled jobs explicitly.
 3. **Real engine runner:** on the owner-controlled Windows x64 runner, verify
-   labels \`self-hosted\`, \`Windows\`, \`X64\`, \`unreal-5-8\`, and an authorized
-   UE 5.8 installation. Check \`LATEBRAKE_UNREAL_ROOT\`, version metadata,
+   labels `self-hosted`, `Windows`, `X64`, `unreal-5-8`, and an authorized
+   UE 5.8 installation. Check `LATEBRAKE_UNREAL_ROOT`, version metadata,
    UBT/UHT/Editor tools, MSVC, SDK and disk capacity. A queued job with zero
    steps is **not** a pass. See [runner queue QA](UNREAL_RUNNER_QUEUE_QA.md).
 4. **Real Editor/UHT:** dispatch the main-targeted trusted
    [manual PR validation workflow](https://github.com/sanskarIN/latebrake/actions/workflows/validate-draft-unreal-pr.yml)
-   for the exact PR/head and \`Editor\` mode. Require real native compilation,
+   for the exact PR/head and `Editor` mode. Require real native compilation,
    authentic UHT output, Editor startup, material and map load, and a
    successful completed job. Log the workflow and inspected head identities.
 5. **Cook and package:** only after Editor passes, perform the owner-trusted
-   \`Win64\` validation with the exact approved source. Require a genuinely
-   cooked \`.umap\`, no placeholder .uasset or synthetic compiler receipts,
+   `Win64` validation with the exact approved source. Require a genuinely
+   cooked `.umap`, no placeholder .uasset or synthetic compiler receipts,
    real packaged executables and SHA-256-bound provenance. Merely generating
    a zip/manifest is insufficient.
 6. **Install and play:** on actual Windows hardware, unpack/install the
@@ -69,13 +69,25 @@ neither proves that a licensed Unreal Editor or cooked binary worked.
    where available, steering feel, stutters, physics race state,
    one-rival normal default, pause/recovery, restart and menu transitions.
    Reproduce any failure and keep the PR draft while the defect is open.
-9. **Promote deliberately:** review changes against current \`main\`, ensure
+9. **Promote deliberately:** review changes against current `main`, ensure
    no overlap from stacked PRs is double-applied, respect protected main
    rules, move the PR to ready-for-review only after qualification, and
    merge by an allowed linear-history method. Do not auto-merge an unfinished
    experiment or bypass repository policy.
 
 ## Currently active source candidates
+
+- [Draft v0.5.100 physical drafting PR #377](https://github.com/sanskarIN/latebrake/pull/377)
+  has passed portable-source CI on earlier reviewed heads, but no authentic
+  Editor/UHT, cooked Win64 artifact or installed driving qualification is
+  recorded here. Recheck its **current exact head**, run the trusted
+  [manual PR validation workflow](UNREAL_DRAFT_PR_VALIDATION.md) with
+  `pr_number=377`, **Editor before Win64**, and evaluate the
+  [physical drafting acceptance matrix](UNREAL_V05100_DRAFTING_ACCEPTANCE.md).
+  Do not confuse a successful C++20 Windows CI run with a real Unreal build.
+- Pre-release v0.5.100 is not a playable Windows claim. Its
+  exact-source-only release audit is read-only, and any future publication
+  still requires a final reviewed main SHA plus explicit owner authorization.
 
 - [Six-car source QA PR #341](https://github.com/sanskarIN/latebrake/pull/341)
   is a native validation *candidate*, not a certified release.

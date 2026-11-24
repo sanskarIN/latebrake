@@ -1,9 +1,43 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-13
+**Updated:** 2026-11-14
 **Latest published milestone:** [v0.5.99 SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99), protected-main source `a3104ea76809ac86d315a8a31550d3215e79f824`, **zero executable attachments**. The [owner-approved one-version publisher](https://github.com/sanskarIN/latebrake/actions/runs/43413547703) verified 3-OS C++20, Python, PowerShell and docs source gates before publishing. The previous v0.5.98 source-only tag separately snapshots **unmerged physics draft PR #295**; v0.5.99 does not incorporate its advanced suspension/wheel-brake systems. Real UE5.8/UHT, cooked Win64 packaging and installed gameplay remain unverified.
 **Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
 **Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
+
+## 2026-11-14: v0.5.100 source release gate and gameplay review
+
+- [Native drafting PR #377](https://github.com/sanskarIN/latebrake/pull/377)
+  is a **draft** Unreal-runtime change at source candidate
+  `182980c71dda8da4006e91fdae3e0df205ff4ef0` (recorded at this status
+  update, not a permanent pin). Its real world-motion continuity now rejects
+  falsely moving cars with frozen telemetry. All eight required hosted
+  source checks passed, including Windows/Linux/macOS C++20. These results
+  do **not** establish licensed Unreal 5.8 Editor/UHT, native Win64 cook or
+  hands-on physical gameplay.
+- Read-only release gates for the proposed `v0.5.100` were merged in
+  [PRs #378–#381](https://github.com/sanskarIN/latebrake/pull/381) and
+  [PR #383](https://github.com/sanskarIN/latebrake/pull/383).
+  They cannot independently publish a release, satisfy the native QA gate
+  or replace the owner's exact-final-SHA publication approval.
+- [QA PR #382](https://github.com/sanskarIN/latebrake/pull/382)
+  was merged and provides the
+  [v0.5.100 native acceptance matrix](UNREAL_V05100_DRAFTING_ACCEPTANCE.md)
+  for actual driving, road crests, visibility occlusion, actor replacement,
+  recovery and 30/60/120 FPS.
+- The latest [verified scale](SOURCE_SCALE_METRICS.md) is **71,567**
+  qualifying original nonblank/noncomment C++ source lines in **291**
+  authored files at the pinned pre-existing main commit
+  `aeb5a885412b2ad8ceb1de0091dbf6c462811878`, leaving
+  **128,433** toward the separate v0.6.0 200,000-line goal. Those counts
+  include *portable research libraries not wired into the live Unreal
+  actor loop*, and are not a playable-game milestone.
+- **Release decision:** the latest published public pre-release remains
+  `v0.5.99` (zero assets). No `v0.5.100` tag, playable EXE or installed
+  game has been verified/published. Keep PR #377 in draft pending
+  [real UE qualification](UNREAL_NATIVE_MERGE_READINESS.md); require
+  explicit owner authorization of an exact tested release SHA before
+  any future source-only publication.
 
 ## 2026-11-13: audited +53,061 portable C++ integration merged into protected main
 

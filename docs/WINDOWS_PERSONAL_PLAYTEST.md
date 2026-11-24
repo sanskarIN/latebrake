@@ -26,6 +26,61 @@ git lfs install
 git lfs pull
 ```
 
+## Optional: diagnose unmerged PR #377 with a real local UE5.8 build
+
+The regular commands build the checked-out branch (usually main). To
+investigate [draft PR #377](https://github.com/sanskarIN/latebrake/pull/377)
+without a GitHub self-hosted runner, the owner may use a **fresh separate
+clone** on an isolated Windows test PC. First review the entire PR diff,
+including C++ and build scripts that will run locally. Never run unreviewed
+PR code on a privileged or shared machine.
+
+From PowerShell 7 inside that fresh clone, enter the current **live head
+SHA** from the GitHub PR, not one copied from an older document:
+
+~~~powershell
+$ExpectedHead = Read-Host 'Paste the current full 40-character PR #377 head SHA'
+if ($ExpectedHead -cnotmatch '^[0-9a-f]{40}$') {
+  throw 'Provide a 40-character lowercase Git commit SHA'
+}
+git fetch --no-tags origin pull/377/head
+if ($LASTEXITCODE -ne 0) { throw 'PR fetch failed' }
+$FetchedHead = (git rev-parse FETCH_HEAD).Trim()
+if ($FetchedHead -cne $ExpectedHead) {
+  throw 'Live PR head differs from reviewed SHA; re-review the PR'
+}
+git switch --detach $ExpectedHead
+if ($LASTEXITCODE -ne 0 -or
+    (git rev-parse HEAD).Trim() -cne $ExpectedHead) {
+  throw 'Could not confirm exact reviewed source'
+}
+git lfs pull
+if ($LASTEXITCODE -ne 0) { throw 'Required LFS content unavailable' }
+git status --short
+~~~
+
+Inspect any unexpected git status output rather than bypassing source
+provenance. With a genuinely installed and licensed UE5.8, replace the
+sample engine path below with the real path:
+
+~~~powershell
+pwsh ./scripts/Compile-UnrealEditor.ps1 -EngineRoot 'D:\UE_5.8'
+pwsh ./scripts/Build-WindowsPlaytest.ps1 -EngineRoot 'D:\UE_5.8' -Launch
+~~~
+
+These scripts must genuinely compile Unreal Editor/UHT, cook the original
+game and launch the resulting private Win64 candidate. Preserve true source
+SHA, Editor/UAT logs, engine and cooked-map hashes, candidate manifest,
+runtime receipt and genuine driving observations. Source tests or a generated
+EXE alone do **not** establish a playable game.
+
+**This local diagnostic does not replace** the owner-trusted
+[manual UE5.8 Editor-then-Win64 validation](UNREAL_DRAFT_PR_VALIDATION.md)
+or installed-game acceptance required before the native gameplay PR is
+merged. It also does not satisfy the separate explicit **exact-main SHA
+approval** for a source-only v0.5.100 pre-release. No release is created
+by these local diagnostic commands. Never upload private logs or tokens.
+
 ## One-click: personal candidate
 
 Double-click **`Build-Windows-Playtest.cmd`** in the repository root.
@@ -217,7 +272,7 @@ independent QA.
 Before treating a candidate as a genuine playable build, also rerun
 `scripts/Test-CandidateManifest.ps1` against the whole archive,
 preserve real UHT/UAT build receipts, inspect actual installed driving
-and satisfy [playable-release gate #148](https://github.com/sanskarIN/latebrake/issues/148).
+and satisfy [native Unreal merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md).
 The Python reviewer independently verifies the receipt, every
 manifest-listed cooked file and (for schema-2 runtime receipts) the
 **recorded log file bytes**. The log must still exist at the exact session
@@ -252,7 +307,7 @@ An output directory and an EXE signature alone do not prove that a game
 really starts or handles input. A Windows **personal test candidate**
 should remain **UNVERIFIED** until you run and inspect it yourself.
 The formal QA/release gate is stricter and remains open in
-[issue #148](https://github.com/sanskarIN/latebrake/issues/148);
+[native Unreal merge-readiness checklist](UNREAL_NATIVE_MERGE_READINESS.md);
 Android is independently tracked in
 [issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 
