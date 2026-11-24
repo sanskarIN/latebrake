@@ -82,7 +82,12 @@ class GaragePausedInputBindingTests(unittest.TestCase):
                 self.assertEqual(body.count(gate), 1)
                 access_at = body.index(gate)
                 career_at = body.index("CanEditGarageDuringRace(")
-                self.assertLess(access_at, career_at)
+                # Each context gate must precede the first authoritative
+                # vehicle/economy operation; retaining the legacy career
+                # rejection before page checking is permitted.
+                mutation_at = body.index("    const int32 ", access_at)
+                self.assertLess(access_at, mutation_at)
+                self.assertLess(career_at, mutation_at)
                 # No selection, unlock, upgrade, preview approval, or
                 # profile write may occur before the visible-page guard.
                 before = body[:access_at]
@@ -93,7 +98,7 @@ class GaragePausedInputBindingTests(unittest.TestCase):
                     "SaveRecords()", "ApplyGarageToPlayer()",
                 ):
                     self.assertNotIn(forbidden, before)
-                denial = body[access_at:career_at]
+                denial = body[access_at:mutation_at]
                 self.assertIn("GarageFeedback =", denial)
                 self.assertIn("return;", denial)
                 if name != "GarageNextVehicle":
