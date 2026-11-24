@@ -1,6 +1,7 @@
 #pragma once
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
+#include "Garage/GarageAppearance.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -13,6 +14,13 @@ namespace latebrake::vehiclemesh
 {
 inline constexpr double OriginalVehiclePi=3.14159265358979323846;
 inline constexpr int OriginalVehicleWheelSides=24;
+inline constexpr int OriginalVehicleRimStyleCount=3;
+static_assert(OriginalVehicleRimStyleCount==latebrake::GarageWheelOptions,
+    "Original car rim meshes must match saved GarageLook wheel options");
+constexpr int OriginalVehicleSpokesForStyle(int style) noexcept
+{
+    return style==0 ? 7 : style==1 ? 5 : style==2 ? 12 : 0;
+}
 inline constexpr std::size_t OriginalVehicleMaxVertices=12000;
 inline constexpr std::size_t OriginalVehicleMaxTriangles=8000;
 enum class OriginalVehicleMaterial : std::uint8_t
@@ -41,6 +49,10 @@ struct OriginalVehicleTriangle final
 {
     std::array<std::uint32_t,3> Index{};
     OriginalVehicleMaterial Material=OriginalVehicleMaterial::BodyPaint;
+    // -1 means non-animated car body; [0..3] are individually articulated
+    // LF, RF, LR, RR source wheels. Only the authoring MeshWriter assigns it.
+    // Native render sections may not infer ownership from triangle position.
+    std::int8_t WheelSlot=-1;
 };
 struct OriginalVehicleBounds final
 {
@@ -60,6 +72,8 @@ struct OriginalVehicleMesh final
     OriginalVehicleBounds Bounds{};
     int VehicleId=-1;
     int WheelTireQuads=0;
+    int RimStyle=0;
+    int RimSpokeQuads=0;
     int WindowQuads=0;
     int BodyQuads=0;
     int DetailQuads=0;
@@ -182,7 +196,7 @@ public:
         : Settings(settings)
     {
     }
-    OriginalVehicleMeshResult Build(int vehicleId) const
+    OriginalVehicleMeshResult Build(int vehicleId,int rimStyle=0) const
     {
         OriginalVehicleMeshResult result;
         if(!ValidOriginalVehicleSettings(Settings))
@@ -195,15 +209,21 @@ public:
             result.Fault=OriginalVehicleMeshFault::InvalidVehicle;
             return result;
         }
+        if(rimStyle<0 || rimStyle>=OriginalVehicleRimStyleCount)
+        {
+            result.Fault=OriginalVehicleMeshFault::InvalidConfiguration;
+            return result;
+        }
         auto& mesh=result.Mesh;
         mesh.VehicleId=vehicleId;
+        mesh.RimStyle=rimStyle;
         mesh.Vertices.reserve(5000);
         mesh.Triangles.reserve(2400);
         const auto visual=latebrake::VisualRecipeForVehicle(vehicleId);
         const auto aero=latebrake::BodyKitForVehicle(vehicleId);
         MeshWriter writer(mesh);
         BuildMainBody(writer,visual,vehicleId);
-        BuildFourWheels(writer);
+        BuildFourWheels(writer,rimStyle);
         BuildLights(writer);
         BuildWindows(writer,visual);
         BuildAero(writer,visual,aero);
@@ -225,7 +245,8 @@ public:
            mesh.WindowQuads<6 ||
            mesh.BodyQuads<20 ||
            mesh.HeadlampQuads<2 ||
-           mesh.TaillampQuads<2)
+           mesh.TaillampQuads<2 ||
+           mesh.RimSpokeQuads!=4*OriginalVehicleSpokesForStyle(mesh.RimStyle))
         {
             result.Fault=OriginalVehicleMeshFault::IncompleteVisuals;
             result.Mesh={};
@@ -243,7 +264,9 @@ public:
            mesh.Triangles.size()>OriginalVehicleMaxTriangles ||
            !mesh.OriginalGeometry || !mesh.VisualOnly ||
            mesh.ChangesChaosContact ||
-           mesh.VehicleId<0 || mesh.VehicleId>=6)
+           mesh.VehicleId<0 || mesh.VehicleId>=6 ||
+           mesh.RimStyle<0 || mesh.RimStyle>=OriginalVehicleRimStyleCount ||
+           mesh.RimSpokeQuads!=4*OriginalVehicleSpokesForStyle(mesh.RimStyle))
             return false;
         for(const auto& vertex:mesh.Vertices)
         {
@@ -261,6 +284,14 @@ public:
         }
         for(const auto& triangle:mesh.Triangles)
         {
+            if(triangle.WheelSlot < -1 || triangle.WheelSlot >= 4)
+                return false;
+            const bool isWheelMaterial =
+                triangle.Material==OriginalVehicleMaterial::Rubber ||
+                triangle.Material==OriginalVehicleMaterial::Alloy ||
+                triangle.Material==OriginalVehicleMaterial::BrakeRotor;
+            if((triangle.WheelSlot>=0)!=isWheelMaterial)
+                return false;
             if(static_cast<std::size_t>(triangle.Material)>=
                    static_cast<std::size_t>(OriginalVehicleMaterial::Count))
                 return false;
@@ -334,7 +365,9 @@ private:
             Mesh.Vertices.push_back({a,normal,uvA});
             Mesh.Vertices.push_back({b,normal,uvB});
             Mesh.Vertices.push_back({c,normal,uvC});
-            Mesh.Triangles.push_back({{base,base+1,base+2},material});
+            Mesh.Triangles.push_back({
+                {base,base+1,base+2},material,
+                static_cast<std::int8_t>(WheelSlot)});
             Track(a);
             Track(b);
             Track(c);
@@ -378,6 +411,7 @@ private:
             Mesh.DetailQuads+=6;
         }
         OriginalVehicleMesh& Mesh;
+        int WheelSlot=-1;
         OriginalVehicleMeshFault Fault=OriginalVehicleMeshFault::None;
     };
     struct BodyStation final
@@ -505,8 +539,12 @@ private:
         }
     }
     void BuildWheel(
-        MeshWriter& writer,double wheelX,int side) const
+        MeshWriter& writer,double wheelX,int side,int rimStyle,
+        int wheelSlot) const
     {
+        // Exactly this wheel's authored Rubber/Alloy/BrakeRotor triangles
+        // enter one independently transformable Unreal render component.
+        writer.WheelSlot=wheelSlot;
         const double centerY=static_cast<double>(side)*
             Settings.HalfWidthCm;
         const double halfTire=Settings.TireWidthCm*0.5;
@@ -565,13 +603,20 @@ private:
                 OriginalVehicleMaterial::BrakeRotor);
             writer.Mesh.WheelTireQuads+=3;
         }
-        const int spokeCount=7;
+        // 0: factory seven spokes; 1: broad sport five spokes;
+        // 2: narrow aero twelve spokes. Tires/contact stay identical.
+        const int spokeCount=OriginalVehicleSpokesForStyle(rimStyle);
+        const double width=rimStyle==1 ? 0.17 :
+            rimStyle==2 ? 0.065 : 0.09;
+        const double innerFraction=rimStyle==1 ? 0.12 :
+            rimStyle==2 ? 0.22 : 0.16;
+        const double outerFraction=rimStyle==1 ? 0.94 :
+            rimStyle==2 ? 0.97 : 0.91;
         for(int spoke=0;spoke<spokeCount;++spoke)
         {
             const double angle=2.0*OriginalVehiclePi*
                 static_cast<double>(spoke)/
                 static_cast<double>(spokeCount);
-            const double width=0.09;
             const auto spokePoint=[wheelX,z,rimY](
                 double radius,double radians)
             {
@@ -580,21 +625,25 @@ private:
                     rimY+0.3,
                     z+radius*std::sin(radians)};
             };
-            writer.Quad(
-                spokePoint(inner*0.16,angle-width),
-                spokePoint(inner*0.91,angle-width*0.25),
-                spokePoint(inner*0.91,angle+width*0.25),
-                spokePoint(inner*0.16,angle+width),
-                OriginalVehicleMaterial::Alloy);
+            if(writer.Quad(
+                spokePoint(inner*innerFraction,angle-width),
+                spokePoint(inner*outerFraction,angle-width*0.25),
+                spokePoint(inner*outerFraction,angle+width*0.25),
+                spokePoint(inner*innerFraction,angle+width),
+                OriginalVehicleMaterial::Alloy))
+                ++writer.Mesh.RimSpokeQuads;
         }
+        writer.WheelSlot=-1;
     }
-    void BuildFourWheels(MeshWriter& writer) const
+    void BuildFourWheels(MeshWriter& writer,int rimStyle) const
     {
         const double axle=Settings.WheelbaseCm*0.5;
         for(int side:{-1,1})
         {
-            BuildWheel(writer,-axle,side);
-            BuildWheel(writer,+axle,side);
+            // Canonical UI/motion order: front-left, front-right,
+            // rear-left, rear-right, independently of authoring order.
+            BuildWheel(writer,-axle,side,rimStyle,side<0?2:3);
+            BuildWheel(writer,+axle,side,rimStyle,side<0?0:1);
         }
     }
     void BuildLights(MeshWriter& writer) const
