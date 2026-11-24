@@ -112,7 +112,13 @@ public:
                     std::max(0.0, speed) /
                         sample.ForwardSpeedCapCmPerSecond,
                     0.0, 2.0);
-                if (Gear < ForwardGearCount &&
+                // Opposite-direction pedal is requesting measured-velocity
+                // braking, NOT another accelerating forward gear. Preserve
+                // normal coasting upshifts and all deceleration downshifts;
+                // just reject a speed-triggered upshift during forward
+                // travel with reverse selected. This also avoids a spurious
+                // shift interruption or RPM display during that maneuver.
+                if (!directionOpposed && Gear < ForwardGearCount &&
                     ratio >= UpshiftRatios[static_cast<unsigned>(Gear - 1)])
                 {
                     ShiftTo(Gear + 1);

@@ -58,6 +58,16 @@ inline double StabilizeCornerThrottle(
     {
         return bounded;
     }
+    // Even positive throttle is an OPPOSITE-direction engine-braking
+    // request if the actual chassis is moving backwards. Do not cut
+    // this reversal/braking authority just because the same real
+    // chassis is sliding sideways. The existing gearbox, speed-cap
+    // taper and human-only spin guard already preserve that demand;
+    // cornering assist must agree with those physical direction gates.
+    if (longitudinalCmPerSecond < 0.0)
+    {
+        return bounded;
+    }
     return bounded * CornerThrottleFactor(
         longitudinalCmPerSecond, lateralCmPerSecond, arcadeHandling);
 }

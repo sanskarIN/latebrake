@@ -80,6 +80,34 @@ int main()
     Require(Near(StabilizeCornerThrottle(-0.75, 1800.0, 950.0, true), -0.75) &&
             Near(StabilizeCornerThrottle(0.0, 1800.0, 950.0, true), 0.0),
             "reverse and neutral demand remain intact");
+    // Real signed motion matters, not merely the sign of the pedal:
+    // positive throttle while physically reversing IS engine braking.
+    // Old magnitude-only attenuation wrongly reduced its authority
+    // during a sideways reverse slide.
+    for (bool arcade : {true, false})
+    {
+        const double movingForward = StabilizeCornerThrottle(
+            0.80, 2700.0, 2000.0, arcade);
+        const double opposingReverse = StabilizeCornerThrottle(
+            0.80, -2700.0, 2000.0, arcade);
+        Require(movingForward > 0.0 && movingForward < 0.80 &&
+                Near(opposingReverse, 0.80),
+                "cornering assist must attenuate forward propulsion but never forward-pedal engine braking while rolling backwards");
+        Require(Near(StabilizeCornerThrottle(-0.65, 2700.0, -2000.0, arcade), -0.65),
+                "reverse pedal against forward motion retains the full engine braking command");
+        Require(Near(StabilizeCornerThrottle(0.50, -2700.0, -2000.0, arcade), 0.50),
+                "positive pedal against reverse drift preserves left/right symmetric deceleration");
+        for (int i = 0; i < 10000; ++i)
+        {
+            const double speed = -900.0 - static_cast<double>(i % 5800);
+            const double sideways = (static_cast<double>(i % 6400) - 3200.0);
+            const double pedal = static_cast<double>(i % 101) / 100.0;
+            const auto result = StabilizeCornerThrottle(
+                pedal, speed, sideways, arcade);
+            Require(std::isfinite(result) && Near(result, pedal),
+                    "20k fast reversing, skidding and recovering samples preserve the complete opposite-direction motor braking demand");
+        }
+    }
     Require(Near(StabilizeCornerThrottle(4.0, 3000.0, 0.0, true), 1.0) &&
             Near(StabilizeCornerThrottle(-5.0, 3000.0, 0.0, true), -1.0),
             "out-of-range raw input is clamped");
