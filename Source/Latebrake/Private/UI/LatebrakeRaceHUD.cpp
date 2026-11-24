@@ -94,8 +94,9 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     const auto buttons = latebrake::CalculateDesktopMenuMouseLayout(
         width, height, latebrake::CalculateHudLayout(width, height),
         false, true);
-    const auto availability = latebrake::AvailableDesktopMenuDetails(
-        Mode->GetMenuPage(), MenuPager);
+    const auto availability = latebrake::AvailableDesktopMenuActions(
+        Mode->GetMenuPage(), MenuPager,
+        latebrake::CanActivateGarageEquip(Mode->GetGarageCycleUiState()));
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
         availability);
 #endif
@@ -871,9 +872,11 @@ void ALatebrakeRaceHUD::DrawHUD()
         // pages cannot advertise working scroll arrows.
         if (MouseMenu.Valid)
         {
+            const auto GarageCycleState = Mode->GetGarageCycleUiState();
             const auto MenuAvailability =
-                latebrake::AvailableDesktopMenuDetails(
-                    Mode->GetMenuPage(), MenuPager);
+                latebrake::AvailableDesktopMenuActions(
+                    Mode->GetMenuPage(), MenuPager,
+                    latebrake::CanActivateGarageEquip(GarageCycleState));
             float CursorX = 0.f;
             float CursorY = 0.f;
             const bool HasCursor = PlayerOwner->GetMousePosition(
@@ -923,7 +926,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 DrawRect(!Enabled ? DisabledLabel :
                     Selected ? Gold : White, BX, BY,
                     3.f * UIScale, BH);
-                const TCHAR* Caption = TEXT("CLOSE");
+                FString Caption = TEXT("CLOSE");
                 switch (Button.Action)
                 {
                 case latebrake::DesktopMenuMouseAction::PreviousPage:
@@ -935,12 +938,14 @@ void ALatebrakeRaceHUD::DrawHUD()
                 case latebrake::DesktopMenuMouseAction::DetailsDown:
                     Caption = TEXT("DETAIL DOWN"); break;
                 case latebrake::DesktopMenuMouseAction::Activate:
-                    Caption = TEXT("SELECT"); break;
+                    Caption = Mode->GetMenuPage() == latebrake::MenuPage::Garage
+                        ? FString(UTF8_TO_TCHAR(latebrake::GarageCycleUiCaption(GarageCycleState)))
+                        : FString(TEXT("SELECT")); break;
                 case latebrake::DesktopMenuMouseAction::Close:
                     Caption = TEXT("CLOSE"); break;
                 default: break;
                 }
-                DrawText(FString(Caption), !Enabled ? DisabledLabel :
+                DrawText(Caption, !Enabled ? DisabledLabel :
                     Selected ? Gold : White,
                     BX + 10.f * UIScale, BY + 12.f * UIScale,
                     GEngine->GetSmallFont(), 0.82f * UIScale);
