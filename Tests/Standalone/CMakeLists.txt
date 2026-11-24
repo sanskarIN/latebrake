@@ -3087,3 +3087,6 @@ add_test(NAME GarageShowroomPresentation
 
 # Main integration: read-only source pace intervals and four reference sectors.
 add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
+
+# Main-targeted #455 portable planner consumed by the draft Unreal garage HUD.
+add_latebrake_portable_research_test(GaragePurchasePlanner)

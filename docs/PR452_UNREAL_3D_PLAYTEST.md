@@ -324,3 +324,16 @@ no extra attempt on an unchanged showroom sync, and correct equipped
 vehicle restoration before driving. Source policy tests cover all
 six-by-six identities and three viewed rim choices. Native QA remains
 required; the source check cannot reproduce Unreal spawn ordering.
+
+## Accurate sequential unlock budget in Garage
+
+On a new profile with 3,400 earned credits, browse Nova. Its direct
+sticker price is 3,400 CR, but Q must buy Kestrel, Phantom, Tempest,
+Glider and Nova in order: 9,500 CR total, 6,100 CR short. Verify the
+viewed route summary and row both show the total shortage, the Q target
+is still Kestrel, and browsing does not spend or unlock. A partially
+owned save must skip already-owned prerequisites in the displayed total.
+After an actual confirmed purchase the route changes with the authoritative
+snapshot. A failed save must restore the prior route and balance. Future
+profile/read-only and focus restrictions remain unchanged; budget OK is
+not transaction permission. All numbers refer only to earned game credits.

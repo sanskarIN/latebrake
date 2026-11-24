@@ -8,6 +8,7 @@
 #include "UI/NitroHudReadout.h"
 #include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
+#include "Garage/GaragePurchasePlanner.h"
 #include "Garage/GarageComparisonView.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
@@ -495,6 +496,24 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 MenuLine(TEXT("ALL CARS OWNED: Q HAS NO UNLOCK TARGET"), true);
             }
+            // Q is sequential. Report the whole route to the viewed car,
+            // not just its sticker price or today's first unlock.
+            // This simulation owns a private snapshot; no real purchase.
+            const auto ViewedPath = latebrake::PlanGaragePurchasePath(
+                Mode->GetGarageSnapshot(),
+                {PreviewId, Catalog.EngineLevel, Catalog.GripLevel, 0});
+            if (ViewedPath.AdditionalCarsUnlocked > 0 &&
+                ViewedPath.Status != latebrake::GaragePlanStatus::Invalid)
+            {
+                // Reserve is zero and route cost is the bounded sum of
+                // six fixed car prices, so the shortfall fits int32.
+                MenuLine(FString::Printf(
+                    TEXT("VIEWED UNLOCK ROUTE: %d CAR(S) | %d CR TOTAL | NEED %d"),
+                    ViewedPath.AdditionalCarsUnlocked, ViewedPath.UnlockCost,
+                    static_cast<int32>(ViewedPath.CreditsShort)), true);
+                if (ViewedPath.AdditionalCarsUnlocked > 1)
+                    MenuLine(TEXT("Q BUYS ONE NEXT CAR AT A TIME; TOTAL IS A PREVIEW."));
+            }
             MenuLine(TEXT("CLICK 1-6 ABOVE TOP VIEW: DIRECT CAR PREVIEW ONLY"));
             MenuLine(TEXT("F9/F10 or mouse: BROWSE ALL / ENTER: EQUIP IF OWNED"));
             MenuLine(TEXT("PAD: RB FORWARD / B BACK | E EQUIPS NEXT OWNED"));
@@ -588,13 +607,21 @@ void ALatebrakeRaceHUD::DrawHUD()
                     State = TEXT("OWNED");
                     break;
                 case latebrake::GarageCatalogOwnership::LockedAffordable:
-                    State = FString::Printf(TEXT("LOCKED %d CR | AFFORDABLE"),
-                        Entry.UnlockCost);
-                    break;
                 case latebrake::GarageCatalogOwnership::LockedInsufficientCredits:
-                    State = FString::Printf(TEXT("LOCKED %d CR | NEED %d"),
-                        Entry.UnlockCost, Entry.CreditsShort);
+                {
+                    const auto Path = latebrake::PlanGaragePurchasePath(
+                        Mode->GetGarageSnapshot(),
+                        {Entry.VehicleId, Catalog.EngineLevel, Catalog.GripLevel, 0});
+                    if (Path.Status == latebrake::GaragePlanStatus::Invalid)
+                        State = TEXT("LOCKED | ROUTE UNAVAILABLE");
+                    else if (Path.Status == latebrake::GaragePlanStatus::Affordable)
+                        State = FString::Printf(TEXT("LOCKED | ROUTE %d CR | BUDGET OK"),
+                            Path.UnlockCost);
+                    else
+                        State = FString::Printf(TEXT("LOCKED | ROUTE %d CR | NEED %d"),
+                            Path.UnlockCost, static_cast<int32>(Path.CreditsShort));
                     break;
+                }
                 }
                 // Q buys the *first* locked ID only. Do not suggest that
                 // later affordable cars can be bought directly from rows.
