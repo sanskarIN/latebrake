@@ -363,6 +363,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     *OfferText(EngineOffer), *OfferText(GripOffer)));
             }
             MenuLine(TEXT("E/SELECT: NEXT OWNED | Q: NEXT LOCKED | U/I: UPGRADES"));
+            MenuLine(TEXT("F1-F6: EQUIP OWNED CARS DIRECTLY (LOCKED CARS CANNOT EQUIP)"));
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("SIX FICTIONAL CARS (NOT FULL 3D VEHICLE MODELS)"), true);
@@ -390,7 +391,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 // later affordable cars can be bought directly from rows.
                 const TCHAR* NextFlag = Entry.VehicleId == Catalog.NextUnlockId
                     ? TEXT(" | Q NEXT") : TEXT("");
-                MenuLine(FString::Printf(TEXT("%d. %s | %s%s"),
+                MenuLine(FString::Printf(TEXT("F%d %s | %s%s"),
                     Entry.VehicleId + 1, UTF8_TO_TCHAR(Entry.Name),
                     *State, NextFlag),
                     Entry.Ownership == latebrake::GarageCatalogOwnership::Equipped);
