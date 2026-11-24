@@ -2585,6 +2585,9 @@ add_latebrake_portable_research_test(OriginalVehicleRenderCache)
 add_latebrake_portable_research_test(ProfileSaveWriteGuard)
 add_latebrake_portable_research_test(BestLapGhostYawContinuity)
 add_latebrake_portable_research_test(RaceSessionCrossSystemSafety)
+# This integration test calls real non-inline race-clock functions.
+target_sources(latebrake_research_RaceSessionCrossSystemSafety PRIVATE
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 add_latebrake_portable_research_test(RivalPassGateRetry)
 add_latebrake_portable_research_test(HudIntegratedReadouts)
 add_latebrake_portable_research_test(HudIntegratedViewportSafety)
