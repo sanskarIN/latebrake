@@ -167,6 +167,11 @@ async function inspectReadiness({github, context, candidateSha, notes}) {
   requireState((nextTag === null) === (nextRelease === null),
     'Partial test.2 tag/release already exists; inspect manually before any action');
   if (nextRelease) {
+    // A mutually consistent historical tag and release cannot qualify a
+    // different current main commit, even if the note bytes happen to match.
+    requireState(nextTag.object?.type === 'commit' &&
+      nextTag.object.sha === candidateSha,
+      'Existing test.2 is not pinned to the candidate exact immutable source tag SHA');
     releaseAudit.verifyPublishedSourceRelease({
       tag: TAG, reference: nextTag,
       release: nextRelease, sourceNotes: notes,
