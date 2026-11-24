@@ -60,6 +60,60 @@ void TimeoutsAndScope()
     c.Advance(-1.0f);
     Check(!c.PendingFor(2),"invalid negative dt fails closed");
 }
+void PriceAndInvalidState()
+{
+    using namespace latebrake_preview;
+    PreviewGaragePurchaseConsent c;
+    for(int car=1;car<PreviewCarCount;++car)
+    {
+        for(int first : {100,200,300})
+        {
+            for(int second : {100,200,300})
+            {
+                c.Reset();
+                Check(c.Request(car,1u,1000,first)==PreviewPurchaseChoice::Offer,
+                      "initial offer must quote the requested price");
+                Check(c.OfferedPrice==first,"stored offer price");
+                const auto result=c.Request(car,1u,1000,second);
+                if(first==second)
+                {
+                    Check(result==PreviewPurchaseChoice::Confirm &&
+                          c.OfferedPrice==0 && !c.PendingFor(car),
+                          "unchanged quote confirms once and clears price");
+                }
+                else
+                {
+                    Check(result==PreviewPurchaseChoice::Offer &&
+                          c.OfferedPrice==second && c.Remaining==8.0f,
+                          "either higher or lower price needs fresh consent");
+                    Check(c.Request(car,1u,1000,second)==PreviewPurchaseChoice::Confirm,
+                          "fresh quote can be deliberately confirmed");
+                }
+            }
+        }
+    }
+    c.Request(2,1u,500,280);
+    Check(c.Request(2,1u,279,280)==PreviewPurchaseChoice::Rejected &&
+          c.OfferedPrice==0 && !c.PendingFor(2),
+          "lost affordability invalidates previous offer");
+    c.Request(2,1u,500,280);
+    Check(c.Request(2,5u,500,280)==PreviewPurchaseChoice::Rejected &&
+          c.OfferedPrice==0,"new ownership invalidates offer");
+    for(float bad : {0.0f,-1.0f,9.0f,
+                    std::numeric_limits<float>::infinity(),
+                    std::numeric_limits<float>::quiet_NaN()})
+    {
+        c.Request(2,1u,500,280);
+        c.Remaining=bad;
+        c.Advance(0.0f);
+        Check(c.Target==-1 && c.OfferedPrice==0 && c.Remaining==0.0f,
+              "invalid internal timer is normalized before use");
+    }
+    c.Request(2,1u,500,280);
+    c.OfferedPrice=0;
+    c.Advance(0.0f);
+    Check(c.Target==-1 && !c.PendingFor(2),"missing quote fails closed");
+}
 void DeterministicStress()
 {
     using namespace latebrake_preview;
@@ -75,20 +129,23 @@ void DeterministicStress()
         if((seed&31u)==0u && ValidPreviewCar(viewed))
             mask|=1u<<static_cast<unsigned int>(viewed);
         const int previous=c.Target;
+        const int previousPrice=c.OfferedPrice;
+        const int price=100+static_cast<int>((seed>>20)%5u)*100;
         auto decision=c.Request(viewed,mask,
-            static_cast<int>((seed>>8)%6000u),500);
+            static_cast<int>((seed>>8)%6000u),price);
         Check((decision!=PreviewPurchaseChoice::Confirm) ||
-              (previous==viewed && c.Target==-1 && c.Remaining==0.0f),
+              (previous==viewed && previousPrice==price && c.Target==-1 &&
+               c.Remaining==0.0f && c.OfferedPrice==0),
               "250k random actions cannot confirm unrelated cars");
         Check(c.Target==-1 || (ValidPreviewCar(c.Target) &&
-              c.Remaining>0.0f && c.Remaining<=8.0f),
+              c.Remaining>0.0f && c.Remaining<=8.0f && c.OfferedPrice==price),
               "pending offer always for known model and bounded interval");
     }
 }
 }
 int main()
 {
-    TwoStepPurchase();TimeoutsAndScope();DeterministicStress();
+    TwoStepPurchase();TimeoutsAndScope();PriceAndInvalidState();DeterministicStress();
     std::cout<<"2D two-action purchase consent passed.\n";
     return EXIT_SUCCESS;
 }
