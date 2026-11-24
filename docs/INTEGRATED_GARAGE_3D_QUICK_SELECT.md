@@ -1,8 +1,8 @@
-# Integration checkpoint: source showroom, route budgets and F-key selection
+# Integration checkpoint: source showroom, route budgets and Ctrl+number selection
 
 This branch combines PR #456's source geometry, shading, reference timing,
 race/garage HUD readouts and validated route-budget planner with PR #460's
-actual Unreal F1–F6 Garage selection handlers and portable policy tests.
+actual Unreal Ctrl+1–6 Garage selection handlers and portable policy tests.
 
 ## Deliberate composition
 
@@ -10,7 +10,7 @@ actual Unreal F1–F6 Garage selection handlers and portable policy tests.
   and distinct projected car performance from GaragePurchasePlanner.
 - Preserve PR #460's six per-key native input bindings and GameMode SaveGame
   rollback on failed owned-car equipment.
-- Integrate both in the *same* HUD: desktop row labels F1–F6 with sequential
+- Integrate both in the *same* HUD: desktop row labels Ctrl+1–6 with sequential
   budget details and the Q-next flag; touch row labels remain ordinal.
 - Register the new GarageQuickSelect test once without removing any geometry,
   shading, reference-clock or recent-lap tests from PR #456's CMake.
@@ -35,7 +35,7 @@ actual Unreal F1–F6 Garage selection handlers and portable policy tests.
 ## Additional combined regression evidence
 
 - Compare every locked row's *sequential route budget* against the first
-  unlocked vehicle's true Q purchase price. The direct F-key does not buy
+  unlocked vehicle's true Q purchase price. The direct Ctrl+number does not buy
   a car even when its budget is affordable.
 - Exercise all 64 six-car ownership masks in portable tests with unusual
   equipped IDs and negative/maximum credit values. A real owned car
@@ -45,6 +45,6 @@ actual Unreal F1–F6 Garage selection handlers and portable policy tests.
   and handling the same way after rollback. Pure C++ transaction oracles
   alone cannot certify this native behavior.
 - On Android/touch, show numeric car positions without suggesting desktop
-  function keys. Repeated finger taps must not invoke purchase actions.
+  Ctrl+number shortcuts. Repeated finger taps must not invoke purchase actions.
 - Retest source-clock and result HUD plus all six source mesh previews:
   adding keyboard input must never erase the separate source UI work.

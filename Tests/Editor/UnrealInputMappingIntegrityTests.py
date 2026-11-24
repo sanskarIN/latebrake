@@ -14,7 +14,7 @@ PAWN = ROOT / "Source" / "Latebrake" / "Private" / "Vehicles" / "LatebrakeCarPaw
 
 ACTION = re.compile(
     r'\+ActionMappings=\(ActionName="([A-Za-z][A-Za-z0-9_]*)",'
-    r'Key=([A-Za-z0-9_]+)\)'
+    r'Key=([A-Za-z0-9_]+)(?:,bCtrl=True)?\)'
 )
 AXIS = re.compile(
     r'\+AxisMappings=\(AxisName="([A-Za-z][A-Za-z0-9_]*)",'

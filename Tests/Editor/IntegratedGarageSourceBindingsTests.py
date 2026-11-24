@@ -34,9 +34,9 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
             "GARAGE CAR %d/%d | OWNED %d/%d", "Entry.RouteValid",
             "Entry.RouteBudgetReady", "Entry.RouteCost",
             "Entry.RouteCars", "Entry.RouteCreditsShort",
-            "Q NEXT", "VS EQUIPPED", "F1-F6: EQUIP OWNED CARS",
+            "Q NEXT", "VS EQUIPPED", "CTRL+1..6: EQUIP OWNED CARS",
             "Mode->GetGarageFeedback()", "MenuLine(", "bTouchHUD",
-            'FString::Printf(TEXT("F%d")',
+            'FString::Printf(TEXT("CTRL+%d")',
             'FString::Printf(TEXT("%d.")',
         ):
             with self.subTest(marker=essential):
@@ -84,11 +84,12 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
         self.assertIn("GaragePurchaseConfirm.Reset();", slot)
 
     def test_all_six_input_slots_are_single_dispatched_paused_only(self):
-        for slot in range(1, 7):
+        keys = ("One", "Two", "Three", "Four", "Five", "Six")
+        for slot, key in enumerate(keys, 1):
             name = f"GarageSlot{slot}"
             with self.subTest(slot=slot):
                 self.assertEqual(self.config.count(
-                    f'+ActionMappings=(ActionName="{name}",Key=F{slot})'), 1)
+                    f'+ActionMappings=(ActionName="{name}",Key={key},bCtrl=True)'), 1)
                 self.assertEqual(len(re.findall(
                     rf'BindAction\(\s*TEXT\("{name}"\)', self.pawn)), 1)
                 self.assertIn(f"Slot{slot}.bExecuteWhenPaused = true;",

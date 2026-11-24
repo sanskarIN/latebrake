@@ -1,4 +1,4 @@
-"""Static wiring checks for native six-car F-key garage quick-select.
+"""Static wiring checks for native six-car Ctrl+number garage quick-select.
 
 These checks verify the *source* remains connected, not actual UE input
 dispatch, win64 packaging, graphical focus, or a successful SaveGame write.
@@ -27,10 +27,11 @@ class GarageQuickSelectBindingTests(unittest.TestCase):
         cls.cmake = read("Tests/Standalone/CMakeLists.txt")
 
     def test_each_of_six_keys_has_a_single_paused_input_handler(self):
-        for slot in range(1, 7):
+        keys = ("One", "Two", "Three", "Four", "Five", "Six")
+        for slot, key in enumerate(keys, 1):
             with self.subTest(slot=slot):
                 mapping = (
-                    f'+ActionMappings=(ActionName="GarageSlot{slot}",Key=F{slot})')
+                    f'+ActionMappings=(ActionName="GarageSlot{slot}",Key={key},bCtrl=True)')
                 self.assertEqual(self.ini.count(mapping), 1)
                 method = f'GarageSlot{slot}'
                 self.assertIn(f'void {method}();', self.pawn_header)
@@ -95,8 +96,8 @@ class GarageQuickSelectBindingTests(unittest.TestCase):
         page = self.hud.split("case latebrake::MenuPage::Garage:", 1)[1].split(
             "case latebrake::MenuPage::Results:", 1)[0]
         self.assertIn("if (!bTouchHUD)", page)
-        self.assertIn("F1-F6: EQUIP OWNED CARS DIRECTLY", page)
-        self.assertIn('FString::Printf(TEXT("F%d")', page)
+        self.assertIn("CTRL+1..6: EQUIP OWNED CARS DIRECTLY", page)
+        self.assertIn('FString::Printf(TEXT("CTRL+%d")', page)
         self.assertIn('FString::Printf(TEXT("%d.")', page)
         self.assertIn("Mode->GetGarageFeedback()", page)
         self.assertNotIn("Garage.Select(", page)

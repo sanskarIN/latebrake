@@ -2032,7 +2032,7 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
 
 void ALatebrakeRaceGameMode::CommitGarageVehicleSelection(int32 VehicleId)
 {
-    // One transaction for both E/SELECT cycling and F1-F6 direct selection.
+    // One transaction for both E/SELECT cycling and Ctrl+1..6 selection.
     // Snapshot every persisted dependency before changing live vehicle tuning.
     latebrake::ProfileWriteCheckpoint SavedProfile(
         Garage, Career, CompletedRaceCount, PersonalBestSeconds,
