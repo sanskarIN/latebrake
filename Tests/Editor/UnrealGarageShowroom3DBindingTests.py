@@ -56,6 +56,22 @@ class UnrealGarageShowroom3DBindingTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden,method)
 
+    def test_deferred_preview_initializes_consistent_display_identity(self):
+        begin=self.pawn.split("void ALatebrakeCarPawn::BeginPlay()",1
+        )[1].split("void ALatebrakeCarPawn::EndPlay(",1)[0]
+        markers=("Super::BeginPlay();",
+                 "const int32 DisplayVehicleId = GetPresentedGarageVehicleId();",
+                 "ApplyVehicleVisualRecipe(DisplayVehicleId);",
+                 "RebuildOriginalVehicleVisual(DisplayVehicleId);",
+                 "ApplyVehiclePaintRecipe(DisplayVehicleId);")
+        positions=[begin.index(marker) for marker in markers]
+        self.assertEqual(positions,sorted(positions))
+        self.assertEqual(begin.count("RebuildOriginalVehicleVisual("),1)
+        self.assertNotIn("RebuildOriginalVehicleVisual(GarageVehicleId)",begin)
+        self.assertNotIn("ApplyVehiclePaintRecipe(GarageVehicleId)",begin)
+        self.assertIn("DeferredStartupAndInvalidIdentity();",self.tests)
+        self.assertIn("validEquipped && ValidGarageLook",self.policy)
+
     def test_authoritative_car_changes_are_visually_deferred_in_showroom(self):
         tune=self.pawn.split(
             "void ALatebrakeCarPawn::SetGarageTuning(",1

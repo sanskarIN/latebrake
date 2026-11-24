@@ -66,6 +66,45 @@ void AllSixCarEntryExitPairs()
         GarageWheelOptions*GaragePaintOptions*GarageStripeOptions),
         "entire owned/unowned view x paint x stripe x rim state tested");
 }
+void DeferredStartupAndInvalidIdentity()
+{
+    using namespace latebrake;
+    for(int equipped=0;equipped<VehicleCount;++equipped)
+    for(int viewed=0;viewed<VehicleCount;++viewed)
+    for(int rim=0;rim<GarageWheelOptions;++rim)
+    {
+        const auto ownedLook=FactoryGarageLook(equipped);
+        const GarageLook viewedLook{7u,2u,static_cast<std::uint8_t>(rim)};
+        const auto deferred=PlanGarageShowroomPresentation({
+            true,viewed,viewedLook,equipped,ownedLook,false,0,{},false});
+        Require(deferred.PreviewActive &&
+                deferred.DisplayVehicleId==viewed &&
+                SameGarageLook(deferred.DisplayLook,viewedLook) &&
+                !deferred.RebuildSourceMesh && !deferred.RefreshMaterials,
+                "pre-BeginPlay stores complete displayed identity without allocation");
+        const auto active=PlanGarageShowroomPresentation({
+            true,viewed,viewedLook,equipped,ownedLook,
+            deferred.PreviewActive,deferred.DisplayVehicleId,deferred.DisplayLook,true});
+        Require(active.DisplayVehicleId==viewed &&
+                SameGarageLook(active.DisplayLook,viewedLook) &&
+                !active.RebuildSourceMesh && !active.RefreshMaterials,
+                "BeginPlay must initialize stored presentation exactly once");
+        const auto closed=PlanGarageShowroomPresentation({
+            false,viewed,viewedLook,equipped,ownedLook,
+            true,active.DisplayVehicleId,active.DisplayLook,true});
+        Require(closed.DisplayVehicleId==equipped &&
+                SameGarageLook(closed.DisplayLook,ownedLook),
+                "leaving initialized preview restores equipped identity");
+    }
+    for(int invalid:{-1,VehicleCount,999})
+    {
+        const auto safe=PlanGarageShowroomPresentation({
+            false,0,{},invalid,GarageLook{7u,2u,2u},false,0,{},true});
+        Require(!safe.PreviewActive && safe.DisplayVehicleId==0 &&
+                SameGarageLook(safe.DisplayLook,FactoryGarageLook(0)),
+                "valid style from invalid car must not leak into starter fallback");
+    }
+}
 void EditsAndUnownedBrowsingRemainReadOnly()
 {
     using namespace latebrake;
@@ -128,6 +167,7 @@ void EditsAndUnownedBrowsingRemainReadOnly()
 int main()
 {
     AllSixCarEntryExitPairs();
+    DeferredStartupAndInvalidIdentity();
     EditsAndUnownedBrowsingRemainReadOnly();
     std::cout<<"Read-only garage showroom entry/browse/style/exit passed.\n";
     return EXIT_SUCCESS;

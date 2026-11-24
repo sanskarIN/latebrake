@@ -3084,3 +3084,6 @@ else()
 endif()
 add_test(NAME GarageShowroomPresentation
     COMMAND latebrake_showroom_presentation_tests)
+
+# Main integration: read-only source pace intervals and four reference sectors.
+add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)

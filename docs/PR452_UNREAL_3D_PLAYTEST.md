@@ -313,3 +313,14 @@ the full six-car, eight-paint, three-stripe, three-rim state space.
 These are source changes and manual acceptance instructions; actual
 Unreal Editor/Windows rendering of injected component faults has not
 been verified by the source tests.
+
+## Deferred showroom initialization
+
+In an isolated UE developer test, initialize a new pawn with a valid
+viewed car/rim before BeginPlay, different from the equipped car.
+The first source build, primitive fallback shape and material palette
+must use the same viewed ID and look. Verify one initial mesh attempt,
+no extra attempt on an unchanged showroom sync, and correct equipped
+vehicle restoration before driving. Source policy tests cover all
+six-by-six identities and three viewed rim choices. Native QA remains
+required; the source check cannot reproduce Unreal spawn ordering.

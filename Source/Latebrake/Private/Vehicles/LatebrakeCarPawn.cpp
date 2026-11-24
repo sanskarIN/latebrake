@@ -399,10 +399,14 @@ void ALatebrakeCarPawn::BeginPlay()
     Super::BeginPlay();
     // Dynamic material instances belong to these mesh components, and are
     // initialized only when the actor is live (not in the CDO constructor).
-    // Build the existing source-generated original car once per owned
-    // identity and keep its material slots alive for free style changes.
-    RebuildOriginalVehicleVisual(GarageVehicleId);
-    ApplyVehiclePaintRecipe(GarageVehicleId);
+    // A showroom request can arrive before BeginPlay. The portable
+    // transition records its transient identity but deliberately defers
+    // material/mesh allocation. Use the SAME displayed identity for
+    // shape, geometry and palette, not a mixture of equipped and viewed.
+    const int32 DisplayVehicleId = GetPresentedGarageVehicleId();
+    ApplyVehicleVisualRecipe(DisplayVehicleId);
+    RebuildOriginalVehicleVisual(DisplayVehicleId);
+    ApplyVehiclePaintRecipe(DisplayVehicleId);
     Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(

@@ -32,7 +32,8 @@ class UnrealVehiclePaintBindingTests(unittest.TestCase):
         begin = self.pawn.split(
             "void ALatebrakeCarPawn::BeginPlay()", 1)[1].split(
             "void ALatebrakeCarPawn::", 1)[0]
-        self.assertIn("ApplyVehiclePaintRecipe(GarageVehicleId);", begin)
+        self.assertIn("const int32 DisplayVehicleId = GetPresentedGarageVehicleId();", begin)
+        self.assertIn("ApplyVehiclePaintRecipe(DisplayVehicleId);", begin)
         tune = self.pawn.split("void ALatebrakeCarPawn::SetGarageTuning(", 1)[1].split(
             "void ALatebrakeCarPawn::ClearDriverInputs()", 1)[0]
         self.assertIn("if (SafeId != GarageVehicleId)", tune)

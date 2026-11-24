@@ -116,15 +116,63 @@ inline WorldScaleVariantPacePlan BuildWorldScaleVariantPace(
     result.Valid=true;
     return result;
 }
+// Validate public value-object metadata before any division or indexing.
+inline bool ValidWorldScaleVariantPaceMetadata(
+    const WorldScaleVariantPacePlan& plan) noexcept
+{
+    return plan.Valid && plan.OriginalRaceResultsUnchanged &&
+        ValidWorldScaleVariantRecipe(plan.Track) &&
+        std::isfinite(plan.StepCm) &&
+        plan.StepCm==plan.Track.LapLengthCm/WorldScalePaceStations &&
+        std::isfinite(plan.EstimatedLapSeconds) &&
+        plan.EstimatedLapSeconds>1.0 && plan.EstimatedLapSeconds<=1800.0 &&
+        plan.RelaxationPasses>0u && plan.RelaxationPasses<=WorldScalePaceStations;
+}
+inline bool ValidWorldScaleVariantPaceNode(
+    const WorldScaleVariantPacePlan& plan,unsigned i) noexcept
+{
+    if(i>=WorldScalePaceStations)return false;
+    const auto& n=plan.Nodes[i];
+    return std::isfinite(n.DistanceCm) && n.DistanceCm==i*plan.StepCm &&
+        std::isfinite(n.Position.X) && std::isfinite(n.Position.Y) &&
+        std::abs(n.Position.X)<=plan.Track.HalfExtentXcm+1e-6 &&
+        std::abs(n.Position.Y)<=plan.Track.HalfExtentYcm+1e-6 &&
+        std::isfinite(n.CurvaturePerCm) && n.CurvaturePerCm>=0.0 &&
+        n.CurvaturePerCm<=0.002 &&
+        std::isfinite(n.LocalLimitCmps) &&
+        n.LocalLimitCmps>=WorldScalePaceMinSpeedCmps &&
+        n.LocalLimitCmps<=WorldScalePaceMaxSpeedCmps &&
+        std::isfinite(n.TargetCmps) &&
+        n.TargetCmps>=WorldScalePaceMinSpeedCmps-1e-6 &&
+        n.TargetCmps<=n.LocalLimitCmps+1e-6;
+}
+inline bool ValidWorldScaleVariantPaceEdge(
+    const WorldScaleVariantPacePlan& plan,unsigned i) noexcept
+{
+    if(i>=WorldScalePaceStations)return false;
+    const unsigned next=(i+1u)%WorldScalePaceStations;
+    if(!ValidWorldScaleVariantPaceNode(plan,i) ||
+       !ValidWorldScaleVariantPaceNode(plan,next))return false;
+    const double a=plan.Nodes[i].TargetCmps;
+    const double b=plan.Nodes[next].TargetCmps;
+    const double change=b*b-a*a;
+    return change<=2.0*WorldScalePaceDriveAccelCmps2*plan.StepCm+0.01 &&
+        -change<=2.0*WorldScalePaceBrakeAccelCmps2*plan.StepCm+0.01;
+}
 inline WorldScalePaceReference SampleWorldScaleVariantPace(
     const WorldScaleVariantPacePlan& plan,double station) noexcept
 {
-    if(!plan.Valid||!std::isfinite(station))return {};
+    if(!ValidWorldScaleVariantPaceMetadata(plan)||!std::isfinite(station))
+        return {};
     const double wrapped=WorldScaleVariantWrapDistance(plan.Track,station);
-    if(!std::isfinite(wrapped))return {};
-    const unsigned i=std::min(
-        static_cast<unsigned>(wrapped/plan.StepCm),
+    if(!std::isfinite(wrapped)||wrapped<0.0||wrapped>=plan.Track.LapLengthCm)
+        return {};
+    const double index=wrapped/plan.StepCm;
+    if(!std::isfinite(index)||index<0.0||
+       index>static_cast<double>(WorldScalePaceStations))return {};
+    const unsigned i=std::min(static_cast<unsigned>(index),
         WorldScalePaceStations-1u);
+    if(!ValidWorldScaleVariantPaceEdge(plan,i))return {};
     const unsigned next=(i+1u)%WorldScalePaceStations;
     const double fraction=std::clamp(
         (wrapped-plan.Nodes[i].DistanceCm)/plan.StepCm,0.0,1.0);
@@ -139,7 +187,7 @@ inline WorldScalePaceReference SampleWorldScaleVariantPace(
 inline WorldScaleRouteProjection ProjectWorldScaleVariantPace(
     const WorldScaleVariantPacePlan& plan,CircuitPoint point) noexcept
 {
-    if(!plan.Valid||!std::isfinite(point.X)||
+    if(!ValidWorldScaleVariantPaceMetadata(plan)||!std::isfinite(point.X)||
        !std::isfinite(point.Y)||
        std::abs(point.X)>1000000.0||
        std::abs(point.Y)>1000000.0)return {};
@@ -149,6 +197,7 @@ inline WorldScaleRouteProjection ProjectWorldScaleVariantPace(
     double side=0.0;
     for(unsigned i=0;i<WorldScalePaceStations;++i)
     {
+        if(!ValidWorldScaleVariantPaceEdge(plan,i))return {};
         const auto a=plan.Nodes[i].Position;
         const auto b=plan.Nodes[(i+1u)%WorldScalePaceStations].Position;
         const double dx=b.X-a.X,dy=b.Y-a.Y;
