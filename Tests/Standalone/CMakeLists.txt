@@ -2546,3 +2546,6 @@ if(MSVC)
 else()
     target_compile_options(latebrake_original_obj_preview PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
+
+# Main integration: sequential garage purchase planning.
+add_latebrake_portable_research_test(GaragePurchasePlanner)
