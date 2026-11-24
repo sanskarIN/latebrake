@@ -2526,3 +2526,6 @@ add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
 
 # Perspective-fit camera for original source geometry, not native UE camera.
 add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
+
+# Main integration: sequential garage purchase planning.
+add_latebrake_portable_research_test(GaragePurchasePlanner)
