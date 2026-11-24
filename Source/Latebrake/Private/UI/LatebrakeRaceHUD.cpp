@@ -334,6 +334,17 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.
             MenuLine(Mode->GetGarageFeedback(), true);
+            if (latebrake::GarageState::IsVehicle(Catalog.NextUnlockId))
+            {
+                const auto& Next = Catalog.Cars[static_cast<std::size_t>(Catalog.NextUnlockId)];
+                MenuLine(FString::Printf(TEXT("Q NEXT: %s | %d CR | NEED %d"),
+                    UTF8_TO_TCHAR(Next.Name), Next.UnlockCost, Next.RouteCreditsShort), true);
+                MenuLine(TEXT("LOCKED ROWS SHOW TOTAL SEQUENTIAL ROUTE COST."));
+            }
+            else
+            {
+                MenuLine(TEXT("ALL CARS OWNED: NO NEXT UNLOCK"), true);
+            }
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
                 Catalog.EngineLevel, Catalog.GripLevel));
             // Prices and relative tuning are read-only summaries of the
@@ -378,12 +389,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                     State = TEXT("OWNED");
                     break;
                 case latebrake::GarageCatalogOwnership::LockedAffordable:
-                    State = FString::Printf(TEXT("LOCKED %d CR | AFFORDABLE"),
-                        Entry.UnlockCost);
-                    break;
                 case latebrake::GarageCatalogOwnership::LockedInsufficientCredits:
-                    State = FString::Printf(TEXT("LOCKED %d CR | NEED %d"),
-                        Entry.UnlockCost, Entry.CreditsShort);
+                    if (!Entry.RouteValid)
+                        State = TEXT("LOCKED | ROUTE UNAVAILABLE");
+                    else if (Entry.RouteBudgetReady)
+                        State = FString::Printf(TEXT("LOCKED | %d CAR(S) | %d CR TOTAL | BUDGET OK"),
+                            Entry.RouteCars, Entry.RouteCost);
+                    else
+                        State = FString::Printf(TEXT("LOCKED | %d CR TOTAL | NEED %d"),
+                            Entry.RouteCost, Entry.RouteCreditsShort);
                     break;
                 }
                 // Q buys the *first* locked ID only. Do not suggest that
@@ -548,11 +562,74 @@ void ALatebrakeRaceHUD::DrawHUD()
                     MenuLine(FString::Printf(
                         TEXT("LAP %d: %.2fs | %s"),
                         Row.CompletedLap, Row.LapSeconds, *BestLabel));
+                    if (Row.PenaltyAttributionKnown &&
+                        Row.IncludedPenaltySeconds > 0.0)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("  FEE +%.2fs INCLUDED | CLOCK EXCL. FEE %.2fs"),
+                            Row.IncludedPenaltySeconds,
+                            Row.ClockExcludingPenaltySeconds));
+                    }
                     if (!bCompact && Row.HasPrevious)
                     {
                         MenuLine(FString::Printf(
                             TEXT("  LAP %d vs prior timed: %+.2fs"),
                             Row.CompletedLap, Row.DeltaToPreviousSeconds));
+                        if (Row.HasAdjacentPenaltyComparison &&
+                            Row.PenaltyDeltaToPreviousSeconds != 0.0)
+                        {
+                            MenuLine(FString::Printf(
+                                TEXT("  CLOCK EXCL. FEE %+.2fs | FEE CHANGE %+.2fs"),
+                                Row.ClockDeltaToPreviousSeconds,
+                                Row.PenaltyDeltaToPreviousSeconds));
+                        }
+                    }
+                }
+            }
+            if (LapReview.Valid && LapReview.CompletePenaltyAttribution)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("%s: %d FEE-FREE / %d PENALIZED LAPS"),
+                    LapReview.CoversEntireRace ? TEXT("ALL LAPS") : TEXT("RETAINED LAPS"),
+                    LapReview.PenaltyFreeLaps, LapReview.PenalizedLaps));
+                if (LapReview.PenalizedLaps > 0)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("RETAINED FEES +%.2fs | MOST ON LAP %d (+%.2fs)"),
+                        LapReview.RetainedPenaltySeconds,
+                        LapReview.LargestPenaltyLap,
+                        LapReview.LargestPenaltySeconds));
+                    MenuLine(TEXT("FEE-EXCLUDED CLOCK IS NOT A LAP RECORD."), true);
+                }
+            }
+            // Compare the final physical lap against a prior, actually
+            // completed fee-free reference. Never substitute mixed best splits.
+            const auto& Measured = Race.GetMeasuredLapSplits().LastComparison();
+            if (latebrake::CanAwardFinishedRace(Race) && Measured.Valid)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("FINAL LAP %d VS FEE-FREE LAP %d: %+.2fs"),
+                    Measured.LapNumber, Measured.ReferenceLapNumber,
+                    Measured.DeltaSeconds), true);
+                MenuLine(FString::Printf(
+                    TEXT("GATES FASTER %d | MATCHED %d | SLOWER %d"),
+                    Measured.FasterGates, Measured.MatchedGates,
+                    Measured.SlowerGates));
+                if (Measured.LargestLossGate >= 0)
+                    MenuLine(FString::Printf(TEXT("BIGGEST LOSS GATE %d: +%.2fs"),
+                        Measured.LargestLossGate+1, Measured.LargestLossSeconds));
+                if (Measured.LargestGainGate >= 0)
+                    MenuLine(FString::Printf(TEXT("BIGGEST GAIN GATE %d: -%.2fs"),
+                        Measured.LargestGainGate+1, Measured.LargestGainSeconds));
+                if (!bCompact)
+                {
+                    for (int32 Index=0; Index<Measured.GateCount; ++Index)
+                    {
+                        const auto& Row = Measured.Rows[static_cast<std::size_t>(Index)];
+                        MenuLine(FString::Printf(
+                            TEXT("GATE %d: SPLIT %+.2fs | TOTAL %+.2fs | FEE +%.2fs"),
+                            Index+1, Row.SectorDeltaSeconds,
+                            Row.CumulativeDeltaSeconds, Row.IncludedFeeSeconds));
                     }
                 }
             }
@@ -1628,6 +1705,25 @@ void ALatebrakeRaceHUD::DrawHUD()
             Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
                 Pace.ReferenceLapSeconds, Pace.SampledLaps,
                 Pace.ProjectedFinishSeconds), Accent);
+        }
+        // Exact gate clock delta to one completed reference lap.
+        // It remains a discrete gate observation, not live positional gap.
+        const auto GateReference = Race.GetMeasuredLapSplits().LatestGate();
+        if (GateReference.Valid)
+        {
+            Line(FString::Printf(
+                TEXT("GATE %d | VS FEE-FREE LAP %d  %+.2fs"),
+                GateReference.GateIndex+1, GateReference.ReferenceLapNumber,
+                GateReference.CumulativeDeltaSeconds),
+                GateReference.CumulativeDeltaSeconds <= 0.0 ? Primary : Accent);
+        }
+        else if (Race.GetMeasuredLapSplits().LastComparison().Valid &&
+                 Race.GetNextCheckpoint()==0)
+        {
+            const auto& Last = Race.GetMeasuredLapSplits().LastComparison();
+            Line(FString::Printf(TEXT("LAST LAP VS FEE-FREE LAP %d  %+.2fs"),
+                Last.ReferenceLapNumber, Last.DeltaSeconds),
+                Last.DeltaSeconds <= 0.0 ? Primary : Accent);
         }
         // A within-run best-sector potential, not a promised finish time.
         // Wait for an actual timed lap and complete positive split history.

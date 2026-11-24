@@ -84,6 +84,17 @@ int main()
             history.GetRecent(0).ActiveClockEvidence &&
             !history.GetRecent(1).ActiveClockEvidence,
             "explicit per-lap evidence never changes earlier records");
+    Require(!history.Record(3, 10.0, true, 11.0, true) &&
+            !history.Record(3, 10.0, true, -1.0, true) &&
+            !history.Record(3, 10.0, true, 1.0, false) &&
+            !history.Record(3, 10.0, true,
+                std::numeric_limits<double>::quiet_NaN(), true),
+            "invalid fee attribution does not advance history");
+    Require(history.Record(3, 10.0, true, 2.0, true) &&
+            history.GetRecent(0).PenaltyAttributionKnown &&
+            history.GetRecent(0).PenaltySeconds == 2.0 &&
+            !history.GetRecent(1).PenaltyAttributionKnown,
+            "per-lap attribution is retained independently");
     std::cout << "Bounded timed-lap ring regression passed.\n";
     return EXIT_SUCCESS;
 }

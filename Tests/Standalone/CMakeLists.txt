@@ -2552,3 +2552,22 @@ add_latebrake_portable_research_test(GaragePurchasePlanner)
 
 # Main integration: adaptive original-vehicle showroom camera.
 add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
+
+# Cached signed reference clock with invertible source timing.
+add_latebrake_portable_research_test(WorldScaleVariantReferenceClock)
+
+# Real ordered gate timings, linked to production RaceProgress.
+add_executable(latebrake_measured_lap_split_reference_tests
+    MeasuredLapSplitReferenceTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
+target_include_directories(latebrake_measured_lap_split_reference_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_measured_lap_split_reference_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_measured_lap_split_reference_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_measured_lap_split_reference_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME MeasuredLapSplitReference COMMAND latebrake_measured_lap_split_reference_tests)
+
+# Crease-aware render and OBJ shading frames.
+add_latebrake_portable_research_test(OriginalVehicleSurfaceShading)

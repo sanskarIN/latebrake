@@ -108,6 +108,58 @@ int main()
           unknown.Cars[5].Ownership == GarageCatalogOwnership::Owned,
           "future bits and invalid equipped ID are sanitized consistently");
 
+    // Exhaustive independently summed sequential route across sparse
+    // ownership, existing shared upgrades and representative balances.
+    for (int mask = 0; mask <= KnownVehicleMask; ++mask)
+    for (int credits : {0, 600, 1200, 3400, 9500, 12000})
+    for (int engine = 0; engine <= 3; ++engine)
+    for (int grip = 0; grip <= 3; ++grip)
+    {
+        const GarageSnapshot input{credits, mask, 5, engine, grip};
+        GarageState baseline;
+        baseline.Load(input);
+        const auto catalog = BuildGarageCatalogView(input);
+        for (int id = 0; id < VehicleCount; ++id)
+        {
+            const auto& row = catalog.Cars[static_cast<std::size_t>(id)];
+            int routeCost = 0;
+            int routeCars = 0;
+            if (!baseline.Owns(id))
+                for (int prior = 0; prior <= id; ++prior)
+                    if (!baseline.Owns(prior))
+                    {
+                        routeCost += GarageState::Definition(prior).UnlockCost;
+                        ++routeCars;
+                    }
+            Check(row.RouteValid && row.RouteCost == routeCost &&
+                  row.RouteCars == routeCars &&
+                  row.RouteCreditsShort == std::max(0, routeCost - credits) &&
+                  row.RouteBudgetReady == (routeCost <= credits) &&
+                  row.IsNextUnlock == (id == baseline.NextLockedVehicle()),
+                  "complete unlock route matches independent ownership/cost oracle");
+            // The public legacy sticker price remains distinct from the
+            // actual route; a later locked row cannot be a purchase action.
+            const auto spec = GarageState::Definition(id);
+            Check(row.UnlockCost == spec.UnlockCost &&
+                  row.CreditsShort == (baseline.Owns(id) ? 0 :
+                    std::max(0, spec.UnlockCost - credits)),
+                  "legacy per-car sticker fields remain compatible");
+            Check(Close(row.Effective.Acceleration,
+                        spec.Acceleration * (1.0 + 0.06 * engine)) &&
+                  Close(row.Effective.Grip, spec.Grip * (1.0 + 0.05 * grip)) &&
+                  Close(row.Effective.TopSpeed, spec.TopSpeed * (1.0 + 0.02 * engine)),
+                  "planner-backed theoretical performance matches original tuning");
+        }
+        Check(Same(baseline.Snapshot(), input) ||
+              baseline.Credits() == credits, "read-only view preserves earned credits");
+    }
+    const auto misleading = BuildGarageCatalogView({3400, 1, 0, 0, 0});
+    Check(misleading.Cars[5].Ownership == GarageCatalogOwnership::LockedAffordable &&
+          misleading.Cars[5].RouteCost == 9500 &&
+          misleading.Cars[5].RouteCreditsShort == 6100 &&
+          !misleading.Cars[5].RouteBudgetReady && !misleading.Cars[5].IsNextUnlock,
+          "Nova sticker affordability is not sequential route affordability");
+
     std::cout << "Garage catalogue view tests passed.\n";
     return EXIT_SUCCESS;
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "Vehicles/OriginalVehicleAnimatedWheels.h"
+#include "Vehicles/OriginalVehicleSurfaceShading.h"
 #include "Vehicles/VehiclePaintRecipe.h"
 
 #include <array>
@@ -43,6 +44,8 @@ inline bool WriteOriginalVehicleObj(
     if(!ValidObjMtlBasename(mtlBasename) ||
        !MakeOriginalVehicleAnimatedParts(mesh).Valid)
         return false;
+    const auto shading=BuildOriginalSurfaceShading(mesh);
+    if(!shading.Valid||shading.Frames.size()!=mesh.Vertices.size())return false;
     out<<std::fixed<<std::setprecision(6);
     out<<"# LateBrake source-generated 3D geometry - NOT a cooked Unreal game\n"
        <<"# Y-up, metres; mapping from source (X,Y,Z) cm to (X,Z,-Y) m\n"
@@ -55,9 +58,11 @@ inline bool WriteOriginalVehicleObj(
            <<" "<<-v.Position.Y/100.0<<"\n";
     for(const auto& v:mesh.Vertices)
         out<<"vt "<<v.TexCoord.U<<" "<<1.0-v.TexCoord.V<<"\n";
-    for(const auto& v:mesh.Vertices)
-        out<<"vn "<<v.Normal.X<<" "<<v.Normal.Z<<" "
-           <<-v.Normal.Y<<"\n";
+    // Export exactly the same crease-aware normal frames as the native
+    // render adapter, while keeping original positions, UVs and groups.
+    for(const auto& frame:shading.Frames)
+        out<<"vn "<<frame.Normal.X<<" "<<frame.Normal.Z<<" "
+           <<-frame.Normal.Y<<"\n";
 
     int currentPart=-2;
     int currentMaterial=-1;

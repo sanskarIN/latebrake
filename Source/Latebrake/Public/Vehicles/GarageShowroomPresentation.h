@@ -37,9 +37,9 @@ constexpr GarageShowroomPresentation PlanGarageShowroomPresentation(
 {
     // Corrupted or future SaveGame data is resolved to a safe starter
     // cosmetic identity. Actual unlocked cars are never changed here.
-    const int equippedId=GarageState::IsVehicle(request.EquippedVehicleId)
-        ? request.EquippedVehicleId : 0;
-    const GarageLook equippedLook=ValidGarageLook(request.EquippedLook)
+    const bool validEquipped=GarageState::IsVehicle(request.EquippedVehicleId);
+    const int equippedId=validEquipped ? request.EquippedVehicleId : 0;
+    const GarageLook equippedLook=validEquipped && ValidGarageLook(request.EquippedLook)
         ? request.EquippedLook : FactoryGarageLook(equippedId);
 
     const bool priorPreview=request.WasPreviewActive &&

@@ -109,6 +109,58 @@ int main()
             Near(bounded.Rows[0].SecondsBehindRunBest, 11.0),
             "history boundary never fabricates evicted prior lap data");
 
+    // Feed real ordered checkpoints and charged fees into the production
+    // clock. Binary-exact durations keep the independent oracle stable.
+    for (int laps : {2, 3, 8, 12, 32})
+    {
+        RaceProgress attributed(2, laps);
+        double expectedFees = 0.0;
+        double expectedClock = 0.0;
+        int expectedPenalized = 0;
+        const int firstRetained = std::max(1, laps - RecentTimedLaps::Capacity + 1);
+        for (int lap = 1; lap <= laps; ++lap)
+        {
+            const double fee = lap % 3 == 0 ? 4.0 : lap % 3 == 1 ? 0.0 : 1.5;
+            attributed.Advance(5.0);
+            if (fee > 0.0 && !attributed.AddTimePenalty(fee))
+                return EXIT_FAILURE;
+            if (!attributed.PassCheckpoint(0)) return EXIT_FAILURE;
+            attributed.Advance(7.0);
+            if (!attributed.PassCheckpoint(1)) return EXIT_FAILURE;
+            if (lap >= firstRetained)
+            {
+                expectedFees += fee;
+                expectedClock += 12.0;
+                if (fee > 0.0) ++expectedPenalized;
+            }
+        }
+        const auto review = BuildRecentLapReview(attributed);
+        if (!review.Valid || !review.CompletePenaltyAttribution ||
+            review.CoversEntireRace != (laps <= RecentTimedLaps::Capacity) ||
+            review.PenalizedLaps != expectedPenalized ||
+            review.PenaltyFreeLaps != review.Count - expectedPenalized ||
+            std::abs(review.RetainedPenaltySeconds - expectedFees) > 1e-7 ||
+            std::abs(review.RetainedClockExcludingPenaltySeconds - expectedClock) > 1e-7)
+            return EXIT_FAILURE;
+        for (int i = 0; i < review.Count; ++i)
+        {
+            const auto& row = review.Rows[static_cast<std::size_t>(i)];
+            if (!row.PenaltyAttributionKnown ||
+                std::abs(row.ClockExcludingPenaltySeconds - 12.0) > 1e-7 ||
+                std::abs(row.LapSeconds - 12.0 - row.IncludedPenaltySeconds) > 1e-7)
+                return EXIT_FAILURE;
+            if (i+1 < review.Count &&
+                (!row.HasAdjacentPenaltyComparison ||
+                 std::abs(row.ClockDeltaToPreviousSeconds) > 1e-7 ||
+                 std::abs(row.DeltaToPreviousSeconds -
+                          row.PenaltyDeltaToPreviousSeconds) > 1e-7))
+                return EXIT_FAILURE;
+        }
+        attributed.Reset();
+        if (BuildRecentLapReview(attributed).Valid ||
+            attributed.GetRecentTimedLapCount() != 0)
+            return EXIT_FAILURE;
+    }
     std::cout << "Recent lap review source tests passed.\n";
     return EXIT_SUCCESS;
 }
