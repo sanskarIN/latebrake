@@ -2001,8 +2001,53 @@ FString ALatebrakeRaceGameMode::GetSelectedVehicleName() const
     return FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Garage.SelectedVehicle()).Name));
 }
 
+latebrake::GarageEquipUiState ALatebrakeRaceGameMode::GetGarageMutationUiState() const
+{
+    return latebrake::EvaluateGarageMutationUi(
+        Menu.IsOpen(), Menu.Current(),
+        IsFocusLossGuardActive() || IsManualRacePauseActive(),
+        bFutureSaveSchema, latebrake::CanEditGarageDuringRace(bCareerRace, Race));
+}
+
+latebrake::GarageEquipUiState ALatebrakeRaceGameMode::GetGarageCycleUiState() const
+{
+    const auto access = GetGarageMutationUiState();
+    if (!latebrake::CanActivateGarageEquip(access)) return access;
+    const int32 Next = Garage.NextOwnedVehicle();
+    return latebrake::EvaluateGarageEquipUi(true, latebrake::MenuPage::Garage,
+        false, false, true, Garage.Owns(Next), Next, Garage.SelectedVehicle());
+}
+
+bool ALatebrakeRaceGameMode::RejectGarageMutationIfBlocked()
+{
+    const auto access = GetGarageMutationUiState();
+    if (latebrake::CanActivateGarageEquip(access)) return false;
+    GaragePurchaseConfirm.Reset();
+    switch (access)
+    {
+    case latebrake::GarageEquipUiState::Suspended:
+        GarageFeedback = TEXT("Resume the suspended session before changing garage.");
+        break;
+    case latebrake::GarageEquipUiState::ReadOnly:
+        GarageFeedback = TEXT("Newer profile version: garage is read-only.");
+        break;
+    case latebrake::GarageEquipUiState::CareerLocked:
+        GarageFeedback = TEXT("Finish or exit this career race before changing garage.");
+        break;
+    default:
+        GarageFeedback = TEXT("Open Garage page to change garage.");
+        break;
+    }
+    return true;
+}
+
 FString ALatebrakeRaceGameMode::GetGaragePurchaseDisplayFeedback() const
 {
+    const auto access = GetGarageMutationUiState();
+    if (access == latebrake::GarageEquipUiState::Suspended)
+        return TEXT("Garage suspended: resume before changing cars or spending.");
+    if (access == latebrake::GarageEquipUiState::ReadOnly)
+        return TEXT("Newer profile version: garage is read-only.");
     // HUD observation never refreshes, authorizes, or consumes an offer.
     // The authorization window uses FPlatformTime while the world is paused.
     if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage ||
@@ -2105,6 +2150,7 @@ void ALatebrakeRaceGameMode::CommitGarageVehicleSelection(int32 VehicleId)
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
+    if (RejectGarageMutationIfBlocked()) return;
     GaragePurchaseConfirm.Reset();
     // Keep E/SELECT consistent with the new Ctrl+number shortcuts.
     // Never swap a running car or change equipment on a different page.
@@ -2130,6 +2176,7 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
 
 void ALatebrakeRaceGameMode::GarageSelectVehicle(int32 VehicleId)
 {
+    if (RejectGarageMutationIfBlocked()) return;
     // The shortcut cannot operate while driving, on another page, or during
     // an active career race. Never interpret Ctrl+1..6 as purchase commands.
     const bool bGaragePage = Menu.Current() == latebrake::MenuPage::Garage;
@@ -2170,6 +2217,7 @@ void ALatebrakeRaceGameMode::GarageSelectVehicle(int32 VehicleId)
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
+    if (RejectGarageMutationIfBlocked()) return;
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2230,6 +2278,7 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
+    if (RejectGarageMutationIfBlocked()) return;
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2289,6 +2338,7 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
+    if (RejectGarageMutationIfBlocked()) return;
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
