@@ -15,6 +15,12 @@ on:
 permissions:
   contents: read
 
+# Only the latest PR revision needs another full signed-off-as-unverified
+# 2D Windows artifact. Main push and manual dispatch remain independent.
+concurrency:
+  group: win32-2d-preview-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   standalone-win32-preview:
     name: Build native V5 Win64 / run synthetic self-test (NO UE)
@@ -73,6 +79,34 @@ jobs:
           if ($run.ExitCode -ne 0) { throw "Setup command parser self-test failed: $($run.ExitCode)" }
           $files = @(Get-ChildItem -LiteralPath $isolated -Recurse -File)
           if ($files.Count -ne 0) { throw 'A setup self-test wrote to player storage.' }
+      - name: Write exact source and SHA-256 trial receipt
+        shell: pwsh
+        env:
+          SOURCE_PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CHECKOUT_SHA: ${{ github.sha }}
+        run: |
+          $out = (Resolve-Path './Experiments/Win32Preview/out').Path
+          $game = Join-Path $out 'LateBrakePreviewV5.exe'
+          $setup = Join-Path $out 'LateBrakeSetupV5.exe'
+          foreach ($candidate in @($game, $setup)) {
+            if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+              throw "Missing actual compiled trial executable: $candidate"
+            }
+          }
+          $gameHash = (Get-FileHash -LiteralPath $game -Algorithm SHA256).Hash
+          $setupHash = (Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash
+          $receipt = @(
+            'LateBrake V5 UNVERIFIED 2D Win64 trial — NOT the Unreal Engine 3D game'
+            "Source PR head: $env:SOURCE_PR_HEAD"
+            "Actions checkout SHA (may be a synthetic PR merge): $env:CHECKOUT_SHA"
+            "LateBrakePreviewV5.exe SHA256: $gameHash"
+            "LateBrakeSetupV5.exe SHA256: $setupHash"
+            'Windows MSVC x64 compile and isolated --self-test passed in this workflow.'
+            'No real UE 5.8 build, cook, 3D rendering, controller hardware or installed QA.'
+            'Do not treat this artifact as a stable release or override Windows security warnings.'
+          )
+          $receipt | Set-Content -LiteralPath (Join-Path $out 'TRIAL_BUILD_SHA256.txt') -Encoding utf8
+          Write-Host 'Source-bound 2D Win64 trial receipt staged.'
       - name: Archive experimental UNVERIFIED installer for private GUI QA
         uses: actions/upload-artifact@v5
         with:
@@ -80,6 +114,8 @@ jobs:
           path: |
             Experiments/Win32Preview/out/LateBrakePreviewV5.exe
             Experiments/Win32Preview/out/LateBrakeSetupV5.exe
+            Experiments/Win32Preview/out/TRIAL_BUILD_SHA256.txt
+            Experiments/Win32Preview/TRIAL_QUICKSTART.md
           retention-days: 14
           if-no-files-found: error
           compression-level: 0

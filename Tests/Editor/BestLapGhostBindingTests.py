@@ -122,8 +122,16 @@ class BestLapGhostBindingTests(unittest.TestCase):
         self.assertIn("frameDt <= 0.0", source)
         self.assertIn("frameDistance > frameDt * 15000.0 + 200.0",
                       source)
+        self.assertIn("const double frameYawDelta = std::remainder(", source)
+        self.assertIn("pose.YawDegrees - LastObservedPose.YawDegrees", source)
+        self.assertIn("std::abs(frameYawDelta) > allowedYawDelta", source)
+        self.assertIn("MaxObservedYawRateDegreesPerSecond = 1800.0", self.policy)
+        self.assertIn("YawJitterAllowanceDegrees = 15.0", self.policy)
         self.assertLess(
             source.index("frameDistance > frameDt * 15000.0 + 200.0"),
+            source.index("const double frameYawDelta = std::remainder("))
+        self.assertLess(
+            source.index("const double frameYawDelta = std::remainder("),
             source.index("if (dt < 0.09)"))
         self.assertGreaterEqual(source.count("LastObservedPose = pose;"), 2)
         self.assertIn("HaveLastObservedPose = false;", self.policy)

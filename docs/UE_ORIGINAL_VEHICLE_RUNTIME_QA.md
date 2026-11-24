@@ -1,0 +1,284 @@
+# Original six-car Unreal visual-surface runtime — DRAFT QA
+
+**Status: source candidate / unverified 3D rendering; no cooked Win64 build.** LateBrake previously
+had six fully deterministic original C++ surface meshes
+(`OriginalVehicleSurfaceMesh.h`), with body shape, windows, four wheels,
+brake rotors, lamps, intake, carbon aero, normal and UV data, but the live
+Unreal Pawn still rendered only basic engine cubes/cylinders. This work
+attempts to connect those **existing six tested mesh generators** to
+the actual Pawn via `UProceduralMeshComponent`.
+
+## Rendering contract
+
+- The `ProceduralMeshComponent` engine plugin is enabled in
+  `Latebrake.uproject` and its module is declared in Build.cs.
+- The component is a visual-only child of the SAME Physics-Chaos
+  `Chassis` used for gameplay. Its scale compensates the chassis root
+  shape; it does not replace or resize that collision body.
+- A portable validated `OriginalVehicleRenderSections` plan partitions
+  all original triangles into the ten existing source material categories.
+  Unreal builds one mesh section per category with **bCreateCollision=false**.
+  No generated render mesh may simulate physics or trigger overlaps.
+- The current source candidate uses the engine's
+  `/Engine/BasicShapes/BasicShapeMaterial` and one dynamic
+  material per section to apply body, accent, glass, tire, rims, lamps
+  and trim colors. It is an early render material, **not authored PBR
+  automotive paint**. The real material's `Color` parameter and normal
+  lighting response must be inspected in the exact UE5.8 installation.
+- The old cube/cylinder geometry is hidden **only if** the source
+  mesh validates, the engine base Material loads, all nonempty sections
+  create their tintable instances, and the renderer is ready. Any such
+  failure restores the old visible legacy fallback. It must never
+  leave the player invisible because an optional material is missing.
+- Only BeginPlay or a change to the *equipped* immutable vehicle ID
+  rebuilds 3D geometry; paint/stripe/rim updates reuse existing
+  dynamic materials and the still-available attached stripe/rim controls.
+  All saved GarageAppearance data and original ownership IDs are intact.
+
+## Real engine acceptance (not yet performed)
+
+1. On a licensed **UE5.8 real Windows** workstation, run UnrealHeaderTool (UHT)
+   and build the full Editor for the protected source candidate. Confirm
+   `ProceduralMeshComponent` exists, loads and cooks on target Windows.
+2. Launch the real Editor circuit. Compare the actual six generated
+   meshes across 720p/1080p/1440p, including roof, windows, tires,
+   lamps, wing geometry and correct orientation/height. Capture
+   real screenshots; source topology tests cannot prove material quality.
+3. Change all six equipped owned cars and all eight paint options,
+   three stripe styles and three rim styles. Confirm each material slot
+   is visibly tinted and no false duplicate cube body is visible.
+4. Disable or remove the expected base material on a disposable
+   workstation copy, restart and verify the old cube and cylinders
+   remain visible as the **fallback**, with unchanged physical chassis
+   collision. Restore the material and inspect both modes.
+5. Verify no collision, braking, ground contact, driver body mass,
+   camera view, race clock, scoring, saved credits, old save migration
+   or competitor AI behavior changed. Inspect low-end GPU performance,
+   number of material sections and CPU spikes when switching cars.
+6. Cook and package Win64 on the actual machine, drive the car in a
+   real Windows playtest, inspect material and lighting under day/night
+   circuits, check all controls and capture true frame-time evidence.
+   Do not publish an Unreal pre-release without these observations.
+
+The old no-`Content/` source-only repository still lacks shipped
+professional material assets, 3D map authoring artifacts, sound and
+art-direction QA. A procedurally generated mesh is a substantial
+geometry step, **not proof of a polished or release-ready game**.
+
+## Roof stripe preservation on the generated bodies
+
+The source-generated opaque body includes normal and glazing surfaces,
+but its triangular section generator does not yet author per-car racing
+stripes. Consequently the original cosmetic roof stripes remain distinct
+small collision-free attached meshes, while the coarse cube body, old
+wheels and older aerodynamic cubes are hidden. Their height is raised
+to the original generator's 174cm roof minus the fixed -62cm visual
+offset, with a 2cm surface clearance. On native UE5.8 inspect paint
+and twin-stripe placement for all six roof shapes; physically textured
+PBR paint and correct roof curvature remain separate art tasks.
+
+## Real engine material parameter verification — 23 Nov 2026
+
+The dynamic primitive-mesh renderer previously assumed the source engine
+`BasicShapeMaterial` exposes a vector named exactly `Color`, then hid all
+visible fallback meshes. That assumption can make all ten car surfaces
+untintable or washed out if the material is named `Colour`, another known
+alias, or contains no editable color vector.
+
+The current source candidate queries `UMaterialInterface::
+GetAllVectorParameterInfo` at runtime after loading the actual engine material.
+It picks the first actually-present supported vector in priority order:
+`Color`, `Colour`, `BaseColor`, `BaseColour`, `Tint`. The same resolved
+`FName` is used for all ten source-generated material sections. The new
+surface becomes visible **only** when geometry partitions validate, dynamic
+instances are allocated, and a supported vector exists. Otherwise the
+already-visible cube/cylinder fallback stays; it cannot become an invisible
+player car or silently claim garage paint was applied. Source-only
+`OriginalVehicleTintMaterial` tests cover 65,536 parameter masks, selection
+priority, unknown/future names and incomplete visual handoff states.
+
+**Required Unreal test:** Open LateBrake with genuine UE5.8 Editor and run
+the actual car scene. Log whether engine `BasicShapeMaterial` contains a
+usable vector on this installation. For all six cars, switch between factory
+and custom eight-color paint sets, inspect body/roof/wheels/lights at night and
+day, and confirm saved appearance survives restart. Temporarily substitute
+an incompatible test material and confirm the legacy primitive vehicle stays
+visible. Inspect Unreal materials for proper in-game shading and shader-cook
+usage; discovery of a vector parameter alone does not prove that it affects
+BaseColor on all RHI targets. Run packaged Win64 release QA before merging;
+source CI cannot verify shader compilation, PBR response or cooked assets.
+
+## Native two-front-spotlight visual candidate (not source-only simulation)
+
+The real Unreal CarPawn now owns two `USpotLightComponent` descendants
+attached to the existing physics root, alongside the three original rear
+signal point lights. They are constructed once, have no collision/physics
+body, cast no dynamic/volumetric shadows, and do not contribute to global
+illumination or reflections. They use a bounded 7,500cm cone (12° inner,
+24° outer), with 1,100 intensity units when and only when the existing
+race driving gate permits it. The already-installed pause, menu, focus-loss,
+manual suspension, and race shutdown paths call `ApplySignalLights(false)`
+and extinguish front and rear lamps synchronously; this introduces no
+driver controls, credits, weather simulation, time-of-day or saved settings.
+
+Lamp mounts follow the visible bumper. The source-generated longer car
+uses its actual mesh length, width and -62cm render offset; when the
+procedural material/mesh cannot render and the fallback Cube is retained,
+the lamps move back to the actual stock 190cm front bumper. On a vehicle
+equip/change, transforms refresh once, not every Tick. Portable
+`FrontLampRig` C++ tests verify alignment, cone bounds and 200,000
+alternating valid/invalid drive states, but these are **not** screenshots or
+Unreal runtime proof.
+
+**Manual UE5.8 validation:** compare accepted night/dusk/bright scenes,
+both local player and opponent pawns, front beam direction and sign, road
+illumination in the built-in level, and installed Win64 GPU performance.
+Verify headlights extinguish instantly on menu/pause, lost focus, finish,
+recovery and removed player control, never clip into either the generated
+body or its legacy fallback, and never brighten the track unrealistically.
+A physically based lumens/candela calibration, exposure pipeline, shadows,
+and actual night tracks remain out of scope for this candidate.
+
+## Two-state real Unreal track lighting preview, strictly Settings-only
+
+F3 while the **Settings** menu is open now reversibly toggles the actual
+`ADirectionalLight` and `ASkyLight` spawned for the starter circuit
+between original bright **DAY** (default) and a lower-sun **DUSK** visual
+preview. The game reuses the existing two light actors, never spawns
+replacement lights during toggles, and never changes collision, tire grip,
+race timing, AI, awards, vehicle ownership or the stored profile. The
+setting is current-session only: new launches return to original DAY, and
+the existing Select key continues to change persisted KM/H/MPH as before.
+F3 outside the open Settings page, during explicit manual pause or focus
+loss, or with an unavailable engine sun/sky is ignored. This is not a
+full night cycle, physically calibrated exposure or weather simulation.
+
+**Mandatory UE5.8 visual QA:** open the actual Settings page and toggle F3.
+Verify both native light actors update and no new actors appear, the
+player's forward spotlights illuminate the road in DUSK, the track is
+still navigable, sunlight is not reversed, the sky tint is stable,
+headlights extinguish while paused, and F3 has no effect in Garage,
+results, Quick Race, live driving or background focus loss. Restart
+the game and confirm DAY is restored without modifying saved credits,
+paint, speed units, records, or career medals. Source C++ and Python
+binding checks cannot prove shader rendering, calibrated scene exposure,
+actual dusk visibility or Windows packaged GPU performance.
+
+## Read-only visible visual-diagnostics panel in Development settings
+
+The real Unreal HUD's **Settings** details now show additional
+non-shipping diagnostics derived directly from the current player
+Pawn. These labels report **SOURCE MESH COMMITTED** or **LEGACY CUBE
+FALLBACK**, the precise detected paint parameter name (or none),
+and whether both real front lamp components were *commanded* on.
+Use the existing Up/Down detail controls to see overflow when the
+screen is compact. This makes an installed Windows playtest useful
+for diagnosing fallback materials without mistaking a green CMake
+compile for a functioning material.
+
+These flags **do not sample the GPU, shader output, sky illuminance,
+frame-time or actual road pixels**. The readout explicitly says
+`SOURCE DIAGNOSTIC ONLY - VERIFY PIXELS IN ENGINE`. Source-only
+`VisualPlaytestReadout` regression checks reject a missing player,
+an incomplete mesh/material handoff and false certification.
+No new debug command mutates credits, career progression,
+selection, SaveGame, camera, road collision or Chaos physics.
+
+## All three saved rim choices now change the real 3D spoke mesh
+
+Previously the generated original-car Alloy section used the same
+seven spokes for every garage wheel option, so "sport" and "aero" only
+changed color. The same six-car source generator now accepts bounded
+`rimStyle` (default factory = 0) matching the existing three saved
+`GarageLook.Wheels` options: **7 slim factory**, **5 broad sport**,
+and **12 slim aero** spokes on all four wheels. The tire radius,
+outer rubber shell, inner brake rotor and physics-root body are
+unchanged. No separate asset/vehicle ID or SaveGame migration is needed.
+
+When a player changes only wheel style, the live Pawn rebuilds the
+render-only `UProceduralMeshComponent` exactly once and reapplies
+current paint/stripes. Paint-only or stripe-only changes still reuse
+the same dynamic material instances; no source regeneration occurs
+on `Tick`. Invalid/future saved rim IDs reject mesh generation and
+the engine fallback remains visible.
+
+Real C++ regression coverage generates **18 complete original car/rim
+surfaces**, checks their 10 native material sections, deterministic
+vertex/triangle counts, valid original tire shells, distinct Alloy
+topology, bounds and invalid metadata. Actual wheel appearance and
+garage save/reload must still be checked with UE5.8 Editor/cooked Win64.
+
+## Independently animated original mesh wheels (native source, not Unreal QA)
+
+The six source-authored 3D cars previously included all four tire/rim
+meshes **inside one rigid body render component**. Although they had
+three real spoke shapes, the tires did not visibly rotate or steer.
+The renderer now partitions their tagged triangles into **five**
+separately attached non-colliding `UProceduralMeshComponent` surfaces:
+one source body, front-left, front-right, rear-left and rear-right.
+Each wheel's authored vertices are offset by its original pivot once
+at build time, not rebuilt or reuploaded during each physics Tick.
+
+The Pawn retains the existing Chaos rigid-body chassis, original
+`WheelVisualMotion` policy and fallback wheel cylinders. Both front
+generated wheels yaw using the *same* bounded, filtered player
+steering sample; all four roll about source wheel axle **Y** using the
+signed physical forward chassis speed. Backward driving spins opposite.
+Source wheel radius **39 cm** controls animation speed when the
+generated mesh is committed, versus the old fallback **29 cm**
+cylinder radius. Pause/restart/recovery use the existing reset/suspend
+mechanism; no suspension/tire simulation, new collision body or
+gameplay authority has been created.
+
+All 5 surfaces must contain authored valid geometry/materials before
+the complete source render is made visible; otherwise all partial
+pieces are cleared and the full original cube/cylinder fallback
+stays visible. Six cars, three rim shapes and all ten surface tones
+retain the same garage SaveGame appearance schema. A paint-only
+change updates the body AND all four source wheel material instances
+without rebuilding geometry. A rim change or equipped-car change
+regenerates the renderer once.
+
+**Real UE5.8 device QA:** verify the front wheels steer, wheel spokes
+turn as the player drives, reversing makes opposite rotation,
+pause freezes the phase, and recovery resets; look closely for
+wheel detachments caused by inverse root scaling or component
+hierarchy under yaw/roll, normal orientation and material lighting.
+Check all 18 car/rim variants, black-frame failures and framerate.
+This new source adapter still requires actual UE5.8/UHT compile,
+cooked Win64, GPU rendering and installed driving verification.
+
+## Four-part wheel initialization telemetry for real Development playtest
+
+Settings now prints `3D WHEEL RIG: 0/4 ... 4/4 COMPONENTS (NOT PIXELS)`
+from live `UProceduralMeshComponent` section presence and component
+visibility. A positive value requires the full original surface
+commit and recognized paint parameter; a missing Pawn, fallback
+mesh or invalid count always reports 0. This is source-observed
+render-component initialization, **not proof of actual wheel spin,
+real road contact, shaders, car grip or GPU output**. The existing
+HUD pager makes the diagnostic accessible on small monitors.
+
+## Rear brake/reverse light positioning across both visible body lengths
+
+The original scaled collision Cube ends at **X = -190 cm**. Its existing
+point-light mounts at -194/-196cm must not be altered while the source
+3D model is unavailable. The generated original car body instead
+ends at **X = -222 cm**. Leaving the old point lights at -194cm would
+put them *inside* the more realistic car body.
+
+`PlanRearSignalVisualOffsets` now places the same two red and one
+white reverse lights at **-226/-228cm** while the valid original
+source body is rendered, with left/right mounts using its actual
+half-width and the reverse beam centered. On fallback it retains the
+original offsets exactly. The real `ALatebrakeCarPawn` refreshes
+mount positions on applied appearance/equipped-body changes, not every
+Tick. This is cosmetic; the measured physical brake and reverse-light
+activation gate remains unchanged, with no new lights, physics bodies,
+collision, saved profile or scoring effects.
+
+On UE5.8 Win64 test every six-car variant and legacy fallback for
+rear source visibility, bumper alignment, brake/reverse color, shader
+exposure and black spots on DUSK. The source test checks both plans,
+200k deterministic toggles, symmetric placement and refusal of legacy
+light positions as long-source bumper mounts.

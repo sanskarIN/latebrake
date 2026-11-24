@@ -5,6 +5,10 @@ verified by the source-only GitHub CI.** This guide builds the **actual
 Unreal game** on a Windows PC; it does not download an Unreal installer,
 rename a source ZIP, or turn the standalone CMake tests into a game.
 
+## Active six-car Unreal source candidate
+
+For the current unmerged **[PR #452](https://github.com/sanskarIN/latebrake/pull/452)**, see the focused [3D car, lighting, garage and Win64 acceptance guide](PR452_UNREAL_3D_PLAYTEST.md). It gives exact source pinning, the owner-trusted PR workflow, the local UE Editor and cooked build path, and a hands-on test matrix. The older draft #377 instructions below apply only to that historical physical-drafting candidate.
+
 ## What you need on your Windows PC
 
 - A legally authorized installed **Unreal Engine 5.8**, including

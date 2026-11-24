@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Garage/GarageAppearance.h"
+
 namespace latebrake
 {
 // Original deterministic source-only paint schemes for the six immutable
@@ -42,6 +44,29 @@ inline constexpr VehiclePaintRecipe PaintForVehicle(int vehicleId) noexcept
     default: // Arrow and invalid IDs; never imply paid/unowned identity.
         return {"SKY BLUE", {0.11, 0.58, 0.87},
                 {0.89, 0.94, 0.98}, {0.08, 0.16, 0.24}};
+    }
+}
+// A user-selected paint is visual-only. The six legacy factory choices
+// map EXACTLY to the old fixed recipes, including accents and canopy.
+inline constexpr VehiclePaintRecipe PaintForGarageLook(
+    int vehicleId, GarageLook look) noexcept
+{
+    if (!GarageState::IsVehicle(vehicleId) ||
+        !ValidGarageLook(look))
+        return PaintForVehicle(vehicleId);
+    switch (look.Paint)
+    {
+    case 0: return PaintForVehicle(0);
+    case 1: return PaintForVehicle(1);
+    case 2: return PaintForVehicle(2);
+    case 3: return PaintForVehicle(3);
+    case 4: return PaintForVehicle(4);
+    case 5: return PaintForVehicle(5);
+    case 6: return {"GRAPHITE", {0.16, 0.19, 0.24},
+                    {0.79, 0.82, 0.87}, {0.09, 0.13, 0.18}};
+    case 7: return {"PEARL WHITE", {0.92, 0.93, 0.91},
+                    {0.12, 0.19, 0.27}, {0.10, 0.14, 0.20}};
+    default: return PaintForVehicle(vehicleId);
     }
 }
 } // namespace latebrake

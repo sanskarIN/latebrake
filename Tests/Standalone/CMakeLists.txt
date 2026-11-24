@@ -2521,11 +2521,584 @@ add_latebrake_portable_research_test(SixCarRouteContinuityAudit)
 add_latebrake_portable_research_test(WorldScaleSweptEnvelope)
 add_latebrake_portable_research_test(ObservedGripFusion)
 
-# Read-only source pace intervals and four reference sectors.
+# Measured-font full detail wrapping: readable paginated garage/results rows.
+add_executable(latebrake_hud_detail_text_flow_tests HudDetailTextFlowTests.cpp)
+target_include_directories(latebrake_hud_detail_text_flow_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_detail_text_flow_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_detail_text_flow_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_detail_text_flow_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudDetailTextFlow COMMAND latebrake_hud_detail_text_flow_tests)
+
+# Display-only adaptive gear, shift and estimated-RPM badge. Uses real
+# proportionally measured glyph widths; no Unreal runtime or race authority.
+add_executable(latebrake_hud_drive_badge_tests HudInstrumentDriveBadgeTests.cpp)
+target_include_directories(latebrake_hud_drive_badge_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_drive_badge_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_drive_badge_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudInstrumentDriveBadge COMMAND latebrake_hud_drive_badge_tests)
+
+# Explain real nitro charge, cooldown, thermal lockout and launch-speed
+# prerequisites without modifying propulsion physics or racing authority.
+add_executable(latebrake_nitro_hud_readout_tests NitroHudReadoutTests.cpp)
+target_include_directories(latebrake_nitro_hud_readout_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_nitro_hud_readout_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_nitro_hud_readout_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME NitroHudReadout COMMAND latebrake_nitro_hud_readout_tests)
+
+# Cross-component desktop UI contract: separate garage paging, speed/gear
+# instrument geometry, and real NitroBoost read-only snapshots in one build.
+add_executable(latebrake_hud_integrated_readouts_tests HudIntegratedReadoutsTests.cpp)
+target_include_directories(latebrake_hud_integrated_readouts_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_integrated_readouts_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_integrated_readouts_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_integrated_readouts_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudIntegratedReadouts COMMAND latebrake_hud_integrated_readouts_tests)
+
+# Combined desktop HUD: measured details, pager, responsive hit targets,
+# gear badge and observational nitro must remain safe together.
+add_executable(latebrake_hud_integrated_viewport_safety_tests
+    HudIntegratedViewportSafetyTests.cpp)
+target_include_directories(latebrake_hud_integrated_viewport_safety_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_integrated_viewport_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_integrated_viewport_safety_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudIntegratedViewportSafety
+    COMMAND latebrake_hud_integrated_viewport_safety_tests)
+
+# Real one-rival passing retry safety after composed physical traffic
+# braking. The per-gate latch cannot affect checkpoints or player input.
+add_executable(latebrake_rival_pass_gate_retry_tests
+    RivalPassGateRetryTests.cpp)
+target_include_directories(latebrake_rival_pass_gate_retry_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rival_pass_gate_retry_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rival_pass_gate_retry_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rival_pass_gate_retry_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RivalPassGateRetry
+    COMMAND latebrake_rival_pass_gate_retry_tests)
+
+# Visual-only ghost integrity: reject high-FPS angular transform snaps
+# without touching physics, rewards, official laps or stored profiles.
+add_executable(latebrake_ghost_yaw_continuity_tests
+    BestLapGhostYawContinuityTests.cpp)
+target_include_directories(latebrake_ghost_yaw_continuity_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_ghost_yaw_continuity_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_ghost_yaw_continuity_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_ghost_yaw_continuity_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME BestLapGhostYawContinuity
+    COMMAND latebrake_ghost_yaw_continuity_tests)
+
+
+# Full merged source candidate: the same authoritative race clock, active
+# rival passing and best-lap ghost must never grant each other's authority.
+add_executable(latebrake_race_session_cross_system_safety_tests
+    RaceSessionCrossSystemSafetyTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
+target_include_directories(latebrake_race_session_cross_system_safety_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_race_session_cross_system_safety_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_race_session_cross_system_safety_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_race_session_cross_system_safety_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME RaceSessionCrossSystemSafety
+    COMMAND latebrake_race_session_cross_system_safety_tests)
+
+
+# Experimental native Win32 2D trial: arithmetic must not activate menu
+# clicks outside the actual GDI canvas even on extreme desktop sizes.
+add_executable(latebrake_preview_viewport_math_tests
+    PreviewViewportMathTests.cpp)
+target_include_directories(latebrake_preview_viewport_math_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_viewport_math_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_viewport_math_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_viewport_math_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewViewportMath COMMAND latebrake_preview_viewport_math_tests)
+
+# Optional Windows 2D trial: Alt-Tab/key-hold focus recovery is portable,
+# independently checked and wired into the real GetAsyncKeyState path.
+add_executable(latebrake_preview_keyboard_focus_guard_tests
+    PreviewKeyboardFocusGuardTests.cpp)
+target_include_directories(latebrake_preview_keyboard_focus_guard_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_keyboard_focus_guard_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_keyboard_focus_guard_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_keyboard_focus_guard_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewKeyboardFocusGuard
+    COMMAND latebrake_preview_keyboard_focus_guard_tests)
+
+# Original native Windows 2D trial: strict append-only 12-car catalog,
+# allocation-free per-car paint/vinyl/rim policy and save integrity.
+add_executable(latebrake_preview_garage_style_tests
+    PreviewGarageStyleTests.cpp)
+target_include_directories(latebrake_preview_garage_style_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_garage_style_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_garage_style_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_garage_style_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGarageStyle
+    COMMAND latebrake_preview_garage_style_tests)
+
+# Production Unreal garage cosmetic source policy. Strict pure C++20
+# compilation guards six legacy IDs, 8 paints, 3 stripes, 3 rims, and
+# deterministic read-only/no-economy SaveGame style serialization.
+add_executable(latebrake_garage_appearance_tests
+    GarageAppearanceTests.cpp)
+target_include_directories(latebrake_garage_appearance_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_appearance_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_appearance_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_appearance_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageAppearance
+    COMMAND latebrake_garage_appearance_tests)
+
+# Production Unreal six-car read-only showroom browse policy. Strictly
+# separates locked-car viewing from the one equipped/owned gameplay car.
+add_executable(latebrake_garage_gallery_tests GarageGalleryCursorTests.cpp)
+target_include_directories(latebrake_garage_gallery_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_gallery_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_gallery_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_gallery_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageGalleryCursor COMMAND latebrake_garage_gallery_tests)
+
+# Production Unreal Canvas showroom: deterministic 2D schematics derived
+# from each actual UE prototype's silhouette, paint, stripe and rim recipe.
+# Pure source tests DO NOT certify real 3D render/material parameters.
+add_executable(latebrake_garage_schematic_tests
+    GarageShowroomSchematicTests.cpp)
+target_include_directories(latebrake_garage_schematic_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_schematic_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_schematic_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_schematic_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageShowroomSchematic
+    COMMAND latebrake_garage_schematic_tests)
+
+# Controller buttons overlap real race controls. An open/visible Garage
+# focus predicate is required before any cosmetic callback clears inputs.
+add_executable(latebrake_garage_input_focus_tests GarageInputFocusTests.cpp)
+target_include_directories(latebrake_garage_input_focus_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_input_focus_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_input_focus_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_input_focus_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageInputFocus COMMAND latebrake_garage_input_focus_tests)
+
+# Real offline 2D preview driving-coach policy: input priority, wrong-way,
+# local bend estimation and finite bounded corner advisory. The headless
+# Win64 game also includes this exact freestanding header.
+add_executable(latebrake_preview_driving_coach_tests
+    PreviewDrivingCoachTests.cpp)
+target_include_directories(latebrake_preview_driving_coach_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_driving_coach_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_driving_coach_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_driving_coach_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewDrivingCoach
+    COMMAND latebrake_preview_driving_coach_tests)
+
+# Partition the six existing tested original car meshes into validated,
+# ten-material, collision-free Unreal render sections before engine upload.
+add_executable(latebrake_original_vehicle_render_sections_tests
+    OriginalVehicleRenderSectionsTests.cpp)
+target_include_directories(latebrake_original_vehicle_render_sections_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_original_vehicle_render_sections_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_original_vehicle_render_sections_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_original_vehicle_render_sections_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalVehicleRenderSections
+    COMMAND latebrake_original_vehicle_render_sections_tests)
+
+# The optional 2D trial showroom must never silently change the selected
+# race car on browse or an unpaid/locked preview.
+add_executable(latebrake_preview_garage_selection_tests
+    PreviewGarageSelectionTests.cpp)
+target_include_directories(latebrake_preview_garage_selection_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_garage_selection_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_garage_selection_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_garage_selection_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGarageSelection
+    COMMAND latebrake_preview_garage_selection_tests)
+
+# Responsive Unreal Canvas menu contrast geometry, independent of engine.
+add_executable(latebrake_hud_menu_readable_panel_tests
+    HudMenuReadablePanelTests.cpp)
+target_include_directories(latebrake_hud_menu_readable_panel_tests
+    PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_hud_menu_readable_panel_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_hud_menu_readable_panel_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_hud_menu_readable_panel_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME HudMenuReadablePanel COMMAND latebrake_hud_menu_readable_panel_tests)
+
+# The 2D Windows Garage unlock action requires a timed two-press consent;
+# credits and transactional saves remain owned by the actual Win32 game.
+add_executable(latebrake_preview_purchase_consent_tests
+    PreviewGaragePurchaseConsentTests.cpp)
+target_include_directories(latebrake_preview_purchase_consent_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_purchase_consent_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_purchase_consent_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_purchase_consent_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGaragePurchaseConsent
+    COMMAND latebrake_preview_purchase_consent_tests)
+
+# Win32 trial: actual timing HUD must show centiseconds and never
+# fabricate record availability. Portable source and Win64 executable.
+add_executable(latebrake_preview_race_time_text_tests
+    PreviewRaceTimeTextTests.cpp)
+target_include_directories(latebrake_preview_race_time_text_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_race_time_text_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_race_time_text_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_race_time_text_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewRaceTimeText
+    COMMAND latebrake_preview_race_time_text_tests)
+
+# Version-aware and transactional settings.dat for the native Windows 2D trial.
+add_executable(latebrake_preview_settings_persistence_tests
+    PreviewSettingsPersistenceTests.cpp)
+target_include_directories(latebrake_preview_settings_persistence_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_settings_persistence_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_settings_persistence_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_settings_persistence_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewSettingsPersistence
+    COMMAND latebrake_preview_settings_persistence_tests)
+
+# Separate EQUIP (no automatic race) from RACE/UNLOCK in 2D showroom.
+add_executable(latebrake_preview_garage_bottom_action_tests
+    PreviewGarageBottomActionTests.cpp)
+target_include_directories(latebrake_preview_garage_bottom_action_tests PRIVATE
+    ../../Experiments/Win32Preview)
+target_compile_features(latebrake_preview_garage_bottom_action_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_preview_garage_bottom_action_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_preview_garage_bottom_action_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME PreviewGarageBottomAction
+    COMMAND latebrake_preview_garage_bottom_action_tests)
+
+# Production Unreal 3D Garage: bound, ownership-aware EQUIP mouse CTA.
+# Portable test uses exactly the same pure policy as GameMode and Canvas HUD.
+add_executable(latebrake_garage_equip_ui_tests
+    GarageEquipUiTests.cpp)
+target_include_directories(latebrake_garage_equip_ui_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_equip_ui_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_equip_ui_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_equip_ui_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageEquipUi COMMAND latebrake_garage_equip_ui_tests)
+
+# Recheck existing Unreal SaveGame schemas before ever serializing older bytes.
+add_executable(latebrake_profile_save_write_guard_tests
+    ProfileSaveWriteGuardTests.cpp)
+target_include_directories(latebrake_profile_save_write_guard_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_profile_save_write_guard_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_profile_save_write_guard_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_profile_save_write_guard_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME ProfileSaveWriteGuard
+    COMMAND latebrake_profile_save_write_guard_tests)
+
+# Production Unreal Canvas showroom: six view-only numeric mouse chips.
+add_executable(latebrake_garage_showroom_quick_view_tests
+    GarageShowroomQuickViewTests.cpp)
+target_include_directories(latebrake_garage_showroom_quick_view_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_showroom_quick_view_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_showroom_quick_view_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_showroom_quick_view_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageShowroomQuickView
+    COMMAND latebrake_garage_showroom_quick_view_tests)
+
+# Render-only original 3D car: verify the actual base material offers a
+# supported color parameter before hiding the visible legacy mesh fallback.
+add_executable(latebrake_original_vehicle_tint_material_tests
+    OriginalVehicleTintMaterialPolicyTests.cpp)
+target_include_directories(latebrake_original_vehicle_tint_material_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_original_vehicle_tint_material_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_original_vehicle_tint_material_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_original_vehicle_tint_material_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalVehicleTintMaterial
+    COMMAND latebrake_original_vehicle_tint_material_tests)
+
+# Real Unreal 3D actor lamps: four offline geometry/state combinations and
+# 200k pause/resume invariants; does not substitute for UE shader/RHI QA.
+add_executable(latebrake_front_lamp_rig_tests FrontLampRigTests.cpp)
+target_include_directories(latebrake_front_lamp_rig_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_front_lamp_rig_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_front_lamp_rig_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_front_lamp_rig_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME FrontLampRig COMMAND latebrake_front_lamp_rig_tests)
+
+# Actual Unreal day/dusk track-light render preset and menu-only authority.
+add_executable(latebrake_circuit_lighting_preview_tests
+    CircuitLightingPreviewTests.cpp)
+target_include_directories(latebrake_circuit_lighting_preview_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_circuit_lighting_preview_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_circuit_lighting_preview_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_circuit_lighting_preview_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CircuitLightingPreview
+    COMMAND latebrake_circuit_lighting_preview_tests)
+
+# Source-observed engine visual status; never report shader/runtime
+# correctness based only on scene component or material requests.
+add_executable(latebrake_visual_playtest_readout_tests
+    VisualPlaytestReadoutTests.cpp)
+target_include_directories(latebrake_visual_playtest_readout_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_visual_playtest_readout_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_visual_playtest_readout_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_visual_playtest_readout_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VisualPlaytestReadout
+    COMMAND latebrake_visual_playtest_readout_tests)
+
+# Actual 3D car authoring: conservation of all geometry while separating
+# four render-only rolling/steering components from the static body.
+add_executable(latebrake_animated_original_wheels_tests
+    OriginalVehicleAnimatedWheelsTests.cpp)
+target_include_directories(latebrake_animated_original_wheels_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_animated_original_wheels_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_animated_original_wheels_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_animated_original_wheels_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalVehicleAnimatedWheels
+    COMMAND latebrake_animated_original_wheels_tests)
+
+# Correct old Cube and generated six-car rear signal mount offsets:
+# render-only point lights, never physics or collision.
+add_executable(latebrake_rear_signal_render_tests
+    VehicleRearSignalRenderRigTests.cpp)
+target_include_directories(latebrake_rear_signal_render_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_rear_signal_render_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_rear_signal_render_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_rear_signal_render_tests PRIVATE
+        -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME VehicleRearSignalRenderRig
+    COMMAND latebrake_rear_signal_render_tests)
+
+# Pure selection + appearance atomic transition policy. Prevent visual
+# double rebuild and applying the prior vehicle's wheel style on equip.
+add_executable(latebrake_garage_visual_transition_tests
+    GarageVisualTransitionTests.cpp)
+target_include_directories(latebrake_garage_visual_transition_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_visual_transition_tests PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_garage_visual_transition_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_visual_transition_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageVisualTransition
+    COMMAND latebrake_garage_visual_transition_tests)
+
+# Pure source renderer work accounting. Dev HUD cannot falsely report
+# a successful original 3D build when material creation failed.
+add_executable(latebrake_original_mesh_build_telemetry_tests
+    OriginalMeshBuildTelemetryTests.cpp)
+target_include_directories(latebrake_original_mesh_build_telemetry_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_original_mesh_build_telemetry_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_original_mesh_build_telemetry_tests
+        PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_original_mesh_build_telemetry_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalMeshBuildTelemetry
+    COMMAND latebrake_original_mesh_build_telemetry_tests)
+
+# Owner-viewable OBJ/MTL output from the same original Unreal source mesh.
+# The generated files cannot certify UE Editor, shaders, driving, or Win64.
+add_executable(latebrake_original_obj_preview_tests
+    OriginalVehicleObjPreviewTests.cpp)
+target_include_directories(latebrake_original_obj_preview_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_original_obj_preview_tests
+    PRIVATE cxx_std_20)
+if (MSVC)
+    target_compile_options(latebrake_original_obj_preview_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_original_obj_preview_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME OriginalVehicleObjPreview
+    COMMAND latebrake_original_obj_preview_tests)
+
+# Source UI/UX policy for read-only visual preview of any garage car.
+# Never changes equipped/owned car, tuning, credits or SaveGame.
+add_executable(latebrake_showroom_presentation_tests
+    GarageShowroomPresentationTests.cpp)
+target_include_directories(latebrake_showroom_presentation_tests PRIVATE
+    ../../Source/Latebrake/Public)
+target_compile_features(latebrake_showroom_presentation_tests
+    PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_showroom_presentation_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_showroom_presentation_tests
+        PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageShowroomPresentation
+    COMMAND latebrake_showroom_presentation_tests)
+
+# Main integration: read-only source pace intervals and four reference sectors.
 add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
 
-# Perspective-fit camera for original source geometry, not native UE camera.
+# Main-targeted #455 portable planner consumed by the draft Unreal garage HUD.
+add_latebrake_portable_research_test(GaragePurchasePlanner)
+
+# Main-targeted #457 camera geometry, consumed by the draft native view.
 add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
 
-# Main integration: sequential garage purchase planning.
-add_latebrake_portable_research_test(GaragePurchasePlanner)
+# Original smooth/hard surface seams, tangent handedness and native render parity.
+add_latebrake_portable_research_test(OriginalVehicleSurfaceShading)
+
+# Exact render-attribute packing and independent triangle-stream audit.
+add_latebrake_portable_research_test(OriginalVehicleIndexedRender)
+
+# Bounded original CPU render preparation cache, exact model and rim identity.
+add_latebrake_portable_research_test(OriginalVehicleRenderCache)

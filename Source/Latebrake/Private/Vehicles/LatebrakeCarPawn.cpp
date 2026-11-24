@@ -1,9 +1,12 @@
+#include "UI/GarageShowroomLane.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "Vehicles/VehicleRearLampLayout.h"
+#include "Vehicles/VehicleFrontLampRig.h"
+#include "Vehicles/VehicleRearSignalRenderRig.h"
 #include "Vehicles/SpeedSensitiveSteering.h"
 #include "Vehicles/CornerTractionAssist.h"
 #include "Vehicles/HumanSpinTractionControl.h"
@@ -28,18 +31,33 @@
 #include "UI/TouchControlLayout.h"
 #include "UI/GhostTouchPolicy.h"
 #include "UI/LatebrakeRaceHUD.h"
+#include "UI/GarageInputFocusPolicy.h"
 #include "UI/TouchViewportSafety.h"
 #include "UI/TouchPressDispatch.h"
 #include "UI/TouchResidualSafety.h"
 #include "UI/FocusSuspendedTouchPolicy.h"
 #include "Garage/GarageState.h"
+#include "Vehicles/OriginalVehicleRenderSections.h"
+#include "Vehicles/OriginalVehicleSurfaceShading.h"
+#include "Vehicles/OriginalVehicleIndexedRender.h"
+#include "Vehicles/OriginalVehicleAnimatedWheels.h"
+#include "Vehicles/GarageVisualTransition.h"
+#include "Vehicles/GarageShowroomPresentation.h"
+#include "Vehicles/OriginalVehicleTintMaterialPolicy.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraTypes.h"
+#include "Math/RotationMatrix.h"
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "ProceduralMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameters.h"
+#include "UObject/UObjectGlobals.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -106,11 +124,85 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
         static_cast<float>(latebrake::VehicleRootScaleZ));
     Chassis->SetRelativeScale3D(RootScale);
 
+    OriginalVehicleVisual =
+        CreateDefaultSubobject<UProceduralMeshComponent>(
+            TEXT("OriginalVehicleVisual"));
+    OriginalVehicleVisual->SetupAttachment(Chassis);
+    OriginalVehicleVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalVehicleVisual->SetGenerateOverlapEvents(false);
+    OriginalVehicleVisual->SetSimulatePhysics(false);
+    OriginalVehicleVisual->SetVisibility(false, false);
+    OriginalVehicleVisual->SetCastShadow(true);
+    // Real source mesh uses centimetres in the car's original local space,
+    // wheel centres at Z=40. Existing prototype wheel centres are Z=-22.
+    // Cancel the chassis cube's nonuniform physics-root scale; do not
+    // replace or resize that authoritative Chaos collision shape.
+    OriginalVehicleVisual->SetRelativeLocation(
+        FVector(0.f, 0.f,
+            static_cast<float>(
+                latebrake::vehiclemesh::OriginalVehicleVisualOffsetZCm))
+            / RootScale);
+    OriginalVehicleVisual->SetRelativeScale3D(
+        FVector(1.f / RootScale.X, 1.f / RootScale.Y,
+                1.f / RootScale.Z));
+
+    // Each source wheel is a distinct child of the inverse-scaled body
+    // render root. Its relative location is the true mesh wheel center,
+    // and uploaded triangle positions are centered on that pivot. This
+    // enables rolling around local Y + front steering around local Z
+    // with NO expensive geometry uploads during vehicle Tick.
+    OriginalFrontLeftWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalFrontLeftWheel"));
+    OriginalFrontRightWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalFrontRightWheel"));
+    OriginalRearLeftWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalRearLeftWheel"));
+    OriginalRearRightWheel = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalRearRightWheel"));
+    UProceduralMeshComponent* AnimatedWheels[] = {
+        OriginalFrontLeftWheel.Get(), OriginalFrontRightWheel.Get(),
+        OriginalRearLeftWheel.Get(), OriginalRearRightWheel.Get()};
+    for (int32 i=0;i<4;++i)
+    {
+        auto* Wheel = AnimatedWheels[i];
+        Wheel->SetupAttachment(OriginalVehicleVisual);
+        const auto Pivot = latebrake::vehiclemesh::OriginalWheelPivot(i);
+        Wheel->SetRelativeLocation(FVector(
+            static_cast<float>(Pivot.X),
+            static_cast<float>(Pivot.Y),
+            static_cast<float>(Pivot.Z)));
+        Wheel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Wheel->SetGenerateOverlapEvents(false);
+        Wheel->SetSimulatePhysics(false);
+        Wheel->SetVisibility(false, false);
+        Wheel->SetCastShadow(true);
+    }
+
     Cabin = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Cabin"));
     Cabin->SetupAttachment(Chassis);
     if (Cube.Succeeded())
     {
         ConfigureDecorativeMesh(Cabin, Cube.Object, FVector(-20.f, 0.f, 52.f), FVector(1.75f, 1.48f, 0.55f));
+    }
+
+    // Two lightweight visible roof stripes, attached to the chassis.
+    // Neither uses overlap/collision, body simulation, or gameplay forces.
+    RoofStripeLeft = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoofStripeLeft"));
+    RoofStripeRight = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RoofStripeRight"));
+    for (UStaticMeshComponent* Stripe :
+         {RoofStripeLeft.Get(), RoofStripeRight.Get()})
+    {
+        Stripe->SetupAttachment(Chassis);
+        Stripe->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Stripe->SetGenerateOverlapEvents(false);
+        Stripe->SetSimulatePhysics(false);
+        Stripe->SetCastShadow(false);
+        Stripe->SetVisibility(false, true);
+        if (Cube.Succeeded())
+        {
+            ConfigureDecorativeMesh(Stripe, Cube.Object,
+                FVector(-20.f, 0.f, 83.f), FVector(1.2f, 0.05f, 0.035f));
+        }
     }
 
     // Original, collision-free procedural body accents. These shapes do not
@@ -257,6 +349,39 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
             : FLinearColor(1.f, 0.012f, 0.008f));
     }
 
+    // Real movable Unreal SpotLight components: two road-facing lamps
+    // follow the owned car's visible front bumper. Cosmetic light only.
+    // No new actors, collision components, dynamic shadows or tick loops.
+    FrontLeftLamp = CreateDefaultSubobject<USpotLightComponent>(
+        TEXT("FrontLeftLamp"));
+    FrontRightLamp = CreateDefaultSubobject<USpotLightComponent>(
+        TEXT("FrontRightLamp"));
+    const auto FrontPlan = latebrake::PlanFrontLampRig(false,false);
+    USpotLightComponent* FrontLamps[] = {
+        FrontLeftLamp.Get(), FrontRightLamp.Get()};
+    for (int32 i=0;i<2;++i)
+    {
+        USpotLightComponent* Lamp=FrontLamps[i];
+        Lamp->SetupAttachment(Chassis);
+        Lamp->SetMobility(EComponentMobility::Movable);
+        const auto& P=FrontPlan.Mounts[static_cast<std::size_t>(i)];
+        Lamp->SetRelativeLocation(FVector(P.Xcm,P.Ycm,P.Zcm)/ChassisScale);
+        Lamp->SetRelativeRotation(FRotator(
+            static_cast<float>(FrontPlan.PitchDegrees),0.f,0.f));
+        Lamp->SetInnerConeAngle(
+            static_cast<float>(FrontPlan.BeamInnerDegrees));
+        Lamp->SetOuterConeAngle(
+            static_cast<float>(FrontPlan.BeamOuterDegrees));
+        Lamp->SetAttenuationRadius(
+            static_cast<float>(FrontPlan.AttenuationRadiusCm));
+        Lamp->SetCastShadows(false);
+        Lamp->SetCastVolumetricShadow(false);
+        Lamp->SetAffectGlobalIllumination(false);
+        Lamp->SetAffectReflection(false);
+        Lamp->SetLightColor(FLinearColor(0.90f,0.95f,1.f));
+        Lamp->SetIntensity(0.f);
+    }
+
     CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(Chassis);
     CameraBoom->SetAbsolute(false, false, true);
@@ -279,7 +404,14 @@ void ALatebrakeCarPawn::BeginPlay()
     Super::BeginPlay();
     // Dynamic material instances belong to these mesh components, and are
     // initialized only when the actor is live (not in the CDO constructor).
-    ApplyVehiclePaintRecipe(GarageVehicleId);
+    // A showroom request can arrive before BeginPlay. The portable
+    // transition records its transient identity but deliberately defers
+    // material/mesh allocation. Use the SAME displayed identity for
+    // shape, geometry and palette, not a mixture of equipped and viewed.
+    const int32 DisplayVehicleId = GetPresentedGarageVehicleId();
+    ApplyVehicleVisualRecipe(DisplayVehicleId);
+    RebuildOriginalVehicleVisual(DisplayVehicleId);
+    ApplyVehiclePaintRecipe(DisplayVehicleId);
     Chassis->OnComponentHit.AddDynamic(this, &ALatebrakeCarPawn::HandleChassisHit);
     // OS interruptions must never leave an accelerator finger latched.
     BackgroundInputHandle = FCoreDelegates::ApplicationWillEnterBackgroundDelegate.AddUObject(
@@ -302,6 +434,9 @@ void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
     FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
     TouchViewport.Reset();
     ClearDriverInputs();
+    OriginalRenderCache.Reset();
+    GarageCameraGeometry.Reset();
+    GarageCameraFit.Reset();
     Super::EndPlay(EndPlayReason);
 }
 
@@ -498,14 +633,327 @@ void ALatebrakeCarPawn::ApplyVehicleVisualRecipe(int32 VehicleId)
         Kit.HasRearFins);
 }
 
+void ALatebrakeCarPawn::HideLegacyVisualPrimitives(bool bHide)
+{
+    // Do NOT propagate hiding from physics root to procedural child.
+    // HiddenInGame affects presentation, not collision, force, speed or
+    // authoritative vehicle/garage state. Every fallback restores it.
+    for (UStaticMeshComponent* Part : {
+        Chassis.Get(), Cabin.Get(), Hood.Get(), RearDeck.Get(),
+        SpoilerWing.Get(), SpoilerSupportLeft.Get(),
+        SpoilerSupportRight.Get(), FrontSplitter.Get(),
+        LeftSideSkirt.Get(), RightSideSkirt.Get(), RearDiffuser.Get(),
+        HoodScoop.Get(), LeftRearFin.Get(), RightRearFin.Get(),
+        FrontLeftWheel.Get(), FrontRightWheel.Get(),
+        RearLeftWheel.Get(), RearRightWheel.Get(),
+        FrontLeftSpoke.Get(), FrontRightSpoke.Get(),
+        RearLeftSpoke.Get(), RearRightSpoke.Get()
+    })
+    {
+        if (IsValid(Part)) Part->SetHiddenInGame(bHide, false);
+    }
+}
+
+void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
+{
+    // Actual 3D source rebuild attempts are counted once at entry.
+    // Failure paths never increment the committed metric.
+    SourceMeshBuildTelemetry =
+        latebrake::OriginalMeshBuildAttempt(SourceMeshBuildTelemetry);
+    bOriginalVehicleVisualReady = false;
+    OriginalRenderedRimStyle = -1;
+    OriginalVehicleTintParameter = NAME_None;
+    GarageCameraGeometry.Reset();
+    GarageCameraFit.Reset();
+    bGarageCameraViewPresented = false;
+    UProceduralMeshComponent* RenderParts[] = {
+        OriginalVehicleVisual.Get(), OriginalFrontLeftWheel.Get(),
+        OriginalFrontRightWheel.Get(), OriginalRearLeftWheel.Get(),
+        OriginalRearRightWheel.Get()};
+    bool bAllRenderPartsPresent = true;
+    for (auto* Part : RenderParts)
+    {
+        if (!IsValid(Part))
+        {
+            // Do not return here. A missing front wheel must not leave
+            // the remaining old rear wheels (or body) visible over the
+            // legacy fallback. Clean EVERY surviving component first.
+            bAllRenderPartsPresent = false;
+            continue;
+        }
+        Part->SetVisibility(false, false);
+        Part->ClearAllMeshSections();
+        // This is a visual adapter, including all four articulated
+        // wheels: defensively re-apply NO collision/overlap/physics even
+        // if an Editor component override was changed on this Pawn.
+        Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        Part->SetGenerateOverlapEvents(false);
+        Part->SetSimulatePhysics(false);
+    }
+    HideLegacyVisualPrimitives(false);
+    if (!bAllRenderPartsPresent || !latebrake::GarageState::IsVehicle(VehicleId))
+        return;
+
+    // Use the exact engine material that the starter Cube expects, but
+    // never claim this is a professionally authored PBR material. If
+    // missing in a target UE build, preserve the old visible fallback.
+    UMaterialInterface* BaseMaterial =
+        LoadObject<UMaterialInterface>(
+            nullptr,
+            TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+    if (!IsValid(BaseMaterial)) return;
+
+    // UE material asset paths do not guarantee a particular vector
+    // parameter name. In some engine installations the BasicShape
+    // tint is named "Colour", not "Color". Only render the new 3D
+    // mesh if the actual loaded material reports a supported tint.
+    TArray<FMaterialParameterInfo> VectorInfo;
+    TArray<FGuid> VectorGuids;
+    BaseMaterial->GetAllVectorParameterInfo(VectorInfo, VectorGuids);
+    std::uint32_t AvailableTintMask = 0u;
+    for (std::size_t i=0;
+         i<latebrake::vehiclemesh::SupportedVehicleTintNames.size();
+         ++i)
+    {
+        const FName Candidate(UTF8_TO_TCHAR(
+            latebrake::vehiclemesh::SupportedVehicleTintNames[i]));
+        if (VectorInfo.ContainsByPredicate(
+            [&Candidate](const FMaterialParameterInfo& Info)
+            {
+                return Info.Name == Candidate;
+            }))
+        {
+            AvailableTintMask |= 1u << i;
+        }
+    }
+    const int TintIndex =
+        latebrake::vehiclemesh::SelectVehicleTintCandidate(
+            AvailableTintMask);
+    if (TintIndex < 0)
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: original vehicle material has no supported color parameter; keeping visible legacy car"));
+        return;
+    }
+    const FName ResolvedTintName(UTF8_TO_TCHAR(
+        latebrake::vehiclemesh::SupportedVehicleTintNames[
+            static_cast<std::size_t>(TintIndex)]));
+
+    // This key contains only the authored geometry identity. Cosmetic
+    // palette edits still use dynamic materials, and every actual upload
+    // attempt (including a CPU cache hit) is counted by the older metric.
+    const auto* Prepared = OriginalRenderCache.Acquire(
+        {VehicleId,static_cast<int>(GetPresentedGarageLook().Wheels)},
+        [](latebrake::vehiclemesh::OriginalRenderKey Key)
+            -> latebrake::vehiclemesh::OriginalPreparedVehicleRender
+        {
+            const auto generated =
+                latebrake::vehiclemesh::OriginalVehicleSurfaceComposer{}.Build(
+                    Key.VehicleId,Key.RimStyle);
+            if (!generated.Valid || !generated.Mesh.Ready ||
+                generated.Mesh.ChangesChaosContact)
+                return {};
+            const auto shading =
+                latebrake::vehiclemesh::BuildOriginalSurfaceShading(generated.Mesh);
+            if (!shading.Valid || shading.Frames.size() != generated.Mesh.Vertices.size())
+                return {};
+            const auto sections =
+                latebrake::vehiclemesh::MakeOriginalVehicleRenderSections(
+                    generated.Mesh);
+            if (!sections.Valid ||
+                sections.TotalTriangles != generated.Mesh.Triangles.size())
+                return {};
+            const auto animated =
+                latebrake::vehiclemesh::MakeOriginalVehicleAnimatedParts(
+                    generated.Mesh);
+            if (!animated.Valid ||
+                animated.TotalTriangles != generated.Mesh.Triangles.size())
+                return {};
+            return latebrake::vehiclemesh::OriginalPreparedVehicleRender::Prepare(
+                generated.Mesh, shading, animated);
+        });
+    if (!Prepared || !Prepared->Valid()) return;
+    const auto& Packed = Prepared->Packed();
+    if (!Packed.Valid || Packed.IndexCount == 0u) return;
+
+    // All 5 components are invisible until EVERY live part has complete
+    // material sections. On an allocation failure, clear the entire
+    // attempted group and retain the previously working primitive car.
+    bool bAnySection = false;
+    bool bAllMaterialsReady = true;
+    for (std::size_t partIndex=0;
+         partIndex<latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;
+         ++partIndex)
+    {
+        UProceduralMeshComponent* Part = RenderParts[partIndex];
+        const auto& part=Packed.Parts[partIndex];
+        for (std::size_t section=0;
+             section<latebrake::vehiclemesh::OriginalVehicleSectionCount;
+             ++section)
+        {
+            const auto& Data=part.Sections[section];
+            if (Data.Indices.empty()) continue;
+            TArray<FVector> Positions;
+            TArray<int32> Indices;
+            TArray<FVector> Normals;
+            TArray<FVector2D> UV0;
+            TArray<FColor> VertexColors;
+            TArray<FProcMeshTangent> Tangents;
+            const int32 Capacity=static_cast<int32>(Data.Vertices.size());
+            Positions.Reserve(Capacity);
+            Indices.Reserve(static_cast<int32>(Data.Indices.size()));
+            Normals.Reserve(Capacity);
+            UV0.Reserve(Capacity);
+            VertexColors.Reserve(Capacity);
+            Tangents.Reserve(Capacity);
+            // The portable preflight already subtracted each wheel's
+            // exact source pivot and proved the expanded triangle stream.
+            for (const auto& vertex:Data.Vertices)
+            {
+                Positions.Add(FVector(vertex.Position.X,
+                    vertex.Position.Y,vertex.Position.Z));
+                const auto& Surface = vertex.Surface;
+                Normals.Add(FVector(Surface.Normal.X,
+                                    Surface.Normal.Y,
+                                    Surface.Normal.Z));
+                Tangents.Add(FProcMeshTangent(
+                    FVector(Surface.Tangent.X,Surface.Tangent.Y,Surface.Tangent.Z),
+                    Surface.FlipTangentY));
+                UV0.Add(FVector2D(vertex.TexCoord.U,vertex.TexCoord.V));
+                VertexColors.Add(FColor::White);
+            }
+            for (const auto Index:Data.Indices)
+                Indices.Add(static_cast<int32>(Index));
+            Part->CreateMeshSection(
+                static_cast<int32>(section),
+                Positions, Indices, Normals, UV0, VertexColors,
+                Tangents, false /* no collision, ever */);
+            UMaterialInstanceDynamic* Instance =
+                Part->CreateDynamicMaterialInstance(
+                    static_cast<int32>(section), BaseMaterial);
+            if (!IsValid(Instance))
+            {
+                bAllMaterialsReady = false;
+                break;
+            }
+            bAnySection = true;
+        }
+        if (!bAllMaterialsReady) break;
+    }
+    if (!bAllMaterialsReady)
+    {
+        for (auto* Part : RenderParts)
+            Part->ClearAllMeshSections();
+        HideLegacyVisualPrimitives(false);
+        return;
+    }
+    if (!latebrake::vehiclemesh::CanPresentOriginalVehicleVisual(
+        bAnySection, true /* each material allocation succeeded */,
+        !ResolvedTintName.IsNone()))
+    {
+        for (auto* Part : RenderParts)
+            Part->ClearAllMeshSections();
+        HideLegacyVisualPrimitives(false);
+        return;
+    }
+    OriginalVehicleTintParameter = ResolvedTintName;
+
+    // Actor-owned render component follows the real car rigid body, but
+    // cannot add a Chaos mesh/collision volume or modify its physics mass.
+    OriginalVehicleVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalVehicleVisual->SetGenerateOverlapEvents(false);
+    OriginalVehicleVisual->SetSimulatePhysics(false);
+    bOriginalVehicleVisualReady = true;
+    HideLegacyVisualPrimitives(true);
+    OriginalVehicleVisual->SetVisibility(true, false);
+    for (std::size_t i=1;i<
+         latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;++i)
+        RenderParts[i]->SetVisibility(true, false);
+    OriginalRenderedRimStyle = Packed.RimStyle;
+    // Copy only the cached validated camera points after all five native
+    // parts commit. Never keep a pointer into an evictable cache entry.
+    GarageCameraGeometry = Prepared->CameraGeometry();
+    SourceMeshBuildTelemetry =
+        latebrake::OriginalMeshBuildCommit(SourceMeshBuildTelemetry);
+    ApplyWheelVisualPose();
+}
+
+int32 ALatebrakeCarPawn::GetCommittedOriginalWheelParts() const noexcept
+{
+    if (!bOriginalVehicleVisualReady) return 0;
+    const UProceduralMeshComponent* Wheels[] = {
+        OriginalFrontLeftWheel.Get(), OriginalFrontRightWheel.Get(),
+        OriginalRearLeftWheel.Get(), OriginalRearRightWheel.Get()};
+    int32 count=0;
+    for (const auto* Part : Wheels)
+        if (IsValid(Part) && Part->IsVisible() &&
+            Part->GetNumSections()>0)
+            ++count;
+    return count;
+}
+
+void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
+    int32 VehicleId, latebrake::GarageLook Look)
+{
+    if (!bOriginalVehicleVisualReady ||
+        OriginalVehicleTintParameter.IsNone() ||
+        !IsValid(OriginalVehicleVisual)) return;
+    const auto paint=latebrake::PaintForGarageLook(VehicleId, Look);
+    const auto rim=Look.Wheels == 2u
+        ? latebrake::VehiclePaintRgb{0.10,0.82,0.91}
+        : Look.Wheels == 1u
+            ? latebrake::VehiclePaintRgb{0.87,0.89,0.92}
+            : latebrake::VehiclePaintRgb{0.30,0.33,0.38};
+    const latebrake::VehiclePaintRgb tones[] = {
+        paint.Body, paint.Accent, paint.Canopy,
+        {0.030,0.033,0.038}, rim,
+        {0.30,0.32,0.36}, {0.95,0.95,0.81},
+        {0.90,0.06,0.045}, {0.04,0.06,0.07},
+        {0.12,0.14,0.17}
+    };
+    static_assert(sizeof(tones)/sizeof(tones[0]) ==
+        latebrake::vehiclemesh::OriginalVehicleSectionCount,
+        "Material palette and original surface groups must match");
+    UProceduralMeshComponent* RenderParts[] = {
+        OriginalVehicleVisual.Get(), OriginalFrontLeftWheel.Get(),
+        OriginalFrontRightWheel.Get(), OriginalRearLeftWheel.Get(),
+        OriginalRearRightWheel.Get()};
+    // Body and independently animated wheel sections use the SAME
+    // ten-slot paint contract; F5/F7 update every material exactly once
+    // with no new triangles/mesh allocation on paint-only changes.
+    for (auto* Part : RenderParts)
+    {
+        if (!IsValid(Part)) continue;
+        for (int32 section=0;
+             section<static_cast<int32>(
+                 latebrake::vehiclemesh::OriginalVehicleSectionCount);
+             ++section)
+        {
+            UMaterialInstanceDynamic* material =
+                Cast<UMaterialInstanceDynamic>(Part->GetMaterial(section));
+            if (!IsValid(material)) continue;
+            const auto& rgb=tones[section];
+            material->SetVectorParameterValue(
+                OriginalVehicleTintParameter, FLinearColor(
+                    static_cast<float>(rgb.R),
+                    static_cast<float>(rgb.G),
+                    static_cast<float>(rgb.B), 1.f));
+        }
+    }
+}
+
 void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
 {
     // These are cosmetic colors only. Retain each built-in mesh's original
     // material as the parent: its physical-material/contact settings and
     // Chaos collision body are not changed. Material parameter availability
     // must still be visually verified in the licensed Unreal Editor.
+    const latebrake::GarageLook RequestedLook = GetPresentedGarageLook();
+    const latebrake::GarageLook Look =
+        latebrake::ValidGarageLook(RequestedLook)
+            ? RequestedLook : latebrake::FactoryGarageLook(VehicleId);
     const latebrake::VehiclePaintRecipe Paint =
-        latebrake::PaintForVehicle(VehicleId);
+        latebrake::PaintForGarageLook(VehicleId, Look);
     const auto Tint = [&](UStaticMeshComponent* Part,
                           latebrake::VehiclePaintRgb Rgb)
     {
@@ -544,30 +992,202 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     Tint(SpoilerWing, Paint.Accent);
     Tint(SpoilerSupportLeft, Paint.Accent);
     Tint(SpoilerSupportRight, Paint.Accent);
+
+    // Actual attached visible stripe geometry: center/twin/clean.
+    // Its top surface follows the selected car's roof height and length.
+    const latebrake::VehicleSpec Spec =
+        latebrake::GarageState::Definition(VehicleId);
+    // Use the chassis's actual installed scale for purely decorative
+    // roof marks; no new scale constants or physics-body mutations.
+    const FVector ChassisScale = Chassis->GetRelativeScale3D();
+    // Retain visible user-selected roof stripes when the old cube panels
+    // are hidden under the new generated car surface. The generated
+    // vehicle's roof is 174cm above its original local base, shifted
+    // to match the existing -22cm decorative wheel spindle centres.
+    const float StripeHeight = bOriginalVehicleVisualReady
+        ? static_cast<float>(
+            latebrake::vehiclemesh::OriginalVehicleMeshSettings{}
+                .CabinRoofHeightCm +
+            latebrake::vehiclemesh::OriginalVehicleVisualOffsetZCm + 2.0)
+        : 52.f + 27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
+    const latebrake::VehiclePaintRgb StripeRgb = Look.Paint == 7u
+        ? latebrake::VehiclePaintRgb{0.10, 0.18, 0.28}
+        : latebrake::VehiclePaintRgb{0.97, 0.95, 0.84};
+    const auto ApplyStripe = [&](UStaticMeshComponent* Part, bool Visible,
+                                  float SideCm)
+    {
+        if (!IsValid(Part)) return;
+        Part->SetVisibility(Visible && Part->GetStaticMesh() != nullptr, true);
+        if (!Visible) return;
+        Part->SetRelativeLocation(
+            FVector(-20.f, SideCm, StripeHeight) / ChassisScale);
+        Part->SetRelativeScale3D(
+            FVector(1.2 * Spec.CabinLength, 0.045, 0.035) / ChassisScale);
+        Tint(Part, StripeRgb);
+    };
+    ApplyStripe(RoofStripeLeft, Look.Stripe != 0u,
+        Look.Stripe == 1u ? 0.f : -21.f);
+    ApplyStripe(RoofStripeRight, Look.Stripe == 2u, 21.f);
+
+    // Trim/rim finishes change ONLY the four decorative spoke meshes,
+    // not wheel contacts, tire grip, physics, or the actual Chaos chassis.
+    const latebrake::VehiclePaintRgb RimRgb = Look.Wheels == 2u
+        ? latebrake::VehiclePaintRgb{0.10, 0.82, 0.91}
+        : Look.Wheels == 1u
+            ? latebrake::VehiclePaintRgb{0.91, 0.92, 0.94}
+            : latebrake::VehiclePaintRgb{0.23, 0.28, 0.33};
+    for (UStaticMeshComponent* Rim :
+         {FrontLeftSpoke.Get(), FrontRightSpoke.Get(),
+          RearLeftSpoke.Get(), RearRightSpoke.Get()})
+    {
+        if (!IsValid(Rim)) continue;
+        const float Width = Look.Wheels == 2u ? 0.24f :
+            Look.Wheels == 1u ? 0.19f : 0.14f;
+        Rim->SetRelativeScale3D(FVector(Width, 0.24f, 0.09f));
+        Tint(Rim, RimRgb);
+    }
+    ApplyOriginalVehiclePalette(VehicleId, Look);
+    RefreshFrontLampPositions();
+    RefreshRearSignalPositions();
+}
+
+void ALatebrakeCarPawn::RefreshFrontLampPositions()
+{
+    // Reposition only when the actual vehicle mesh is rebuilt/equipped
+    // or when its look changes; never allocate/update transforms on Tick.
+    if (!IsValid(Chassis)) return;
+    const FVector Scale=Chassis->GetRelativeScale3D();
+    if (FMath::Abs(Scale.X)<0.001f ||
+        FMath::Abs(Scale.Y)<0.001f ||
+        FMath::Abs(Scale.Z)<0.001f)
+        return;
+    const auto Plan=latebrake::PlanFrontLampRig(
+        bOriginalVehicleVisualReady,false);
+    USpotLightComponent* Lamps[] = {
+        FrontLeftLamp.Get(), FrontRightLamp.Get()};
+    for (int32 i=0;i<2;++i)
+    {
+        if (!IsValid(Lamps[i])) continue;
+        const auto& p=Plan.Mounts[static_cast<std::size_t>(i)];
+        Lamps[i]->SetRelativeLocation(
+            FVector(p.Xcm,p.Ycm,p.Zcm)/Scale);
+    }
+}
+
+void ALatebrakeCarPawn::RefreshRearSignalPositions()
+{
+    // The old 190cm physics Cube is shorter than the original 222cm
+    // 3D rear bumper. Reposition all three existing render-only point
+    // lights when visual shape/fallback changes, never in Tick.
+    if (!IsValid(Chassis)) return;
+    const FVector Scale=Chassis->GetRelativeScale3D();
+    if (FMath::Abs(Scale.X)<0.001f ||
+        FMath::Abs(Scale.Y)<0.001f ||
+        FMath::Abs(Scale.Z)<0.001f)
+        return;
+    const auto Positions=latebrake::PlanRearSignalVisualOffsets(
+        bOriginalVehicleVisualReady);
+    UPointLightComponent* Lamps[] = {
+        RearLeftSignal.Get(), RearRightSignal.Get(),
+        ReverseSignal.Get()};
+    for(int32 i=0;i<3;++i)
+    {
+        if (!IsValid(Lamps[i]) ||
+            !latebrake::RearSignalNearVisibleBumper(
+                bOriginalVehicleVisualReady,
+                Positions[static_cast<std::size_t>(i)]))
+            continue;
+        const auto& p=Positions[static_cast<std::size_t>(i)];
+        Lamps[i]->SetRelativeLocation(
+            FVector(p.X,p.Y,p.Z)/Scale);
+    }
 }
 
 void ALatebrakeCarPawn::SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
-                                     int32 VehicleId)
+                                     int32 VehicleId, latebrake::GarageLook Look)
 {
-    // The garage uses bounded, engine-independent multipliers; defend the
-    // physics integration from corrupt or nonfinite gameplay state anyway.
-    GarageAcceleration = FMath::IsFinite(Acceleration) ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
-    GarageGrip = FMath::IsFinite(Grip) ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
-    GarageTopSpeed = FMath::IsFinite(TopSpeed) ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
-    // New garage IDs are append-only. A corrupt/future ID falls back to the
-    // free starter instead of silently showing another purchased car.
-    const int32 SafeId = latebrake::GarageState::IsVehicle(VehicleId)
-        ? VehicleId : 0;
+    // This method is called only on an actual vehicle/tuning selection,
+    // not on a paint-only change. Keep physics multipliers independent of
+    // the free cosmetic options, and preserve finite value guards.
+    GarageAcceleration = FMath::IsFinite(Acceleration)
+        ? FMath::Clamp(Acceleration, 0.5f, 2.f) : 1.f;
+    GarageGrip = FMath::IsFinite(Grip)
+        ? FMath::Clamp(Grip, 0.5f, 2.f) : 1.f;
+    GarageTopSpeed = FMath::IsFinite(TopSpeed)
+        ? FMath::Clamp(TopSpeed, 0.5f, 2.f) : 1.f;
+    const auto Transition = latebrake::PlanGarageVisualTransition(
+        GarageVehicleId, CurrentGarageLook, VehicleId, Look,
+        HasActorBegunPlay());
+    const int32 SafeId = Transition.VehicleId;
     if (SafeId != GarageVehicleId)
     {
-        // Garage selection changes visible body proportions only.
-        // Vehicle force multipliers above are unchanged and remain bounded.
-        ApplyVehicleVisualRecipe(SafeId);
-        // Reuse existing component material instances on car switching;
-        // never construct meshes or update paint on the per-frame Tick.
-        if (HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId);
+        // Selection changes authority, not the parked showroom view.
+        if (!bGarageShowroomPreviewActive)
+            ApplyVehicleVisualRecipe(SafeId);
     }
+
+    // Commit identity and appearance atomically BEFORE the expensive 3D
+    // renderer. It must never build new-car geometry in the old car's
+    // saved rim style or allocate the same mesh twice on one equip action.
     GarageVehicleId = SafeId;
+    CurrentGarageLook = Transition.Look;
+    if (!bGarageShowroomPreviewActive)
+    {
+        if (Transition.RebuildSourceMesh)
+            RebuildOriginalVehicleVisual(SafeId);
+        if (Transition.RefreshMaterials)
+            ApplyVehiclePaintRecipe(SafeId);
+    }
+}
+
+void ALatebrakeCarPawn::SetGarageAppearance(latebrake::GarageLook look)
+{
+    if (!latebrake::ValidGarageLook(look)) return;
+    if (look.Paint == CurrentGarageLook.Paint &&
+        look.Stripe == CurrentGarageLook.Stripe &&
+        look.Wheels == CurrentGarageLook.Wheels)
+        return;
+    const bool bRimsChanged = look.Wheels != CurrentGarageLook.Wheels;
+    CurrentGarageLook = look;
+    // Changing rim STYLE updates actual Alloy triangles once. Colors and
+    // stripes reuse materials; neither change can rebuild the geometry.
+    // No mesh composition is allowed during a physics frame Tick.
+    if (HasActorBegunPlay())
+    {
+        if (bGarageShowroomPreviewActive) return;
+        if (bRimsChanged) RebuildOriginalVehicleVisual(GarageVehicleId);
+        ApplyVehiclePaintRecipe(GarageVehicleId);
+    }
+}
+
+void ALatebrakeCarPawn::UpdateGarageShowroomPresentation(
+    bool bGarageMenuVisible, int32 ViewedVehicleId,
+    latebrake::GarageLook ViewedLook)
+{
+    const auto Plan=latebrake::PlanGarageShowroomPresentation({
+        bGarageMenuVisible, ViewedVehicleId, ViewedLook,
+        GarageVehicleId, CurrentGarageLook,
+        bGarageShowroomPreviewActive, GarageShowroomVehicleId,
+        GarageShowroomLook, HasActorBegunPlay()
+    });
+    // Visual identity is transient. No modifications to the selected
+    // vehicle, saved appearance, chassis, engine/grip or race authority.
+    bGarageShowroomPreviewActive=Plan.PreviewActive;
+    GarageShowroomVehicleId=Plan.DisplayVehicleId;
+    GarageShowroomLook=Plan.DisplayLook;
+    if (!Plan.PreviewActive)
+    {
+        GarageCameraOrbitIndex = 0;
+        GarageCameraFit.Reset();
+        bGarageCameraViewPresented = false;
+    }
+    // Navigate while paused: update only on actual cosmetic differences.
+    if (Plan.ShapeChanged)
+        ApplyVehicleVisualRecipe(Plan.DisplayVehicleId);
+    if (Plan.RebuildSourceMesh)
+        RebuildOriginalVehicleVisual(Plan.DisplayVehicleId);
+    if (Plan.RefreshMaterials)
+        ApplyVehiclePaintRecipe(Plan.DisplayVehicleId);
 }
 
 void ALatebrakeCarPawn::ClearDriverInputs()
@@ -1370,6 +1990,21 @@ void ALatebrakeCarPawn::ApplySignalLights(
         ReverseSignal->SetIntensity(
             static_cast<float>(Signals.WhiteReverseIntensity));
     }
+
+    // A real pair of short, fixed-budget road-facing spotlights. The
+    // existing authoritative race/focus/pause guard controls both light
+    // outputs: no light remains latched during OS suspension or menu pause.
+    const auto FrontPlan = latebrake::PlanFrontLampRig(
+        bOriginalVehicleVisualReady,
+        Signals.RedRearIntensity > 0.0);
+    bFrontLampOutputRequested = FrontPlan.OutputIntensity > 0.0 &&
+        IsValid(FrontLeftLamp) && IsValid(FrontRightLamp);
+    if (IsValid(FrontLeftLamp))
+        FrontLeftLamp->SetIntensity(
+            static_cast<float>(FrontPlan.OutputIntensity));
+    if (IsValid(FrontRightLamp))
+        FrontRightLamp->SetIntensity(
+            static_cast<float>(FrontPlan.OutputIntensity));
 }
 
 void ALatebrakeCarPawn::ApplyWheelVisualPose()
@@ -1394,13 +2029,36 @@ void ALatebrakeCarPawn::ApplyWheelVisualPose()
             Wheels[Index]->SetRelativeRotation(Visual.Rotator());
         }
     }
+
+    if (!bOriginalVehicleVisualReady) return;
+    UProceduralMeshComponent* OriginalWheels[] = {
+        OriginalFrontLeftWheel.Get(), OriginalFrontRightWheel.Get(),
+        OriginalRearLeftWheel.Get(), OriginalRearRightWheel.Get()};
+    // Source mesh wheels are authored in X/Z circular planes with axle Y,
+    // not the legacy cylinder's local-Z spindle. A +Y roll gives the
+    // negative contact velocity needed for physically forward +X motion.
+    const FQuat SourceRoll(FVector::RightVector,
+        Pose.RollDegrees * Radians);
+    for (int32 Index=0;Index<4;++Index)
+    {
+        if (IsValid(OriginalWheels[Index]))
+        {
+            const FQuat Visual =
+                (Index<2 ? Steering : FQuat::Identity)*SourceRoll;
+            OriginalWheels[Index]->SetRelativeRotation(Visual);
+        }
+    }
 }
 
 void ALatebrakeCarPawn::UpdateWheelVisuals(
     double DeltaSeconds, double ForwardSpeedCmPerSecond, double VisualSteering)
 {
     if (WheelMotion.Advance({
-            DeltaSeconds, ForwardSpeedCmPerSecond, VisualSteering, 29.0}))
+            DeltaSeconds, ForwardSpeedCmPerSecond, VisualSteering,
+            bOriginalVehicleVisualReady
+                ? latebrake::vehiclemesh::OriginalVehicleMeshSettings{}
+                    .WheelRadiusCm
+                : 29.0}))
     {
         ApplyWheelVisualPose();
     }
@@ -2279,6 +2937,31 @@ void ALatebrakeCarPawn::MenuMousePressed()
         Mode->MenuActivate(); break;
     case latebrake::DesktopMenuMouseAction::Close:
         Mode->ToggleMenu(); break;
+    case latebrake::DesktopMenuMouseAction::GaragePaint:
+        Mode->GarageCyclePaint(); break;
+    case latebrake::DesktopMenuMouseAction::GarageStripe:
+        Mode->GarageCycleStripe(); break;
+    case latebrake::DesktopMenuMouseAction::GarageWheels:
+        Mode->GarageCycleWheels(); break;
+    case latebrake::DesktopMenuMouseAction::GarageReset:
+        Mode->GarageResetAppearance(); break;
+    case latebrake::DesktopMenuMouseAction::GarageBrowsePrevious:
+        Mode->GarageBrowsePrevious(); break;
+    case latebrake::DesktopMenuMouseAction::GarageBrowseNext:
+        Mode->GarageBrowseNext(); break;
+    case latebrake::DesktopMenuMouseAction::GarageOrbit0:
+    case latebrake::DesktopMenuMouseAction::GarageOrbit1:
+    case latebrake::DesktopMenuMouseAction::GarageOrbit2:
+    case latebrake::DesktopMenuMouseAction::GarageOrbit3:
+        SelectGarageCameraOrbit(latebrake::GarageOrbitIndex(Action)); break;
+    case latebrake::DesktopMenuMouseAction::GarageQuickView0:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView1:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView2:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView3:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView4:
+    case latebrake::DesktopMenuMouseAction::GarageQuickView5:
+        Mode->GarageBrowseVehicle(
+            latebrake::GarageQuickViewIndex(Action)); break;
     default: break;
     }
 #endif
@@ -2337,6 +3020,114 @@ void ALatebrakeCarPawn::UpgradeGarageGrip()
     }
 }
 
+void ALatebrakeCarPawn::CycleGaragePaint()
+{
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageCyclePaint();
+}
+void ALatebrakeCarPawn::CycleGarageStripe()
+{
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageCycleStripe();
+}
+void ALatebrakeCarPawn::CycleGarageWheels()
+{
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageCycleWheels();
+}
+
+void ALatebrakeCarPawn::ResetGarageLook()
+{
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageResetAppearance();
+}
+
+void ALatebrakeCarPawn::BrowseGarageNext()
+{
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageBrowseNext();
+}
+void ALatebrakeCarPawn::BrowseGaragePrevious()
+{
+    // Several gamepad buttons double as live driving controls (R3
+    // handbrake, L3 nitro, LB look-back, RB camera, B recovery).
+    // Reject outside the *visible* Garage BEFORE clearing any inputs.
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(), Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageBrowsePrevious();
+}
+
+void ALatebrakeCarPawn::ToggleCircuitLighting()
+{
+    ALatebrakeRaceGameMode* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    // This paused input belongs only to Settings. No driving action
+    // should run while another UI page or OS focus guard is active.
+    if (!Mode || !Mode->IsMenuOpen() ||
+        Mode->GetMenuPage()!=latebrake::MenuPage::Settings ||
+        Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive())
+        return;
+    ClearDriverInputs();
+    Mode->ToggleCircuitLightingPreview();
+}
+
 void ALatebrakeCarPawn::SelectArcade()
 {
     HandlingMode = ELatebrakeHandlingMode::Arcade;
@@ -2371,6 +3162,9 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
+    FInputActionBinding& GarageOrbitKey = PlayerInputComponent->BindAction(
+        TEXT("GarageOrbit"), IE_Pressed, this, &ALatebrakeCarPawn::OrbitGarageCamera);
+    GarageOrbitKey.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("LookBack"), IE_Pressed, this, &ALatebrakeCarPawn::LookBackPressed);
     FInputActionBinding& LookBackRelease = PlayerInputComponent->BindAction(
         TEXT("LookBack"), IE_Released, this, &ALatebrakeCarPawn::LookBackReleased);
@@ -2416,6 +3210,10 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& ConfirmMenu = PlayerInputComponent->BindAction(
         TEXT("MenuActivate"), IE_Pressed, this, &ALatebrakeCarPawn::MenuActivate);
     ConfirmMenu.bExecuteWhenPaused = true;
+    FInputActionBinding& DuskView = PlayerInputComponent->BindAction(
+        TEXT("CircuitLightingPreview"), IE_Pressed,
+        this, &ALatebrakeCarPawn::ToggleCircuitLighting);
+    DuskView.bExecuteWhenPaused = true;
     FInputActionBinding& MouseMenu = PlayerInputComponent->BindAction(
         TEXT("MenuMouseClick"), IE_Pressed,
         this, &ALatebrakeCarPawn::MenuMousePressed);
@@ -2428,10 +3226,171 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
         TEXT("MenuMouseWheelDown"), IE_Pressed,
         this, &ALatebrakeCarPawn::MenuMouseWheelDown);
     WheelDown.bExecuteWhenPaused = true;
-    PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
-    PlayerInputComponent->BindAction(TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageSelectKey = PlayerInputComponent->BindAction(
+        TEXT("GarageNextVehicle"), IE_Pressed, this,
+        &ALatebrakeCarPawn::NextGarageVehicle);
+    GarageSelectKey.bExecuteWhenPaused = true;
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageUnlockKey = PlayerInputComponent->BindAction(
+        TEXT("GarageUnlockVehicle"), IE_Pressed, this,
+        &ALatebrakeCarPawn::UnlockGarageVehicle);
+    GarageUnlockKey.bExecuteWhenPaused = true;
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageEngineKey = PlayerInputComponent->BindAction(
+        TEXT("GarageEngineUpgrade"), IE_Pressed, this,
+        &ALatebrakeCarPawn::UpgradeGarageEngine);
+    GarageEngineKey.bExecuteWhenPaused = true;
+    // Garage menu pauses the world; show this existing hotkey while paused.
+    FInputActionBinding& GarageGripKey = PlayerInputComponent->BindAction(
+        TEXT("GarageGripUpgrade"), IE_Pressed, this,
+        &ALatebrakeCarPawn::UpgradeGarageGrip);
+    GarageGripKey.bExecuteWhenPaused = true;
+    FInputActionBinding& GaragePaintKey = PlayerInputComponent->BindAction(
+        TEXT("GarageCyclePaint"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGaragePaint);
+    GaragePaintKey.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageStripeKey = PlayerInputComponent->BindAction(
+        TEXT("GarageCycleStripe"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGarageStripe);
+    GarageStripeKey.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageWheelsKey = PlayerInputComponent->BindAction(
+        TEXT("GarageCycleWheels"), IE_Pressed, this, &ALatebrakeCarPawn::CycleGarageWheels);
+    GarageWheelsKey.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageResetKey = PlayerInputComponent->BindAction(
+        TEXT("GarageResetLook"), IE_Pressed, this, &ALatebrakeCarPawn::ResetGarageLook);
+    GarageResetKey.bExecuteWhenPaused = true;
+    FInputActionBinding& BrowseNextKey = PlayerInputComponent->BindAction(
+        TEXT("GarageBrowseNext"), IE_Pressed, this, &ALatebrakeCarPawn::BrowseGarageNext);
+    BrowseNextKey.bExecuteWhenPaused = true;
+    FInputActionBinding& BrowsePreviousKey = PlayerInputComponent->BindAction(
+        TEXT("GarageBrowsePrevious"), IE_Pressed, this, &ALatebrakeCarPawn::BrowseGaragePrevious);
+    BrowsePreviousKey.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
+}
+
+
+bool ALatebrakeCarPawn::CanSelectGarageCameraOrbit() const
+{
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    const APlayerController* PC = Cast<APlayerController>(GetController());
+    return bGarageShowroomPreviewActive && IsLocallyControlled() &&
+        IsValid(PC) && PC->IsLocalController() && Mode &&
+        Mode->CanBrowseGarage() && !Mode->IsFocusLossGuardActive() &&
+        !Mode->IsManualRacePauseActive();
+}
+
+void ALatebrakeCarPawn::SelectGarageCameraOrbit(int32 Index)
+{
+    if (!CanSelectGarageCameraOrbit() || Index < 0 ||
+        Index >= latebrake::GarageOrbitCount || Index == GarageCameraOrbitIndex)
+        return;
+    GarageCameraOrbitIndex = Index;
+    GarageCameraFit.Reset();
+    bGarageCameraViewPresented = false;
+}
+
+void ALatebrakeCarPawn::OrbitGarageCamera()
+{
+    // F4 and direct mouse selection share the same guarded cosmetic path.
+    SelectGarageCameraOrbit((GarageCameraOrbitIndex + 1) % latebrake::GarageOrbitCount);
+}
+
+void ALatebrakeCarPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+    // Preserve the entire normal camera path, including engine-managed
+    // effects and the player's actual selected driving camera preset.
+    // Override only the view result for an authenticated local Garage.
+    Super::CalcCamera(DeltaTime, OutResult);
+    bGarageCameraViewPresented = false;
+    if (!bGarageShowroomPreviewActive || !HasActorBegunPlay() ||
+        !IsLocallyControlled() || !bOriginalVehicleVisualReady ||
+        !IsValid(OriginalVehicleVisual) || !OriginalVehicleVisual->IsVisible() ||
+        GetCommittedOriginalWheelParts() != 4 ||
+        !GarageCameraGeometry.Ready() ||
+        GarageCameraGeometry.VehicleId() != GetPresentedGarageVehicleId() ||
+        OriginalRenderedRimStyle != static_cast<int32>(GetPresentedGarageLook().Wheels))
+        return;
+
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!IsValid(PC) || !Mode || !Mode->CanBrowseGarage())
+        return;
+    int32 Width = 0, Height = 0;
+    PC->GetViewportSize(Width, Height);
+    if (Width <= 0 || Height <= 0)
+        return;
+    const double Aspect = static_cast<double>(Width) / static_cast<double>(Height);
+    latebrake::vehiclemesh::ShowroomOrbitRequest Request{};
+    static constexpr double OrbitYawDegrees[] = {35.0, 90.0, 145.0, -90.0};
+    static_assert(UE_ARRAY_COUNT(OrbitYawDegrees) == latebrake::GarageOrbitCount);
+    if (GarageCameraOrbitIndex < 0 || GarageCameraOrbitIndex >= latebrake::GarageOrbitCount)
+        return;
+    Request.YawDegrees = OrbitYawDegrees[GarageCameraOrbitIndex];
+    Request.AspectRatio = Aspect;
+#if !PLATFORM_ANDROID
+    const auto Lane = latebrake::CalculateGarageShowroomLane(
+        Width, Height, latebrake::CalculateHudLayout(Width, Height),
+        false, true, latebrake::MenuPage::Garage);
+    if (Lane.Valid)
+    {
+        Request.CenterX = Lane.CenterX;
+        Request.CenterY = Lane.CenterY;
+        Request.HalfWidth = Lane.HalfWidth;
+        Request.HalfHeight = Lane.HalfHeight;
+    }
+#endif
+    if (!latebrake::vehiclemesh::ValidShowroomOrbitRequest(Request))
+        return;
+    const auto PriorPose = GarageCameraFit.Pose();
+    if (!GarageCameraFit.Ready() || PriorPose.AspectRatio != Aspect ||
+        PriorPose.CenterX != Request.CenterX || PriorPose.CenterY != Request.CenterY ||
+        PriorPose.HalfWidth != Request.HalfWidth || PriorPose.HalfHeight != Request.HalfHeight)
+    {
+        // Fit the cached points only on entry, orbit, resize or a new
+        // mesh commit. Never recompose or re-upload render triangles.
+        if (!GarageCameraFit.FitPrepared(GarageCameraGeometry, Request))
+            return;
+    }
+    const auto Pose = GarageCameraFit.Pose();
+    const FTransform MeshTransform = OriginalVehicleVisual->GetComponentTransform();
+    // The source render root cancels the physics cube's nonuniform scale.
+    // A developer override of that contract must fall back, not crop or
+    // distort the camera by silently treating scaled points as unit space.
+    if (MeshTransform.ContainsNaN() ||
+        !MeshTransform.GetScale3D().Equals(FVector::OneVector, 0.001))
+        return;
+    const FVector Eye = MeshTransform.TransformPosition(
+        FVector(Pose.Eye.X, Pose.Eye.Y, Pose.Eye.Z));
+    const FVector Target = MeshTransform.TransformPosition(
+        FVector(Pose.Target.X, Pose.Target.Y, Pose.Target.Z));
+    const FVector Forward = MeshTransform.TransformVectorNoScale(
+        FVector(Pose.Forward.X, Pose.Forward.Y, Pose.Forward.Z));
+    const FVector Up = MeshTransform.TransformVectorNoScale(
+        FVector(Pose.Up.X, Pose.Up.Y, Pose.Up.Z));
+    if (Eye.ContainsNaN() || Target.ContainsNaN() ||
+        Forward.ContainsNaN() || Up.ContainsNaN())
+        return;
+    const FRotator Rotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+    if (Rotation.ContainsNaN())
+        return;
+
+    // The garage is currently a parked view in the existing track world.
+    // Do not claim a dedicated unobstructed studio or force a camera
+    // through a wall; retain Super's view when a visibility trace blocks it.
+    FHitResult Obstruction;
+    FCollisionQueryParams Query(SCENE_QUERY_STAT(GarageShowroomCamera), false, this);
+    if (World->LineTraceSingleByChannel(Obstruction, Target, Eye, ECC_Visibility, Query))
+        return;
+
+    OutResult.Location = Eye;
+    OutResult.Rotation = Rotation;
+    OutResult.FOV = static_cast<float>(Pose.HorizontalFovDegrees);
+    OutResult.AspectRatio = static_cast<float>(Aspect);
+    OutResult.bConstrainAspectRatio = true;
+    OutResult.ProjectionMode = ECameraProjectionMode::Perspective;
+    bGarageCameraViewPresented = true;
 }

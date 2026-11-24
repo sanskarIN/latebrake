@@ -1,0 +1,212 @@
+"""Prevent garage gamepad bindings from disrupting live race inputs.
+
+This is a STATIC source-binding test. Pure C++ policy tests run separately;
+real controller button event ordering needs licensed Unreal Editor QA.
+"""
+from pathlib import Path
+import re
+import unittest
+
+ROOT = Path(__file__).resolve().parents[2]
+CPP = ROOT / "Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp"
+POLICY = ROOT / "Source/Latebrake/Public/UI/GarageInputFocusPolicy.h"
+INPUT = ROOT / "Config/DefaultInput.ini"
+CMAKE = ROOT / "Tests/Standalone/CMakeLists.txt"
+
+ROUTES = {
+    "CycleGaragePaint": "GarageCyclePaint",
+    "CycleGarageStripe": "GarageCycleStripe",
+    "CycleGarageWheels": "GarageCycleWheels",
+    "ResetGarageLook": "GarageResetAppearance",
+    "BrowseGarageNext": "GarageBrowseNext",
+    "BrowseGaragePrevious": "GarageBrowsePrevious",
+}
+COLLISIONS = {
+    "GarageCyclePaint": ("Gamepad_RightThumbstick", "Handbrake"),
+    "GarageCycleStripe": ("Gamepad_LeftThumbstick", "Nitro"),
+    "GarageCycleWheels": ("Gamepad_LeftShoulder", "LookBack"),
+    "GarageBrowseNext": ("Gamepad_RightShoulder", "Camera"),
+    "GarageBrowsePrevious": ("Gamepad_FaceButton_Right", "Recover"),
+}
+
+
+class UnrealGarageInputFocusBindingTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.pawn = CPP.read_text(encoding="utf-8")
+        cls.policy = POLICY.read_text(encoding="utf-8")
+        cls.input = INPUT.read_text(encoding="utf-8")
+        cls.cmake = CMAKE.read_text(encoding="utf-8")
+
+    def test_shared_controller_keys_are_real_gameplay_bindings(self):
+        for shortcut,(key,race_action) in COLLISIONS.items():
+            for action in (shortcut,race_action):
+                self.assertIn(
+                    f'+ActionMappings=(ActionName="{action}",Key={key})',
+                    self.input, f"{action} needs explicit focus gate on {key}")
+
+    def test_all_six_pawn_callbacks_guard_before_clear_and_gamemode(self):
+        self.assertIn('#include "UI/GarageInputFocusPolicy.h"', self.pawn)
+        for method,action in ROUTES.items():
+            with self.subTest(method=method):
+                marker = f"void ALatebrakeCarPawn::{method}()"
+                self.assertEqual(self.pawn.count(marker), 1)
+                function = self.pawn.split(marker,1)[1].split(
+                    "\n}\n",1)[0]
+                gate = function.index("!latebrake::CanConsumeGarageShortcut(")
+                read_open = function.index("Mode->IsMenuOpen()")
+                read_page = function.index("Mode->GetMenuPage()")
+                refusal = function.index("return;",gate)
+                clear = function.index("ClearDriverInputs();")
+                dispatch = function.index("Mode->" + action + "();")
+                self.assertLess(gate,read_open)
+                self.assertLess(read_open,read_page)
+                self.assertLess(read_page,refusal)
+                self.assertLess(refusal,clear)
+                self.assertLess(clear,dispatch)
+                self.assertIn("if (!Mode ||",function)
+                self.assertIn("Mode->IsFocusLossGuardActive()",function[:refusal])
+                self.assertIn("Mode->IsManualRacePauseActive()",function[:refusal])
+                self.assertNotIn("Mode->" + action + "();",function[:refusal])
+
+    def test_paused_e_q_u_i_and_hidden_selection_authority(self):
+        for action, callback, binding in (
+            ("GarageNextVehicle", "NextGarageVehicle", "GarageSelectKey"),
+            ("GarageUnlockVehicle", "UnlockGarageVehicle", "GarageUnlockKey"),
+            ("GarageEngineUpgrade", "UpgradeGarageEngine", "GarageEngineKey"),
+            ("GarageGripUpgrade", "UpgradeGarageGrip", "GarageGripKey"),
+        ):
+            with self.subTest(action=action):
+                self.assertIn(f'TEXT("{action}"), IE_Pressed, this,',self.pawn)
+                self.assertIn("&ALatebrakeCarPawn::" + callback, self.pawn)
+                self.assertIn(binding+".bExecuteWhenPaused = true;",self.pawn)
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        scope = mode.split(
+            "void ALatebrakeRaceGameMode::GarageNextVehicle()",1)[1].split(
+            "bool ALatebrakeRaceGameMode::CanCustomizeGarage()",1)[0]
+        for token in (
+            "latebrake::CanUseGarageVehicleHotkey(",
+            "Menu.IsOpen(), Menu.Current()",
+            "if (bFutureSaveSchema)",
+            "Garage.Select(Next)",
+            "SaveRecords();",
+            "SavedProfile.Rollback();",
+        ):
+            self.assertIn(token,scope)
+        self.assertLess(scope.index("CanUseGarageVehicleHotkey"),
+                        scope.index("Garage.Select(Next)"))
+        self.assertLess(scope.index("if (bFutureSaveSchema)"),
+                        scope.index("Garage.Select(Next)"))
+
+    def test_classic_garage_actions_reject_standalone_pause(self):
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        for action in ("GarageNextVehicle", "GarageUnlockNext",
+                       "GarageUpgradeEngine", "GarageUpgradeGrip"):
+            with self.subTest(action=action):
+                marker = f"void ALatebrakeRaceGameMode::{action}()"
+                self.assertIn(marker,mode)
+                body = mode.split(marker,1)[1].split("\n}\n",1)[0]
+                if action == "GarageNextVehicle":
+                    self.assertIn("CanUseGarageVehicleHotkey(",body)
+                    self.assertIn("UGameplayStatics::IsGamePaused(this)",body)
+                else:
+                    self.assertIn("CanUseGaragePurchaseHotkey(",body)
+                    self.assertNotIn("CanUseGarageVehicleHotkey(",body)
+                    self.assertLess(body.index("CanUseGaragePurchaseHotkey("),
+                                    body.index("GaragePurchaseConfirm.ConfirmOrStage("))
+                self.assertIn("ManualPause.IsSuspended()",body)
+                self.assertIn("AppFocusGuard.IsSuspended()",body)
+                self.assertIn("GaragePurchaseConfirm.Reset();",body)
+                self.assertIn("return;",body)
+        self.assertIn("bool standaloneRacePaused = false",self.policy)
+        mode_header = (ROOT / "Source/Latebrake/Public/Game/LatebrakeRaceGameMode.h"
+                       ).read_text(encoding="utf-8")
+        hud = (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
+               ).read_text(encoding="utf-8")
+        self.assertIn("bool IsProfileReadOnly() const { return bFutureSaveSchema; }",
+                      mode_header)
+        self.assertIn("Mode->IsProfileReadOnly()",hud)
+        self.assertIn("NEWER SAVE PROFILE: READ-ONLY, NO PURCHASES",hud)
+        for action,mutation in (
+            ("GarageUnlockNext", "Garage.Unlock(Next)"),
+            ("GarageUpgradeEngine", "Garage.Upgrade(latebrake::UpgradeKind::Engine)"),
+            ("GarageUpgradeGrip", "Garage.Upgrade(latebrake::UpgradeKind::Grip)"),
+        ):
+            with self.subTest(action=action):
+                section = mode.split(
+                    f"void ALatebrakeRaceGameMode::{action}()",1)[1].split(
+                        "\n}\n",1)[0]
+                self.assertIn("if (bFutureSaveSchema)",section)
+                self.assertIn("GaragePurchaseConfirm.Reset();",section)
+                self.assertIn(mutation,section)
+                self.assertLess(section.index("if (bFutureSaveSchema)"),
+                                section.index("GaragePurchaseConfirm.ConfirmOrStage("))
+                self.assertLess(section.index("if (bFutureSaveSchema)"),
+                                section.index(mutation))
+
+    def test_paid_actions_require_visible_garage_before_staging(self):
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        self.assertIn("inline constexpr bool CanUseGaragePurchaseHotkey(",self.policy)
+        self.assertIn("return !externallySuspended && menuOpen &&",self.policy)
+        self.assertIn("GARAGE ONLY: Q UNLOCKS | U/I UPGRADES",
+            (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
+             ).read_text(encoding="utf-8"))
+        for action in ("GarageUnlockNext", "GarageUpgradeEngine", "GarageUpgradeGrip"):
+            section = mode.split("void ALatebrakeRaceGameMode::"+action+"()",1)[1].split(
+                "\n}\n",1)[0]
+            self.assertIn("CanUseGaragePurchaseHotkey(",section)
+            self.assertLess(section.index("CanUseGaragePurchaseHotkey("),
+                            section.index("GaragePurchaseConfirm.ConfirmOrStage("))
+            self.assertNotIn("CanUseGarageVehicleHotkey(",section)
+
+    def test_app_deactivation_cancels_staged_paid_consent(self):
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        focus = mode.split(
+            "void ALatebrakeRaceGameMode::PauseForAppInterruption()",1
+        )[1].split("\n}\n",1)[0]
+        self.assertLess(focus.index("GaragePurchaseConfirm.Reset();"),
+                        focus.index("AppFocusGuard.OnFocusLost("))
+        self.assertLess(focus.index("GaragePurchaseConfirm.Reset();"),
+                        focus.index("FocusLossTransition::Ignored"))
+        self.assertIn("void ALatebrakeRaceGameMode::MenuNext()",mode)
+        self.assertIn("void ALatebrakeRaceGameMode::ToggleMenu()",mode)
+
+    def test_external_suspension_blocks_mutation_but_preserves_preview(self):
+        mode = (ROOT / "Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp"
+                ).read_text(encoding="utf-8")
+        for method in ("GarageSelectViewedVehicle", "GarageCycleAppearance"):
+            signature = ("void ALatebrakeRaceGameMode::" + method + "(")
+            body = mode.split(signature,1)[1].split("\n}\n",1)[0]
+            self.assertIn("ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()",body)
+            self.assertIn("return;",body)
+        permission = mode.split("bool ALatebrakeRaceGameMode::CanCustomizeGarage()",1)[1].split("\n}\n",1)[0]
+        self.assertIn("!ManualPause.IsSuspended() && !AppFocusGuard.IsSuspended()",permission)
+        preview = mode.split("bool ALatebrakeRaceGameMode::CanBrowseGarage()",1)[1].split("\n}\n",1)[0]
+        self.assertNotIn("AppFocusGuard.IsSuspended()",preview)
+        hud = (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp"
+               ).read_text(encoding="utf-8")
+        self.assertIn("GARAGE SUSPENDED: RESUME TO EQUIP, BUY OR STYLE",hud)
+        self.assertIn("!Mode->IsFocusLossGuardActive() &&",hud)
+        self.assertIn("!Mode->IsManualRacePauseActive() &&",hud)
+
+    def test_input_policy_is_fail_closed_and_pure(self):
+        self.assertIn('#include "UI/MenuNavigation.h"',self.policy)
+        self.assertIn("inline constexpr bool CanConsumeGarageShortcut",self.policy)
+        self.assertIn("bool externallySuspended = false",self.policy)
+        self.assertIn("return !externallySuspended && menuOpen &&",self.policy)
+        self.assertIn("return !externallySuspended &&",self.policy)
+        self.assertIn("(menuOpen ? visiblePage == MenuPage::Garage",self.policy)
+        self.assertIn(": !standaloneRacePaused);",self.policy)
+        for effect in ("ClearDriverInputs(", "SaveRecords(", "Garage.Unlock(",
+                       "Garage.Select(", "SetThrottle(", "AddForce("):
+            self.assertNotIn(effect,self.policy)
+        self.assertIn("GarageInputFocusTests.cpp",self.cmake)
+        self.assertIn("NAME GarageInputFocus",self.cmake)
+
+
+if __name__ == "__main__":
+    unittest.main()

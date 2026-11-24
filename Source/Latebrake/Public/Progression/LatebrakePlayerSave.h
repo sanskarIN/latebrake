@@ -41,6 +41,19 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
     int32 GripUpgradeLevel = 0;
 
+    // Independent additive cosmetic schema. Legacy SaveGames have no
+    // appearance data and retain the six original factory colors.
+    // Values are bounded 6 x (paint, stripe, wheels) uint8 categories;
+    // malformed arrays reset ONLY visual choices, never credits/ownership.
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
+    int32 GarageAppearanceSchemaVersion = 0;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
+    TArray<uint8> GarageAppearanceBytes;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Garage")
+    uint32 GarageAppearanceChecksum = 0u;
+
     // Version 0/absent = legacy v0.4.x. Schema 2 stores fixed event-ID medals.
     // Unknown newer schema values are read-only until supported by migration.
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, SaveGame, Category = "Career")

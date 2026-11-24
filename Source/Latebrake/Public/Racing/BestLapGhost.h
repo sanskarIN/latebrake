@@ -25,6 +25,11 @@ public:
     // 10 Hz recording for at most 360 seconds (4,096 slots per trace).
     static constexpr std::size_t MaxSamples = 4096;
     static constexpr double MaxLapSeconds = 360.0;
+    // Generous, visual-only frame-to-frame heading sanity envelope.
+    // Rapid arcade spins are allowed; a 180-degree snap in milliseconds
+    // is not an eligible replay observation.
+    static constexpr double MaxObservedYawRateDegreesPerSecond = 1800.0;
+    static constexpr double YawJitterAllowanceDegrees = 15.0;
 
     void ResetRun() noexcept
     {
@@ -81,6 +86,21 @@ public:
                 std::hypot(frameX, frameY), frameZ);
             if (!std::isfinite(frameDistance) ||
                 frameDistance > frameDt * 15000.0 + 200.0)
+            {
+                InvalidateCurrentLap();
+                return false;
+            }
+            // A position-only witness can accept a stationary pawn whose
+            // heading jumped 180 degrees between two unstored frames.
+            // Check the shortest yaw turn on EVERY live physics sample;
+            // the +179/-179 seam must count as just two degrees.
+            const double frameYawDelta = std::remainder(
+                pose.YawDegrees - LastObservedPose.YawDegrees, 360.0);
+            const double allowedYawDelta =
+                MaxObservedYawRateDegreesPerSecond * frameDt +
+                YawJitterAllowanceDegrees;
+            if (!std::isfinite(frameYawDelta) ||
+                std::abs(frameYawDelta) > allowedYawDelta)
             {
                 InvalidateCurrentLap();
                 return false;

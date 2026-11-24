@@ -38,6 +38,28 @@ int main()
 
     gate.Reset();
     const auto fresh = garage.Snapshot();
+    // A focus interruption revokes a staged offer even when the menu
+    // was paused and the user returns before the eight-second timeout.
+    for (const GaragePurchaseKind kind : {
+        GaragePurchaseKind::UnlockVehicle,
+        GaragePurchaseKind::UpgradeEngine,
+        GaragePurchaseKind::UpgradeGrip})
+    {
+        const int subject = kind == GaragePurchaseKind::UnlockVehicle ? 2 : 0;
+        const int cost = kind == GaragePurchaseKind::UnlockVehicle ? 1200 : 200;
+        Require(!gate.ConfirmOrStage(kind, fresh, subject, cost, 12.0),
+            "first press stages a pending offer");
+        Require(gate.HasPending(), "offer is pending before app deactivation");
+        gate.Reset(); // GameMode::PauseForAppInterruption first operation.
+        Require(!gate.HasPending(), "app deactivation revokes prior consent");
+        Require(!gate.ConfirmOrStage(kind, fresh, subject, cost, 12.05),
+            "first press after return must not confirm older offer");
+        Require(gate.HasPending(), "new confirmation is explicitly staged");
+        Require(gate.ConfirmOrStage(kind, fresh, subject, cost, 12.1),
+            "only a second newly focused press may confirm");
+        Require(!gate.HasPending(), "new confirmation is consumed once");
+    }
+    gate.Reset();
     Require(!gate.ConfirmOrStage(GaragePurchaseKind::UpgradeEngine,
         fresh, 0, 200, 20.0), "engine first key stages");
     Require(!gate.ConfirmOrStage(GaragePurchaseKind::UpgradeGrip,

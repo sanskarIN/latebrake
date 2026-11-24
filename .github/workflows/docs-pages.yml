@@ -22,9 +22,11 @@ on:
 permissions:
   contents: read
 
+# Cancel superseded PR docs builds, not main deployments or manual QA.
+# A PR that receives several source commits must not monopolize hosted Ubuntu.
 concurrency:
-  group: documentation-pages-${{ github.ref }}
-  cancel-in-progress: false
+  group: documentation-pages-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   docs-build:

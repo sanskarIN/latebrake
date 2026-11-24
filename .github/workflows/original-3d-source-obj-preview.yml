@@ -1,0 +1,54 @@
+name: Original 3D source car OBJ preview (NOT Unreal)
+on:
+  push:
+    branches:
+      - feat/unreal-garage-appearance-ux-20261123
+    paths:
+      - Source/Latebrake/Public/Vehicles/OriginalVehicleObjPreview.h
+      - Source/Latebrake/Public/Vehicles/OriginalVehicleSurfaceMesh.h
+      - Source/Latebrake/Public/Vehicles/OriginalVehicleAnimatedWheels.h
+      - Tools/OriginalVehicleObjPreview.cpp
+      - Tests/Standalone/OriginalVehicleObjPreviewTests.cpp
+      - .github/workflows/original-3d-source-obj-preview.yml
+permissions:
+  contents: read
+jobs:
+  generate-source-geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact reviewed source (no credentials stored)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile original C++20 geometry exporter
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I Source/Latebrake/Public \
+            Tools/OriginalVehicleObjPreview.cpp \
+            -o latebrake-source-obj-export
+          g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I Source/Latebrake/Public \
+            Tests/Standalone/OriginalVehicleObjPreviewTests.cpp \
+            -o latebrake-source-obj-tests
+          ./latebrake-source-obj-tests
+      - name: Generate all 18 real original car/rim source models
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source-obj-3d
+          ./latebrake-source-obj-export source-obj-3d
+          test "$(find source-obj-3d -maxdepth 1 -type f -name '*.obj' | wc -l)" -eq 18
+          test "$(find source-obj-3d -maxdepth 1 -type f -name '*.mtl' | wc -l)" -eq 18
+          printf 'Source-commit=%s\nFormat=OBJ-MTL\nGame=NOT_UNREAL\nGenerated models=18\nNo Unreal/UHT/gameplay QA\n' \
+            "$GITHUB_SHA" > source-obj-3d/SOURCE_RECEIPT.txt
+          ( cd source-obj-3d && sha256sum -- *.obj *.mtl > SHA256SUMS.txt )
+      - name: Upload inspectable source geometry (not a Windows game)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UNVERIFIED-LateBrake-3D-source-OBJ-${{ github.sha }}
+          path: source-obj-3d/
+          retention-days: 14
+          if-no-files-found: error

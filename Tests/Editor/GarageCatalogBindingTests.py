@@ -36,7 +36,7 @@ class GarageCatalogBindingTests(unittest.TestCase):
             "GarageCatalogOwnership::Owned",
             "GarageCatalogOwnership::LockedAffordable",
             "GarageCatalogOwnership::LockedInsufficientCredits",
-            "Catalog.NextUnlockId", "Entry.CreditsShort",
+            "Catalog.NextUnlockId", "Path.CreditsShort",
             "Entry.Effective.Acceleration", "Entry.Effective.Grip",
             "Entry.Effective.TopSpeed", "Mode->GetGarageFeedback()"
         ):
@@ -49,6 +49,54 @@ class GarageCatalogBindingTests(unittest.TestCase):
         self.assertLess(garage_page.index("Mode->GetGarageFeedback()"),
                         garage_page.index("for (const latebrake::GarageCatalogEntry&"),
                         "purchase confirmation remains visible near first page")
+
+    def test_hud_discloses_exact_sequential_q_purchase_target(self):
+        # Q is deliberately still a sequential unlock, NOT a purchase
+        # of the separately browsed/previewed garage vehicle.
+        garage_page = self.hud.split(
+            "case latebrake::MenuPage::Garage:", 1
+        )[1].split("case latebrake::MenuPage::Results:", 1)[0]
+        for marker in (
+            "GarageState::IsVehicle(Catalog.NextUnlockId)",
+            "Catalog.Cars[",
+            "const bool bViewingUnlockTarget = PreviewId == Catalog.NextUnlockId;",
+            "Q UNLOCK TARGET: %s | %d CR | %s",
+            "DIFFERENT FROM VIEWED CAR",
+            "ALL CARS OWNED: Q HAS NO UNLOCK TARGET",
+        ):
+            self.assertIn(marker, garage_page)
+        self.assertLess(garage_page.index("Mode->GetGarageFeedback()"),
+                        garage_page.index("Q UNLOCK TARGET:"),
+                        "staged confirmation must remain visible before target hint")
+        for forbidden in ("Garage.Unlock(", "Garage.Select(", "SaveRecords("):
+            self.assertNotIn(forbidden, garage_page)
+
+    def test_locked_rows_and_viewed_summary_show_complete_sequential_cost(self):
+        garage_page = self.hud.split(
+            "case latebrake::MenuPage::Garage:", 1
+        )[1].split("case latebrake::MenuPage::Results:", 1)[0]
+        self.assertIn('#include "Garage/GaragePurchasePlanner.h"', self.hud)
+        for marker in (
+            "const auto ViewedPath = latebrake::PlanGaragePurchasePath(",
+            "{PreviewId, Catalog.EngineLevel, Catalog.GripLevel, 0}",
+            "VIEWED UNLOCK ROUTE: %d CAR(S) | %d CR TOTAL | NEED %d",
+            "ViewedPath.UnlockCost", "ViewedPath.CreditsShort",
+            "Q BUYS ONE NEXT CAR AT A TIME; TOTAL IS A PREVIEW.",
+            "const auto Path = latebrake::PlanGaragePurchasePath(",
+            "{Entry.VehicleId, Catalog.EngineLevel, Catalog.GripLevel, 0}",
+            "LOCKED | ROUTE %d CR | BUDGET OK",
+            "LOCKED | ROUTE %d CR | NEED %d",
+            "Path.UnlockCost", "Path.CreditsShort",
+        ):
+            self.assertIn(marker, garage_page)
+        self.assertNotIn("LOCKED %d CR | AFFORDABLE", garage_page)
+        self.assertNotIn("Entry.CreditsShort", garage_page)
+        self.assertLess(garage_page.index("Q UNLOCK TARGET:"),
+                        garage_page.index("VIEWED UNLOCK ROUTE:"))
+        self.assertIn("add_latebrake_portable_research_test(GaragePurchasePlanner)",
+                      self.cmake)
+        for forbidden in ("Garage.Unlock(", "Garage.Select(", "SaveRecords("):
+            self.assertNotIn(forbidden, garage_page)
 
     def test_catalogue_uses_existing_paginated_menu_and_no_save_schema(self):
         self.assertIn("MenuPager.Synchronize(Mode->GetMenuPage()", self.hud)

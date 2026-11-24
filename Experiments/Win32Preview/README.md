@@ -1,6 +1,117 @@
+## Explicit virtual-credit purchase confirmation
+
+To prevent accidental unlocks, the 2D Win64 preview now requires two
+deliberate U/click actions within eight seconds for a locked-car
+purchase. The first action displays an expiring offer and makes no
+career mutation; a second action checks current price/credits and only
+then attempts the existing atomic save. Change showroom car, leave the
+Garage, open help, let the timer expire or lose app focus to cancel.
+No unlock automatically equips the car. A freestanding source policy
+and 250000 synthetic action stress tests cover replay, wrong-car,
+expiry and malformed timing, while the actual game --self-test checks
+the integrated path. No real Windows UI or Unreal game QA is implied.
+
+## Garage focus and transparent player selection
+
+The experimental V5 2D trial now separates VIEWED showroom cars from
+the actually equipped car persisted in the existing V4 UI settings.
+Mouse, keyboard and pad navigation may preview all twelve vehicle
+profiles without stealing the active racer, affecting credits or
+writing settings. ENTER explicitly equips a car the user actually
+owns and starts the race. U only purchases the viewed locked car
+and checks transactional career save before acknowledging ownership;
+it does not silently equip. Old V3/V4 settings pointing at a locked
+viewed vehicle are safely reconciled with the unchanged career mask.
+A strict portable C++20 policy with 300,000 deterministic navigation
+and ownership samples and the actual Win64 game --self-test provide
+logic and source evidence. This does not prove real user satisfaction
+or qualify the Unreal 3D game.
+
+## Gameplay quality work: real 2D driver guidance (source candidate)
+
+The 2D experiment's former steering assist only suppressed turning
+authority at speed. The new `PreviewDrivingCoach.h` reads actual
+procedural-road centerline samples and current vehicle heading. With
+J enabled it applies only a small bounded steering correction when
+the player isn't steering strongly, shows cyan forward road-guide dots,
+detects sustained wrong-way orientation at speed and displays a corner
+speed caution. No input authority changes during reverse, off-track,
+closed race menu, or when J is disabled. Strong manual steer always wins.
+The next legitimate checkpoint also receives a pulsing visual marker.
+
+Strict C++20 portable tests include 100,000 varied steering, speed,
+grip and direction samples plus malformed floating-point probes;
+the native Win64 --self-test exercises the real GameState/road wiring
+across all four tracks, plus deterministic in-memory rendered guidance
+pixels. The UI truthfully labels the simulation's speed in PX/S
+(virtual canvas pixels per second), not real-world km/h. This improves the testable 2D trial's direction
+guidance but does not make it a 3D game or qualify UE5.8 driving.
+See [the trial quick start](TRIAL_QUICKSTART.md) for user-facing QA.
+
 # LateBrake V5 — optional controller support in the standalone Win64 preview
 
 **Development preview of an original Win32/GDI 2D racing experiment. NOT the Unreal Engine game.** No verified UE Editor compile, cooked levels, 3D assets, online multiplayer or Windows hardware testing is claimed.
+
+## Latest trial build and Win64 canvas-input correctness
+
+A **2D Windows trial artifact** can be built without Unreal by opening a
+pull request that changes this experiment's source. The existing
+`experimental-win32-preview.yml` GitHub workflow compiles the native
+Windows x64 `LateBrakePreviewV5.exe` and `LateBrakeSetupV5.exe`,
+runs isolated headless self-tests, validates actual PE32+ x64 binaries
+and the installer's embedded game payload, and uploads the ZIP as an
+**UNVERIFIED 2D Win64 trial**, not a release.
+
+The trial ZIP now includes `TRIAL_QUICKSTART.md` plus a generated
+`TRIAL_BUILD_SHA256.txt` containing both executable SHA-256 hashes,
+the source PR head and CI checkout SHA. These are useful for identifying
+the exact binary being tested; the runner's synthetic test **does not**
+certify a real user-facing desktop game.
+
+The original GDI viewport now delegates all letterbox/pillarbox mouse
+mapping to `PreviewViewportMath.h`. Intermediate client coordinate
+calculations use 64-bit integers, so extremely large resized windows
+cannot overflow signed 32-bit hit-test products and activate unrelated
+menu controls. The exact real Win32 `WM_MOUSEMOVE` and
+`WM_LBUTTONDOWN` path uses this shared policy, not an isolated copy.
+A portable strict C++20 `PreviewViewportMath` test covers normal
+Windows resolutions, invalid rectangles, black bars, large-client
+limits, 100,000 deterministic cases and 32-bit overflow boundaries.
+The Windows GUI preview's `--self-test` also checks the maximum viewport
+edge. See [trial quick start](TRIAL_QUICKSTART.md).
+
+**These changes do not become UE5.8 features simply because the
+source branches share a candidate PR.** Genuine Unreal gameplay
+requires the separately licensed-engine Windows Editor/UHT and native
+packaging QA described in the production build documentation.
+
+## Twelve-car garage and per-vehicle appearance (draft 2D trial)
+
+The standalone preview now offers **12 selectable fictional cars** in
+two accessible pages, retaining the original six save IDs. Additional
+cars require earned credits; existing progression still determines actual
+race permissions, and different car profiles affect the 2D simulation.
+The enlarged garage shows live per-car power/speed/grip and a visually
+distinct original silhouette. Each model can independently choose
+8 paint colors, clean/center/twin vinyl, and street/sport/track rims,
+visible both in the showroom and on the actual 2D track. Choose with
+the mouse or V/B/N keys. These are **cosmetic only** and never modify
+physical handling or award credits.
+
+A separate versioned `garage-appearance-v1.dat` is checksum validated,
+bounded and written with a flushed atomic replacement; an unsuccessful
+cosmetic save reverts the in-memory change rather than falsely showing
+it as saved. A recognized newer-version appearance record (v2+) becomes
+read-only in an old v1 executable: load and the subsequent disk-write
+boundary both detect its higher schema, and the Garage tells players why
+cosmetic edits are blocked. This prevents normal version downgrades but
+is **not** an inter-process file lock; do not run different preview builds
+simultaneously. No existing career.dat or settings.dat format was modified;
+the existing 32-bit V2 ownership mask supports the appended twelve IDs,
+but an older build that only understood six cars may not understand
+new car IDs when downgrading. Existing Windows CI exercises a native
+standalone game self-test and strict portable C++20 + source contracts.
+No tested UE Engine 5.8 3D car models or mesh customization are implied.
 
 ## V5 development changes
 
@@ -20,7 +131,7 @@
 - Controller status and control mappings appear in HUD/footer when connected.
 - Resizable Windows game viewport now preserves the original 3:2 canvas with pillarboxing/letterboxing. Click and hover coordinates use the visible canvas only; black bars do not activate UI actions.
 - Added synthetic input-level tests for axis extremes/deadzones, trigger scaling, button edges/held buttons, unplug/reconnect and focus re-entry. These do not constitute real controller hardware QA.
-- Keeps V2 career saves and V3/V4 settings compatibility, six vehicle tuning profiles, four procedural tracks/events, rivals, 120Hz fixed-step simulation, checkpoint direction, race records and the personal installer.
+- Keeps V2 career saves and V3/V4 settings compatibility, twelve 2D vehicle profiles, four procedural tracks/events, rivals, 120Hz fixed-step simulation, checkpoint direction, race records and the personal installer.
 
 ## Controls
 
@@ -39,6 +150,9 @@
 | Driver guide | F1 | F1 |
 | Steering assist | J | J |
 | High contrast | H | H |
+| Garage paint (next) | V | Mouse |
+| Garage vinyl (next) | B | Mouse |
+| Garage wheels (next) | N | Mouse |
 
 The input fallback is designed for optional XInput devices; compatibility with specific gamepads, adapters, Bluetooth setups, trigger ranges, and Windows graphics/drivers **requires hands-on Windows testing**.
 

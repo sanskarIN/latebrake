@@ -22,10 +22,13 @@
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
+#include "Progression/ProfileSaveWriteGuard.h"
 #include "Progression/RecordValidation.h"
 #include "Career/CareerLaunchSelection.h"
 #include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
+#include "Track/CircuitLightingPreview.h"
+#include "UI/GarageInputFocusPolicy.h"
 #include "HAL/PlatformTime.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
@@ -848,6 +851,55 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::ApplyCircuitLightingPreview()
+{
+    // One-time and explicit Settings actions only, never regular Tick.
+    // This alters render light color/intensity, not road collision or
+    // timing; all real lights still need UE Editor and packaged QA.
+    const auto Scene = latebrake::LightingForMood(
+        bDuskLightingPreview
+            ? latebrake::CircuitLightingMood::Dusk
+            : latebrake::CircuitLightingMood::Day);
+    if (!latebrake::ValidCircuitLightingPreset(Scene))
+        return;
+    if (IsValid(RuntimeSun) && IsValid(RuntimeSun->GetLightComponent()))
+    {
+        RuntimeSun->SetActorRotation(FRotator(
+            static_cast<float>(Scene.SunPitchDeg),
+            static_cast<float>(Scene.SunYawDeg),0.f));
+        RuntimeSun->GetLightComponent()->SetIntensity(
+            static_cast<float>(Scene.SunIntensity));
+        RuntimeSun->GetLightComponent()->SetLightColor(FLinearColor(
+            static_cast<float>(Scene.SunColor.R),
+            static_cast<float>(Scene.SunColor.G),
+            static_cast<float>(Scene.SunColor.B)));
+    }
+    if (IsValid(RuntimeSky) && IsValid(RuntimeSky->GetLightComponent()))
+    {
+        RuntimeSky->GetLightComponent()->SetIntensity(
+            static_cast<float>(Scene.SkyIntensity));
+        RuntimeSky->GetLightComponent()->SetLightColor(FLinearColor(
+            static_cast<float>(Scene.SkyColor.R),
+            static_cast<float>(Scene.SkyColor.G),
+            static_cast<float>(Scene.SkyColor.B)));
+    }
+}
+
+void ALatebrakeRaceGameMode::ToggleCircuitLightingPreview()
+{
+    if (!latebrake::CanChangeCircuitLighting(
+        Menu.IsOpen(),Menu.Current()==latebrake::MenuPage::Settings,
+        AppFocusGuard.IsSuspended(),ManualPause.IsSuspended(),
+        IsValid(RuntimeSun) && IsValid(RuntimeSky) &&
+        IsValid(RuntimeSun->GetLightComponent()) &&
+        IsValid(RuntimeSky->GetLightComponent())))
+        return;
+    bDuskLightingPreview = !bDuskLightingPreview;
+    ApplyCircuitLightingPreview();
+    // Deliberately no SaveRecords: this is an optional current-session
+    // rendering test, not a new SaveGame schema or permanent unlock.
+}
+
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
@@ -864,15 +916,9 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         return Block;
     };
     // Runtime sunlight so the starter track remains visible without map assets.
-    if (ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>())
-    {
-        Sun->SetActorRotation(FRotator(-55.f, -30.f, 0.f));
-        Sun->GetLightComponent()->SetIntensity(6.f);
-    }
-    if (ASkyLight* Sky = GetWorld()->SpawnActor<ASkyLight>())
-    {
-        Sky->GetLightComponent()->SetIntensity(1.f);
-    }
+    RuntimeSun = GetWorld()->SpawnActor<ADirectionalLight>();
+    RuntimeSky = GetWorld()->SpawnActor<ASkyLight>();
+    ApplyCircuitLightingPreview();
 
     // This portable single-source-of-truth plan reproduces the prior nine
     // world-space collision actors exactly; it never adds Epic asset copies.
@@ -1451,6 +1497,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
+    SyncGarageShowroomPreview(); // Restore equipped car before unpause.
     SyncDesktopMenuPointerMode();
     AppFocusGuard.OnExplicitResume();
     ManualPause.OnExplicitResume();
@@ -1469,6 +1516,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     GaragePurchaseConfirm.Reset();
     SuspendBestLapGhost();
     Menu.Toggle();
+    SyncGarageShowroomPreview();
     if (!Menu.IsOpen())
     {
         AppFocusGuard.OnExplicitResume(); // Deliberate CLOSE/return to driving.
@@ -1546,6 +1594,11 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
 
 void ALatebrakeRaceGameMode::PauseForAppInterruption()
 {
+    // A first Q/U/I press must never authorize a second press after the
+    // user has switched apps, even when Garage is already menu-paused.
+    // AppFocusRaceGuard intentionally ignores menu-open focus loss for
+    // race timing; consent cancellation must happen BEFORE that early return.
+    GaragePurchaseConfirm.Reset();
     // Losing focus can happen without Unreal itself pausing the game loop.
     // Keep a separate fail-closed gate even if SetGamePaused returns false.
     // A foreground notification alone must NEVER resume competition.
@@ -1576,12 +1629,14 @@ void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
     Menu.Next();
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::MenuPrevious()
 {
     GaragePurchaseConfirm.Reset();
     Menu.Previous();
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::MenuActivate()
@@ -1650,7 +1705,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Garage)
     {
-        GarageNextVehicle();
+        GarageSelectViewedVehicle();
     }
     else if (Page == latebrake::MenuPage::Results)
     {
@@ -2014,24 +2069,177 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
         return;
     }
     const latebrake::GarageTuningKey Requested = latebrake::MakeGarageTuningKey(Garage.Snapshot());
-    if (LastTunedPawn.Get() == Car && Requested == LastAppliedTuning)
+    if (LastTunedPawn.Get() != Car || !(Requested == LastAppliedTuning))
     {
-        // Credits and garage ownership alone do not affect live handling.
+        // Cosmetic changes must NEVER alter physics multiplier authority;
+        // only actual garage tuning/selection changes call SetGarageTuning.
+        const latebrake::VehiclePerformance Performance = Garage.Performance();
+        Car->SetGarageTuning(
+            static_cast<float>(Performance.Acceleration),
+            static_cast<float>(Performance.Grip),
+            static_cast<float>(Performance.TopSpeed),
+            Garage.SelectedVehicle(),
+            GarageLooks.Get(Garage.SelectedVehicle()));
+        LastTunedPawn = Car;
+        LastAppliedTuning = Requested;
+    }
+    // Apply separately, including when the same vehicle receives a new
+    // free paint/stripe/wheel choice. No force or collision body changes.
+    Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::SyncGarageShowroomPreview()
+{
+    ALatebrakeCarPawn* Car=Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this,0));
+    if (!IsValid(Car)) return;
+    const bool bViewing=Menu.IsOpen() &&
+        Menu.Current()==latebrake::MenuPage::Garage;
+    // No work in the normal racing loop; a visual only override exists
+    // while viewing the Garage menu or restoring its equipped car.
+    if (!bViewing && !Car->IsGarageShowroomPreviewActive())
+        return;
+    const int32 Viewed=GarageGallery.Viewed();
+    Car->UpdateGarageShowroomPresentation(
+        bViewing,Viewed,GarageLooks.Get(Viewed));
+}
+
+bool ALatebrakeRaceGameMode::CanBrowseGarage() const
+{
+    return Menu.IsOpen() && Menu.Current() == latebrake::MenuPage::Garage;
+}
+
+latebrake::GarageEquipUiState
+ALatebrakeRaceGameMode::GetGarageEquipUiState() const
+{
+    return latebrake::EvaluateGarageEquipUi(
+        Menu.IsOpen(), Menu.Current(),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended(),
+        bFutureSaveSchema,
+        latebrake::CanEditGarageDuringRace(bCareerRace, Race),
+        latebrake::CanEquipGalleryVehicle(Garage, GarageGallery),
+        GarageGallery.Viewed(), Garage.SelectedVehicle());
+}
+
+bool ALatebrakeRaceGameMode::CanEquipGarageViewed() const
+{
+    return latebrake::CanActivateGarageEquip(GetGarageEquipUiState());
+}
+
+void ALatebrakeRaceGameMode::GarageBrowseNext()
+{
+    if (!CanBrowseGarage()) return;
+    GaragePurchaseConfirm.Reset();
+    const int32 id = GarageGallery.Next();
+    const auto car = latebrake::GarageState::Definition(id);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(car.Name),
+        Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
+{
+    // VIEW is never EQUIP: this handler cannot spend, select or save.
+    if (!CanBrowseGarage() || !latebrake::GarageState::IsVehicle(VehicleId))
+        return;
+    if (!GarageGallery.Browse(VehicleId)) return;
+    GaragePurchaseConfirm.Reset();
+    const auto& Car = latebrake::GarageState::Definition(VehicleId);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(Car.Name),
+        Garage.Owns(VehicleId) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::GarageBrowsePrevious()
+{
+    if (!CanBrowseGarage()) return;
+    GaragePurchaseConfirm.Reset();
+    const int32 id = GarageGallery.Previous();
+    const auto car = latebrake::GarageState::Definition(id);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(car.Name),
+        Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()
+{
+    GaragePurchaseConfirm.Reset();
+    if (!CanBrowseGarage())
+    {
+        GarageFeedback = TEXT("Open Garage to select a previewed vehicle.");
         return;
     }
-    const latebrake::VehiclePerformance Performance = Garage.Performance();
-    Car->SetGarageTuning(
-        static_cast<float>(Performance.Acceleration),
-        static_cast<float>(Performance.Grip),
-        static_cast<float>(Performance.TopSpeed),
-        Garage.SelectedVehicle());
-    LastTunedPawn = Car;
-    LastAppliedTuning = Requested;
+    if (ManualPause.IsSuspended() || AppFocusGuard.IsSuspended())
+    {
+        GarageFeedback = TEXT("Garage selection suspended: resume the race first.");
+        return;
+    }
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit this career race before equipping a vehicle.");
+        return;
+    }
+    if (bFutureSaveSchema)
+    {
+        GarageFeedback = TEXT("Cannot overwrite a newer saved profile.");
+        return;
+    }
+    if (!latebrake::CanEquipGalleryVehicle(Garage, GarageGallery))
+    {
+        GarageFeedback = TEXT("VIEW ONLY: Locked car. Q unlocks the next car in order.");
+        return;
+    }
+    const int32 Viewed = GarageGallery.Viewed();
+    if (Viewed == Garage.SelectedVehicle())
+    {
+        GarageFeedback = FString::Printf(TEXT("%s is already equipped."),
+            *GetSelectedVehicleName());
+        return;
+    }
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
+    if (!Garage.Select(Viewed))
+    {
+        GarageFeedback = TEXT("Car selection denied; ownership is unchanged.");
+        return;
+    }
+    ApplyGarageToPlayer();
+    SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        SavedProfile.Rollback();
+        ApplyGarageToPlayer();
+        GarageFeedback = TEXT("EQUIP NOT SAVED: previous owned car restored.");
+        return;
+    }
+    SavedProfile.Commit();
+    GarageFeedback = FString::Printf(TEXT("EQUIPPED %s — SAVED"),
+        *GetSelectedVehicleName());
 }
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
     GaragePurchaseConfirm.Reset();
+    // E preserves quick-race behavior with no menu. Only Garage may
+    // change the equipped vehicle while the world is menu-paused.
+    if (!latebrake::CanUseGarageVehicleHotkey(
+        Menu.IsOpen(), Menu.Current(),
+        UGameplayStatics::IsGamePaused(this),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+    {
+        GarageFeedback = TEXT("Open Garage before selecting another vehicle.");
+        return;
+    }
+    if (bFutureSaveSchema)
+    {
+        GarageFeedback = TEXT("Newer saved profile: vehicle changes are read-only.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GarageFeedback = TEXT("Finish or exit this career race before changing vehicles.");
@@ -2056,29 +2264,145 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
         {
             SavedProfile.Rollback();
             ApplyGarageToPlayer();
+            GarageGallery.Reset(Garage.SelectedVehicle());
             GarageFeedback = TEXT("Vehicle selection not saved. Previous vehicle restored.");
         }
         else
         {
             SavedProfile.Commit();
+            GarageGallery.Reset(Garage.SelectedVehicle());
         }
+        SyncGarageShowroomPreview();
     }
+}
+
+bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
+{
+    return Menu.IsOpen() &&
+        Menu.Current() == latebrake::MenuPage::Garage &&
+        !ManualPause.IsSuspended() && !AppFocusGuard.IsSuspended() &&
+        latebrake::CanEditGarageDuringRace(bCareerRace, Race) &&
+        !bFutureSaveSchema &&
+        latebrake::CanStyleGalleryVehicle(Garage, GarageGallery);
+}
+
+void ALatebrakeRaceGameMode::GarageCycleAppearance(
+    latebrake::GarageLookLayer layer, bool bReset)
+{
+    GaragePurchaseConfirm.Reset(); // A cosmetic click cancels pending spend.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
+    {
+        GarageFeedback = TEXT("Open the Garage menu to customize your car.");
+        return;
+    }
+    if (ManualPause.IsSuspended() || AppFocusGuard.IsSuspended())
+    {
+        GarageFeedback = TEXT("Customization suspended: resume the race first.");
+        return;
+    }
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit the career race before customizing.");
+        return;
+    }
+    if (bFutureSaveSchema)
+    {
+        GarageFeedback = TEXT("Newer saved profile: this version cannot edit its appearance.");
+        return;
+    }
+    // The edited car is ALWAYS the one the player can see. An owned
+    // parked car can be styled without swapping the race pawn or changing
+    // saved selection/physics. Locked previews are strictly read-only.
+    if (!latebrake::CanStyleGalleryVehicle(Garage, GarageGallery))
+    {
+        GarageFeedback = TEXT("LOCKED CAR: unlock this vehicle before styling.");
+        return;
+    }
+    const int32 Viewed = GarageGallery.Viewed();
+    const latebrake::GarageAppearanceState Before = GarageLooks;
+    const bool bChanged = bReset ? GarageLooks.ResetVehicle(Viewed) :
+        GarageLooks.Cycle(Viewed, layer);
+    if (!bChanged)
+    {
+        GarageFeedback = bReset
+            ? TEXT("FACTORY LOOK ALREADY ACTIVE: no new save needed.")
+            : TEXT("Unknown appearance option; no change saved.");
+        return;
+    }
+    // Only the currently equipped car needs a live 3D Pawn update.
+    // The Canvas showroom reads GarageLooks for the viewed ID directly.
+    if (Viewed == Garage.SelectedVehicle())
+        ApplyGarageToPlayer();
+    SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        GarageLooks = Before;
+        if (Viewed == Garage.SelectedVehicle())
+            ApplyGarageToPlayer();
+        SyncGarageShowroomPreview();
+        GarageFeedback = TEXT("Appearance NOT saved; previous car look restored.");
+        return;
+    }
+    SyncGarageShowroomPreview();
+    const latebrake::GarageLook Look = GarageLooks.Get(Viewed);
+    const int32 Choice = layer == latebrake::GarageLookLayer::Paint
+        ? Look.Paint : layer == latebrake::GarageLookLayer::Stripe
+            ? Look.Stripe : Look.Wheels;
+    if (bReset)
+    {
+        GarageFeedback = FString::Printf(
+            TEXT("FACTORY LOOK RESTORED AND SAVED: %s"),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Viewed).Name));
+    }
+    else
+    {
+        GarageFeedback = FString::Printf(TEXT("LOOK SAVED: %s / %s"),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Viewed).Name),
+            UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(layer, Choice)));
+    }
+}
+
+void ALatebrakeRaceGameMode::GarageCyclePaint()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Paint);
+}
+void ALatebrakeRaceGameMode::GarageCycleStripe()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Stripe);
+}
+void ALatebrakeRaceGameMode::GarageCycleWheels()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Wheels);
+}
+void ALatebrakeRaceGameMode::GarageResetAppearance()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Paint, true);
 }
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
+    // Q/U/I are pause-capable for an open Garage; never allow a paid
+    // two-press offer during live racing, another menu or focus loss.
+    if (!latebrake::CanUseGaragePurchaseHotkey(
+        Menu.IsOpen(), Menu.Current(),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Open the Garage to unlock vehicles (not available while racing or suspended).");
+        return;
+    }
+    // Future save schemas are read-only. Do not even stage an offer,
+    // transiently charge credits or mutate tuning before SaveRecords fails.
+    if (bFutureSaveSchema)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("READ-ONLY PROFILE: newer save version; vehicle unlock disabled.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before buying vehicles.");
-        return;
-    }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
-    {
-        GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
         return;
     }
     const int32 Next = Garage.NextLockedVehicle();
@@ -2127,18 +2451,28 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
+    // Q/U/I are pause-capable for an open Garage; never allow a paid
+    // two-press offer during live racing, another menu or focus loss.
+    if (!latebrake::CanUseGaragePurchaseHotkey(
+        Menu.IsOpen(), Menu.Current(),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Open the Garage to upgrade the engine (not during racing or suspension).");
+        return;
+    }
+    // Future save schemas are read-only. Do not even stage an offer,
+    // transiently charge credits or mutate tuning before SaveRecords fails.
+    if (bFutureSaveSchema)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("READ-ONLY PROFILE: newer save version; engine upgrade disabled.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before upgrading engine.");
-        return;
-    }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
-    {
-        GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
         return;
     }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine);
@@ -2186,18 +2520,28 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
+    // Q/U/I are pause-capable for an open Garage; never allow a paid
+    // two-press offer during live racing, another menu or focus loss.
+    if (!latebrake::CanUseGaragePurchaseHotkey(
+        Menu.IsOpen(), Menu.Current(),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended()))
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Open the Garage to upgrade grip (not during racing or suspension).");
+        return;
+    }
+    // Future save schemas are read-only. Do not even stage an offer,
+    // transiently charge credits or mutate tuning before SaveRecords fails.
+    if (bFutureSaveSchema)
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("READ-ONLY PROFILE: newer save version; grip upgrade disabled.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Finish or exit this career race before upgrading grip.");
-        return;
-    }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
-    {
-        GaragePurchaseConfirm.Reset();
-        GarageFeedback = TEXT("Open Garage page to preview a purchase.");
         return;
     }
     const int32 Cost = Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip);
@@ -2460,6 +2804,39 @@ void ALatebrakeRaceGameMode::LoadRecords()
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
                      Save->SelectedVehicleId, Save->EngineUpgradeLevel,
                      Save->GripUpgradeLevel});
+        GarageGallery.Reset(Garage.SelectedVehicle());
+        if (Save->GarageAppearanceSchemaVersion >
+            latebrake::GarageAppearanceState::SaveVersion)
+        {
+            // A future appearance format may contain unknown information.
+            // Do not write older saves over that newer person's choices.
+            bFutureSaveSchema = true;
+            bProgressSaveFailed = true;
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: newer garage appearance schema - profile is read-only"));
+        }
+        else if (Save->GarageAppearanceSchemaVersion ==
+                 latebrake::GarageAppearanceState::SaveVersion)
+        {
+            latebrake::GarageAppearanceState::Packed packed{};
+            bool bValid = Save->GarageAppearanceBytes.Num() ==
+                static_cast<int32>(packed.size());
+            if (bValid)
+            {
+                for (int32 i = 0; i < static_cast<int32>(packed.size()); ++i)
+                    packed[static_cast<std::size_t>(i)] =
+                        Save->GarageAppearanceBytes[i];
+                bValid = Save->GarageAppearanceChecksum ==
+                    latebrake::GarageAppearanceState::Checksum(packed) &&
+                    GarageLooks.Load(packed.data(), packed.size());
+            }
+            if (!bValid)
+            {
+                GarageLooks.Reset();
+                UE_LOG(LogTemp, Warning,
+                    TEXT("Latebrake: garage appearance invalid; factory cosmetics restored"));
+            }
+        }
 
         if (Save->SaveSchemaVersion > latebrake::CareerSaveSchema)
         {
@@ -2495,6 +2872,35 @@ void ALatebrakeRaceGameMode::SaveRecords()
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: refusing to overwrite future save schema"));
         return;
     }
+    // The profile may have changed since BeginPlay (for example, a newer
+    // build was opened separately). Never write an old schema over an
+    // on-disk profile we can no longer understand or even deserialize.
+    // This is a best-effort preflight, NOT an interprocess atomic lock:
+    // two concurrent game instances must still be avoided.
+    const bool bSlotPresent =
+        UGameplayStatics::DoesSaveGameExist(SaveSlot, SaveUser);
+    const ULatebrakePlayerSave* DiskProfile = bSlotPresent
+        ? Cast<ULatebrakePlayerSave>(
+            UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser))
+        : nullptr;
+    const latebrake::ProfileSaveWriteState DiskState =
+        latebrake::AssessProfileSaveWrite(
+            bSlotPresent, DiskProfile != nullptr,
+            DiskProfile ? DiskProfile->SaveSchemaVersion : 0,
+            DiskProfile ? DiskProfile->GarageAppearanceSchemaVersion : 0);
+    if (!latebrake::CanWriteProfileSave(DiskState))
+    {
+        bProgressSaveFailed = true;
+        if (DiskState == latebrake::ProfileSaveWriteState::NewerCareer ||
+            DiskState == latebrake::ProfileSaveWriteState::NewerAppearance)
+        {
+            bFutureSaveSchema = true;
+        }
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: refusing SaveGame overwrite of a newer, corrupt or unreadable on-disk profile (%d)"),
+            static_cast<int32>(DiskState));
+        return;
+    }
     ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
         UGameplayStatics::CreateSaveGameObject(ULatebrakePlayerSave::StaticClass()));
     if (!Save)
@@ -2515,6 +2921,18 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->SelectedVehicleId = Profile.SelectedVehicle;
     Save->EngineUpgradeLevel = Profile.EngineLevel;
     Save->GripUpgradeLevel = Profile.GripLevel;
+    // Visual data is additional to the existing career schema: no car ID,
+    // economy, results or medal fields are repurposed.
+    const auto packedLooks = GarageLooks.Serialize();
+    Save->GarageAppearanceSchemaVersion =
+        latebrake::GarageAppearanceState::SaveVersion;
+    Save->GarageAppearanceBytes.SetNumUninitialized(
+        static_cast<int32>(packedLooks.size()));
+    for (int32 i = 0; i < static_cast<int32>(packedLooks.size()); ++i)
+        Save->GarageAppearanceBytes[i] =
+            packedLooks[static_cast<std::size_t>(i)];
+    Save->GarageAppearanceChecksum =
+        latebrake::GarageAppearanceState::Checksum(packedLooks);
     const latebrake::CareerSnapshot CareerData = Career.Snapshot();
     Save->SaveSchemaVersion = latebrake::CareerSaveSchema;
     Save->bSpeedInMilesPerHour = bMilesPerHour;

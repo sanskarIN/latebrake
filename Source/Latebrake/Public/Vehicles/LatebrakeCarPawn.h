@@ -27,6 +27,10 @@
 #include "Vehicles/ArcadeNitroBoost.h"
 #include "Vehicles/HumanSpinAssistMeter.h"
 #include "Vehicles/WheelVisualMotion.h"
+#include "Garage/GarageAppearance.h"
+#include "Vehicles/OriginalMeshBuildTelemetry.h"
+#include "Vehicles/OriginalVehicleShowroomCamera.h"
+#include "Vehicles/OriginalVehicleRenderCache.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
@@ -35,9 +39,12 @@
 class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class UProceduralMeshComponent;
 class UPointLightComponent;
+class USpotLightComponent;
 class UPrimitiveComponent;
 struct FHitResult;
+struct FMinimalViewInfo;
 
 UENUM(BlueprintType)
 enum class ELatebrakeHandlingMode : uint8
@@ -63,6 +70,7 @@ public:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void UnPossessed() override;
     virtual void Tick(float DeltaSeconds) override;
+    virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
     // Not every possessed pawn has a usable rigid body. The race clock,
@@ -105,8 +113,46 @@ public:
     void HandleAppInputInterruption();
     void HandleAppFocusLost();
 
-    void SetGarageTuning(float Acceleration, float Grip, float TopSpeed, int32 VehicleId);
+    // Apply selected identity AND that car's saved look together, before
+    // any 3D geometry/material work. Prevents two rebuilds on equip.
+    void SetGarageTuning(float Acceleration, float Grip, float TopSpeed,
+                         int32 VehicleId, latebrake::GarageLook Look);
+    void SetGarageAppearance(latebrake::GarageLook look);
+    // Read-only, transient visual showroom: no equip/physics/save writes.
+    void UpdateGarageShowroomPresentation(bool bGarageMenuVisible,
+        int32 ViewedVehicleId, latebrake::GarageLook ViewedLook);
+    bool IsGarageShowroomPreviewActive() const noexcept
+    { return bGarageShowroomPreviewActive; }
+    int32 GetPresentedGarageVehicleId() const noexcept
+    { return bGarageShowroomPreviewActive
+        ? GarageShowroomVehicleId : GarageVehicleId; }
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
+    bool IsGarageCameraViewPresented() const noexcept
+    { return bGarageShowroomPreviewActive && bGarageCameraViewPresented; }
+    int32 GetGarageCameraOrbitIndex() const noexcept
+    { return GarageCameraOrbitIndex; }
+    bool CanSelectGarageCameraOrbit() const;
+    // Read-only rendering diagnostics for real owner testing. A committed
+    // component/material is NOT proof of visible pixels or lighting quality.
+    bool IsOriginalVehicleSurfaceCommitted() const noexcept
+    { return bOriginalVehicleVisualReady; }
+    FName GetOriginalVehicleTintParameter() const noexcept
+    { return OriginalVehicleTintParameter; }
+    bool AreFrontLampsRequestedOn() const noexcept
+    { return bFrontLampOutputRequested; }
+    // Counts live, initialized *render-only source components*, NOT
+    // physically moving wheels or GPU-verified paint/animation.
+    int32 GetCommittedOriginalWheelParts() const noexcept;
+    latebrake::OriginalMeshBuildTelemetry
+    GetOriginalMeshBuildTelemetry() const noexcept
+    { return SourceMeshBuildTelemetry; }
+    latebrake::vehiclemesh::OriginalRenderCacheStats
+    GetOriginalRenderCacheStats() const noexcept
+    { return OriginalRenderCache.Stats(); }
+    // -1 on fallback or failed rebuild; otherwise the wheel shape
+    // actually authored in the most recently COMMITTED source mesh.
+    int32 GetCommittedOriginalRimStyle() const noexcept
+    { return bOriginalVehicleVisualReady ? OriginalRenderedRimStyle : -1; }
     // Every RecoverTo (including race restart) changes this revision so
     // checkpoint actors never interpolate across an authorized teleport.
     uint64 GetTeleportRevision() const { return TeleportRevision; }
@@ -140,6 +186,26 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Chassis;
 
+    // Original ten-material / six-car render-only surface. The legacy
+    // visible cube model remains the fallback until a fully valid render
+    // section and a tintable base material are available in UE5.8.
+    // Always a non-colliding child of the authoritative Chaos chassis.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalVehicleVisual;
+
+    // Four separately rotating source-wheel surfaces. They inherit the
+    // original car's inverse root scale + -62cm visual offset, so their
+    // authored pivots remain true to the existing Chaos chassis. Always
+    // render-only; no new wheel bodies, collisions or constraint simulation.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalFrontLeftWheel;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalFrontRightWheel;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalRearLeftWheel;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalRearRightWheel;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vehicle")
     TObjectPtr<UStaticMeshComponent> Cabin;
 
@@ -149,6 +215,11 @@ protected:
     TObjectPtr<UStaticMeshComponent> Hood;
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
     TObjectPtr<UStaticMeshComponent> RearDeck;
+    // Attached/collision-free stripe geometry: live switchable cosmetic.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RoofStripeLeft;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UStaticMeshComponent> RoofStripeRight;
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
     TObjectPtr<UStaticMeshComponent> SpoilerWing;
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
@@ -209,6 +280,13 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
     TObjectPtr<UPointLightComponent> ReverseSignal;
 
+    // Two attached non-shadowing road-facing beams. Cosmetic only:
+    // they cannot participate in chassis collision, energy or race state.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
+    TObjectPtr<USpotLightComponent> FrontLeftLamp;
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Visual Signals")
+    TObjectPtr<USpotLightComponent> FrontRightLamp;
+
 private:
     UFUNCTION()
     void HandleChassisHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
@@ -231,11 +309,21 @@ private:
     void ApplyWheelVisualPose();
     void ApplyVehicleVisualRecipe(int32 VehicleId);
     void ApplyVehiclePaintRecipe(int32 VehicleId);
+    latebrake::GarageLook GetPresentedGarageLook() const noexcept
+    { return bGarageShowroomPreviewActive ? GarageShowroomLook : CurrentGarageLook; }
+    void RebuildOriginalVehicleVisual(int32 VehicleId);
+    void ApplyOriginalVehiclePalette(int32 VehicleId,
+                                     latebrake::GarageLook Look);
+    void RefreshFrontLampPositions();
+    void RefreshRearSignalPositions();
+    void HideLegacyVisualPrimitives(bool bHide);
     void ApplySignalLights(bool bRaceDrivingAllowed, bool bEffectiveBraking,
                            double SignedForwardSpeedCmPerSecond);
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
+    void OrbitGarageCamera();
+    void SelectGarageCameraOrbit(int32 Index);
     void LookBackPressed();
     void LookBackReleased();
     void ToggleBestLapGhost();
@@ -269,6 +357,13 @@ private:
     void UnlockGarageVehicle();
     void UpgradeGarageEngine();
     void UpgradeGarageGrip();
+    void CycleGaragePaint();
+    void CycleGarageStripe();
+    void CycleGarageWheels();
+    void ResetGarageLook();
+    void BrowseGarageNext();
+    void BrowseGaragePrevious();
+    void ToggleCircuitLighting();
     void SelectArcade();
     void SelectSimulation();
 
@@ -284,6 +379,29 @@ private:
     float GarageGrip = 1.f;
     float GarageTopSpeed = 1.f;
     int32 GarageVehicleId = 0;
+    // Only a successful whole-mesh build may hide the old cube/cylinder
+    // visuals. Any missing plugin/material/invalid section fails open to
+    // the old visible car, never to an invisible player vehicle.
+    bool bOriginalVehicleVisualReady = false;
+    latebrake::OriginalMeshBuildTelemetry SourceMeshBuildTelemetry{};
+    int32 OriginalRenderedRimStyle = -1;
+    // The signal command sent to both installed lights; not measured lux.
+    bool bFrontLampOutputRequested = false;
+    // Chosen from the actually loaded parent material's vector parameters.
+    // None means the asset cannot reliably render saved per-car paint;
+    // keep the legacy car visible instead of silently showing one color.
+    FName OriginalVehicleTintParameter = NAME_None;
+    latebrake::GarageLook CurrentGarageLook{};
+    bool bGarageShowroomPreviewActive = false;
+    int32 GarageShowroomVehicleId = 0;
+    latebrake::GarageLook GarageShowroomLook{};
+    // Camera fit owns only validated visual points; no engine camera
+    // preference, collision or authoritative garage state is mutated.
+    latebrake::vehiclemesh::OriginalVehicleRenderCache OriginalRenderCache;
+    latebrake::vehiclemesh::OriginalVehicleShowroomGeometry GarageCameraGeometry;
+    latebrake::vehiclemesh::OriginalVehicleShowroomCamera GarageCameraFit;
+    int32 GarageCameraOrbitIndex = 0;
+    bool bGarageCameraViewPresented = false;
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bHandbrakeHeld = false;

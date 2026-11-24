@@ -51,6 +51,10 @@ struct ShowroomOrbitRequest final
     double NearClipCm=10.0;
     // Multiplicative additional distance; 1 gives the tightest padded fit.
     double ZoomOut=1.0;
+    // Normalized sub-rectangle of the full perspective viewport.
+    // Defaults retain the original centered full-screen fit.
+    double CenterX=0.0,CenterY=0.0;
+    double HalfWidth=1.0,HalfHeight=1.0;
 };
 
 inline bool ValidShowroomOrbitRequest(ShowroomOrbitRequest q) noexcept
@@ -63,7 +67,12 @@ inline bool ValidShowroomOrbitRequest(ShowroomOrbitRequest q) noexcept
         q.AspectRatio<=ShowroomCameraMaxAspect&&
         std::isfinite(q.Padding)&&q.Padding>=0.0&&q.Padding<=0.45&&
         std::isfinite(q.NearClipCm)&&q.NearClipCm>=1.0&&q.NearClipCm<=100.0&&
-        std::isfinite(q.ZoomOut)&&q.ZoomOut>=1.0&&q.ZoomOut<=4.0;
+        std::isfinite(q.ZoomOut)&&q.ZoomOut>=1.0&&q.ZoomOut<=4.0&&
+        std::isfinite(q.CenterX)&&std::isfinite(q.CenterY)&&
+        std::isfinite(q.HalfWidth)&&std::isfinite(q.HalfHeight)&&
+        q.HalfWidth>=0.10&&q.HalfHeight>=0.10&&
+        std::abs(q.CenterX)+q.HalfWidth<=1.0&&
+        std::abs(q.CenterY)+q.HalfHeight<=1.0;
 }
 
 struct ShowroomProjectedPoint final
@@ -90,6 +99,8 @@ struct ShowroomCameraPose final
     double HorizontalFovDegrees=0.0;
     double AspectRatio=0.0;
     double Padding=0.0;
+    double CenterX=0.0,CenterY=0.0;
+    double HalfWidth=1.0,HalfHeight=1.0;
 };
 
 struct ShowroomScreenBounds final
@@ -193,14 +204,17 @@ public:
         const double tanY=std::tan(q.VerticalFovDegrees*ShowroomCameraDegreesToRadians*0.5);
         const double tanX=tanY*q.AspectRatio;
         const double usable=1.0-q.Padding;
+        const double hx=q.HalfWidth*usable,hy=q.HalfHeight*usable;
+        const double left=q.CenterX-hx,rightEdge=q.CenterX+hx;
+        const double bottom=q.CenterY-hy,top=q.CenterY+hy;
         if(!std::isfinite(tanX)||!std::isfinite(tanY)||tanX<=0.0||tanY<=0.0)
             return false;
 
-        // Each point has camera depth d-dot(offset,back).
-        // Solve both perspective constraints analytically for d:
-        // |x| <= depth*tanX*usable, |y| <= depth*tanY*usable.
-        // Include near clipping in the same maximum. No iterative zoom
-        // guesses or bounding-sphere overframing for long/thin vehicles.
+        // Translate the eye sideways while retaining its orthonormal
+        // orientation. At target depth d the mesh centre projects to
+        // (cx,cy). A point has depth d-z and numerator x+cx*tanX*d.
+        // Solve the four asymmetric perspective inequalities for d.
+        // Include near clipping in the same maximum; no iterative zoom.
         double distance=q.NearClipCm+1.0;
         double backMin=std::numeric_limits<double>::infinity();
         for(const auto point:geometry.Points())
@@ -210,8 +224,10 @@ public:
             const double x=ShowroomDot(offset,right);
             const double y=ShowroomDot(offset,up);
             distance=std::max({distance,z+q.NearClipCm+1.0,
-                z+std::abs(x)/(tanX*usable),
-                z+std::abs(y)/(tanY*usable)});
+                (x/tanX+rightEdge*z)/hx,
+                (-x/tanX-left*z)/hx,
+                (y/tanY+top*z)/hy,
+                (-y/tanY-bottom*z)/hy});
             backMin=std::min(backMin,z);
         }
         distance=(distance+1e-5)*q.ZoomOut;
@@ -221,11 +237,15 @@ public:
         if(!std::isfinite(farClip)||farClip<=q.NearClipCm)return false;
 
         OriginalVehicleShowroomCamera candidate;
-        candidate.pose_={ShowroomAdd(target,ShowroomScale(back,distance)),
+        const auto eye=ShowroomAdd(
+            ShowroomAdd(ShowroomAdd(target,ShowroomScale(back,distance)),
+                ShowroomScale(right,-q.CenterX*tanX*distance)),
+            ShowroomScale(up,-q.CenterY*tanY*distance));
+        candidate.pose_={eye,
             target,right,up,forward,distance,q.NearClipCm,farClip,
             q.VerticalFovDegrees,
             2.0*std::atan(tanX)/ShowroomCameraDegreesToRadians,
-            q.AspectRatio,q.Padding};
+            q.AspectRatio,q.Padding,q.CenterX,q.CenterY,q.HalfWidth,q.HalfHeight};
         candidate.tanX_=tanX;
         candidate.tanY_=tanY;
         candidate.vehicleId_=geometry.VehicleId();
@@ -264,7 +284,8 @@ public:
         if(!std::isfinite(x)||!std::isfinite(y))return {};
         const double maxAbs=std::max(std::abs(x),std::abs(y));
         return {true,x,y,depth,maxAbs<=1.0+1e-9,
-            maxAbs<=1.0-pose_.Padding+1e-9};
+            std::abs(x-pose_.CenterX)<=pose_.HalfWidth*(1.0-pose_.Padding)+1e-9&&
+            std::abs(y-pose_.CenterY)<=pose_.HalfHeight*(1.0-pose_.Padding)+1e-9};
     }
 
 private:
