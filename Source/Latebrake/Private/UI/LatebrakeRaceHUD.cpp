@@ -271,7 +271,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 // confirmation, lock rejection and save rollback feedback
                 // must remain visible on EVERY page, without adding a third
                 // header row or consuming the small-screen detail budget.
-                DrawPinned(Mode->GetGarageFeedback(), true);
+                DrawPinned(Mode->GetGaragePurchaseDisplayFeedback(), true);
             }
             else
             {
@@ -346,7 +346,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Catalog.Credits), true);
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.
-            MenuLine(Mode->GetGarageFeedback(), true);
+            MenuLine(Mode->GetGaragePurchaseDisplayFeedback(), true);
             if (latebrake::GarageState::IsVehicle(Catalog.NextUnlockId))
             {
                 const auto& Next = Catalog.Cars[static_cast<std::size_t>(Catalog.NextUnlockId)];
