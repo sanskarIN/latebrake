@@ -70,6 +70,57 @@ class GaragePurchaseConfirmationBindingTests(unittest.TestCase):
         self.assertNotIn("GaragePurchaseConfirm", source(
             "Source/Latebrake/Public/Progression/LatebrakePlayerSave.h"))
 
+    def test_live_countdown_is_read_only_and_always_context_gated(self):
+        self.assertIn(
+            "FString GetGaragePurchaseDisplayFeedback() const;",
+            self.header,
+        )
+        self.assertIn("GaragePendingPurchaseView", self.policy)
+        self.assertIn("GarageSnapshot current, double nowSeconds) const noexcept",
+                      self.policy)
+        self.assertIn("SameSnapshot(current, Saved)", self.policy)
+        self.assertIn("elapsed > ConfirmWindowSeconds", self.policy)
+        self.assertIn("elapsed < 0.0", self.policy)
+        self.assertIn("ConfirmWindowSeconds - elapsed", self.policy)
+        status = self.mode.split(
+            "FString ALatebrakeRaceGameMode::GetGaragePurchaseDisplayFeedback() const",
+            1,
+        )[1].split(
+            "int32 ALatebrakeRaceGameMode::GetNextLockedVehicleCost() const",
+            1,
+        )[0]
+        for essential in (
+            "!Menu.IsOpen()", "Menu.Current() != latebrake::MenuPage::Garage",
+            "GaragePurchaseConfirm.HasPending()",
+            "CanEditGarageDuringRace(",
+            "GaragePurchaseConfirm.Preview(Garage.Snapshot(), FPlatformTime::Seconds())",
+            "Preview.IsPending()", "Preview.SecondsRemaining",
+            "Offer expired or garage changed", "PRESS %s AGAIN",
+            "GaragePurchaseKind::UnlockVehicle",
+            "GaragePurchaseKind::UpgradeEngine",
+            "GaragePurchaseKind::UpgradeGrip",
+        ):
+            self.assertIn(essential, status)
+        for forbidden in (
+            "Garage.Unlock(", "Garage.Upgrade(", "Garage.Select(",
+            "GaragePurchaseConfirm.ConfirmOrStage(", "SaveRecords()",
+            "ApplyGarageToPlayer()", "Garage.EarnCredits(",
+        ):
+            self.assertNotIn(forbidden, status)
+        self.assertIn(
+            "DrawPinned(Mode->GetGaragePurchaseDisplayFeedback(), true)",
+            self.hud,
+        )
+        page = self.hud.split(
+            "case latebrake::MenuPage::Garage:", 1
+        )[1].split("case latebrake::MenuPage::Results:", 1)[0]
+        self.assertIn(
+            "MenuLine(Mode->GetGaragePurchaseDisplayFeedback(), true)", page
+        )
+        self.assertIn("gate.Preview(before, 18.0)", self.tests)
+        self.assertIn("gate.Preview(before, 18.0001)", self.tests)
+        self.assertIn("gate.Preview(changedBefore, 11.0)", self.tests)
+
     def test_policy_checks_snapshot_price_kind_and_monotonic_deadline(self):
         for marker in ("ConfirmWindowSeconds = 8.0", "SameSnapshot(",
                        "kind == Kind", "subject == Subject",
