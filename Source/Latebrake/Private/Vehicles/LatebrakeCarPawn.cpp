@@ -1134,12 +1134,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     FVector RivalPosition = FVector::ZeroVector;
     FVector RivalForward = FVector::ZeroVector;
     FVector RivalVelocity = FVector::ZeroVector;
+    uint32 RivalIdentity = 0;
     const bool bDraftTargetReady =
         IsLocallyControlled() &&
         Cast<APlayerController>(GetController()) != nullptr &&
         Mode->HasLocalPlayerDriver() &&
         Mode->TryGetRivalDraftingState(
-            this, RivalPosition, RivalForward, RivalVelocity);
+            this, RivalPosition, RivalForward, RivalVelocity,
+            RivalIdentity);
     double DraftExtraForce = 0.0;
     // The follower and the leader must each have independently
     // qualified at least three real WorldStatic road probes. Mere
@@ -1149,18 +1151,35 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         const FVector Position = GetActorLocation();
         const FVector Offset = RivalPosition - Position;
+        // Match both cars' signed forward speeds in full 3D on a grade.
+        // Gameplay traction still uses its existing planar longitudinal
+        // speed; this observation changes drafting eligibility only.
+        const double FollowerSignedForwardSpeed =
+            FVector::DotProduct(Velocity, Forward);
         const double RivalSignedForwardSpeed =
             FVector::DotProduct(RivalVelocity, RivalForward);
         // The rival's true world-velocity right-axis component is just
         // as important as the player's observed chassis lateral slip.
         // Two similarly facing cars can still be sliding across the
         // circuit: those frames must never accumulate drafting credit.
+        // For pitched chassis, raw planar cross-axis has length cos(pitch).
+        // Normalize the actual planar right axis so the rival's sideways
+        // speed is never silently underreported on slopes or crests.
+        // Project the human's slip onto the SAME normalized XY right
+        // axis used for the rival. The ordinary chassis handling meter
+        // intentionally retains its original lateral-slip source; only
+        // drafting needs the grade/roll-independent planar observation.
+        const FVector FollowerPlanarRight = FVector(
+            -Forward.Y, Forward.X, 0.f).GetSafeNormal();
+        const double FollowerDraftLateralSpeed = FVector::DotProduct(
+            Velocity, FollowerPlanarRight);
+        const FVector RivalPlanarRight = FVector(
+            -RivalForward.Y, RivalForward.X, 0.f).GetSafeNormal();
         const double RivalLateralSpeed = FVector::DotProduct(
-            RivalVelocity,
-            FVector(-RivalForward.Y, RivalForward.X, 0.f));
+            RivalVelocity, RivalPlanarRight);
         DraftExtraForce = SlipstreamBoost.Observe({
             static_cast<double>(DeltaSeconds),
-            static_cast<double>(LongitudinalSpeed),
+            FollowerSignedForwardSpeed,
             RivalSignedForwardSpeed,
             static_cast<double>(Forward.X), static_cast<double>(Forward.Y),
             static_cast<double>(RivalForward.X),
@@ -1169,9 +1188,19 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(Offset.Z),
             static_cast<double>(EffectiveThrottle),
             bEffectiveBraking, true,
-            static_cast<double>(LateralSpeed),
+            FollowerDraftLateralSpeed,
             RivalLateralSpeed,
-            true // GameMode just verified an unobstructed physical sightline.
+            true, // GameMode verified an unobstructed physical sightline.
+            static_cast<double>(Velocity.Z),
+            static_cast<double>(RivalVelocity.Z),
+            static_cast<std::uint64_t>(RivalIdentity),
+            static_cast<double>(Position.X),
+            static_cast<double>(Position.Y),
+            static_cast<double>(Position.Z),
+            static_cast<double>(Velocity.X),
+            static_cast<double>(Velocity.Y),
+            static_cast<double>(RivalVelocity.X),
+            static_cast<double>(RivalVelocity.Y)
         });
     }
     else
