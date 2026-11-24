@@ -2523,3 +2523,6 @@ add_latebrake_portable_research_test(ObservedGripFusion)
 
 # Read-only source pace intervals and four reference sectors.
 add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
+
+# Cached signed reference clock with invertible source timing.
+add_latebrake_portable_research_test(WorldScaleVariantReferenceClock)
