@@ -39,6 +39,7 @@
 #include "Garage/GarageState.h"
 #include "Vehicles/OriginalVehicleRenderSections.h"
 #include "Vehicles/OriginalVehicleSurfaceShading.h"
+#include "Vehicles/OriginalVehicleIndexedRender.h"
 #include "Vehicles/OriginalVehicleAnimatedWheels.h"
 #include "Vehicles/GarageVisualTransition.h"
 #include "Vehicles/GarageShowroomPresentation.h"
@@ -759,6 +760,11 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         animated.TotalTriangles != generated.Mesh.Triangles.size())
         return;
 
+    const auto Packed = latebrake::vehiclemesh::BuildOriginalIndexedRender(
+        generated.Mesh, shading, animated);
+    if (!Packed.Valid || Packed.IndexCount != generated.Mesh.Triangles.size()*3u)
+        return;
+
     // All 5 components are invisible until EVERY live part has complete
     // material sections. On an allocation failure, clear the entire
     // attempted group and retain the previously working primitive car.
@@ -769,57 +775,44 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
          ++partIndex)
     {
         UProceduralMeshComponent* Part = RenderParts[partIndex];
-        const auto& part=animated.Parts[partIndex];
-        const auto Pivot=partIndex==0u
-            ? latebrake::vehiclemesh::OriginalVehiclePoint{}
-            : latebrake::vehiclemesh::OriginalWheelPivot(
-                static_cast<int>(partIndex)-1);
+        const auto& part=Packed.Parts[partIndex];
         for (std::size_t section=0;
              section<latebrake::vehiclemesh::OriginalVehicleSectionCount;
              ++section)
         {
-            const auto& triangleIds=part.TriangleIds[section];
-            if (triangleIds.empty()) continue;
+            const auto& Data=part.Sections[section];
+            if (Data.Indices.empty()) continue;
             TArray<FVector> Positions;
             TArray<int32> Indices;
             TArray<FVector> Normals;
             TArray<FVector2D> UV0;
             TArray<FColor> VertexColors;
             TArray<FProcMeshTangent> Tangents;
-            const int32 Capacity=static_cast<int32>(triangleIds.size()*3u);
+            const int32 Capacity=static_cast<int32>(Data.Vertices.size());
             Positions.Reserve(Capacity);
-            Indices.Reserve(Capacity);
+            Indices.Reserve(static_cast<int32>(Data.Indices.size()));
             Normals.Reserve(Capacity);
             UV0.Reserve(Capacity);
             VertexColors.Reserve(Capacity);
             Tangents.Reserve(Capacity);
-            for (const auto triangleId:triangleIds)
+            // The portable preflight already subtracted each wheel's
+            // exact source pivot and proved the expanded triangle stream.
+            for (const auto& vertex:Data.Vertices)
             {
-                const auto& triangle=generated.Mesh.Triangles[triangleId];
-                for (const auto index:triangle.Index)
-                {
-                    const auto& vertex=generated.Mesh.Vertices[index];
-                    const int32 next=Positions.Num();
-                    // Wheels are authored in full source-car coordinates;
-                    // subtract their exact authoring pivot ONCE at
-                    // mesh build time. Never re-upload them per physics tick.
-                    Positions.Add(FVector(
-                        vertex.Position.X-Pivot.X,
-                        vertex.Position.Y-Pivot.Y,
-                        vertex.Position.Z-Pivot.Z));
-                    const auto& Surface = shading.Frames[index];
-                    Normals.Add(FVector(Surface.Normal.X,
-                                        Surface.Normal.Y,
-                                        Surface.Normal.Z));
-                    Tangents.Add(FProcMeshTangent(
-                        FVector(Surface.Tangent.X,Surface.Tangent.Y,Surface.Tangent.Z),
-                        Surface.FlipTangentY));
-                    UV0.Add(FVector2D(vertex.TexCoord.U,
-                                       vertex.TexCoord.V));
-                    VertexColors.Add(FColor::White);
-                    Indices.Add(next);
-                }
+                Positions.Add(FVector(vertex.Position.X,
+                    vertex.Position.Y,vertex.Position.Z));
+                const auto& Surface = vertex.Surface;
+                Normals.Add(FVector(Surface.Normal.X,
+                                    Surface.Normal.Y,
+                                    Surface.Normal.Z));
+                Tangents.Add(FProcMeshTangent(
+                    FVector(Surface.Tangent.X,Surface.Tangent.Y,Surface.Tangent.Z),
+                    Surface.FlipTangentY));
+                UV0.Add(FVector2D(vertex.TexCoord.U,vertex.TexCoord.V));
+                VertexColors.Add(FColor::White);
             }
+            for (const auto Index:Data.Indices)
+                Indices.Add(static_cast<int32>(Index));
             Part->CreateMeshSection(
                 static_cast<int32>(section),
                 Positions, Indices, Normals, UV0, VertexColors,

@@ -3096,3 +3096,6 @@ add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
 
 # Original smooth/hard surface seams, tangent handedness and native render parity.
 add_latebrake_portable_research_test(OriginalVehicleSurfaceShading)
+
+# Exact render-attribute packing and independent triangle-stream audit.
+add_latebrake_portable_research_test(OriginalVehicleIndexedRender)

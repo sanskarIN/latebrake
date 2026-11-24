@@ -375,3 +375,7 @@ Click each of the four buttons beneath the preview area, then press F4 and confi
 ### Surface shading and tangent-frame QA
 
 Inspect all six cars and all three rim types in front, rear and side views under available native track lighting. Body contours and curved tire surfaces should show smoother lighting, while glass boundaries, hard trim, lamp housings and rim details retain their shape. Verify there are no black seams, inverted normals, shading cracks, wheel-pivot changes or new collision sections. OBJ source preview exports use the same normals as native mesh uploads; their materials are not a substitute for UE PBR or GPU tests. Compare paint changes without additional mesh rebuilds. Keep the fallback primitive car when the source shading or material contract fails.
+
+### Indexed render upload
+
+Compare the 18 original car/rim combinations before/after the indexed upload in the real Unreal renderer. The same triangle winding, material groups, UV seams, normals, tangents and independent wheel pivots must remain visible. Inspect the C++ test log for source-corner and packed-vertex counts; these are deterministic CPU-buffer counts, not GPU frame-time or performance measurements. Paint changes must not rebuild geometry. An invalid pack must leave the visible legacy fallback, never a partially uploaded body/wheel group. No collision or physics changes.
