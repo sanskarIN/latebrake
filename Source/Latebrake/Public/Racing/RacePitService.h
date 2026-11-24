@@ -14,6 +14,9 @@ namespace latebrake
 inline constexpr CircuitPoint RacePitBay{0.0, -1300.0};
 inline constexpr double RacePitBayRadiusCm = 250.0;
 inline constexpr double RacePitServiceHoldSeconds = 2.5;
+// Small allowance for Chaos contact correction and sample-time skew. A
+// parked car cannot traverse arbitrary positions while earning service.
+inline constexpr double RacePitMotionContinuitySlackCm = 25.0;
 
 struct PitServiceObservation final
 {
@@ -109,12 +112,16 @@ public:
         Armed = true;
         InBay = false;
         LastGuidance = PitServiceGuidance::Unavailable;
+        HavePreviousEligiblePose = false;
+        PreviousX = PreviousY = PreviousSpeedCmPerSecond = 0.0;
     }
     void Suspend() noexcept
     {
         HeldSeconds = 0.0;
         InBay = false;
         LastGuidance = PitServiceGuidance::Unavailable;
+        HavePreviousEligiblePose = false;
+        PreviousX = PreviousY = PreviousSpeedCmPerSecond = 0.0;
     }
     bool Observe(PitServiceObservation sample) noexcept
     {
@@ -137,6 +144,7 @@ public:
         {
             Armed = true;
             HeldSeconds = 0.0;
+            HavePreviousEligiblePose = false;
             return false;
         }
         if (!Armed || !sample.ButtonHeld || sample.NitroHeld ||
@@ -145,8 +153,36 @@ public:
             std::abs(sample.RequestedThrottle) > 0.05)
         {
             HeldSeconds = 0.0;
+            HavePreviousEligiblePose = false;
             return false;
         }
+        // The actual Unreal pawn supplies XY position and measured chassis
+        // speed on every qualified tick. Compare consecutive eligible frames,
+        // not sparse service keyframes: a stationary teleport inside the bay
+        // must revoke accumulated hold credit even if both samples are paved.
+        if (HavePreviousEligiblePose)
+        {
+            const double dx = sample.X - PreviousX;
+            const double dy = sample.Y - PreviousY;
+            const double observedTravel = std::hypot(dx, dy);
+            const double maximumTravel =
+                std::max(PreviousSpeedCmPerSecond,
+                         sample.PlanarSpeedCmPerSecond) *
+                    sample.DeltaSeconds + RacePitMotionContinuitySlackCm;
+            if (!std::isfinite(observedTravel) ||
+                !std::isfinite(maximumTravel) ||
+                observedTravel > maximumTravel)
+            {
+                HeldSeconds = 0.0;
+                HavePreviousEligiblePose = false;
+                LastGuidance = PitServiceGuidance::SettleChassis;
+                return false;
+            }
+        }
+        PreviousX = sample.X;
+        PreviousY = sample.Y;
+        PreviousSpeedCmPerSecond = sample.PlanarSpeedCmPerSecond;
+        HavePreviousEligiblePose = true;
         HeldSeconds = std::min(
             RacePitServiceHoldSeconds, HeldSeconds + sample.DeltaSeconds);
         if (HeldSeconds + 1.0e-9 < RacePitServiceHoldSeconds)
@@ -154,6 +190,7 @@ public:
             return false;
         }
         HeldSeconds = 0.0;
+        HavePreviousEligiblePose = false;
         Armed = false;
         LastGuidance = PitServiceGuidance::Completed;
         if (Stops < 1000) ++Stops;
@@ -174,5 +211,10 @@ private:
     bool Armed = true;
     bool InBay = false;
     PitServiceGuidance LastGuidance = PitServiceGuidance::Unavailable;
+    // Valid only within one uninterrupted, authorized service hold.
+    bool HavePreviousEligiblePose = false;
+    double PreviousX = 0.0;
+    double PreviousY = 0.0;
+    double PreviousSpeedCmPerSecond = 0.0;
 };
 } // namespace latebrake

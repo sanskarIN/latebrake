@@ -61,6 +61,29 @@ int main()
     Check(!pit.Observe(input), "fully healthy car cannot create extra stop");
     input.MaintenanceNeeded = true;
 
+    // Regression: a nearly stationary chassis cannot jump to a different
+    // place inside the same bay while keeping accumulated 2.5s credit.
+    for (int i = 0; i < 20; ++i)
+        Check(!pit.Observe(input), "partial stationary service hold");
+    Check(pit.ProgressFraction() > 0.39,
+          "partial hold accumulated before discontinuity");
+    input.X = 100.0; // Still paved and inside the physical bay.
+    Check(!pit.Observe(input) && pit.ProgressFraction() == 0.0 &&
+          pit.Guidance() == latebrake::PitServiceGuidance::SettleChassis,
+          "unexplained stationary displacement revokes service credit");
+    // Alternating in-bay teleports cannot build a new uninterrupted hold.
+    for (int i = 0; i < 30; ++i)
+    {
+        input.X = i % 2 == 0 ? 0.0 : 100.0;
+        Check(!pit.Observe(input), "repeated in-bay jumps grant no service");
+        Check(pit.ProgressFraction() <= 0.05 / 2.5 + 1e-9,
+              "repeated jumps never accumulate multiple frames");
+    }
+    input.ButtonHeld = false;
+    Check(!pit.Observe(input), "release resets continuity baseline");
+    input.X = 0.0;
+    input.ButtonHeld = true;
+
     for (int i = 0; i < 49; ++i)
         Check(!pit.Observe(input), "service cannot finish early");
     Check(pit.IsInBay() && pit.ProgressFraction() > 0.97 &&
@@ -112,6 +135,31 @@ int main()
         Check(!pit.Observe(input), "invalid driver axis");
         input.RequestedThrottle = 0.0;
     }
+    // Real low-speed contact drift remains acceptable; position continuity
+    // is not a zero-motion constraint or a substitute for Chaos physics.
+    RacePitService movingPit;
+    PitServiceObservation creep{
+        0.05, 0.0, -1300.0, 100.0, 0.0,
+        true, false, true, true, true};
+    for (int i = 0; i < 20; ++i)
+    {
+        creep.X = 5.0 * i;
+        Check(!movingPit.Observe(creep),
+              "measured low-speed movement may hold service");
+    }
+    Check(movingPit.ProgressFraction() > 0.39,
+          "physically consistent motion preserves hold credit");
+    creep.PlanarSpeedCmPerSecond = 0.0;
+    creep.X += 100.0;
+    Check(!movingPit.Observe(creep) &&
+          movingPit.ProgressFraction() == 0.0,
+          "implausible jump still fails after valid low-speed motion");
+    movingPit.Suspend();
+    creep.X = 0.0;
+    Check(!movingPit.Observe(creep) &&
+          movingPit.ProgressFraction() > 0.0,
+          "suspension clears old position witness for next eligible hold");
+
     pit.Reset();
     Check(pit.IsArmed() && !pit.IsInBay() && pit.StopCount() == 0 &&
               pit.ProgressFraction() == 0.0,
