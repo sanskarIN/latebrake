@@ -289,3 +289,27 @@ showroom scene. A genuine Unreal 5.8 Editor/UHT compile, cooked
 Win64 executable, visual screenshots and owner gameplay verification
 are still required. Pure C++ policy tests cover menu enter/exit and
 the full six-car, eight-paint, three-stripe, three-rim state space.
+
+## Garage navigation and partial-mesh failure regression
+
+- On desktop, PREVIOUS PAGE, NEXT PAGE and CLOSE must stay usable when
+  EQUIP is disabled for an already equipped, locked, read-only or
+  career-restricted vehicle. Try both page directions from the Garage
+  using the mouse, then return and select an eligible owned vehicle.
+  Disabled EQUIP must still reject the click. Test at 900x600,
+  1280x720 and 1920x1080; keyboard/gamepad navigation remains separate.
+- Numbered quick-view buttons must only change the visual cursor.
+  Portable mutation tests reject oversized schematic counts, malformed
+  or detached drawing pieces, invalid actions and ambiguous overlap.
+- In an isolated developer copy, simulate a missing procedural body or
+  wheel component AFTER a successful five-part source render; rebuild
+  with a different vehicle/rim. Every surviving source mesh must become
+  hidden and cleared before the legacy car becomes visible. Check the
+  missing component at each of the five positions, including the last
+  wheel. No floating source wheels, double-rendered body, collision
+  activation or stale committed-rim readout is acceptable. Restore the
+  intact configuration and confirm a later valid rebuild can commit.
+
+These are source changes and manual acceptance instructions; actual
+Unreal Editor/Windows rendering of injected component faults has not
+been verified by the source tests.

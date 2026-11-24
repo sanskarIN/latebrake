@@ -655,12 +655,16 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         OriginalVehicleVisual.Get(), OriginalFrontLeftWheel.Get(),
         OriginalFrontRightWheel.Get(), OriginalRearLeftWheel.Get(),
         OriginalRearRightWheel.Get()};
+    bool bAllRenderPartsPresent = true;
     for (auto* Part : RenderParts)
     {
         if (!IsValid(Part))
         {
-            HideLegacyVisualPrimitives(false);
-            return;
+            // Do not return here. A missing front wheel must not leave
+            // the remaining old rear wheels (or body) visible over the
+            // legacy fallback. Clean EVERY surviving component first.
+            bAllRenderPartsPresent = false;
+            continue;
         }
         Part->SetVisibility(false, false);
         Part->ClearAllMeshSections();
@@ -672,7 +676,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         Part->SetSimulatePhysics(false);
     }
     HideLegacyVisualPrimitives(false);
-    if (!latebrake::GarageState::IsVehicle(VehicleId))
+    if (!bAllRenderPartsPresent || !latebrake::GarageState::IsVehicle(VehicleId))
         return;
 
     // Use the exact engine material that the starter Cube expects, but

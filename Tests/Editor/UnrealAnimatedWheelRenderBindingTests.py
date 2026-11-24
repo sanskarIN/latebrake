@@ -59,6 +59,28 @@ class UnrealAnimatedWheelRenderBindingTests(unittest.TestCase):
         self.assertIn("OriginalVehicleTintParameter, FLinearColor(",palette)
         self.assertIn("NAME OriginalVehicleAnimatedWheels",self.cmake)
         self.assertIn("AllCarsAllRims();",self.test)
+    def test_missing_component_cleans_every_surviving_render_part(self):
+        rebuild=self.c.split(
+            "void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(",1
+        )[1].split("// Use the exact engine material",1)[0]
+        cleanup=rebuild.split("for (auto* Part : RenderParts)",1)[1].split(
+            "HideLegacyVisualPrimitives(false);",1)[0]
+        missing=cleanup.split("if (!IsValid(Part))",1)[1].split(
+            "Part->SetVisibility(false, false);",1)[0]
+        self.assertIn("bAllRenderPartsPresent = false;",missing)
+        self.assertIn("continue;",missing)
+        self.assertNotIn("return;",cleanup)
+        for token in ("Part->SetVisibility(false, false);",
+                      "Part->ClearAllMeshSections();",
+                      "Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);",
+                      "Part->SetGenerateOverlapEvents(false);",
+                      "Part->SetSimulatePhysics(false);"):
+            self.assertIn(token,cleanup)
+        self.assertLess(rebuild.index("HideLegacyVisualPrimitives(false);"),
+                        rebuild.index("if (!bAllRenderPartsPresent ||"))
+        self.assertIn("bOriginalVehicleVisualReady = false;",rebuild)
+        self.assertIn("OriginalRenderedRimStyle = -1;",rebuild)
+
     def test_animation_uses_measured_sign_speed_and_real_radius(self):
         pose=self.c.split(
             "void ALatebrakeCarPawn::ApplyWheelVisualPose()",1
