@@ -9,14 +9,14 @@ class OriginalVehicleIndexedRenderBindingTests(unittest.TestCase):
         pawn=read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
         rebuild=pawn.split("void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(",1)[1].split(
             "int32 ALatebrakeCarPawn::GetCommittedOriginalWheelParts()",1)[0]
-        self.assertLess(rebuild.index("BuildOriginalIndexedRender("),
+        self.assertLess(rebuild.index("OriginalPreparedVehicleRender::Prepare("),
                         rebuild.index("Part->CreateMeshSection("))
         for mark in ("generated.Mesh, shading, animated", "Packed.IndexCount",
                      "Packed.Parts[partIndex]", "Data.Vertices.size()",
                      "Data.Indices.size()", "vertex.Surface", "Data.Indices)",
                      "Indices.Add(static_cast<int32>(Index))",
                      "Tangents, false /* no collision, ever */",
-                     "GarageCameraGeometry.Build(generated.Mesh);"):
+                     "GarageCameraGeometry = Prepared->CameraGeometry();"):
             self.assertIn(mark,rebuild)
         self.assertNotIn("Indices.Add(next)",rebuild)
         self.assertNotIn("Positions.Num()",rebuild)

@@ -12,10 +12,10 @@ class OriginalVehicleSurfaceShadingBindingTests(unittest.TestCase):
             "int32 ALatebrakeCarPawn::GetCommittedOriginalWheelParts()",1)[0]
         self.assertLess(rebuild.index("BuildOriginalSurfaceShading(generated.Mesh)"),
                         rebuild.index("Part->CreateMeshSection("))
-        for marker in ("BuildOriginalIndexedRender(", "vertex.Surface", "Surface.Normal.X",
+        for marker in ("OriginalPreparedVehicleRender::Prepare(", "vertex.Surface", "Surface.Normal.X",
                        "Tangents.Add(FProcMeshTangent(", "Surface.FlipTangentY",
                        "Tangents, false /* no collision, ever */",
-                       "GarageCameraGeometry.Build(generated.Mesh);"):
+                       "GarageCameraGeometry = Prepared->CameraGeometry();"):
             self.assertIn(marker,rebuild)
         self.assertNotIn("Normals.Add(FVector(vertex.Normal.X",rebuild)
 

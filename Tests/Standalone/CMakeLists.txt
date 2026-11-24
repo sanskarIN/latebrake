@@ -3099,3 +3099,6 @@ add_latebrake_portable_research_test(OriginalVehicleSurfaceShading)
 
 # Exact render-attribute packing and independent triangle-stream audit.
 add_latebrake_portable_research_test(OriginalVehicleIndexedRender)
+
+# Bounded original CPU render preparation cache, exact model and rim identity.
+add_latebrake_portable_research_test(OriginalVehicleRenderCache)

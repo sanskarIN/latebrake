@@ -379,3 +379,7 @@ Inspect all six cars and all three rim types in front, rear and side views under
 ### Indexed render upload
 
 Compare the 18 original car/rim combinations before/after the indexed upload in the real Unreal renderer. The same triangle winding, material groups, UV seams, normals, tangents and independent wheel pivots must remain visible. Inspect the C++ test log for source-corner and packed-vertex counts; these are deterministic CPU-buffer counts, not GPU frame-time or performance measurements. Paint changes must not rebuild geometry. An invalid pack must leave the visible legacy fallback, never a partially uploaded body/wheel group. No collision or physics changes.
+
+### Bounded CPU preparation cache
+
+Browse car A, B, C, A and D, then B. Verify Settings in a non-shipping build reports a hit when revisiting A, an eviction when introducing D, and a miss when revisiting B. Switch rims and paint independently: rim identity may require a new cached CPU preparation; paint/stripe-only edits must not upload new geometry. Verify all five native components commit and camera points match the actual displayed vehicle after a cache hit. A hit still uploads native mesh sections and creates material instances: the diagnostic counters are not GPU frame-time or VRAM measurements. Close/reopen the Garage, restart a race and replace the Pawn; EndPlay must release the bounded cache. Verify no collision, tuning or save changes.

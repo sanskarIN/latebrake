@@ -1049,6 +1049,19 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(
                 TEXT("3D SOURCE BUILDS: %u ATTEMPTS / %u READY"),
                 BuildStats.Attempts, BuildStats.Committed));
+            const auto CacheStats=Car->GetOriginalRenderCacheStats();
+            MenuLine(FString::Printf(
+                TEXT("CPU MESH CACHE: %u HIT / %u MISS / %u PREPARED"),
+                CacheStats.Hits, CacheStats.Misses, CacheStats.Prepared));
+            MenuLine(FString::Printf(
+                TEXT("CACHE: %d/%d RESIDENT | %u EVICTIONS | %u FAILED"),
+                static_cast<int32>(CacheStats.ResidentEntries),
+                static_cast<int32>(latebrake::vehiclemesh::OriginalRenderCacheCapacity),
+                CacheStats.Evictions, CacheStats.Failed));
+            MenuLine(FString::Printf(
+                TEXT("CPU CACHE: %d VERTICES / %d INDICES (NOT VRAM)"),
+                static_cast<int32>(CacheStats.ResidentVertices),
+                static_cast<int32>(CacheStats.ResidentIndices)));
             const int32 CommittedRim=Car->GetCommittedOriginalRimStyle();
             MenuLine(FString::Printf(TEXT("LIVE 3D RIM: %s"),
                 CommittedRim>=0 && CommittedRim<latebrake::GarageWheelOptions

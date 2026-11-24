@@ -30,6 +30,7 @@
 #include "Garage/GarageAppearance.h"
 #include "Vehicles/OriginalMeshBuildTelemetry.h"
 #include "Vehicles/OriginalVehicleShowroomCamera.h"
+#include "Vehicles/OriginalVehicleRenderCache.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
@@ -145,6 +146,9 @@ public:
     latebrake::OriginalMeshBuildTelemetry
     GetOriginalMeshBuildTelemetry() const noexcept
     { return SourceMeshBuildTelemetry; }
+    latebrake::vehiclemesh::OriginalRenderCacheStats
+    GetOriginalRenderCacheStats() const noexcept
+    { return OriginalRenderCache.Stats(); }
     // -1 on fallback or failed rebuild; otherwise the wheel shape
     // actually authored in the most recently COMMITTED source mesh.
     int32 GetCommittedOriginalRimStyle() const noexcept
@@ -393,6 +397,7 @@ private:
     latebrake::GarageLook GarageShowroomLook{};
     // Camera fit owns only validated visual points; no engine camera
     // preference, collision or authoritative garage state is mutated.
+    latebrake::vehiclemesh::OriginalVehicleRenderCache OriginalRenderCache;
     latebrake::vehiclemesh::OriginalVehicleShowroomGeometry GarageCameraGeometry;
     latebrake::vehiclemesh::OriginalVehicleShowroomCamera GarageCameraFit;
     int32 GarageCameraOrbitIndex = 0;

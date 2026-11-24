@@ -22,7 +22,7 @@ class UnrealGarageCameraBindingTests(unittest.TestCase):
         self.assertLess(rebuild.index("GarageCameraGeometry.Reset();"),
                         rebuild.index("OriginalVehicleSurfaceComposer{}.Build("))
         self.assertLess(rebuild.index("bOriginalVehicleVisualReady = true;"),
-                        rebuild.index("GarageCameraGeometry.Build(generated.Mesh);"))
+                        rebuild.index("GarageCameraGeometry = Prepared->CameraGeometry();"))
         self.assertIn("OriginalVehicleShowroomGeometry GarageCameraGeometry",self.header)
         self.assertIn("OriginalVehicleShowroomCamera GarageCameraFit",self.header)
         self.assertIn("FitPrepared(",self.policy)

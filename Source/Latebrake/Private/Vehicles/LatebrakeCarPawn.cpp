@@ -434,6 +434,9 @@ void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
     FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
     TouchViewport.Reset();
     ClearDriverInputs();
+    OriginalRenderCache.Reset();
+    GarageCameraGeometry.Reset();
+    GarageCameraFit.Reset();
     Super::EndPlay(EndPlayReason);
 }
 
@@ -736,34 +739,42 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         latebrake::vehiclemesh::SupportedVehicleTintNames[
             static_cast<std::size_t>(TintIndex)]));
 
-    const auto generated =
-        latebrake::vehiclemesh::OriginalVehicleSurfaceComposer{}.Build(
-            VehicleId,static_cast<int>(GetPresentedGarageLook().Wheels));
-    if (!generated.Valid || !generated.Mesh.Ready ||
-        generated.Mesh.ChangesChaosContact)
-        return;
-    const auto shading =
-        latebrake::vehiclemesh::BuildOriginalSurfaceShading(generated.Mesh);
-    if (!shading.Valid || shading.Frames.size() != generated.Mesh.Vertices.size())
-        return;
-    const auto sections =
-        latebrake::vehiclemesh::MakeOriginalVehicleRenderSections(
-            generated.Mesh);
-    if (!sections.Valid ||
-        sections.TotalTriangles != generated.Mesh.Triangles.size())
-        return;
-
-    const auto animated =
-        latebrake::vehiclemesh::MakeOriginalVehicleAnimatedParts(
-            generated.Mesh);
-    if (!animated.Valid ||
-        animated.TotalTriangles != generated.Mesh.Triangles.size())
-        return;
-
-    const auto Packed = latebrake::vehiclemesh::BuildOriginalIndexedRender(
-        generated.Mesh, shading, animated);
-    if (!Packed.Valid || Packed.IndexCount != generated.Mesh.Triangles.size()*3u)
-        return;
+    // This key contains only the authored geometry identity. Cosmetic
+    // palette edits still use dynamic materials, and every actual upload
+    // attempt (including a CPU cache hit) is counted by the older metric.
+    const auto* Prepared = OriginalRenderCache.Acquire(
+        {VehicleId,static_cast<int>(GetPresentedGarageLook().Wheels)},
+        [](latebrake::vehiclemesh::OriginalRenderKey Key)
+            -> latebrake::vehiclemesh::OriginalPreparedVehicleRender
+        {
+            const auto generated =
+                latebrake::vehiclemesh::OriginalVehicleSurfaceComposer{}.Build(
+                    Key.VehicleId,Key.RimStyle);
+            if (!generated.Valid || !generated.Mesh.Ready ||
+                generated.Mesh.ChangesChaosContact)
+                return {};
+            const auto shading =
+                latebrake::vehiclemesh::BuildOriginalSurfaceShading(generated.Mesh);
+            if (!shading.Valid || shading.Frames.size() != generated.Mesh.Vertices.size())
+                return {};
+            const auto sections =
+                latebrake::vehiclemesh::MakeOriginalVehicleRenderSections(
+                    generated.Mesh);
+            if (!sections.Valid ||
+                sections.TotalTriangles != generated.Mesh.Triangles.size())
+                return {};
+            const auto animated =
+                latebrake::vehiclemesh::MakeOriginalVehicleAnimatedParts(
+                    generated.Mesh);
+            if (!animated.Valid ||
+                animated.TotalTriangles != generated.Mesh.Triangles.size())
+                return {};
+            return latebrake::vehiclemesh::OriginalPreparedVehicleRender::Prepare(
+                generated.Mesh, shading, animated);
+        });
+    if (!Prepared || !Prepared->Valid()) return;
+    const auto& Packed = Prepared->Packed();
+    if (!Packed.Valid || Packed.IndexCount == 0u) return;
 
     // All 5 components are invisible until EVERY live part has complete
     // material sections. On an allocation failure, clear the entire
@@ -858,11 +869,10 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     for (std::size_t i=1;i<
          latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;++i)
         RenderParts[i]->SetVisibility(true, false);
-    OriginalRenderedRimStyle = generated.Mesh.RimStyle;
-    // The framing source is exactly the committed render mesh, never
-    // a second guessed car or a regenerated mesh on every camera frame.
-    // Failed camera preparation leaves the valid car and chase view intact.
-    GarageCameraGeometry.Build(generated.Mesh);
+    OriginalRenderedRimStyle = Packed.RimStyle;
+    // Copy only the cached validated camera points after all five native
+    // parts commit. Never keep a pointer into an evictable cache entry.
+    GarageCameraGeometry = Prepared->CameraGeometry();
     SourceMeshBuildTelemetry =
         latebrake::OriginalMeshBuildCommit(SourceMeshBuildTelemetry);
     ApplyWheelVisualPose();
