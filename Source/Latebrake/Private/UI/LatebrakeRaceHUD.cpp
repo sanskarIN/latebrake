@@ -3,6 +3,7 @@
 #include "UI/HudLayout.h"
 #include "UI/GarageShowroomSchematic.h"
 #include "UI/GarageShowroomQuickView.h"
+#include "UI/GarageShowroomLane.h"
 #include "UI/HudInstrumentCluster.h"
 #include "UI/HudInstrumentDriveBadge.h"
 #include "UI/NitroHudReadout.h"
@@ -70,9 +71,13 @@ bool ALatebrakeRaceHUD::TryScrollMenuMouse(
     }
     const double width = static_cast<double>(Canvas->SizeX);
     const double height = static_cast<double>(Canvas->SizeY);
-    const auto zone = latebrake::CalculateDesktopMenuWheelZone(
-        width, height, latebrake::CalculateHudLayout(width, height),
-        false, true);
+    const auto hud = latebrake::CalculateHudLayout(width, height);
+    auto zone = latebrake::CalculateDesktopMenuWheelZone(
+        width, height, hud, false, true);
+    const auto lane = latebrake::CalculateGarageShowroomLane(
+        width, height, hud, false, true, Mode->GetMenuPage());
+    if (lane.Valid)
+        zone.Width = FMath::Min(zone.Width, lane.TextWidth);
     const auto available = latebrake::AvailableDesktopMenuDetails(
         Mode->GetMenuPage(), MenuPager);
     if (!latebrake::AdmitDesktopMenuWheel(
@@ -202,10 +207,16 @@ void ALatebrakeRaceHUD::DrawHUD()
             Instruments.Panel.X - HorizontalBounds.Left -
                 16.0 * Instruments.Scale)
         : HorizontalBounds.MaxWidthPixels;
-    const double SafeTextWidth = MouseMenu.Valid
+    const auto ShowroomLane = latebrake::CalculateGarageShowroomLane(
+        Canvas->SizeX, Canvas->SizeY, Layout, bTouchHUD,
+        Mode->IsMenuOpen(), Mode->GetMenuPage());
+    const double DockSafeTextWidth = MouseMenu.Valid
         ? FMath::Min(InstrumentTextWidth,
             MouseMenu.Left - HorizontalBounds.Left - 12.0 * Layout.Scale)
         : InstrumentTextWidth;
+    const double SafeTextWidth = ShowroomLane.Valid
+        ? FMath::Min(DockSafeTextWidth, ShowroomLane.TextWidth)
+        : DockSafeTextWidth;
     const auto FitHudText = [&](const FString& Value, UFont* Font,
                                 float TextScale) -> FString
     {
@@ -296,6 +307,17 @@ void ALatebrakeRaceHUD::DrawHUD()
             DrawRect(Gold, BX, BY, 3.f * UIScale, BH);
             DrawRect(FLinearColor(0.18f, 0.29f, 0.39f, 0.95f),
                 BX, BY + BH - 2.f * UIScale, BW, 2.f * UIScale);
+        }
+
+        // Keep the central scene clear; the two-dimensional schematic and
+        // existing car selectors stay in the right dock, not over the mesh.
+        if (ShowroomLane.Valid && Car->IsGarageCameraViewPresented())
+        {
+            const auto& A = ShowroomLane.Aperture;
+            DrawText(TEXT("LIVE 3D | F4 ORBIT"), Gold,
+                static_cast<float>(A.X),
+                static_cast<float>(A.Y - 24.0 * Layout.Scale),
+                GEngine->GetSmallFont(), 0.78f * UIScale);
         }
 
         // Build the logical page first. The former unbounded MenuLine

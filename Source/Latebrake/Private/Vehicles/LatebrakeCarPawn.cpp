@@ -1,3 +1,4 @@
+#include "UI/GarageShowroomLane.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/VehicleVisualRecipe.h"
@@ -3299,10 +3300,24 @@ void ALatebrakeCarPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
         return;
     Request.YawDegrees = OrbitYawDegrees[GarageCameraOrbitIndex];
     Request.AspectRatio = Aspect;
+#if !PLATFORM_ANDROID
+    const auto Lane = latebrake::CalculateGarageShowroomLane(
+        Width, Height, latebrake::CalculateHudLayout(Width, Height),
+        false, true, latebrake::MenuPage::Garage);
+    if (Lane.Valid)
+    {
+        Request.CenterX = Lane.CenterX;
+        Request.CenterY = Lane.CenterY;
+        Request.HalfWidth = Lane.HalfWidth;
+        Request.HalfHeight = Lane.HalfHeight;
+    }
+#endif
     if (!latebrake::vehiclemesh::ValidShowroomOrbitRequest(Request))
         return;
-    if (!GarageCameraFit.Ready() ||
-        GarageCameraFit.Pose().AspectRatio != Aspect)
+    const auto PriorPose = GarageCameraFit.Pose();
+    if (!GarageCameraFit.Ready() || PriorPose.AspectRatio != Aspect ||
+        PriorPose.CenterX != Request.CenterX || PriorPose.CenterY != Request.CenterY ||
+        PriorPose.HalfWidth != Request.HalfWidth || PriorPose.HalfHeight != Request.HalfHeight)
     {
         // Fit the cached points only on entry, orbit, resize or a new
         // mesh commit. Never recompose or re-upload render triangles.

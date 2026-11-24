@@ -48,6 +48,22 @@ class UnrealGarageCameraBindingTests(unittest.TestCase):
                           "SetPhysicsLinearVelocity(", "CameraViews.Next("):
             self.assertNotIn(forbidden,camera)
 
+    def test_hud_and_camera_share_protected_desktop_lane(self):
+        lane=read("Source/Latebrake/Public/UI/GarageShowroomLane.h")
+        for marker in ("CalculateGarageShowroomLane(", "Request.CenterX = Lane.CenterX;",
+                       "Request.HalfWidth = Lane.HalfWidth;",
+                       "PriorPose.HalfWidth != Request.HalfWidth"):
+            self.assertIn(marker,self.pawn)
+        for marker in ("CalculateGarageShowroomLane(", "ShowroomLane.TextWidth",
+                       "zone.Width = FMath::Min(zone.Width, lane.TextWidth)",
+                       "LIVE 3D | F4 ORBIT"):
+            self.assertIn(marker,self.hud)
+        self.assertIn("CalculateHudMenuReadablePanel(",lane)
+        self.assertIn("CalculateDesktopMenuMouseLayout(",lane)
+        self.assertIn("touchUI||hud.Compact",lane)
+        self.assertIn("DesktopApertures();",
+                      read("Tests/Standalone/OriginalVehicleShowroomCameraTests.cpp"))
+
     def test_orbit_is_separate_from_race_camera_and_restores_on_exit(self):
         orbit=self.pawn.split("void ALatebrakeCarPawn::OrbitGarageCamera()",1)[1].split(
             "void ALatebrakeCarPawn::CalcCamera(",1)[0]

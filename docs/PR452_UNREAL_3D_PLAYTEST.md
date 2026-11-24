@@ -363,3 +363,7 @@ the viewport is valid and a visibility trace does not block the view.
 
 This is not a separate studio map or a verified Unreal build. UHT,
 Editor, cooked Win64 and real owner acceptance remain mandatory.
+
+### Desktop unobstructed 3D lane
+
+At 900x600, 1280x720, 1920x1080 and ultrawide resolutions, verify the left detail panel wraps without covering the car, the right controls and six schematic selectors remain reachable, and all four F4 viewpoints remain inside the center lane. Resize across the compact threshold and reopen Garage; no stale camera framing or wheel hit zone. Hover over the car and scroll: it must not page details; scrolling the left text lane must. The native camera may fall back if the track obstructs its translated eye. Confirm the live 3D label is absent on fallback. Android and compact layouts retain original framing and controls. Source tests are not proof of actual UE rendering.
