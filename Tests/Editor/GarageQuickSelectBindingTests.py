@@ -99,7 +99,7 @@ class GarageQuickSelectBindingTests(unittest.TestCase):
         self.assertIn("CTRL+1..6: EQUIP OWNED CARS DIRECTLY", page)
         self.assertIn('FString::Printf(TEXT("CTRL+%d")', page)
         self.assertIn('FString::Printf(TEXT("%d.")', page)
-        self.assertIn("Mode->GetGarageFeedback()", page)
+        self.assertIn("Mode->GetGaragePurchaseDisplayFeedback()", page)
         self.assertNotIn("Garage.Select(", page)
 
     def test_pure_policy_in_registered_portable_tests(self):
