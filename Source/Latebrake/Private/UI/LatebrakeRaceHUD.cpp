@@ -265,10 +265,21 @@ void ALatebrakeRaceHUD::DrawHUD()
             };
             DrawPinned(FString::Printf(TEXT("LATEBRAKE / %s"),
                 *Mode->GetMenuPageTitle()), true);
-            DrawPinned(bTouchHUD
-                ? TEXT("UP/DOWN DETAILS | NEXT MENU | SELECT")
-                : TEXT("TAB CLOSE | PAGE UP/DOWN MENU | UP/DOWN DETAILS | ENTER"),
-                false);
+            if (Mode->GetMenuPage() == latebrake::MenuPage::Garage)
+            {
+                // The detail pager can be several screens deep. Purchase
+                // confirmation, lock rejection and save rollback feedback
+                // must remain visible on EVERY page, without adding a third
+                // header row or consuming the small-screen detail budget.
+                DrawPinned(Mode->GetGarageFeedback(), true);
+            }
+            else
+            {
+                DrawPinned(bTouchHUD
+                    ? TEXT("UP/DOWN DETAILS | NEXT MENU | SELECT")
+                    : TEXT("TAB CLOSE | PAGE UP/DOWN MENU | UP/DOWN DETAILS | ENTER"),
+                    false);
+            }
         }
         if (!Mode->IsCircuitReadyForGameplay())
         {

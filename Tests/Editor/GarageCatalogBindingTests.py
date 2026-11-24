@@ -59,7 +59,10 @@ class GarageCatalogBindingTests(unittest.TestCase):
                        "Next.UnlockCost, Next.RouteCreditsShort",
                        "LOCKED ROWS SHOW TOTAL SEQUENTIAL ROUTE COST.",
                        "Entry.RouteValid", "Entry.RouteBudgetReady",
-                       "Entry.RouteCars, Entry.RouteCost",
+                       "Entry.RouteCars",
+                       "VIA %d SEQUENTIAL Q UNLOCK(S)",
+                       "ROUTE %d CR | BUDGET READY",
+                       "ROUTE %d CR | NEED %d CR",
                        "Entry.RouteCost, Entry.RouteCreditsShort"):
             self.assertIn(marker, garage_page)
         self.assertNotIn("LOCKED %d CR | AFFORDABLE", garage_page)

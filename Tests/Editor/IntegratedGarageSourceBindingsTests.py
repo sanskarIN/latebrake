@@ -44,6 +44,17 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
             with self.subTest(marker=essential):
                 self.assertIn(essential, page)
         self.assertIn("if (!bTouchHUD)", page)
+        # Feedback is pinned even when menu detail pagination is not at 1/1.
+        before_pager = self.hud.split(
+            "MenuPager.Synchronize(Mode->GetMenuPage()", 1)[0]
+        self.assertIn("if (Mode->GetMenuPage() == latebrake::MenuPage::Garage)",
+                      before_pager)
+        self.assertIn("DrawPinned(Mode->GetGarageFeedback(), true);",
+                      before_pager)
+        self.assertLess(
+            before_pager.index("DrawPinned(Mode->GetGarageFeedback(), true);"),
+            before_pager.index("switch (Mode->GetMenuPage())"))
+        self.assertEqual(before_pager.count("DrawPinned(Mode->GetGarageFeedback(), true);"), 1)
         self.assertLess(page.index("Mode->GetGarageFeedback()"),
                         page.index("for (const latebrake::GarageCatalogEntry&"),
                         "transaction feedback must appear ahead of six car rows")

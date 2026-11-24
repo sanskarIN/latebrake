@@ -101,3 +101,23 @@ and source fallback. When draft PR #452 is later integrated, test
 not be shadowed by these Ctrl+digit chords. Reinspect all source
 changes after that integration; this checklist does not authorize
 merging draft #452 or publishing a v0.5.x build.
+
+## Garage feedback visibility on every detail page
+
+The native Canvas menu still uses exactly two pinned header rows.
+On the Garage page the second row is the current authoritative
+`GetGarageFeedback()` (including staged Q/U/I purchase consent and
+failed-save rollback) instead of generic navigation help. This avoids
+an off-screen confirmation message when the user has scrolled down to
+another vehicle's detailed performance comparison. Other menu pages
+retain their existing navigation row. The content area still includes
+the transaction feedback for full-history review. This change does
+not bypass the existing eight-second double-press confirmation or
+change GarageState, credits, ownership or SaveGame authority.
+
+On a narrow Android window, explicitly page down until the first
+Garage details row is hidden, then press a purchase action and ensure
+its **new** feedback remains in the pinned header. Test success,
+insufficient credits, expired confirmation and injected save failure
+with actual Unreal input; source-level tests cannot verify glyph
+rendering or touch delivery.
