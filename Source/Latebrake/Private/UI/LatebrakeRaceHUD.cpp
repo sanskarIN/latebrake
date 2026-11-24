@@ -328,8 +328,10 @@ void ALatebrakeRaceHUD::DrawHUD()
             // every row stays accessible on short desktop/Android screens.
             const latebrake::GarageCatalogView Catalog =
                 latebrake::BuildGarageCatalogView(Mode->GetGarageSnapshot());
-            MenuLine(FString::Printf(TEXT("GARAGE %d/%d | %d EARNED CREDITS"),
+            MenuLine(FString::Printf(
+                TEXT("GARAGE CAR %d/%d | OWNED %d/%d | %d CR"),
                 Catalog.SelectedVehicle + 1, latebrake::VehicleCount,
+                Catalog.OwnedVehicleCount, latebrake::VehicleCount,
                 Catalog.Credits), true);
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.

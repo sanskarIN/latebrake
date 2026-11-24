@@ -42,6 +42,7 @@ struct GarageCatalogView final
 {
     std::array<GarageCatalogEntry, VehicleCount> Cars{};
     int SelectedVehicle = 0;
+    int OwnedVehicleCount = 0;
     int Credits = 0;
     int NextUnlockId = -1;
     int EngineLevel = 0;
@@ -68,6 +69,11 @@ inline GarageCatalogView BuildGarageCatalogView(GarageSnapshot persisted) noexce
         GarageCatalogEntry& entry = view.Cars[static_cast<std::size_t>(id)];
         entry.VehicleId = id;
         entry.Name = spec.Name;
+        if (garage.Owns(id))
+        {
+            // Count only sanitized ownership, never unknown future SaveGame bits.
+            ++view.OwnedVehicleCount;
+        }
         entry.UnlockCost = spec.UnlockCost;
         entry.CreditsShort = garage.Owns(id)
             ? 0 : std::max(0, spec.UnlockCost - view.Credits);
