@@ -2523,3 +2523,6 @@ add_latebrake_portable_research_test(ObservedGripFusion)
 
 # Read-only source pace intervals and four reference sectors.
 add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
+
+# Perspective-fit camera for original source geometry, not native UE camera.
+add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
