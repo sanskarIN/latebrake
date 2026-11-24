@@ -2026,23 +2026,25 @@ FString ALatebrakeRaceGameMode::GetGaragePurchaseDisplayFeedback() const
     switch (Preview.Kind)
     {
     case latebrake::GaragePurchaseKind::UnlockVehicle:
-        Action = TEXT("UNLOCK CAR");
+        Action = TEXT("UNLOCK");
         Key = TEXT("Q");
         break;
     case latebrake::GaragePurchaseKind::UpgradeEngine:
-        Action = TEXT("ENGINE UPGRADE");
+        Action = TEXT("ENGINE");
         Key = TEXT("U");
         break;
     case latebrake::GaragePurchaseKind::UpgradeGrip:
-        Action = TEXT("GRIP UPGRADE");
+        Action = TEXT("GRIP");
         Key = TEXT("I");
         break;
     default:
         return GarageFeedback;
     }
+    // FitHudText clips from the RIGHT in narrow viewports: put the required
+    // confirmation key and expiring timer FIRST, before price/detail.
     return FString::Printf(
-        TEXT("CONFIRM %s %d CR | %.1fs LEFT | PRESS %s AGAIN"),
-        Action, Preview.Price, Preview.SecondsRemaining, Key);
+        TEXT("PRESS %s AGAIN (%.1fs) | %s %d CR"),
+        Key, Preview.SecondsRemaining, Action, Preview.Price);
 }
 
 int32 ALatebrakeRaceGameMode::GetNextLockedVehicleCost() const
