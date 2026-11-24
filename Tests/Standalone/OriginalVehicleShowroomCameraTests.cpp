@@ -25,7 +25,9 @@ void VerifyProjection(const OriginalVehicleMesh& mesh,ShowroomOrbitRequest q)
         Near(MeshLength(pose.Right),1.0)&&
         Near(ShowroomDot(pose.Forward,pose.Right),0.0)&&
         Near(ShowroomDot(pose.Forward,pose.Up),0.0)&&
-        Near(ShowroomDot(pose.Right,pose.Up),0.0),"orthonormal camera");
+        Near(ShowroomDot(pose.Right,pose.Up),0.0)&&
+        ShowroomNearPoint(MeshCross(pose.Forward,pose.Right),pose.Up),
+        "orthonormal Unreal-compatible camera basis");
     const auto center=camera.Project(pose.Target);
     Check(center.Valid&&Near(center.NdcX,0.0)&&Near(center.NdcY,0.0)&&
         Near(center.DepthCm,pose.DistanceCm),"target centered at fitted depth");
@@ -82,6 +84,39 @@ void AllVehicles()
         VerifyProjection(built.Mesh,narrow);
     }
 }
+void CachedGeometryParity()
+{
+    for(int id=0;id<6;++id)
+    {
+        auto mesh=OriginalVehicleSurfaceComposer{}.Build(id).Mesh;
+        OriginalVehicleShowroomGeometry geometry;
+        Check(geometry.Build(mesh)&&geometry.Ready()&&geometry.VehicleId()==id&&
+            geometry.Points().size()==mesh.Vertices.size(),
+            "one-time validated geometry snapshot");
+        OriginalVehicleShowroomCamera direct,cached;
+        for(double yaw:{0.0,35.0,90.0,180.0,270.0})
+        {
+            ShowroomOrbitRequest q{};
+            q.YawDegrees=yaw;
+            q.AspectRatio=0.5625;
+            Check(direct.Fit(mesh,q)&&cached.FitPrepared(geometry,q)&&
+                ShowroomNearPoint(direct.Pose().Eye,cached.Pose().Eye)&&
+                Near(direct.Pose().DistanceCm,cached.Pose().DistanceCm),
+                "cached and direct fit are equivalent");
+        }
+        const auto prior=cached.Pose();
+        mesh.Bounds.Maximum.X+=50.0;
+        Check(!geometry.Build(mesh)&&geometry.Ready()&&geometry.VehicleId()==id,
+            "failed prepared geometry replacement retains snapshot");
+        ShowroomOrbitRequest q{};q.YawDegrees=270.0;q.AspectRatio=0.5625;
+        Check(cached.FitPrepared(geometry,q)&&
+            ShowroomNearPoint(prior.Eye,cached.Pose().Eye),
+            "cached geometry independent of caller mutation");
+        geometry.Reset();
+        Check(!geometry.Ready()&&!cached.FitPrepared(geometry,q)&&
+            cached.Ready(),"reset geometry rejects fit without erasing valid camera");
+    }
+}
 void InvalidAndAtomic()
 {
     OriginalVehicleShowroomCamera camera;
@@ -121,7 +156,7 @@ void InvalidAndAtomic()
 }
 int main()
 {
-    AllVehicles();InvalidAndAtomic();
+    AllVehicles();CachedGeometryParity();InvalidAndAtomic();
     std::cout<<"Six original cars, 1260 orbit/viewport fits and invalid input regression PASS\n";
     return EXIT_SUCCESS;
 }

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <vector>
 
 namespace latebrake::vehiclemesh
 {
@@ -97,6 +98,60 @@ struct ShowroomScreenBounds final
     double MinDepthCm=0.0,MaxDepthCm=0.0;
 };
 
+// Validate authored triangles/bounds once on mesh replacement. The cached
+// points are the only data used by repeated orbit/viewport fits, so a
+// resize does not recompose the mesh or validate its triangles again.
+class OriginalVehicleShowroomGeometry final
+{
+public:
+    bool Ready() const noexcept { return ready_; }
+    int VehicleId() const noexcept { return vehicleId_; }
+    OriginalVehiclePoint Target() const noexcept { return target_; }
+    const std::vector<OriginalVehiclePoint>& Points() const noexcept
+    { return points_; }
+
+    bool Build(const OriginalVehicleMesh& mesh)
+    {
+        if(!mesh.Ready||!OriginalVehicleSurfaceComposer{}.ValidateMesh(mesh))
+            return false;
+        OriginalVehicleBounds actual{};
+        std::vector<OriginalVehiclePoint> points;
+        points.reserve(mesh.Vertices.size());
+        for(const auto& vertex:mesh.Vertices)
+        {
+            const auto p=vertex.Position;
+            actual.Minimum.X=std::min(actual.Minimum.X,p.X);
+            actual.Minimum.Y=std::min(actual.Minimum.Y,p.Y);
+            actual.Minimum.Z=std::min(actual.Minimum.Z,p.Z);
+            actual.Maximum.X=std::max(actual.Maximum.X,p.X);
+            actual.Maximum.Y=std::max(actual.Maximum.Y,p.Y);
+            actual.Maximum.Z=std::max(actual.Maximum.Z,p.Z);
+            points.push_back(p);
+        }
+        if(!ShowroomNearPoint(actual.Minimum,mesh.Bounds.Minimum)||
+           !ShowroomNearPoint(actual.Maximum,mesh.Bounds.Maximum))return false;
+        target_=ShowroomScale(ShowroomAdd(actual.Minimum,actual.Maximum),0.5);
+        points_.swap(points);
+        vehicleId_=mesh.VehicleId;
+        ready_=true;
+        return true;
+    }
+
+    void Reset() noexcept
+    {
+        points_.clear();
+        target_={};
+        vehicleId_=-1;
+        ready_=false;
+    }
+
+private:
+    bool ready_=false;
+    int vehicleId_=-1;
+    OriginalVehiclePoint target_{};
+    std::vector<OriginalVehiclePoint> points_{};
+};
+
 // Own the fitted pose. A caller cannot mutate a cached basis or clip
 // plane and then submit it as a valid perspective camera.
 class OriginalVehicleShowroomCamera final
@@ -111,35 +166,28 @@ public:
 
     // Strong replacement: failed request or malformed source leaves
     // the previous valid camera intact, useful during resize/orbit UI.
-    bool Fit(const OriginalVehicleMesh& mesh,ShowroomOrbitRequest q={}) noexcept
+    bool Fit(const OriginalVehicleMesh& mesh,ShowroomOrbitRequest q={})
     {
-        if(!ValidShowroomOrbitRequest(q)||!mesh.Ready||
-           !OriginalVehicleSurfaceComposer{}.ValidateMesh(mesh))return false;
+        if(!ValidShowroomOrbitRequest(q))return false;
+        OriginalVehicleShowroomGeometry geometry;
+        return geometry.Build(mesh)&&FitPrepared(geometry,q);
+    }
 
-        // Derive bounds from the actual vertices, not a potentially
-        // forged cached AABB. Reject disagreement rather than crop.
-        OriginalVehicleBounds actual{};
-        for(const auto& vertex:mesh.Vertices)
-        {
-            const auto p=vertex.Position;
-            actual.Minimum.X=std::min(actual.Minimum.X,p.X);
-            actual.Minimum.Y=std::min(actual.Minimum.Y,p.Y);
-            actual.Minimum.Z=std::min(actual.Minimum.Z,p.Z);
-            actual.Maximum.X=std::max(actual.Maximum.X,p.X);
-            actual.Maximum.Y=std::max(actual.Maximum.Y,p.Y);
-            actual.Maximum.Z=std::max(actual.Maximum.Z,p.Z);
-        }
-        if(!ShowroomNearPoint(actual.Minimum,mesh.Bounds.Minimum)||
-           !ShowroomNearPoint(actual.Maximum,mesh.Bounds.Maximum))return false;
-
-        const auto target=ShowroomScale(
-            ShowroomAdd(actual.Minimum,actual.Maximum),0.5);
+    bool FitPrepared(const OriginalVehicleShowroomGeometry& geometry,
+        ShowroomOrbitRequest q={}) noexcept
+    {
+        if(!ValidShowroomOrbitRequest(q)||!geometry.Ready()||
+           geometry.Points().empty()||
+           geometry.Points().size()>OriginalVehicleMaxVertices)return false;
+        const auto target=geometry.Target();
         const double yaw=std::remainder(q.YawDegrees,360.0)*ShowroomCameraDegreesToRadians;
         const double pitch=q.PitchDegrees*ShowroomCameraDegreesToRadians;
         const double cy=std::cos(yaw),sy=std::sin(yaw);
         const double cp=std::cos(pitch),sp=std::sin(pitch);
         const OriginalVehiclePoint back{cp*cy,cp*sy,sp};
-        const OriginalVehiclePoint right{-sy,cy,0.0};
+        // Unreal's local camera basis uses +X forward, +Y right,
+        // +Z up. Forward cross Right must equal Up, not its negative.
+        const OriginalVehiclePoint right{sy,-cy,0.0};
         const OriginalVehiclePoint up{-sp*cy,-sp*sy,cp};
         const auto forward=ShowroomScale(back,-1.0);
         const double tanY=std::tan(q.VerticalFovDegrees*ShowroomCameraDegreesToRadians*0.5);
@@ -155,9 +203,9 @@ public:
         // guesses or bounding-sphere overframing for long/thin vehicles.
         double distance=q.NearClipCm+1.0;
         double backMin=std::numeric_limits<double>::infinity();
-        for(const auto& vertex:mesh.Vertices)
+        for(const auto point:geometry.Points())
         {
-            const auto offset=MeshSubtract(vertex.Position,target);
+            const auto offset=MeshSubtract(point,target);
             const double z=ShowroomDot(offset,back);
             const double x=ShowroomDot(offset,right);
             const double y=ShowroomDot(offset,up);
@@ -180,16 +228,16 @@ public:
             q.AspectRatio,q.Padding};
         candidate.tanX_=tanX;
         candidate.tanY_=tanY;
-        candidate.vehicleId_=mesh.VehicleId;
+        candidate.vehicleId_=geometry.VehicleId();
         candidate.ready_=true;
         auto& bounds=candidate.bounds_;
         bounds.MinX=bounds.MinY=bounds.MinDepthCm=
             std::numeric_limits<double>::infinity();
         bounds.MaxX=bounds.MaxY=bounds.MaxDepthCm=
             -std::numeric_limits<double>::infinity();
-        for(const auto& vertex:mesh.Vertices)
+        for(const auto point:geometry.Points())
         {
-            const auto p=candidate.Project(vertex.Position);
+            const auto p=candidate.Project(point);
             if(!p.Valid||!p.InsidePaddedViewport)return false;
             bounds.MinX=std::min(bounds.MinX,p.NdcX);
             bounds.MaxX=std::max(bounds.MaxX,p.NdcX);
