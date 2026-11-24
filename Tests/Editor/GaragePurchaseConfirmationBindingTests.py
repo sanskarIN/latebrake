@@ -117,6 +117,16 @@ class GaragePurchaseConfirmationBindingTests(unittest.TestCase):
         self.assertIn(
             "MenuLine(Mode->GetGaragePurchaseDisplayFeedback(), true)", page
         )
+        # The HUD's measured text fitting clips from the right. The key
+        # and deadline must be ahead of the action/cost so they stay visible.
+        self.assertIn(
+            'TEXT("PRESS %s AGAIN (%.1fs) | %s %d CR")', status
+        )
+        self.assertLess(
+            status.index('Key, Preview.SecondsRemaining'),
+            status.index('Action, Preview.Price') if 'Action, Preview.Price' in status
+            else len(status),
+        )
         self.assertIn("gate.Preview(before, 18.0)", self.tests)
         self.assertIn("gate.Preview(before, 18.0001)", self.tests)
         self.assertIn("gate.Preview(changedBefore, 11.0)", self.tests)
