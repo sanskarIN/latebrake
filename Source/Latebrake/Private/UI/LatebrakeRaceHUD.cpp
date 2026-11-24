@@ -115,6 +115,16 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     // Same six-chip geometry is used by DrawHUD and input hit tests.
     if (Mode->GetMenuPage() == latebrake::MenuPage::Garage)
     {
+        const auto hud = latebrake::CalculateHudLayout(width, height);
+        const auto lane = latebrake::CalculateGarageShowroomLane(
+            width, height, hud, false, true, Mode->GetMenuPage());
+        const auto orbit = latebrake::CalculateGarageOrbitButtons(lane, width, height, hud);
+        const auto* car = PlayerOwner
+            ? Cast<ALatebrakeCarPawn>(PlayerOwner->GetPawn()) : nullptr;
+        const auto orbitAction = latebrake::HitTestGarageOrbitButtons(
+            orbit, x, y, car && car->CanSelectGarageCameraOrbit());
+        if (orbitAction != latebrake::DesktopMenuMouseAction::None)
+            return orbitAction;
         const auto diagram = latebrake::CalculateGarageSchematic(
             width, height, latebrake::CalculateHudLayout(width, height),
             style, Mode->GetGaragePreviewVehicleId(),
@@ -318,6 +328,50 @@ void ALatebrakeRaceHUD::DrawHUD()
                 static_cast<float>(A.X),
                 static_cast<float>(A.Y - 24.0 * Layout.Scale),
                 GEngine->GetSmallFont(), 0.78f * UIScale);
+        }
+
+        const auto OrbitButtons = latebrake::CalculateGarageOrbitButtons(
+            ShowroomLane, Canvas->SizeX, Canvas->SizeY, Layout);
+        if (OrbitButtons.Valid)
+        {
+            const bool bCanOrbit = Car->CanSelectGarageCameraOrbit();
+            float OrbitMouseX = 0.f, OrbitMouseY = 0.f;
+            const auto OrbitHovered = PlayerOwner->GetMousePosition(OrbitMouseX, OrbitMouseY)
+                ? latebrake::HitTestGarageOrbitButtons(
+                    OrbitButtons, OrbitMouseX, OrbitMouseY, bCanOrbit)
+                : latebrake::DesktopMenuMouseAction::None;
+            for (const auto& Button : OrbitButtons.Buttons)
+            {
+                const int32 Index = latebrake::GarageOrbitIndex(Button.Action);
+                const bool bSelected = Index == Car->GetGarageCameraOrbitIndex();
+                const bool bHover = OrbitHovered == Button.Action;
+                const auto& R = Button.Bounds;
+                const float BX=static_cast<float>(R.X), BY=static_cast<float>(R.Y);
+                const float BW=static_cast<float>(R.Width), BH=static_cast<float>(R.Height);
+                const FLinearColor Ink = !bCanOrbit
+                    ? FLinearColor(0.54f,0.59f,0.64f)
+                    : bSelected ? Gold : White;
+                DrawRect(bSelected
+                    ? FLinearColor(0.27f,0.21f,0.09f,0.95f)
+                    : bHover ? FLinearColor(0.19f,0.31f,0.43f,0.95f)
+                             : FLinearColor(0.08f,0.13f,0.20f,0.95f),
+                    BX,BY,BW,BH);
+                DrawRect(Ink,BX,BY,BW,2.f);
+                // Measure each caption and fall back to its ordinal on
+                // narrow buttons. Never draw across another hit target.
+                FString Caption(UTF8_TO_TCHAR(latebrake::GarageOrbitCaption(Index)));
+                float TW=0.f,TH=0.f;
+                const float TS=0.70f*UIScale;
+                GetTextSize(Caption,TW,TH,GEngine->GetSmallFont(),TS);
+                if (TW>BW-8.f)
+                {
+                    Caption=FString::FromInt(Index+1);
+                    GetTextSize(Caption,TW,TH,GEngine->GetSmallFont(),TS);
+                }
+                if (TW<=BW-8.f && TH<=BH-4.f)
+                    DrawText(Caption,Ink,BX+(BW-TW)*0.5f,BY+(BH-TH)*0.5f,
+                        GEngine->GetSmallFont(),TS);
+            }
         }
 
         // Build the logical page first. The former unbounded MenuLine

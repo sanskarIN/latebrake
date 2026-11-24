@@ -140,6 +140,34 @@ void DesktopApertures()
             !CalculateGarageShowroomLane(w,h,hud,false,true,MenuPage::Results).Valid&&
             !CalculateGarageShowroomLane(w,h,hud,false,false,MenuPage::Garage).Valid,
             "touch, other page, and closed menu retain original layouts");
+        const auto buttons=CalculateGarageOrbitButtons(lane,w,h,hud);
+        Check(buttons.Valid,"desktop supports four orbit buttons");
+        for(int index=0;index<GarageOrbitCount;++index)
+        {
+            const auto& b=buttons.Buttons[static_cast<std::size_t>(index)];
+            const auto& rect=b.Bounds;
+            Check(rect.Width>=44.0&&rect.Height>=44.0&&
+                rect.Y>lane.Aperture.Y+lane.Aperture.Height&&
+                rect.X>=lane.Aperture.X&&
+                rect.X+rect.Width<=lane.Aperture.X+lane.Aperture.Width+1e-7,
+                "orbit pointer target below clear aperture and inside its horizontal lane");
+            const double x=rect.X+rect.Width*0.5,y=rect.Y+rect.Height*0.5;
+            Check(HitTestGarageOrbitButtons(buttons,x,y,true)==GarageOrbitAction(index)&&
+                GarageOrbitIndex(b.Action)==index&&
+                HitTestGarageOrbitButtons(buttons,x,y,false)==DesktopMenuMouseAction::None,
+                "direct orbit click and disabled guard agree");
+            if(index+1<GarageOrbitCount)
+                Check(HitTestGarageOrbitButtons(buttons,rect.X+rect.Width,y,true)==
+                    DesktopMenuMouseAction::None,"half-open boundary and gap");
+        }
+        auto broken=buttons;
+        broken.Buttons[1].Bounds=broken.Buttons[0].Bounds;
+        const auto rect=broken.Buttons[0].Bounds;
+        Check(HitTestGarageOrbitButtons(broken,rect.X+1,rect.Y+1,true)==
+            DesktopMenuMouseAction::None,"overlapping targets fail closed");
+        broken=buttons;broken.Buttons[2].Action=DesktopMenuMouseAction::Activate;
+        Check(HitTestGarageOrbitButtons(broken,rect.X+1,rect.Y+1,true)==
+            DesktopMenuMouseAction::None,"wrong action fails closed");
         for(int id=0;id<6;++id)
         {
             const auto mesh=OriginalVehicleSurfaceComposer{}.Build(id).Mesh;

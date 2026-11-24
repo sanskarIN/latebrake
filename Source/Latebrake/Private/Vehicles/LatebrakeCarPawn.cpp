@@ -2936,6 +2936,11 @@ void ALatebrakeCarPawn::MenuMousePressed()
         Mode->GarageBrowsePrevious(); break;
     case latebrake::DesktopMenuMouseAction::GarageBrowseNext:
         Mode->GarageBrowseNext(); break;
+    case latebrake::DesktopMenuMouseAction::GarageOrbit0:
+    case latebrake::DesktopMenuMouseAction::GarageOrbit1:
+    case latebrake::DesktopMenuMouseAction::GarageOrbit2:
+    case latebrake::DesktopMenuMouseAction::GarageOrbit3:
+        SelectGarageCameraOrbit(latebrake::GarageOrbitIndex(Action)); break;
     case latebrake::DesktopMenuMouseAction::GarageQuickView0:
     case latebrake::DesktopMenuMouseAction::GarageQuickView1:
     case latebrake::DesktopMenuMouseAction::GarageQuickView2:
@@ -3251,20 +3256,32 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 }
 
 
-void ALatebrakeCarPawn::OrbitGarageCamera()
+bool ALatebrakeCarPawn::CanSelectGarageCameraOrbit() const
 {
     UWorld* World = GetWorld();
     const ALatebrakeRaceGameMode* Mode =
         World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
-    if (!bGarageShowroomPreviewActive || !IsLocallyControlled() ||
-        Cast<APlayerController>(GetController()) == nullptr ||
-        !Mode || !Mode->CanBrowseGarage() || Mode->IsFocusLossGuardActive() ||
-        Mode->IsManualRacePauseActive())
+    const APlayerController* PC = Cast<APlayerController>(GetController());
+    return bGarageShowroomPreviewActive && IsLocallyControlled() &&
+        IsValid(PC) && PC->IsLocalController() && Mode &&
+        Mode->CanBrowseGarage() && !Mode->IsFocusLossGuardActive() &&
+        !Mode->IsManualRacePauseActive();
+}
+
+void ALatebrakeCarPawn::SelectGarageCameraOrbit(int32 Index)
+{
+    if (!CanSelectGarageCameraOrbit() || Index < 0 ||
+        Index >= latebrake::GarageOrbitCount || Index == GarageCameraOrbitIndex)
         return;
-    // F4 is a dedicated cosmetic control, not the C/RB racing camera.
-    GarageCameraOrbitIndex = (GarageCameraOrbitIndex + 1) % 4;
+    GarageCameraOrbitIndex = Index;
     GarageCameraFit.Reset();
     bGarageCameraViewPresented = false;
+}
+
+void ALatebrakeCarPawn::OrbitGarageCamera()
+{
+    // F4 and direct mouse selection share the same guarded cosmetic path.
+    SelectGarageCameraOrbit((GarageCameraOrbitIndex + 1) % latebrake::GarageOrbitCount);
 }
 
 void ALatebrakeCarPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
@@ -3296,7 +3313,8 @@ void ALatebrakeCarPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
     const double Aspect = static_cast<double>(Width) / static_cast<double>(Height);
     latebrake::vehiclemesh::ShowroomOrbitRequest Request{};
     static constexpr double OrbitYawDegrees[] = {35.0, 90.0, 145.0, -90.0};
-    if (GarageCameraOrbitIndex < 0 || GarageCameraOrbitIndex >= 4)
+    static_assert(UE_ARRAY_COUNT(OrbitYawDegrees) == latebrake::GarageOrbitCount);
+    if (GarageCameraOrbitIndex < 0 || GarageCameraOrbitIndex >= latebrake::GarageOrbitCount)
         return;
     Request.YawDegrees = OrbitYawDegrees[GarageCameraOrbitIndex];
     Request.AspectRatio = Aspect;

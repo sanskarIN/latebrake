@@ -64,12 +64,23 @@ class UnrealGarageCameraBindingTests(unittest.TestCase):
         self.assertIn("DesktopApertures();",
                       read("Tests/Standalone/OriginalVehicleShowroomCameraTests.cpp"))
 
+    def test_mouse_orbit_uses_same_guarded_path_and_measured_buttons(self):
+        for marker in ("CalculateGarageOrbitButtons(", "HitTestGarageOrbitButtons(",
+                       "car && car->CanSelectGarageCameraOrbit()",
+                       "Car->CanSelectGarageCameraOrbit()", "GarageOrbitCaption(Index)"):
+            self.assertIn(marker,self.hud)
+        self.assertIn("SelectGarageCameraOrbit(latebrake::GarageOrbitIndex(Action))",self.pawn)
+        self.assertIn("Index == GarageCameraOrbitIndex",self.pawn)
+        self.assertIn("wrong action fails closed",
+                      read("Tests/Standalone/OriginalVehicleShowroomCameraTests.cpp"))
+
     def test_orbit_is_separate_from_race_camera_and_restores_on_exit(self):
-        orbit=self.pawn.split("void ALatebrakeCarPawn::OrbitGarageCamera()",1)[1].split(
+        orbit=self.pawn.split("bool ALatebrakeCarPawn::CanSelectGarageCameraOrbit()",1)[1].split(
             "void ALatebrakeCarPawn::CalcCamera(",1)[0]
-        for marker in ("!Mode->CanBrowseGarage()", "Mode->IsFocusLossGuardActive()",
-                       "Mode->IsManualRacePauseActive()",
-                       "GarageCameraOrbitIndex = (GarageCameraOrbitIndex + 1) % 4;",
+        for marker in ("Mode->CanBrowseGarage()", "!Mode->IsFocusLossGuardActive()",
+                       "!Mode->IsManualRacePauseActive()",
+                       "SelectGarageCameraOrbit((GarageCameraOrbitIndex + 1) % latebrake::GarageOrbitCount);",
+                       "GarageCameraOrbitIndex = Index;",
                        "GarageCameraFit.Reset();"):
             self.assertIn(marker,orbit)
         self.assertNotIn("CameraViews.Next(",orbit)

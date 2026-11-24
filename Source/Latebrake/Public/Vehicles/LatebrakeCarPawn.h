@@ -130,6 +130,7 @@ public:
     { return bGarageShowroomPreviewActive && bGarageCameraViewPresented; }
     int32 GetGarageCameraOrbitIndex() const noexcept
     { return GarageCameraOrbitIndex; }
+    bool CanSelectGarageCameraOrbit() const;
     // Read-only rendering diagnostics for real owner testing. A committed
     // component/material is NOT proof of visible pixels or lighting quality.
     bool IsOriginalVehicleSurfaceCommitted() const noexcept
@@ -318,6 +319,7 @@ private:
     void RestartPressed();
     void ChangeCamera();
     void OrbitGarageCamera();
+    void SelectGarageCameraOrbit(int32 Index);
     void LookBackPressed();
     void LookBackReleased();
     void ToggleBestLapGhost();

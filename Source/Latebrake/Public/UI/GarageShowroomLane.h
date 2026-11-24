@@ -55,4 +55,88 @@ inline GarageShowroomLane CalculateGarageShowroomLane(
        hx<0.10||hy<0.10)return {};
     return {true,textWidth,aperture,cx,cy,hx,hy};
 }
+
+inline constexpr int GarageOrbitCount=4;
+inline constexpr DesktopMenuMouseAction GarageOrbitAction(int index) noexcept
+{
+    return index>=0&&index<GarageOrbitCount
+        ? static_cast<DesktopMenuMouseAction>(
+            static_cast<int>(DesktopMenuMouseAction::GarageOrbit0)+index)
+        : DesktopMenuMouseAction::None;
+}
+inline constexpr int GarageOrbitIndex(DesktopMenuMouseAction action) noexcept
+{
+    constexpr int first=static_cast<int>(DesktopMenuMouseAction::GarageOrbit0);
+    const int value=static_cast<int>(action);
+    return value>=first&&value<first+GarageOrbitCount?value-first:-1;
+}
+inline constexpr const char* GarageOrbitCaption(int index) noexcept
+{
+    constexpr const char* captions[]={"FRONT","SIDE","REAR","OTHER"};
+    return index>=0&&index<GarageOrbitCount?captions[index]:"";
+}
+static_assert(GarageOrbitIndex(GarageOrbitAction(3))==3);
+static_assert(GarageQuickViewIndex(GarageOrbitAction(0))==-1);
+
+struct GarageOrbitButtons final
+{
+    bool Valid=false;
+    std::array<DesktopMenuMouseButton,GarageOrbitCount> Buttons{};
+};
+
+// Keep all four pointer targets below the projected geometry, within the
+// same horizontal lane. A small or malformed lane never creates an
+// invisible click target. Existing right dock and left details are intact.
+inline GarageOrbitButtons CalculateGarageOrbitButtons(
+    const GarageShowroomLane& lane,double width,double height,
+    HudLayout hud) noexcept
+{
+    GarageOrbitButtons result{};
+    const auto& a=lane.Aperture;
+    if(!lane.Valid||!std::isfinite(width)||!std::isfinite(height)||
+       !std::isfinite(hud.Scale)||hud.Scale<0.6||hud.Scale>1.2||
+       !std::isfinite(a.X)||!std::isfinite(a.Y)||
+       !std::isfinite(a.Width)||!std::isfinite(a.Height)||
+       a.X<0.0||a.Y<0.0||a.Width<=0.0||a.Height<=0.0||
+       a.X+a.Width>width||a.Y+a.Height>height)return {};
+    const double gap=std::max(6.0,8.0*hud.Scale);
+    const double bh=std::max(44.0,44.0*hud.Scale);
+    const double bw=std::min(100.0*hud.Scale,
+        (a.Width-(GarageOrbitCount-1)*gap)/GarageOrbitCount);
+    const double y=a.Y+a.Height+gap;
+    if(!std::isfinite(bw)||bw<44.0||y+bh>height-gap)return {};
+    const double total=GarageOrbitCount*bw+(GarageOrbitCount-1)*gap;
+    const double x=a.X+(a.Width-total)*0.5;
+    if(!std::isfinite(x)||x<a.X||x+total>a.X+a.Width+1e-7)return {};
+    for(int i=0;i<GarageOrbitCount;++i)
+    {
+        result.Buttons[static_cast<std::size_t>(i)]={
+            GarageOrbitAction(i),{x+i*(bw+gap),y,bw,bh}};
+    }
+    result.Valid=true;
+    return result;
+}
+
+inline DesktopMenuMouseAction HitTestGarageOrbitButtons(
+    const GarageOrbitButtons& buttons,double x,double y,bool enabled) noexcept
+{
+    if(!buttons.Valid||!enabled||!std::isfinite(x)||!std::isfinite(y))
+        return DesktopMenuMouseAction::None;
+    DesktopMenuMouseAction found=DesktopMenuMouseAction::None;
+    for(int i=0;i<GarageOrbitCount;++i)
+    {
+        const auto& b=buttons.Buttons[static_cast<std::size_t>(i)];
+        const auto& r=b.Bounds;
+        if(b.Action!=GarageOrbitAction(i)||!std::isfinite(r.X)||
+           !std::isfinite(r.Y)||!std::isfinite(r.Width)||
+           !std::isfinite(r.Height)||!std::isfinite(r.X+r.Width)||
+           !std::isfinite(r.Y+r.Height)||r.X<0.0||r.Y<0.0||
+           r.Width<44.0||r.Height<44.0)
+            return DesktopMenuMouseAction::None;
+        if(!r.Contains(x,y))continue;
+        if(found!=DesktopMenuMouseAction::None)return DesktopMenuMouseAction::None;
+        found=b.Action;
+    }
+    return found;
+}
 } // namespace latebrake
