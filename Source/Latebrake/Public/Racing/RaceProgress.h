@@ -2,6 +2,7 @@
 
 #include <array>
 #include "Racing/RecentTimedLaps.h"
+#include "Racing/MeasuredLapSplitReference.h"
 
 // Portable, engine-independent race progression logic.
 // This header is deliberately free of Unreal dependencies so the same rules
@@ -18,7 +19,7 @@ class RaceProgress final
 {
 public:
     // Fixed-capacity split storage avoids allocations inside portable/Unreal race ticks.
-    static constexpr int MaxCheckpoints = 256;
+    static constexpr int MaxCheckpoints = MeasuredLapMaxGates;
 
     explicit RaceProgress(int checkpointCount = 4, int requiredLaps = 3) noexcept;
 
@@ -46,6 +47,9 @@ public:
         return RecentLaps.GetRecent(offset);
     }
     int GetRecentTimedLapCount() const noexcept { return RecentLaps.Size(); }
+    // Advisory single-lap reference, independent of official record data.
+    const MeasuredLapSplitReference& GetMeasuredLapSplits() const noexcept
+    { return MeasuredSplits; }
     double GetElapsedSeconds() const noexcept { return ElapsedSeconds; }
     // Count only successfully charged time penalties; independent of the
     // caller's optional recovery telemetry. Penalties remain part of lap/split time.
@@ -85,7 +89,9 @@ private:
     int TimedLapCount = 0;
     int ActiveTimedLapCount = 0;
     bool ActiveClockAdvancedThisLap = false;
+    bool ActiveClockAdvancedThisSector = false;
     RecentTimedLaps RecentLaps;
+    MeasuredLapSplitReference MeasuredSplits;
     double ElapsedSeconds = 0.0;
     int TimePenaltyCount = 0;
     double TotalPenaltySeconds = 0.0;

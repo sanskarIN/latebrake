@@ -2313,6 +2313,27 @@ void ALatebrakeCarPawn::NextGarageVehicle()
     }
 }
 
+void ALatebrakeCarPawn::SelectGarageSlot(int32 VehicleId)
+{
+    if (ALatebrakeRaceGameMode* Mode =
+        GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
+    {
+        if (Mode->IsMenuOpen() &&
+            Mode->GetMenuPage() == latebrake::MenuPage::Garage)
+        {
+            ClearDriverInputs();
+            Mode->GarageSelectVehicle(VehicleId);
+        }
+    }
+}
+
+void ALatebrakeCarPawn::GarageSlot1() { SelectGarageSlot(0); }
+void ALatebrakeCarPawn::GarageSlot2() { SelectGarageSlot(1); }
+void ALatebrakeCarPawn::GarageSlot3() { SelectGarageSlot(2); }
+void ALatebrakeCarPawn::GarageSlot4() { SelectGarageSlot(3); }
+void ALatebrakeCarPawn::GarageSlot5() { SelectGarageSlot(4); }
+void ALatebrakeCarPawn::GarageSlot6() { SelectGarageSlot(5); }
+
 void ALatebrakeCarPawn::UnlockGarageVehicle()
 {
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
@@ -2428,10 +2449,40 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
         TEXT("MenuMouseWheelDown"), IE_Pressed,
         this, &ALatebrakeCarPawn::MenuMouseWheelDown);
     WheelDown.bExecuteWhenPaused = true;
-    PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
-    PlayerInputComponent->BindAction(TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
+    // These are paused-menu actions: Unreal normally stops gameplay Tick
+    // while the Canvas menu is open. Never bind as race-driving controls.
+    FInputActionBinding& Slot1 = PlayerInputComponent->BindAction(
+        TEXT("GarageSlot1"), IE_Pressed, this, &ALatebrakeCarPawn::GarageSlot1);
+    Slot1.bExecuteWhenPaused = true;
+    FInputActionBinding& Slot2 = PlayerInputComponent->BindAction(
+        TEXT("GarageSlot2"), IE_Pressed, this, &ALatebrakeCarPawn::GarageSlot2);
+    Slot2.bExecuteWhenPaused = true;
+    FInputActionBinding& Slot3 = PlayerInputComponent->BindAction(
+        TEXT("GarageSlot3"), IE_Pressed, this, &ALatebrakeCarPawn::GarageSlot3);
+    Slot3.bExecuteWhenPaused = true;
+    FInputActionBinding& Slot4 = PlayerInputComponent->BindAction(
+        TEXT("GarageSlot4"), IE_Pressed, this, &ALatebrakeCarPawn::GarageSlot4);
+    Slot4.bExecuteWhenPaused = true;
+    FInputActionBinding& Slot5 = PlayerInputComponent->BindAction(
+        TEXT("GarageSlot5"), IE_Pressed, this, &ALatebrakeCarPawn::GarageSlot5);
+    Slot5.bExecuteWhenPaused = true;
+    FInputActionBinding& Slot6 = PlayerInputComponent->BindAction(
+        TEXT("GarageSlot6"), IE_Pressed, this, &ALatebrakeCarPawn::GarageSlot6);
+    Slot6.bExecuteWhenPaused = true;
+    // E/Q/U/I are controls on the *paused* Garage page, just like Ctrl+1..6.
+    // Without these flags Unreal drops the key press while the menu pauses play.
+    FInputActionBinding& GarageNext = PlayerInputComponent->BindAction(
+        TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
+    GarageNext.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageUnlock = PlayerInputComponent->BindAction(
+        TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
+    GarageUnlock.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageEngine = PlayerInputComponent->BindAction(
+        TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
+    GarageEngine.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageGrip = PlayerInputComponent->BindAction(
+        TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
+    GarageGrip.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }

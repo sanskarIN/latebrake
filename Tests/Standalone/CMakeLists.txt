@@ -273,7 +273,7 @@ endif()
 add_test(NAME TouchControlLayout COMMAND latebrake_touch_layout_tests)
 
 # Independent career rules: no Unreal SDK or licensed assets required.
-foreach(name IN ITEMS GarageCatalogView CareerCatalog CareerProgress CareerChallenges MenuNavigation ProfileWriteCheckpoint TouchDriveState TouchPressTracker TouchFingerRange TouchViewportGuard TouchViewportSafety CareerLaunchSelection CareerReplayPreparation CircuitGateCrossing DecorationBatchPlan GateDiagnostic GateDiagnosticCounters GateDiagnosticWindow CircuitStartupAudit CircuitCollisionPlan CollisionBlockSetup CircuitSpawnSafety CollisionResponsePolicy)
+foreach(name IN ITEMS GarageCatalogView GarageQuickSelect CareerCatalog CareerProgress CareerChallenges MenuNavigation ProfileWriteCheckpoint TouchDriveState TouchPressTracker TouchFingerRange TouchViewportGuard TouchViewportSafety CareerLaunchSelection CareerReplayPreparation CircuitGateCrossing DecorationBatchPlan GateDiagnostic GateDiagnosticCounters GateDiagnosticWindow CircuitStartupAudit CircuitCollisionPlan CollisionBlockSetup CircuitSpawnSafety CollisionResponsePolicy)
     add_executable(latebrake_${name}_tests ${name}Tests.cpp)
     target_include_directories(latebrake_${name}_tests PRIVATE ../../Source/Latebrake/Public)
     target_compile_features(latebrake_${name}_tests PRIVATE cxx_std_20)
@@ -2524,8 +2524,50 @@ add_latebrake_portable_research_test(ObservedGripFusion)
 # Read-only source pace intervals and four reference sectors.
 add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
 
-# Perspective-fit camera for original source geometry, not native UE camera.
-add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
+# Portable source-only car appearance, articulated meshes and OBJ previews.
+add_latebrake_portable_research_test(CircuitLightingPreview)
+add_latebrake_portable_research_test(FrontLampRig)
+add_latebrake_portable_research_test(GarageAppearance)
+add_latebrake_portable_research_test(GarageGalleryCursor)
+add_latebrake_portable_research_test(GarageShowroomPresentation)
+add_latebrake_portable_research_test(GarageVisualTransition)
+add_latebrake_portable_research_test(OriginalMeshBuildTelemetry)
+add_latebrake_portable_research_test(OriginalVehicleAnimatedWheels)
+add_latebrake_portable_research_test(OriginalVehicleObjPreview)
+add_latebrake_portable_research_test(OriginalVehicleRenderSections)
+add_latebrake_portable_research_test(OriginalVehicleTintMaterialPolicy)
+add_latebrake_portable_research_test(VehicleRearSignalRenderRig)
+add_latebrake_portable_research_test(VisualPlaytestReadout)
+add_executable(latebrake_original_obj_preview ../../Tools/OriginalVehicleObjPreview.cpp)
+target_include_directories(latebrake_original_obj_preview PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_original_obj_preview PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_original_obj_preview PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_original_obj_preview PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
 
 # Main integration: sequential garage purchase planning.
 add_latebrake_portable_research_test(GaragePurchasePlanner)
+
+# Main integration: adaptive original-vehicle showroom camera.
+add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
+
+# Cached signed reference clock with invertible source timing.
+add_latebrake_portable_research_test(WorldScaleVariantReferenceClock)
+
+# Real ordered gate timings, linked to production RaceProgress.
+add_executable(latebrake_measured_lap_split_reference_tests
+    MeasuredLapSplitReferenceTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
+target_include_directories(latebrake_measured_lap_split_reference_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_measured_lap_split_reference_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_measured_lap_split_reference_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_measured_lap_split_reference_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME MeasuredLapSplitReference COMMAND latebrake_measured_lap_split_reference_tests)
+
+# Crease-aware render and OBJ shading frames.
+add_latebrake_portable_research_test(OriginalVehicleSurfaceShading)

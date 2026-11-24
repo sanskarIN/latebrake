@@ -26,6 +26,7 @@
 #include "Career/CareerLaunchSelection.h"
 #include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
+#include "Garage/GarageQuickSelect.h"
 #include "HAL/PlatformTime.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
@@ -2029,9 +2030,43 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     LastAppliedTuning = Requested;
 }
 
+void ALatebrakeRaceGameMode::CommitGarageVehicleSelection(int32 VehicleId)
+{
+    // One transaction for both E/SELECT cycling and Ctrl+1..6 selection.
+    // Snapshot every persisted dependency before changing live vehicle tuning.
+    latebrake::ProfileWriteCheckpoint SavedProfile(
+        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
+        PersonalBestLapSeconds, BestTimeAttackSeconds);
+    if (!Garage.Select(VehicleId))
+    {
+        GarageFeedback = TEXT("Vehicle is not owned. Unlock it first.");
+        return;
+    }
+    ApplyGarageToPlayer();
+    GarageFeedback = FString::Printf(TEXT("Selected %s."), *GetSelectedVehicleName());
+    SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        SavedProfile.Rollback();
+        ApplyGarageToPlayer();
+        GarageFeedback = TEXT("Vehicle selection not saved. Previous vehicle restored.");
+    }
+    else
+    {
+        SavedProfile.Commit();
+    }
+}
+
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
     GaragePurchaseConfirm.Reset();
+    // Keep E/SELECT consistent with the new Ctrl+number shortcuts.
+    // Never swap a running car or change equipment on a different page.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
+    {
+        GarageFeedback = TEXT("Open Garage page to change vehicles.");
+        return;
+    }
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GarageFeedback = TEXT("Finish or exit this career race before changing vehicles.");
@@ -2044,24 +2079,46 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
         GarageFeedback = TEXT("Unlock another vehicle with Q first.");
         return;
     }
-    latebrake::ProfileWriteCheckpoint SavedProfile(
-        Garage, Career, CompletedRaceCount, PersonalBestSeconds,
-        PersonalBestLapSeconds, BestTimeAttackSeconds);
-    if (Garage.Select(Next))
+    CommitGarageVehicleSelection(Next);
+}
+
+void ALatebrakeRaceGameMode::GarageSelectVehicle(int32 VehicleId)
+{
+    // The shortcut cannot operate while driving, on another page, or during
+    // an active career race. Never interpret Ctrl+1..6 as purchase commands.
+    const bool bGaragePage = Menu.Current() == latebrake::MenuPage::Garage;
+    const latebrake::GarageQuickSelectDecision Decision =
+        latebrake::PreviewGarageQuickSelect(
+            Garage.Snapshot(), VehicleId, Menu.IsOpen(), bGaragePage,
+            latebrake::CanEditGarageDuringRace(bCareerRace, Race));
+    if (Decision.Status == latebrake::GarageQuickSelectStatus::MenuClosed ||
+        Decision.Status == latebrake::GarageQuickSelectStatus::WrongPage)
     {
-        ApplyGarageToPlayer();
-        GarageFeedback = FString::Printf(TEXT("Selected %s."), *GetSelectedVehicleName());
-        SaveRecords();
-        if (bProgressSaveFailed)
-        {
-            SavedProfile.Rollback();
-            ApplyGarageToPlayer();
-            GarageFeedback = TEXT("Vehicle selection not saved. Previous vehicle restored.");
-        }
-        else
-        {
-            SavedProfile.Commit();
-        }
+        return;
+    }
+    GaragePurchaseConfirm.Reset();
+    switch (Decision.Status)
+    {
+    case latebrake::GarageQuickSelectStatus::CareerRaceLocked:
+        GarageFeedback = TEXT("Finish or exit this career race before changing vehicles.");
+        return;
+    case latebrake::GarageQuickSelectStatus::InvalidVehicle:
+        GarageFeedback = TEXT("Unknown garage shortcut.");
+        return;
+    case latebrake::GarageQuickSelectStatus::NotOwned:
+        GarageFeedback = FString::Printf(
+            TEXT("%s is locked. Q unlocks the next car only."),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(VehicleId).Name));
+        return;
+    case latebrake::GarageQuickSelectStatus::AlreadyEquipped:
+        GarageFeedback = FString::Printf(
+            TEXT("%s is already equipped."), *GetSelectedVehicleName());
+        return;
+    case latebrake::GarageQuickSelectStatus::Ready:
+        CommitGarageVehicleSelection(Decision.VehicleId);
+        return;
+    default:
+        return;
     }
 }
 
@@ -2073,9 +2130,9 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
         GarageFeedback = TEXT("Finish or exit this career race before buying vehicles.");
         return;
     }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
+    // A Garage-page pause is mandatory before any two-step purchase.
+    // Closed-menu keyboard input must not stage a hidden transaction.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Open Garage page to preview a purchase.");
@@ -2133,9 +2190,9 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
         GarageFeedback = TEXT("Finish or exit this career race before upgrading engine.");
         return;
     }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
+    // A Garage-page pause is mandatory before any two-step purchase.
+    // Closed-menu keyboard input must not stage a hidden transaction.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Open Garage page to preview a purchase.");
@@ -2192,9 +2249,9 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
         GarageFeedback = TEXT("Finish or exit this career race before upgrading grip.");
         return;
     }
-    // When a menu owns focus, spending must be accompanied by visible
-    // Garage-page feedback; never stage an invisible approval elsewhere.
-    if (Menu.IsOpen() && Menu.Current() != latebrake::MenuPage::Garage)
+    // A Garage-page pause is mandatory before any two-step purchase.
+    // Closed-menu keyboard input must not stage a hidden transaction.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
     {
         GaragePurchaseConfirm.Reset();
         GarageFeedback = TEXT("Open Garage page to preview a purchase.");

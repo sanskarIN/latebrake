@@ -154,6 +154,8 @@ public:
     int32 GetNextEngineUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine); }
     int32 GetNextGripUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip); }
     void GarageNextVehicle();
+    // Explicit six-slot equip is menu-only and never buys a car.
+    void GarageSelectVehicle(int32 VehicleId);
     void GarageUnlockNext();
     void GarageUpgradeEngine();
     void GarageUpgradeGrip();
@@ -174,6 +176,7 @@ private:
     void SaveRecords();
     void RefreshRival();
     void ApplyGarageToPlayer();
+    void CommitGarageVehicleSelection(int32 VehicleId);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();
