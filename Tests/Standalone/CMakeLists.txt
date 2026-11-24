@@ -2524,5 +2524,8 @@ add_latebrake_portable_research_test(ObservedGripFusion)
 # Read-only source pace intervals and four reference sectors.
 add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
 
-# Read-only garage budget and sequential purchase route planner.
+# Perspective-fit camera for original source geometry, not native UE camera.
+add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
+
+# Main integration: sequential garage purchase planning.
 add_latebrake_portable_research_test(GaragePurchasePlanner)
