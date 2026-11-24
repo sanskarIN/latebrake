@@ -42,6 +42,20 @@ class RecentLapReviewBindingTests(unittest.TestCase):
                           "SetActorLocation", "CareerAward"):
             self.assertNotIn(forbidden, self.model)
 
+    def test_per_lap_fee_attribution_is_observed_and_not_a_record(self):
+        for mark in ("Row.PenaltyAttributionKnown", "Row.IncludedPenaltySeconds",
+                     "Row.ClockExcludingPenaltySeconds", "LapReview.CompletePenaltyAttribution",
+                     "LapReview.CoversEntireRace", "FEE-EXCLUDED CLOCK IS NOT A LAP RECORD.",
+                     "RETAINED FEES +%.2fs"):
+            self.assertIn(mark, self.hud)
+        for mark in ("lap.PenaltyAttributionKnown", "lap.PenaltySeconds",
+                     "race.GetTotalPenaltySeconds()", "result.CoversEntireRace",
+                     "result.CompletePenaltyAttribution = false;"):
+            self.assertIn(mark, self.model)
+        race = (ROOT / "Source/Latebrake/Private/Racing/RaceProgress.cpp").read_text(encoding="utf-8")
+        self.assertIn("lapHadActiveClockEvidence, LastLapPenaltySeconds, true", race)
+        self.assertIn("review.RetainedPenaltySeconds - expectedFees", self.test)
+
     def test_review_refuses_unawardable_ends_and_does_not_allocate(self):
         for mark in (
             "CanAwardFinishedRace(race)",

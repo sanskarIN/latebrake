@@ -548,12 +548,44 @@ void ALatebrakeRaceHUD::DrawHUD()
                     MenuLine(FString::Printf(
                         TEXT("LAP %d: %.2fs | %s"),
                         Row.CompletedLap, Row.LapSeconds, *BestLabel));
+                    if (Row.PenaltyAttributionKnown &&
+                        Row.IncludedPenaltySeconds > 0.0)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("  FEE +%.2fs INCLUDED | CLOCK EXCL. FEE %.2fs"),
+                            Row.IncludedPenaltySeconds,
+                            Row.ClockExcludingPenaltySeconds));
+                    }
                     if (!bCompact && Row.HasPrevious)
                     {
                         MenuLine(FString::Printf(
                             TEXT("  LAP %d vs prior timed: %+.2fs"),
                             Row.CompletedLap, Row.DeltaToPreviousSeconds));
+                        if (Row.HasAdjacentPenaltyComparison &&
+                            Row.PenaltyDeltaToPreviousSeconds != 0.0)
+                        {
+                            MenuLine(FString::Printf(
+                                TEXT("  CLOCK EXCL. FEE %+.2fs | FEE CHANGE %+.2fs"),
+                                Row.ClockDeltaToPreviousSeconds,
+                                Row.PenaltyDeltaToPreviousSeconds));
+                        }
                     }
+                }
+            }
+            if (LapReview.Valid && LapReview.CompletePenaltyAttribution)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("%s: %d FEE-FREE / %d PENALIZED LAPS"),
+                    LapReview.CoversEntireRace ? TEXT("ALL LAPS") : TEXT("RETAINED LAPS"),
+                    LapReview.PenaltyFreeLaps, LapReview.PenalizedLaps));
+                if (LapReview.PenalizedLaps > 0)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("RETAINED FEES +%.2fs | MOST ON LAP %d (+%.2fs)"),
+                        LapReview.RetainedPenaltySeconds,
+                        LapReview.LargestPenaltyLap,
+                        LapReview.LargestPenaltySeconds));
+                    MenuLine(TEXT("FEE-EXCLUDED CLOCK IS NOT A LAP RECORD."), true);
                 }
             }
             // Run-local pace distribution. The most recent at most eight

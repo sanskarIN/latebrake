@@ -148,8 +148,15 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
             // lap times, while the explicit count ignores zero-duration
             // laps which would otherwise make pace spread misleading.
             ++TimedLapCount;
-            RecentLaps.Record(CompletedLaps, LastLapSeconds,
-                lapHadActiveClockEvidence);
+            // Preserve the valid timed-lap history even if extreme clock
+            // precision makes penalty attribution unrepresentable. In
+            // that case record the lap with explicitly unknown attribution.
+            if (!RecentLaps.Record(CompletedLaps, LastLapSeconds,
+                lapHadActiveClockEvidence, LastLapPenaltySeconds, true))
+            {
+                RecentLaps.Record(CompletedLaps, LastLapSeconds,
+                    lapHadActiveClockEvidence);
+            }
             if (BestLapSeconds <= 0.0 || LastLapSeconds < BestLapSeconds)
             {
                 BestLapSeconds = LastLapSeconds;
