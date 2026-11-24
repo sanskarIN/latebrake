@@ -2526,3 +2526,6 @@ add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
 
 # Cached signed reference clock with invertible source timing.
 add_latebrake_portable_research_test(WorldScaleVariantReferenceClock)
+
+# Main integration: sequential garage purchase planning.
+add_latebrake_portable_research_test(GaragePurchasePlanner)
