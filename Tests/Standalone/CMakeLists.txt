@@ -3093,3 +3093,6 @@ add_latebrake_portable_research_test(GaragePurchasePlanner)
 
 # Main-targeted #457 camera geometry, consumed by the draft native view.
 add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
+
+# Original smooth/hard surface seams, tangent handedness and native render parity.
+add_latebrake_portable_research_test(OriginalVehicleSurfaceShading)

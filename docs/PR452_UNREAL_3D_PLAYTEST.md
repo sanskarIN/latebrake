@@ -371,3 +371,7 @@ At 900x600, 1280x720, 1920x1080 and ultrawide resolutions, verify the left detai
 ### Direct orbit selection
 
 Click each of the four buttons beneath the preview area, then press F4 and confirm the same index is cycled. The selected label follows the actual requested angle even when the obstruction fallback is active. Disabled controls during focus loss or manual pause cannot switch views. Clicking gaps, the scene itself, or controls on another menu page must not switch the camera. Verify the controls do not cover the projected car at laptop and ultrawide sizes; verify the regular race camera is unchanged after closing Garage.
+
+### Surface shading and tangent-frame QA
+
+Inspect all six cars and all three rim types in front, rear and side views under available native track lighting. Body contours and curved tire surfaces should show smoother lighting, while glass boundaries, hard trim, lamp housings and rim details retain their shape. Verify there are no black seams, inverted normals, shading cracks, wheel-pivot changes or new collision sections. OBJ source preview exports use the same normals as native mesh uploads; their materials are not a substitute for UE PBR or GPU tests. Compare paint changes without additional mesh rebuilds. Keep the fallback primitive car when the source shading or material contract fails.

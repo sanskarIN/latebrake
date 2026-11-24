@@ -38,6 +38,7 @@
 #include "UI/FocusSuspendedTouchPolicy.h"
 #include "Garage/GarageState.h"
 #include "Vehicles/OriginalVehicleRenderSections.h"
+#include "Vehicles/OriginalVehicleSurfaceShading.h"
 #include "Vehicles/OriginalVehicleAnimatedWheels.h"
 #include "Vehicles/GarageVisualTransition.h"
 #include "Vehicles/GarageShowroomPresentation.h"
@@ -740,6 +741,10 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     if (!generated.Valid || !generated.Mesh.Ready ||
         generated.Mesh.ChangesChaosContact)
         return;
+    const auto shading =
+        latebrake::vehiclemesh::BuildOriginalSurfaceShading(generated.Mesh);
+    if (!shading.Valid || shading.Frames.size() != generated.Mesh.Vertices.size())
+        return;
     const auto sections =
         latebrake::vehiclemesh::MakeOriginalVehicleRenderSections(
             generated.Mesh);
@@ -787,6 +792,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
             Normals.Reserve(Capacity);
             UV0.Reserve(Capacity);
             VertexColors.Reserve(Capacity);
+            Tangents.Reserve(Capacity);
             for (const auto triangleId:triangleIds)
             {
                 const auto& triangle=generated.Mesh.Triangles[triangleId];
@@ -801,9 +807,13 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
                         vertex.Position.X-Pivot.X,
                         vertex.Position.Y-Pivot.Y,
                         vertex.Position.Z-Pivot.Z));
-                    Normals.Add(FVector(vertex.Normal.X,
-                                        vertex.Normal.Y,
-                                        vertex.Normal.Z));
+                    const auto& Surface = shading.Frames[index];
+                    Normals.Add(FVector(Surface.Normal.X,
+                                        Surface.Normal.Y,
+                                        Surface.Normal.Z));
+                    Tangents.Add(FProcMeshTangent(
+                        FVector(Surface.Tangent.X,Surface.Tangent.Y,Surface.Tangent.Z),
+                        Surface.FlipTangentY));
                     UV0.Add(FVector2D(vertex.TexCoord.U,
                                        vertex.TexCoord.V));
                     VertexColors.Add(FColor::White);
