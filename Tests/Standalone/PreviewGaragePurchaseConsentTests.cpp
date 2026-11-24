@@ -2,6 +2,7 @@
 #include "PreviewGaragePurchaseConsent.h"
 #include <cstdlib>
 #include <iostream>
+#include <initializer_list>
 #include <limits>
 
 namespace
@@ -126,6 +127,9 @@ void DeterministicStress()
         if((seed&63u)==0u)c.Reset();
         if((seed&7u)==0u)
             c.Advance(static_cast<float>((seed>>17)%50u)*0.1f);
+        // Start new simulated profiles so the ownership mask cannot
+        // saturate and turn most of the stress run into trivial rejections.
+        if((n%127)==0){mask=1u;c.Reset();}
         if((seed&31u)==0u && ValidPreviewCar(viewed))
             mask|=1u<<static_cast<unsigned int>(viewed);
         const int previous=c.Target;
