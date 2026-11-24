@@ -54,10 +54,14 @@ class HudMenuVerticalBindingTests(unittest.TestCase):
 
     def test_production_geometry_preserves_steering_zone(self):
         for marker in (
-            "CalculateTouchControlLayout(width, height).Steering.Y",
+            "CalculateTouchControlLayout(width, height)",
+            "touchUI && !touch.Valid",
+            "touchUI ? touch.Steering.Y : height",
             "step = 28.0 * layout.Scale",
             "saveY + step > bottom",
-            "std::clamp(maxRows, 0, 90)",
+            "std::isfinite(rows)",
+            "static_cast<int>(std::min(rows, 89.0)) + 1",
+            "latestDetailY < overflowY && overflowY < saveY && saveY < bottom",
             "latestDetailY < layout.Top",
         ):
             self.assertIn(marker, self.plan)
