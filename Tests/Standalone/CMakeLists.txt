@@ -2571,3 +2571,37 @@ add_test(NAME MeasuredLapSplitReference COMMAND latebrake_measured_lap_split_ref
 
 # Crease-aware render and OBJ shading frames.
 add_latebrake_portable_research_test(OriginalVehicleSurfaceShading)
+
+# Read-only garage/HUD/original mesh policies and real portable regressions.
+# These do not imply a UE5.8 cooked runtime, user input integration, or GPU QA.
+add_latebrake_portable_research_test(HudDetailTextFlow)
+add_latebrake_portable_research_test(HudInstrumentDriveBadge)
+add_latebrake_portable_research_test(HudMenuReadablePanel)
+add_latebrake_portable_research_test(NitroHudReadout)
+add_latebrake_portable_research_test(GarageEquipUi)
+add_latebrake_portable_research_test(GarageInputFocus)
+add_latebrake_portable_research_test(OriginalVehicleIndexedRender)
+add_latebrake_portable_research_test(OriginalVehicleRenderCache)
+add_latebrake_portable_research_test(ProfileSaveWriteGuard)
+add_latebrake_portable_research_test(BestLapGhostYawContinuity)
+add_latebrake_portable_research_test(RaceSessionCrossSystemSafety)
+add_latebrake_portable_research_test(RivalPassGateRetry)
+add_latebrake_portable_research_test(HudIntegratedReadouts)
+add_latebrake_portable_research_test(HudIntegratedViewportSafety)
+
+# Windows top-down preview helpers are pure C++20 source; compile their
+# runtime policies on all platforms even when the Win32 EXE is not built.
+function(add_latebrake_preview_policy_test suffix)
+    add_latebrake_portable_research_test(${suffix})
+    target_include_directories("latebrake_research_${suffix}"
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../Experiments/Win32Preview")
+endfunction()
+add_latebrake_preview_policy_test(PreviewDrivingCoach)
+add_latebrake_preview_policy_test(PreviewGarageBottomAction)
+add_latebrake_preview_policy_test(PreviewGaragePurchaseConsent)
+add_latebrake_preview_policy_test(PreviewGarageSelection)
+add_latebrake_preview_policy_test(PreviewGarageStyle)
+add_latebrake_preview_policy_test(PreviewKeyboardFocusGuard)
+add_latebrake_preview_policy_test(PreviewRaceTimeText)
+add_latebrake_preview_policy_test(PreviewSettingsPersistence)
+add_latebrake_preview_policy_test(PreviewViewportMath)

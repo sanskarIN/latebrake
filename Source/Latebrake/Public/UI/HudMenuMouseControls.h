@@ -60,6 +60,9 @@ struct DesktopMenuMouseAvailability final
 {
     bool DetailsUp = false;
     bool DetailsDown = false;
+    // Garage-only equip authority is distinct from scroll/navigation.
+    // Default true preserves other pages' normal SELECT behavior.
+    bool Activate = true;
 };
 
 inline DesktopMenuMouseAvailability AvailableDesktopMenuDetails(
@@ -75,6 +78,20 @@ inline DesktopMenuMouseAvailability AvailableDesktopMenuDetails(
     return {window.HasPrevious, window.HasNext};
 }
 
+// A disabled Garage EQUIP must never disable page/detail navigation or CLOSE.
+// This helper does not inspect or change persisted ownership or race state.
+inline DesktopMenuMouseAvailability AvailableDesktopMenuActions(
+    MenuPage page, const MenuDetailPager& pager,
+    bool canEquipGarageViewed) noexcept
+{
+    auto availability = AvailableDesktopMenuDetails(page, pager);
+    if (page == MenuPage::Garage)
+    {
+        availability.Activate = canEquipGarageViewed;
+    }
+    return availability;
+}
+
 inline bool DesktopMenuMouseActionEnabled(
     DesktopMenuMouseAction action,
     DesktopMenuMouseAvailability availability) noexcept
@@ -83,9 +100,10 @@ inline bool DesktopMenuMouseActionEnabled(
     {
     case DesktopMenuMouseAction::PreviousPage:
     case DesktopMenuMouseAction::NextPage:
-    case DesktopMenuMouseAction::Activate:
     case DesktopMenuMouseAction::Close:
         return true;
+    case DesktopMenuMouseAction::Activate:
+        return availability.Activate;
     case DesktopMenuMouseAction::DetailsUp:
         return availability.DetailsUp;
     case DesktopMenuMouseAction::DetailsDown:
