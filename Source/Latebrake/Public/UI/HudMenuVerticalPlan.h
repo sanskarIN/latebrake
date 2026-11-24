@@ -31,10 +31,11 @@ inline HudMenuVerticalPlan CalculateHudMenuVerticalPlan(
     }
 
     const double step = 28.0 * layout.Scale;
-    const double bottom = touchUI
-        ? CalculateTouchControlLayout(width, height).Steering.Y
-        : height;
-    if (!std::isfinite(bottom))
+    const auto touch = touchUI
+        ? CalculateTouchControlLayout(width, height) : TouchControlLayout{};
+    if (touchUI && !touch.Valid) return {};
+    const double bottom = touchUI ? touch.Steering.Y : height;
+    if (!std::isfinite(step) || step <= 0.0 || !std::isfinite(bottom))
     {
         return {};
     }
@@ -44,14 +45,17 @@ inline HudMenuVerticalPlan CalculateHudMenuVerticalPlan(
     const double overflowY = saveY - 1.25 * step;
     const double latestDetailY = overflowY - 1.25 * step;
     if (!std::isfinite(latestDetailY) || latestDetailY < layout.Top ||
+        !(latestDetailY < overflowY && overflowY < saveY && saveY < bottom) ||
         saveY + step > bottom)
     {
         return {};
     }
 
-    int maxRows = static_cast<int>(
-        std::floor((latestDetailY - layout.Top) / step)) + 1;
-    maxRows = std::clamp(maxRows, 0, 90);
+    // Clamp in floating point BEFORE conversion, including huge finite
+    // viewports with a still-representable line spacing.
+    const double rows = std::floor((latestDetailY - layout.Top) / step);
+    if (!std::isfinite(rows) || rows < 0.0) return {};
+    const int maxRows = static_cast<int>(std::min(rows, 89.0)) + 1;
     return {true, maxRows, overflowY, saveY};
 }
 } // namespace latebrake

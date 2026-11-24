@@ -76,7 +76,14 @@ int ChooseHudTextPrefix(
     {
         return length;
     }
-    if (suffixWidth > maxWidth)
+    if (suffixWidth > maxWidth || length == 0)
+    {
+        return -1;
+    }
+    // The binary search assumes a usable zero-prefix baseline. Validate
+    // it through the same shaped measurement callback as every probe.
+    const double baseline = measure(0);
+    if (!std::isfinite(baseline) || baseline < 0.0 || baseline > maxWidth)
     {
         return -1;
     }

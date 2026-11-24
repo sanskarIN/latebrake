@@ -18,18 +18,19 @@ struct PreviewGaragePurchaseConsent final
     static constexpr float OfferLifetimeSeconds=8.0f;
     int Target=-1;
     float Remaining=0.0f;
+    int OfferedPrice=0;
 
-    void Reset() noexcept {Target=-1;Remaining=0.0f;}
+    void Reset() noexcept {Target=-1;Remaining=0.0f;OfferedPrice=0;}
     bool PendingFor(int id) const noexcept
     {
         return ValidPreviewCar(id) && Target==id &&
-               Remaining>=0.0f && Remaining>0.0f &&
+               OfferedPrice>0 && Remaining>0.0f &&
                Remaining<=OfferLifetimeSeconds;
     }
     void Advance(float dt) noexcept
     {
         if(!(dt>=0.0f && dt<=1000000.0f)){Reset();return;}
-        if(Target<0)return;
+        if(!PendingFor(Target)){Reset();return;}
         if(dt>=Remaining){Reset();return;}
         Remaining-=dt;
     }
@@ -42,11 +43,13 @@ struct PreviewGaragePurchaseConsent final
         {
             Reset();return PreviewPurchaseChoice::Rejected;
         }
-        if(PendingFor(viewed))
+        // A prior offer authorizes only the exact displayed car AND price.
+        if(PendingFor(viewed) && OfferedPrice==price)
         {
             Reset();return PreviewPurchaseChoice::Confirm;
         }
         Target=viewed;
+        OfferedPrice=price;
         Remaining=OfferLifetimeSeconds;
         return PreviewPurchaseChoice::Offer;
     }
