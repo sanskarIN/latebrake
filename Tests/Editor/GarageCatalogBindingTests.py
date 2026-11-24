@@ -38,7 +38,7 @@ class GarageCatalogBindingTests(unittest.TestCase):
             "GarageCatalogOwnership::LockedInsufficientCredits",
             "Catalog.NextUnlockId", "Entry.RouteCreditsShort",
             "Entry.Effective.Acceleration", "Entry.Effective.Grip",
-            "Entry.Effective.TopSpeed", "Mode->GetGarageFeedback()"
+            "Entry.Effective.TopSpeed", "Mode->GetGaragePurchaseDisplayFeedback()"
         ):
             self.assertIn(marker, garage_page)
         for forbidden in ("Garage.Unlock(", "Garage.Select(",
@@ -46,7 +46,7 @@ class GarageCatalogBindingTests(unittest.TestCase):
                           "ApplyGarageToPlayer(", "RestartRace(",
                           "RegisterCheckpoint(", "EarnCredits("):
             self.assertNotIn(forbidden, garage_page)
-        self.assertLess(garage_page.index("Mode->GetGarageFeedback()"),
+        self.assertLess(garage_page.index("Mode->GetGaragePurchaseDisplayFeedback()"),
                         garage_page.index("for (const latebrake::GarageCatalogEntry&"),
                         "purchase confirmation remains visible near first page")
 
