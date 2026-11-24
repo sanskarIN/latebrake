@@ -31,3 +31,20 @@ actual Unreal F1–F6 Garage selection handlers and portable policy tests.
    Do not independently merge #456 and #460 into the combined branch.
 
 **No tag, release, installer, or actual UE cooked game is implied.**
+
+## Additional combined regression evidence
+
+- Compare every locked row's *sequential route budget* against the first
+  unlocked vehicle's true Q purchase price. The direct F-key does not buy
+  a car even when its budget is affordable.
+- Exercise all 64 six-car ownership masks in portable tests with unusual
+  equipped IDs and negative/maximum credit values. A real owned car
+  selection may only change the selected ID, never credits, car ownership
+  or the saved engine/grip tuning level.
+- Fail a real Win64 profile write and check the old car is both displayed
+  and handling the same way after rollback. Pure C++ transaction oracles
+  alone cannot certify this native behavior.
+- On Android/touch, show numeric car positions without suggesting desktop
+  function keys. Repeated finger taps must not invoke purchase actions.
+- Retest source-clock and result HUD plus all six source mesh previews:
+  adding keyboard input must never erase the separate source UI work.

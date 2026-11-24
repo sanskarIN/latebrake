@@ -80,6 +80,44 @@ int main()
             Check(decision.Status == expected && decision.VehicleId == id,
                   "owned/equipped outcomes agree with sanitized garage");
         }
+        // Exercise every possible owned-car selection with real GarageState.
+        // This is a pure transaction oracle, NOT a test of Unreal SaveGame IO.
+        for (int id = 0; id < VehicleCount; ++id)
+        {
+            const auto view = PreviewGarageQuickSelect(
+                normalizedBefore, id, true, true, true);
+            GarageState staged;
+            staged.Load(normalizedBefore);
+            const bool changed = staged.Select(id);
+            const GarageSnapshot after = staged.Snapshot();
+            Check(changed == staged.Owns(id), "only owned cars can be selected");
+            Check(after.Credits == normalizedBefore.Credits &&
+                  after.OwnedVehicleMask == normalizedBefore.OwnedVehicleMask &&
+                  after.EngineLevel == normalizedBefore.EngineLevel &&
+                  after.GripLevel == normalizedBefore.GripLevel,
+                  "equipping never spends credits or changes upgrades");
+            if (view.Status == GarageQuickSelectStatus::Ready)
+            {
+                Check(changed && after.SelectedVehicle == id,
+                      "ready selection equips requested owned vehicle");
+            }
+            else if (view.Status == GarageQuickSelectStatus::NotOwned)
+            {
+                Check(!changed && Same(after, normalizedBefore),
+                      "locked selection leaves all garage state unchanged");
+            }
+            else if (view.Status == GarageQuickSelectStatus::AlreadyEquipped)
+            {
+                Check(changed && Same(after, normalizedBefore),
+                      "re-equipping the current vehicle is idempotent");
+            }
+            // Simulate a failed profile write: the exact saved snapshot must
+            // restore equipment, ownership, tuning and balance together.
+            staged.Load(normalizedBefore);
+            Check(Same(staged.Snapshot(), normalizedBefore),
+                  "failed-save rollback restores the full garage snapshot");
+        }
+
         Check(Same(authority.Snapshot(), normalizedBefore),
               "query never mutates normalized garage");
         Check(Same(before, GarageSnapshot{
