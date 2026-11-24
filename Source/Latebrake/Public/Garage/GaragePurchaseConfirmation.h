@@ -14,6 +14,16 @@ enum class GaragePurchaseKind
     None, UnlockVehicle, UpgradeEngine, UpgradeGrip
 };
 
+struct GaragePendingPurchaseView final
+{
+    GaragePurchaseKind Kind = GaragePurchaseKind::None;
+    int Subject = -1;
+    int Price = 0;
+    double SecondsRemaining = 0.0;
+
+    bool IsPending() const noexcept { return Kind != GaragePurchaseKind::None; }
+};
+
 class GaragePurchaseConfirmation final
 {
 public:
@@ -31,6 +41,27 @@ public:
     bool HasPending() const noexcept
     {
         return Kind != GaragePurchaseKind::None;
+    }
+
+    // Read-only, real-monotonic-time offer display. The UI must never obtain
+    // authorization by observing an offer; only ConfirmOrStage may consume
+    // matching, non-expired pending approval on a second explicit key press.
+    // Snapshot edits, invalid clocks, expiry and clock rollback fail closed.
+    GaragePendingPurchaseView Preview(
+        GarageSnapshot current, double nowSeconds) const noexcept
+    {
+        if (!HasPending() || !std::isfinite(nowSeconds) ||
+            !SameSnapshot(current, Saved))
+        {
+            return {};
+        }
+        const double elapsed = nowSeconds - OfferedAt;
+        if (!std::isfinite(elapsed) ||
+            elapsed < 0.0 || elapsed > ConfirmWindowSeconds)
+        {
+            return {};
+        }
+        return {Kind, Subject, Price, ConfirmWindowSeconds - elapsed};
     }
 
     // True means authorization to ATTEMPT the existing GarageState
