@@ -34,6 +34,7 @@ int main()
     const GarageSnapshot fresh{};
     const GarageCatalogView initial = BuildGarageCatalogView(fresh);
     Check(initial.Cars.size() == 6 && initial.Credits == 0 &&
+          initial.OwnedVehicleCount == 1 &&
           initial.SelectedVehicle == 0 && initial.NextUnlockId == 1,
           "fresh profile shows six original catalog slots and free car");
     Check(initial.Cars[0].Ownership == GarageCatalogOwnership::Equipped &&
@@ -74,7 +75,8 @@ int main()
 
     garage.Load({9800, 7, 2, 1, 2});
     const auto legacy = BuildGarageCatalogView(garage.Snapshot());
-    Check(legacy.SelectedVehicle == 2 && legacy.NextUnlockId == 3 &&
+    Check(legacy.OwnedVehicleCount == 3 &&
+          legacy.SelectedVehicle == 2 && legacy.NextUnlockId == 3 &&
           legacy.Cars[2].Ownership == GarageCatalogOwnership::Equipped &&
           legacy.Cars[0].Ownership == GarageCatalogOwnership::Owned &&
           legacy.Cars[1].Ownership == GarageCatalogOwnership::Owned,
@@ -86,7 +88,8 @@ int main()
 
     garage.Load({900, 63, 5, 3, 3});
     const auto allOwned = BuildGarageCatalogView(garage.Snapshot());
-    Check(allOwned.NextUnlockId == -1 && allOwned.SelectedVehicle == 5,
+    Check(allOwned.OwnedVehicleCount == 6 &&
+          allOwned.NextUnlockId == -1 && allOwned.SelectedVehicle == 5,
           "all-car save has no next purchase and can equip Nova");
     for (int id = 0; id < VehicleCount; ++id)
         Check(allOwned.Cars[static_cast<std::size_t>(id)].Ownership ==
@@ -96,7 +99,8 @@ int main()
               "all six owned car statuses stay deterministic");
 
     const auto repaired = BuildGarageCatalogView({-500, -1, 5, 99, -2});
-    Check(repaired.SelectedVehicle == 0 && repaired.Credits == 0 &&
+    Check(repaired.OwnedVehicleCount == 1 &&
+          repaired.SelectedVehicle == 0 && repaired.Credits == 0 &&
           repaired.EngineLevel == 3 && repaired.GripLevel == 0 &&
           repaired.Cars[5].Ownership ==
               GarageCatalogOwnership::LockedInsufficientCredits,
@@ -104,7 +108,8 @@ int main()
 
     const auto unknown = BuildGarageCatalogView({
         std::numeric_limits<int>::max(), 0x7FFFFFFF, 200, 0, 0});
-    Check(unknown.SelectedVehicle == 0 && unknown.NextUnlockId == -1 &&
+    Check(unknown.OwnedVehicleCount == 6 &&
+          unknown.SelectedVehicle == 0 && unknown.NextUnlockId == -1 &&
           unknown.Cars[5].Ownership == GarageCatalogOwnership::Owned,
           "future bits and invalid equipped ID are sanitized consistently");
 
@@ -119,6 +124,11 @@ int main()
         GarageState baseline;
         baseline.Load(input);
         const auto catalog = BuildGarageCatalogView(input);
+        int expectedOwned = 0;
+        for (int id = 0; id < VehicleCount; ++id)
+            if (baseline.Owns(id)) ++expectedOwned;
+        Check(catalog.OwnedVehicleCount == expectedOwned,
+              "owned count matches all sanitized six-car ownership masks");
         for (int id = 0; id < VehicleCount; ++id)
         {
             const auto& row = catalog.Cars[static_cast<std::size_t>(id)];

@@ -30,7 +30,8 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
             "case latebrake::MenuPage::Results:", 1)[0]
         for essential in (
             "BuildGarageCatalogView(Mode->GetGarageSnapshot())",
-            "Catalog.NextUnlockId", "Entry.RouteValid",
+            "Catalog.NextUnlockId", "Catalog.OwnedVehicleCount",
+            "GARAGE CAR %d/%d | OWNED %d/%d", "Entry.RouteValid",
             "Entry.RouteBudgetReady", "Entry.RouteCost",
             "Entry.RouteCars", "Entry.RouteCreditsShort",
             "Q NEXT", "VS EQUIPPED", "F1-F6: EQUIP OWNED CARS",
@@ -57,7 +58,7 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
             "entry.RouteCreditsShort",
             "entry.RouteBudgetReady",
             "entry.Effective = route.Projected;",
-            "entry.IsNextUnlock",
+            "entry.IsNextUnlock", "++view.OwnedVehicleCount",
         ):
             self.assertIn(marker, self.catalog)
         self.assertNotIn("garage.Unlock(", self.catalog)
