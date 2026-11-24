@@ -92,6 +92,16 @@ int main()
     Require(!DesktopMenuMouseRect{max, 20.0, max, 40.0}.Contains(max, 30.0) &&
             !DesktopMenuMouseRect{20.0, max, 40.0, max}.Contains(30.0, max),
             "overflowing far-edge rectangle never accepts a click");
+    Require(!DesktopMenuMouseRect{max, 20.0, 1.0, 40.0}.Contains(max, 30.0) &&
+            !DesktopMenuMouseRect{20.0, max, 40.0, 1.0}.Contains(30.0, max),
+            "precision-collapsed rectangle is inert");
+    Require(DesktopMenuMouseRect{10.0, 20.0, 30.0, 40.0}.Contains(10.0, 20.0) &&
+            !DesktopMenuMouseRect{10.0, 20.0, 30.0, 40.0}.Contains(40.0, 30.0),
+            "normal rectangle retains half-open click edges");
+    const auto tall = CalculateHudMenuVerticalPlan(
+        1280.0, 1e12, CalculateHudLayout(1280.0, 720.0), false);
+    Require(tall.Valid && tall.MaxDetailsRows == 90,
+            "large representable geometry clamps before integer conversion");
     Require(ChooseHudTextPrefix(20, 4.0, 20.0, 3.0,
         [](int n) { return n == 0 ? 10.0 : 3.0; }) == -1,
         "measured ellipsis mismatch cannot leak outside text width");
