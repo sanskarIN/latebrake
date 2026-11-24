@@ -2520,3 +2520,6 @@ add_latebrake_portable_research_test(PhysicalWetLapRaceEngineer)
 add_latebrake_portable_research_test(SixCarRouteContinuityAudit)
 add_latebrake_portable_research_test(WorldScaleSweptEnvelope)
 add_latebrake_portable_research_test(ObservedGripFusion)
+
+# Read-only source pace intervals and four reference sectors.
+add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
