@@ -16,7 +16,7 @@ def read(path: str) -> str:
 
 def method(source: str, name: str) -> str:
     pattern = (
-        rf"void ALatebrakeRaceGameMode::{name}\(\)\s*\{{"
+        rf"void ALatebrakeRaceGameMode::{name}\([^)]*\)\s*\{{"
         rf"(.*?)(?=\nvoid ALatebrakeRaceGameMode::|\Z)"
     )
     match = re.search(pattern, source, re.S)
