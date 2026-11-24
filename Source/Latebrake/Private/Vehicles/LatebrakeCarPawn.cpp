@@ -2469,10 +2469,20 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& Slot6 = PlayerInputComponent->BindAction(
         TEXT("GarageSlot6"), IE_Pressed, this, &ALatebrakeCarPawn::GarageSlot6);
     Slot6.bExecuteWhenPaused = true;
-    PlayerInputComponent->BindAction(TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
-    PlayerInputComponent->BindAction(TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
-    PlayerInputComponent->BindAction(TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
+    // E/Q/U/I are controls on the *paused* Garage page, just like Ctrl+1..6.
+    // Without these flags Unreal drops the key press while the menu pauses play.
+    FInputActionBinding& GarageNext = PlayerInputComponent->BindAction(
+        TEXT("GarageNextVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::NextGarageVehicle);
+    GarageNext.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageUnlock = PlayerInputComponent->BindAction(
+        TEXT("GarageUnlockVehicle"), IE_Pressed, this, &ALatebrakeCarPawn::UnlockGarageVehicle);
+    GarageUnlock.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageEngine = PlayerInputComponent->BindAction(
+        TEXT("GarageEngineUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageEngine);
+    GarageEngine.bExecuteWhenPaused = true;
+    FInputActionBinding& GarageGrip = PlayerInputComponent->BindAction(
+        TEXT("GarageGripUpgrade"), IE_Pressed, this, &ALatebrakeCarPawn::UpgradeGarageGrip);
+    GarageGrip.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
 }
