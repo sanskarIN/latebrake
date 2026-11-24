@@ -3090,3 +3090,6 @@ add_latebrake_portable_research_test(WorldScaleVariantReferenceTiming)
 
 # Main-targeted #455 portable planner consumed by the draft Unreal garage HUD.
 add_latebrake_portable_research_test(GaragePurchasePlanner)
+
+# Main-targeted #457 camera geometry, consumed by the draft native view.
+add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)

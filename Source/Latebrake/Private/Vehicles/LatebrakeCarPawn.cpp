@@ -43,6 +43,8 @@
 #include "Vehicles/OriginalVehicleTintMaterialPolicy.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraTypes.h"
+#include "Math/RotationMatrix.h"
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "ProceduralMeshComponent.h"
@@ -655,6 +657,9 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     bOriginalVehicleVisualReady = false;
     OriginalRenderedRimStyle = -1;
     OriginalVehicleTintParameter = NAME_None;
+    GarageCameraGeometry.Reset();
+    GarageCameraFit.Reset();
+    bGarageCameraViewPresented = false;
     UProceduralMeshComponent* RenderParts[] = {
         OriginalVehicleVisual.Get(), OriginalFrontLeftWheel.Get(),
         OriginalFrontRightWheel.Get(), OriginalRearLeftWheel.Get(),
@@ -850,6 +855,10 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
          latebrake::vehiclemesh::OriginalVehicleAnimatedPartCount;++i)
         RenderParts[i]->SetVisibility(true, false);
     OriginalRenderedRimStyle = generated.Mesh.RimStyle;
+    // The framing source is exactly the committed render mesh, never
+    // a second guessed car or a regenerated mesh on every camera frame.
+    // Failed camera preparation leaves the valid car and chase view intact.
+    GarageCameraGeometry.Build(generated.Mesh);
     SourceMeshBuildTelemetry =
         latebrake::OriginalMeshBuildCommit(SourceMeshBuildTelemetry);
     ApplyWheelVisualPose();
@@ -1152,6 +1161,12 @@ void ALatebrakeCarPawn::UpdateGarageShowroomPresentation(
     bGarageShowroomPreviewActive=Plan.PreviewActive;
     GarageShowroomVehicleId=Plan.DisplayVehicleId;
     GarageShowroomLook=Plan.DisplayLook;
+    if (!Plan.PreviewActive)
+    {
+        GarageCameraOrbitIndex = 0;
+        GarageCameraFit.Reset();
+        bGarageCameraViewPresented = false;
+    }
     // Navigate while paused: update only on actual cosmetic differences.
     if (Plan.ShapeChanged)
         ApplyVehicleVisualRecipe(Plan.DisplayVehicleId);
@@ -3128,6 +3143,9 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     PlayerInputComponent->BindAction(TEXT("Recover"), IE_Pressed, this, &ALatebrakeCarPawn::RecoverPressed);
     PlayerInputComponent->BindAction(TEXT("RestartRace"), IE_Pressed, this, &ALatebrakeCarPawn::RestartPressed);
     PlayerInputComponent->BindAction(TEXT("Camera"), IE_Pressed, this, &ALatebrakeCarPawn::ChangeCamera);
+    FInputActionBinding& GarageOrbitKey = PlayerInputComponent->BindAction(
+        TEXT("GarageOrbit"), IE_Pressed, this, &ALatebrakeCarPawn::OrbitGarageCamera);
+    GarageOrbitKey.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("LookBack"), IE_Pressed, this, &ALatebrakeCarPawn::LookBackPressed);
     FInputActionBinding& LookBackRelease = PlayerInputComponent->BindAction(
         TEXT("LookBack"), IE_Released, this, &ALatebrakeCarPawn::LookBackReleased);
@@ -3229,4 +3247,104 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     BrowsePreviousKey.bExecuteWhenPaused = true;
     PlayerInputComponent->BindAction(TEXT("ArcadePreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectArcade);
     PlayerInputComponent->BindAction(TEXT("SimulationPreset"), IE_Pressed, this, &ALatebrakeCarPawn::SelectSimulation);
+}
+
+
+void ALatebrakeCarPawn::OrbitGarageCamera()
+{
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!bGarageShowroomPreviewActive || !IsLocallyControlled() ||
+        Cast<APlayerController>(GetController()) == nullptr ||
+        !Mode || !Mode->CanBrowseGarage() || Mode->IsFocusLossGuardActive() ||
+        Mode->IsManualRacePauseActive())
+        return;
+    // F4 is a dedicated cosmetic control, not the C/RB racing camera.
+    GarageCameraOrbitIndex = (GarageCameraOrbitIndex + 1) % 4;
+    GarageCameraFit.Reset();
+    bGarageCameraViewPresented = false;
+}
+
+void ALatebrakeCarPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+    // Preserve the entire normal camera path, including engine-managed
+    // effects and the player's actual selected driving camera preset.
+    // Override only the view result for an authenticated local Garage.
+    Super::CalcCamera(DeltaTime, OutResult);
+    bGarageCameraViewPresented = false;
+    if (!bGarageShowroomPreviewActive || !HasActorBegunPlay() ||
+        !IsLocallyControlled() || !bOriginalVehicleVisualReady ||
+        !IsValid(OriginalVehicleVisual) || !OriginalVehicleVisual->IsVisible() ||
+        GetCommittedOriginalWheelParts() != 4 ||
+        !GarageCameraGeometry.Ready() ||
+        GarageCameraGeometry.VehicleId() != GetPresentedGarageVehicleId() ||
+        OriginalRenderedRimStyle != static_cast<int32>(GetPresentedGarageLook().Wheels))
+        return;
+
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    UWorld* World = GetWorld();
+    const ALatebrakeRaceGameMode* Mode =
+        World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!IsValid(PC) || !Mode || !Mode->CanBrowseGarage())
+        return;
+    int32 Width = 0, Height = 0;
+    PC->GetViewportSize(Width, Height);
+    if (Width <= 0 || Height <= 0)
+        return;
+    const double Aspect = static_cast<double>(Width) / static_cast<double>(Height);
+    latebrake::vehiclemesh::ShowroomOrbitRequest Request{};
+    static constexpr double OrbitYawDegrees[] = {35.0, 90.0, 145.0, -90.0};
+    if (GarageCameraOrbitIndex < 0 || GarageCameraOrbitIndex >= 4)
+        return;
+    Request.YawDegrees = OrbitYawDegrees[GarageCameraOrbitIndex];
+    Request.AspectRatio = Aspect;
+    if (!latebrake::vehiclemesh::ValidShowroomOrbitRequest(Request))
+        return;
+    if (!GarageCameraFit.Ready() ||
+        GarageCameraFit.Pose().AspectRatio != Aspect)
+    {
+        // Fit the cached points only on entry, orbit, resize or a new
+        // mesh commit. Never recompose or re-upload render triangles.
+        if (!GarageCameraFit.FitPrepared(GarageCameraGeometry, Request))
+            return;
+    }
+    const auto Pose = GarageCameraFit.Pose();
+    const FTransform MeshTransform = OriginalVehicleVisual->GetComponentTransform();
+    // The source render root cancels the physics cube's nonuniform scale.
+    // A developer override of that contract must fall back, not crop or
+    // distort the camera by silently treating scaled points as unit space.
+    if (MeshTransform.ContainsNaN() ||
+        !MeshTransform.GetScale3D().Equals(FVector::OneVector, 0.001))
+        return;
+    const FVector Eye = MeshTransform.TransformPosition(
+        FVector(Pose.Eye.X, Pose.Eye.Y, Pose.Eye.Z));
+    const FVector Target = MeshTransform.TransformPosition(
+        FVector(Pose.Target.X, Pose.Target.Y, Pose.Target.Z));
+    const FVector Forward = MeshTransform.TransformVectorNoScale(
+        FVector(Pose.Forward.X, Pose.Forward.Y, Pose.Forward.Z));
+    const FVector Up = MeshTransform.TransformVectorNoScale(
+        FVector(Pose.Up.X, Pose.Up.Y, Pose.Up.Z));
+    if (Eye.ContainsNaN() || Target.ContainsNaN() ||
+        Forward.ContainsNaN() || Up.ContainsNaN())
+        return;
+    const FRotator Rotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+    if (Rotation.ContainsNaN())
+        return;
+
+    // The garage is currently a parked view in the existing track world.
+    // Do not claim a dedicated unobstructed studio or force a camera
+    // through a wall; retain Super's view when a visibility trace blocks it.
+    FHitResult Obstruction;
+    FCollisionQueryParams Query(SCENE_QUERY_STAT(GarageShowroomCamera), false, this);
+    if (World->LineTraceSingleByChannel(Obstruction, Target, Eye, ECC_Visibility, Query))
+        return;
+
+    OutResult.Location = Eye;
+    OutResult.Rotation = Rotation;
+    OutResult.FOV = static_cast<float>(Pose.HorizontalFovDegrees);
+    OutResult.AspectRatio = static_cast<float>(Aspect);
+    OutResult.bConstrainAspectRatio = true;
+    OutResult.ProjectionMode = ECameraProjectionMode::Perspective;
+    bGarageCameraViewPresented = true;
 }

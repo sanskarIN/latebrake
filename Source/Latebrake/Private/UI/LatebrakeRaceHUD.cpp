@@ -575,6 +575,11 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Car->IsOriginalVehicleSurfaceCommitted()
                     ? TEXT("SOURCE 3D COMPONENTS")
                     : TEXT("LEGACY CUBE FALLBACK")), true);
+            MenuLine(FString::Printf(TEXT("F4 GARAGE ANGLE %d/4 | %s"),
+                Car->GetGarageCameraOrbitIndex() + 1,
+                Car->IsGarageCameraViewPresented()
+                    ? TEXT("SOURCE FRAMED VIEW")
+                    : TEXT("NORMAL CAMERA / PREVIEW PENDING")), true);
             const latebrake::GarageLook ViewedLook = Mode->GetGaragePreviewLook();
             MenuLine(FString::Printf(
                 TEXT("VIEWED LOOK: %s / %s / %s"),

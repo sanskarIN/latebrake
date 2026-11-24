@@ -337,3 +337,29 @@ After an actual confirmed purchase the route changes with the authoritative
 snapshot. A failed save must restore the prior route and balance. Future
 profile/read-only and focus restrictions remain unchanged; budget OK is
 not transaction permission. All numbers refer only to earned game credits.
+
+## Dedicated source-framed Garage camera (draft native binding)
+
+The current track-world Garage preview uses the exact committed original
+body/rim vertices. The cached points are prepared on a successful mesh
+commit and fitted only when the view/aspect changes. The ordinary
+Unreal camera result is preserved unless the local player's Garage is
+open, the committed mesh identity and all four wheel components match,
+the viewport is valid and a visibility trace does not block the view.
+
+- Press F4 in Garage to cycle four angles. Check actual viewport framing
+  at 900x600, 1280x720, 1920x1080, ultrawide and portrait.
+- Change rims and cars, including a locked car. Check actual geometry
+  remains visible. F4 must not increment mesh build counters.
+- Verify F4 outside Garage or during focus/manual suspension is inert.
+- Close the Garage and confirm the prior driving camera preset resumes;
+  C/RB retains its existing driving-camera behavior.
+- In a developer copy remove a material or wheel component, alter render
+  scale, or park behind track geometry. The normal camera must remain
+  available rather than forcing a malformed or obstructed preview.
+- The source HUD reports a successfully returned camera view, not GPU
+  pixels. Confirm the paused PlayerCameraManager actually updates on F4,
+  resize and browsing; if not, report the native lifecycle blocker.
+
+This is not a separate studio map or a verified Unreal build. UHT,
+Editor, cooked Win64 and real owner acceptance remain mandatory.

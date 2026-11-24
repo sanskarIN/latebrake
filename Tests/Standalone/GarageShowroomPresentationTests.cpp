@@ -1,4 +1,5 @@
 #include "Vehicles/GarageShowroomPresentation.h"
+#include "Vehicles/OriginalVehicleShowroomCamera.h"
 #include <cstdlib>
 #include <iostream>
 namespace
@@ -65,6 +66,32 @@ void AllSixCarEntryExitPairs()
         VehicleCount*VehicleCount*GarageWheelOptions*
         GarageWheelOptions*GaragePaintOptions*GarageStripeOptions),
         "entire owned/unowned view x paint x stripe x rim state tested");
+}
+void AllRimsUseCommittedCameraGeometry()
+{
+    using namespace latebrake;
+    using namespace latebrake::vehiclemesh;
+    for(int car=0;car<VehicleCount;++car)
+    for(int rim=0;rim<GarageWheelOptions;++rim)
+    {
+        const auto built=OriginalVehicleSurfaceComposer{}.Build(car,rim);
+        OriginalVehicleShowroomGeometry points;
+        Require(built.Valid && points.Build(built.Mesh),
+                "actual source body and rim geometry prepares the camera");
+        OriginalVehicleShowroomCamera fit;
+        for(double yaw:{35.0,90.0,145.0,-90.0})
+        for(double aspect:{0.5625,1.0,16.0/9.0,2.4})
+        {
+            ShowroomOrbitRequest q{};
+            q.YawDegrees=yaw;
+            q.AspectRatio=aspect;
+            Require(fit.FitPrepared(points,q) && fit.VehicleId()==car,
+                    "all 18 car/rim pairs frame in all four native orbit angles");
+            for(const auto& vertex:built.Mesh.Vertices)
+                Require(fit.Project(vertex.Position).InsidePaddedViewport,
+                        "actual viewed rim and body vertices stay in frame");
+        }
+    }
 }
 void DeferredStartupAndInvalidIdentity()
 {
@@ -168,6 +195,7 @@ int main()
 {
     AllSixCarEntryExitPairs();
     DeferredStartupAndInvalidIdentity();
+    AllRimsUseCommittedCameraGeometry();
     EditsAndUnownedBrowsingRemainReadOnly();
     std::cout<<"Read-only garage showroom entry/browse/style/exit passed.\n";
     return EXIT_SUCCESS;

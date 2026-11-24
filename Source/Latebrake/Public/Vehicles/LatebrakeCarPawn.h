@@ -29,6 +29,7 @@
 #include "Vehicles/WheelVisualMotion.h"
 #include "Garage/GarageAppearance.h"
 #include "Vehicles/OriginalMeshBuildTelemetry.h"
+#include "Vehicles/OriginalVehicleShowroomCamera.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
@@ -42,6 +43,7 @@ class UPointLightComponent;
 class USpotLightComponent;
 class UPrimitiveComponent;
 struct FHitResult;
+struct FMinimalViewInfo;
 
 UENUM(BlueprintType)
 enum class ELatebrakeHandlingMode : uint8
@@ -67,6 +69,7 @@ public:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void UnPossessed() override;
     virtual void Tick(float DeltaSeconds) override;
+    virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
     // Not every possessed pawn has a usable rigid body. The race clock,
@@ -123,6 +126,10 @@ public:
     { return bGarageShowroomPreviewActive
         ? GarageShowroomVehicleId : GarageVehicleId; }
     int32 GetSelectedVehicleId() const { return GarageVehicleId; }
+    bool IsGarageCameraViewPresented() const noexcept
+    { return bGarageShowroomPreviewActive && bGarageCameraViewPresented; }
+    int32 GetGarageCameraOrbitIndex() const noexcept
+    { return GarageCameraOrbitIndex; }
     // Read-only rendering diagnostics for real owner testing. A committed
     // component/material is NOT proof of visible pixels or lighting quality.
     bool IsOriginalVehicleSurfaceCommitted() const noexcept
@@ -310,6 +317,7 @@ private:
     void RecoverPressed();
     void RestartPressed();
     void ChangeCamera();
+    void OrbitGarageCamera();
     void LookBackPressed();
     void LookBackReleased();
     void ToggleBestLapGhost();
@@ -381,6 +389,12 @@ private:
     bool bGarageShowroomPreviewActive = false;
     int32 GarageShowroomVehicleId = 0;
     latebrake::GarageLook GarageShowroomLook{};
+    // Camera fit owns only validated visual points; no engine camera
+    // preference, collision or authoritative garage state is mutated.
+    latebrake::vehiclemesh::OriginalVehicleShowroomGeometry GarageCameraGeometry;
+    latebrake::vehiclemesh::OriginalVehicleShowroomCamera GarageCameraFit;
+    int32 GarageCameraOrbitIndex = 0;
+    bool bGarageCameraViewPresented = false;
     uint64 TeleportRevision = 0;
     bool bBraking = false;
     bool bHandbrakeHeld = false;
