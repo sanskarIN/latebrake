@@ -32,11 +32,19 @@ struct DesktopMenuMouseRect final
         // Bounds can be supplied to the portable hit tester independently
         // of CalculateDesktopMenuMouseLayout. Malformed rectangles must not
         // become invisible click traps while the game menu is open.
-        return std::isfinite(x) && std::isfinite(y) &&
-            std::isfinite(X) && std::isfinite(Y) &&
-            std::isfinite(Width) && std::isfinite(Height) &&
-            Width > 0.0 && Height > 0.0 &&
-            x >= X && x < X + Width && y >= Y && y < Y + Height;
+        if (!std::isfinite(x) || !std::isfinite(y) ||
+            !std::isfinite(X) || !std::isfinite(Y) ||
+            !std::isfinite(Width) || !std::isfinite(Height) ||
+            Width <= 0.0 || Height <= 0.0)
+        {
+            return false;
+        }
+        const double right = X + Width;
+        const double bottom = Y + Height;
+        // Individually finite inputs can overflow or lose all extent.
+        return std::isfinite(right) && std::isfinite(bottom) &&
+            right > X && bottom > Y &&
+            x >= X && x < right && y >= Y && y < bottom;
     }
 };
 
