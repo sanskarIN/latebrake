@@ -2529,3 +2529,16 @@ add_latebrake_portable_research_test(OriginalVehicleShowroomCamera)
 
 # Main integration: sequential garage purchase planning.
 add_latebrake_portable_research_test(GaragePurchasePlanner)
+
+# Real ordered gate timings, linked to production RaceProgress.
+add_executable(latebrake_measured_lap_split_reference_tests
+    MeasuredLapSplitReferenceTests.cpp
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
+target_include_directories(latebrake_measured_lap_split_reference_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_measured_lap_split_reference_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_measured_lap_split_reference_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_measured_lap_split_reference_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME MeasuredLapSplitReference COMMAND latebrake_measured_lap_split_reference_tests)

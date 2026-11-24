@@ -588,6 +588,37 @@ void ALatebrakeRaceHUD::DrawHUD()
                     MenuLine(TEXT("FEE-EXCLUDED CLOCK IS NOT A LAP RECORD."), true);
                 }
             }
+            // Compare the final physical lap against a prior, actually
+            // completed fee-free reference. Never substitute mixed best splits.
+            const auto& Measured = Race.GetMeasuredLapSplits().LastComparison();
+            if (latebrake::CanAwardFinishedRace(Race) && Measured.Valid)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("FINAL LAP %d VS FEE-FREE LAP %d: %+.2fs"),
+                    Measured.LapNumber, Measured.ReferenceLapNumber,
+                    Measured.DeltaSeconds), true);
+                MenuLine(FString::Printf(
+                    TEXT("GATES FASTER %d | MATCHED %d | SLOWER %d"),
+                    Measured.FasterGates, Measured.MatchedGates,
+                    Measured.SlowerGates));
+                if (Measured.LargestLossGate >= 0)
+                    MenuLine(FString::Printf(TEXT("BIGGEST LOSS GATE %d: +%.2fs"),
+                        Measured.LargestLossGate+1, Measured.LargestLossSeconds));
+                if (Measured.LargestGainGate >= 0)
+                    MenuLine(FString::Printf(TEXT("BIGGEST GAIN GATE %d: -%.2fs"),
+                        Measured.LargestGainGate+1, Measured.LargestGainSeconds));
+                if (!bCompact)
+                {
+                    for (int32 Index=0; Index<Measured.GateCount; ++Index)
+                    {
+                        const auto& Row = Measured.Rows[static_cast<std::size_t>(Index)];
+                        MenuLine(FString::Printf(
+                            TEXT("GATE %d: SPLIT %+.2fs | TOTAL %+.2fs | FEE +%.2fs"),
+                            Index+1, Row.SectorDeltaSeconds,
+                            Row.CumulativeDeltaSeconds, Row.IncludedFeeSeconds));
+                    }
+                }
+            }
             // Run-local pace distribution. The most recent at most eight
             // genuine timed laps are analyzed; earlier laps may have been
             // evicted and can never be reconstructed from this buffer.
@@ -1660,6 +1691,25 @@ void ALatebrakeRaceHUD::DrawHUD()
             Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
                 Pace.ReferenceLapSeconds, Pace.SampledLaps,
                 Pace.ProjectedFinishSeconds), Accent);
+        }
+        // Exact gate clock delta to one completed reference lap.
+        // It remains a discrete gate observation, not live positional gap.
+        const auto GateReference = Race.GetMeasuredLapSplits().LatestGate();
+        if (GateReference.Valid)
+        {
+            Line(FString::Printf(
+                TEXT("GATE %d | VS FEE-FREE LAP %d  %+.2fs"),
+                GateReference.GateIndex+1, GateReference.ReferenceLapNumber,
+                GateReference.CumulativeDeltaSeconds),
+                GateReference.CumulativeDeltaSeconds <= 0.0 ? Primary : Accent);
+        }
+        else if (Race.GetMeasuredLapSplits().LastComparison().Valid &&
+                 Race.GetNextCheckpoint()==0)
+        {
+            const auto& Last = Race.GetMeasuredLapSplits().LastComparison();
+            Line(FString::Printf(TEXT("LAST LAP VS FEE-FREE LAP %d  %+.2fs"),
+                Last.ReferenceLapNumber, Last.DeltaSeconds),
+                Last.DeltaSeconds <= 0.0 ? Primary : Accent);
         }
         // A within-run best-sector potential, not a promised finish time.
         // Wait for an actual timed lap and complete positive split history.

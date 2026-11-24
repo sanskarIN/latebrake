@@ -21,6 +21,8 @@ void RaceProgress::Reset() noexcept
     ActiveTimedLapCount = 0;
     ActiveClockAdvancedThisLap = false;
     RecentLaps.Reset();
+    ActiveClockAdvancedThisSector = false;
+    MeasuredSplits.Reset(CheckpointCount);
     ElapsedSeconds = 0.0;
     TimePenaltyCount = 0;
     TotalPenaltySeconds = 0.0;
@@ -50,6 +52,7 @@ void RaceProgress::Advance(double deltaSeconds) noexcept
         {
             ElapsedSeconds = updated;
             ActiveClockAdvancedThisLap = true;
+            ActiveClockAdvancedThisSector = true;
         }
     }
 }
@@ -121,6 +124,10 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
             best = LastSectorSeconds;
         }
     }
+    MeasuredSplits.Observe(CompletedLaps+1, checkpointIndex,
+        GetCurrentLapSeconds(), GetCurrentLapPenaltySeconds(),
+        ActiveClockAdvancedThisSector);
+    ActiveClockAdvancedThisSector = false;
     LastCheckpointSeconds = ElapsedSeconds;
     ++NextCheckpoint;
     if (NextCheckpoint == CheckpointCount)
@@ -142,6 +149,7 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
         // the measured lap: the next lap begins at zero charged fees.
         LastLapPenaltySeconds = TotalPenaltySeconds - LapPenaltyStartSeconds;
         LapPenaltyStartSeconds = TotalPenaltySeconds;
+        MeasuredSplits.Complete(CompletedLaps, LastLapSeconds, LastLapPenaltySeconds);
         if (std::isfinite(LastLapSeconds) && LastLapSeconds > 0.0)
         {
             // Existing best/slowest semantics stay unchanged for legitimate
