@@ -67,6 +67,62 @@ void AllResolutions()
             DesktopMenuMouseAction::None,"padding never selects a car");
     }
 }
+void MalformedPlansAndHitTargets()
+{
+    using namespace latebrake;
+    const auto hud=CalculateHudLayout(1280,720);
+    const auto style=CalculateGarageStyleMouseLayout(
+        1280,720,hud,false,true,MenuPage::Garage);
+    const auto original=CalculateGarageSchematic(
+        1280,720,hud,style,0,FactoryGarageLook(0));
+    Verify(original.Valid,"normal schematic for mutation tests");
+    auto bad=original;
+    bad.Count=bad.Pieces.size()+1u;
+    Verify(!CalculateGarageQuickViewLayout(bad).Valid,
+        "oversized piece count rejected before array access");
+    bad.Count=std::numeric_limits<std::size_t>::max();
+    Verify(!CalculateGarageQuickViewLayout(bad).Valid,
+        "maximum corrupt count rejected before array access");
+    for (const double value : {0.0,-1.0,
+        std::numeric_limits<double>::quiet_NaN(),
+        std::numeric_limits<double>::infinity()})
+    {
+        bad=original;
+        bad.Pieces[0].Bounds.Width=value;
+        Verify(!CalculateGarageQuickViewLayout(bad).Valid,
+            "invalid schematic width cannot create view targets");
+    }
+    bad=original;
+    bad.Pieces[0].Bounds.X=original.Panel.X-1.0;
+    Verify(!CalculateGarageQuickViewLayout(bad).Valid,
+        "detached drawing piece rejected");
+    const auto normal=CalculateGarageQuickViewLayout(original);
+    Verify(normal.Valid,"valid plan survives stricter bounds");
+    const auto r=normal.Buttons[0].Bounds;
+    const double x=r.X+r.Width/2.0, y=r.Y+r.Height/2.0;
+    for (const auto action : {DesktopMenuMouseAction::Activate,
+        DesktopMenuMouseAction::GaragePaint,DesktopMenuMouseAction::Close,
+        DesktopMenuMouseAction::GarageQuickView5})
+    {
+        auto corrupted=normal;
+        corrupted.Buttons[0].Action=action;
+        Verify(HitTestGarageQuickView(corrupted,x,y,true)==
+            DesktopMenuMouseAction::None,
+            "malformed quick view cannot dispatch a different action");
+    }
+    auto corrupted=normal;
+    corrupted.Buttons[1].Bounds=r;
+    Verify(HitTestGarageQuickView(corrupted,x,y,true)==
+        DesktopMenuMouseAction::None,"overlapping targets never select arbitrarily");
+    corrupted=normal;
+    corrupted.Buttons[5].Bounds.Width=std::numeric_limits<double>::infinity();
+    Verify(HitTestGarageQuickView(corrupted,x,y,true)==
+        DesktopMenuMouseAction::None,"any invalid target invalidates the layout");
+    for (const int v : {std::numeric_limits<int>::min(),
+        std::numeric_limits<int>::max()})
+        Verify(GarageQuickViewIndex(static_cast<DesktopMenuMouseAction>(v))==-1,
+            "extreme malformed action rejected without signed overflow");
+}
 void FailClosed()
 {
     using namespace latebrake;
@@ -89,6 +145,7 @@ int main()
 {
     AllResolutions();
     FailClosed();
+    MalformedPlansAndHitTargets();
     std::cout<<"Production Unreal quick-view showroom layout passed.\n";
     return EXIT_SUCCESS;
 }

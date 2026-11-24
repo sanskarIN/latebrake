@@ -53,6 +53,14 @@ class UnrealGarageEquipUiBindingTests(unittest.TestCase):
         self.assertGreaterEqual(self.hud.count(
             "Mode->CanEquipGarageViewed()"),2)
         self.assertIn("return availability.Activate;",self.pointer)
+        switch=self.pointer.split("inline bool DesktopMenuMouseActionEnabled(",1)[1].split(
+            "inline DesktopMenuMouseLayout CalculateDesktopMenuMouseLayout(",1)[0]
+        nav=switch.split("case DesktopMenuMouseAction::PreviousPage:",1)[1].split(
+            "case DesktopMenuMouseAction::Activate:",1)[0]
+        self.assertIn("case DesktopMenuMouseAction::NextPage:",nav)
+        self.assertIn("case DesktopMenuMouseAction::Close:",nav)
+        self.assertIn("return true;",nav)
+        self.assertNotIn("availability.Activate",nav)
         self.assertIn("availability.Activate = canEquipGarageViewed;",
                       self.pointer)
         self.assertIn("Mode->GetGarageEquipUiState()",self.hud)

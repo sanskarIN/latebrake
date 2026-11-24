@@ -61,10 +61,16 @@ void ButtonRenderAndClickAgreement()
         Check((HitTestDesktopMenuMouse(plan,x,y,a) ==
             DesktopMenuMouseAction::Activate)==allowed,
             "disabled Garage equip button cannot dispatch even on click");
-        Check(HitTestDesktopMenuMouse(plan,
-            plan.Buttons[5].Bounds.X+10.0,plan.Buttons[5].Bounds.Y+10.0,a)
-            ==DesktopMenuMouseAction::Close,
-            "close always works even when equip forbidden");
+        for (const int index : {0,1,5})
+        {
+            const auto& button=plan.Buttons[static_cast<std::size_t>(index)];
+            Check(DesktopMenuMouseActionEnabled(button.Action,a),
+                "page and close buttons stay visually enabled regardless of equip");
+            Check(HitTestDesktopMenuMouse(plan,
+                button.Bounds.X+button.Bounds.Width/2.0,
+                button.Bounds.Y+button.Bounds.Height/2.0,a)==button.Action,
+                "mouse can leave a locked, equipped or read-only garage");
+        }
     }
     auto other=AvailableDesktopMenuActions(MenuPage::Results,pager,false);
     Check(other.Activate &&
@@ -94,6 +100,22 @@ void DeterministicStress()
             "300k cases match an independent explicit permission oracle");
         Check(GarageEquipUiCaption(status)[0]!='\0',
             "each state maps to an observable UI caption");
+        const DesktopMenuMouseAvailability availability{
+            (seed&64u)!=0,(seed&128u)!=0,expected};
+        Check(DesktopMenuMouseActionEnabled(
+                  DesktopMenuMouseAction::PreviousPage,availability) &&
+              DesktopMenuMouseActionEnabled(
+                  DesktopMenuMouseAction::NextPage,availability) &&
+              DesktopMenuMouseActionEnabled(
+                  DesktopMenuMouseAction::Close,availability),
+            "equip authority never leaks into read-only menu navigation");
+        Check(DesktopMenuMouseActionEnabled(
+                  DesktopMenuMouseAction::Activate,availability)==expected &&
+              DesktopMenuMouseActionEnabled(
+                  DesktopMenuMouseAction::DetailsUp,availability)==availability.DetailsUp &&
+              DesktopMenuMouseActionEnabled(
+                  DesktopMenuMouseAction::DetailsDown,availability)==availability.DetailsDown,
+            "equip and paging keep independent authority");
     }
 }
 } // namespace

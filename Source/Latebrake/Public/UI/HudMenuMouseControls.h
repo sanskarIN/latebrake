@@ -34,9 +34,11 @@ constexpr DesktopMenuMouseAction GarageQuickViewAction(int id) noexcept
 }
 constexpr int GarageQuickViewIndex(DesktopMenuMouseAction action) noexcept
 {
-    const int index = static_cast<int>(action) -
-        static_cast<int>(DesktopMenuMouseAction::GarageQuickView0);
-    return index >= 0 && index < VehicleCount ? index : -1;
+    const int value = static_cast<int>(action);
+    constexpr int first = static_cast<int>(DesktopMenuMouseAction::GarageQuickView0);
+    // Check before subtracting: malformed enum values may be INT_MIN.
+    return value >= first && value < first + VehicleCount
+        ? value - first : -1;
 }
 static_assert(GarageQuickViewIndex(GarageQuickViewAction(5)) == 5);
 static_assert(GarageQuickViewAction(VehicleCount) == DesktopMenuMouseAction::None);
@@ -124,10 +126,12 @@ inline bool DesktopMenuMouseActionEnabled(
     {
     case DesktopMenuMouseAction::PreviousPage:
     case DesktopMenuMouseAction::NextPage:
+    case DesktopMenuMouseAction::Close:
+        // Read-only navigation must remain available when the viewed
+        // car cannot be equipped (locked, equipped, or read-only save).
+        return true;
     case DesktopMenuMouseAction::Activate:
         return availability.Activate;
-    case DesktopMenuMouseAction::Close:
-        return true;
     case DesktopMenuMouseAction::DetailsUp:
         return availability.DetailsUp;
     case DesktopMenuMouseAction::DetailsDown:
