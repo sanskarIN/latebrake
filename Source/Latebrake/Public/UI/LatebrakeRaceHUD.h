@@ -9,6 +9,7 @@
 #include "Track/RivalRelativeMotion.h"
 #include "UI/MenuDetailPager.h"
 #include "UI/HudMenuMouseControls.h"
+#include "UI/GaragePurchaseMouseLayout.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -32,6 +33,7 @@ private:
     latebrake::RivalProximityIndicator RivalProximityHint;
     latebrake::RivalRelativeMotionTracker RivalRelativeMotionHint;
     latebrake::MenuDetailPager MenuPager;
+    latebrake::GaragePresentedOffers PresentedGarageOffers{};
     TWeakObjectPtr<APawn> LastWayfindingPawn;
     uint64 LastWayfindingSession = 0;
     uint64 LastWayfindingTeleport = 0;
