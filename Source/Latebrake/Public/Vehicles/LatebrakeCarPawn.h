@@ -193,6 +193,10 @@ protected:
     UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
     TObjectPtr<UProceduralMeshComponent> OriginalVehicleVisual;
 
+    // Surface-conforming cosmetic bands share the body render transform.
+    UPROPERTY(VisibleAnywhere, Category = "Vehicle|Appearance")
+    TObjectPtr<UProceduralMeshComponent> OriginalRoofStripes;
+
     // Four separately rotating source-wheel surfaces. They inherit the
     // original car's inverse root scale + -62cm visual offset, so their
     // authored pivots remain true to the existing Chaos chassis. Always
@@ -312,6 +316,9 @@ private:
     latebrake::GarageLook GetPresentedGarageLook() const noexcept
     { return bGarageShowroomPreviewActive ? GarageShowroomLook : CurrentGarageLook; }
     void RebuildOriginalVehicleVisual(int32 VehicleId);
+    bool PrepareOriginalRoofStripes(int32 VehicleId, UMaterialInterface* Material);
+    void ClearOriginalRoofStripes();
+    void ApplyOriginalRoofStripeLook(latebrake::GarageLook Look);
     void ApplyOriginalVehiclePalette(int32 VehicleId,
                                      latebrake::GarageLook Look);
     void RefreshFrontLampPositions();
