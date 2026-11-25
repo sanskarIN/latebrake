@@ -2395,6 +2395,19 @@ bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
         latebrake::CanStyleGalleryVehicle(Garage, GarageGallery);
 }
 
+bool ALatebrakeRaceGameMode::BeginGarageAppearancePreview()
+{
+    if (!CanCustomizeGarage()) return false;
+    // Opening a free chooser must never keep earlier paid consent alive.
+    // This is a transient intent boundary, not a profile transaction.
+    if (GaragePurchaseConfirm.HasPending())
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Purchase preview cancelled. Choose an appearance for free.");
+    }
+    return true;
+}
+
 void ALatebrakeRaceGameMode::GarageCycleAppearance(
     latebrake::GarageLookLayer layer, bool bReset,
     const latebrake::GarageDirectAppearanceRequest* Direct)
