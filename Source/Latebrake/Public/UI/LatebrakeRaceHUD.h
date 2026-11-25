@@ -10,6 +10,7 @@
 #include "UI/MenuDetailPager.h"
 #include "UI/HudMenuMouseControls.h"
 #include "UI/GaragePurchaseMouseLayout.h"
+#include "UI/GarageAppearancePalette.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -22,6 +23,9 @@ class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
 public:
     virtual void DrawHUD() override;
     void ScrollMenuDetails(int direction);
+    bool ToggleGaragePalette(latebrake::GarageLookLayer Layer);
+    void CloseGaragePalette();
+    void ApplyGaragePaletteChoice(latebrake::DesktopMenuMouseAction Action);
     bool TryScrollMenuMouse(double x, double y, int direction);
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
@@ -34,6 +38,8 @@ private:
     latebrake::RivalRelativeMotionTracker RivalRelativeMotionHint;
     latebrake::MenuDetailPager MenuPager;
     latebrake::GaragePresentedOffers PresentedGarageOffers{};
+    latebrake::GaragePaletteSession GaragePalette{};
+    latebrake::GaragePresentedPalette PresentedGaragePalette{};
     TWeakObjectPtr<APawn> LastWayfindingPawn;
     uint64 LastWayfindingSession = 0;
     uint64 LastWayfindingTeleport = 0;
