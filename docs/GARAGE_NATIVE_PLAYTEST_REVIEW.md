@@ -49,7 +49,8 @@ descriptive observation for each pass or fail. Leave unperformed checks
 as not_tested. Hardware or viewport that is unavailable remains not_tested.
 Do not invent results to meet a deadline. A single-session checklist is
 not a substitute for separate hardware-specific tests. Document additional
-sessions separately and do not combine inconsistent candidate identities.
+sessions separately, then optionally aggregate them with the command below.
+Never combine inconsistent candidate identities.
 
 ```powershell
 python scripts/Review-WindowsPlaytest.py garage-evaluate --receipt 'D:/QA/session.json' --expected-source $Sha --checklist 'D:/QA/garage-checklist.json' --output 'D:/QA/garage-summary.json'
@@ -62,6 +63,23 @@ details). Even all self-reported passes cannot set gameplay_verified,
 source_authenticity_verified or ready_for_release. Private JSON files
 must remain outside the sealed candidate. Do not upload private receipts
 or logs containing user paths or personal information.
+
+## Combine separate sessions
+
+For restart, hardware and viewport tests, initialize and record a new
+checklist per separate genuine runtime receipt. Combine one to sixteen
+receipt/checklist pairs only when the exact source, manifest, executable,
+engine and map hashes agree:
+
+```powershell
+python scripts/Review-WindowsPlaytest.py garage-aggregate --expected-source $Sha --session 'D:/QA/session1.json' 'D:/QA/garage1.json' --session 'D:/QA/session2.json' 'D:/QA/garage2.json' --output 'D:/QA/garage-aggregate.json'
+```
+
+The tool rechecks each archive and runtime log independently. Duplicate
+receipt hashes are rejected. An earlier fail stays a fail even when
+another session reports a pass; the conflict is listed for manual review.
+A not_tested observation does not erase a pass or failure in another
+session. The aggregate remains unverified.
 
 For PR #470, provide the owner with independently reviewed native build
 and cook logs, exact SHA, observed screenshots and the manually checked
