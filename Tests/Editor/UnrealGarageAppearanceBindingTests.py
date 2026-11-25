@@ -140,9 +140,11 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "bounds.Contains(x, y)",
         ):
             self.assertIn(token, self.mouse)
-        self.assertIn("style, x, y, Mode->CanCustomizeGarage(),", self.hud)
+        self.assertIn("availability, Mode->CanBrowseGarage(), Mode->CanCustomizeGarage(),", self.hud)
         self.assertIn("Mode->CanBrowseGarage()", self.hud)
-        self.assertIn("latebrake::HitTestGarageStyleMouse(", self.hud)
+        self.assertIn("CollectGaragePointerClaims(buttons, style, quick, orbit,", self.hud)
+        arbitration=(BASE / "Public/UI/GaragePointerArbitration.h").read_text(encoding="utf-8")
+        self.assertIn("HitTestGarageStyleMouse(style, x, y, true, true)", arbitration)
         for token in (
             "case latebrake::DesktopMenuMouseAction::GaragePaint:",
             "case latebrake::DesktopMenuMouseAction::GarageStripe:",
