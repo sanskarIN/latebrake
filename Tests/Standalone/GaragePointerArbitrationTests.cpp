@@ -21,14 +21,14 @@ void Require(bool ok, const char* message)
 
 constexpr std::array<Action, GaragePointerGroupCount> Representative{
     Action::Activate, Action::GaragePaint, Action::GarageQuickView0,
-    Action::GarageOrbit0};
+    Action::GarageOrbit0, Action::GarageUnlockOffer};
 
 void AllClaimsAndPermissions()
 {
-    // Every possible combination of the four physical regions and every
+    // Every possible combination of the five physical regions and every
     // combination of permissions. A disabled hit still owns its region.
-    for (unsigned physical = 0; physical < 16u; ++physical)
-        for (unsigned allowed = 0; allowed < 16u; ++allowed)
+    for (unsigned physical = 0; physical < (1u << GaragePointerGroupCount); ++physical)
+        for (unsigned allowed = 0; allowed < (1u << GaragePointerGroupCount); ++allowed)
         {
             GaragePointerClaims claims{};
             Action expected = Action::None;
@@ -58,11 +58,12 @@ void ExactGroupIdentity()
         Action::GarageQuickView1, Action::GarageQuickView2,
         Action::GarageQuickView3, Action::GarageQuickView4,
         Action::GarageQuickView5, Action::GarageOrbit0, Action::GarageOrbit1,
-        Action::GarageOrbit2, Action::GarageOrbit3};
+        Action::GarageOrbit2, Action::GarageOrbit3,
+        Action::GarageUnlockOffer, Action::GarageEngineOffer, Action::GarageGripOffer};
     for (std::size_t i = 0; i < all.size(); ++i)
     {
         const std::size_t expectedGroup = i < 6u ? 0u :
-            i < 12u ? 1u : i < 18u ? 2u : 3u;
+            i < 12u ? 1u : i < 18u ? 2u : i < 22u ? 3u : 4u;
         for (std::size_t group = 0; group < GaragePointerGroupCount; ++group)
         {
             GaragePointerClaims claims{};
@@ -92,8 +93,8 @@ void ExactGroupIdentity()
 
 void RealDesktopPlans()
 {
-    const GaragePointerPermissions full{{true,true,true},true,true,true};
-    const GaragePointerPermissions readOnly{{false,false,false},true,false,false};
+    const GaragePointerPermissions full{{true,true,true},true,true,true,{true,true,true}};
+    const GaragePointerPermissions readOnly{{false,false,false},true,false,false,{false,false,false}};
     for (const auto& screen : {std::array<int,2>{900,600},{1280,720},
          {1366,768},{1920,1080},{2560,1440},{3840,2160},{2560,1080}})
     {
@@ -103,7 +104,8 @@ void RealDesktopPlans()
         const auto style=CalculateGarageStyleMouseLayout(w,h,hud,false,true,MenuPage::Garage);
         const auto lane=CalculateGarageShowroomLane(w,h,hud,false,true,MenuPage::Garage);
         const auto orbit=CalculateGarageOrbitButtons(lane,w,h,hud);
-        Require(nav.Valid && style.Valid && orbit.Valid, "full desktop plans valid");
+        const auto purchase=CalculateGaragePurchaseMouseLayout(lane,w,h,hud);
+        Require(nav.Valid && style.Valid && orbit.Valid && purchase.Valid, "full desktop plans valid");
         for (int vehicle=0;vehicle<VehicleCount;++vehicle)
         {
             const auto diagram=CalculateGarageSchematic(w,h,hud,style,
@@ -113,7 +115,7 @@ void RealDesktopPlans()
             const auto hit=[&](const DesktopMenuMouseRect& r, GaragePointerPermissions p)
             {
                 return ResolveGaragePointerClaims(CollectGaragePointerClaims(
-                    nav,style,quick,orbit,r.X+r.Width/2.0,r.Y+r.Height/2.0,p));
+                    nav,style,quick,orbit,purchase,r.X+r.Width/2.0,r.Y+r.Height/2.0,p));
             };
             for (const auto& b:nav.Buttons)
             {
@@ -139,18 +141,34 @@ void RealDesktopPlans()
                 Require(hit(b.Bounds,full)==b.Action,"camera angle maps uniquely");
                 Require(hit(b.Bounds,readOnly)==Action::None,"disabled camera cannot dispatch");
             }
+            for (const auto& b:purchase.Buttons)
+            {
+                Require(hit(b.Bounds,full)==b.Action,"purchase offer maps uniquely");
+                Require(hit(b.Bounds,readOnly)==Action::None,"read-only cannot click a purchase");
+                auto partial=full;
+                partial.Purchase[static_cast<std::size_t>(GarageOfferIndex(b.Action))]=false;
+                Require(hit(b.Bounds,partial)==Action::None,"disabled offer cannot dispatch");
+            }
+            auto overlappingPurchase=purchase;
+            overlappingPurchase.Buttons[0].Bounds=nav.Buttons[4].Bounds;
+            const auto& nr=nav.Buttons[4].Bounds;
+            // A malformed or disabled purchase area must not grant spending.
+            Require(ResolveGaragePointerClaims(CollectGaragePointerClaims(
+                nav,style,quick,orbit,overlappingPurchase,
+                nr.X+nr.Width/2,nr.Y+nr.Height/2,full))==Action::None,
+                "purchase overlapping navigation cannot dispatch");
             // Inject cross-region overlap without corrupting either group
             // internally. A disabled style region must not expose navigation.
             auto overlapping=nav;
             overlapping.Buttons[4].Bounds=style.Buttons[0].Bounds;
             const auto& r=style.Buttons[0].Bounds;
-            for (const auto p : {full,readOnly,GaragePointerPermissions{{true,true,true},true,false,true}})
+            for (const auto p : {full,readOnly,GaragePointerPermissions{{true,true,true},true,false,true,{true,true,true}}})
                 Require(ResolveGaragePointerClaims(CollectGaragePointerClaims(
-                    overlapping,style,quick,orbit,r.X+r.Width/2.0,r.Y+r.Height/2.0,p))
+                    overlapping,style,quick,orbit,purchase,r.X+r.Width/2.0,r.Y+r.Height/2.0,p))
                     ==Action::None,"overlap fails regardless of group authorization");
             const double nan=std::numeric_limits<double>::quiet_NaN();
             Require(ResolveGaragePointerClaims(CollectGaragePointerClaims(
-                nav,style,quick,orbit,nan,0.0,full))==Action::None,
+                nav,style,quick,orbit,purchase,nan,0.0,full))==Action::None,
                 "invalid pointer cannot dispatch");
         }
     }
