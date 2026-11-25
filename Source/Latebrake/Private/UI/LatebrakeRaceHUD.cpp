@@ -4,6 +4,7 @@
 #include "UI/GarageShowroomSchematic.h"
 #include "UI/GarageShowroomQuickView.h"
 #include "UI/GaragePointerArbitration.h"
+#include "UI/HudButtonCaptionFit.h"
 #include "UI/GarageShowroomLane.h"
 #include "UI/HudInstrumentCluster.h"
 #include "UI/HudInstrumentDriveBadge.h"
@@ -322,6 +323,28 @@ void ALatebrakeRaceHUD::DrawHUD()
                 GEngine->GetSmallFont(), 0.78f * UIScale);
         }
 
+        // Use the same actual-font fit for every desktop control. The
+        // optional right accessory is reserved before text is measured.
+        const auto DrawButtonCaption = [&](const FString& Caption,
+            const FString& ShortCaption, const latebrake::DesktopMenuMouseRect& Bounds,
+            const FLinearColor& Ink, float PreferredScale, double AccessoryWidth)
+        {
+            UFont* Font = GEngine->GetSmallFont();
+            if (!Font || Caption.IsEmpty()) return;
+            const auto Fit = latebrake::FitHudButtonCaption(Bounds, PreferredScale,
+                6.0 * Layout.Scale, 3.0 * Layout.Scale, AccessoryWidth,
+                !ShortCaption.IsEmpty(), [&](bool bShort, double Scale)
+                {
+                    float TW = 0.f, TH = 0.f;
+                    GetTextSize(bShort ? ShortCaption : Caption, TW, TH,
+                        Font, static_cast<float>(Scale));
+                    return latebrake::HudCaptionExtent{TW, TH};
+                });
+            if (Fit.Valid)
+                DrawText(Fit.ShortCaption ? ShortCaption : Caption, Ink,
+                    static_cast<float>(Fit.X), static_cast<float>(Fit.Y),
+                    Font, static_cast<float>(Fit.Scale));
+        };
         const auto OrbitButtons = latebrake::CalculateGarageOrbitButtons(
             ShowroomLane, Canvas->SizeX, Canvas->SizeY, Layout);
         if (OrbitButtons.Valid)
@@ -351,17 +374,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                 // Measure each caption and fall back to its ordinal on
                 // narrow buttons. Never draw across another hit target.
                 FString Caption(UTF8_TO_TCHAR(latebrake::GarageOrbitCaption(Index)));
-                float TW=0.f,TH=0.f;
-                const float TS=0.70f*UIScale;
-                GetTextSize(Caption,TW,TH,GEngine->GetSmallFont(),TS);
-                if (TW>BW-8.f)
-                {
-                    Caption=FString::FromInt(Index+1);
-                    GetTextSize(Caption,TW,TH,GEngine->GetSmallFont(),TS);
-                }
-                if (TW<=BW-8.f && TH<=BH-4.f)
-                    DrawText(Caption,Ink,BX+(BW-TW)*0.5f,BY+(BH-TH)*0.5f,
-                        GEngine->GetSmallFont(),TS);
+                DrawButtonCaption(Caption, FString::FromInt(Index+1),
+                    R, Ink, 0.70f * UIScale, 0.0);
             }
         }
 
@@ -1287,10 +1301,9 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Caption = TEXT("CLOSE"); break;
                 default: break;
                 }
-                DrawText(Caption, !Enabled ? DisabledLabel :
-                    Selected ? Gold : White,
-                    BX + 10.f * UIScale, BY + 12.f * UIScale,
-                    GEngine->GetSmallFont(), 0.82f * UIScale);
+                DrawButtonCaption(Caption, FString(), Button.Bounds,
+                    !Enabled ? DisabledLabel : Selected ? Gold : White,
+                    0.82f * UIScale, 0.0);
             }
             // Only the Garage shows separate clickable cosmetic actions.
             // Uses exactly the same bounded rectangles as mouse hit tests;
@@ -1344,17 +1357,18 @@ void ALatebrakeRaceHUD::DrawHUD()
                             UTF8_TO_TCHAR(Indicator.Caption),
                             Indicator.Ordinal, Indicator.Total)
                         : FString(UTF8_TO_TCHAR(Indicator.Caption));
-                    DrawText(Caption, TextColor, BX + 10.f * UIScale,
-                        BY + 12.f * UIScale,
-                        GEngine->GetSmallFont(), 0.82f * UIScale);
-                    if (StyleButton.Action ==
-                        latebrake::DesktopMenuMouseAction::GaragePaint)
+                    const bool bPaint = StyleButton.Action ==
+                        latebrake::DesktopMenuMouseAction::GaragePaint;
+                    const float Swatch = FMath::Clamp(
+                        12.f * UIScale, 8.f, 14.f);
+                    DrawButtonCaption(Caption, FString(), StyleButton.Bounds,
+                        TextColor, 0.82f * UIScale,
+                        bPaint ? Swatch + 6.f * UIScale : 0.0);
+                    if (bPaint)
                     {
                         // A bounded preview swatch is visual-only: it is
                         // inside the existing hit rectangle, with no new
                         // pointer target, material allocation or input.
-                        const float Swatch = FMath::Clamp(
-                            12.f * UIScale, 8.f, 14.f);
                         const auto Rgb = StylePaint.Body;
                         DrawRect(FLinearColor(
                             static_cast<float>(Rgb.R),
@@ -1421,9 +1435,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                                     : FLinearColor(0.08f,0.13f,0.19f,1.f),
                                 BX,BY,BW,BH);
                             DrawRect(Ink,BX,BY,BW,2.f);
-                            DrawText(FString::FromInt(static_cast<int32>(i)+1),
-                                Ink,BX+0.35f*BW,BY+3.f,
-                                GEngine->GetSmallFont(),0.78f*UIScale);
+                            DrawButtonCaption(FString::FromInt(static_cast<int32>(i)+1),
+                                FString(), Button.Bounds, Ink, 0.78f * UIScale, 0.0);
                         }
                     }
                     DrawText(TEXT("CAR TOP VIEW | 2D SCHEMATIC"), Gold,
