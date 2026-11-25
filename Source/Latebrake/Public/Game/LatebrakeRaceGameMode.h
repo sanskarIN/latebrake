@@ -217,6 +217,7 @@ private:
     bool RejectGarageMutationIfBlocked();
     latebrake::GarageEquipUiState GetGarageMutationUiState() const;
     void SyncGarageShowroomPreview();
+    void DismissGaragePalette();
     void GarageCycleAppearance(latebrake::GarageLookLayer layer,
                               bool bReset = false,
                               const latebrake::GarageDirectAppearanceRequest* Direct = nullptr);
