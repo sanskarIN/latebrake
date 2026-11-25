@@ -1656,6 +1656,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
 {
     if (!Menu.IsOpen()) return;
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     const latebrake::MenuPage Page = Menu.Current();
     if (Page == latebrake::MenuPage::Main)
     {
