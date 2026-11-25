@@ -178,5 +178,49 @@ class GarageNativeQAReviewTests(unittest.TestCase):
         self.assertFalse((self.candidate/"review.json").exists())
 
 
+    def test_multi_session_preserves_conflicting_results(self):
+        first=self.init()
+        keys=list(first["checks"])
+        first["checks"][keys[0]].update(result="fail",notes="Synthetic failed observation.")
+        first["checks"][keys[1]].update(result="pass",notes="Synthetic first observation.")
+        self.write_checks(first)
+        first_receipt,first_checklist=self.receipt,self.checklist
+        # Separate runtime receipt and matching log, same build identity.
+        self.receipt=self.private/"second.json"
+        self.log=self.receipt.with_suffix(".log")
+        self.log.write_bytes(b"SECOND SYNTHETIC LOG")
+        self.receipt_data.update(unreal_log_path=str(self.log),
+                                 unreal_log_sha256=digest(self.log),
+                                 unreal_log_bytes=self.log.stat().st_size)
+        self.save_receipt()
+        self.checklist=self.private/"second-checklist.json"
+        second=self.init()
+        second["checks"][keys[0]].update(result="pass",notes="Synthetic conflicting observation.")
+        second["checks"][keys[2]].update(result="pass",notes="Synthetic second observation.")
+        self.write_checks(second)
+        result=subprocess.run([sys.executable,str(SCRIPT),"garage-aggregate",
+            "--expected-source",self.source,"--session",str(first_receipt),str(first_checklist),
+            "--session",str(self.receipt),str(self.checklist),"--output",str(self.summary)],
+            capture_output=True,text=True,check=False,timeout=15)
+        self.assertEqual(result.returncode,0,result.stderr)
+        summary=json.loads(self.summary.read_text(encoding="utf-8"))
+        merged=summary["manual_observations"]
+        self.assertEqual(merged["session_count"],2)
+        self.assertEqual(merged["counts"],{"pass":2,"fail":1,"not_tested":135})
+        self.assertEqual(merged["conflicting_scenarios"],[keys[0]])
+        self.assertEqual(merged["outcomes"][keys[0]]["result"],"fail")
+        self.assertIn("conflicting_manual_observations",summary["blocking_observations"])
+        self.assertFalse(summary["ready_for_release"])
+
+    def test_duplicate_receipts_cannot_count_twice(self):
+        first=self.init()
+        with self.assertRaisesRegex(ValueError,"repeat a runtime receipt"):
+            policy.merge_session_observations([first,first])
+        with self.assertRaises(ValueError):
+            policy.merge_session_observations([])
+        with self.assertRaises(ValueError):
+            policy.merge_session_observations([first]*17)
+
+
 if __name__=="__main__":
     unittest.main()
