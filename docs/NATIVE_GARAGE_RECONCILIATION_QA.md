@@ -57,6 +57,25 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
   reloads disk metadata and rejects unreadable/newer profiles; it is NOT an
   interprocess atomic lock. Avoid simultaneous instances.
 
+### Direct cosmetic chooser
+
+- Open Paint, Stripe and Rims with desktop mouse on each of six cars. Choose
+  any of eight paints, three stripe patterns and three rim styles directly.
+  Verify canonical names, actual paint swatches, active and factory tags.
+- Confirm the chooser occupies only the central showroom aperture, closes
+  after selection, and restores the unobstructed car view. Validate small,
+  ultrawide and 4K windows. When the bounded panel cannot fit, mouse cycling
+  remains available; F5/F6/F7 and gamepad cycling are unchanged.
+- Choose the already active option: no save or mesh rebuild should happen.
+  Try an old displayed option after changing car, changing appearance with a
+  keyboard shortcut, resizing, leaving/re-entering Garage or losing focus.
+  No stale pointer action may update another car. Locked/read-only views must
+  not open an editable chooser.
+- Inject failed saving and verify the prior look, not just the chooser label,
+  is restored. Test each paint/stripe/rim field independently on a parked
+  owned car and confirm credits, ownership, upgrades and equipped ID remain
+  unchanged.
+
 ### Pointer arbitration and input
 
 - Confirm normal navigation, styling, six quick-view chips and four orbit
