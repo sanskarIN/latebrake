@@ -91,6 +91,61 @@ bool ALatebrakeRaceHUD::TryScrollMenuMouse(
 #endif
 }
 
+void ALatebrakeRaceHUD::CloseGaragePalette()
+{
+    GaragePalette = {};
+    PresentedGaragePalette = {};
+}
+
+bool ALatebrakeRaceHUD::ToggleGaragePalette(latebrake::GarageLookLayer Layer)
+{
+    const auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Canvas || !Mode || !Mode->CanCustomizeGarage() ||
+        latebrake::GarageLookChoiceCount(Layer) <= 0)
+    {
+        CloseGaragePalette();
+        return true; // blocked input is not a request to cycle
+    }
+    const double W = Canvas->SizeX, H = Canvas->SizeY;
+    const auto Hud = latebrake::CalculateHudLayout(W, H);
+    const auto Lane = latebrake::CalculateGarageShowroomLane(
+        W,H,Hud,false,Mode->IsMenuOpen(),Mode->GetMenuPage());
+    if (!latebrake::CalculateGaragePaletteLayout(Lane,W,H,Hud,Layer).Valid)
+    {
+        CloseGaragePalette();
+        return false; // retain established cycle behavior on compact layouts
+    }
+    const int32 Viewed = Mode->GetGaragePreviewVehicleId();
+    const auto Look = Mode->GetGaragePreviewLook();
+    if (GaragePalette.Matches(Viewed, Look, true) && GaragePalette.Layer == Layer)
+    {
+        CloseGaragePalette();
+        return true;
+    }
+    GaragePalette = {true, Viewed, Look, Layer};
+    PresentedGaragePalette = {};
+    return true;
+}
+
+void ALatebrakeRaceHUD::ApplyGaragePaletteChoice(latebrake::DesktopMenuMouseAction Action)
+{
+    auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    const auto Session = GaragePalette;
+    const int Choice = latebrake::GaragePaletteChoiceIndex(Action);
+    const bool bPresented = Choice >= 0 &&
+        PresentedGaragePalette.Session.Matches(Session.VehicleId,Session.Look,Session.Open) &&
+        PresentedGaragePalette.Session.Layer == Session.Layer &&
+        Choice < PresentedGaragePalette.Layout.Count &&
+        PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(Choice)];
+    CloseGaragePalette();
+    if (Mode && bPresented &&
+        Session.Matches(Mode->GetGaragePreviewVehicleId(),
+            Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
+        Mode->GarageChooseAppearance({Session.VehicleId,Session.Look,Session.Layer,Choice});
+}
+
 latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     double x, double y) const
 {
@@ -139,9 +194,20 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
                 PresentedGarageOffers[1], purchase.Buttons[1], offers[1]),
              purchase.Valid && offers[2].Enabled() && latebrake::CanClickPresentedGarageOffer(
                 PresentedGarageOffers[2], purchase.Buttons[2], offers[2])}};
+        latebrake::GaragePointerClaim paletteClaim{};
+        if (GaragePalette.Matches(Mode->GetGaragePreviewVehicleId(),
+            Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
+        {
+            const auto paletteLayout = latebrake::CalculateGaragePaletteLayout(
+                lane,width,height,hud,GaragePalette.Layer);
+            const auto paletteAction = latebrake::HitTestGaragePalette(paletteLayout,x,y);
+            paletteClaim = {paletteAction, paletteAction != latebrake::DesktopMenuMouseAction::None &&
+                latebrake::CanClickPresentedGaragePalette(
+                    PresentedGaragePalette,GaragePalette,paletteLayout,paletteAction)};
+        }
         return latebrake::ResolveGaragePointerClaims(
             latebrake::CollectGaragePointerClaims(buttons, style, quick, orbit, purchase,
-                x, y, permission));
+                x, y, permission, paletteClaim));
     }
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
         availability);
@@ -152,8 +218,10 @@ void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
     PresentedGarageOffers = {};
+    PresentedGaragePalette = {};
     if (!GEngine || !PlayerOwner || !Canvas)
     {
+        CloseGaragePalette();
         return;
     }
 
@@ -168,8 +236,13 @@ void ALatebrakeRaceHUD::DrawHUD()
         RivalRelativeMotionHint.Reset();
         LastWayfindingPawn.Reset();
         MenuPager.Reset();
+        CloseGaragePalette();
         return;
     }
+
+    if (!GaragePalette.Matches(Mode->GetGaragePreviewVehicleId(),
+        Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
+        CloseGaragePalette();
 
     const latebrake::HudLayout Layout = latebrake::CalculateHudLayout(
         static_cast<double>(Canvas->SizeX), static_cast<double>(Canvas->SizeY));
@@ -409,6 +482,69 @@ void ALatebrakeRaceHUD::DrawHUD()
                 const bool bStatusDrawn = DrawButtonCaption(Status,bConfirm ? FString(TEXT("CONFIRM")) : FString(),
                     Lower,Ink,0.68f*UIScale,0.0);
                 PresentedGarageOffers[i].Visible = bTitleDrawn && bStatusDrawn;
+            }
+        }
+        // Direct choice overlay is a temporary showroom panel. The same
+        // layout is used for rendering and hit admission; the car is
+        // revealed again immediately after an explicit choice or close.
+        if (GaragePalette.Open)
+        {
+            const auto Palette = latebrake::CalculateGaragePaletteLayout(
+                ShowroomLane,Canvas->SizeX,Canvas->SizeY,Layout,GaragePalette.Layer);
+            if (!Palette.Valid)
+                CloseGaragePalette();
+            else
+            {
+                PresentedGaragePalette.Session = GaragePalette;
+                PresentedGaragePalette.Layout = Palette;
+                const auto& P = Palette.Panel;
+                DrawRect(FLinearColor(0.025f,0.045f,0.075f,0.98f),
+                    P.X,P.Y,P.Width,P.Height);
+                DrawRect(Gold,P.X,P.Y,P.Width,3.f*UIScale);
+                const auto& Close = Palette.Close.Bounds;
+                const latebrake::DesktopMenuMouseRect Header{
+                    P.X,Close.Y,Close.X-P.X,Close.Height};
+                const FString HeaderText = GaragePalette.Layer == latebrake::GarageLookLayer::Paint
+                    ? TEXT("CHOOSE PAINT") : GaragePalette.Layer == latebrake::GarageLookLayer::Stripe
+                    ? TEXT("CHOOSE STRIPES") : TEXT("CHOOSE RIMS");
+                DrawButtonCaption(HeaderText,FString(TEXT("CHOOSE")),Header,Gold,0.78f*UIScale,0.0);
+                DrawRect(FLinearColor(0.14f,0.20f,0.29f,0.98f),Close.X,Close.Y,Close.Width,Close.Height);
+                PresentedGaragePalette.CloseVisible =
+                    DrawButtonCaption(FString(TEXT("CLOSE")),FString(TEXT("X")),Close,White,0.76f*UIScale,0.0);
+                float PX=0.f,PY=0.f;
+                const auto Hover = PlayerOwner->GetMousePosition(PX,PY)
+                    ? latebrake::HitTestGaragePalette(Palette,PX,PY)
+                    : latebrake::DesktopMenuMouseAction::None;
+                for (int32 i=0;i<Palette.Count;++i)
+                {
+                    const auto Choice = latebrake::DescribeGaragePaletteChoice(
+                        GaragePalette.VehicleId,GaragePalette.Look,GaragePalette.Layer,i);
+                    const auto& Button = Palette.Choices[static_cast<std::size_t>(i)];
+                    const auto& R = Button.Bounds;
+                    const bool bSelected = Choice.Selected;
+                    const FLinearColor Ink = bSelected ? Gold : White;
+                    DrawRect(bSelected ? FLinearColor(0.27f,0.21f,0.09f,0.99f)
+                        : Hover==Button.Action ? FLinearColor(0.19f,0.31f,0.43f,0.99f)
+                        : FLinearColor(0.08f,0.13f,0.20f,0.99f),R.X,R.Y,R.Width,R.Height);
+                    DrawRect(Ink,R.X,R.Y,3.f*UIScale,R.Height);
+                    const float Chip = FMath::Clamp(15.f*UIScale,10.f,18.f);
+                    const float CX = static_cast<float>(R.X+R.Width-Chip-6.f*UIScale);
+                    const float CY = static_cast<float>(R.Y+0.5*(R.Height-Chip));
+                    const bool bPaint = GaragePalette.Layer == latebrake::GarageLookLayer::Paint;
+                    if (bPaint)
+                        DrawRect(FLinearColor(Choice.Swatch.R,Choice.Swatch.G,Choice.Swatch.B,1.f),
+                            CX,CY,Chip,Chip);
+                    const latebrake::DesktopMenuMouseRect Title{
+                        R.X,R.Y,R.Width,R.Height*0.60};
+                    const latebrake::DesktopMenuMouseRect Footer{
+                        R.X,R.Y+R.Height*0.60,R.Width,R.Height*0.40};
+                    const bool bTitle = DrawButtonCaption(
+                        FString(UTF8_TO_TCHAR(Choice.Label)),FString(UTF8_TO_TCHAR(Choice.ShortLabel)),
+                        Title,Ink,0.76f*UIScale,bPaint ? Chip+6.f*UIScale : 0.0);
+                    const FString Tag = bSelected ? TEXT("ACTIVE") : Choice.Factory ? TEXT("FACTORY") : TEXT("SELECT");
+                    const bool bTag = DrawButtonCaption(Tag,FString(),Footer,Ink,0.62f*UIScale,0.0);
+                    PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag;
+                }
             }
         }
         const auto OrbitButtons = latebrake::CalculateGarageOrbitButtons(
