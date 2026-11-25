@@ -2269,6 +2269,7 @@ void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
 void ALatebrakeRaceGameMode::GarageBrowsePrevious()
 {
     if (!CanBrowseGarage()) return;
+    DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     const int32 id = GarageGallery.Previous();
     const auto car = latebrake::GarageState::Definition(id);
