@@ -82,9 +82,9 @@ class UnrealGarageSchematicBindingTests(unittest.TestCase):
         self.assertIn("for (int stripe = 0;stripe < GarageStripeOptions;++stripe)", self.test)
         self.assertIn("for (int rims = 0;rims < GarageWheelOptions;++rims)", self.test)
         self.assertIn("add_latebrake_portable_research_test(GarageShowroomSchematic)", self.cmake)
-        self.assertIn("GarageShowroomSchematicTests.cpp", self.cmake)
-        self.assertIn("NOT a", self.doc)
-        self.assertIn("Manual UE Editor verification", self.doc)
+        self.assertIn("GarageShowroomSchematicTests.cpp", str(TEST))
+        self.assertIn("not native Unreal tests", self.doc)
+        self.assertIn("actual UE5.8/UHT compile", self.doc)
 
 
 if __name__ == "__main__":
