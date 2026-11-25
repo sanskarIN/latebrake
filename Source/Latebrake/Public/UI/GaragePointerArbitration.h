@@ -2,6 +2,7 @@
 
 #include "UI/GarageShowroomLane.h"
 #include "UI/GarageShowroomQuickView.h"
+#include "UI/GaragePurchaseMouseLayout.h"
 #include <array>
 #include <cstddef>
 
@@ -18,7 +19,7 @@ struct GaragePointerClaim final
 
 enum class GaragePointerGroup : std::size_t
 {
-    Navigation, Style, QuickView, Orbit, Count
+    Navigation, Style, QuickView, Orbit, Purchase, Count
 };
 
 inline constexpr std::size_t GaragePointerGroupCount =
@@ -58,6 +59,8 @@ constexpr bool ValidGarageGroupClaim(GaragePointerGroup group,
         return GarageQuickViewIndex(action) >= 0;
     case GaragePointerGroup::Orbit:
         return GarageOrbitIndex(action) >= 0;
+    case GaragePointerGroup::Purchase:
+        return GarageOfferIndex(action) >= 0;
     default:
         return false;
     }
@@ -95,6 +98,7 @@ struct GaragePointerPermissions final
     bool Browse = false;
     bool Style = false;
     bool Orbit = false;
+    std::array<bool, GaragePurchaseOfferCount> Purchase{};
 };
 
 // Geometry is computed by the same source plans used by the HUD. All raw
@@ -104,6 +108,7 @@ inline GaragePointerClaims CollectGaragePointerClaims(
     const GarageStyleMouseLayout& style,
     const GarageQuickViewLayout& quick,
     const GarageOrbitButtons& orbit,
+    const GaragePurchaseMouseLayout& purchase,
     double x, double y, GaragePointerPermissions permission) noexcept
 {
     const auto navAction = HitTestDesktopMenuMouse(navigation, x, y,
@@ -112,13 +117,18 @@ inline GaragePointerClaims CollectGaragePointerClaims(
     const auto quickAction = HitTestGarageQuickView(quick, x, y, true);
     const auto orbitAction = HitTestGarageOrbitButtons(orbit, x, y, true);
 
+    const auto purchaseAction = HitTestGaragePurchaseMouse(purchase, x, y);
+    const int purchaseIndex = GarageOfferIndex(purchaseAction);
+
     return {{
         {navAction, navAction != DesktopMenuMouseAction::None &&
             DesktopMenuMouseActionEnabled(navAction, permission.Navigation)},
         {styleAction, styleAction != DesktopMenuMouseAction::None &&
             (IsGarageBrowseAction(styleAction) ? permission.Browse : permission.Style)},
         {quickAction, quickAction != DesktopMenuMouseAction::None && permission.Browse},
-        {orbitAction, orbitAction != DesktopMenuMouseAction::None && permission.Orbit}
+        {orbitAction, orbitAction != DesktopMenuMouseAction::None && permission.Orbit},
+        {purchaseAction, purchaseIndex >= 0 &&
+            permission.Purchase[static_cast<std::size_t>(purchaseIndex)]}
     }};
 }
 
