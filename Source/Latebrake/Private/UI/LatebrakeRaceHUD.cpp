@@ -102,7 +102,7 @@ void ALatebrakeRaceHUD::CloseGaragePalette()
 
 bool ALatebrakeRaceHUD::ToggleGaragePalette(latebrake::GarageLookLayer Layer)
 {
-    const auto* Mode = GetWorld()
+    auto* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Canvas || !Mode || !Mode->CanCustomizeGarage() ||
         latebrake::GarageLookChoiceCount(Layer) <= 0)
@@ -126,6 +126,13 @@ bool ALatebrakeRaceHUD::ToggleGaragePalette(latebrake::GarageLookLayer Layer)
         CloseGaragePalette();
         return true;
     }
+    if (!Mode->BeginGarageAppearancePreview())
+    {
+        CloseGaragePalette();
+        return true;
+    }
+    // Reject stale mouse confirmation cards before the next HUD frame.
+    PresentedGarageOffers = {};
     GaragePalette = {true, Viewed, Look, Layer};
     GaragePaletteFocus = latebrake::InitialGaragePaletteFocus(GaragePalette);
     DrawnGaragePaletteFocus = -1;
