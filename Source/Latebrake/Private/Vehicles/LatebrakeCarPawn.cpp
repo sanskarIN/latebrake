@@ -2781,6 +2781,13 @@ void ALatebrakeCarPawn::MenuToggle()
 
 void ALatebrakeCarPawn::MenuNext()
 {
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            if (Hud->HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput::Next))
+            {
+                ClearDriverInputs();
+                return;
+            }
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->MenuNext();
@@ -2789,6 +2796,13 @@ void ALatebrakeCarPawn::MenuNext()
 
 void ALatebrakeCarPawn::MenuPrevious()
 {
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            if (Hud->HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput::Previous))
+            {
+                ClearDriverInputs();
+                return;
+            }
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
         Mode->MenuPrevious();
@@ -2797,6 +2811,13 @@ void ALatebrakeCarPawn::MenuPrevious()
 
 void ALatebrakeCarPawn::MenuDetailsNext()
 {
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            if (Hud->HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput::Next))
+            {
+                ClearDriverInputs();
+                return;
+            }
     if (const ALatebrakeRaceGameMode* Mode =
             GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
@@ -2815,6 +2836,13 @@ void ALatebrakeCarPawn::MenuDetailsNext()
 
 void ALatebrakeCarPawn::MenuDetailsPrevious()
 {
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            if (Hud->HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput::Previous))
+            {
+                ClearDriverInputs();
+                return;
+            }
     if (const ALatebrakeRaceGameMode* Mode =
             GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
@@ -2839,6 +2867,13 @@ void ALatebrakeCarPawn::MenuActivate()
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !Mode->IsMenuOpen()) return;
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            if (Hud->HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput::Confirm))
+            {
+                ClearDriverInputs();
+                return;
+            }
     ClearDriverInputs();
     Mode->MenuActivate();
 }
@@ -2982,6 +3017,13 @@ void ALatebrakeCarPawn::MenuMousePressed()
 
 void ALatebrakeCarPawn::CareerNext()
 {
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            if (Hud->AdvanceGaragePaletteLayer())
+            {
+                ClearDriverInputs();
+                return;
+            }
     ClearDriverInputs();
     if (ALatebrakeRaceGameMode* Mode =
         GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
@@ -2992,6 +3034,13 @@ void ALatebrakeCarPawn::CareerNext()
 
 void ALatebrakeCarPawn::CareerStart()
 {
+    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            if (Hud->HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput::Cancel))
+            {
+                ClearDriverInputs();
+                return;
+            }
     ClearDriverInputs();
     if (ALatebrakeRaceGameMode* Mode =
         GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
