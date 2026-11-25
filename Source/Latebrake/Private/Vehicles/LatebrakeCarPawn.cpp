@@ -899,11 +899,7 @@ void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
         OriginalVehicleTintParameter.IsNone() ||
         !IsValid(OriginalVehicleVisual)) return;
     const auto paint=latebrake::PaintForGarageLook(VehicleId, Look);
-    const auto rim=Look.Wheels == 2u
-        ? latebrake::VehiclePaintRgb{0.10,0.82,0.91}
-        : Look.Wheels == 1u
-            ? latebrake::VehiclePaintRgb{0.87,0.89,0.92}
-            : latebrake::VehiclePaintRgb{0.30,0.33,0.38};
+    const auto rim=latebrake::RimTintForGarageLook(Look);
     const latebrake::VehiclePaintRgb tones[] = {
         paint.Body, paint.Accent, paint.Canopy,
         {0.030,0.033,0.038}, rim,
@@ -1010,9 +1006,7 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
                 .CabinRoofHeightCm +
             latebrake::vehiclemesh::OriginalVehicleVisualOffsetZCm + 2.0)
         : 52.f + 27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
-    const latebrake::VehiclePaintRgb StripeRgb = Look.Paint == 7u
-        ? latebrake::VehiclePaintRgb{0.10, 0.18, 0.28}
-        : latebrake::VehiclePaintRgb{0.97, 0.95, 0.84};
+    const latebrake::VehiclePaintRgb StripeRgb = latebrake::StripeTintForGarageLook(Look);
     const auto ApplyStripe = [&](UStaticMeshComponent* Part, bool Visible,
                                   float SideCm)
     {
@@ -1031,11 +1025,7 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
 
     // Trim/rim finishes change ONLY the four decorative spoke meshes,
     // not wheel contacts, tire grip, physics, or the actual Chaos chassis.
-    const latebrake::VehiclePaintRgb RimRgb = Look.Wheels == 2u
-        ? latebrake::VehiclePaintRgb{0.10, 0.82, 0.91}
-        : Look.Wheels == 1u
-            ? latebrake::VehiclePaintRgb{0.91, 0.92, 0.94}
-            : latebrake::VehiclePaintRgb{0.23, 0.28, 0.33};
+    const latebrake::VehiclePaintRgb RimRgb = latebrake::RimTintForGarageLook(Look);
     for (UStaticMeshComponent* Rim :
          {FrontLeftSpoke.Get(), FrontRightSpoke.Get(),
           RearLeftSpoke.Get(), RearRightSpoke.Get()})
