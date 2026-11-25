@@ -59,6 +59,15 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
 
 ### Direct cosmetic chooser
 
+- Keyboard N or controller D-pad Right opens Paint and then switches through
+  Stripe and Rims. Up/Down, PageUp/PageDown or D-pad Up/Down moves focus;
+  Enter/Y chooses; M/D-pad Left cancels. Confirm only the visibly focused
+  card. Rapid move+confirm before a fresh frame must not choose a hidden
+  card or equip the race car. Focus outline and active cosmetic are distinct.
+  When the chooser is closed, ordinary page, detail, career and equip inputs
+  must retain their existing behavior. Compact/Android support remains
+  limited to the existing controls, not this desktop chooser.
+
 - Open Paint, Stripe and Rims with desktop mouse on each of six cars. Choose
   any of eight paints, three stripe patterns and three rim styles directly.
   Verify canonical names, actual paint swatches, active and factory tags.
