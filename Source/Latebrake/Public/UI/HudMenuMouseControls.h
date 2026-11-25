@@ -23,7 +23,8 @@ enum class DesktopMenuMouseAction
     GarageBrowsePrevious, GarageBrowseNext,
     GarageQuickView0, GarageQuickView1, GarageQuickView2,
     GarageQuickView3, GarageQuickView4, GarageQuickView5,
-    GarageOrbit0, GarageOrbit1, GarageOrbit2, GarageOrbit3
+    GarageOrbit0, GarageOrbit1, GarageOrbit2, GarageOrbit3,
+    GarageUnlockOffer, GarageEngineOffer, GarageGripOffer
 };
 
 constexpr DesktopMenuMouseAction GarageQuickViewAction(int id) noexcept
