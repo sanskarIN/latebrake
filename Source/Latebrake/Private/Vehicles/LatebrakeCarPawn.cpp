@@ -2899,7 +2899,8 @@ void ALatebrakeCarPawn::MenuMousePressed()
 #if !PLATFORM_ANDROID
     // Only the paused, open, local-player menu accepts mouse input.
     // Hits use the HUD's actual Canvas dimensions, not a guessed DPI
-    // scale; no game-world click can drive, teleport or purchase anything.
+    // scale; no game-world click can drive or teleport. Paid menu intents reuse
+    // the keyboard's authoritative two-step purchase handlers.
     ALatebrakeRaceGameMode* Mode = GetWorld()
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     APlayerController* PC = Cast<APlayerController>(GetController());
@@ -2937,6 +2938,12 @@ void ALatebrakeCarPawn::MenuMousePressed()
         Mode->MenuActivate(); break;
     case latebrake::DesktopMenuMouseAction::Close:
         Mode->ToggleMenu(); break;
+    case latebrake::DesktopMenuMouseAction::GarageUnlockOffer:
+        Mode->GarageUnlockNext(); break;
+    case latebrake::DesktopMenuMouseAction::GarageEngineOffer:
+        Mode->GarageUpgradeEngine(); break;
+    case latebrake::DesktopMenuMouseAction::GarageGripOffer:
+        Mode->GarageUpgradeGrip(); break;
     case latebrake::DesktopMenuMouseAction::GaragePaint:
         Mode->GarageCyclePaint(); break;
     case latebrake::DesktopMenuMouseAction::GarageStripe:
