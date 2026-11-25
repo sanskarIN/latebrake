@@ -62,6 +62,12 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
 - Open Paint, Stripe and Rims with desktop mouse on each of six cars. Choose
   any of eight paints, three stripe patterns and three rim styles directly.
   Verify canonical names, actual paint swatches, active and factory tags.
+- Stripe choices display zero/one/two bands using the viewed paint and shared
+  stripe tint. Rim choices depict the original 7/5/12 spoke designs with shared
+  native material colors. These are schematic outlines, not captured GPU
+  renders. Verify visibility and contrast against selected/hovered cards;
+  compare on the actual original and legacy fallback car under real lighting.
+  No text or icon may obscure a neighboring card or authorize an unseen choice.
 - Confirm the chooser occupies only the central showroom aperture, closes
   after selection, and restores the unobstructed car view. Validate small,
   ultrawide and 4K windows. When the bounded panel cannot fit, mouse cycling
