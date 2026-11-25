@@ -664,6 +664,44 @@ void ALatebrakeCarPawn::HideLegacyVisualPrimitives(bool bHide)
     }
 }
 
+namespace
+{
+uint32 DiscoverOriginalVehicleFinishParameters(UMaterialInterface* Material)
+{
+    if (!IsValid(Material)) return 0u;
+    TArray<FMaterialParameterInfo> ScalarInfo;
+    TArray<FGuid> ScalarGuids;
+    Material->GetAllScalarParameterInfo(ScalarInfo,ScalarGuids);
+    uint32 Mask=0u;
+    for (std::size_t i=0;i<latebrake::vehiclemesh::VehicleFinishParameterNames.size();++i)
+    {
+        const FName Name(UTF8_TO_TCHAR(
+            latebrake::vehiclemesh::VehicleFinishParameterNames[i]));
+        if (ScalarInfo.ContainsByPredicate([&Name](const FMaterialParameterInfo& Info)
+            {
+                return Info.Name==Name &&
+                    Info.Association==EMaterialParameterAssociation::GlobalParameter;
+            }))
+            Mask|=1u<<i;
+    }
+    return Mask;
+}
+
+void ApplyOriginalVehicleFinish(UMaterialInstanceDynamic* Material,uint32 Exposed,
+    latebrake::vehiclemesh::VehicleFinishScalars Finish)
+{
+    if (!IsValid(Material)) return;
+    const auto Plan=latebrake::vehiclemesh::PlanVehicleFinishWrites(Exposed,Finish);
+    for (std::size_t i=0;i<Plan.Count;++i)
+    {
+        const auto& Write=Plan.Writes[i];
+        const FName Name(UTF8_TO_TCHAR(latebrake::vehiclemesh::VehicleFinishParameterNames[
+            static_cast<std::size_t>(Write.Parameter)]));
+        Material->SetScalarParameterValue(Name,static_cast<float>(Write.Value));
+    }
+}
+}
+
 void ALatebrakeCarPawn::ClearOriginalRoofStripes()
 {
     if (!IsValid(OriginalRoofStripes)) return;
@@ -744,7 +782,11 @@ void ALatebrakeCarPawn::ApplyOriginalRoofStripeLook(latebrake::GarageLook Look)
         const bool bVisible=latebrake::vehiclemesh::OriginalRoofStripeVisible(Look.Stripe,i);
         OriginalRoofStripes->SetMeshSectionVisible(Section,bVisible);
         if (auto* Instance=Cast<UMaterialInstanceDynamic>(OriginalRoofStripes->GetMaterial(Section)))
+        {
             Instance->SetVectorParameterValue(OriginalVehicleTintParameter,Tint);
+            ApplyOriginalVehicleFinish(Instance,OriginalVehicleFinishMask,
+                latebrake::vehiclemesh::OriginalStripeFinish(Look));
+        }
     }
     OriginalRoofStripes->SetVisibility(Look.Stripe!=0u,false);
 }
@@ -759,6 +801,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     ClearOriginalRoofStripes();
     OriginalRenderedRimStyle = -1;
     OriginalVehicleTintParameter = NAME_None;
+    OriginalVehicleFinishMask = 0u;
     GarageCameraGeometry.Reset();
     GarageCameraFit.Reset();
     bGarageCameraViewPresented = false;
@@ -961,6 +1004,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         return;
     }
     OriginalVehicleTintParameter = ResolvedTintName;
+    OriginalVehicleFinishMask = DiscoverOriginalVehicleFinishParameters(BaseMaterial);
 
     // Actor-owned render component follows the real car rigid body, but
     // cannot add a Chaos mesh/collision volume or modify its physics mass.
@@ -1038,6 +1082,9 @@ void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(
                     static_cast<float>(rgb.R),
                     static_cast<float>(rgb.G),
                     static_cast<float>(rgb.B), 1.f));
+            ApplyOriginalVehicleFinish(material,OriginalVehicleFinishMask,
+                latebrake::vehiclemesh::OriginalSurfaceFinish(
+                    static_cast<latebrake::vehiclemesh::OriginalVehicleMaterial>(section),Look));
         }
     }
 }
