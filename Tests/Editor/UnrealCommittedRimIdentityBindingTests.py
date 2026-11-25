@@ -19,12 +19,16 @@ class UnrealCommittedRimIdentityBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(",1
         )[1].split("int32 ALatebrakeCarPawn::GetCommittedOriginalWheelParts()",1)[0]
         self.assertIn("OriginalRenderedRimStyle = -1;",build)
-        self.assertIn("OriginalRenderedRimStyle = generated.Mesh.RimStyle;",build)
-        self.assertIn("generated.Mesh.RimStyle",build)
+        self.assertIn("OriginalRenderedRimStyle = Packed.RimStyle;",build)
+        self.assertIn("Prepared->Packed()",build)
+        cache=read("Source/Latebrake/Public/Vehicles/OriginalVehicleRenderCache.h")
+        indexed=read("Source/Latebrake/Public/Vehicles/OriginalVehicleIndexedRender.h")
+        self.assertIn("packed_.RimStyle==key_.RimStyle",cache)
+        self.assertIn("out.RimStyle=mesh.RimStyle",indexed)
         self.assertLess(build.index("CanPresentOriginalVehicleVisual("),
-                        build.index("OriginalRenderedRimStyle = generated.Mesh.RimStyle;"))
+                        build.index("OriginalRenderedRimStyle = Packed.RimStyle;"))
         self.assertLess(build.index("RenderParts[i]->SetVisibility(true, false);"),
-                        build.index("OriginalRenderedRimStyle = generated.Mesh.RimStyle;"))
+                        build.index("OriginalRenderedRimStyle = Packed.RimStyle;"))
         self.assertIn("bOriginalVehicleVisualReady ? OriginalRenderedRimStyle : -1",self.header)
     def test_qualified_report_uses_actual_source_not_view_cursor(self):
         settings=self.hud.split("case latebrake::MenuPage::Settings:",1
