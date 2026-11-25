@@ -1490,6 +1490,7 @@ void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()
 void ALatebrakeRaceGameMode::CloseMenuForRace()
 {
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     if (!Menu.IsOpen())
     {
         return;
@@ -1515,6 +1516,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     SuspendBestLapGhost();
     Menu.Toggle();
     SyncGarageShowroomPreview();
@@ -1595,6 +1597,7 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
 
 void ALatebrakeRaceGameMode::PauseForAppInterruption()
 {
+    DismissGaragePalette(); // No chooser may survive an OS focus interruption.
     // Menu focus loss may not latch race suspension; still cancel spending.
     if (GaragePurchaseConfirm.HasPending())
     {
@@ -1636,6 +1639,7 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
 void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     Menu.Next();
     SyncGarageShowroomPreview();
 }
@@ -1643,6 +1647,7 @@ void ALatebrakeRaceGameMode::MenuNext()
 void ALatebrakeRaceGameMode::MenuPrevious()
 {
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     Menu.Previous();
     SyncGarageShowroomPreview();
 }
@@ -2187,6 +2192,13 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     SyncGarageShowroomPreview();
 }
 
+void ALatebrakeRaceGameMode::DismissGaragePalette()
+{
+    if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            Hud->CloseGaragePalette();
+}
+
 void ALatebrakeRaceGameMode::SyncGarageShowroomPreview()
 {
     ALatebrakeCarPawn* Car=Cast<ALatebrakeCarPawn>(
@@ -2228,6 +2240,7 @@ bool ALatebrakeRaceGameMode::CanEquipGarageViewed() const
 void ALatebrakeRaceGameMode::GarageBrowseNext()
 {
     if (!CanBrowseGarage()) return;
+    DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     const int32 id = GarageGallery.Next();
     const auto car = latebrake::GarageState::Definition(id);
@@ -2243,6 +2256,7 @@ void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
     if (!CanBrowseGarage() || !latebrake::GarageState::IsVehicle(VehicleId))
         return;
     if (!GarageGallery.Browse(VehicleId)) return;
+    DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     const auto& Car = latebrake::GarageState::Definition(VehicleId);
     GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
@@ -2303,6 +2317,7 @@ void ALatebrakeRaceGameMode::CommitGarageVehicleSelection(int32 VehicleId)
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
     if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     // Keep E/SELECT consistent with the new Ctrl+number shortcuts.
     // Never swap a running car or change equipment on a different page.
@@ -2329,6 +2344,7 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
 void ALatebrakeRaceGameMode::GarageSelectVehicle(int32 VehicleId)
 {
     if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     // The shortcut cannot operate while driving, on another page, or during
     // an active career race. Never interpret Ctrl+1..6 as purchase commands.
     const bool bGaragePage = Menu.Current() == latebrake::MenuPage::Garage;
@@ -2382,6 +2398,7 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
     const latebrake::GarageDirectAppearanceRequest* Direct)
 {
     if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     GaragePurchaseConfirm.Reset(); // A cosmetic click cancels pending spend.
     if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
     {
@@ -2495,6 +2512,7 @@ void ALatebrakeRaceGameMode::GarageResetAppearance()
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
     if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2556,6 +2574,7 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
     if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2616,6 +2635,7 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
     if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2716,7 +2736,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
 
 void ALatebrakeRaceGameMode::RestartRace()
 {
-    GaragePurchaseConfirm.Reset(); // Race transitions invalidate pending spend approvals.
+    GaragePurchaseConfirm.Reset();
+    DismissGaragePalette(); // Race transitions invalidate pending spend approvals.
     if (bCareerRace && Race.IsFinished())
     {
         // After a career finish the garage is editable. A new attempt
