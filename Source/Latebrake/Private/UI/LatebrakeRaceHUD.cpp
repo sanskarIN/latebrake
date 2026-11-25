@@ -133,7 +133,12 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
         const latebrake::GaragePointerPermissions permission{
             availability, Mode->CanBrowseGarage(), Mode->CanCustomizeGarage(),
             car && car->CanSelectGarageCameraOrbit(),
-            {offers[0].Enabled(), offers[1].Enabled(), offers[2].Enabled()}};
+            {purchase.Valid && offers[0].Enabled() && latebrake::CanClickPresentedGarageOffer(
+                PresentedGarageOffers[0], purchase.Buttons[0], offers[0]),
+             purchase.Valid && offers[1].Enabled() && latebrake::CanClickPresentedGarageOffer(
+                PresentedGarageOffers[1], purchase.Buttons[1], offers[1]),
+             purchase.Valid && offers[2].Enabled() && latebrake::CanClickPresentedGarageOffer(
+                PresentedGarageOffers[2], purchase.Buttons[2], offers[2])}};
         return latebrake::ResolveGaragePointerClaims(
             latebrake::CollectGaragePointerClaims(buttons, style, quick, orbit, purchase,
                 x, y, permission));
@@ -146,6 +151,7 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
 void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
+    PresentedGarageOffers = {};
     if (!GEngine || !PlayerOwner || !Canvas)
     {
         return;
@@ -335,10 +341,10 @@ void ALatebrakeRaceHUD::DrawHUD()
         // optional right accessory is reserved before text is measured.
         const auto DrawButtonCaption = [&](const FString& Caption,
             const FString& ShortCaption, const latebrake::DesktopMenuMouseRect& Bounds,
-            const FLinearColor& Ink, float PreferredScale, double AccessoryWidth)
+            const FLinearColor& Ink, float PreferredScale, double AccessoryWidth) -> bool
         {
             UFont* Font = GEngine->GetSmallFont();
-            if (!Font || Caption.IsEmpty()) return;
+            if (!Font || Caption.IsEmpty()) return false;
             const auto Fit = latebrake::FitHudButtonCaption(Bounds, PreferredScale,
                 6.0 * Layout.Scale, 3.0 * Layout.Scale, AccessoryWidth,
                 !ShortCaption.IsEmpty(), [&](bool bShort, double Scale)
@@ -348,14 +354,19 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Font, static_cast<float>(Scale));
                     return latebrake::HudCaptionExtent{TW, TH};
                 });
-            if (Fit.Valid)
-                DrawText(Fit.ShortCaption ? ShortCaption : Caption, Ink,
-                    static_cast<float>(Fit.X), static_cast<float>(Fit.Y),
-                    Font, static_cast<float>(Fit.Scale));
+            if (!Fit.Valid) return false;
+            DrawText(Fit.ShortCaption ? ShortCaption : Caption, Ink,
+                static_cast<float>(Fit.X), static_cast<float>(Fit.Y),
+                Font, static_cast<float>(Fit.Scale));
+            return true;
         };
         if (PurchaseButtons.Valid)
         {
             const auto Offers = Mode->GetGaragePurchasePanel();
+            // Populate the presentation for synchronous hover evaluation.
+            // A target is revoked before returning if either caption fails.
+            for (std::size_t i=0; i<Offers.size(); ++i)
+                PresentedGarageOffers[i] = {true, PurchaseButtons.Buttons[i].Bounds, Offers[i]};
             float OfferX = 0.f, OfferY = 0.f;
             const auto Hover = PlayerOwner->GetMousePosition(OfferX, OfferY)
                 ? HitTestMenuMouse(OfferX, OfferY)
@@ -394,9 +405,10 @@ void ALatebrakeRaceHUD::DrawHUD()
                 }
                 const latebrake::DesktopMenuMouseRect Upper{R.X,R.Y,R.Width,R.Height*0.5};
                 const latebrake::DesktopMenuMouseRect Lower{R.X,R.Y+R.Height*0.5,R.Width,R.Height*0.5};
-                DrawButtonCaption(Title,FString(),Upper,Ink,0.72f*UIScale,0.0);
-                DrawButtonCaption(Status,bConfirm ? FString(TEXT("CONFIRM")) : FString(),
+                const bool bTitleDrawn = DrawButtonCaption(Title,FString(),Upper,Ink,0.72f*UIScale,0.0);
+                const bool bStatusDrawn = DrawButtonCaption(Status,bConfirm ? FString(TEXT("CONFIRM")) : FString(),
                     Lower,Ink,0.68f*UIScale,0.0);
+                PresentedGarageOffers[i].Visible = bTitleDrawn && bStatusDrawn;
             }
         }
         const auto OrbitButtons = latebrake::CalculateGarageOrbitButtons(
