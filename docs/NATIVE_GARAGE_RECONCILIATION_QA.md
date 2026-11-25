@@ -45,6 +45,12 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
   only, second identical press within eight real seconds confirms. Verify
   pinned countdown across pages, focus loss/background cancellation before
   the race guard's ignored transition, and fresh preview after returning.
+- On supported desktop sizes, click the next-car, engine or grip strip. Check
+  actual credit shortfall, blocked/max state, and the confirmation countdown.
+  The first click stages only; a second click requires a matching visibly drawn
+  confirmation. Resize, expire or change the offer between display and click:
+  the stale target must not charge credits. Both mouse and Q/U/I share the
+  same authoritative transaction and save rollback. All credits are in-game.
 - Inject inaccessible test storage and verify failed save restores ownership,
   selected car, tuning and appearance. Test old profile defaults, malformed
   appearance bytes/checksum and unknown future schema. Save prewrite guard
@@ -54,7 +60,7 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
 ### Pointer arbitration and input
 
 - Confirm normal navigation, styling, six quick-view chips and four orbit
-  targets each highlight and dispatch one matching action. Disabled targets
+  targets, plus three purchase offers, each highlight and dispatch one matching action. Disabled targets
   cannot leak clicks to another group if geometry overlaps.
 - Confirm page/close navigation still works with locked or already-equipped
   viewed car. Compact/touch layouts retain supported controls and no hidden
