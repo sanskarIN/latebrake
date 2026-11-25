@@ -99,6 +99,41 @@ void ConsentAndExpiry()
     }
 }
 
+void PresentationAdmission()
+{
+    const GarageSnapshot snapshot{10000,1,0,0,0};
+    GaragePurchaseConfirmation consent;
+    const auto offer=BuildGaragePurchasePanel(snapshot,GarageEquipUiState::Ready,{})[0];
+    const DesktopMenuMouseButton button{GarageOfferAction(0),{100,100,80,44}};
+    GaragePresentedOffer shown{true,button.Bounds,offer};
+    Check(CanClickPresentedGarageOffer(shown,button,offer),"visible preview admits first click");
+    Check(!consent.ConfirmOrStage(offer.Kind,snapshot,offer.Subject,offer.Price,10),
+        "first click stages approval");
+    const auto pending=BuildGaragePurchasePanel(snapshot,GarageEquipUiState::Ready,
+        consent.Preview(snapshot,10.01))[0];
+    Check(!CanClickPresentedGarageOffer(shown,button,pending),
+        "second click before rendered confirmation rejected");
+    shown.Offer=pending;
+    const auto later=BuildGaragePurchasePanel(snapshot,GarageEquipUiState::Ready,
+        consent.Preview(snapshot,12))[0];
+    Check(CanClickPresentedGarageOffer(shown,button,later),"visible pending offer admits deliberate second click");
+    Check(!CanClickPresentedGarageOffer(shown,button,offer),"expiry cannot restage on stale confirm label");
+    auto moved=button;
+    moved.Bounds.X+=1;
+    Check(!CanClickPresentedGarageOffer(shown,moved,later),"resized or moved target rejects stale clicks");
+    auto changed=later;
+    ++changed.Subject;
+    Check(!CanClickPresentedGarageOffer(shown,button,changed),"changed vehicle rejects stale clicks");
+    changed=later;
+    ++changed.Price;
+    Check(!CanClickPresentedGarageOffer(shown,button,changed),"changed cost rejects stale clicks");
+    changed=later;
+    changed.SecondsRemaining=8;
+    Check(!CanClickPresentedGarageOffer(shown,button,changed),"new countdown cannot inherit old presentation");
+    shown.Visible=false;
+    Check(!CanClickPresentedGarageOffer(shown,button,later),"unmeasured or absent caption rejects clicks");
+}
+
 void PointerGeometry()
 {
     for (const auto& screen: {std::array<int,2>{900,600},{1280,720},
@@ -135,6 +170,7 @@ int main()
 {
     OfferStates();
     ConsentAndExpiry();
+    PresentationAdmission();
     PointerGeometry();
     std::cout << "Garage purchase panel tests passed.\n";
     return EXIT_SUCCESS;
