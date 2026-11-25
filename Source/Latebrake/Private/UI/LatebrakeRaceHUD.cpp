@@ -5,6 +5,7 @@
 #include "UI/GarageShowroomQuickView.h"
 #include "UI/GaragePointerArbitration.h"
 #include "UI/HudButtonCaptionFit.h"
+#include "UI/GarageAppearanceGlyph.h"
 #include "UI/GarageShowroomLane.h"
 #include "UI/HudInstrumentCluster.h"
 #include "UI/HudInstrumentDriveBadge.h"
@@ -531,19 +532,60 @@ void ALatebrakeRaceHUD::DrawHUD()
                     const float CX = static_cast<float>(R.X+R.Width-Chip-6.f*UIScale);
                     const float CY = static_cast<float>(R.Y+0.5*(R.Height-Chip));
                     const bool bPaint = GaragePalette.Layer == latebrake::GarageLookLayer::Paint;
+                    double Accessory = Chip+6.f*UIScale;
+                    bool bPreviewDrawn = true;
                     if (bPaint)
                         DrawRect(FLinearColor(Choice.Swatch.R,Choice.Swatch.G,Choice.Swatch.B,1.f),
                             CX,CY,Chip,Chip);
+                    else
+                    {
+                        // These are bounded schematics of the selected
+                        // roof stripes or authored alloy faces, NOT GPU captures.
+                        const auto Decision = latebrake::PreviewGarageDirectAppearance(
+                            GaragePalette.VehicleId,GaragePalette.Look,
+                            {GaragePalette.VehicleId,GaragePalette.Look,GaragePalette.Layer,i});
+                        const double IconSize = FMath::Min(R.Height-10.0,48.0*Layout.Scale);
+                        const latebrake::DesktopMenuMouseRect IconBounds{
+                            R.X+R.Width-IconSize-6.0*Layout.Scale,
+                            R.Y+(R.Height-IconSize)*0.5,IconSize,IconSize};
+                        const auto Glyph = latebrake::CalculateGarageAppearanceGlyph(
+                            IconBounds,GaragePalette.VehicleId,Decision.Result,GaragePalette.Layer);
+                        bPreviewDrawn = Glyph.Valid;
+                        if (Glyph.Valid)
+                        {
+                            Accessory = IconSize+6.0*Layout.Scale;
+                            const auto Color = [&](latebrake::GarageGlyphInk Kind)
+                            {
+                                const auto RGB = latebrake::GarageGlyphColor(
+                                    Kind,Glyph.VehicleId,Glyph.Look);
+                                return FLinearColor(static_cast<float>(RGB.R),
+                                    static_cast<float>(RGB.G),static_cast<float>(RGB.B),1.f);
+                            };
+                            DrawRect(FLinearColor(0.22f,0.27f,0.33f,1.f),
+                                IconBounds.X,IconBounds.Y,IconBounds.Width,IconBounds.Height);
+                            for (std::size_t j=0;j<Glyph.RectCount;++j)
+                            {
+                                const auto& Piece=Glyph.Rects[j];
+                                const auto& B=Piece.Bounds;
+                                DrawRect(Color(Piece.Ink),B.X,B.Y,B.Width,B.Height);
+                            }
+                            for (std::size_t j=0;j<Glyph.LineCount;++j)
+                            {
+                                const auto& L=Glyph.Lines[j];
+                                DrawLine(L.A.X,L.A.Y,L.B.X,L.B.Y,Color(L.Ink),L.Thickness);
+                            }
+                        }
+                    }
                     const latebrake::DesktopMenuMouseRect Title{
                         R.X,R.Y,R.Width,R.Height*0.60};
                     const latebrake::DesktopMenuMouseRect Footer{
                         R.X,R.Y+R.Height*0.60,R.Width,R.Height*0.40};
                     const bool bTitle = DrawButtonCaption(
                         FString(UTF8_TO_TCHAR(Choice.Label)),FString(UTF8_TO_TCHAR(Choice.ShortLabel)),
-                        Title,Ink,0.76f*UIScale,bPaint ? Chip+6.f*UIScale : 0.0);
+                        Title,Ink,0.76f*UIScale,Accessory);
                     const FString Tag = bSelected ? TEXT("ACTIVE") : Choice.Factory ? TEXT("FACTORY") : TEXT("SELECT");
-                    const bool bTag = DrawButtonCaption(Tag,FString(),Footer,Ink,0.62f*UIScale,0.0);
-                    PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag;
+                    const bool bTag = DrawButtonCaption(Tag,FString(),Footer,Ink,0.62f*UIScale,Accessory);
+                    PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag && bPreviewDrawn;
                 }
             }
         }
@@ -1674,11 +1716,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                             Ink = FLinearColor(0.06f, 0.07f, 0.09f, 1.f);
                             break;
                         case latebrake::GarageSchematicInk::Rim:
-                            Ink = PreviewLook.Wheels == 2u
-                                ? FLinearColor(0.10f, 0.82f, 0.91f, 1.f)
-                                : PreviewLook.Wheels == 1u
-                                    ? FLinearColor(0.91f, 0.92f, 0.94f, 1.f)
-                                    : FLinearColor(0.23f, 0.28f, 0.33f, 1.f);
+                            Ink = Convert(latebrake::RimTintForGarageLook(PreviewLook));
                             break;
                         case latebrake::GarageSchematicInk::Body:
                             Ink = Convert(Colors.Body);
@@ -1690,9 +1728,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                             Ink = Convert(Colors.Canopy);
                             break;
                         case latebrake::GarageSchematicInk::Stripe:
-                            Ink = PreviewLook.Paint == 7u
-                                ? FLinearColor(0.10f, 0.18f, 0.28f, 1.f)
-                                : FLinearColor(0.97f, 0.95f, 0.84f, 1.f);
+                            Ink = Convert(latebrake::StripeTintForGarageLook(PreviewLook));
                             break;
                         default:
                             continue;
