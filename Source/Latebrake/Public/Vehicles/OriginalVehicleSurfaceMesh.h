@@ -1,6 +1,7 @@
 #pragma once
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
+#include "Vehicles/OriginalVehicleRimRecipe.h"
 #include "Garage/GarageAppearance.h"
 #include <algorithm>
 #include <array>
@@ -12,15 +13,7 @@
 
 namespace latebrake::vehiclemesh
 {
-inline constexpr double OriginalVehiclePi=3.14159265358979323846;
 inline constexpr int OriginalVehicleWheelSides=24;
-inline constexpr int OriginalVehicleRimStyleCount=3;
-static_assert(OriginalVehicleRimStyleCount==latebrake::GarageWheelOptions,
-    "Original car rim meshes must match saved GarageLook wheel options");
-constexpr int OriginalVehicleSpokesForStyle(int style) noexcept
-{
-    return style==0 ? 7 : style==1 ? 5 : style==2 ? 12 : 0;
-}
 inline constexpr std::size_t OriginalVehicleMaxVertices=12000;
 inline constexpr std::size_t OriginalVehicleMaxTriangles=8000;
 enum class OriginalVehicleMaterial : std::uint8_t
@@ -605,13 +598,11 @@ private:
         }
         // 0: factory seven spokes; 1: broad sport five spokes;
         // 2: narrow aero twelve spokes. Tires/contact stay identical.
-        const int spokeCount=OriginalVehicleSpokesForStyle(rimStyle);
-        const double width=rimStyle==1 ? 0.17 :
-            rimStyle==2 ? 0.065 : 0.09;
-        const double innerFraction=rimStyle==1 ? 0.12 :
-            rimStyle==2 ? 0.22 : 0.16;
-        const double outerFraction=rimStyle==1 ? 0.94 :
-            rimStyle==2 ? 0.97 : 0.91;
+        const auto recipe=OriginalRimRecipeForStyle(rimStyle);
+        const int spokeCount=recipe.Spokes;
+        const double width=recipe.HalfAngle;
+        const double innerFraction=recipe.InnerFraction;
+        const double outerFraction=recipe.OuterFraction;
         for(int spoke=0;spoke<spokeCount;++spoke)
         {
             const double angle=2.0*OriginalVehiclePi*
