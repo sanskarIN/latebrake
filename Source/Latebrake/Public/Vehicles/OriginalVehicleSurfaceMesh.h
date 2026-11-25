@@ -181,6 +181,16 @@ inline bool ValidOriginalVehicleSettings(
         p.NeverChangeCollision &&
         p.OriginalFictionalDesign;
 }
+// Public sample of the exact piecewise-linear top strip authored by
+// BuildMainBody. Cosmetic overlays must not guess a flat roof height.
+struct OriginalVehicleRoofSample final
+{
+    bool Valid=false;
+    double X=0.0;
+    double HalfWidth=0.0;
+    double Z=0.0;
+};
+
 class OriginalVehicleSurfaceComposer final
 {
 public:
@@ -310,6 +320,29 @@ public:
             mesh.Bounds.Maximum.Y>mesh.Bounds.Minimum.Y &&
             mesh.Bounds.Maximum.Z>mesh.Bounds.Minimum.Z;
     }
+    OriginalVehicleRoofSample SampleRoof(int vehicleId,double x) const noexcept
+    {
+        if(!ValidOriginalVehicleSettings(Settings)||
+            !latebrake::GarageState::IsVehicle(vehicleId)||!std::isfinite(x))
+            return {};
+        const double half=Settings.LengthCm*0.5;
+        if(x < -half || x > half)return {};
+        const auto visual=latebrake::VisualRecipeForVehicle(vehicleId);
+        const double count=static_cast<double>(Settings.LongitudinalSegments);
+        const double t=(x+half)/Settings.LengthCm*count;
+        const int left=std::clamp(static_cast<int>(std::floor(t)),0,
+            Settings.LongitudinalSegments-1);
+        const double start=-half+Settings.LengthCm*static_cast<double>(left)/count;
+        const double end=-half+Settings.LengthCm*static_cast<double>(left+1)/count;
+        const auto a=Station(start,visual);
+        const auto b=Station(end,visual);
+        const double u=std::clamp((x-start)/(end-start),0.0,1.0);
+        const double width=a.RoofHalfWidth+(b.RoofHalfWidth-a.RoofHalfWidth)*u;
+        const double z=a.RoofZ+(b.RoofZ-a.RoofZ)*u;
+        if(!std::isfinite(width)||!std::isfinite(z)||width<=0.0)return {};
+        return {true,x,width,z};
+    }
+
 private:
     struct MeshWriter final
     {
