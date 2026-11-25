@@ -70,6 +70,20 @@ class GaragePurchaseConfirmationBindingTests(unittest.TestCase):
         self.assertNotIn("GaragePurchaseConfirm", source(
             "Source/Latebrake/Public/Progression/LatebrakePlayerSave.h"))
 
+    def test_focus_loss_cancels_before_race_guard_can_ignore_menu(self):
+        body = self.mode.split(
+            "void ALatebrakeRaceGameMode::PauseForAppInterruption()", 1
+        )[1].split("\nvoid ALatebrakeRaceGameMode::", 1)[0]
+        cancellation = body.split("AppFocusGuard.OnFocusLost(", 1)[0]
+        self.assertIn("if (GaragePurchaseConfirm.HasPending())", cancellation)
+        self.assertIn("GaragePurchaseConfirm.Reset();", cancellation)
+        self.assertIn("Focus lost: offer canceled.", cancellation)
+        self.assertLess(body.index("GaragePurchaseConfirm.Reset();"),
+                        body.index("FocusLossTransition::Ignored"))
+        for forbidden in ("Garage.Unlock(", "Garage.Upgrade(",
+                          "Garage.Select(", "SaveRecords()", "ConfirmOrStage("):
+            self.assertNotIn(forbidden, cancellation)
+
     def test_live_countdown_is_read_only_and_always_context_gated(self):
         self.assertIn(
             "FString GetGaragePurchaseDisplayFeedback() const;",
