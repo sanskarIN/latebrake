@@ -10,7 +10,7 @@ class HudButtonCaptionFitBindingTests(unittest.TestCase):
         caption = hud.split("const auto DrawButtonCaption =",1)[1].split("const auto OrbitButtons",1)[0]
         for marker in ("GEngine->GetSmallFont()", "FitHudButtonCaption(Bounds, PreferredScale,",
                        "GetTextSize(bShort ? ShortCaption : Caption, TW, TH,",
-                       "HudCaptionExtent{TW, TH}", "if (Fit.Valid)",
+                       "HudCaptionExtent{TW, TH}", "if (!Fit.Valid) return false;",
                        "Fit.X", "Fit.Y", "Fit.Scale"):
             self.assertIn(marker,caption)
         self.assertIn("DrawButtonCaption(Caption, FString::FromInt(Index+1),",hud)
