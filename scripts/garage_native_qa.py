@@ -140,3 +140,55 @@ def evaluate_observations(environment: object, checks: object) -> dict:
         "environment_complete": all(value.strip() for value in environment.values()),
         "all_checks_self_reported_pass": counts["pass"] == len(expected),
     }
+
+MAX_SESSIONS = 16
+
+
+def merge_session_observations(sessions: list[dict]) -> dict:
+    """Combine separately validated sessions of one exact build.
+
+    A later pass never hides an earlier failure. The owner must inspect
+    contradictory observations rather than automatically certify a result.
+    """
+    if not 1 <= len(sessions) <= MAX_SESSIONS:
+        raise ValueError("Garage aggregation requires one to sixteen sessions.")
+    expected = scenarios()
+    seen = set()
+    merged = {
+        key: {"pass": [], "fail": [], "not_tested": []}
+        for key in expected
+    }
+    for session in sessions:
+        identity = session["identity"]
+        digest = identity["receipt_sha256"]
+        if digest in seen:
+            raise ValueError("Garage aggregation cannot repeat a runtime receipt.")
+        seen.add(digest)
+        evaluate_observations(session["environment"], session["checks"])
+        for key, record in session["checks"].items():
+            merged[key][record["result"]].append(digest)
+    counts = {result: 0 for result in ("pass", "fail", "not_tested")}
+    groups = {}
+    unresolved = []
+    conflicts = []
+    outcomes = {}
+    for key, evidence in merged.items():
+        result = "fail" if evidence["fail"] else "pass" if evidence["pass"] else "not_tested"
+        counts[result] += 1
+        group = groups.setdefault(expected[key]["group"], {name: 0 for name in counts})
+        group[result] += 1
+        if result != "pass":
+            unresolved.append(key)
+        if evidence["pass"] and evidence["fail"]:
+            conflicts.append(key)
+        outcomes[key] = {"result": result, "evidence": evidence}
+    return {
+        "session_count": len(sessions),
+        "scenario_count": len(expected),
+        "counts": counts,
+        "groups": groups,
+        "unresolved_scenarios": unresolved,
+        "conflicting_scenarios": conflicts,
+        "all_checks_self_reported_pass": counts["pass"] == len(expected),
+        "outcomes": outcomes,
+    }
