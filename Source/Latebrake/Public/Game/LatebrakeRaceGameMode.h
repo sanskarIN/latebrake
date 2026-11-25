@@ -23,6 +23,7 @@
 #include "Garage/GarageGalleryCursor.h"
 #include "Garage/GarageEquipUiPolicy.h"
 #include "Garage/GaragePurchaseConfirmation.h"
+#include "Garage/GaragePurchasePanel.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
 #include "UI/MenuNavigation.h"
@@ -178,6 +179,7 @@ public:
     FString GetGarageFeedback() const { return GarageFeedback; }
     // Read-only live countdown or expiration feedback for the paused Garage UI.
     FString GetGaragePurchaseDisplayFeedback() const;
+    latebrake::GaragePurchasePanelView GetGaragePurchasePanel() const;
     bool HasProgressSaveError() const { return bProgressSaveFailed; }
     bool IsProfileReadOnly() const { return bFutureSaveSchema; }
     int32 GetNextEngineUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine); }
