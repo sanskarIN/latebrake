@@ -40,6 +40,7 @@ class UCameraComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UProceduralMeshComponent;
+class UMaterialInterface;
 class UPointLightComponent;
 class USpotLightComponent;
 class UPrimitiveComponent;
