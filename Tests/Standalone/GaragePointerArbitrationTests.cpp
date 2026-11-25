@@ -21,11 +21,11 @@ void Require(bool ok, const char* message)
 
 constexpr std::array<Action, GaragePointerGroupCount> Representative{
     Action::Activate, Action::GaragePaint, Action::GarageQuickView0,
-    Action::GarageOrbit0, Action::GarageUnlockOffer};
+    Action::GarageOrbit0, Action::GarageUnlockOffer, Action::GarageLookChoice0};
 
 void AllClaimsAndPermissions()
 {
-    // Every possible combination of the five physical regions and every
+    // Every possible combination of the six physical regions and every
     // combination of permissions. A disabled hit still owns its region.
     for (unsigned physical = 0; physical < (1u << GaragePointerGroupCount); ++physical)
         for (unsigned allowed = 0; allowed < (1u << GaragePointerGroupCount); ++allowed)
@@ -59,11 +59,14 @@ void ExactGroupIdentity()
         Action::GarageQuickView3, Action::GarageQuickView4,
         Action::GarageQuickView5, Action::GarageOrbit0, Action::GarageOrbit1,
         Action::GarageOrbit2, Action::GarageOrbit3,
-        Action::GarageUnlockOffer, Action::GarageEngineOffer, Action::GarageGripOffer};
+        Action::GarageUnlockOffer, Action::GarageEngineOffer, Action::GarageGripOffer,
+        Action::GarageLookChoice0, Action::GarageLookChoice1, Action::GarageLookChoice2,
+        Action::GarageLookChoice3, Action::GarageLookChoice4, Action::GarageLookChoice5,
+        Action::GarageLookChoice6, Action::GarageLookChoice7, Action::GaragePaletteClose};
     for (std::size_t i = 0; i < all.size(); ++i)
     {
         const std::size_t expectedGroup = i < 6u ? 0u :
-            i < 12u ? 1u : i < 18u ? 2u : i < 22u ? 3u : 4u;
+            i < 12u ? 1u : i < 18u ? 2u : i < 22u ? 3u : i < 25u ? 4u : 5u;
         for (std::size_t group = 0; group < GaragePointerGroupCount; ++group)
         {
             GaragePointerClaims claims{};
