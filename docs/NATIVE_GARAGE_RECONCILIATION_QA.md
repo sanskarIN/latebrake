@@ -77,6 +77,13 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
   renders. Verify visibility and contrast against selected/hovered cards;
   compare on the actual original and legacy fallback car under real lighting.
   No text or icon may obscure a neighboring card or authorize an unseen choice.
+- Native stripes now use prepared three-band procedural overlays sampled from
+  the actual body roof. Inspect all six cars from the four camera angles,
+  particularly sloped portions of the roof. Clean must show no band, center
+  exactly one, twin exactly two; no visible gaps, floating bars or z-fighting.
+  Stripe-only and paint-only edits must not rebuild the body mesh. Missing
+  stripe preparation must keep the legacy car and its fallback stripes
+  visible rather than committing a partially prepared native vehicle.
 - Confirm the chooser occupies only the central showroom aperture, closes
   after selection, and restores the unobstructed car view. Validate small,
   ultrawide and 4K windows. When the bounded panel cannot fit, mouse cycling
