@@ -65,10 +65,12 @@ class UnrealGarageCameraBindingTests(unittest.TestCase):
                       read("Tests/Standalone/OriginalVehicleShowroomCameraTests.cpp"))
 
     def test_mouse_orbit_uses_same_guarded_path_and_measured_buttons(self):
-        for marker in ("CalculateGarageOrbitButtons(", "HitTestGarageOrbitButtons(",
+        for marker in ("CalculateGarageOrbitButtons(", "HitTestMenuMouse(OrbitMouseX, OrbitMouseY)",
                        "car && car->CanSelectGarageCameraOrbit()",
                        "Car->CanSelectGarageCameraOrbit()", "GarageOrbitCaption(Index)"):
             self.assertIn(marker,self.hud)
+        arbitration=read("Source/Latebrake/Public/UI/GaragePointerArbitration.h")
+        self.assertIn("HitTestGarageOrbitButtons(orbit, x, y, true)",arbitration)
         self.assertIn("SelectGarageCameraOrbit(latebrake::GarageOrbitIndex(Action))",self.pawn)
         self.assertIn("Index == GarageCameraOrbitIndex",self.pawn)
         self.assertIn("wrong action fails closed",
