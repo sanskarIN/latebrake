@@ -1,6 +1,7 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "UI/GarageShowroomSchematic.h"
 #include "UI/HudInstrumentCluster.h"
 #include "UI/NitroHudReadout.h"
 #include "UI/RaceGateProgressGauge.h"
@@ -946,6 +947,72 @@ void ALatebrakeRaceHUD::DrawHUD()
                     GEngine->GetSmallFont(), 0.82f * UIScale);
             }
         }
+
+#if !PLATFORM_ANDROID
+        // Read-only factory schematic for the equipped car. This is not a
+        // live 3D render and does not advertise cosmetic purchase controls.
+        if (Mode->GetMenuPage() == latebrake::MenuPage::Garage && MouseMenu.Valid)
+        {
+            const int32 Vehicle = Mode->GetSelectedVehicleId();
+            const auto Look = latebrake::FactoryGarageLook(Vehicle);
+            const auto ReservedDock = latebrake::CalculateGarageStyleMouseLayout(
+                Canvas->SizeX, Canvas->SizeY, Layout, false, true,
+                latebrake::MenuPage::Garage);
+            const auto Schematic = latebrake::CalculateGarageSchematic(
+                Canvas->SizeX, Canvas->SizeY, Layout, ReservedDock, Vehicle, Look);
+            if (Schematic.Valid)
+            {
+                const auto Paint = latebrake::PaintForGarageLook(Vehicle, Look);
+                const auto ToColor = [](latebrake::VehiclePaintRgb RGB)
+                {
+                    return FLinearColor(static_cast<float>(RGB.R),
+                        static_cast<float>(RGB.G), static_cast<float>(RGB.B), 1.f);
+                };
+                const auto DrawBounds = [&](const latebrake::DesktopMenuMouseRect& R,
+                                            FLinearColor Ink)
+                {
+                    DrawRect(Ink, static_cast<float>(R.X), static_cast<float>(R.Y),
+                        static_cast<float>(R.Width), static_cast<float>(R.Height));
+                };
+                DrawBounds(Schematic.Panel, FLinearColor(0.035f, 0.06f, 0.10f, 0.94f));
+                const FString Label = TEXT("FACTORY SCHEMATIC");
+                float LabelWidth = 0.f, LabelHeight = 0.f;
+                const float LabelScale = 0.75f * UIScale;
+                GetTextSize(Label, LabelWidth, LabelHeight, GEngine->GetSmallFont(), LabelScale);
+                if (FMath::IsFinite(LabelWidth) && FMath::IsFinite(LabelHeight) &&
+                    LabelWidth >= 0.f && LabelHeight >= 0.f &&
+                    LabelWidth + 16.f <= Schematic.Panel.Width &&
+                    LabelHeight + 6.f <= 27.f * FMath::Max(1.f, UIScale))
+                {
+                    DrawText(Label, Gold, static_cast<float>(Schematic.Panel.X + 8.0),
+                        static_cast<float>(Schematic.Panel.Y + 3.0),
+                        GEngine->GetSmallFont(), LabelScale);
+                }
+                for (std::size_t Index = 0; Index < Schematic.Count; ++Index)
+                {
+                    const auto& Piece = Schematic.Pieces[Index];
+                    FLinearColor Ink = White;
+                    switch (Piece.Ink)
+                    {
+                    case latebrake::GarageSchematicInk::Shadow:
+                        Ink = FLinearColor(0.f, 0.f, 0.f, 0.6f); break;
+                    case latebrake::GarageSchematicInk::Tire:
+                        Ink = FLinearColor(0.06f, 0.07f, 0.09f, 1.f); break;
+                    case latebrake::GarageSchematicInk::Rim:
+                        Ink = FLinearColor(0.65f, 0.69f, 0.75f, 1.f); break;
+                    case latebrake::GarageSchematicInk::Body:
+                        Ink = ToColor(Paint.Body); break;
+                    case latebrake::GarageSchematicInk::Accent:
+                    case latebrake::GarageSchematicInk::Stripe:
+                        Ink = ToColor(Paint.Accent); break;
+                    case latebrake::GarageSchematicInk::Canopy:
+                        Ink = ToColor(Paint.Canopy); break;
+                    }
+                    DrawBounds(Piece.Bounds, Ink);
+                }
+            }
+        }
+#endif
 
         // SAVE failures must stay visible even if every optional menu
         // detail row has already been consumed.
