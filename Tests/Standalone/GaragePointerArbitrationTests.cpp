@@ -176,6 +176,87 @@ void RealDesktopPlans()
         }
     }
 }
+void MalformedActiveGroupFailsClosed()
+{
+    const auto hud=CalculateHudLayout(1920,1080);
+    const auto nav=CalculateDesktopMenuMouseLayout(1920,1080,hud,false,true);
+    const auto style=CalculateGarageStyleMouseLayout(1920,1080,hud,false,true,MenuPage::Garage);
+    const auto lane=CalculateGarageShowroomLane(1920,1080,hud,false,true,MenuPage::Garage);
+    const auto orbit=CalculateGarageOrbitButtons(lane,1920,1080,hud);
+    const auto purchase=CalculateGaragePurchaseMouseLayout(lane,1920,1080,hud);
+    const auto quick=CalculateGarageQuickViewLayout(
+        CalculateGarageSchematic(1920,1080,hud,style,0,FactoryGarageLook(0)));
+    const GaragePointerPermissions allow{{true,true,true},true,true,true,{true,true,true}};
+    Require(ValidGaragePointerPlans(nav,style,quick,orbit,purchase),"baseline surface valid");
+
+    // Every corruption is tested against all other valid physical groups,
+    // not just at the invalid button. In particular a failed local hit
+    // test must never become permission for an unrelated paid action.
+    const auto reject=[&](auto n,auto s,auto q,auto o,auto p)
+    {
+        Require(!ValidGaragePointerPlans(n,s,q,o,p),"malformed active group detected");
+        const auto probe=[&](const auto& buttons)
+        {
+            for(const auto& button:buttons)
+            {
+                const auto& b=button.Bounds;
+                Require(ResolveGaragePointerClaims(CollectGaragePointerClaims(
+                    n,s,q,o,p,b.X+b.Width/2,b.Y+b.Height/2,allow))==Action::None,
+                    "malformed group cannot leak any other group's click");
+            }
+        };
+        probe(nav.Buttons);probe(style.Buttons);probe(quick.Buttons);
+        probe(orbit.Buttons);probe(purchase.Buttons);
+        Require(ResolveGaragePointerClaims(CollectGaragePointerClaims(
+            n,s,q,o,p,0,0,allow,{Action::GarageLookChoice0,true}))==Action::None,
+            "malformed group rejects palette claim as well");
+    };
+    const auto corrupt=[&](auto original,auto verify)
+    {
+        const double nan=std::numeric_limits<double>::quiet_NaN();
+        const double inf=std::numeric_limits<double>::infinity();
+        for(std::size_t i=0;i<original.Buttons.size();++i)
+        {
+            auto bad=original;
+            bad.Buttons[i].Action=Action::None;
+            verify(bad);
+            bad=original;
+            bad.Buttons[i].Bounds.X=nan;
+            verify(bad);
+            bad=original;
+            bad.Buttons[i].Bounds.Y=-1.0;
+            verify(bad);
+            bad=original;
+            bad.Buttons[i].Bounds.Width=0.0;
+            verify(bad);
+            bad=original;
+            bad.Buttons[i].Bounds.Height=inf;
+            verify(bad);
+            bad=original;
+            bad.Buttons[i].Bounds.X=1e308;
+            verify(bad);
+            bad=original;
+            bad.Buttons[i].Bounds=original.Buttons[(i+1)%original.Buttons.size()].Bounds;
+            verify(bad);
+        }
+    };
+    corrupt(nav,[&](auto v){reject(v,style,quick,orbit,purchase);});
+    corrupt(style,[&](auto v){reject(nav,v,quick,orbit,purchase);});
+    corrupt(quick,[&](auto v){reject(nav,style,v,orbit,purchase);});
+    corrupt(orbit,[&](auto v){reject(nav,style,quick,v,purchase);});
+    corrupt(purchase,[&](auto v){reject(nav,style,quick,orbit,v);});
+
+    // Unsupported compact layouts deliberately do not claim clicks.
+    auto inactive=quick;
+    inactive.Valid=false;
+    inactive.Buttons[0].Action=Action::Close;
+    Require(ValidGaragePointerPlans(nav,style,inactive,orbit,purchase),
+        "inactive groups remain empty");
+    const auto& close=nav.Buttons[5].Bounds;
+    Require(ResolveGaragePointerClaims(CollectGaragePointerClaims(
+        nav,style,inactive,orbit,purchase,close.X+1,close.Y+1,allow))==Action::Close,
+        "inactive optional group cannot disable normal navigation");
+}
 }
 
 int main()
@@ -183,6 +264,7 @@ int main()
     AllClaimsAndPermissions();
     ExactGroupIdentity();
     RealDesktopPlans();
+    MalformedActiveGroupFailsClosed();
     std::cout << "Garage pointer claim arbitration passed.\n";
     return EXIT_SUCCESS;
 }
