@@ -57,6 +57,22 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
   reloads disk metadata and rejects unreadable/newer profiles; it is NOT an
   interprocess atomic lock. Avoid simultaneous instances.
 
+### Original vehicle material finishes
+
+- Settings diagnostics show 0–5 exposed global scalar parameters. A zero count
+  means tint-only; a nonzero count is not shader/pixel verification. Inspect
+  the actual parent material graph and check its shading model in Unreal.
+- Compare satin graphite with pearl white, factory versus sport alloy,
+  painted body versus tire rubber, and vinyl stripe versus body paint under
+  the same lighting. Only supported scalar targets are applied. The starter
+  material is not an authored automotive PBR shader; do not advertise actual
+  clear coat, transparency or metallic flakes until a real material graph
+  and cooked visual comparison demonstrate those effects.
+- Switch cars, paint, rims and stripes; ensure missing scalar capabilities
+  never prevent the tint-only car from rendering and old capabilities are
+  cleared on source rebuild/fallback. Verify no geometry rebuild on paint-only
+  or stripe-only edits, and no change to physics materials or tire contact.
+
 ### Direct cosmetic chooser
 
 - Keyboard N or controller D-pad Right opens Paint and then switches through
