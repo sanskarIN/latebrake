@@ -2378,7 +2378,8 @@ bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
 }
 
 void ALatebrakeRaceGameMode::GarageCycleAppearance(
-    latebrake::GarageLookLayer layer, bool bReset)
+    latebrake::GarageLookLayer layer, bool bReset,
+    const latebrake::GarageDirectAppearanceRequest* Direct)
 {
     if (RejectGarageMutationIfBlocked()) return;
     GaragePurchaseConfirm.Reset(); // A cosmetic click cancels pending spend.
@@ -2412,8 +2413,21 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
     }
     const int32 Viewed = GarageGallery.Viewed();
     const latebrake::GarageAppearanceState Before = GarageLooks;
-    const bool bChanged = bReset ? GarageLooks.ResetVehicle(Viewed) :
-        GarageLooks.Cycle(Viewed, layer);
+    if (Direct)
+    {
+        const auto Decision = latebrake::PreviewGarageDirectAppearance(
+            Viewed, GarageLooks.Get(Viewed), *Direct);
+        if (Decision.Status != latebrake::GarageDirectAppearanceStatus::Ready ||
+            Direct->Layer != layer || bReset)
+        {
+            GarageFeedback = Decision.Status == latebrake::GarageDirectAppearanceStatus::Unchanged
+                ? TEXT("LOOK ALREADY ACTIVE: no new save needed.")
+                : TEXT("Appearance choice expired or invalid. Open the chooser again.");
+            return;
+        }
+    }
+    const bool bChanged = Direct ? GarageLooks.Choose(Viewed, layer, Direct->Choice) :
+        bReset ? GarageLooks.ResetVehicle(Viewed) : GarageLooks.Cycle(Viewed, layer);
     if (!bChanged)
     {
         GarageFeedback = bReset
@@ -2452,6 +2466,13 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
             UTF8_TO_TCHAR(latebrake::GarageState::Definition(Viewed).Name),
             UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(layer, Choice)));
     }
+}
+
+void ALatebrakeRaceGameMode::GarageChooseAppearance(
+    latebrake::GarageDirectAppearanceRequest Request)
+{
+    // Reuse the shared ownership/paused/profile guards and one save rollback.
+    GarageCycleAppearance(Request.Layer, false, &Request);
 }
 
 void ALatebrakeRaceGameMode::GarageCyclePaint()
