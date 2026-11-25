@@ -3,6 +3,7 @@
 #include "UI/GarageShowroomLane.h"
 #include "UI/GarageShowroomQuickView.h"
 #include "UI/GaragePurchaseMouseLayout.h"
+#include "UI/GarageAppearancePalette.h"
 #include <array>
 #include <cstddef>
 
@@ -19,7 +20,7 @@ struct GaragePointerClaim final
 
 enum class GaragePointerGroup : std::size_t
 {
-    Navigation, Style, QuickView, Orbit, Purchase, Count
+    Navigation, Style, QuickView, Orbit, Purchase, Palette, Count
 };
 
 inline constexpr std::size_t GaragePointerGroupCount =
@@ -61,6 +62,8 @@ constexpr bool ValidGarageGroupClaim(GaragePointerGroup group,
         return GarageOrbitIndex(action) >= 0;
     case GaragePointerGroup::Purchase:
         return GarageOfferIndex(action) >= 0;
+    case GaragePointerGroup::Palette:
+        return IsGaragePaletteAction(action);
     default:
         return false;
     }
@@ -109,7 +112,8 @@ inline GaragePointerClaims CollectGaragePointerClaims(
     const GarageQuickViewLayout& quick,
     const GarageOrbitButtons& orbit,
     const GaragePurchaseMouseLayout& purchase,
-    double x, double y, GaragePointerPermissions permission) noexcept
+    double x, double y, GaragePointerPermissions permission,
+    GaragePointerClaim palette = {}) noexcept
 {
     const auto navAction = HitTestDesktopMenuMouse(navigation, x, y,
         {true, true, true});
@@ -128,7 +132,8 @@ inline GaragePointerClaims CollectGaragePointerClaims(
         {quickAction, quickAction != DesktopMenuMouseAction::None && permission.Browse},
         {orbitAction, orbitAction != DesktopMenuMouseAction::None && permission.Orbit},
         {purchaseAction, purchaseIndex >= 0 &&
-            permission.Purchase[static_cast<std::size_t>(purchaseIndex)]}
+            permission.Purchase[static_cast<std::size_t>(purchaseIndex)]},
+        palette
     }};
 }
 
