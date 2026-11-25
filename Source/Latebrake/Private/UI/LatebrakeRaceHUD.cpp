@@ -1468,6 +1468,9 @@ void ALatebrakeRaceHUD::DrawHUD()
                 VisualReport.PaintParameterDiscovered
                     ? *Car->GetOriginalVehicleTintParameter().ToString()
                     : TEXT("NONE / FALLBACK")));
+            const int32 FinishCount=Car->GetOriginalVehicleFinishParameterCount();
+            MenuLine(FString::Printf(TEXT("FINISH PARAMETERS: %d/5 EXPOSED | %s"),
+                FinishCount,FinishCount>0?TEXT("VERIFY SHADER"):TEXT("TINT ONLY")));
             MenuLine(FString::Printf(TEXT("FRONT BEAMS REQUESTED: %s"),
                 VisualReport.FrontLampsRequested ? TEXT("ON")
                     : TEXT("OFF (PAUSED OR INACTIVE)")));
