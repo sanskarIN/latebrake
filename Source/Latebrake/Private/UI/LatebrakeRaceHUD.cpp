@@ -127,11 +127,15 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
             width, height, hud, style, Mode->GetGaragePreviewVehicleId(),
             Mode->GetGaragePreviewLook());
         const auto quick = latebrake::CalculateGarageQuickViewLayout(diagram);
+        const auto purchase = latebrake::CalculateGaragePurchaseMouseLayout(
+            lane, width, height, hud);
+        const auto offers = Mode->GetGaragePurchasePanel();
         const latebrake::GaragePointerPermissions permission{
             availability, Mode->CanBrowseGarage(), Mode->CanCustomizeGarage(),
-            car && car->CanSelectGarageCameraOrbit()};
+            car && car->CanSelectGarageCameraOrbit(),
+            {offers[0].Enabled(), offers[1].Enabled(), offers[2].Enabled()}};
         return latebrake::ResolveGaragePointerClaims(
-            latebrake::CollectGaragePointerClaims(buttons, style, quick, orbit,
+            latebrake::CollectGaragePointerClaims(buttons, style, quick, orbit, purchase,
                 x, y, permission));
     }
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
@@ -314,12 +318,16 @@ void ALatebrakeRaceHUD::DrawHUD()
 
         // Keep the central scene clear; the two-dimensional schematic and
         // existing car selectors stay in the right dock, not over the mesh.
+        const auto PurchaseButtons = latebrake::CalculateGaragePurchaseMouseLayout(
+            ShowroomLane, Canvas->SizeX, Canvas->SizeY, Layout);
         if (ShowroomLane.Valid && Car->IsGarageCameraViewPresented())
         {
             const auto& A = ShowroomLane.Aperture;
             DrawText(TEXT("LIVE 3D | F4 ORBIT"), Gold,
                 static_cast<float>(A.X),
-                static_cast<float>(A.Y - 24.0 * Layout.Scale),
+                static_cast<float>(PurchaseButtons.Valid ?
+                    PurchaseButtons.Buttons[0].Bounds.Y - 19.0 * Layout.Scale :
+                    A.Y - 24.0 * Layout.Scale),
                 GEngine->GetSmallFont(), 0.78f * UIScale);
         }
 
@@ -345,6 +353,52 @@ void ALatebrakeRaceHUD::DrawHUD()
                     static_cast<float>(Fit.X), static_cast<float>(Fit.Y),
                     Font, static_cast<float>(Fit.Scale));
         };
+        if (PurchaseButtons.Valid)
+        {
+            const auto Offers = Mode->GetGaragePurchasePanel();
+            float OfferX = 0.f, OfferY = 0.f;
+            const auto Hover = PlayerOwner->GetMousePosition(OfferX, OfferY)
+                ? HitTestMenuMouse(OfferX, OfferY)
+                : latebrake::DesktopMenuMouseAction::None;
+            for (std::size_t i=0; i<Offers.size(); ++i)
+            {
+                const auto& Offer = Offers[i];
+                const auto& Button = PurchaseButtons.Buttons[i];
+                const auto& R = Button.Bounds;
+                const bool bConfirm = Offer.Status == latebrake::GarageOfferStatus::Confirm;
+                const bool bEnabled = Offer.Enabled();
+                const FLinearColor Ink = !bEnabled
+                    ? FLinearColor(0.62f,0.68f,0.75f) : bConfirm ? Gold : White;
+                DrawRect(bConfirm ? FLinearColor(0.38f,0.25f,0.07f,0.98f)
+                    : Hover==Button.Action && bEnabled
+                        ? FLinearColor(0.19f,0.31f,0.43f,0.98f)
+                        : FLinearColor(0.06f,0.10f,0.16f,0.96f),
+                    static_cast<float>(R.X),static_cast<float>(R.Y),
+                    static_cast<float>(R.Width),static_cast<float>(R.Height));
+                FString Title = i==0 ? (Offer.Subject>=0
+                    ? FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Offer.Subject).Name))
+                    : FString(TEXT("ALL CARS")))
+                    : i==1 ? FString(TEXT("ENGINE")) : FString(TEXT("GRIP"));
+                FString Status;
+                switch (Offer.Status)
+                {
+                case latebrake::GarageOfferStatus::Preview:
+                    Status=FString::Printf(TEXT("%d CR"),Offer.Price); break;
+                case latebrake::GarageOfferStatus::Confirm:
+                    Status=FString::Printf(TEXT("CONFIRM %.1fs"),Offer.SecondsRemaining); break;
+                case latebrake::GarageOfferStatus::NeedCredits:
+                    Status=FString::Printf(TEXT("NEED %d"),Offer.Shortfall); break;
+                case latebrake::GarageOfferStatus::Complete:
+                    Status=TEXT("MAX"); break;
+                default: Status=TEXT("LOCKED"); break;
+                }
+                const latebrake::DesktopMenuMouseRect Upper{R.X,R.Y,R.Width,R.Height*0.5};
+                const latebrake::DesktopMenuMouseRect Lower{R.X,R.Y+R.Height*0.5,R.Width,R.Height*0.5};
+                DrawButtonCaption(Title,FString(),Upper,Ink,0.72f*UIScale,0.0);
+                DrawButtonCaption(Status,bConfirm ? FString(TEXT("CONFIRM")) : FString(),
+                    Lower,Ink,0.68f*UIScale,0.0);
+            }
+        }
         const auto OrbitButtons = latebrake::CalculateGarageOrbitButtons(
             ShowroomLane, Canvas->SizeX, Canvas->SizeY, Layout);
         if (OrbitButtons.Valid)
