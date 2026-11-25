@@ -148,6 +148,41 @@ int main()
         fresh, 2, 9000, 205.0) && !gate.HasPending(),
         "unaffordable purchase rejected");
 
+    // A focus interruption resets approval even if no snapshot/time changes.
+    // Verify every spend kind, duplicate interruption delivery, and the
+    // exact former deadline. A returning player's first press is a preview.
+    struct FocusCase { GaragePurchaseKind Kind; int Subject; int Price; };
+    const FocusCase focusCases[] = {
+        {GaragePurchaseKind::UnlockVehicle, 2, 1200},
+        {GaragePurchaseKind::UpgradeEngine, 0, 200},
+        {GaragePurchaseKind::UpgradeGrip, 0, 150},
+    };
+    for (const auto& entry : focusCases)
+    {
+        for (const double returnTime : {500.0, 504.0, 508.0})
+        {
+            gate.Reset();
+            Require(!gate.ConfirmOrStage(entry.Kind, fresh, entry.Subject,
+                entry.Price, 500.0), "offer before interruption only stages");
+            Require(gate.Preview(fresh, returnTime).IsPending(),
+                "old offer would otherwise still be actionable");
+            gate.Reset();
+            gate.Reset(); // Duplicate OS deactivation must remain harmless.
+            Require(!gate.HasPending() && !gate.Preview(fresh, returnTime).IsPending(),
+                "interruption removes the old approval and countdown");
+            Require(!gate.ConfirmOrStage(entry.Kind, fresh, entry.Subject,
+                entry.Price, returnTime), "first press after interruption restages");
+            Require(gate.ConfirmOrStage(entry.Kind, fresh, entry.Subject,
+                entry.Price, returnTime + 0.25), "fresh second press authorizes once");
+            Require(!gate.HasPending(), "new approval is consumed");
+            Require(garage.Credits() == fresh.Credits &&
+                garage.Snapshot().OwnedVehicleMask == fresh.OwnedVehicleMask &&
+                garage.EngineLevel() == fresh.EngineLevel &&
+                garage.GripLevel() == fresh.GripLevel,
+                "approval policy does not mutate the garage");
+        }
+    }
+
     // Deterministic small-step state changes: no empty, old or altered
     // approval can authorize spending, even after thousands of inputs.
     for (int i = 0; i < 10000; ++i)
