@@ -51,6 +51,11 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
   confirmation. Resize, expire or change the offer between display and click:
   the stale target must not charge credits. Both mouse and Q/U/I share the
   same authoritative transaction and save rollback. All credits are in-game.
+- Stage a credit purchase, then open the free appearance chooser with mouse
+  or controller. The pending purchase and its rendered confirmation must
+  be invalidated immediately. Closing the chooser must not restore consent;
+  the next Q/U/I or purchase click must stage a fresh offer. No save or
+  deduction is permitted merely for opening or switching cosmetic layers.
 - Inject inaccessible test storage and verify failed save restores ownership,
   selected car, tuning and appearance. Test old profile defaults, malformed
   appearance bytes/checksum and unknown future schema. Save prewrite guard
@@ -118,7 +123,9 @@ contracts check behavior and bindings, not rendered pixels or packaged builds.
 
 - Confirm normal navigation, styling, six quick-view chips and four orbit
   targets, plus three purchase offers, each highlight and dispatch one matching action. Disabled targets
-  cannot leak clicks to another group if geometry overlaps.
+  cannot leak clicks to another group if geometry overlaps. Malformed active
+  layouts reject the complete pointer event, including otherwise valid
+  navigation or paid targets; intentionally inactive layouts remain empty.
 - Confirm page/close navigation still works with locked or already-equipped
   viewed car. Compact/touch layouts retain supported controls and no hidden
   desktop hits. Ensure switching pages and Alt-Tab clear held controls.
