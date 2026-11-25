@@ -20,6 +20,7 @@
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageAppearance.h"
+#include "Garage/GarageDirectAppearance.h"
 #include "Garage/GarageGalleryCursor.h"
 #include "Garage/GarageEquipUiPolicy.h"
 #include "Garage/GaragePurchaseConfirmation.h"
@@ -194,6 +195,7 @@ public:
     void GarageCycleStripe();
     void GarageCycleWheels();
     void GarageResetAppearance();
+    void GarageChooseAppearance(latebrake::GarageDirectAppearanceRequest Request);
     int32 GetLastRaceCredits() const { return LastRaceCredits; }
 
     static FVector GetStartPosition();
@@ -216,7 +218,8 @@ private:
     latebrake::GarageEquipUiState GetGarageMutationUiState() const;
     void SyncGarageShowroomPreview();
     void GarageCycleAppearance(latebrake::GarageLookLayer layer,
-                              bool bReset = false);
+                              bool bReset = false,
+                              const latebrake::GarageDirectAppearanceRequest* Direct = nullptr);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();
