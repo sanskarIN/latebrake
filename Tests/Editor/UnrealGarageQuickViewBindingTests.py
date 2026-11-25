@@ -16,7 +16,10 @@ class UnrealGarageQuickViewBindingTests(unittest.TestCase):
         cls.cmake=source("Tests/Standalone/CMakeLists.txt")
     def test_shared_render_hit_layout(self):
         self.assertEqual(self.hud.count("latebrake::CalculateGarageQuickViewLayout("),2)
-        self.assertEqual(self.hud.count("latebrake::HitTestGarageQuickView("),2)
+        self.assertIn("HitTestMenuMouse(PickX, PickY)",self.hud)
+        arbitration=source("Source/Latebrake/Public/UI/GaragePointerArbitration.h")
+        self.assertIn("HitTestGarageQuickView(quick, x, y, true)",arbitration)
+        self.assertIn("CollectGaragePointerClaims(buttons, style, quick, orbit,",self.hud)
         self.assertIn("QuickView.Buttons.size()",self.hud)
         self.assertIn("GarageShowroomQuickView.h",self.hud)
         self.assertIn("Mode->CanBrowseGarage()",self.hud)
