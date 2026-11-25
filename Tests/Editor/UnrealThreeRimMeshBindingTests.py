@@ -7,17 +7,19 @@ class UnrealThreeRimMeshBindingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.mesh=read("Source/Latebrake/Public/Vehicles/OriginalVehicleSurfaceMesh.h")
+        cls.recipe=read("Source/Latebrake/Public/Vehicles/OriginalVehicleRimRecipe.h")
         cls.pawn=read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
         cls.tests=read("Tests/Standalone/OriginalVehicleSurfaceMeshTests.cpp")
     def test_three_distinct_actual_spoke_meshes(self):
-        for text in ("OriginalVehicleRimStyleCount=3",
-                     "OriginalVehicleSpokesForStyle(int style)",
-                     "RimSpokeQuads", "Build(int vehicleId,int rimStyle=0)",
+        for text in ("RimSpokeQuads", "Build(int vehicleId,int rimStyle=0)",
                      "BuildFourWheels(writer,rimStyle)",
                      "mesh.RimSpokeQuads!=",
                      "OriginalVehicleMaterial::Alloy",
-                     "style==0 ? 7", "style==1 ? 5", "style==2 ? 12"):
+                     "OriginalRimRecipeForStyle(rimStyle)", "recipe.Spokes"):
             self.assertIn(text,self.mesh)
+        for text in ("OriginalVehicleRimStyleCount=3", "OriginalVehicleSpokesForStyle(int style)",
+                     "{7,0.09,0.16,0.91}", "{5,0.17,0.12,0.94}", "{12,0.065,0.22,0.97}"):
+            self.assertIn(text,self.recipe)
         self.assertIn("ThreeActualWheelDesigns();",self.tests)
         self.assertIn("MakeOriginalVehicleRenderSections(mesh)",self.tests)
     def test_real_pawn_rebuilds_on_rim_change_not_on_tick(self):
