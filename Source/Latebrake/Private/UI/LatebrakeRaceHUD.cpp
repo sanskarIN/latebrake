@@ -96,6 +96,8 @@ void ALatebrakeRaceHUD::CloseGaragePalette()
 {
     GaragePalette = {};
     PresentedGaragePalette = {};
+    GaragePaletteFocus = -1;
+    DrawnGaragePaletteFocus = -1;
 }
 
 bool ALatebrakeRaceHUD::ToggleGaragePalette(latebrake::GarageLookLayer Layer)
@@ -125,7 +127,69 @@ bool ALatebrakeRaceHUD::ToggleGaragePalette(latebrake::GarageLookLayer Layer)
         return true;
     }
     GaragePalette = {true, Viewed, Look, Layer};
+    GaragePaletteFocus = latebrake::InitialGaragePaletteFocus(GaragePalette);
+    DrawnGaragePaletteFocus = -1;
     PresentedGaragePalette = {};
+    return true;
+}
+
+bool ALatebrakeRaceHUD::AdvanceGaragePaletteLayer()
+{
+#if PLATFORM_ANDROID
+    return false;
+#else
+    const auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !Mode->IsMenuOpen() ||
+        Mode->GetMenuPage() != latebrake::MenuPage::Garage)
+        return false;
+    const auto Layer = GaragePalette.Matches(Mode->GetGaragePreviewVehicleId(),
+        Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage())
+        ? latebrake::NextGaragePaletteLayer(GaragePalette.Layer)
+        : latebrake::GarageLookLayer::Paint;
+    // Even a blocked or too-small Garage consumes this contextual command.
+    // It must not fall through to an unrelated career action.
+    ToggleGaragePalette(Layer);
+    return true;
+#endif
+}
+
+bool ALatebrakeRaceHUD::HandleGaragePaletteNavigation(
+    latebrake::GaragePaletteNavigationInput Input)
+{
+    if (!GaragePalette.Open) return false;
+    const auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !Canvas || !GaragePalette.Matches(
+        Mode->GetGaragePreviewVehicleId(),Mode->GetGaragePreviewLook(),
+        Mode->CanCustomizeGarage()))
+    {
+        CloseGaragePalette();
+        return true;
+    }
+    const double W=Canvas->SizeX,H=Canvas->SizeY;
+    const auto Hud=latebrake::CalculateHudLayout(W,H);
+    const auto Lane=latebrake::CalculateGarageShowroomLane(
+        W,H,Hud,false,Mode->IsMenuOpen(),Mode->GetMenuPage());
+    const auto Layout=latebrake::CalculateGaragePaletteLayout(
+        Lane,W,H,Hud,GaragePalette.Layer);
+    const auto Decision=latebrake::NavigateGaragePalette(
+        GaragePalette,Layout,PresentedGaragePalette,
+        GaragePaletteFocus,DrawnGaragePaletteFocus,Input);
+    switch (Decision.Effect)
+    {
+    case latebrake::GaragePaletteNavigationEffect::Move:
+        GaragePaletteFocus=Decision.Choice;
+        break;
+    case latebrake::GaragePaletteNavigationEffect::Confirm:
+        ApplyGaragePaletteChoice(latebrake::GaragePaletteChoiceAction(Decision.Choice));
+        break;
+    case latebrake::GaragePaletteNavigationEffect::Cancel:
+        CloseGaragePalette();
+        break;
+    default: break;
+    }
+    // An open chooser owns these inputs even before its first draw.
     return true;
 }
 
@@ -220,6 +284,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     Super::DrawHUD();
     PresentedGarageOffers = {};
     PresentedGaragePalette = {};
+    DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
         CloseGaragePalette();
@@ -523,11 +588,22 @@ void ALatebrakeRaceHUD::DrawHUD()
                     const auto& Button = Palette.Choices[static_cast<std::size_t>(i)];
                     const auto& R = Button.Bounds;
                     const bool bSelected = Choice.Selected;
+                    const bool bFocused = GaragePaletteFocus == i;
+                    const FLinearColor FocusInk(0.25f,0.84f,0.96f,1.f);
                     const FLinearColor Ink = bSelected ? Gold : White;
                     DrawRect(bSelected ? FLinearColor(0.27f,0.21f,0.09f,0.99f)
                         : Hover==Button.Action ? FLinearColor(0.19f,0.31f,0.43f,0.99f)
                         : FLinearColor(0.08f,0.13f,0.20f,0.99f),R.X,R.Y,R.Width,R.Height);
                     DrawRect(Ink,R.X,R.Y,3.f*UIScale,R.Height);
+                    if (bFocused)
+                    {
+                        // Focus and active appearance are independent:
+                        // the focused card gets a full high-contrast outline.
+                        const float Edge=FMath::Max(2.f,2.f*UIScale);
+                        DrawRect(FocusInk,R.X,R.Y,R.Width,Edge);
+                        DrawRect(FocusInk,R.X,R.Y+R.Height-Edge,R.Width,Edge);
+                        DrawRect(FocusInk,R.X+R.Width-Edge,R.Y,Edge,R.Height);
+                    }
                     const float Chip = FMath::Clamp(15.f*UIScale,10.f,18.f);
                     const float CX = static_cast<float>(R.X+R.Width-Chip-6.f*UIScale);
                     const float CY = static_cast<float>(R.Y+0.5*(R.Height-Chip));
@@ -586,6 +662,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                     const FString Tag = bSelected ? TEXT("ACTIVE") : Choice.Factory ? TEXT("FACTORY") : TEXT("SELECT");
                     const bool bTag = DrawButtonCaption(Tag,FString(),Footer,Ink,0.62f*UIScale,Accessory);
                     PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag && bPreviewDrawn;
+                    if (bFocused && bTitle && bTag && bPreviewDrawn)
+                        DrawnGaragePaletteFocus = i;
                 }
             }
         }
@@ -891,7 +969,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("STYLE VIEWED OWNED CAR: F5/F6/F7 | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
             if (ShowroomLane.Valid)
+            {
                 MenuLine(TEXT("MOUSE: PAINT / STRIPE / RIMS OPENS CHOOSER (FREE)."));
+                MenuLine(TEXT("N / PAD RIGHT: OPEN OR SWITCH CHOOSER."));
+                MenuLine(TEXT("UP/DOWN: FOCUS | ENTER/Y: CHOOSE | M/PAD LEFT: CLOSE."));
+            }
             MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
             if (!Mode->CanCustomizeGarage() &&
                 !Mode->IsFocusLossGuardActive() &&
