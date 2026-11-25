@@ -84,4 +84,33 @@ inline DesktopMenuMouseAction HitTestGaragePurchaseMouse(
     }
     return found;
 }
+// An input event may arrive between HUD frames. A newly staged offer must
+// first be presented with its confirmation label; it is never enough to
+// recompute a new price/status from an old rectangle at click time.
+struct GaragePresentedOffer final
+{
+    bool Visible = false;
+    DesktopMenuMouseRect Bounds{};
+    GaragePurchasePanelOffer Offer{};
+};
+using GaragePresentedOffers = std::array<GaragePresentedOffer,GaragePurchaseOfferCount>;
+
+inline bool CanClickPresentedGarageOffer(
+    const GaragePresentedOffer& shown, const DesktopMenuMouseButton& button,
+    const GaragePurchasePanelOffer& current) noexcept
+{
+    const auto& a = shown.Bounds;
+    const auto& b = button.Bounds;
+    if (!shown.Visible || !current.Enabled() || !shown.Offer.Enabled() ||
+        a.X != b.X || a.Y != b.Y || a.Width != b.Width || a.Height != b.Height ||
+        shown.Offer.Kind != current.Kind || shown.Offer.Subject != current.Subject ||
+        shown.Offer.Price != current.Price || shown.Offer.Status != current.Status)
+        return false;
+    if (current.Status == GarageOfferStatus::Confirm)
+        return std::isfinite(current.SecondsRemaining) &&
+            std::isfinite(shown.Offer.SecondsRemaining) &&
+            current.SecondsRemaining >= 0.0 &&
+            current.SecondsRemaining <= shown.Offer.SecondsRemaining;
+    return current.Status == GarageOfferStatus::Preview;
+}
 } // namespace latebrake
