@@ -366,15 +366,43 @@ inline DesktopMenuMouseAction HitTestGarageStyleMouse(
 {
     if (!layout.Valid || !std::isfinite(x) || !std::isfinite(y))
         return DesktopMenuMouseAction::None;
-    for (const auto& button : layout.Buttons)
+    // Validate the entire external plan before accepting any individual hit.
+    // A malformed cosmetic button must not masquerade as SELECT or CLOSE.
+    constexpr std::array expected{
+        DesktopMenuMouseAction::GaragePaint,
+        DesktopMenuMouseAction::GarageStripe,
+        DesktopMenuMouseAction::GarageWheels,
+        DesktopMenuMouseAction::GarageReset,
+        DesktopMenuMouseAction::GarageBrowsePrevious,
+        DesktopMenuMouseAction::GarageBrowseNext};
+    DesktopMenuMouseAction found = DesktopMenuMouseAction::None;
+    for (std::size_t i = 0; i < layout.Buttons.size(); ++i)
     {
-        if (!button.Bounds.Contains(x, y)) continue;
-        const bool isBrowse =
-            button.Action == DesktopMenuMouseAction::GarageBrowsePrevious ||
-            button.Action == DesktopMenuMouseAction::GarageBrowseNext;
-        return (isBrowse ? browseEnabled : styleEnabled)
-            ? button.Action : DesktopMenuMouseAction::None;
+        const auto& button = layout.Buttons[i];
+        const auto& bounds = button.Bounds;
+        const double right = bounds.X + bounds.Width;
+        const double bottom = bounds.Y + bounds.Height;
+        if (button.Action != expected[i] ||
+            !std::isfinite(bounds.X) || !std::isfinite(bounds.Y) ||
+            !std::isfinite(bounds.Width) || !std::isfinite(bounds.Height) ||
+            !std::isfinite(right) || !std::isfinite(bottom) ||
+            bounds.X < 0.0 || bounds.Y < 0.0 ||
+            bounds.Width < 44.0 || bounds.Height < 44.0 ||
+            right <= bounds.X || bottom <= bounds.Y)
+            return DesktopMenuMouseAction::None;
+        for (std::size_t j = 0; j < i; ++j)
+        {
+            const auto& prior = layout.Buttons[j].Bounds;
+            if (bounds.X < prior.X + prior.Width && right > prior.X &&
+                bounds.Y < prior.Y + prior.Height && bottom > prior.Y)
+                return DesktopMenuMouseAction::None;
+        }
+        if (bounds.Contains(x, y))
+            found = button.Action;
     }
-    return DesktopMenuMouseAction::None;
+    const bool isBrowse = found == DesktopMenuMouseAction::GarageBrowsePrevious ||
+        found == DesktopMenuMouseAction::GarageBrowseNext;
+    return (isBrowse ? browseEnabled : styleEnabled)
+        ? found : DesktopMenuMouseAction::None;
 }
 } // namespace latebrake
