@@ -16,12 +16,16 @@ class GaragePurchasePanelBindingTests(unittest.TestCase):
             "void ALatebrakeRaceHUD::DrawHUD()", 1)[0]
         for marker in ("CalculateGaragePurchaseMouseLayout(",
                        "Mode->GetGaragePurchasePanel()",
+                       "CanClickPresentedGarageOffer(",
+                       "PresentedGarageOffers[0]",
                        "offers[0].Enabled()", "offers[1].Enabled()", "offers[2].Enabled()",
                        "CollectGaragePointerClaims(buttons, style, quick, orbit, purchase,"):
             self.assertIn(marker, hit)
         self.assertIn("const auto PurchaseButtons = latebrake::CalculateGaragePurchaseMouseLayout(", hud)
         self.assertIn("const auto Offers = Mode->GetGaragePurchasePanel();", hud)
         self.assertIn("HitTestMenuMouse(OfferX, OfferY)", hud)
+        self.assertIn("PresentedGarageOffers = {};", hud)
+        self.assertIn("PresentedGarageOffers[i].Visible = bTitleDrawn && bStatusDrawn;", hud)
         self.assertIn("DrawButtonCaption(Title,FString(),Upper", hud)
         self.assertIn('TEXT("CONFIRM %.1fs")', hud)
         self.assertIn('TEXT("NEED %d")', hud)
