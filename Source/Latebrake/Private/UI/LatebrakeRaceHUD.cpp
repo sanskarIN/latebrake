@@ -3,6 +3,7 @@
 #include "UI/HudLayout.h"
 #include "UI/GarageShowroomSchematic.h"
 #include "UI/GarageShowroomQuickView.h"
+#include "UI/GaragePointerArbitration.h"
 #include "UI/GarageShowroomLane.h"
 #include "UI/HudInstrumentCluster.h"
 #include "UI/HudInstrumentDriveBadge.h"
@@ -121,26 +122,17 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
         const auto orbit = latebrake::CalculateGarageOrbitButtons(lane, width, height, hud);
         const auto* car = PlayerOwner
             ? Cast<ALatebrakeCarPawn>(PlayerOwner->GetPawn()) : nullptr;
-        const auto orbitAction = latebrake::HitTestGarageOrbitButtons(
-            orbit, x, y, car && car->CanSelectGarageCameraOrbit());
-        if (orbitAction != latebrake::DesktopMenuMouseAction::None)
-            return orbitAction;
         const auto diagram = latebrake::CalculateGarageSchematic(
-            width, height, latebrake::CalculateHudLayout(width, height),
-            style, Mode->GetGaragePreviewVehicleId(),
+            width, height, hud, style, Mode->GetGaragePreviewVehicleId(),
             Mode->GetGaragePreviewLook());
         const auto quick = latebrake::CalculateGarageQuickViewLayout(diagram);
-        const auto selected = latebrake::HitTestGarageQuickView(
-            quick, x, y, Mode->CanBrowseGarage());
-        if (selected != latebrake::DesktopMenuMouseAction::None)
-            return selected;
+        const latebrake::GaragePointerPermissions permission{
+            availability, Mode->CanBrowseGarage(), Mode->CanCustomizeGarage(),
+            car && car->CanSelectGarageCameraOrbit()};
+        return latebrake::ResolveGaragePointerClaims(
+            latebrake::CollectGaragePointerClaims(buttons, style, quick, orbit,
+                x, y, permission));
     }
-    const auto styleAction =
-        latebrake::HitTestGarageStyleMouse(
-            style, x, y, Mode->CanCustomizeGarage(),
-            Mode->CanBrowseGarage());
-    if (styleAction != latebrake::DesktopMenuMouseAction::None)
-        return styleAction;
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
         availability);
 #endif
@@ -337,8 +329,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             const bool bCanOrbit = Car->CanSelectGarageCameraOrbit();
             float OrbitMouseX = 0.f, OrbitMouseY = 0.f;
             const auto OrbitHovered = PlayerOwner->GetMousePosition(OrbitMouseX, OrbitMouseY)
-                ? latebrake::HitTestGarageOrbitButtons(
-                    OrbitButtons, OrbitMouseX, OrbitMouseY, bCanOrbit)
+                ? HitTestMenuMouse(OrbitMouseX, OrbitMouseY)
                 : latebrake::DesktopMenuMouseAction::None;
             for (const auto& Button : OrbitButtons.Buttons)
             {
@@ -1229,8 +1220,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             const bool HasCursor = PlayerOwner->GetMousePosition(
                 CursorX, CursorY);
             const latebrake::DesktopMenuMouseAction Hovered = HasCursor
-                ? latebrake::HitTestDesktopMenuMouse(
-                    MouseMenu, CursorX, CursorY, MenuAvailability)
+                ? HitTestMenuMouse(CursorX, CursorY)
                 : latebrake::DesktopMenuMouseAction::None;
             const auto& FirstButton = MouseMenu.Buttons[0].Bounds;
             DrawText(FString::Printf(TEXT("MENU PAGE %d/%d"),
@@ -1313,9 +1303,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 const latebrake::VehiclePaintRecipe StylePaint =
                     latebrake::PaintForGarageLook(PreviewVehicle, PreviewLook);
                 const latebrake::DesktopMenuMouseAction StyleHover =
-                    HasCursor ? latebrake::HitTestGarageStyleMouse(
-                        GarageStyleMenu, CursorX, CursorY,
-                        bCanEditLook, bCanBrowse)
+                    HasCursor ? HitTestMenuMouse(CursorX, CursorY)
                         : latebrake::DesktopMenuMouseAction::None;
                 for (const auto& StyleButton : GarageStyleMenu.Buttons)
                 {
@@ -1404,8 +1392,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     const bool bHasPickCursor=PlayerOwner->GetMousePosition(
                         PickX,PickY);
                     const auto HoverPick=bHasPickCursor
-                        ? latebrake::HitTestGarageQuickView(
-                            QuickView,PickX,PickY,Mode->CanBrowseGarage())
+                        ? HitTestMenuMouse(PickX, PickY)
                         : latebrake::DesktopMenuMouseAction::None;
                     if (QuickView.Valid)
                     {
