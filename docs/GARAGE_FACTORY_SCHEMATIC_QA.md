@@ -1,3 +1,5 @@
+> Historical scope for PR #469 only. This larger native integration supersedes the factory-only HUD implementation; use [native Garage reconciliation QA](NATIVE_GARAGE_RECONCILIATION_QA.md) for its actual behavior. PR #469 remains an independently reviewable read-only candidate.
+
 # Desktop Garage factory schematic and showroom geometry
 
 This candidate reconciles the independent layout policies from draft PR #452
