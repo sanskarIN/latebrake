@@ -2094,6 +2094,14 @@ bool ALatebrakeRaceGameMode::RejectGarageMutationIfBlocked()
     return true;
 }
 
+latebrake::GaragePurchasePanelView ALatebrakeRaceGameMode::GetGaragePurchasePanel() const
+{
+    const auto Snapshot = Garage.Snapshot();
+    return latebrake::BuildGaragePurchasePanel(Snapshot,
+        GetGarageMutationUiState(),
+        GaragePurchaseConfirm.Preview(Snapshot, FPlatformTime::Seconds()));
+}
+
 FString ALatebrakeRaceGameMode::GetGaragePurchaseDisplayFeedback() const
 {
     const auto Access = GetGarageMutationUiState();
