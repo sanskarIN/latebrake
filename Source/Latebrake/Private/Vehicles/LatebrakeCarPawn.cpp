@@ -51,6 +51,7 @@
 #include "Components/InputComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "ProceduralMeshComponent.h"
+#include "Vehicles/OriginalVehicleRoofStripe.h"
 #include "Components/PointLightComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Engine/StaticMesh.h"
@@ -145,6 +146,15 @@ ALatebrakeCarPawn::ALatebrakeCarPawn()
     OriginalVehicleVisual->SetRelativeScale3D(
         FVector(1.f / RootScale.X, 1.f / RootScale.Y,
                 1.f / RootScale.Z));
+
+    OriginalRoofStripes = CreateDefaultSubobject<UProceduralMeshComponent>(
+        TEXT("OriginalRoofStripes"));
+    OriginalRoofStripes->SetupAttachment(OriginalVehicleVisual);
+    OriginalRoofStripes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalRoofStripes->SetGenerateOverlapEvents(false);
+    OriginalRoofStripes->SetSimulatePhysics(false);
+    OriginalRoofStripes->SetCastShadow(false);
+    OriginalRoofStripes->SetVisibility(false, false);
 
     // Each source wheel is a distinct child of the inverse-scaled body
     // render root. Its relative location is the true mesh wheel center,
@@ -654,6 +664,91 @@ void ALatebrakeCarPawn::HideLegacyVisualPrimitives(bool bHide)
     }
 }
 
+void ALatebrakeCarPawn::ClearOriginalRoofStripes()
+{
+    if (!IsValid(OriginalRoofStripes)) return;
+    OriginalRoofStripes->SetVisibility(false, false);
+    OriginalRoofStripes->ClearAllMeshSections();
+    OriginalRoofStripes->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OriginalRoofStripes->SetGenerateOverlapEvents(false);
+    OriginalRoofStripes->SetSimulatePhysics(false);
+}
+
+bool ALatebrakeCarPawn::PrepareOriginalRoofStripes(
+    int32 VehicleId, UMaterialInterface* Material)
+{
+    if (!IsValid(OriginalRoofStripes) || !IsValid(Material)) return false;
+    const auto Plan=latebrake::vehiclemesh::BuildOriginalRoofStripePlan(VehicleId);
+    if (!Plan.Valid) return false;
+    // All three bands are prepared while hidden. Appearance updates
+    // only switch section visibility and tint, never recompose geometry.
+    for (std::size_t i=0; i<Plan.Bands.size(); ++i)
+    {
+        const auto& Band=Plan.Bands[i];
+        TArray<FVector> Positions, Normals;
+        TArray<int32> Indices;
+        TArray<FVector2D> UV0;
+        TArray<FColor> Colors;
+        TArray<FProcMeshTangent> Tangents;
+        const int32 VertexCount=static_cast<int32>(Band.Count*4u);
+        Positions.Reserve(VertexCount);
+        Normals.Reserve(VertexCount);
+        UV0.Reserve(VertexCount);
+        Colors.Reserve(VertexCount);
+        Tangents.Reserve(VertexCount);
+        Indices.Reserve(static_cast<int32>(Band.Count*6u));
+        for (std::size_t j=0;j<Band.Count;++j)
+        {
+            const auto& Quad=Band.Quads[j];
+            const int32 Base=Positions.Num();
+            for (std::size_t k=0;k<Quad.Points.size();++k)
+            {
+                const auto& P=Quad.Points[k];
+                Positions.Add(FVector(P.X,P.Y,P.Z));
+                Normals.Add(FVector(Quad.Normal.X,Quad.Normal.Y,Quad.Normal.Z));
+                Tangents.Add(FProcMeshTangent(
+                    FVector(Quad.Tangent.X,Quad.Tangent.Y,Quad.Tangent.Z),false));
+                UV0.Add(FVector2D((P.X+70.0)/140.0,k<2u?0.0:1.0));
+                Colors.Add(FColor::White);
+            }
+            for (int32 Index:{0,1,2,0,2,3}) Indices.Add(Base+Index);
+        }
+        const int32 Section=static_cast<int32>(i);
+        OriginalRoofStripes->CreateMeshSection(Section,Positions,Indices,
+            Normals,UV0,Colors,Tangents,false /* visual only */);
+        if (!IsValid(OriginalRoofStripes->CreateDynamicMaterialInstance(Section,Material)))
+        {
+            ClearOriginalRoofStripes();
+            return false;
+        }
+        OriginalRoofStripes->SetMeshSectionVisible(Section,false);
+    }
+    return true;
+}
+
+void ALatebrakeCarPawn::ApplyOriginalRoofStripeLook(latebrake::GarageLook Look)
+{
+    if (!IsValid(OriginalRoofStripes)) return;
+    if (!bOriginalVehicleVisualReady || OriginalVehicleTintParameter.IsNone() ||
+        !latebrake::ValidGarageLook(Look))
+    {
+        OriginalRoofStripes->SetVisibility(false,false);
+        return;
+    }
+    const auto Rgb=latebrake::StripeTintForGarageLook(Look);
+    const FLinearColor Tint(static_cast<float>(Rgb.R),static_cast<float>(Rgb.G),
+        static_cast<float>(Rgb.B),1.f);
+    for (std::size_t i=0;i<latebrake::vehiclemesh::OriginalRoofStripeBandCount;++i)
+    {
+        const int32 Section=static_cast<int32>(i);
+        const bool bVisible=latebrake::vehiclemesh::OriginalRoofStripeVisible(Look.Stripe,i);
+        OriginalRoofStripes->SetMeshSectionVisible(Section,bVisible);
+        if (auto* Instance=Cast<UMaterialInstanceDynamic>(OriginalRoofStripes->GetMaterial(Section)))
+            Instance->SetVectorParameterValue(OriginalVehicleTintParameter,Tint);
+    }
+    OriginalRoofStripes->SetVisibility(Look.Stripe!=0u,false);
+}
+
 void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
 {
     // Actual 3D source rebuild attempts are counted once at entry.
@@ -661,6 +756,7 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
     SourceMeshBuildTelemetry =
         latebrake::OriginalMeshBuildAttempt(SourceMeshBuildTelemetry);
     bOriginalVehicleVisualReady = false;
+    ClearOriginalRoofStripes();
     OriginalRenderedRimStyle = -1;
     OriginalVehicleTintParameter = NAME_None;
     GarageCameraGeometry.Reset();
@@ -856,6 +952,14 @@ void ALatebrakeCarPawn::RebuildOriginalVehicleVisual(int32 VehicleId)
         HideLegacyVisualPrimitives(false);
         return;
     }
+    if (!PrepareOriginalRoofStripes(VehicleId,BaseMaterial))
+    {
+        for (auto* Part : RenderParts)
+            Part->ClearAllMeshSections();
+        ClearOriginalRoofStripes();
+        HideLegacyVisualPrimitives(false);
+        return;
+    }
     OriginalVehicleTintParameter = ResolvedTintName;
 
     // Actor-owned render component follows the real car rigid body, but
@@ -996,21 +1100,15 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     // Use the chassis's actual installed scale for purely decorative
     // roof marks; no new scale constants or physics-body mutations.
     const FVector ChassisScale = Chassis->GetRelativeScale3D();
-    // Retain visible user-selected roof stripes when the old cube panels
-    // are hidden under the new generated car surface. The generated
-    // vehicle's roof is 174cm above its original local base, shifted
-    // to match the existing -22cm decorative wheel spindle centres.
-    const float StripeHeight = bOriginalVehicleVisualReady
-        ? static_cast<float>(
-            latebrake::vehiclemesh::OriginalVehicleMeshSettings{}
-                .CabinRoofHeightCm +
-            latebrake::vehiclemesh::OriginalVehicleVisualOffsetZCm + 2.0)
-        : 52.f + 27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
+    // The legacy cube roof uses its own fallback stripe dimensions.
+    // Generated cars use the prepared surface-following bands instead.
+    const float StripeHeight = 52.f + 27.5f * static_cast<float>(Spec.CabinHeight) + 2.0f;
     const latebrake::VehiclePaintRgb StripeRgb = latebrake::StripeTintForGarageLook(Look);
     const auto ApplyStripe = [&](UStaticMeshComponent* Part, bool Visible,
                                   float SideCm)
     {
         if (!IsValid(Part)) return;
+        Visible = Visible && !bOriginalVehicleVisualReady;
         Part->SetVisibility(Visible && Part->GetStaticMesh() != nullptr, true);
         if (!Visible) return;
         Part->SetRelativeLocation(
@@ -1022,6 +1120,7 @@ void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)
     ApplyStripe(RoofStripeLeft, Look.Stripe != 0u,
         Look.Stripe == 1u ? 0.f : -21.f);
     ApplyStripe(RoofStripeRight, Look.Stripe == 2u, 21.f);
+    ApplyOriginalRoofStripeLook(Look);
 
     // Trim/rim finishes change ONLY the four decorative spoke meshes,
     // not wheel contacts, tire grip, physics, or the actual Chaos chassis.
