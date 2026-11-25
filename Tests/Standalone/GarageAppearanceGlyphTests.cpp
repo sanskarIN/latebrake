@@ -140,7 +140,7 @@ void InvalidInput()
         "corrupt appearance rejected");
     Check(!CalculateGarageAppearanceGlyph({0,0,40,40},0,{},static_cast<GarageLookLayer>(255)).Valid,
         "unknown layer rejected");
-    Check(OriginalRimRecipeForStyle(-1).Spokes==0&&OriginalRimRecipeForStyle(3).Spokes==0,
+    Check(vehiclemesh::OriginalRimRecipeForStyle(-1).Spokes==0&&vehiclemesh::OriginalRimRecipeForStyle(3).Spokes==0,
         "unknown rim style has no geometry");
 }
 }
