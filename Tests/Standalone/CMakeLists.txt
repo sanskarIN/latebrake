@@ -2608,3 +2608,8 @@ add_latebrake_preview_policy_test(PreviewKeyboardFocusGuard)
 add_latebrake_preview_policy_test(PreviewRaceTimeText)
 add_latebrake_preview_policy_test(PreviewSettingsPersistence)
 add_latebrake_preview_policy_test(PreviewViewportMath)
+
+# Desktop-only showroom presentation policies; no UE runtime qualification.
+add_latebrake_portable_research_test(GarageShowroomSchematic)
+add_latebrake_portable_research_test(GarageShowroomQuickView)
+add_latebrake_portable_research_test(GarageShowroomLane)
