@@ -40,7 +40,7 @@ class GarageAppearancePaletteBindingTests(unittest.TestCase):
             self.assertIn(marker,hit)
         for marker in ("PresentedGaragePalette = {};", "PresentedGaragePalette.Layout = Palette;",
                        "PresentedGaragePalette.CloseVisible =",
-                       "PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag;",
+                       "PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag && bPreviewDrawn;",
                        "DescribeGaragePaletteChoice(", "Choice.Swatch.R", "Choice.Selected",
                        'TEXT("ACTIVE")', 'TEXT("FACTORY")'):
             self.assertIn(marker,self.hud)
