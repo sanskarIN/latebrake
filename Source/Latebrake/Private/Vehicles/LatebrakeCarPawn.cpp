@@ -2924,6 +2924,16 @@ void ALatebrakeCarPawn::MenuMousePressed()
     }
     // Do not allow a click to inherit any held throttle or steering.
     ClearDriverInputs();
+    if (latebrake::IsGaragePaletteAction(Action))
+    {
+        if (Action == latebrake::DesktopMenuMouseAction::GaragePaletteClose)
+            Hud->CloseGaragePalette();
+        else
+            Hud->ApplyGaragePaletteChoice(Action);
+        return;
+    }
+    if (!latebrake::IsGaragePaletteTab(Action))
+        Hud->CloseGaragePalette();
     switch (Action)
     {
     case latebrake::DesktopMenuMouseAction::PreviousPage:
@@ -2945,11 +2955,17 @@ void ALatebrakeCarPawn::MenuMousePressed()
     case latebrake::DesktopMenuMouseAction::GarageGripOffer:
         Mode->GarageUpgradeGrip(); break;
     case latebrake::DesktopMenuMouseAction::GaragePaint:
-        Mode->GarageCyclePaint(); break;
+        if (!Hud->ToggleGaragePalette(latebrake::GarageLookLayer::Paint))
+            Mode->GarageCyclePaint();
+        break;
     case latebrake::DesktopMenuMouseAction::GarageStripe:
-        Mode->GarageCycleStripe(); break;
+        if (!Hud->ToggleGaragePalette(latebrake::GarageLookLayer::Stripe))
+            Mode->GarageCycleStripe();
+        break;
     case latebrake::DesktopMenuMouseAction::GarageWheels:
-        Mode->GarageCycleWheels(); break;
+        if (!Hud->ToggleGaragePalette(latebrake::GarageLookLayer::Wheels))
+            Mode->GarageCycleWheels();
+        break;
     case latebrake::DesktopMenuMouseAction::GarageReset:
         Mode->GarageResetAppearance(); break;
     case latebrake::DesktopMenuMouseAction::GarageBrowsePrevious:
