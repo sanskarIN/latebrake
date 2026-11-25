@@ -173,6 +173,7 @@ public:
         return GarageLooks.Get(Garage.SelectedVehicle());
     }
     bool CanCustomizeGarage() const;
+    bool BeginGarageAppearancePreview();
     FString GetSelectedVehicleName() const;
     int32 GetEngineUpgradeLevel() const { return Garage.EngineLevel(); }
     int32 GetGripUpgradeLevel() const { return Garage.GripLevel(); }
