@@ -36,8 +36,9 @@ class UnrealAnimatedWheelRenderBindingTests(unittest.TestCase):
         )[1].split("void ALatebrakeCarPawn::ApplyOriginalVehiclePalette(",1)[0]
         for marker in ("MakeOriginalVehicleRenderSections(",
                        "MakeOriginalVehicleAnimatedParts(",
-                       "RenderParts[]", "OriginalWheelPivot(",
-                       "vertex.Position.X-Pivot.X",
+                       "RenderParts[]", "OriginalRenderCache.Acquire(",
+                       "OriginalPreparedVehicleRender::Prepare(",
+                       "Prepared->Packed()", "Positions.Add(FVector(vertex.Position.X,",
                        "Part->CreateMeshSection(", "Part->CreateDynamicMaterialInstance(",
                        "false /* no collision, ever */",
                        "for (auto* Part : RenderParts)",
@@ -47,6 +48,12 @@ class UnrealAnimatedWheelRenderBindingTests(unittest.TestCase):
                        "HideLegacyVisualPrimitives(false);",
                        "HideLegacyVisualPrimitives(true);"):
             self.assertIn(marker,rebuild)
+        indexed=read("Source/Latebrake/Public/Vehicles/OriginalVehicleIndexedRender.h")
+        cache=read("Source/Latebrake/Public/Vehicles/OriginalVehicleRenderCache.h")
+        self.assertIn("OriginalWheelPivot(static_cast<int>(part)-1)",indexed)
+        self.assertIn("part.Pivot=IndexedPartPivot(p)",indexed)
+        self.assertIn("ValidateOriginalIndexedRender(",indexed)
+        self.assertIn("packed_.RimStyle==key_.RimStyle",cache)
         body=rebuild.split("const auto animated =",1)[1]
         self.assertLess(body.index("MakeOriginalVehicleAnimatedParts("),
                         body.index("Part->CreateMeshSection("))
