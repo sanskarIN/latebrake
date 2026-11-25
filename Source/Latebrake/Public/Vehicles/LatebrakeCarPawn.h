@@ -31,6 +31,7 @@
 #include "Vehicles/OriginalMeshBuildTelemetry.h"
 #include "Vehicles/OriginalVehicleShowroomCamera.h"
 #include "Vehicles/OriginalVehicleRenderCache.h"
+#include "Vehicles/OriginalVehicleMaterialFinish.h"
 #include "Vehicles/VehicleSignalLights.h"
 #include "UI/TouchPressTracker.h"
 #include "UI/TouchViewportGuard.h"
@@ -139,6 +140,8 @@ public:
     { return bOriginalVehicleVisualReady; }
     FName GetOriginalVehicleTintParameter() const noexcept
     { return OriginalVehicleTintParameter; }
+    int32 GetOriginalVehicleFinishParameterCount() const noexcept
+    { return bOriginalVehicleVisualReady ? latebrake::vehiclemesh::VehicleFinishCapabilityCount(OriginalVehicleFinishMask) : 0; }
     bool AreFrontLampsRequestedOn() const noexcept
     { return bFrontLampOutputRequested; }
     // Counts live, initialized *render-only source components*, NOT
@@ -406,6 +409,7 @@ private:
     // None means the asset cannot reliably render saved per-car paint;
     // keep the legacy car visible instead of silently showing one color.
     FName OriginalVehicleTintParameter = NAME_None;
+    uint32 OriginalVehicleFinishMask = 0u;
     latebrake::GarageLook CurrentGarageLook{};
     bool bGarageShowroomPreviewActive = false;
     int32 GarageShowroomVehicleId = 0;
