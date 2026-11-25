@@ -848,6 +848,8 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("STYLE VIEWED OWNED CAR: F5/F6/F7 | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
+            if (ShowroomLane.Valid)
+                MenuLine(TEXT("MOUSE: PAINT / STRIPE / RIMS OPENS CHOOSER (FREE)."));
             MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
             if (!Mode->CanCustomizeGarage() &&
                 !Mode->IsFocusLossGuardActive() &&
