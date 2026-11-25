@@ -104,6 +104,62 @@ struct GaragePointerPermissions final
     std::array<bool, GaragePurchaseOfferCount> Purchase{};
 };
 
+// Validate enabled layouts independently of the pointer position. A
+// malformed active group must never disappear into an ordinary no-hit:
+// its invalid rectangle or overlapping controls could otherwise pass a
+// click to a different group. An inactive layout is intentionally empty.
+template<std::size_t N,typename ExpectedAction>
+inline bool ValidGaragePointerLayout(bool active,
+    const std::array<DesktopMenuMouseButton,N>& buttons,
+    ExpectedAction expected,double minWidth,double minHeight) noexcept
+{
+    if(!active)return true;
+    for(std::size_t i=0;i<N;++i)
+    {
+        const auto& button=buttons[i];
+        const auto& r=button.Bounds;
+        const double right=r.X+r.Width,bottom=r.Y+r.Height;
+        if(button.Action!=expected(i)||
+            !std::isfinite(r.X)||!std::isfinite(r.Y)||
+            !std::isfinite(r.Width)||!std::isfinite(r.Height)||
+            !std::isfinite(right)||!std::isfinite(bottom)||
+            r.X<0.0||r.Y<0.0||r.Width<minWidth||r.Height<minHeight||
+            right<=r.X||bottom<=r.Y)
+            return false;
+        for(std::size_t j=0;j<i;++j)
+        {
+            const auto& p=buttons[j].Bounds;
+            if(r.X<p.X+p.Width&&right>p.X&&r.Y<p.Y+p.Height&&bottom>p.Y)
+                return false;
+        }
+    }
+    return true;
+}
+
+inline bool ValidGaragePointerPlans(const DesktopMenuMouseLayout& nav,
+    const GarageStyleMouseLayout& style,const GarageQuickViewLayout& quick,
+    const GarageOrbitButtons& orbit,const GaragePurchaseMouseLayout& purchase) noexcept
+{
+    constexpr std::array navActions{
+        DesktopMenuMouseAction::PreviousPage,DesktopMenuMouseAction::NextPage,
+        DesktopMenuMouseAction::DetailsUp,DesktopMenuMouseAction::DetailsDown,
+        DesktopMenuMouseAction::Activate,DesktopMenuMouseAction::Close};
+    constexpr std::array styleActions{
+        DesktopMenuMouseAction::GaragePaint,DesktopMenuMouseAction::GarageStripe,
+        DesktopMenuMouseAction::GarageWheels,DesktopMenuMouseAction::GarageReset,
+        DesktopMenuMouseAction::GarageBrowsePrevious,DesktopMenuMouseAction::GarageBrowseNext};
+    return ValidGaragePointerLayout(nav.Valid,nav.Buttons,
+            [&](std::size_t i){return navActions[i];},44.0,44.0)&&
+        ValidGaragePointerLayout(style.Valid,style.Buttons,
+            [&](std::size_t i){return styleActions[i];},44.0,44.0)&&
+        ValidGaragePointerLayout(quick.Valid,quick.Buttons,
+            [](std::size_t i){return GarageQuickViewAction(static_cast<int>(i));},25.0,20.0)&&
+        ValidGaragePointerLayout(orbit.Valid,orbit.Buttons,
+            [](std::size_t i){return GarageOrbitAction(static_cast<int>(i));},44.0,44.0)&&
+        ValidGaragePointerLayout(purchase.Valid,purchase.Buttons,
+            [](std::size_t i){return GarageOfferAction(i);},60.0,44.0);
+}
+
 // Geometry is computed by the same source plans used by the HUD. All raw
 // hits are collected with admission enabled, then authority is applied.
 inline GaragePointerClaims CollectGaragePointerClaims(
@@ -115,6 +171,9 @@ inline GaragePointerClaims CollectGaragePointerClaims(
     double x, double y, GaragePointerPermissions permission,
     GaragePointerClaim palette = {}) noexcept
 {
+    if(!std::isfinite(x)||!std::isfinite(y)||
+        !ValidGaragePointerPlans(navigation,style,quick,orbit,purchase))
+        return {}; // reject the complete malformed active surface
     const auto navAction = HitTestDesktopMenuMouse(navigation, x, y,
         {true, true, true});
     const auto styleAction = HitTestGarageStyleMouse(style, x, y, true, true);
