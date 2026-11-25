@@ -1547,6 +1547,15 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
 
 void ALatebrakeRaceGameMode::PauseForAppInterruption()
 {
+    // An open menu intentionally bypasses race suspension. A purchase
+    // approval must nevertheless expire on every delivered focus loss.
+    // Do this before the race guard can return Ignored.
+    if (GaragePurchaseConfirm.HasPending())
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Focus lost: offer canceled. Press Q/U/I to preview again.");
+    }
+
     // Losing focus can happen without Unreal itself pausing the game loop.
     // Keep a separate fail-closed gate even if SetGamePaused returns false.
     // A foreground notification alone must NEVER resume competition.
