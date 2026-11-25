@@ -47,6 +47,23 @@ class GarageAppearancePaletteBindingTests(unittest.TestCase):
         self.assertIn("before.Action==action&&now.Action==action",self.policy)
         self.assertIn("a.X==b.X&&a.Y==b.Y&&a.Width==b.Width&&a.Height==b.Height",self.policy)
 
+    def test_free_chooser_cancels_pending_spend_before_presentation(self):
+        start = self.mode.split("bool ALatebrakeRaceGameMode::BeginGarageAppearancePreview()",1)[1]
+        start = start.split("void ALatebrakeRaceGameMode::GarageCycleAppearance(",1)[0]
+        self.assertIn("if (!CanCustomizeGarage()) return false;",start)
+        self.assertIn("GaragePurchaseConfirm.HasPending()",start)
+        self.assertIn("GaragePurchaseConfirm.Reset();",start)
+        self.assertLess(start.index("CanCustomizeGarage()"),start.index("GaragePurchaseConfirm.Reset();"))
+        for forbidden in ("SaveRecords(", "ConfirmOrStage(", "Garage.Unlock(", "Garage.Select("):
+            self.assertNotIn(forbidden,start)
+        toggle = self.hud.split("bool ALatebrakeRaceHUD::ToggleGaragePalette(",1)[1]
+        toggle = toggle.split("bool ALatebrakeRaceHUD::AdvanceGaragePaletteLayer()",1)[0]
+        self.assertIn("if (!Mode->BeginGarageAppearancePreview())",toggle)
+        self.assertLess(toggle.index("BeginGarageAppearancePreview()"),
+                        toggle.index("PresentedGarageOffers = {};"))
+        self.assertLess(toggle.index("PresentedGarageOffers = {};"),
+                        toggle.index("GaragePalette = {true, Viewed, Look, Layer};"))
+
     def test_direct_choice_uses_existing_save_rollback(self):
         entry = self.mode.split("void ALatebrakeRaceGameMode::GarageChooseAppearance(",1)[1]
         entry = entry.split("void ALatebrakeRaceGameMode::GarageCyclePaint()",1)[0]
