@@ -38,7 +38,7 @@ class RivalDirectionalGateBindingTests(unittest.TestCase):
             "Route.ObserveVerifiedGate(",
             "if (Observation.Advanced)",
             "if (Observation.NeedsRecovery)",
-            "const bool bRecovered = TryRecoverTo(",
+            "const bool bRecovered = Selection.Safe() && TryRecoverTo(",
             "Route.ReportRecoveryResult(bRecovered)",
         )
         offsets = [tick.index(token) for token in required]

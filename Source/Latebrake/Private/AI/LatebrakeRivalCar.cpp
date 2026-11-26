@@ -9,6 +9,7 @@
 #include "AI/RivalPassTrafficResolution.h"
 #include "AI/RivalEngineHeatPace.h"
 #include "AI/RivalDriveReadiness.h"
+#include "AI/SingleRivalRecoverySelection.h"
 #include "Track/CircuitLayout.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -174,19 +175,38 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
-        const latebrake::CircuitPose Pose = latebrake::RivalRecovery(RecoveryIndex);
-        // Record a recovery outcome only after the same verified engine
-        // placement policy used by the local player's paid RECOVER runs.
-        // A rejected/misplaced/unstable teleport is a failed ATTEMPT, not a
-        // successful recovery. The finite attempt budget is never refunded.
-        const bool bRecovered = TryRecoverTo(
+        // Collect the actual human on the current game-thread snapshot.
+        // No missing player or fictional grid occupant can clear a landing.
+        const ALatebrakeCarPawn* RecoveryPlayer = Cast<ALatebrakeCarPawn>(
+            UGameplayStatics::GetPlayerPawn(this, 0));
+        latebrake::RecoveryObstacle Human{};
+        if (IsValid(RecoveryPlayer) && RecoveryPlayer != this &&
+            RecoveryPlayer->IsLocallyControlled() &&
+            RecoveryPlayer->IsRacePhysicsReady() &&
+            Mode->HasLocalPlayerDriver())
+        {
+            const FVector HumanPosition=RecoveryPlayer->GetActorLocation();
+            const FVector HumanVelocity=RecoveryPlayer->GetVelocity();
+            Human={true,latebrake::HumanGridSlot,
+                static_cast<std::uint64_t>(RecoveryPlayer->GetUniqueID())+1u,
+                {{HumanPosition.X,HumanPosition.Y},
+                    RecoveryPlayer->GetActorRotation().Yaw},
+                HumanVelocity.X,HumanVelocity.Y};
+        }
+        const auto Selection=latebrake::SelectSingleRivalRecovery(RecoveryIndex,Human);
+        const latebrake::CircuitPose Pose=Selection.Pose;
+        // A blocked preflight consumes the existing bounded attempt but
+        // never invokes a transform. A clear landing still needs actual
+        // engine placement and post-move physics verification.
+        const bool bRecovered = Selection.Safe() && TryRecoverTo(
             FVector(Pose.Position.X, Pose.Position.Y, 180.0),
             FRotator(0.0, Pose.HeadingDegrees, 0.0));
         const bool bReported = Route.ReportRecoveryResult(bRecovered);
         if (!bReported || !bRecovered)
         {
             UE_LOG(LogTemp, Warning,
-                TEXT("Latebrake: rival recovery placement not verified; retry after new stall"));
+                TEXT("Latebrake: rival recovery not verified (preflight %d); retry after new stall"),
+                static_cast<int32>(Selection.Status));
         }
         // A failed placement must not reuse the old acceleration command.
         // Keep the waypoint/lap history even when a recovery fails.
