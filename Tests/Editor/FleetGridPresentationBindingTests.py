@@ -8,14 +8,21 @@ class FleetGridPresentationBindingTests(unittest.TestCase):
         pawn=read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
         tick=pawn.split("void ALatebrakeCarPawn::Tick(",1)[1].split(
             "// The authoritative clock also requires",1)[0]
-        markers=("TryGetExperimentalGridSettlingSlot(this,Slot)",
-                 "Chassis->GetPhysicsLinearVelocity()", "PlanFleetGridSettling(",
+        markers=("ReadExperimentalGridSettlingVelocity(DeltaSeconds)",
                  "NeutralizeMotionWhenDrivingBlocked();",
-                 "Settling.PreserveDownward",
-                 "SetPhysicsLinearVelocity(FVector(0.0,0.0,Settling.VerticalVelocityCmS))")
+                 "SettlingZ<0.0",
+                 "SetPhysicsLinearVelocity(FVector(0.0,0.0,SettlingZ))")
         offsets=[tick.index(x) for x in markers]
         self.assertEqual(offsets,sorted(offsets))
-        self.assertNotIn("AddForce(",tick)
+        helper=pawn.split("double ALatebrakeCarPawn::ReadExperimentalGridSettlingVelocity(",1)[1].split(
+            "void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()",1)[0]
+        markers=("TryGetExperimentalGridSettlingSlot(this,Slot)",
+                 "!IsRacePhysicsReady()", "Chassis->GetPhysicsLinearVelocity()",
+                 "PlanFleetGridSettling(", "Settling.PreserveDownward")
+        offsets=[helper.index(x) for x in markers]
+        self.assertEqual(offsets,sorted(offsets))
+        self.assertNotIn("SetPhysicsLinearVelocity(",helper)
+        self.assertNotIn("AddForce(",tick+helper)
         mode=read("Source/Latebrake/Private/Game/LatebrakeFleetRuntime.cpp")
         settle=mode.split("bool ALatebrakeRaceGameMode::TryGetExperimentalGridSettlingSlot(",1)[1]
         for token in ("StartLights.IsGreen()", "Menu.IsOpen()",

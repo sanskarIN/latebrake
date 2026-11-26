@@ -315,6 +315,7 @@ private:
     void NitroReleased();
     void PitServicePressed();
     void PitServiceReleased();
+    double ReadExperimentalGridSettlingVelocity(float DeltaSeconds) const;
     void NeutralizeMotionWhenDrivingBlocked();
     void UpdateWheelVisuals(double DeltaSeconds, double ForwardSpeedCmPerSecond,
                             double VisualSteering);

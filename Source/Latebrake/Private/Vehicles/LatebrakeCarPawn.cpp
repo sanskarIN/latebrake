@@ -1364,6 +1364,22 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     ResetCornerCameraYaw();
 }
 
+double ALatebrakeCarPawn::ReadExperimentalGridSettlingVelocity(float DeltaSeconds) const
+{
+    const UWorld* World=GetWorld();
+    const auto* Mode=World?World->GetAuthGameMode<ALatebrakeRaceGameMode>():nullptr;
+    int32 Slot=INDEX_NONE;
+    if (!Mode || !Mode->TryGetExperimentalGridSettlingSlot(this,Slot) ||
+        !IsRacePhysicsReady() || !IsValid(Chassis) || !Chassis->IsSimulatingPhysics())
+        return 0.0;
+    const FVector Position=GetActorLocation();
+    const FVector Velocity=Chassis->GetPhysicsLinearVelocity();
+    const auto Settling=latebrake::PlanFleetGridSettling({true,Slot,
+        {{Position.X,Position.Y},GetActorRotation().Yaw},Position.Z,
+        Velocity.X,Velocity.Y,Velocity.Z,static_cast<double>(DeltaSeconds)});
+    return Settling.PreserveDownward?Settling.VerticalVelocityCmS:0.0;
+}
+
 void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
 {
     ApplySignalLights(false, false, 0.0);
@@ -1499,21 +1515,11 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         // settle from the authored elevated spawn. Preserve only their
         // already-measured downward component, never a commanded force.
         // All ordinary blocked states still use the exact zero reset.
-        latebrake::FleetGridSettleDecision Settling;
-        int32 Slot=INDEX_NONE;
-        if (Mode && Mode->TryGetExperimentalGridSettlingSlot(this,Slot) &&
-            IsValid(Chassis) && Chassis->IsSimulatingPhysics())
-        {
-            const FVector Position=GetActorLocation();
-            const FVector Velocity=Chassis->GetPhysicsLinearVelocity();
-            Settling=latebrake::PlanFleetGridSettling({true,Slot,
-                {{Position.X,Position.Y},GetActorRotation().Yaw},Position.Z,
-                Velocity.X,Velocity.Y,Velocity.Z,static_cast<double>(DeltaSeconds)});
-        }
+        const double SettlingZ=ReadExperimentalGridSettlingVelocity(DeltaSeconds);
         NeutralizeMotionWhenDrivingBlocked();
-        if (Settling.PreserveDownward && IsValid(Chassis) && Chassis->IsSimulatingPhysics())
+        if (SettlingZ<0.0 && IsValid(Chassis) && Chassis->IsSimulatingPhysics())
         {
-            Chassis->SetPhysicsLinearVelocity(FVector(0.0,0.0,Settling.VerticalVelocityCmS));
+            Chassis->SetPhysicsLinearVelocity(FVector(0.0,0.0,SettlingZ));
         }
         return;
     }
