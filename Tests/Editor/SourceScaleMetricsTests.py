@@ -49,6 +49,33 @@ class SourceScaleMetricsTests(SourceScaleFixture):
         self.assertEqual(result["remaining_game_source_lines"], 199997)
         self.assertFalse(result["goal_reached"])
 
+    def test_language_counts_partition_the_measured_category_totals(self):
+        result = metrics(self.root)
+        self.assertEqual(result["languages"], {
+            "C++": {"files": 4, "physical_lines": 7, "nonblank_lines": 6},
+            "Python": {"files": 1, "physical_lines": 1, "nonblank_lines": 1},
+            "YAML": {"files": 1, "physical_lines": 1, "nonblank_lines": 1},
+        })
+        for key in ("files", "physical_lines", "nonblank_lines"):
+            self.assertEqual(
+                sum(group[key] for group in result["languages"].values()),
+                sum(group[key] for group in result["categories"].values()),
+            )
+
+    def test_language_breakdown_does_not_change_milestone_or_count_excluded_files(self):
+        self.write("Source/build.cs", "using UnrealBuildTool;\n")
+        self.write("scripts/build.ps1", "# comment\nWrite-Output 1\n")
+        self.write("Source/duplicate.cpp", (self.root / "Source/MyCar.cpp").read_text())
+        self.write("docs/not_counted.py", "print(1)\n")
+        subprocess.run(["git", "-C", str(self.root), "add", "."], check=True)
+        result = metrics(self.root)
+        self.assertEqual(result["languages"]["C#"]["physical_lines"], 1)
+        self.assertEqual(result["languages"]["PowerShell"]["physical_lines"], 2)
+        self.assertEqual(result["languages"]["C++"]["physical_lines"], 7)
+        self.assertEqual(result["languages"]["Python"]["files"], 1)
+        self.assertEqual(result["remaining_game_source_lines"], 199997)
+        self.assertEqual(result["excluded_exact_duplicate_game_source_files"], 1)
+
     def test_untracked_and_deleted_files_do_not_count(self):
         self.write("Source/untracked.cpp", "a\nb\nc\n")
         # A deleted-in-worktree but still staged/indexed path must not count.

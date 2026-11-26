@@ -1,4 +1,5 @@
 #include "Vehicles/OriginalVehicleShowroomCamera.h"
+#include "UI/GarageShowroomLane.h"
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -117,6 +118,92 @@ void CachedGeometryParity()
             cached.Ready(),"reset geometry rejects fit without erasing valid camera");
     }
 }
+void DesktopApertures()
+{
+    using namespace latebrake;
+    int tested=0;
+    for(const auto size : {std::array<int,2>{900,600},{1280,720},
+                          {1366,768},{1920,1080},{2560,1440},{3840,2160},
+                          {2560,1080}})
+    {
+        const double w=size[0],h=size[1];
+        const auto hud=CalculateHudLayout(w,h);
+        const auto lane=CalculateGarageShowroomLane(w,h,hud,false,true,MenuPage::Garage);
+        Check(lane.Valid,"desktop has protected showroom lane");
+        const auto dock=CalculateDesktopMenuMouseLayout(w,h,hud,false,true);
+        const auto panel=CalculateHudMenuReadablePanel(w,h,hud,
+            CalculateHudMenuVerticalPlan(w,h,hud,false),lane.TextWidth,true);
+        Check(panel.Valid&&lane.Aperture.X>panel.X+panel.Width&&
+            lane.Aperture.X+lane.Aperture.Width<dock.Left,
+            "preview does not overlap text panel or right dock");
+        Check(!CalculateGarageShowroomLane(w,h,hud,true,true,MenuPage::Garage).Valid&&
+            !CalculateGarageShowroomLane(w,h,hud,false,true,MenuPage::Results).Valid&&
+            !CalculateGarageShowroomLane(w,h,hud,false,false,MenuPage::Garage).Valid,
+            "touch, other page, and closed menu retain original layouts");
+        const auto buttons=CalculateGarageOrbitButtons(lane,w,h,hud);
+        Check(buttons.Valid,"desktop supports four orbit buttons");
+        for(int index=0;index<GarageOrbitCount;++index)
+        {
+            const auto& b=buttons.Buttons[static_cast<std::size_t>(index)];
+            const auto& rect=b.Bounds;
+            Check(rect.Width>=44.0&&rect.Height>=44.0&&
+                rect.Y>lane.Aperture.Y+lane.Aperture.Height&&
+                rect.X>=lane.Aperture.X&&
+                rect.X+rect.Width<=lane.Aperture.X+lane.Aperture.Width+1e-7,
+                "orbit pointer target below clear aperture and inside its horizontal lane");
+            const double x=rect.X+rect.Width*0.5,y=rect.Y+rect.Height*0.5;
+            Check(HitTestGarageOrbitButtons(buttons,x,y,true)==GarageOrbitAction(index)&&
+                GarageOrbitIndex(b.Action)==index&&
+                HitTestGarageOrbitButtons(buttons,x,y,false)==DesktopMenuMouseAction::None,
+                "direct orbit click and disabled guard agree");
+            if(index+1<GarageOrbitCount)
+                Check(HitTestGarageOrbitButtons(buttons,rect.X+rect.Width,y,true)==
+                    DesktopMenuMouseAction::None,"half-open boundary and gap");
+        }
+        auto broken=buttons;
+        broken.Buttons[1].Bounds=broken.Buttons[0].Bounds;
+        const auto rect=broken.Buttons[0].Bounds;
+        Check(HitTestGarageOrbitButtons(broken,rect.X+1,rect.Y+1,true)==
+            DesktopMenuMouseAction::None,"overlapping targets fail closed");
+        broken=buttons;broken.Buttons[2].Action=DesktopMenuMouseAction::Activate;
+        Check(HitTestGarageOrbitButtons(broken,rect.X+1,rect.Y+1,true)==
+            DesktopMenuMouseAction::None,"wrong action fails closed");
+        for(int id=0;id<6;++id)
+        {
+            const auto mesh=OriginalVehicleSurfaceComposer{}.Build(id).Mesh;
+            OriginalVehicleShowroomGeometry geometry;
+            Check(geometry.Build(mesh),"source mesh valid");
+            OriginalVehicleShowroomCamera camera;
+            for(double yaw:{35.0,90.0,145.0,-90.0})
+            {
+                ShowroomOrbitRequest q{};
+                q.AspectRatio=w/h;q.YawDegrees=yaw;
+                q.CenterX=lane.CenterX;q.CenterY=lane.CenterY;
+                q.HalfWidth=lane.HalfWidth;q.HalfHeight=lane.HalfHeight;
+                for(double zoom:{1.0,1.5})
+                {
+                    q.ZoomOut=zoom;
+                    Check(camera.FitPrepared(geometry,q),"fit asymmetric aperture");
+                    const auto center=camera.Project(geometry.Target());
+                    Check(center.Valid&&Near(center.NdcX,q.CenterX)&&Near(center.NdcY,q.CenterY),
+                        "actual target is in aperture center");
+                    for(const auto& v:mesh.Vertices)
+                    {
+                        const auto p=camera.Project(v.Position);
+                        const double x=(p.NdcX+1.0)*w*0.5;
+                        const double y=(1.0-p.NdcY)*h*0.5;
+                        Check(p.Valid&&p.InsidePaddedViewport&&p.InsideViewport&&
+                            lane.Aperture.Contains(x,y),"every mesh vertex fits clear pixel lane");
+                    }
+                    ++tested;
+                }
+            }
+        }
+    }
+    Check(tested==336,"seven viewports by six cars by four views by two zooms");
+    Check(!CalculateGarageShowroomLane(640,480,CalculateHudLayout(640,480),
+        false,true,MenuPage::Garage).Valid,"compact layout has no desktop aperture");
+}
 void InvalidAndAtomic()
 {
     OriginalVehicleShowroomCamera camera;
@@ -139,6 +226,10 @@ void InvalidAndAtomic()
     Check(!camera.Fit(built.Mesh,q),"invalid padding");
     q={};q.ZoomOut=0.5;
     Check(!camera.Fit(built.Mesh,q),"zoom cannot violate fit");
+    q={};q.CenterX=0.9;q.HalfWidth=0.5;
+    Check(!camera.Fit(built.Mesh,q),"aperture outside viewport rejected");
+    q={};q.HalfHeight=0.0;
+    Check(!camera.Fit(built.Mesh,q),"empty aperture rejected");
     q={};q.YawDegrees=nan;
     Check(!camera.Fit(built.Mesh,q),"invalid yaw");
     auto corrupt=built.Mesh;
@@ -156,7 +247,7 @@ void InvalidAndAtomic()
 }
 int main()
 {
-    AllVehicles();CachedGeometryParity();InvalidAndAtomic();
+    AllVehicles();CachedGeometryParity();DesktopApertures();InvalidAndAtomic();
     std::cout<<"Six original cars, 1260 orbit/viewport fits and invalid input regression PASS\n";
     return EXIT_SUCCESS;
 }

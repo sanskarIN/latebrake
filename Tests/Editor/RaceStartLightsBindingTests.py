@@ -70,7 +70,7 @@ class RaceStartLightsBindingTests(unittest.TestCase):
         self.assertLess(checkpoint.index("!StartLights.IsGreen()"),
                         checkpoint.index("CanScorePlayerCheckpoint("))
         self.assertLess(recovery.index("!StartLights.IsGreen()"),
-                        recovery.index("TryChargePlayerRecoveryAfterVerifiedTeleport("))
+                        recovery.index("TryPaidRecoveryWithClearance("))
 
     def test_gate_trace_does_not_sample_motion_during_red(self):
         gate_tick = self.checkpoint.split(

@@ -1,9 +1,13 @@
 # Release history
 
 !!! warning "Published tags are source archives, not playable packages"
-    The independently verified latest published GitHub tag is **v0.5.99**. It freezes protected-main drafting/ghost/rival source improvements and has zero executable attachments. The separate v0.5.98 wheel-physics draft remains unmerged.
+    The latest published GitHub tag is **v0.5.100-test.2**. It is a source-only snapshot with zero attached assets; strict release metadata qualification has not passed.
 
-**Current source release:** [v0.5.99](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99) at
+**Current source release:** [v0.5.100-test.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.100-test.2) at `79a32648f11888725b1e7e827e222dbc9005aa68`. [Source notes](releases/v0.5.100-test.2.md). The direct tag and zero-asset publication exist, but the release records a branch-name target and non-identical note bytes; the existing strict metadata gate must continue to fail until corrected. No playable game, installer or native build is verified.
+
+## Previous mainline source release
+
+**Previous source release:** [v0.5.99](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99) at
 `a3104ea76809ac86d315a8a31550d3215e79f824`. The [one-version owner-approved publisher](https://github.com/sanskarIN/latebrake/actions/runs/43413547703) checked its exact protected-main source SHA with strict Windows/Ubuntu/macOS C++20 suites, Python editor source contracts, Node guard tests, PowerShell synthetic package-policy checks and generated docs before issuing an immutable source tag and readback-verified **zero-asset** pre-release. This is **NOT** a playable Unreal Engine game or Windows installer. The source includes the recent real-chassis single-rival drafting support/sliding/continuity/barrier safeguards and ghost/rival trace hardening. The prior v0.5.98 advanced modeled wheel-brake physics remains on **unmerged** draft PR #295, not in this mainline source release.
 
 ## Previous independent physics-source preview
@@ -37,6 +41,7 @@ Read [all releases on GitHub](https://github.com/sanskarIN/latebrake/releases). 
 
 | Version | Source notes |
 | --- | --- |
+| v0.5.100-test.2 | [Release notes](releases/v0.5.100-test.2.md) |
 | v0.5.99 | [Release notes](releases/v0.5.99.md) |
 | v0.5.98 | [Release notes](releases/v0.5.98.md) |
 | v0.5.97 | [Release notes](releases/v0.5.97.md) |

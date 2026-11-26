@@ -1,22 +1,34 @@
 #include "UI/LatebrakeRaceHUD.h"
 
 #include "UI/HudLayout.h"
+#include "UI/GarageShowroomSchematic.h"
+#include "UI/GarageShowroomQuickView.h"
+#include "UI/GaragePointerArbitration.h"
+#include "UI/HudButtonCaptionFit.h"
+#include "UI/GarageAppearanceGlyph.h"
+#include "UI/GarageShowroomLane.h"
 #include "UI/HudInstrumentCluster.h"
+#include "UI/HudInstrumentDriveBadge.h"
 #include "UI/NitroHudReadout.h"
 #include "UI/RaceGateProgressGauge.h"
 #include "Garage/GarageCatalogView.h"
+#include "Garage/GaragePurchasePlanner.h"
 #include "Garage/GarageComparisonView.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "UI/HudVerticalPlan.h"
 #include "UI/HudTextBounds.h"
+#include "UI/HudDetailTextFlow.h"
 #include "UI/HudMenuVerticalPlan.h"
+#include "UI/HudMenuReadablePanel.h"
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/RecentLapReview.h"
 #include "Racing/RecentLapPaceStatistics.h"
+#include "Racing/CleanLapPaceReview.h"
 #include "Racing/BestSectorReview.h"
 #include "Racing/SampledDrivingReview.h"
 #include "Racing/LiveRacePaceProjection.h"
+#include "Racing/GateAwareRacePace.h"
 #include "Racing/TimeAttackPersonalBestTarget.h"
 #include "Racing/QuickRaceRecordReview.h"
 #include "Racing/RivalFinishObservation.h"
@@ -34,6 +46,7 @@
 #include "Game/LatebrakeRaceGameMode.h"
 #include "GameFramework/PlayerController.h"
 #include "Vehicles/LatebrakeCarPawn.h"
+#include "Vehicles/VehicleVisualPlaytestReadout.h"
 
 void ALatebrakeRaceHUD::ScrollMenuDetails(int direction)
 {
@@ -63,9 +76,13 @@ bool ALatebrakeRaceHUD::TryScrollMenuMouse(
     }
     const double width = static_cast<double>(Canvas->SizeX);
     const double height = static_cast<double>(Canvas->SizeY);
-    const auto zone = latebrake::CalculateDesktopMenuWheelZone(
-        width, height, latebrake::CalculateHudLayout(width, height),
-        false, true);
+    const auto hud = latebrake::CalculateHudLayout(width, height);
+    auto zone = latebrake::CalculateDesktopMenuWheelZone(
+        width, height, hud, false, true);
+    const auto lane = latebrake::CalculateGarageShowroomLane(
+        width, height, hud, false, true, Mode->GetMenuPage());
+    if (lane.Valid)
+        zone.Width = FMath::Min(zone.Width, lane.TextWidth);
     const auto available = latebrake::AvailableDesktopMenuDetails(
         Mode->GetMenuPage(), MenuPager);
     if (!latebrake::AdmitDesktopMenuWheel(
@@ -75,6 +92,142 @@ bool ALatebrakeRaceHUD::TryScrollMenuMouse(
     }
     return direction == 1 ? MenuPager.Next() : MenuPager.Previous();
 #endif
+}
+
+void ALatebrakeRaceHUD::CloseGaragePalette()
+{
+    GaragePalette = {};
+    PresentedGaragePalette = {};
+    GaragePaletteFocus = -1;
+    DrawnGaragePaletteFocus = -1;
+}
+
+bool ALatebrakeRaceHUD::ToggleGaragePalette(latebrake::GarageLookLayer Layer)
+{
+    auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Canvas || !Mode || !Mode->CanCustomizeGarage() ||
+        latebrake::GarageLookChoiceCount(Layer) <= 0)
+    {
+        CloseGaragePalette();
+        return true; // blocked input is not a request to cycle
+    }
+    const double W = Canvas->SizeX, H = Canvas->SizeY;
+    const auto Hud = latebrake::CalculateHudLayout(W, H);
+    const auto Lane = latebrake::CalculateGarageShowroomLane(
+        W,H,Hud,false,Mode->IsMenuOpen(),Mode->GetMenuPage());
+    if (!latebrake::CalculateGaragePaletteLayout(Lane,W,H,Hud,Layer).Valid)
+    {
+        CloseGaragePalette();
+        return false; // retain established cycle behavior on compact layouts
+    }
+    const int32 Viewed = Mode->GetGaragePreviewVehicleId();
+    const auto Look = Mode->GetGaragePreviewLook();
+    if (GaragePalette.Matches(Viewed, Look, true) && GaragePalette.Layer == Layer)
+    {
+        CloseGaragePalette();
+        return true;
+    }
+    if (!Mode->BeginGarageAppearancePreview())
+    {
+        CloseGaragePalette();
+        return true;
+    }
+    // Reject stale mouse confirmation cards before the next HUD frame.
+    PresentedGarageOffers = {};
+    GaragePalette = {true, Viewed, Look, Layer};
+    GaragePaletteFocus = latebrake::InitialGaragePaletteFocus(GaragePalette);
+    DrawnGaragePaletteFocus = -1;
+    PresentedGaragePalette = {};
+    return true;
+}
+
+bool ALatebrakeRaceHUD::AdvanceGaragePaletteLayer()
+{
+#if PLATFORM_ANDROID
+    return false;
+#else
+    const auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !Mode->IsMenuOpen() ||
+        Mode->GetMenuPage() != latebrake::MenuPage::Garage)
+        return false;
+    const auto Layer = GaragePalette.Matches(Mode->GetGaragePreviewVehicleId(),
+        Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage())
+        ? latebrake::NextGaragePaletteLayer(GaragePalette.Layer)
+        : latebrake::GarageLookLayer::Paint;
+    // Even a blocked or too-small Garage consumes this contextual command.
+    // It must not fall through to an unrelated career action.
+    ToggleGaragePalette(Layer);
+    return true;
+#endif
+}
+
+bool ALatebrakeRaceHUD::HandleGaragePaletteNavigation(
+    latebrake::GaragePaletteNavigationInput Input)
+{
+    if (!GaragePalette.Open) return false;
+    const auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !Canvas || !GaragePalette.Matches(
+        Mode->GetGaragePreviewVehicleId(),Mode->GetGaragePreviewLook(),
+        Mode->CanCustomizeGarage()))
+    {
+        CloseGaragePalette();
+        return true;
+    }
+    const double W=Canvas->SizeX,H=Canvas->SizeY;
+    const auto Hud=latebrake::CalculateHudLayout(W,H);
+    const auto Lane=latebrake::CalculateGarageShowroomLane(
+        W,H,Hud,false,Mode->IsMenuOpen(),Mode->GetMenuPage());
+    const auto Layout=latebrake::CalculateGaragePaletteLayout(
+        Lane,W,H,Hud,GaragePalette.Layer);
+    const auto Decision=latebrake::NavigateGaragePalette(
+        GaragePalette,Layout,PresentedGaragePalette,
+        GaragePaletteFocus,DrawnGaragePaletteFocus,Input);
+    switch (Decision.Effect)
+    {
+    case latebrake::GaragePaletteNavigationEffect::Move:
+        GaragePaletteFocus=Decision.Choice;
+        break;
+    case latebrake::GaragePaletteNavigationEffect::Confirm:
+        ApplyGaragePaletteChoice(latebrake::GaragePaletteChoiceAction(Decision.Choice));
+        break;
+    case latebrake::GaragePaletteNavigationEffect::Cancel:
+        CloseGaragePalette();
+        break;
+    default: break;
+    }
+    // An open chooser owns these inputs even before its first draw.
+    return true;
+}
+
+void ALatebrakeRaceHUD::ApplyGaragePaletteChoice(latebrake::DesktopMenuMouseAction Action)
+{
+    auto* Mode = GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    const auto Session = GaragePalette;
+    const int Choice = latebrake::GaragePaletteChoiceIndex(Action);
+    // Recompute at the final mutation boundary, not just during hit test.
+    // Resize, focus loss, ownership changes or stale draw receipts must
+    // never select an invisible option even if an input handler is called.
+    bool bPresented = false;
+    if (Mode && Canvas && Choice >= 0 &&
+        Session.Matches(Mode->GetGaragePreviewVehicleId(),
+            Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
+    {
+        const double W=Canvas->SizeX,H=Canvas->SizeY;
+        const auto Hud=latebrake::CalculateHudLayout(W,H);
+        const auto Lane=latebrake::CalculateGarageShowroomLane(
+            W,H,Hud,false,Mode->IsMenuOpen(),Mode->GetMenuPage());
+        const auto Layout=latebrake::CalculateGaragePaletteLayout(
+            Lane,W,H,Hud,Session.Layer);
+        bPresented=latebrake::CanClickPresentedGaragePalette(
+            PresentedGaragePalette,Session,Layout,Action);
+    }
+    CloseGaragePalette();
+    if (Mode && bPresented)
+        Mode->GarageChooseAppearance({Session.VehicleId,Session.Look,Session.Layer,Choice});
 }
 
 latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
@@ -94,8 +247,55 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
     const auto buttons = latebrake::CalculateDesktopMenuMouseLayout(
         width, height, latebrake::CalculateHudLayout(width, height),
         false, true);
-    const auto availability = latebrake::AvailableDesktopMenuDetails(
-        Mode->GetMenuPage(), MenuPager);
+    const auto availability = latebrake::AvailableDesktopMenuActions(
+        Mode->GetMenuPage(), MenuPager, Mode->CanEquipGarageViewed());
+    // Style buttons exist only on the actual visible Garage page.
+    const auto style = latebrake::CalculateGarageStyleMouseLayout(
+        width, height, latebrake::CalculateHudLayout(width, height),
+        false, true, Mode->GetMenuPage());
+    // Same six-chip geometry is used by DrawHUD and input hit tests.
+    if (Mode->GetMenuPage() == latebrake::MenuPage::Garage)
+    {
+        const auto hud = latebrake::CalculateHudLayout(width, height);
+        const auto lane = latebrake::CalculateGarageShowroomLane(
+            width, height, hud, false, true, Mode->GetMenuPage());
+        const auto orbit = latebrake::CalculateGarageOrbitButtons(lane, width, height, hud);
+        const auto* car = PlayerOwner
+            ? Cast<ALatebrakeCarPawn>(PlayerOwner->GetPawn()) : nullptr;
+        const auto diagram = latebrake::CalculateGarageSchematic(
+            width, height, hud, style, Mode->GetGaragePreviewVehicleId(),
+            Mode->GetGaragePreviewLook());
+        const auto quick = latebrake::CalculateGarageQuickViewLayout(diagram);
+        const auto purchase = latebrake::CalculateGaragePurchaseMouseLayout(
+            lane, width, height, hud);
+        const auto offers = Mode->GetGaragePurchasePanel();
+        const latebrake::GaragePointerPermissions permission{
+            availability, Mode->CanBrowseGarage(), Mode->CanCustomizeGarage(),
+            car && car->CanSelectGarageCameraOrbit(),
+            {purchase.Valid && offers[0].Enabled() && latebrake::CanClickPresentedGarageOffer(
+                PresentedGarageOffers[0], purchase.Buttons[0], offers[0]),
+             purchase.Valid && offers[1].Enabled() && latebrake::CanClickPresentedGarageOffer(
+                PresentedGarageOffers[1], purchase.Buttons[1], offers[1]),
+             purchase.Valid && offers[2].Enabled() && latebrake::CanClickPresentedGarageOffer(
+                PresentedGarageOffers[2], purchase.Buttons[2], offers[2])}};
+        latebrake::GaragePointerClaim paletteClaim{};
+        if (GaragePalette.Matches(Mode->GetGaragePreviewVehicleId(),
+            Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
+        {
+            const auto paletteLayout = latebrake::CalculateGaragePaletteLayout(
+                lane,width,height,hud,GaragePalette.Layer);
+            const auto paletteAction = latebrake::HitTestGaragePalette(paletteLayout,x,y);
+            if (latebrake::GaragePaletteBlocksUnderlyingPointer(
+                    true,paletteLayout,x,y,paletteAction))
+                return latebrake::DesktopMenuMouseAction::None;
+            paletteClaim = {paletteAction, paletteAction != latebrake::DesktopMenuMouseAction::None &&
+                latebrake::CanClickPresentedGaragePalette(
+                    PresentedGaragePalette,GaragePalette,paletteLayout,paletteAction)};
+        }
+        return latebrake::ResolveGaragePointerClaims(
+            latebrake::CollectGaragePointerClaims(buttons, style, quick, orbit, purchase,
+                x, y, permission, paletteClaim));
+    }
     return latebrake::HitTestDesktopMenuMouse(buttons, x, y,
         availability);
 #endif
@@ -104,8 +304,12 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
 void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
+    PresentedGarageOffers = {};
+    PresentedGaragePalette = {};
+    DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
+        CloseGaragePalette();
         return;
     }
 
@@ -120,8 +324,13 @@ void ALatebrakeRaceHUD::DrawHUD()
         RivalRelativeMotionHint.Reset();
         LastWayfindingPawn.Reset();
         MenuPager.Reset();
+        CloseGaragePalette();
         return;
     }
+
+    if (!GaragePalette.Matches(Mode->GetGaragePreviewVehicleId(),
+        Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
+        CloseGaragePalette();
 
     const latebrake::HudLayout Layout = latebrake::CalculateHudLayout(
         static_cast<double>(Canvas->SizeX), static_cast<double>(Canvas->SizeY));
@@ -160,6 +369,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             static_cast<double>(Canvas->SizeX),
             static_cast<double>(Canvas->SizeY),
             Layout, bTouchHUD, Mode->IsMenuOpen());
+    const latebrake::GarageStyleMouseLayout GarageStyleMenu =
+        latebrake::CalculateGarageStyleMouseLayout(
+            static_cast<double>(Canvas->SizeX),
+            static_cast<double>(Canvas->SizeY),
+            Layout, bTouchHUD, Mode->IsMenuOpen(), Mode->GetMenuPage());
     // Both the instruments and the interactive menu dock own distinct
     // right-hand lanes; truncate measured text before either rectangle.
     const double InstrumentTextWidth = Instruments.Visible
@@ -167,10 +381,16 @@ void ALatebrakeRaceHUD::DrawHUD()
             Instruments.Panel.X - HorizontalBounds.Left -
                 16.0 * Instruments.Scale)
         : HorizontalBounds.MaxWidthPixels;
-    const double SafeTextWidth = MouseMenu.Valid
+    const auto ShowroomLane = latebrake::CalculateGarageShowroomLane(
+        Canvas->SizeX, Canvas->SizeY, Layout, bTouchHUD,
+        Mode->IsMenuOpen(), Mode->GetMenuPage());
+    const double DockSafeTextWidth = MouseMenu.Valid
         ? FMath::Min(InstrumentTextWidth,
             MouseMenu.Left - HorizontalBounds.Left - 12.0 * Layout.Scale)
         : InstrumentTextWidth;
+    const double SafeTextWidth = ShowroomLane.Valid
+        ? FMath::Min(DockSafeTextWidth, ShowroomLane.TextWidth)
+        : DockSafeTextWidth;
     const auto FitHudText = [&](const FString& Value, UFont* Font,
                                 float TextScale) -> FString
     {
@@ -237,17 +457,337 @@ void ALatebrakeRaceHUD::DrawHUD()
         const FLinearColor White(0.96f, 0.97f, 1.f);
         const FLinearColor Gold(1.f, 0.73f, 0.17f);
 
+        // The live 3D scene may be visually busy behind fine menu type.
+        // A responsive high-contrast backing uses the exact font-measured
+        // left menu lane, not the desktop button or Android touch lanes.
+        // Draw BEFORE the pinned heading and paginated details; no input
+        // rectangles, saved state, game clock or credit transactions change.
+        const latebrake::HudMenuReadablePanel ReadablePanel =
+            latebrake::CalculateHudMenuReadablePanel(
+                static_cast<double>(Canvas->SizeX),
+                static_cast<double>(Canvas->SizeY),
+                Layout, MenuPlan, SafeTextWidth, true);
+        if (ReadablePanel.Valid)
+        {
+            const float BX = static_cast<float>(ReadablePanel.X);
+            const float BY = static_cast<float>(ReadablePanel.Y);
+            const float BW = static_cast<float>(ReadablePanel.Width);
+            const float BH = static_cast<float>(ReadablePanel.Height);
+            DrawRect(FLinearColor(0.025f, 0.045f, 0.075f, 0.94f),
+                BX, BY, BW, BH);
+            DrawRect(FLinearColor(0.075f, 0.12f, 0.19f, 0.98f),
+                BX, BY, BW,
+                static_cast<float>(ReadablePanel.HeaderHeight));
+            DrawRect(Gold, BX, BY, 3.f * UIScale, BH);
+            DrawRect(FLinearColor(0.18f, 0.29f, 0.39f, 0.95f),
+                BX, BY + BH - 2.f * UIScale, BW, 2.f * UIScale);
+        }
+
+        // Keep the central scene clear; the two-dimensional schematic and
+        // existing car selectors stay in the right dock, not over the mesh.
+        const auto PurchaseButtons = latebrake::CalculateGaragePurchaseMouseLayout(
+            ShowroomLane, Canvas->SizeX, Canvas->SizeY, Layout);
+        if (ShowroomLane.Valid && Car->IsGarageCameraViewPresented())
+        {
+            const auto& A = ShowroomLane.Aperture;
+            DrawText(TEXT("LIVE 3D | F4 ORBIT"), Gold,
+                static_cast<float>(A.X),
+                static_cast<float>(PurchaseButtons.Valid ?
+                    PurchaseButtons.Buttons[0].Bounds.Y - 19.0 * Layout.Scale :
+                    A.Y - 24.0 * Layout.Scale),
+                GEngine->GetSmallFont(), 0.78f * UIScale);
+        }
+
+        // Use the same actual-font fit for every desktop control. The
+        // optional right accessory is reserved before text is measured.
+        const auto DrawButtonCaption = [&](const FString& Caption,
+            const FString& ShortCaption, const latebrake::DesktopMenuMouseRect& Bounds,
+            const FLinearColor& Ink, float PreferredScale, double AccessoryWidth) -> bool
+        {
+            UFont* Font = GEngine->GetSmallFont();
+            if (!Font || Caption.IsEmpty()) return false;
+            const auto Fit = latebrake::FitHudButtonCaption(Bounds, PreferredScale,
+                6.0 * Layout.Scale, 3.0 * Layout.Scale, AccessoryWidth,
+                !ShortCaption.IsEmpty(), [&](bool bShort, double Scale)
+                {
+                    float TW = 0.f, TH = 0.f;
+                    GetTextSize(bShort ? ShortCaption : Caption, TW, TH,
+                        Font, static_cast<float>(Scale));
+                    return latebrake::HudCaptionExtent{TW, TH};
+                });
+            if (!Fit.Valid) return false;
+            DrawText(Fit.ShortCaption ? ShortCaption : Caption, Ink,
+                static_cast<float>(Fit.X), static_cast<float>(Fit.Y),
+                Font, static_cast<float>(Fit.Scale));
+            return true;
+        };
+        if (PurchaseButtons.Valid)
+        {
+            const auto Offers = Mode->GetGaragePurchasePanel();
+            // Populate the presentation for synchronous hover evaluation.
+            // A target is revoked before returning if either caption fails.
+            for (std::size_t i=0; i<Offers.size(); ++i)
+                PresentedGarageOffers[i] = {true, PurchaseButtons.Buttons[i].Bounds, Offers[i]};
+            float OfferX = 0.f, OfferY = 0.f;
+            const auto Hover = PlayerOwner->GetMousePosition(OfferX, OfferY)
+                ? HitTestMenuMouse(OfferX, OfferY)
+                : latebrake::DesktopMenuMouseAction::None;
+            for (std::size_t i=0; i<Offers.size(); ++i)
+            {
+                const auto& Offer = Offers[i];
+                const auto& Button = PurchaseButtons.Buttons[i];
+                const auto& R = Button.Bounds;
+                const bool bConfirm = Offer.Status == latebrake::GarageOfferStatus::Confirm;
+                const bool bEnabled = Offer.Enabled();
+                const FLinearColor Ink = !bEnabled
+                    ? FLinearColor(0.62f,0.68f,0.75f) : bConfirm ? Gold : White;
+                DrawRect(bConfirm ? FLinearColor(0.38f,0.25f,0.07f,0.98f)
+                    : Hover==Button.Action && bEnabled
+                        ? FLinearColor(0.19f,0.31f,0.43f,0.98f)
+                        : FLinearColor(0.06f,0.10f,0.16f,0.96f),
+                    static_cast<float>(R.X),static_cast<float>(R.Y),
+                    static_cast<float>(R.Width),static_cast<float>(R.Height));
+                FString Title = i==0 ? (Offer.Subject>=0
+                    ? FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Offer.Subject).Name))
+                    : FString(TEXT("ALL CARS")))
+                    : i==1 ? FString(TEXT("ENGINE")) : FString(TEXT("GRIP"));
+                FString Status;
+                switch (Offer.Status)
+                {
+                case latebrake::GarageOfferStatus::Preview:
+                    Status=FString::Printf(TEXT("%d CR"),Offer.Price); break;
+                case latebrake::GarageOfferStatus::Confirm:
+                    Status=FString::Printf(TEXT("CONFIRM %.1fs"),Offer.SecondsRemaining); break;
+                case latebrake::GarageOfferStatus::NeedCredits:
+                    Status=FString::Printf(TEXT("NEED %d"),Offer.Shortfall); break;
+                case latebrake::GarageOfferStatus::Complete:
+                    Status=TEXT("MAX"); break;
+                default: Status=TEXT("LOCKED"); break;
+                }
+                const latebrake::DesktopMenuMouseRect Upper{R.X,R.Y,R.Width,R.Height*0.5};
+                const latebrake::DesktopMenuMouseRect Lower{R.X,R.Y+R.Height*0.5,R.Width,R.Height*0.5};
+                const bool bTitleDrawn = DrawButtonCaption(Title,FString(),Upper,Ink,0.72f*UIScale,0.0);
+                const bool bStatusDrawn = DrawButtonCaption(Status,bConfirm ? FString(TEXT("CONFIRM")) : FString(),
+                    Lower,Ink,0.68f*UIScale,0.0);
+                PresentedGarageOffers[i].Visible = bTitleDrawn && bStatusDrawn;
+            }
+        }
+        // Direct choice overlay is a temporary showroom panel. The same
+        // layout is used for rendering and hit admission; the car is
+        // revealed again immediately after an explicit choice or close.
+        if (GaragePalette.Open)
+        {
+            const auto Palette = latebrake::CalculateGaragePaletteLayout(
+                ShowroomLane,Canvas->SizeX,Canvas->SizeY,Layout,GaragePalette.Layer);
+            if (!Palette.Valid)
+                CloseGaragePalette();
+            else
+            {
+                PresentedGaragePalette.Session = GaragePalette;
+                PresentedGaragePalette.Layout = Palette;
+                const auto& P = Palette.Panel;
+                DrawRect(FLinearColor(0.025f,0.045f,0.075f,0.98f),
+                    P.X,P.Y,P.Width,P.Height);
+                DrawRect(Gold,P.X,P.Y,P.Width,3.f*UIScale);
+                const auto& Close = Palette.Close.Bounds;
+                const latebrake::DesktopMenuMouseRect Header{
+                    P.X,Close.Y,Close.X-P.X,Close.Height};
+                const FString HeaderText = GaragePalette.Layer == latebrake::GarageLookLayer::Paint
+                    ? TEXT("CHOOSE PAINT") : GaragePalette.Layer == latebrake::GarageLookLayer::Stripe
+                    ? TEXT("CHOOSE STRIPES") : TEXT("CHOOSE RIMS");
+                DrawButtonCaption(HeaderText,FString(TEXT("CHOOSE")),Header,Gold,0.78f*UIScale,0.0);
+                DrawRect(FLinearColor(0.14f,0.20f,0.29f,0.98f),Close.X,Close.Y,Close.Width,Close.Height);
+                PresentedGaragePalette.CloseVisible =
+                    DrawButtonCaption(FString(TEXT("CLOSE")),FString(TEXT("X")),Close,White,0.76f*UIScale,0.0);
+                float PX=0.f,PY=0.f;
+                const auto Hover = PlayerOwner->GetMousePosition(PX,PY)
+                    ? latebrake::HitTestGaragePalette(Palette,PX,PY)
+                    : latebrake::DesktopMenuMouseAction::None;
+                for (int32 i=0;i<Palette.Count;++i)
+                {
+                    const auto Choice = latebrake::DescribeGaragePaletteChoice(
+                        GaragePalette.VehicleId,GaragePalette.Look,GaragePalette.Layer,i);
+                    const auto& Button = Palette.Choices[static_cast<std::size_t>(i)];
+                    const auto& R = Button.Bounds;
+                    const bool bSelected = Choice.Selected;
+                    const bool bFocused = GaragePaletteFocus == i;
+                    const FLinearColor FocusInk(0.25f,0.84f,0.96f,1.f);
+                    const FLinearColor Ink = bSelected ? Gold : White;
+                    DrawRect(bSelected ? FLinearColor(0.27f,0.21f,0.09f,0.99f)
+                        : Hover==Button.Action ? FLinearColor(0.19f,0.31f,0.43f,0.99f)
+                        : FLinearColor(0.08f,0.13f,0.20f,0.99f),R.X,R.Y,R.Width,R.Height);
+                    DrawRect(Ink,R.X,R.Y,3.f*UIScale,R.Height);
+                    if (bFocused)
+                    {
+                        // Focus and active appearance are independent:
+                        // the focused card gets a full high-contrast outline.
+                        const float Edge=FMath::Max(2.f,2.f*UIScale);
+                        DrawRect(FocusInk,R.X,R.Y,R.Width,Edge);
+                        DrawRect(FocusInk,R.X,R.Y+R.Height-Edge,R.Width,Edge);
+                        DrawRect(FocusInk,R.X+R.Width-Edge,R.Y,Edge,R.Height);
+                    }
+                    const float Chip = FMath::Clamp(15.f*UIScale,10.f,18.f);
+                    const float CX = static_cast<float>(R.X+R.Width-Chip-6.f*UIScale);
+                    const float CY = static_cast<float>(R.Y+0.5*(R.Height-Chip));
+                    const bool bPaint = GaragePalette.Layer == latebrake::GarageLookLayer::Paint;
+                    double Accessory = Chip+6.f*UIScale;
+                    bool bPreviewDrawn = true;
+                    if (bPaint)
+                        DrawRect(FLinearColor(Choice.Swatch.R,Choice.Swatch.G,Choice.Swatch.B,1.f),
+                            CX,CY,Chip,Chip);
+                    else
+                    {
+                        // These are bounded schematics of the selected
+                        // roof stripes or authored alloy faces, NOT GPU captures.
+                        const auto Decision = latebrake::PreviewGarageDirectAppearance(
+                            GaragePalette.VehicleId,GaragePalette.Look,
+                            {GaragePalette.VehicleId,GaragePalette.Look,GaragePalette.Layer,i});
+                        const double IconSize = FMath::Min(R.Height-10.0,48.0*Layout.Scale);
+                        const latebrake::DesktopMenuMouseRect IconBounds{
+                            R.X+R.Width-IconSize-6.0*Layout.Scale,
+                            R.Y+(R.Height-IconSize)*0.5,IconSize,IconSize};
+                        const auto Glyph = latebrake::CalculateGarageAppearanceGlyph(
+                            IconBounds,GaragePalette.VehicleId,Decision.Result,GaragePalette.Layer);
+                        bPreviewDrawn = Glyph.Valid;
+                        if (Glyph.Valid)
+                        {
+                            Accessory = IconSize+6.0*Layout.Scale;
+                            const auto Color = [&](latebrake::GarageGlyphInk Kind)
+                            {
+                                const auto RGB = latebrake::GarageGlyphColor(
+                                    Kind,Glyph.VehicleId,Glyph.Look);
+                                return FLinearColor(static_cast<float>(RGB.R),
+                                    static_cast<float>(RGB.G),static_cast<float>(RGB.B),1.f);
+                            };
+                            DrawRect(FLinearColor(0.22f,0.27f,0.33f,1.f),
+                                IconBounds.X,IconBounds.Y,IconBounds.Width,IconBounds.Height);
+                            for (std::size_t j=0;j<Glyph.RectCount;++j)
+                            {
+                                const auto& Piece=Glyph.Rects[j];
+                                const auto& B=Piece.Bounds;
+                                DrawRect(Color(Piece.Ink),B.X,B.Y,B.Width,B.Height);
+                            }
+                            for (std::size_t j=0;j<Glyph.LineCount;++j)
+                            {
+                                const auto& L=Glyph.Lines[j];
+                                DrawLine(L.A.X,L.A.Y,L.B.X,L.B.Y,Color(L.Ink),L.Thickness);
+                            }
+                        }
+                    }
+                    const latebrake::DesktopMenuMouseRect Title{
+                        R.X,R.Y,R.Width,R.Height*0.60};
+                    const latebrake::DesktopMenuMouseRect Footer{
+                        R.X,R.Y+R.Height*0.60,R.Width,R.Height*0.40};
+                    const bool bTitle = DrawButtonCaption(
+                        FString(UTF8_TO_TCHAR(Choice.Label)),FString(UTF8_TO_TCHAR(Choice.ShortLabel)),
+                        Title,Ink,0.76f*UIScale,Accessory);
+                    const FString Tag = bSelected ? TEXT("ACTIVE") : Choice.Factory ? TEXT("FACTORY") : TEXT("SELECT");
+                    const bool bTag = DrawButtonCaption(Tag,FString(),Footer,Ink,0.62f*UIScale,Accessory);
+                    PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag && bPreviewDrawn;
+                    if (bFocused && bTitle && bTag && bPreviewDrawn)
+                        DrawnGaragePaletteFocus = i;
+                }
+            }
+        }
+        const auto OrbitButtons = latebrake::CalculateGarageOrbitButtons(
+            ShowroomLane, Canvas->SizeX, Canvas->SizeY, Layout);
+        if (OrbitButtons.Valid)
+        {
+            const bool bCanOrbit = Car->CanSelectGarageCameraOrbit();
+            float OrbitMouseX = 0.f, OrbitMouseY = 0.f;
+            const auto OrbitHovered = PlayerOwner->GetMousePosition(OrbitMouseX, OrbitMouseY)
+                ? HitTestMenuMouse(OrbitMouseX, OrbitMouseY)
+                : latebrake::DesktopMenuMouseAction::None;
+            for (const auto& Button : OrbitButtons.Buttons)
+            {
+                const int32 Index = latebrake::GarageOrbitIndex(Button.Action);
+                const bool bSelected = Index == Car->GetGarageCameraOrbitIndex();
+                const bool bHover = OrbitHovered == Button.Action;
+                const auto& R = Button.Bounds;
+                const float BX=static_cast<float>(R.X), BY=static_cast<float>(R.Y);
+                const float BW=static_cast<float>(R.Width), BH=static_cast<float>(R.Height);
+                const FLinearColor Ink = !bCanOrbit
+                    ? FLinearColor(0.54f,0.59f,0.64f)
+                    : bSelected ? Gold : White;
+                DrawRect(bSelected
+                    ? FLinearColor(0.27f,0.21f,0.09f,0.95f)
+                    : bHover ? FLinearColor(0.19f,0.31f,0.43f,0.95f)
+                             : FLinearColor(0.08f,0.13f,0.20f,0.95f),
+                    BX,BY,BW,BH);
+                DrawRect(Ink,BX,BY,BW,2.f);
+                // Measure each caption and fall back to its ordinal on
+                // narrow buttons. Never draw across another hit target.
+                FString Caption(UTF8_TO_TCHAR(latebrake::GarageOrbitCaption(Index)));
+                DrawButtonCaption(Caption, FString::FromInt(Index+1),
+                    R, Ink, 0.70f * UIScale, 0.0);
+            }
+        }
+
         // Build the logical page first. The former unbounded MenuLine
         // simply discarded overflow, including essential Results details.
         // Keep the title/nav pinned and paginate ALL generated details.
         TArray<TPair<FString, bool>> MenuDetails;
         const auto MenuLine = [&](const FString& Value, bool bAccent = false)
         {
-            const FString Fitted = FitHudText(
-                Value, GEngine->GetSmallFont(), UIScale);
-            if (!Fitted.IsEmpty())
+            UFont* Font = GEngine->GetSmallFont();
+            if (!MenuPlan.Valid || !HorizontalBounds.Valid ||
+                Value.IsEmpty() || !Font || SafeTextWidth <= 0.0)
             {
-                MenuDetails.Emplace(Fitted, bAccent);
+                return;
+            }
+            // Page the *complete* measured text. Previously every detail
+            // was permanently ellipsized before MenuPager saw the content,
+            // making long garage/results descriptions impossible to read.
+            const int32 RemainingRows = FMath::Max(0, 1024 - MenuDetails.Num());
+            if (RemainingRows <= 0)
+            {
+                return;
+            }
+            // Every menu row, including overflow diagnostics, must use
+            // the same actual-font bounds as the normal detail rows.
+            // A raw diagnostic can overflow a narrow screen even when all
+            // wrapped content is correctly measured and paginated.
+            const auto AddMeasuredMenuNotice = [&](const TCHAR* Message)
+            {
+                const FString Notice = FitHudText(Message, Font, UIScale);
+                if (!Notice.IsEmpty() && MenuDetails.Num() < 1024)
+                {
+                    MenuDetails.Emplace(Notice, true);
+                }
+            };
+            // Reserve one diagnostic row and enforce a per-entry cap.
+            // A single maliciously long car name or result string must not
+            // monopolize all 1024 pager rows and conceal later details.
+            const int32 WrapBudget = FMath::Min(32, RemainingRows - 1);
+            if (WrapBudget <= 0)
+            {
+                AddMeasuredMenuNotice(TEXT("DETAIL OMITTED - ROW LIMIT"));
+                return;
+            }
+            const auto Wrapped = latebrake::WrapHudDetailText(
+                Value.Len(), SafeTextWidth,
+                [&](int Index) -> std::uint32_t
+                {
+                    return static_cast<std::uint32_t>(Value[Index]);
+                },
+                [&](int Begin, int Count) -> double
+                {
+                    float MeasuredWidth = 0.f;
+                    float MeasuredHeight = 0.f;
+                    GetTextSize(Value.Mid(Begin, Count), MeasuredWidth,
+                        MeasuredHeight, Font, UIScale);
+                    return static_cast<double>(MeasuredWidth);
+                },
+                [&](int Begin, int Count)
+                {
+                    MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);
+                }, WrapBudget);
+            if (!Wrapped.Complete)
+            {
+                // Fail visibly instead of silently discarding information
+                // when a glyph cluster cannot fit or the row cap is hit.
+                AddMeasuredMenuNotice(
+                    TEXT("DETAIL TEXT COULD NOT BE FITTED"));
             }
         };
         if (MenuPlan.Valid)
@@ -348,6 +888,37 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Keep transaction confirmation near the top, even when the
             // catalogue spans multiple paginated detail windows.
             MenuLine(Mode->GetGaragePurchaseDisplayFeedback(), true);
+            // A normal Garage page pauses the world, but explicit OS
+            // focus loss or standalone manual-pause is a separate gate.
+            // Avoid displaying purchasable offers without the suspension
+            // warning; this is a read-only view until explicit resume.
+            if (Mode->IsFocusLossGuardActive() ||
+                Mode->IsManualRacePauseActive())
+                MenuLine(TEXT("GARAGE SUSPENDED: RESUME TO EQUIP, BUY OR STYLE"), true);
+            if (Mode->IsProfileReadOnly())
+                MenuLine(TEXT("NEWER SAVE PROFILE: READ-ONLY, NO PURCHASES"), true);
+            // Read-only visual comparison may inspect any locked car. Only
+            // the owned car in GarageState can ever be equipped/raced.
+            const int32 PreviewId = Mode->GetGaragePreviewVehicleId();
+            const auto& Preview = Catalog.Cars[
+                static_cast<std::size_t>(PreviewId)];
+            MenuLine(FString::Printf(
+                TEXT("VIEWING %d/%d: %s | %s"),
+                PreviewId + 1, latebrake::VehicleCount,
+                UTF8_TO_TCHAR(Preview.Name),
+                Preview.Ownership == latebrake::GarageCatalogOwnership::Equipped
+                    ? TEXT("EQUIPPED")
+                    : Preview.Ownership == latebrake::GarageCatalogOwnership::Owned
+                        ? TEXT("OWNED / NOT EQUIPPED")
+                        : TEXT("LOCKED / PREVIEW ONLY")), true);
+            MenuLine(FString::Printf(
+                TEXT("PREVIEW EST.: ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
+                Preview.Effective.Acceleration, Preview.Effective.Grip,
+                Preview.Effective.TopSpeed));
+            // Sequential career unlocks intentionally do not follow the
+            // preview cursor. Identify the actual paid target NEXT TO the
+            // viewed car so browsing later locked IDs cannot mislead users
+            // into thinking Q will buy the pictured prototype.
             if (latebrake::GarageState::IsVehicle(Catalog.NextUnlockId))
             {
                 const auto& Next = Catalog.Cars[static_cast<std::size_t>(Catalog.NextUnlockId)];
@@ -359,6 +930,30 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 MenuLine(TEXT("ALL CARS OWNED: NO NEXT UNLOCK"), true);
             }
+            if (latebrake::GarageState::IsVehicle(Catalog.NextUnlockId) &&
+                PreviewId != Catalog.NextUnlockId)
+                MenuLine(TEXT("Q UNLOCKS NEXT CAR, NOT THE VIEWED CAR."), true);
+            // Q is sequential. Report the whole route to the viewed car,
+            // not just its sticker price or today's first unlock.
+            // This simulation owns a private snapshot; no real purchase.
+            const auto ViewedPath = latebrake::PlanGaragePurchasePath(
+                Mode->GetGarageSnapshot(),
+                {PreviewId, Catalog.EngineLevel, Catalog.GripLevel, 0});
+            if (ViewedPath.AdditionalCarsUnlocked > 0 &&
+                ViewedPath.Status != latebrake::GaragePlanStatus::Invalid)
+            {
+                // Reserve is zero and route cost is the bounded sum of
+                // six fixed car prices, so the shortfall fits int32.
+                MenuLine(FString::Printf(
+                    TEXT("VIEWED UNLOCK ROUTE: %d CAR(S) | %d CR TOTAL | NEED %d"),
+                    ViewedPath.AdditionalCarsUnlocked, ViewedPath.UnlockCost,
+                    static_cast<int32>(ViewedPath.CreditsShort)), true);
+                if (ViewedPath.AdditionalCarsUnlocked > 1)
+                    MenuLine(TEXT("Q BUYS ONE NEXT CAR AT A TIME; TOTAL IS A PREVIEW."));
+            }
+            MenuLine(TEXT("CLICK 1-6 ABOVE TOP VIEW: DIRECT CAR PREVIEW ONLY"));
+            MenuLine(TEXT("F9/F10 or mouse: BROWSE ALL / ENTER: EQUIP IF OWNED"));
+            MenuLine(TEXT("PAD: RB FORWARD / B BACK | E EQUIPS NEXT OWNED"));
             MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),
                 Catalog.EngineLevel, Catalog.GripLevel));
             // Prices and relative tuning are read-only summaries of the
@@ -387,12 +982,69 @@ void ALatebrakeRaceHUD::DrawHUD()
                 MenuLine(FString::Printf(TEXT("NEXT U ENGINE: %s | NEXT I GRIP: %s"),
                     *OfferText(EngineOffer), *OfferText(GripOffer)));
             }
-            MenuLine(TEXT("E/SELECT: NEXT OWNED | Q: NEXT LOCKED | U/I: UPGRADES"));
+            MenuLine(TEXT("ENTER/SELECT: EQUIP VIEWED OWNED CAR | E: NEXT OWNED"));
+            MenuLine(TEXT("GARAGE ONLY: Q UNLOCKS | U/I UPGRADES"));
             if (!bTouchHUD)
                 MenuLine(TEXT("CTRL+1..6: EQUIP OWNED CARS DIRECTLY (LOCKED CARS CANNOT EQUIP)"));
             MenuLine(TEXT("Q/U/I press twice within 8s to confirm."));
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
-            MenuLine(TEXT("SIX FICTIONAL CARS (NOT FULL 3D VEHICLE MODELS)"), true);
+            MenuLine(TEXT("STYLE VIEWED OWNED CAR: F5/F6/F7 | F8 FACTORY (FREE)"), true);
+            MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
+            if (ShowroomLane.Valid)
+            {
+                MenuLine(TEXT("MOUSE: PAINT / STRIPE / RIMS OPENS CHOOSER (FREE)."));
+                MenuLine(TEXT("N / PAD RIGHT: OPEN OR SWITCH CHOOSER."));
+                MenuLine(TEXT("UP/DOWN: FOCUS | ENTER/Y: CHOOSE | M/PAD LEFT: CLOSE."));
+            }
+            MenuLine(TEXT("PAD: R3 PAINT / L3 STRIPES / LB RIMS"), true);
+            if (!Mode->CanCustomizeGarage() &&
+                !Mode->IsFocusLossGuardActive() &&
+                !Mode->IsManualRacePauseActive() &&
+                !Mode->IsProfileReadOnly())
+            {
+                const bool bLockedPreview =
+                    Preview.Ownership == latebrake::GarageCatalogOwnership::LockedAffordable ||
+                    Preview.Ownership == latebrake::GarageCatalogOwnership::LockedInsufficientCredits;
+                MenuLine(bLockedPreview
+                    ? TEXT("CUSTOM LOOK LOCKED: OWN THE VIEWED CAR FIRST")
+                    : TEXT("CUSTOM LOOK UNAVAILABLE DURING THIS CAREER RACE"), true);
+            }
+            // The real paused Pawn now shows the browsed car, not the
+            // equipped car. Report source state honestly: this says which
+            // engine components are requested, NOT that pixels were QA'd.
+            const bool bLiveShowroom = Car->IsGarageShowroomPreviewActive() &&
+                Car->GetPresentedGarageVehicleId() == PreviewId;
+            MenuLine(FString::Printf(TEXT("LIVE SHOWROOM: %s | %s"),
+                bLiveShowroom ? TEXT("VIEWED CAR (VISUAL ONLY)")
+                    : TEXT("PREVIEW NOT ACTIVE"),
+                Car->IsOriginalVehicleSurfaceCommitted()
+                    ? TEXT("SOURCE 3D COMPONENTS")
+                    : TEXT("LEGACY CUBE FALLBACK")), true);
+            MenuLine(FString::Printf(TEXT("F4 GARAGE ANGLE %d/4 | %s"),
+                Car->GetGarageCameraOrbitIndex() + 1,
+                Car->IsGarageCameraViewPresented()
+                    ? TEXT("SOURCE FRAMED VIEW")
+                    : TEXT("NORMAL CAMERA / PREVIEW PENDING")), true);
+            const latebrake::GarageLook ViewedLook = Mode->GetGaragePreviewLook();
+            MenuLine(FString::Printf(
+                TEXT("VIEWED LOOK: %s / %s / %s"),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Paint, ViewedLook.Paint)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Stripe, ViewedLook.Stripe)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Wheels, ViewedLook.Wheels))), true);
+            const latebrake::GarageLook ActiveLook =
+                Mode->GetSelectedGarageLook();
+            MenuLine(FString::Printf(
+                TEXT("EQUIPPED LOOK: %s / %s / %s"),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Paint, ActiveLook.Paint)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Stripe, ActiveLook.Stripe)),
+                UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                    latebrake::GarageLookLayer::Wheels, ActiveLook.Wheels))), true);
+            MenuLine(TEXT("SIX UE PROTOTYPE CARS / 12-CAR 2D TRIAL IS SEPARATE"), true);
             for (const latebrake::GarageCatalogEntry& Entry : Catalog.Cars)
             {
                 // A separate short identity line prevents very long route
@@ -422,9 +1074,11 @@ void ALatebrakeRaceHUD::DrawHUD()
                 const FString SlotLabel = bTouchHUD
                     ? FString::Printf(TEXT("%d."), Entry.VehicleId + 1)
                     : FString::Printf(TEXT("CTRL+%d"), Entry.VehicleId + 1);
-                MenuLine(FString::Printf(TEXT("%s %s | %s%s"),
-                    *SlotLabel, UTF8_TO_TCHAR(Entry.Name), *State, NextFlag),
-                    Entry.Ownership == latebrake::GarageCatalogOwnership::Equipped);
+                MenuLine(FString::Printf(TEXT("%s %s | %s%s%s"),
+                    *SlotLabel, UTF8_TO_TCHAR(Entry.Name), *State, NextFlag,
+                    Entry.VehicleId == PreviewId ? TEXT(" | VIEWING") : TEXT("")),
+                    Entry.Ownership == latebrake::GarageCatalogOwnership::Equipped ||
+                    Entry.VehicleId == PreviewId);
                 if (bLocked)
                 {
                     if (!Entry.RouteValid)
@@ -451,7 +1105,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 if (!bCompact)
                 {
                     MenuLine(FString::Printf(
-                        TEXT("   KIT %s | PAINT %s | ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
+                        TEXT("   KIT %s | FACTORY PAINT %s | ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
                         UTF8_TO_TCHAR(
                             latebrake::BodyKitForVehicle(Entry.VehicleId).Name),
                         UTF8_TO_TCHAR(
@@ -584,6 +1238,36 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Race.GetLastLapPenaltySeconds()));
                 }
             }
+            const auto TrackReview=Mode->GetTrackLimitsReview();
+            if (TrackReview.Valid)
+            {
+                MenuLine(FString::Printf(TEXT("TRACK LIMITS: %d VIOLATIONS | %d CHARGES"),
+                    TrackReview.Violations,TrackReview.Penalties),true);
+                if (TrackReview.Penalties>0 || TrackReview.RecoveryCount>0)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Track fees +%.2fs | recovery fees +%.2fs (included)"),
+                        TrackReview.TrackLimitsSeconds,TrackReview.RecoverySeconds));
+                }
+                if (!bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Warnings %d | rejoins %d | refused charges %d"),
+                        TrackReview.Warnings,TrackReview.CleanRejoins,TrackReview.RefusedCharges));
+                    for (int32 Index=0;Index<TrackReview.RetainedReceipts;++Index)
+                    {
+                        const auto Receipt=Mode->GetTrackLimits().Recent(Index);
+                        if (Receipt.Event!=latebrake::TrackLimitsEvent::ViolationRecorded &&
+                            Receipt.Event!=latebrake::TrackLimitsEvent::PenaltyApplied &&
+                            Receipt.Event!=latebrake::TrackLimitsEvent::PenaltyRefused)
+                            continue;
+                        MenuLine(FString::Printf(
+                            TEXT("Lap %d | next gate %d | clock %.2fs | fee +%.2fs"),
+                            Receipt.Lap,Receipt.NextGate+1,Receipt.RaceSeconds,
+                            Receipt.ActualChargedSeconds));
+                    }
+                }
+            }
             // Review the actual run's latest eight timed laps. Results
             // pagination keeps each row reachable even on small Android
             // viewports, without changing records or reward authority.
@@ -708,6 +1392,33 @@ void ALatebrakeRaceHUD::DrawHUD()
                 }
             }
 
+            // Fee-free physical laps, not adjusted versions of penalized
+            // times. Keep the retained-window scope explicit in Results.
+            const auto CleanPace = latebrake::BuildCleanLapPaceReview(Race);
+            if (CleanPace.Valid)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("FEE-FREE LAPS: %d/%d RETAINED"),
+                    CleanPace.CleanLaps, CleanPace.RetainedLaps), true);
+                MenuLine(FString::Printf(
+                    TEXT("Fastest fee-free lap %d: %.2fs"),
+                    CleanPace.FastestLap, CleanPace.FastestSeconds));
+                if (CleanPace.HasVariation && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Fee-free median %.2fs | median deviation %.2fs"),
+                        CleanPace.MedianSeconds,
+                        CleanPace.MedianAbsoluteDeviationSeconds));
+                }
+                if (CleanPace.HasAdjacentComparison && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Fee-free lap %d vs %d: %+.2fs"),
+                        CleanPace.AdjacentNewerLap, CleanPace.AdjacentOlderLap,
+                        CleanPace.AdjacentDeltaSeconds));
+                }
+            }
+
             // Best splits come from measured ordered gates and may belong to
             // DIFFERENT laps. Theoretical sum is not an achieved record.
             const latebrake::BestSectorReview SectorReview =
@@ -748,6 +1459,61 @@ void ALatebrakeRaceHUD::DrawHUD()
                         MenuLine(FString::Printf(
                             TEXT("High lateral slip %.0f%% of sampled time"),
                             DriveReview.HighLateralSlipPercent));
+                    }
+                    const auto& Distribution=DriveReview.SpeedDistribution;
+                    if (Distribution.Valid)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("Average sampled speed %.1f km/h"),
+                            Distribution.AverageSpeedKmH));
+                        if (!bCompact)
+                        {
+                            const auto Median=static_cast<std::size_t>(Distribution.MedianBand);
+                            const auto P90=static_cast<std::size_t>(Distribution.P90Band);
+                            const auto& Edges=latebrake::SampledSpeedEdgesKmH;
+                            MenuLine(FString::Printf(
+                                TEXT("Time-weighted median %.0f-%.0f | P90 %.0f-%.0f km/h"),
+                                Edges[Median],Edges[Median+1],Edges[P90],Edges[P90+1]));
+                            for (std::size_t Index=0;Index<Distribution.Rows.size();++Index)
+                            {
+                                const auto& Row=Distribution.Rows[Index];
+                                if (Row.Frames==0) continue;
+                                MenuLine(FString::Printf(
+                                    TEXT("%.0f-%.0f km/h | %.1fs | %.0f%% of sample"),
+                                    Edges[Index],Edges[Index+1],Row.Seconds,
+                                    100.0*Row.Seconds/Distribution.TotalSeconds));
+                            }
+                        }
+                    }
+                }
+            }
+            if (latebrake::CanAwardFinishedRace(Race))
+            {
+                const auto PitSummary = Car->GetPitJournal().Review(
+                    Car->GetPitService().StopCount());
+                if (PitSummary.Valid)
+                {
+                    MenuLine(FString::Printf(TEXT("PIT SERVICE | %d COMPLETED"),
+                        PitSummary.Count), true);
+                    MenuLine(FString::Printf(
+                        TEXT("Damage -%.1f pp | wear -%.1f pp | boost +%.1f pp"),
+                        PitSummary.DamageRestored*100.0,
+                        PitSummary.WearRemoved*100.0,
+                        PitSummary.ChargeRestored*100.0));
+                    if (!bCompact)
+                    {
+                        const auto& Journal=Car->GetPitJournal();
+                        for (int32 Index=0; Index<Journal.RetainedCount(); ++Index)
+                        {
+                            const auto Receipt=Journal.GetRecent(Index);
+                            MenuLine(FString::Printf(
+                                TEXT("STOP %d | LAP %d | CLOCK %.2fs"),
+                                Receipt.Stop, Receipt.Lap, Receipt.RaceSeconds));
+                            MenuLine(FString::Printf(
+                                TEXT("Damage -%.1f pp | wear -%.1f pp | boost +%.1f pp"),
+                                Receipt.DamageRestored*100.0, Receipt.WearRemoved*100.0,
+                                Receipt.ChargeRestored*100.0));
+                        }
                     }
                 }
             }
@@ -815,6 +1581,61 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(Mode->UsesMilesPerHour()
                 ? TEXT("Speed display: MPH") : TEXT("Speed display: KM/H"));
             MenuLine(TEXT("Select to switch speed units and save."));
+            MenuLine(Mode->IsDuskLightingPreview()
+                ? TEXT("LIGHTING: DUSK (SESSION PREVIEW ONLY)")
+                : TEXT("LIGHTING: DAY (SESSION PREVIEW ONLY)"), true);
+            MenuLine(TEXT("F3: TOGGLE DAY/DUSK | NOT SAVED | VISUAL ONLY"));
+#if !UE_BUILD_SHIPPING
+            // Real pawn component/material/light-request state. This is a
+            // diagnostic of source commands, NOT proof of rendered pixels,
+            // physically accurate light or adequate frame rate.
+            const auto VisualReport = latebrake::ReportVisualPlaytest(
+                true, Car->IsOriginalVehicleSurfaceCommitted(),
+                !Car->GetOriginalVehicleTintParameter().IsNone(),
+                Car->AreFrontLampsRequestedOn(),
+                Mode->IsDuskLightingPreview(),
+                Car->GetCommittedOriginalWheelParts());
+            MenuLine(FString::Printf(TEXT("LIVE CAR MESH: %s"),
+                UTF8_TO_TCHAR(latebrake::VisualPlaytestSurfaceLabel(
+                    VisualReport.Surface))),true);
+            MenuLine(FString::Printf(TEXT("PAINT PARAM: %s"),
+                VisualReport.PaintParameterDiscovered
+                    ? *Car->GetOriginalVehicleTintParameter().ToString()
+                    : TEXT("NONE / FALLBACK")));
+            const int32 FinishCount=Car->GetOriginalVehicleFinishParameterCount();
+            MenuLine(FString::Printf(TEXT("FINISH PARAMETERS: %d/5 EXPOSED | %s"),
+                FinishCount,FinishCount>0?TEXT("VERIFY SHADER"):TEXT("TINT ONLY")));
+            MenuLine(FString::Printf(TEXT("FRONT BEAMS REQUESTED: %s"),
+                VisualReport.FrontLampsRequested ? TEXT("ON")
+                    : TEXT("OFF (PAUSED OR INACTIVE)")));
+            MenuLine(FString::Printf(
+                TEXT("3D WHEEL RIG: %d/4 COMPONENTS (NOT PIXELS)"),
+                VisualReport.AnimatedWheelPartsCommitted));
+            const auto BuildStats=Car->GetOriginalMeshBuildTelemetry();
+            MenuLine(FString::Printf(
+                TEXT("3D SOURCE BUILDS: %u ATTEMPTS / %u READY"),
+                BuildStats.Attempts, BuildStats.Committed));
+            const auto CacheStats=Car->GetOriginalRenderCacheStats();
+            MenuLine(FString::Printf(
+                TEXT("CPU MESH CACHE: %u HIT / %u MISS / %u PREPARED"),
+                CacheStats.Hits, CacheStats.Misses, CacheStats.Prepared));
+            MenuLine(FString::Printf(
+                TEXT("CACHE: %d/%d RESIDENT | %u EVICTIONS | %u FAILED"),
+                static_cast<int32>(CacheStats.ResidentEntries),
+                static_cast<int32>(latebrake::vehiclemesh::OriginalRenderCacheCapacity),
+                CacheStats.Evictions, CacheStats.Failed));
+            MenuLine(FString::Printf(
+                TEXT("CPU CACHE: %d VERTICES / %d INDICES (NOT VRAM)"),
+                static_cast<int32>(CacheStats.ResidentVertices),
+                static_cast<int32>(CacheStats.ResidentIndices)));
+            const int32 CommittedRim=Car->GetCommittedOriginalRimStyle();
+            MenuLine(FString::Printf(TEXT("LIVE 3D RIM: %s"),
+                CommittedRim>=0 && CommittedRim<latebrake::GarageWheelOptions
+                    ? UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                        latebrake::GarageLookLayer::Wheels,CommittedRim))
+                    : TEXT("FALLBACK / NO SOURCE MESH")));
+            MenuLine(TEXT("SOURCE DIAGNOSTIC ONLY - VERIFY PIXELS IN ENGINE"));
+#endif
             break;
         case latebrake::MenuPage::Profile:
             MenuLine(FString::Printf(TEXT("Completed races: %d | Career medals: %d"),
@@ -872,15 +1693,15 @@ void ALatebrakeRaceHUD::DrawHUD()
         if (MouseMenu.Valid)
         {
             const auto MenuAvailability =
-                latebrake::AvailableDesktopMenuDetails(
-                    Mode->GetMenuPage(), MenuPager);
+                latebrake::AvailableDesktopMenuActions(
+                    Mode->GetMenuPage(), MenuPager,
+                    Mode->CanEquipGarageViewed());
             float CursorX = 0.f;
             float CursorY = 0.f;
             const bool HasCursor = PlayerOwner->GetMousePosition(
                 CursorX, CursorY);
             const latebrake::DesktopMenuMouseAction Hovered = HasCursor
-                ? latebrake::HitTestDesktopMenuMouse(
-                    MouseMenu, CursorX, CursorY, MenuAvailability)
+                ? HitTestMenuMouse(CursorX, CursorY)
                 : latebrake::DesktopMenuMouseAction::None;
             const auto& FirstButton = MouseMenu.Buttons[0].Bounds;
             DrawText(FString::Printf(TEXT("MENU PAGE %d/%d"),
@@ -923,7 +1744,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 DrawRect(!Enabled ? DisabledLabel :
                     Selected ? Gold : White, BX, BY,
                     3.f * UIScale, BH);
-                const TCHAR* Caption = TEXT("CLOSE");
+                FString Caption(TEXT("CLOSE"));
                 switch (Button.Action)
                 {
                 case latebrake::DesktopMenuMouseAction::PreviousPage:
@@ -935,15 +1756,209 @@ void ALatebrakeRaceHUD::DrawHUD()
                 case latebrake::DesktopMenuMouseAction::DetailsDown:
                     Caption = TEXT("DETAIL DOWN"); break;
                 case latebrake::DesktopMenuMouseAction::Activate:
-                    Caption = TEXT("SELECT"); break;
+                    Caption = Mode->GetMenuPage() == latebrake::MenuPage::Garage
+                        ? FString(UTF8_TO_TCHAR(
+                            latebrake::GarageEquipUiCaption(
+                                Mode->GetGarageEquipUiState())))
+                        : FString(TEXT("SELECT"));
+                    break;
                 case latebrake::DesktopMenuMouseAction::Close:
                     Caption = TEXT("CLOSE"); break;
                 default: break;
                 }
-                DrawText(FString(Caption), !Enabled ? DisabledLabel :
-                    Selected ? Gold : White,
-                    BX + 10.f * UIScale, BY + 12.f * UIScale,
-                    GEngine->GetSmallFont(), 0.82f * UIScale);
+                DrawButtonCaption(Caption, FString(), Button.Bounds,
+                    !Enabled ? DisabledLabel : Selected ? Gold : White,
+                    0.82f * UIScale, 0.0);
+            }
+            // Only the Garage shows separate clickable cosmetic actions.
+            // Uses exactly the same bounded rectangles as mouse hit tests;
+            // these buttons do not have economy or race authority.
+            if (GarageStyleMenu.Valid)
+            {
+                const bool bCanEditLook = Mode->CanCustomizeGarage();
+                const bool bCanBrowse = Mode->CanBrowseGarage();
+                const int32 PreviewVehicle = Mode->GetGaragePreviewVehicleId();
+                const latebrake::GarageLook PreviewLook =
+                    Mode->GetGaragePreviewLook();
+                const latebrake::VehiclePaintRecipe StylePaint =
+                    latebrake::PaintForGarageLook(PreviewVehicle, PreviewLook);
+                const latebrake::DesktopMenuMouseAction StyleHover =
+                    HasCursor ? HitTestMenuMouse(CursorX, CursorY)
+                        : latebrake::DesktopMenuMouseAction::None;
+                for (const auto& StyleButton : GarageStyleMenu.Buttons)
+                {
+                    const float BX = static_cast<float>(StyleButton.Bounds.X);
+                    const float BY = static_cast<float>(StyleButton.Bounds.Y);
+                    const float BW = static_cast<float>(StyleButton.Bounds.Width);
+                    const float BH = static_cast<float>(StyleButton.Bounds.Height);
+                    const bool bBrowseAction =
+                        StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageBrowsePrevious ||
+                        StyleButton.Action ==
+                            latebrake::DesktopMenuMouseAction::GarageBrowseNext;
+                    const bool Enabled = bBrowseAction
+                        ? bCanBrowse : bCanEditLook;
+                    const bool Hover = Enabled &&
+                        StyleButton.Action == StyleHover;
+                    const FLinearColor TextColor = !Enabled
+                        ? FLinearColor(0.61f, 0.66f, 0.73f)
+                        : Hover ? Gold : White;
+                    DrawRect(!Enabled
+                        ? FLinearColor(0.07f, 0.10f, 0.14f, 0.84f)
+                        : Hover
+                            ? FLinearColor(0.42f, 0.30f, 0.10f, 0.95f)
+                            : FLinearColor(0.08f, 0.13f, 0.20f, 0.9f),
+                        BX, BY, BW, BH);
+                    DrawRect(TextColor, BX, BY, 3.f * UIScale, BH);
+                    const auto Indicator =
+                        latebrake::DescribeGarageStyleButton(
+                            StyleButton.Action, PreviewVehicle, PreviewLook);
+                    // The 1-based option counter updates immediately on
+                    // the viewed car, including an owned parked car.
+                    // Factory state is explicit, not another cycle slot.
+                    if (!Indicator.Valid) continue;
+                    const FString Caption = Indicator.Total > 0
+                        ? FString::Printf(TEXT("%s %d/%d"),
+                            UTF8_TO_TCHAR(Indicator.Caption),
+                            Indicator.Ordinal, Indicator.Total)
+                        : FString(UTF8_TO_TCHAR(Indicator.Caption));
+                    const bool bPaint = StyleButton.Action ==
+                        latebrake::DesktopMenuMouseAction::GaragePaint;
+                    const float Swatch = FMath::Clamp(
+                        12.f * UIScale, 8.f, 14.f);
+                    DrawButtonCaption(Caption, FString(), StyleButton.Bounds,
+                        TextColor, 0.82f * UIScale,
+                        bPaint ? Swatch + 6.f * UIScale : 0.0);
+                    if (bPaint)
+                    {
+                        // A bounded preview swatch is visual-only: it is
+                        // inside the existing hit rectangle, with no new
+                        // pointer target, material allocation or input.
+                        const auto Rgb = StylePaint.Body;
+                        DrawRect(FLinearColor(
+                            static_cast<float>(Rgb.R),
+                            static_cast<float>(Rgb.G),
+                            static_cast<float>(Rgb.B), 1.f),
+                            BX + BW - Swatch - 6.f * UIScale,
+                            BY + 0.5f * (BH - Swatch),
+                            Swatch, Swatch);
+                    }
+                }
+
+                // Grounded SCREEN-SPACE TOP VIEW of the browsed prototype.
+                // It uses the same six vehicle geometry/paint recipes as
+                // the source Pawn. Unlike a 3D car actor, this costs no
+                // physics, asset loads, capture camera or saved ownership.
+                const auto Diagram = latebrake::CalculateGarageSchematic(
+                    static_cast<double>(Canvas->SizeX),
+                    static_cast<double>(Canvas->SizeY),
+                    Layout, GarageStyleMenu, PreviewVehicle, PreviewLook);
+                if (Diagram.Valid)
+                {
+                    const auto& Frame = Diagram.Panel;
+                    const float FrameX = static_cast<float>(Frame.X);
+                    const float FrameY = static_cast<float>(Frame.Y);
+                    const float FrameW = static_cast<float>(Frame.Width);
+                    const float FrameH = static_cast<float>(Frame.Height);
+                    DrawRect(FLinearColor(0.045f, 0.085f, 0.13f, 0.97f),
+                        FrameX, FrameY, FrameW, FrameH);
+                    DrawRect(Gold, FrameX, FrameY,
+                        FrameW, 2.f * Layout.Scale);
+                    // Read-only numbered vehicle selectors in the
+                    // reserved 27px title region of the actual diagram.
+                    const auto QuickView =
+                        latebrake::CalculateGarageQuickViewLayout(Diagram);
+                    const auto QuickSnapshot = Mode->GetGarageSnapshot();
+                    float PickX=0.f,PickY=0.f;
+                    const bool bHasPickCursor=PlayerOwner->GetMousePosition(
+                        PickX,PickY);
+                    const auto HoverPick=bHasPickCursor
+                        ? HitTestMenuMouse(PickX, PickY)
+                        : latebrake::DesktopMenuMouseAction::None;
+                    if (QuickView.Valid)
+                    {
+                        for(std::size_t i=0;i<QuickView.Buttons.size();++i)
+                        {
+                            const auto& Button=QuickView.Buttons[i];
+                            const float BX=static_cast<float>(Button.Bounds.X);
+                            const float BY=static_cast<float>(Button.Bounds.Y);
+                            const float BW=static_cast<float>(Button.Bounds.Width);
+                            const float BH=static_cast<float>(Button.Bounds.Height);
+                            const bool bViewed=static_cast<int32>(i)==PreviewVehicle;
+                            const bool bEquipped=static_cast<int32>(i)==
+                                Mode->GetSelectedVehicleId();
+                            const bool bOwned=(QuickSnapshot.OwnedVehicleMask &
+                                (1 << static_cast<int32>(i))) != 0;
+                            const bool bHovered=HoverPick==Button.Action;
+                            const FLinearColor Ink=bViewed ? Gold :
+                                bEquipped ? FLinearColor(0.21f,0.85f,0.94f) :
+                                bOwned ? White : FLinearColor(0.49f,0.55f,0.63f);
+                            DrawRect(bViewed
+                                ? FLinearColor(0.31f,0.25f,0.09f,1.f)
+                                : bHovered
+                                    ? FLinearColor(0.19f,0.31f,0.43f,1.f)
+                                    : FLinearColor(0.08f,0.13f,0.19f,1.f),
+                                BX,BY,BW,BH);
+                            DrawRect(Ink,BX,BY,BW,2.f);
+                            DrawButtonCaption(FString::FromInt(static_cast<int32>(i)+1),
+                                FString(), Button.Bounds, Ink, 0.78f * UIScale, 0.0);
+                        }
+                    }
+                    DrawText(TEXT("CAR TOP VIEW | 2D SCHEMATIC"), Gold,
+                        FrameX + 8.f * Layout.Scale,
+                        FrameY + FrameH - 14.f * Layout.Scale,
+                        GEngine->GetSmallFont(), 0.63f * UIScale);
+
+                    const latebrake::VehiclePaintRecipe Colors =
+                        latebrake::PaintForGarageLook(
+                            PreviewVehicle, PreviewLook);
+                    const auto Convert = [](latebrake::VehiclePaintRgb rgb)
+                    {
+                        return FLinearColor(
+                            static_cast<float>(rgb.R),
+                            static_cast<float>(rgb.G),
+                            static_cast<float>(rgb.B), 1.f);
+                    };
+                    // The schematic is deliberately reliable even when a
+                    // built-in primitive's Unreal material has no editable
+                    // "Color" parameter. Real 3D material QA is separate.
+                    for (std::size_t i = 0; i < Diagram.Count; ++i)
+                    {
+                        const auto& Piece = Diagram.Pieces[i];
+                        FLinearColor Ink(0.07f, 0.10f, 0.15f, 0.92f);
+                        switch (Piece.Ink)
+                        {
+                        case latebrake::GarageSchematicInk::Shadow:
+                            Ink = FLinearColor(0.f, 0.f, 0.f, 0.45f);
+                            break;
+                        case latebrake::GarageSchematicInk::Tire:
+                            Ink = FLinearColor(0.06f, 0.07f, 0.09f, 1.f);
+                            break;
+                        case latebrake::GarageSchematicInk::Rim:
+                            Ink = Convert(latebrake::RimTintForGarageLook(PreviewLook));
+                            break;
+                        case latebrake::GarageSchematicInk::Body:
+                            Ink = Convert(Colors.Body);
+                            break;
+                        case latebrake::GarageSchematicInk::Accent:
+                            Ink = Convert(Colors.Accent);
+                            break;
+                        case latebrake::GarageSchematicInk::Canopy:
+                            Ink = Convert(Colors.Canopy);
+                            break;
+                        case latebrake::GarageSchematicInk::Stripe:
+                            Ink = Convert(latebrake::StripeTintForGarageLook(PreviewLook));
+                            break;
+                        default:
+                            continue;
+                        }
+                        DrawRect(Ink,
+                            static_cast<float>(Piece.Bounds.X),
+                            static_cast<float>(Piece.Bounds.Y),
+                            static_cast<float>(Piece.Bounds.Width),
+                            static_cast<float>(Piece.Bounds.Height));
+                    }
+                }
             }
         }
 
@@ -1200,10 +2215,35 @@ void ALatebrakeRaceHUD::DrawHUD()
         static_cast<double>(RecoveryHintPosition.Y),
         static_cast<double>(Car->GetSpeedKmH()) / 0.036,
         Car->IsAttemptingForwardDrive(), bRecoveryHintEligible});
-    if (bPossiblyStuck)
+    const auto RecoveryNotice=bRecoveryHintEligible
+        ? Mode->GetRecoveryNotice() : latebrake::PlayerRecoveryNotice::None;
+    switch (RecoveryNotice)
     {
-        Line(bTouchHUD ? TEXT("NO MOTION? TAP RECOVER (+5s)")
-                       : TEXT("NO MOTION? PRESS R TO RECOVER (+5s)"), Accent);
+    case latebrake::PlayerRecoveryNotice::Occupied:
+        Line(TEXT("RECOVER BLOCKED: RIVAL AT LANDING | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::TrafficUnavailable:
+        Line(TEXT("RECOVER BLOCKED: TRAFFIC UNKNOWN | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::LandingUnavailable:
+        Line(TEXT("RECOVER BLOCKED: LANDING UNAVAILABLE | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::FeeUnavailable:
+        Line(TEXT("RECOVER BLOCKED: CLOCK UNAVAILABLE | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::PlacementUnverified:
+        Line(TEXT("RECOVER FAILED: PLACEMENT UNVERIFIED | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::VerifiedAndCharged:
+        Line(TEXT("RECOVER VERIFIED | +5s INCLUDED IN TIME"), Primary);
+        break;
+    default:
+        if (bPossiblyStuck)
+        {
+            Line(bTouchHUD ? TEXT("NO MOTION? TAP RECOVER (+5s)")
+                           : TEXT("NO MOTION? PRESS R TO RECOVER (+5s)"), Accent);
+        }
+        break;
     }
     // A genuinely guarded race-start sequence. Countdowns take a bounded
     // priority row only when track, physical player and grid are ready.
@@ -1392,6 +2432,15 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 Line(FString::Printf(TEXT("PIT SERVICED %d | EXIT BAY TO REARM"),
                     Pit.StopCount()), Accent);
+                const auto Summary=Car->GetPitJournal().Review(Pit.StopCount());
+                if (Summary.Valid)
+                {
+                    const auto Receipt=Car->GetPitJournal().GetRecent(0);
+                    Line(FString::Printf(
+                        TEXT("RESTORED: DAMAGE %.0f pp | WEAR %.0f pp | BOOST %.0f pp"),
+                        Receipt.DamageRestored*100.0, Receipt.WearRemoved*100.0,
+                        Receipt.ChargeRestored*100.0), Primary);
+                }
             }
             else
             {
@@ -1662,6 +2711,26 @@ void ALatebrakeRaceHUD::DrawHUD()
                 ToRoad.DistanceMeters, ReturnDirection), Accent);
         }
     }
+    // The source steward observes projected decorative wheel overlap.
+    // Time penalties are already included in the authoritative clock.
+    const auto TrackReport=Mode->GetTrackLimits().Snapshot();
+    if (bWayfindingEligible)
+    {
+        const auto Notice=Mode->GetTrackLimits().Notice(Race.GetElapsedSeconds());
+        if (Notice.Event==latebrake::TrackLimitsEvent::PenaltyApplied)
+            Line(TEXT("TRACK LIMITS | +5s INCLUDED IN TIME"), Accent);
+        else if (Notice.Event==latebrake::TrackLimitsEvent::PenaltyRefused)
+            Line(TEXT("TRACK LIMIT CHARGE REFUSED | NO FEE"), Accent);
+        else if (Notice.Event==latebrake::TrackLimitsEvent::ViolationRecorded)
+            Line(FString::Printf(TEXT("TRACK LIMITS | VIOLATION %d"),
+                TrackReport.Violations), Accent);
+        else if (TrackReport.Warning && !TrackReport.PendingCleanRejoin)
+            Line(TEXT("TRACK LIMIT WARNING | RETURN TO PAVEMENT"), Accent);
+        if (!bCompact && TrackReport.Violations>0)
+            Line(FString::Printf(TEXT("TRACK LIMITS %d | CHARGES %d"),
+                TrackReport.Violations,TrackReport.Penalties), Primary);
+    }
+
     // Guidance is projected from the actual next authoritative gate;
     // the direct-line range is NOT a track distance or a scoring shortcut.
     const latebrake::CircuitRouteAdvice RouteAdvice =
@@ -1766,13 +2835,33 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
         // Estimate based only on actual completed timed laps. Never
         // display a fabricated finish pace before the first valid lap.
-        const latebrake::LiveRacePaceProjection Pace =
-            latebrake::ProjectLiveRacePace(Race);
-        if (Pace.Valid)
+        const auto GatePace = latebrake::ProjectGateAwareRacePace(Race);
+        if (GatePace.Status == latebrake::GatePaceStatus::Estimated)
         {
-            Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
-                Pace.ReferenceLapSeconds, Pace.SampledLaps,
-                Pace.ProjectedFinishSeconds), Accent);
+            Line(FString::Printf(
+                TEXT("REF LAP %d | GATE %d | EST. FINISH %.1fs"),
+                GatePace.ReferenceLapNumber, GatePace.NextGateIndex+1,
+                GatePace.EstimatedFinishSeconds), Accent);
+        }
+        else if (GatePace.Status == latebrake::GatePaceStatus::CurrentSectorOverdue)
+        {
+            Line(FString::Printf(
+                TEXT("GATE %d PAST REF PACE | FINISH EST. UNAVAILABLE"),
+                GatePace.NextGateIndex+1), Accent);
+        }
+        else if (!Race.GetMeasuredLapSplits().BestReference().Complete)
+        {
+            // Older timed-lap fallback is only allowed before a complete
+            // measured reference exists. An invalid current gate prefix
+            // must not be hidden by reverting to the lap-average estimate.
+            const latebrake::LiveRacePaceProjection Pace =
+                latebrake::ProjectLiveRacePace(Race);
+            if (Pace.Valid)
+            {
+                Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
+                    Pace.ReferenceLapSeconds, Pace.SampledLaps,
+                    Pace.ProjectedFinishSeconds), Accent);
+            }
         }
         // Exact gate clock delta to one completed reference lap.
         // It remains a discrete gate observation, not live positional gap.
@@ -2113,12 +3202,65 @@ void ALatebrakeRaceHUD::DrawHUD()
         const double DisplaySpeed = Mode->UsesMilesPerHour()
             ? Instruments.SpeedKmH * 0.621371
             : Instruments.SpeedKmH;
-        DrawText(FString::Printf(
-                Mode->UsesMilesPerHour()
-                    ? TEXT("%.0f mph") : TEXT("%.0f km/h"),
-                DisplaySpeed),
-            Ink, Gx + 16.f * S, Gy + 30.f * S,
+        const FString SpeedReadout = FString::Printf(
+            Mode->UsesMilesPerHour()
+                ? TEXT("%.0f mph") : TEXT("%.0f km/h"), DisplaySpeed);
+        DrawText(SpeedReadout, Ink, Gx + 16.f * S, Gy + 30.f * S,
             GEngine->GetMediumFont(), 1.10f * S);
+
+        // Native automatic gear *observation* shares the existing
+        // right-hand gauge's speed row. Measure the actual proportional
+        // fonts at their rendered scales so even a small desktop panel
+        // keeps speed and shifting data in separate horizontal lanes.
+        // Estimated RPM comes from the speed-based arcade transmission,
+        // not a physical engine sensor or a gameplay controller.
+        const latebrake::AutomaticTransmissionState DriveGear =
+            Car->GetTransmissionReadout();
+        if (DriveGear.Valid && DriveGear.Gear >= -1 &&
+            DriveGear.Gear <= latebrake::AutomaticTransmission::ForwardGearCount &&
+            DriveGear.Gear != 0 && DriveGear.EstimatedRpm >= 900 &&
+            DriveGear.EstimatedRpm <= 7200 &&
+            GEngine->GetMediumFont() && GEngine->GetSmallFont())
+        {
+            const FString GearShort = DriveGear.Gear < 0
+                ? FString(TEXT("R"))
+                : FString::Printf(TEXT("G%d"), DriveGear.Gear);
+            const FString GearFull = DriveGear.Shifting
+                ? GearShort + TEXT(" SHIFT")
+                : FString::Printf(TEXT("%s  %d RPM EST"),
+                    *GearShort, DriveGear.EstimatedRpm);
+            const float GearFontScale = 0.83f * S;
+            float SpeedWidth = 0.f;
+            float SpeedHeight = 0.f;
+            float ShortWidth = 0.f;
+            float ShortHeight = 0.f;
+            float FullWidth = 0.f;
+            float FullHeight = 0.f;
+            GetTextSize(SpeedReadout, SpeedWidth, SpeedHeight,
+                GEngine->GetMediumFont(), 1.10f * S);
+            GetTextSize(GearShort, ShortWidth, ShortHeight,
+                GEngine->GetSmallFont(), GearFontScale);
+            GetTextSize(GearFull, FullWidth, FullHeight,
+                GEngine->GetSmallFont(), GearFontScale);
+            const auto Badge = latebrake::CalculateHudInstrumentDriveBadge(
+                Instruments.Panel, Instruments.Scale,
+                static_cast<double>(SpeedWidth),
+                static_cast<double>(ShortWidth),
+                static_cast<double>(ShortHeight),
+                static_cast<double>(FullWidth),
+                static_cast<double>(FullHeight));
+            if (Badge.Visible)
+            {
+                DrawRect(FLinearColor(0.08f, 0.16f, 0.22f, 0.96f),
+                    static_cast<float>(Badge.X) - 5.f * S,
+                    Gy + 29.f * S,
+                    static_cast<float>(Badge.Width) + 10.f * S, 27.f * S);
+                DrawText(Badge.ShowExtended ? GearFull : GearShort,
+                    DriveGear.Shifting ? Gold : Mint,
+                    static_cast<float>(Badge.X), Gy + 33.f * S,
+                    GEngine->GetSmallFont(), GearFontScale);
+            }
+        }
 
         // Labeled percentage bars remain usable without color distinction.
         // Heat is an arcade estimate; chassis condition is derived solely
@@ -2203,7 +3345,62 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Gx + 16.f * S, Gy + 64.f * S,
                 GEngine->GetSmallFont(), 0.83f * S);
         }
-        DrawMeter(TEXT("NITRO"), Instruments.NitroFraction, 99.f, Mint);
+        // The charge bar alone does not tell a driver WHY boost is
+        // unavailable. Classify an actual ArcadeNitroBoost snapshot:
+        // no independent input state, cooldown clock or gameplay authority.
+        // Do not claim "READY" from charge alone: throttle, held key and
+        // service/handbrake gates still belong to the car's real Step().
+        const bool bNitroDrivingEligible =
+            Mode->IsCircuitReadyForGameplay() &&
+            Mode->IsRestartPlacementReady() &&
+            Mode->HasLocalPlayerDriver() &&
+            Mode->IsRaceStartGreen() &&
+            Car->IsRacePhysicsReady() &&
+            !Mode->IsFocusLossGuardActive() &&
+            !Mode->IsManualRacePauseActive() &&
+            !UGameplayStatics::IsGamePaused(this);
+        const latebrake::NitroHudReadout NitroState =
+            latebrake::ReadNitroHud(Car->GetNitroBoost(),
+                static_cast<double>(Car->GetForwardSpeedKmH()),
+                bNitroDrivingEligible);
+        FString NitroMeterName(TEXT("NITRO DATA N/A"));
+        FLinearColor NitroMeterColor = Track;
+        if (NitroState.Valid)
+        {
+            switch (NitroState.Phase)
+            {
+            case latebrake::NitroHudPhase::Active:
+                NitroMeterName = TEXT("NITRO ACTIVE");
+                NitroMeterColor = Gold;
+                break;
+            case latebrake::NitroHudPhase::Cooldown:
+                NitroMeterName = FString::Printf(TEXT("NITRO COOL %.1fs"),
+                    NitroState.CooldownSeconds);
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::Overheated:
+                NitroMeterName = TEXT("NITRO HOT");
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::Empty:
+                NitroMeterName = TEXT("NITRO EMPTY");
+                NitroMeterColor = Coral;
+                break;
+            case latebrake::NitroHudPhase::BuildSpeed:
+                NitroMeterName = TEXT("NITRO BUILD SPEED");
+                NitroMeterColor = Mint;
+                break;
+            case latebrake::NitroHudPhase::Stored:
+                NitroMeterName = TEXT("NITRO STORED");
+                NitroMeterColor = Mint;
+                break;
+            default:
+                NitroMeterName = TEXT("NITRO LOCKED");
+                break;
+            }
+        }
+        DrawMeter(*NitroMeterName, Instruments.NitroFraction, 99.f,
+            NitroMeterColor);
         DrawMeter(TEXT("ENGINE HEAT (ARCADE)"),
             Instruments.EngineHeatFraction, 133.f, Coral);
         DrawMeter(TEXT("CHASSIS CONDITION"),

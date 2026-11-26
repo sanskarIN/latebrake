@@ -1,4 +1,5 @@
 #include "AI/RivalTrafficAwareness.h"
+#include "AI/RivalNearMerge.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -148,6 +149,90 @@ int main()
     const auto noCatch = YieldRivalToPlayer(cruise, matchedAdjacent);
     Require(!noCatch.Brake && noCatch.Throttle == cruise.Throttle,
             "lateral merging with no longitudinal closing is not a rear-catch");
+
+    // A lateral merger at near-matching longitudinal speed is not a
+    // rear-catch, but can occupy the same forward footprint shortly.
+    auto sideMerge=Traffic(150.0,350.0,1700.0,1700.0);
+    sideMerge.PlayerWorldVelocityY=-600.0;
+    const auto sideBrake=YieldRivalToPlayer(cruise,sideMerge);
+    Require(sideBrake.Brake && sideBrake.Throttle==0.0 &&
+        sideBrake.Steering==cruise.Steering,
+        "near adjacent inward merge brakes without longitudinal catch");
+    auto sideRetreat=sideMerge;
+    sideRetreat.PlayerWorldVelocityY=600.0;
+    Require(!YieldRivalToPlayer(cruise,sideRetreat).Brake,
+        "adjacent outward movement retains normal game AI");
+    auto parallel=sideMerge;
+    parallel.PlayerWorldVelocityY=0.0;
+    Require(!YieldRivalToPlayer(cruise,parallel).Brake,
+        "parallel lanes do not create an overlap");
+    auto rear=sideMerge;rear.PlayerX=-100.0;
+    Require(!YieldRivalToPlayer(cruise,rear).Brake,
+        "rearward merge is not forward courtesy braking");
+    auto tooFar=sideMerge;tooFar.PlayerX=900.0;
+    Require(!YieldRivalToPlayer(cruise,tooFar).Brake,
+        "matched speed distant crossing is not near footprint");
+    auto slowEntry=sideMerge;slowEntry.PlayerWorldVelocityY=-100.0;
+    Require(!YieldRivalToPlayer(cruise,slowEntry).Brake,
+        "no intersection within the bounded horizon");
+    auto northbound=sideMerge;
+    northbound.RivalHeadingRadians=1.57079632679489661923;
+    northbound.RivalWorldVelocityX=0.0;
+    northbound.RivalWorldVelocityY=1700.0;
+    northbound.PlayerX=-350.0;northbound.PlayerY=150.0;
+    northbound.PlayerWorldVelocityX=600.0;northbound.PlayerWorldVelocityY=1700.0;
+    Require(YieldRivalToPlayer(cruise,northbound).Brake,
+        "rotated world coordinates preserve near merge decision");
+
+    const auto direct=EvaluateRivalNearMerge({150.0,350.0,0.0,-600.0,1700.0});
+    Require(direct.Valid && direct.Brake &&
+        std::abs(direct.FirstOverlapSeconds-175.0/600.0)<1e-9 &&
+        direct.LastOverlapSeconds==0.4,
+        "actual common interval exposes first and last overlap");
+    const auto noSimultaneous=EvaluateRivalNearMerge({150.0,350.0,1000.0,-600.0,1700.0});
+    Require(noSimultaneous.Valid && !noSimultaneous.Brake,
+        "separate longitudinal and lateral overlaps must coincide in time");
+    const auto lateLongitudinal=EvaluateRivalNearMerge({400.0,350.0,-400.0,-600.0,1700.0});
+    Require(lateLongitudinal.Valid && lateLongitudinal.Brake &&
+        std::abs(lateLongitudinal.FirstOverlapSeconds-0.3)<1e-9,
+        "intersection respects later longitudinal entry");
+    Require(!EvaluateRivalNearMerge({150.0,350.0,0.0,
+        -std::numeric_limits<double>::denorm_min(),1700.0}).Brake,
+        "subnormal motion cannot overflow into an invented merge");
+    Require(!EvaluateRivalNearMerge({150.0,350.0,0.0,
+        std::numeric_limits<double>::infinity(),1700.0}).Valid,
+        "nonfinite relative motion rejected");
+    for(int forward=0;forward<=500;forward+=25)
+    {
+        for(int side=225;side<=500;side+=25)
+        {
+            for(int inward=100;inward<=1200;inward+=100)
+            {
+                const auto a=EvaluateRivalNearMerge({
+                    static_cast<double>(forward),static_cast<double>(side),
+                    -200.0,-static_cast<double>(inward),1700.0});
+                const auto b=EvaluateRivalNearMerge({
+                    static_cast<double>(forward),-static_cast<double>(side),
+                    -200.0,static_cast<double>(inward),1700.0});
+                Require(a.Valid && b.Valid && a.Brake==b.Brake &&
+                    a.FirstOverlapSeconds==b.FirstOverlapSeconds &&
+                    a.LastOverlapSeconds==b.LastOverlapSeconds,
+                    "left/right mirrored merge must have identical interval");
+                if(a.Brake)
+                {
+                    Require(a.FirstOverlapSeconds>=0.0 &&
+                        a.LastOverlapSeconds<=0.4 &&
+                        a.LastOverlapSeconds>=a.FirstOverlapSeconds,
+                        "every admitted overlap stays within prediction horizon");
+                    const double at=(a.FirstOverlapSeconds+a.LastOverlapSeconds)*0.5;
+                    Require(forward-200.0*at>=-1e-8 &&
+                        forward-200.0*at<=280.0+1e-8 &&
+                        std::abs(side-inward*at)<=175.0+1e-8,
+                        "independent midpoint confirms simultaneous slab occupancy");
+                }
+            }
+        }
+    }
 
     const auto mildClose = YieldRivalToPlayer(
         cruise, Traffic(350, 0, 1600.0, 1400.0));

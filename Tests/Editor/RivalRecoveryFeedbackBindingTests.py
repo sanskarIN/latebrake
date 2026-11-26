@@ -43,7 +43,7 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
         recovery = tick.split("if (Observation.NeedsRecovery)", 1)[1].split(
             "if (Observation.Completed)", 1
         )[0]
-        self.assertIn("const bool bRecovered = TryRecoverTo(", recovery)
+        self.assertIn("const bool bRecovered = Selection.Safe() && TryRecoverTo(", recovery)
         self.assertIn("Route.ReportRecoveryResult(bRecovered)", recovery)
         self.assertIn("SetAutonomousControls(0.f, 0.f, !bRecovered);", recovery)
         self.assertNotIn("RecoverTo(FVector(", recovery)
@@ -52,6 +52,32 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
         self.assertLess(recovery.index("Route.ReportRecoveryResult("),
                         recovery.index("Super::Tick(DeltaSeconds);"))
         self.assertIn("if (!bReported || !bRecovered)", recovery)
+
+    def test_recovery_requires_current_human_and_bounded_clearance(self):
+        recovery = self.rival_tick().split("if (Observation.NeedsRecovery)", 1)[1]
+        recovery = recovery.split("if (Observation.Completed)", 1)[0]
+        markers = (
+            "UGameplayStatics::GetPlayerPawn(this, 0)",
+            "RecoveryPlayer->IsLocallyControlled()",
+            "RecoveryPlayer->IsRacePhysicsReady()",
+            "RecoveryPlayer->GetUniqueID()",
+            "SelectSingleRivalRecovery(RecoveryIndex,Human)",
+            "Selection.Safe() && TryRecoverTo(",
+            "Route.ReportRecoveryResult(bRecovered)",
+        )
+        positions = [recovery.index(marker) for marker in markers]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("HumanVelocity.X,HumanVelocity.Y", recovery)
+        self.assertIn("RecoveryPlayer != this", recovery)
+        self.assertNotIn("latebrake::RivalRecovery(RecoveryIndex)", recovery)
+        policy = (ROOT / "Source/Latebrake/Public/AI/SingleRivalRecoverySelection.h").read_text(
+            encoding="utf-8")
+        for marker in ("IsQualifiedSingleRivalHuman(human)",
+                       "EvaluateRivalRecoveryClearance(pose,observed,1)",
+                       "RecoveryClearanceReason::TrafficCollision",
+                       "SingleRivalRecoveryStatus::AllCandidatesBlocked"):
+            self.assertIn(marker, policy)
+        self.assertNotIn("TryRecoverTo(", policy)
 
     def test_base_pawn_uses_production_post_move_verifier(self):
         self.assertIn("bool TryRecoverTo(", self.pawn_h)
@@ -109,10 +135,10 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
     def test_mutation_rejects_void_teleport_and_false_success(self):
         tick = self.rival_tick()
         no_check = tick.replace(
-            "const bool bRecovered = TryRecoverTo(",
+            "const bool bRecovered = Selection.Safe() && TryRecoverTo(",
             "RecoverTo(",
         )
-        self.assertNotIn("const bool bRecovered = TryRecoverTo(", no_check)
+        self.assertNotIn("const bool bRecovered = Selection.Safe() && TryRecoverTo(", no_check)
         no_feedback = tick.replace(
             "Route.ReportRecoveryResult(bRecovered)",
             "true /* dropped outcome */",

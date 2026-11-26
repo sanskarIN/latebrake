@@ -32,12 +32,16 @@ class UnrealVehiclePaintBindingTests(unittest.TestCase):
         begin = self.pawn.split(
             "void ALatebrakeCarPawn::BeginPlay()", 1)[1].split(
             "void ALatebrakeCarPawn::", 1)[0]
-        self.assertIn("ApplyVehiclePaintRecipe(GarageVehicleId);", begin)
+        self.assertIn("const int32 DisplayVehicleId = GetPresentedGarageVehicleId();", begin)
+        self.assertIn("ApplyVehiclePaintRecipe(DisplayVehicleId);", begin)
         tune = self.pawn.split("void ALatebrakeCarPawn::SetGarageTuning(", 1)[1].split(
             "void ALatebrakeCarPawn::ClearDriverInputs()", 1)[0]
         self.assertIn("if (SafeId != GarageVehicleId)", tune)
         self.assertIn("ApplyVehicleVisualRecipe(SafeId);", tune)
-        self.assertIn("HasActorBegunPlay()) ApplyVehiclePaintRecipe(SafeId)", tune)
+        self.assertIn("HasActorBegunPlay()", tune)
+        self.assertIn("if (!bGarageShowroomPreviewActive)", tune)
+        self.assertIn("if (Transition.RefreshMaterials)", tune)
+        self.assertIn("ApplyVehiclePaintRecipe(SafeId);", tune)
         self.assertIn("void ApplyVehiclePaintRecipe(int32 VehicleId);", self.header)
 
     def test_paint_materials_reuse_original_mesh_parent(self):
@@ -45,7 +49,9 @@ class UnrealVehiclePaintBindingTests(unittest.TestCase):
             "void ALatebrakeCarPawn::ApplyVehiclePaintRecipe(int32 VehicleId)", 1
         )[1].split("void ALatebrakeCarPawn::SetGarageTuning(", 1)[0]
         for expected in (
-            "latebrake::PaintForVehicle(VehicleId)",
+            "latebrake::PaintForGarageLook(VehicleId, Look)",
+            "GetPresentedGarageLook()",
+            "latebrake::FactoryGarageLook(VehicleId)",
             "Cast<UMaterialInstanceDynamic>(Part->GetMaterial(0))",
             "Part->CreateDynamicMaterialInstance(0)",
             'TEXT("Color")',

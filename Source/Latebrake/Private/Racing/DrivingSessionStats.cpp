@@ -16,6 +16,7 @@ void DrivingSessionStats::Reset() noexcept
     BrakeApplications = 0;
     AcceptedSamples = 0;
     PreviousBraking = false;
+    SpeedDistribution.Reset();
 }
 
 void DrivingSessionStats::Suspend() noexcept
@@ -43,6 +44,7 @@ bool DrivingSessionStats::Observe(DrivingSample sample) noexcept
     }
 
     const double speed = sample.PlanarSpeedCmPerSecond;
+    SpeedDistribution.Observe(sample.DeltaSeconds,speed,sample.Braking);
     DistanceCm = std::min(
         MaxDistanceCm, DistanceCm + speed * sample.DeltaSeconds);
     ActiveSeconds = std::min(

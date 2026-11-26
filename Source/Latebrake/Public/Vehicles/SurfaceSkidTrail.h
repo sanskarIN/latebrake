@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Vehicles/SkidTrailGeometry.h"
+#include "Vehicles/ArcadeSkidRoadGeometry.h"
 
 #include <algorithm>
 #include <array>
@@ -9,6 +10,12 @@
 
 namespace latebrake
 {
+enum class SkidContactEvidence
+{
+    MeasuredWheelLoad,
+    ArcadeGroundProbe
+};
+
 struct SurfaceSkidContact final
 {
     bool Supported = false;
@@ -21,6 +28,11 @@ struct SurfaceSkidContact final
     double NormalLoadNewtons = 0.0;
     bool ModeledSlipAvailable = false;
     double ModeledBrakingSlip = 0.0;
+    // Backward-compatible load-qualified research path above; the real
+    // arcade pawn uses this separate probe-only evidence and no fake load.
+    SkidContactEvidence Evidence=SkidContactEvidence::MeasuredWheelLoad;
+    int ArcadeRoadBlock=-1;
+    double ProbeDistanceCm=0.0;
 };
 
 struct SurfaceSkidFrame final
@@ -29,6 +41,7 @@ struct SurfaceSkidFrame final
     std::uint64_t TeleportRevision = 0;
     bool DrivingAllowed = false;
     std::array<SurfaceSkidContact, 4> Contacts{};
+    std::uint64_t SessionRevision=0;
 };
 
 struct SkidStripBatch final
@@ -61,10 +74,12 @@ public:
             BreakContinuity();
             return {};
         }
-        if (!HasRevision || Revision != frame.TeleportRevision)
+        if (!HasRevision || Revision != frame.TeleportRevision ||
+            SessionRevision!=frame.SessionRevision)
         {
             Anchors = {};
             Revision = frame.TeleportRevision;
+            SessionRevision=frame.SessionRevision;
             HasRevision = true;
         }
         SkidStripBatch out;
@@ -84,9 +99,10 @@ public:
                 anchor = {};
                 continue;
             }
-            if (!anchor.Valid || anchor.SurfaceKey != contact.SurfaceKey)
+            if (!anchor.Valid || anchor.SurfaceKey != contact.SurfaceKey ||
+                anchor.Evidence!=contact.Evidence || anchor.ArcadeRoadBlock!=contact.ArcadeRoadBlock)
             {
-                anchor = {true, contact.SurfaceKey, contact.Position, contact.Normal, 0.0};
+                anchor = MakeAnchor(contact);
                 continue;
             }
             anchor.Seconds += frame.DeltaSeconds;
@@ -95,7 +111,7 @@ public:
             if (!std::isfinite(distance) || distance > MaximumJumpCm || anchor.Seconds > 0.20 ||
                 SkidDot(anchor.Normal, contact.Normal) < 0.98)
             {
-                anchor = {true, contact.SurfaceKey, contact.Position, contact.Normal, 0.0};
+                anchor = MakeAnchor(contact);
                 continue;
             }
             if (distance < MinimumSpacingCm) continue;
@@ -105,7 +121,7 @@ public:
             {
                 // Resampling must not dilute a step-height discontinuity
                 // into several apparently small, floating pieces.
-                anchor = {true, contact.SurfaceKey, contact.Position, contact.Normal, 0.0};
+                anchor = MakeAnchor(contact);
                 continue;
             }
             const unsigned pieces = static_cast<unsigned>(std::ceil(distance / MaximumPieceCm));
@@ -128,12 +144,14 @@ public:
                 lastNormal = lastNormal * (1.0 / SkidLength(lastNormal));
                 proposed[piece] = MakeSkidStrip(anchor.Position + displacement * a,
                     anchor.Position + displacement * b, firstNormal, lastNormal, intensity);
-                good = good && proposed[piece].Valid;
+                good = good && proposed[piece].Valid &&
+                    (contact.Evidence!=SkidContactEvidence::ArcadeGroundProbe ||
+                     IsArcadeSkidStripInsideRoad(contact.ArcadeRoadBlock,proposed[piece]));
             }
             if (good)
                 for (unsigned piece = 0; piece < pieces; ++piece)
                     out.Strips[out.Count++] = proposed[piece];
-            anchor = {true, contact.SurfaceKey, contact.Position, contact.Normal, 0.0};
+            anchor = MakeAnchor(contact);
         }
         return out;
     }
@@ -158,7 +176,33 @@ private:
         SkidVector Position{};
         SkidVector Normal{};
         double Seconds = 0.0;
+        SkidContactEvidence Evidence=SkidContactEvidence::MeasuredWheelLoad;
+        int ArcadeRoadBlock=-1;
     };
+
+    static Anchor MakeAnchor(const SurfaceSkidContact& c) noexcept
+    {
+        return {true,c.SurfaceKey,c.Position,c.Normal,0.0,c.Evidence,c.ArcadeRoadBlock};
+    }
+
+    static bool ValidEvidence(const SurfaceSkidContact& c) noexcept
+    {
+        switch(c.Evidence)
+        {
+        case SkidContactEvidence::MeasuredWheelLoad:
+            return std::isfinite(c.NormalLoadNewtons) && c.NormalLoadNewtons>=30.0 &&
+                c.NormalLoadNewtons<=1000000.0 &&
+                (!c.ModeledSlipAvailable || (std::isfinite(c.ModeledBrakingSlip) &&
+                    std::abs(c.ModeledBrakingSlip)<=4.0));
+        case SkidContactEvidence::ArcadeGroundProbe:
+            return c.NormalLoadNewtons==0.0 && !c.ModeledSlipAvailable &&
+                c.ModeledBrakingSlip==0.0 &&
+                std::isfinite(c.ProbeDistanceCm) && c.ProbeDistanceCm>=0.0 &&
+                c.ProbeDistanceCm<=ChassisContactMaximumSupportedHeightCm &&
+                IsArcadeSkidRoadPoint(c.ArcadeRoadBlock,c.Position,c.Normal);
+        default: return false;
+        }
+    }
 
     static bool CanStamp(const SurfaceSkidContact& c) noexcept
     {
@@ -167,14 +211,12 @@ private:
             std::isfinite(c.ForwardCmPerSecond) && std::abs(c.ForwardCmPerSecond) <= 15000.0 &&
             std::isfinite(c.LateralCmPerSecond) && std::abs(c.LateralCmPerSecond) <= 15000.0 &&
             std::hypot(c.ForwardCmPerSecond, c.LateralCmPerSecond) >= 450.0 &&
-            std::isfinite(c.NormalLoadNewtons) && c.NormalLoadNewtons >= 30.0 &&
-            c.NormalLoadNewtons <= 1000000.0 &&
-            (!c.ModeledSlipAvailable || (std::isfinite(c.ModeledBrakingSlip) &&
-                std::abs(c.ModeledBrakingSlip) <= 4.0));
+            ValidEvidence(c);
     }
 
     std::array<Anchor, 4> Anchors{};
     std::uint64_t Revision = 0;
+    std::uint64_t SessionRevision=0;
     bool HasRevision = false;
 };
 } // namespace latebrake

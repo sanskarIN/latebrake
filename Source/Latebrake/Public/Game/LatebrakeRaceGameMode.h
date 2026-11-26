@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
+#include "Racing/PlayerRecoveryClearance.h"
+#include "Track/TrackLimitsSession.h"
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
 #include "Racing/RivalFinishObservation.h"
@@ -19,7 +21,12 @@
 #include "Racing/ManualRacePauseGuard.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
+#include "Garage/GarageAppearance.h"
+#include "Garage/GarageDirectAppearance.h"
+#include "Garage/GarageGalleryCursor.h"
+#include "Garage/GarageEquipUiPolicy.h"
 #include "Garage/GaragePurchaseConfirmation.h"
+#include "Garage/GaragePurchasePanel.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
 #include "UI/MenuNavigation.h"
@@ -27,11 +34,14 @@
 
 class AController;
 class APlayerStart;
+class ADirectionalLight;
+class ASkyLight;
 class AStaticMeshActor;
 class ALatebrakeCarPawn;
 class ALatebrakeRivalCar;
 class UPointLightComponent;
 class UStaticMeshComponent;
+class UPrimitiveComponent;
 class UStaticMesh;
 
 UCLASS()
@@ -73,6 +83,8 @@ public:
     void MenuNext();
     void MenuPrevious();
     void MenuActivate();
+    void ToggleCircuitLightingPreview();
+    bool IsDuskLightingPreview() const noexcept { return bDuskLightingPreview; }
     bool IsMenuOpen() const { return Menu.IsOpen(); }
     latebrake::MenuPage GetMenuPage() const { return Menu.Current(); }
     FString GetMenuPageTitle() const { return FString(UTF8_TO_TCHAR(Menu.Title())); }
@@ -88,6 +100,8 @@ public:
     float GetEventBestSeconds() const;
     float GetAttemptPreviousBestSeconds() const { return AttemptPreviousBestSeconds; }
     bool HasRival() const;
+    bool TryGetSkidRoadSurface(const UPrimitiveComponent* HitComponent,
+        int32& OutBlockIndex) const;
     bool TryGetRivalRadarPosition(FVector& OutPosition) const;
     // Reject interposed track collision in the real world before handing
     // a rival state to the optional player-only drafting policy. Observer
@@ -118,8 +132,17 @@ public:
         latebrake::RivalMatchedGateSplit& OutSplit) const;
 
     void RecoverPlayer(ALatebrakeCarPawn* Car);
+    latebrake::PlayerRecoveryNotice GetRecoveryNotice() const noexcept
+    {
+        return RecoveryNotice.At(Race.GetElapsedSeconds());
+    }
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
+    const latebrake::TrackLimitsSession& GetTrackLimits() const { return TrackLimits; }
+    latebrake::TrackLimitsReview GetTrackLimitsReview() const noexcept
+    {
+        return TrackLimits.Review(Race,RecoveriesThisRace);
+    }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
@@ -145,6 +168,26 @@ public:
     // Read-only copy for the offline catalogue. No ownership or save mutation.
     latebrake::GarageSnapshot GetGarageSnapshot() const { return Garage.Snapshot(); }
     int32 GetSelectedVehicleId() const { return Garage.SelectedVehicle(); }
+    int32 GetGaragePreviewVehicleId() const { return GarageGallery.Viewed(); }
+    // Read-only style for the SHOWROOM car (may be locked), never the
+    // authoritative equipped-car physics or ownership selection.
+    latebrake::GarageLook GetGaragePreviewLook() const noexcept
+    {
+        return GarageLooks.Get(GarageGallery.Viewed());
+    }
+    bool CanBrowseGarage() const;
+    latebrake::GarageEquipUiState GetGarageEquipUiState() const;
+    bool CanEquipGarageViewed() const;
+    void GarageBrowseNext();
+    void GarageBrowsePrevious();
+    void GarageBrowseVehicle(int32 VehicleId);
+    void GarageSelectViewedVehicle();
+    latebrake::GarageLook GetSelectedGarageLook() const noexcept
+    {
+        return GarageLooks.Get(Garage.SelectedVehicle());
+    }
+    bool CanCustomizeGarage() const;
+    bool BeginGarageAppearancePreview();
     FString GetSelectedVehicleName() const;
     int32 GetEngineUpgradeLevel() const { return Garage.EngineLevel(); }
     int32 GetGripUpgradeLevel() const { return Garage.GripLevel(); }
@@ -152,7 +195,9 @@ public:
     FString GetGarageFeedback() const { return GarageFeedback; }
     // Read-only live countdown or expiration feedback for the paused Garage UI.
     FString GetGaragePurchaseDisplayFeedback() const;
+    latebrake::GaragePurchasePanelView GetGaragePurchasePanel() const;
     bool HasProgressSaveError() const { return bProgressSaveFailed; }
+    bool IsProfileReadOnly() const { return bFutureSaveSchema; }
     int32 GetNextEngineUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine); }
     int32 GetNextGripUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip); }
     void GarageNextVehicle();
@@ -161,6 +206,11 @@ public:
     void GarageUnlockNext();
     void GarageUpgradeEngine();
     void GarageUpgradeGrip();
+    void GarageCyclePaint();
+    void GarageCycleStripe();
+    void GarageCycleWheels();
+    void GarageResetAppearance();
+    void GarageChooseAppearance(latebrake::GarageDirectAppearanceRequest Request);
     int32 GetLastRaceCredits() const { return LastRaceCredits; }
 
     static FVector GetStartPosition();
@@ -179,10 +229,18 @@ private:
     void RefreshRival();
     void ApplyGarageToPlayer();
     void CommitGarageVehicleSelection(int32 VehicleId);
+    bool RejectGarageMutationIfBlocked();
+    latebrake::GarageEquipUiState GetGarageMutationUiState() const;
+    void SyncGarageShowroomPreview();
+    void DismissGaragePalette();
+    void GarageCycleAppearance(latebrake::GarageLookLayer layer,
+                              bool bReset = false,
+                              const latebrake::GarageDirectAppearanceRequest* Direct = nullptr);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();
     void SyncDesktopMenuPointerMode();
+    void ApplyCircuitLightingPreview();
 #if !UE_BUILD_SHIPPING
     // Event-only, no per-frame telemetry, no effect on scoring or saves.
     void StartRaceAuditAttempt(int32 GridAtBegin);
@@ -193,6 +251,8 @@ private:
     latebrake::CareerProgress Career;
     latebrake::MenuNavigation Menu;
     bool bMilesPerHour = false;
+    // Rendering-only session toggle. Never written to ULatebrakePlayerSave.
+    bool bDuskLightingPreview = false;
     latebrake::CareerAward LastCareerAward;
     bool bCareerRace = false;
     bool bFutureSaveSchema = false;
@@ -207,6 +267,10 @@ private:
     int32 CareerStartedVehicleId = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
+    latebrake::TrackLimitsSession TrackLimits;
+    TWeakObjectPtr<ALatebrakeCarPawn> StewardTrackedPawn;
+    uint64 StewardTeleportRevision=0;
+    uint64 StewardCheckpointSessionRevision=0;
     // Explicit per-attempt start gate: no paid race clock or chassis force
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;
@@ -240,6 +304,8 @@ private:
     float AttemptPreviousBestSeconds = 0.f;
     int32 CompletedRaceCount = 0;
     latebrake::GarageState Garage;
+    latebrake::GarageAppearanceState GarageLooks;
+    latebrake::GarageGalleryCursor GarageGallery;
     latebrake::GaragePurchaseConfirmation GaragePurchaseConfirm;
     latebrake::GarageTuningKey LastAppliedTuning;
     TWeakObjectPtr<ALatebrakeCarPawn> LastTunedPawn;
@@ -247,6 +313,17 @@ private:
     FString GarageFeedback = TEXT("E select | Q/U/I twice to confirm spending");
     int32 LastRaceCredits = 0;
     int32 RecoveriesThisRace = 0;
+    latebrake::PlayerRecoveryNoticeState RecoveryNotice;
+
+    // Exact live original-asphalt components, indexed by collision plan.
+    TArray<TWeakObjectPtr<UStaticMeshComponent>> SkidRoadComponents;
+
+    // The two existing source-spawned track lights are retained for
+    // Settings preview; no additional light actors on each toggle.
+    UPROPERTY(Transient)
+    TObjectPtr<ADirectionalLight> RuntimeSun;
+    UPROPERTY(Transient)
+    TObjectPtr<ASkyLight> RuntimeSky;
 
     UPROPERTY(Transient)
     TObjectPtr<APlayerStart> RuntimePlayerStart;
