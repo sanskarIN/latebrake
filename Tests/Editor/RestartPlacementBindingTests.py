@@ -93,7 +93,9 @@ class RestartPlacementBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::LoadRecords("
         )
         self.assertIn("HasLocalPlayerDriver()", recovery)
-        self.assertNotIn("Car->IsRacePhysicsReady()", recovery)
+        self.assertNotRegex(recovery, r"(?<![A-Za-z0-9_])Car->IsRacePhysicsReady\(\)")
+        self.assertIn("const bool bDriverReady=HasLocalPlayerDriver();", recovery)
+        self.assertIn("Race,RecoveriesThisRace,bCircuitReady,bInactive,bDriverReady,Clearance,", recovery)
 
     def test_pawn_neutralizes_motor_before_force_if_grid_unverified(self):
         tick = section(

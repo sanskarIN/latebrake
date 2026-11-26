@@ -44,7 +44,9 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
         # Physical chassis readiness alone does not prove the player
         # reached the start grid after a failed race RESTART.
         self.assertIn("HasLocalPlayerDriver()", recovery)
-        self.assertNotIn("Car->IsRacePhysicsReady()", recovery)
+        self.assertNotRegex(recovery, r"(?<![A-Za-z0-9_])Car->IsRacePhysicsReady\(\)")
+        self.assertIn("const bool bDriverReady=HasLocalPlayerDriver();", recovery)
+        self.assertIn("Race,RecoveriesThisRace,bCircuitReady,bInactive,bDriverReady,Clearance,", recovery)
         self.assertLess(recovery.index("HasLocalPlayerDriver()"),
                         recovery.index("Car->TryRecoverTo(Target, Facing)"))
         self.assertNotIn("Car->RecoverTo(", recovery)
