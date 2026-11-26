@@ -104,3 +104,14 @@ qualification, recovery sequences and result consistency. Keep the sealed
 Win64 run receipt and original log with the candidate archive. The parser
 does not authenticate text, prove physics, qualify rendered pixels,
 establish competitive race order or authorize a release.
+
+## Engine-frame authority
+The experimental GameMode binds its actual human, registered AI actors
+and checkpoint actors as tick dependents. A valid roster observation is
+usable only in the exact current engine frame, attempt, observation and
+session epoch. Repeated/backward engine frames revoke the permission
+without consuming a second clock tick. Restart, finish and world teardown
+clear capabilities; leaving the experimental mode removes its tick
+prerequisites. Default, career and solo races do not install these edges.
+Real engine scheduling, PIE and packaged-game pause/resume still need
+native acceptance testing.

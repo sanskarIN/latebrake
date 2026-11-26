@@ -15,6 +15,7 @@
 #include "AI/FleetRaceReview.h"
 #include "AI/FleetGridPresentation.h"
 #include "AI/FleetStartupWatchdog.h"
+#include "AI/FleetFrameAuthority.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -44,6 +45,7 @@ class ASkyLight;
 class AStaticMeshActor;
 class ALatebrakeCarPawn;
 class ALatebrakeRivalCar;
+class ALatebrakeCheckpoint;
 class UPointLightComponent;
 class UStaticMeshComponent;
 class UPrimitiveComponent;
@@ -58,6 +60,7 @@ public:
     ALatebrakeRaceGameMode();
 
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     virtual void Tick(float DeltaSeconds) override;
     virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
@@ -251,6 +254,9 @@ private:
     void RefreshRival();
     void BeginExperimentalFleetAttempt();
     void DestroyExtraFleet();
+    void RegisterFleetTickDependent(AActor* Actor);
+    void ClearFleetTickPrerequisites();
+    bool HasCurrentFleetFrameAuthority() const noexcept;
     void SpawnExtraFleet();
     bool ObserveExperimentalFleet(float DeltaSeconds,bool Inactive);
     bool CollectFleetFrame(latebrake::FleetPhysicalFrame& Out,
@@ -364,6 +370,9 @@ private:
     TArray<TObjectPtr<ALatebrakeRivalCar>> ExtraFleet;
     latebrake::ExperimentalFleetAttempt FleetAttempt;
     latebrake::FleetStartupWatchdog FleetStartup;
+    latebrake::FleetFrameAuthority FleetFrameAuthority;
+    TArray<TWeakObjectPtr<ALatebrakeCheckpoint>> FleetCheckpointActors;
+    TArray<TWeakObjectPtr<AActor>> FleetTickDependents;
     latebrake::GridRivalLedger FleetReviewLedger;
     latebrake::FleetRaceReview FleetFinishReview;
     std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};

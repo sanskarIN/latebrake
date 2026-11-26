@@ -1,5 +1,7 @@
 #include "Game/LatebrakeRaceGameMode.h"
 #include "AI/LatebrakeRivalCar.h"
+#include "Racing/LatebrakeCheckpoint.h"
+#include "CoreGlobals.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Track/CircuitStartGrid.h"
 #include "Vehicles/ArcadeSkidRoadGeometry.h"
@@ -36,12 +38,14 @@ void ALatebrakeRaceGameMode::DestroyExtraFleet()
 
 void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
 {
+    ClearFleetTickPrerequisites();
     DestroyExtraFleet();
     if (FleetAttemptToken!=std::numeric_limits<uint64>::max())
         ++FleetAttemptToken;
     FleetFrameToken=0;
     FleetObservedEpoch=0;
     FleetStartup.Begin(FleetAttemptToken);
+    FleetFrameAuthority.Begin(FleetAttemptToken);
     FleetBoundActors={};
     bFleetActorsBound=false;
     FleetReviewLedger.Reset();
@@ -50,6 +54,13 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
         RivalCar->SetGarageTuning(1.f,1.f,1.f,0,latebrake::FactoryGarageLook(0));
     const bool Began=FleetAttempt.Begin({IsExperimentalFleetRequested(),
         SelectedEvent==latebrake::EventKind::Circuit,bCareerRace,FleetAttemptToken});
+    if (Began && IsExperimentalFleetRequested())
+    {
+        RegisterFleetTickDependent(UGameplayStatics::GetPlayerPawn(this,0));
+        RegisterFleetTickDependent(RivalCar.Get());
+        for (const auto& Gate:FleetCheckpointActors)
+            RegisterFleetTickDependent(Gate.Get());
+    }
 #if !UE_BUILD_SHIPPING
     if (Began && IsExperimentalFleetRequested())
         UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=begin attempt=%llu gates=%d laps=%d"),
@@ -217,8 +228,14 @@ bool ALatebrakeRaceGameMode::CollectFleetFrame(latebrake::FleetPhysicalFrame& Ou
 bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool Inactive)
 {
     if (!IsExperimentalFleetRequested()) return true;
-    if (Race.IsFinished()) return false;
-    if (FleetFrameToken==std::numeric_limits<uint64>::max()) return false;
+    if (Race.IsFinished() || FleetFrameToken==std::numeric_limits<uint64>::max())
+    {
+        FleetFrameAuthority.Revoke();
+        return false;
+    }
+    const latebrake::FleetFrameStamp Stamp{FleetAttemptToken,FleetFrameToken+1u,
+        static_cast<std::uint64_t>(GFrameCounter),CheckpointSession.Current()};
+    if (!FleetFrameAuthority.BeginFrame(Stamp)) return false;
     ++FleetFrameToken;
     const auto Previous=FleetAttempt.Readout().Phase;
     if (!Inactive && !StartLights.IsGreen()) SpawnExtraFleet();
@@ -249,6 +266,8 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
         for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
             FleetBoundActors[static_cast<std::size_t>(Slot)]=FleetRivalAt(Slot);
         bFleetActorsBound=true;
+        for (const auto& Actor:FleetBoundActors)
+            RegisterFleetTickDependent(Actor.Get());
         const bool LedgerBound=latebrake::BindFleetReviewLedger(FleetReviewLedger,
             FleetAttempt.BoundIdentity(),Race.GetCheckpointCount(),Race.GetRequiredLaps());
 #if !UE_BUILD_SHIPPING
@@ -297,13 +316,14 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
             static_cast<int32>(Final.Fault),Final.FaultSlot);
 #endif
     }
-    return Accepted && (StartLights.IsGreen()?Final.RunningAllowed:CountdownAllowed);
+    const bool Allowed=Accepted && (StartLights.IsGreen()?Final.RunningAllowed:CountdownAllowed);
+    return FleetFrameAuthority.Commit(Stamp,Allowed && Stamp.SessionEpoch==CheckpointSession.Current());
 }
 
 bool ALatebrakeRaceGameMode::IsExperimentalFleetDriveReady() const
 {
     if (!IsExperimentalFleetRequested()) return true;
-    if (!FleetAttempt.Readout().RunningAllowed || !bFleetActorsBound ||
+    if (!HasCurrentFleetFrameAuthority() || !FleetAttempt.Readout().RunningAllowed || !bFleetActorsBound ||
         FleetObservedEpoch!=CheckpointSession.Current() ||
         !GetWorld() || Menu.IsOpen() || UGameplayStatics::IsGamePaused(this) ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended()) return false;
@@ -463,8 +483,36 @@ bool ALatebrakeRaceGameMode::IsFleetStartPresentationReady() const
 {
     if (!IsExperimentalFleetRequested()) return true;
     if (StartLights.IsGreen()) return IsExperimentalFleetDriveReady();
-    return FleetStartup.IsCurrentPermission(FleetAttemptToken,FleetFrameToken,
+    return HasCurrentFleetFrameAuthority() &&
+        FleetStartup.IsCurrentPermission(FleetAttemptToken,FleetFrameToken,
         CheckpointSession.Current()) && FleetAttempt.Readout().CountdownAllowed &&
         !Menu.IsOpen() && !UGameplayStatics::IsGamePaused(this) &&
         !AppFocusGuard.IsSuspended() && !ManualPause.IsSuspended();
+}
+
+bool ALatebrakeRaceGameMode::HasCurrentFleetFrameAuthority() const noexcept
+{
+    return FleetFrameAuthority.IsCurrent({FleetAttemptToken,FleetFrameToken,
+        static_cast<std::uint64_t>(GFrameCounter),CheckpointSession.Current()});
+}
+
+void ALatebrakeRaceGameMode::RegisterFleetTickDependent(AActor* Actor)
+{
+    if (!IsExperimentalFleetRequested() || !IsValid(Actor) ||
+        Actor==this || Actor->GetWorld()!=GetWorld()) return;
+    for (const auto& Existing:FleetTickDependents)
+        if (Existing.Get()==Actor) return;
+    // GameMode observes the roster and advances the one shared active
+    // clock before the pawn, rival or checkpoint samples its frame.
+    // No reverse dependency is created; this is not a second timer.
+    Actor->AddTickPrerequisiteActor(this);
+    FleetTickDependents.Add(Actor);
+}
+
+void ALatebrakeRaceGameMode::ClearFleetTickPrerequisites()
+{
+    for (const auto& WeakActor:FleetTickDependents)
+        if (AActor* Actor=WeakActor.Get())
+            Actor->RemoveTickPrerequisiteActor(this);
+    FleetTickDependents.Reset();
 }

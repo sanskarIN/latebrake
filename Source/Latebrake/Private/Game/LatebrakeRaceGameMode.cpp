@@ -171,6 +171,14 @@ void ALatebrakeRaceGameMode::StartRaceAuditAttempt(int32 GridAtBegin)
 }
 #endif
 
+void ALatebrakeRaceGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    FleetFrameAuthority.Revoke();
+    ClearFleetTickPrerequisites();
+    FleetCheckpointActors.Reset();
+    Super::EndPlay(EndPlayReason);
+}
+
 void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
@@ -993,6 +1001,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
     bCircuitReady = false;
+    FleetCheckpointActors.Reset();
     SkidRoadComponents.Reset();
     SkidRoadComponents.SetNum(latebrake::CircuitCollisionBlockCount);
     // Spawning an Actor does not prove rendering or collision on installed
@@ -1315,6 +1324,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         if (Checkpoint)
         {
             Checkpoint->SetCheckpointIndex(Index);
+            FleetCheckpointActors.Add(Checkpoint);
             ++SpawnedCheckpoints;
         }
     }
@@ -1448,6 +1458,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         FleetFinishReview=FinishTiming==latebrake::FinishTimingEligibility::Eligible
             ? CollectFleetRaceReview() : latebrake::FleetRaceReview{};
         FleetAttempt.Finish(FleetAttemptToken);
+        FleetFrameAuthority.Revoke();
         LastRaceCredits=0;
         LastCareerAward={};
         LastRivalFinishObservation={};
