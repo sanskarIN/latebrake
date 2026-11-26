@@ -31,7 +31,10 @@ class HudInstrumentClusterBindingTests(unittest.TestCase):
             "Car->GetCollisionDamage().DamageFraction()",
             "Instruments.Panel.X - HorizontalBounds.Left",
             "Value.Len(), SafeTextWidth,",
-            'DrawMeter(TEXT("NITRO")',
+            'DrawMeter(*NitroMeterName, Instruments.NitroFraction,',
+            'latebrake::ReadNitroHud(Car->GetNitroBoost(),',
+            'NitroHudPhase::Cooldown',
+            'NitroHudPhase::Stored',
             'DrawMeter(TEXT("ENGINE HEAT (ARCADE)")',
             'DrawMeter(TEXT("CHASSIS CONDITION")',
         ):

@@ -13,17 +13,17 @@ ROOT = Path(__file__).resolve().parents[2]
 def extract_latest_release_versions(documents: dict[str, str]) -> dict[str, str]:
     """Read independently maintained *latest published* labels, not history."""
     patterns = {
-        "README.md": r"Latest published:\s*\[v(\d+\.\d+\.\d+)\]",
-        "docs/STATUS.md": r"Latest published milestone:(?:\*\*)?\s*\[v(\d+\.\d+\.\d+)",
+        "README.md": r"Latest published:\s*\[v(\d+\.\d+\.\d+(?:-test\.\d+)?)\]",
+        "docs/STATUS.md": r"Latest published milestone:(?:\*\*)?\s*\[v(\d+\.\d+\.\d+(?:-test\.\d+)?)",
         "docs/development-status.md": (
-            r"Latest published GitHub pre-release\s*\|\s*\[v(\d+\.\d+\.\d+)"
+            r"Latest published GitHub pre-release\s*\|\s*\[v(\d+\.\d+\.\d+(?:-test\.\d+)?)"
         ),
         "docs/release-history.md": (
-            r"latest published GitHub tag is \*\*v(\d+\.\d+\.\d+)\*\*"
+            r"latest published GitHub tag is \*\*v(\d+\.\d+\.\d+(?:-test\.\d+)?)\*\*"
         ),
         "docs/index.md": (
             r"latest GitHub source tag is <a href=\"[^\"]+/releases/tag/"
-            r"v(\d+\.\d+\.\d+)\">"
+            r"v(\d+\.\d+\.\d+(?:-test\.\d+)?)\">"
         ),
     }
     versions = {}
@@ -64,7 +64,7 @@ class ReleaseStatusConsistencyTests(unittest.TestCase):
 
     def test_every_public_latest_source_release_label_matches(self):
         version = require_consistent_release_status(self.documents)
-        self.assertRegex(version, r"^0\.\d+\.\d+$")
+        self.assertRegex(version, r"^0\.\d+\.\d+(?:-test\.\d+)?$")
         notes = ROOT / "docs" / "releases" / f"v{version}.md"
         self.assertTrue(notes.is_file(), f"missing notes for published v{version}")
         live_gate = ROOT / ".github" / "workflows" / "verify-public-source-status.yml"
@@ -88,11 +88,21 @@ class ReleaseStatusConsistencyTests(unittest.TestCase):
     def test_stale_status_is_rejected(self):
         mismatch = dict(self.documents)
         version = require_consistent_release_status(mismatch)
-        stale_version = version.rsplit(".", 1)[0] + ".999"
+        stale_version = "0.5.999" if version != "0.5.999" else "0.5.998"
         mismatch["docs/index.md"] = mismatch["docs/index.md"].replace(
             f"/releases/tag/v{version}", f"/releases/tag/v{stale_version}", 1
         )
         with self.assertRaises(ValueError):
+            require_consistent_release_status(mismatch)
+
+    def test_suffix_is_part_of_exact_published_identity(self):
+        mismatch = dict(self.documents)
+        version = require_consistent_release_status(mismatch)
+        wrong = "0.5.100-test.1" if version != "0.5.100-test.1" else "0.5.100-test.2"
+        mismatch["README.md"] = mismatch["README.md"].replace(
+            f"Latest published: [v{version}]", f"Latest published: [v{wrong}]", 1
+        )
+        with self.assertRaisesRegex(ValueError, "latest published source tag differs"):
             require_consistent_release_status(mismatch)
 
     def test_missing_site_status_is_rejected(self):

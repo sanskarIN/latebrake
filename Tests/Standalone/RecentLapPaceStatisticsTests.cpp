@@ -1,4 +1,5 @@
 #include "Racing/RecentLapPaceStatistics.h"
+#include "Racing/CleanLapPaceReview.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -25,6 +26,74 @@ void Lap(latebrake::RaceProgress& race, double seconds)
     Check(race.PassCheckpoint(0), "first gate");
     race.Advance(seconds * 0.75);
     Check(race.PassCheckpoint(1), "second gate");
+}
+void PaidLap(latebrake::RaceProgress& race, double driving, double fee)
+{
+    race.Advance(driving * 0.25);
+    Check(race.AddTimePenalty(fee), "real charged fee");
+    Check(race.PassCheckpoint(0), "paid first gate");
+    race.Advance(driving * 0.75);
+    Check(race.PassCheckpoint(1), "paid second gate");
+}
+void CleanPaceCases()
+{
+    using namespace latebrake;
+    RaceProgress race(2, 6);
+    Lap(race, 10.0);
+    Check(!BuildCleanLapPaceReview(race).Valid, "no premature clean results");
+    PaidLap(race, 1.0, 1.0);
+    Lap(race, 8.0);
+    Lap(race, 12.0);
+    PaidLap(race, 7.0, 2.0);
+    Lap(race, 8.0);
+    const auto r = BuildCleanLapPaceReview(race);
+    Check(r.Valid && r.CoversEntireRace && r.CleanLaps == 4 &&
+        r.PenalizedLaps == 2 && r.RetainedLaps == 6 &&
+        r.FastestLap == 6 && r.SlowestLap == 4 &&
+        r.NewestCleanLap == 6 && r.HasVariation &&
+        Near(r.MeanSeconds, 9.5) && Near(r.MedianSeconds, 9.0) &&
+        Near(r.MedianAbsoluteDeviationSeconds, 1.0) &&
+        Near(r.NewestVsMedianSeconds, -1.0),
+        "robust distribution excludes actual charged laps and retains tie identity");
+    Check(r.HasAdjacentComparison && r.AdjacentNewerLap == 4 &&
+        r.AdjacentOlderLap == 3 && Near(r.AdjacentDeltaSeconds, 4.0),
+        "most recent physically adjacent clean pair never bridges paid laps");
+    Check(Near(race.GetBestLapSeconds(), 2.0),
+        "advisory fastest fee-free time does not replace official best");
+
+    RaceProgress alternating(2, 3);
+    Lap(alternating, 8.0); PaidLap(alternating, 3.0, 2.0); Lap(alternating, 6.0);
+    Check(BuildCleanLapPaceReview(alternating).Valid &&
+        !BuildCleanLapPaceReview(alternating).HasAdjacentComparison,
+        "separated clean laps are not an adjacent trend");
+
+    RaceProgress onlyOne(2, 2);
+    PaidLap(onlyOne, 4.0, 1.0); Lap(onlyOne, 9.0);
+    const auto one = BuildCleanLapPaceReview(onlyOne);
+    Check(one.Valid && one.CleanLaps == 1 && !one.HasVariation &&
+        !one.HasAdjacentComparison && Near(one.MedianSeconds, 9.0),
+        "single clean lap has no variability or adjacent comparison");
+
+    RaceProgress none(2, 2);
+    PaidLap(none, 4.0, 1.0); PaidLap(none, 5.0, 1.0);
+    Check(!BuildCleanLapPaceReview(none).Valid, "all paid laps have no clean report");
+
+    RaceProgress wrapped(2, 10);
+    Lap(wrapped, 1.0); Lap(wrapped, 2.0);
+    for (int i=3; i<=10; ++i) Lap(wrapped, static_cast<double>(i));
+    const auto w = BuildCleanLapPaceReview(wrapped);
+    Check(w.Valid && !w.CoversEntireRace && w.RetainedLaps == 8 &&
+        w.FastestLap == 3 && Near(w.MedianSeconds, 6.5),
+        "evicted clean laps are never reconstructed");
+    wrapped.Reset();
+    Check(!BuildCleanLapPaceReview(wrapped).Valid, "reset removes results");
+
+    RaceProgress noClock(2, 2);
+    Check(noClock.AddTimePenalty(2.0) && noClock.PassCheckpoint(0) &&
+        noClock.PassCheckpoint(1), "fee-only sequence");
+    Lap(noClock, 6.0);
+    Check(!BuildCleanLapPaceReview(noClock).Valid,
+        "fee-only finish never supplies a polished clean result");
 }
 } // namespace
 
@@ -118,5 +187,6 @@ int main()
               "all 2..8 unsorted/tied real laps preserve statistics");
     }
 
-    std::cout << "Recent lap pace statistics passed.\n";
+    CleanPaceCases();
+    std::cout << "Recent lap pace statistics and clean-lap review passed.\n";
 }
