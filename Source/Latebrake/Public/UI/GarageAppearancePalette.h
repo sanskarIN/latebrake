@@ -137,6 +137,7 @@ inline bool ValidGaragePaletteRect(const DesktopMenuMouseRect& r,
         std::isfinite(r.Width)&&std::isfinite(r.Height)&&
         std::isfinite(r.X+r.Width)&&std::isfinite(r.Y+r.Height)&&
         r.Width>=44.0&&r.Height>=44.0&&
+        r.X+r.Width>r.X&&r.Y+r.Height>r.Y&&
         r.X>=panel.X&&r.Y>=panel.Y&&
         r.X+r.Width<=panel.X+panel.Width&&r.Y+r.Height<=panel.Y+panel.Height;
 }
