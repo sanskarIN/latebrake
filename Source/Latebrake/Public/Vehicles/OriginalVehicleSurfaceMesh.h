@@ -1,6 +1,7 @@
 #pragma once
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
+#include "Vehicles/OriginalVehicleRimRecipe.h"
 #include "Garage/GarageAppearance.h"
 #include <algorithm>
 #include <array>
@@ -12,15 +13,7 @@
 
 namespace latebrake::vehiclemesh
 {
-inline constexpr double OriginalVehiclePi=3.14159265358979323846;
 inline constexpr int OriginalVehicleWheelSides=24;
-inline constexpr int OriginalVehicleRimStyleCount=3;
-static_assert(OriginalVehicleRimStyleCount==latebrake::GarageWheelOptions,
-    "Original car rim meshes must match saved GarageLook wheel options");
-constexpr int OriginalVehicleSpokesForStyle(int style) noexcept
-{
-    return style==0 ? 7 : style==1 ? 5 : style==2 ? 12 : 0;
-}
 inline constexpr std::size_t OriginalVehicleMaxVertices=12000;
 inline constexpr std::size_t OriginalVehicleMaxTriangles=8000;
 enum class OriginalVehicleMaterial : std::uint8_t
@@ -188,6 +181,16 @@ inline bool ValidOriginalVehicleSettings(
         p.NeverChangeCollision &&
         p.OriginalFictionalDesign;
 }
+// Public sample of the exact piecewise-linear top strip authored by
+// BuildMainBody. Cosmetic overlays must not guess a flat roof height.
+struct OriginalVehicleRoofSample final
+{
+    bool Valid=false;
+    double X=0.0;
+    double HalfWidth=0.0;
+    double Z=0.0;
+};
+
 class OriginalVehicleSurfaceComposer final
 {
 public:
@@ -317,6 +320,29 @@ public:
             mesh.Bounds.Maximum.Y>mesh.Bounds.Minimum.Y &&
             mesh.Bounds.Maximum.Z>mesh.Bounds.Minimum.Z;
     }
+    OriginalVehicleRoofSample SampleRoof(int vehicleId,double x) const noexcept
+    {
+        if(!ValidOriginalVehicleSettings(Settings)||
+            !latebrake::GarageState::IsVehicle(vehicleId)||!std::isfinite(x))
+            return {};
+        const double half=Settings.LengthCm*0.5;
+        if(x < -half || x > half)return {};
+        const auto visual=latebrake::VisualRecipeForVehicle(vehicleId);
+        const double count=static_cast<double>(Settings.LongitudinalSegments);
+        const double t=(x+half)/Settings.LengthCm*count;
+        const int left=std::clamp(static_cast<int>(std::floor(t)),0,
+            Settings.LongitudinalSegments-1);
+        const double start=-half+Settings.LengthCm*static_cast<double>(left)/count;
+        const double end=-half+Settings.LengthCm*static_cast<double>(left+1)/count;
+        const auto a=Station(start,visual);
+        const auto b=Station(end,visual);
+        const double u=std::clamp((x-start)/(end-start),0.0,1.0);
+        const double width=a.RoofHalfWidth+(b.RoofHalfWidth-a.RoofHalfWidth)*u;
+        const double z=a.RoofZ+(b.RoofZ-a.RoofZ)*u;
+        if(!std::isfinite(width)||!std::isfinite(z)||width<=0.0)return {};
+        return {true,x,width,z};
+    }
+
 private:
     struct MeshWriter final
     {
@@ -605,13 +631,11 @@ private:
         }
         // 0: factory seven spokes; 1: broad sport five spokes;
         // 2: narrow aero twelve spokes. Tires/contact stay identical.
-        const int spokeCount=OriginalVehicleSpokesForStyle(rimStyle);
-        const double width=rimStyle==1 ? 0.17 :
-            rimStyle==2 ? 0.065 : 0.09;
-        const double innerFraction=rimStyle==1 ? 0.12 :
-            rimStyle==2 ? 0.22 : 0.16;
-        const double outerFraction=rimStyle==1 ? 0.94 :
-            rimStyle==2 ? 0.97 : 0.91;
+        const auto recipe=OriginalRimRecipeForStyle(rimStyle);
+        const int spokeCount=recipe.Spokes;
+        const double width=recipe.HalfAngle;
+        const double innerFraction=recipe.InnerFraction;
+        const double outerFraction=recipe.OuterFraction;
         for(int spoke=0;spoke<spokeCount;++spoke)
         {
             const double angle=2.0*OriginalVehiclePi*

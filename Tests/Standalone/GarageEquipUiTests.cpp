@@ -42,6 +42,40 @@ void BoundaryAndAuthority()
     }
 }
 
+void MutationAdmissionMatrix()
+{
+    using namespace latebrake;
+    // Independent oracle for all page, menu, suspension, schema and
+    // career combinations, including invalid externally supplied pages.
+    for (int page = -1; page <= static_cast<int>(MenuPageNames.size()); ++page)
+        for (unsigned flags = 0; flags < 16u; ++flags)
+        {
+            const bool open = (flags & 1u) != 0u;
+            const bool suspended = (flags & 2u) != 0u;
+            const bool future = (flags & 4u) != 0u;
+            const bool career = (flags & 8u) != 0u;
+            const auto expected = !open || page != static_cast<int>(MenuPage::Garage)
+                ? GarageEquipUiState::NotInGarage
+                : suspended ? GarageEquipUiState::Suspended
+                : future ? GarageEquipUiState::ReadOnly
+                : !career ? GarageEquipUiState::CareerLocked
+                : GarageEquipUiState::Ready;
+            const auto state = EvaluateGarageMutationUi(open,
+                static_cast<MenuPage>(page), suspended, future, career);
+            Check(state == expected, "shared mutation denial reason matches oracle");
+            const auto equip = EvaluateGarageEquipUi(open,
+                static_cast<MenuPage>(page), suspended, future, career,
+                true, 2, 0);
+            Check(equip == state, "eligible viewed car cannot bypass mutation gate");
+            const auto locked = EvaluateGarageEquipUi(open,
+                static_cast<MenuPage>(page), suspended, future, career,
+                false, 2, 0);
+            Check(locked == (state == GarageEquipUiState::Ready
+                ? GarageEquipUiState::LockedVehicle : state),
+                "ownership never overrides context admission");
+        }
+}
+
 void ButtonRenderAndClickAgreement()
 {
     using namespace latebrake;
@@ -122,6 +156,7 @@ void DeterministicStress()
 int main()
 {
     BoundaryAndAuthority();
+    MutationAdmissionMatrix();
     ButtonRenderAndClickAgreement();
     DeterministicStress();
     std::cout<<"Unreal garage equip button authority + captions passed.\n";

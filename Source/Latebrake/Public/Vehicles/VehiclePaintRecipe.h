@@ -69,4 +69,21 @@ inline constexpr VehiclePaintRecipe PaintForGarageLook(
     default: return PaintForVehicle(vehicleId);
     }
 }
+// All native and fallback material renderers use the same finish colors.
+// These are original tint recipes, not calibrated physical PBR materials.
+inline constexpr VehiclePaintRgb RimTintForGarageLook(GarageLook look) noexcept
+{
+    switch (look.Wheels)
+    {
+    case 1: return {0.87,0.89,0.92};
+    case 2: return {0.10,0.82,0.91};
+    default: return {0.30,0.33,0.38};
+    }
+}
+
+inline constexpr VehiclePaintRgb StripeTintForGarageLook(GarageLook look) noexcept
+{
+    return look.Paint == 7u ? VehiclePaintRgb{0.10,0.18,0.28}
+                           : VehiclePaintRgb{0.97,0.95,0.84};
+}
 } // namespace latebrake

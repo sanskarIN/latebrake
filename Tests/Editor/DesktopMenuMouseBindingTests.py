@@ -116,13 +116,15 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
         # the exact same visible-page/pager availability policy.
         # Click, wheel and rendering must all consult the same pager.
         self.assertEqual(self.hud.count(
-            "latebrake::AvailableDesktopMenuDetails("), 3)
+            "latebrake::AvailableDesktopMenuDetails("), 1)
+        self.assertEqual(self.hud.count(
+            "latebrake::AvailableDesktopMenuActions("), 2)
         self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
         self.assertIn("Mode->GetMenuPage(), MenuPager);", self.hud)
         self.assertIn(
             "return latebrake::HitTestDesktopMenuMouse(buttons, x, y,",
             self.hud)
-        self.assertIn("MouseMenu, CursorX, CursorY, MenuAvailability)",
+        self.assertIn("HitTestMenuMouse(CursorX, CursorY)",
                       self.hud)
         self.assertIn("Button.Action, MenuAvailability", self.hud)
         self.assertIn("const bool Hover = Enabled &&", self.hud)

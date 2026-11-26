@@ -44,7 +44,12 @@ class HudTextBoundsBindingTests(unittest.TestCase):
 
     def test_real_menu_race_and_status_are_all_measured(self):
         for marker in (
-            "const FString Fitted = FitHudText(\n                Value, GEngine->GetSmallFont(), UIScale);",
+            "latebrake::WrapHudDetailText(",
+            "Value.Len(), SafeTextWidth,",
+            "GetTextSize(Value.Mid(Begin, Count), MeasuredWidth,",
+            "MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);",
+            "const FString Notice = FitHudText(Message, Font, UIScale);",
+            "const FString Fitted = FitHudText(\n                    Text, GEngine->GetSmallFont(), UIScale);",
             "const FString Fitted = FitHudText(Content, Font, TextScale);",
             "const FString SaveMessage = FitHudText(",
             "const FString PauseMessage = FitHudText(",
