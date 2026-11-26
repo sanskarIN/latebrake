@@ -2185,10 +2185,35 @@ void ALatebrakeRaceHUD::DrawHUD()
         static_cast<double>(RecoveryHintPosition.Y),
         static_cast<double>(Car->GetSpeedKmH()) / 0.036,
         Car->IsAttemptingForwardDrive(), bRecoveryHintEligible});
-    if (bPossiblyStuck)
+    const auto RecoveryNotice=bRecoveryHintEligible
+        ? Mode->GetRecoveryNotice() : latebrake::PlayerRecoveryNotice::None;
+    switch (RecoveryNotice)
     {
-        Line(bTouchHUD ? TEXT("NO MOTION? TAP RECOVER (+5s)")
-                       : TEXT("NO MOTION? PRESS R TO RECOVER (+5s)"), Accent);
+    case latebrake::PlayerRecoveryNotice::Occupied:
+        Line(TEXT("RECOVER BLOCKED: RIVAL AT LANDING | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::TrafficUnavailable:
+        Line(TEXT("RECOVER BLOCKED: TRAFFIC UNKNOWN | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::LandingUnavailable:
+        Line(TEXT("RECOVER BLOCKED: LANDING UNAVAILABLE | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::FeeUnavailable:
+        Line(TEXT("RECOVER BLOCKED: CLOCK UNAVAILABLE | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::PlacementUnverified:
+        Line(TEXT("RECOVER FAILED: PLACEMENT UNVERIFIED | NO FEE"), Accent);
+        break;
+    case latebrake::PlayerRecoveryNotice::VerifiedAndCharged:
+        Line(TEXT("RECOVER VERIFIED | +5s INCLUDED IN TIME"), Primary);
+        break;
+    default:
+        if (bPossiblyStuck)
+        {
+            Line(bTouchHUD ? TEXT("NO MOTION? TAP RECOVER (+5s)")
+                           : TEXT("NO MOTION? PRESS R TO RECOVER (+5s)"), Accent);
+        }
+        break;
     }
     // A genuinely guarded race-start sequence. Countdowns take a bounded
     // priority row only when track, physical player and grid are ready.

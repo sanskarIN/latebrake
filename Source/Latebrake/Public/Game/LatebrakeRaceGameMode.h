@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
+#include "Racing/PlayerRecoveryClearance.h"
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
 #include "Racing/RivalFinishObservation.h"
@@ -127,6 +128,10 @@ public:
         latebrake::RivalMatchedGateSplit& OutSplit) const;
 
     void RecoverPlayer(ALatebrakeCarPawn* Car);
+    latebrake::PlayerRecoveryNotice GetRecoveryNotice() const noexcept
+    {
+        return RecoveryNotice.At(Race.GetElapsedSeconds());
+    }
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
@@ -295,6 +300,7 @@ private:
     FString GarageFeedback = TEXT("E select | Q/U/I twice to confirm spending");
     int32 LastRaceCredits = 0;
     int32 RecoveriesThisRace = 0;
+    latebrake::PlayerRecoveryNoticeState RecoveryNotice;
 
     // The two existing source-spawned track lights are retained for
     // Settings preview; no additional light actors on each toggle.

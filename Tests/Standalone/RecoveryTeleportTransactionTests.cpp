@@ -1,4 +1,5 @@
 #include "Racing/RecoveryCharge.h"
+#include "Racing/PlayerRecoveryClearance.h"
 #include "Racing/RecoveryTeleportVerification.h"
 #include "Racing/CheckpointSessionTrace.h"
 
@@ -304,6 +305,94 @@ int main()
             extremeRecoveries == 0,
             "unrepresentable full five-second fee never moves or charges");
 
-    std::cout << "Recovery verified-teleport transaction tests passed (NO Unreal).\n";
+    // Actual recovery clearance must be composed with the staged fee,
+    // not merely shown as optional HUD advice.
+    RecoveryObstacle other{true,PrimaryRivalGridSlot,42,
+        {{10000.0,10000.0},0.0},0.0,0.0};
+    for(int gate=0;gate<CircuitGateCount;++gate)
+    {
+        const auto original=PlayerRecovery(gate);
+        const auto solo=EvaluatePlayerRecoveryClearance(gate,false,false,{});
+        const auto clear=EvaluatePlayerRecoveryClearance(gate,true,true,other);
+        Require(solo.Safe() && clear.Safe() &&
+            solo.Pose.Position.X==original.Position.X &&
+            solo.Pose.Position.Y==original.Position.Y &&
+            clear.Pose.HeadingDegrees==original.HeadingDegrees,
+            "solo and clear rival race preserve exact historical landing");
+        Require(!EvaluatePlayerRecoveryClearance(gate,true,false,{}).Safe() &&
+            !EvaluatePlayerRecoveryClearance(gate,false,true,other).Safe(),
+            "scene mismatch is unknown traffic, not empty road");
+        auto blocker=other;blocker.Pose=original;
+        const auto occupied=EvaluatePlayerRecoveryClearance(gate,true,true,blocker);
+        Require(occupied.Status==PlayerRecoveryClearanceStatus::Occupied,
+            "actual rival footprint denies landing");
+
+        RaceProgress attempt(4,2);
+        attempt.Advance(12.0);
+        int charges=0,calls=0;
+        const auto callback=[&](CircuitPose pose) {
+            ++calls;
+            return pose.Position.X==original.Position.X &&
+                pose.Position.Y==original.Position.Y;
+        };
+        Require(TryPaidRecoveryWithClearance(attempt,charges,true,false,true,
+            occupied,callback)==PlayerRecoveryNotice::Occupied &&
+            calls==0 && charges==0 && attempt.GetElapsedSeconds()==12.0,
+            "blocked landing cannot move or charge");
+        Require(TryPaidRecoveryWithClearance(attempt,charges,true,true,true,
+            clear,callback)==PlayerRecoveryNotice::None && calls==0,
+            "paused recovery cannot create a notice or engine request");
+        Require(TryPaidRecoveryWithClearance(attempt,charges,true,false,true,
+            clear,[](CircuitPose){return false;})==PlayerRecoveryNotice::PlacementUnverified &&
+            charges==0 && attempt.GetElapsedSeconds()==12.0,
+            "failed physical placement refunds entire tentative fee");
+        Require(TryPaidRecoveryWithClearance(attempt,charges,true,false,true,
+            clear,callback)==PlayerRecoveryNotice::VerifiedAndCharged &&
+            calls==1 && charges==1 && attempt.GetElapsedSeconds()==17.0 &&
+            attempt.GetTotalPenaltySeconds()==5.0,
+            "one clear and verified recovery commits exactly one fee");
+        charges=std::numeric_limits<int>::max();
+        Require(TryPaidRecoveryWithClearance(attempt,charges,true,false,true,
+            clear,callback)==PlayerRecoveryNotice::FeeUnavailable && calls==1,
+            "counter exhaustion cannot attempt engine move");
+
+        blocker.Pose.Position.X-=1200.0;blocker.VelocityX=4000.0;
+        Require(EvaluatePlayerRecoveryClearance(gate,true,true,blocker).Status==
+            PlayerRecoveryClearanceStatus::Occupied,
+            "swept approaching rival blocks recovery");
+    }
+    auto invalidOther=other;invalidOther.ActorToken=0;
+    Require(EvaluatePlayerRecoveryClearance(0,true,true,invalidOther).Status==
+        PlayerRecoveryClearanceStatus::UnknownTraffic,"unidentified rival rejected");
+    invalidOther=other;invalidOther.Slot=HumanGridSlot;
+    Require(!EvaluatePlayerRecoveryClearance(0,true,true,invalidOther).Safe(),
+        "human cannot substitute for distinct rival");
+    invalidOther=other;invalidOther.VelocityX=inf;
+    Require(!EvaluatePlayerRecoveryClearance(0,true,true,invalidOther).Safe(),
+        "invalid motion blocks landing");
+    Require(!EvaluatePlayerRecoveryClearance(-1,false,false,{}).Safe(),
+        "invalid gate never falls back to start");
+
+    PlayerRecoveryNoticeState notice;
+    Require(notice.At(0.0)==PlayerRecoveryNotice::None,"no invented feedback");
+    Require(notice.Record(PlayerRecoveryNotice::Occupied,12.0) &&
+        notice.At(12.0)==PlayerRecoveryNotice::Occupied &&
+        notice.At(15.0)==PlayerRecoveryNotice::Occupied &&
+        notice.At(15.001)==PlayerRecoveryNotice::None,
+        "bounded race-clock lifetime without wall-clock timer");
+    Require(notice.At(11.0)==PlayerRecoveryNotice::None,
+        "earlier race clock cannot inherit old notice");
+    Require(notice.Record(PlayerRecoveryNotice::VerifiedAndCharged,20.0) &&
+        notice.At(20.0)==PlayerRecoveryNotice::VerifiedAndCharged,
+        "latest actual request replaces prior notice");
+    Require(!notice.Record(static_cast<PlayerRecoveryNotice>(999),21.0) &&
+        notice.At(21.0)==PlayerRecoveryNotice::None,"unknown status clears notice");
+    Require(!notice.Record(PlayerRecoveryNotice::Occupied,nan),
+        "invalid clock cannot display feedback");
+    notice.Record(PlayerRecoveryNotice::Occupied,0.0);
+    notice.Reset();
+    Require(notice.At(0.0)==PlayerRecoveryNotice::None,"restart clears request feedback");
+
+    std::cout << "Recovery verified-teleport and live clearance transactions passed (NO Unreal).\n";
     return EXIT_SUCCESS;
 }

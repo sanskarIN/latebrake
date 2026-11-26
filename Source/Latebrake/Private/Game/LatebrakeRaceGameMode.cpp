@@ -2836,6 +2836,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
     RecoveriesThisRace = 0;
+    RecoveryNotice.Reset();
     ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
     if (IsValid(Car))
@@ -2881,28 +2882,47 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
         return; // No paid recovery or circuit jumps before GO.
     }
 
-    // An engine teleport can fail even after the race is eligible to
-    // recover. Stage the full penalty and recovery count first, attempt a
-    // verified placement, then commit the cost only if Unreal actually
-    // accepted the move and the resulting chassis pose matches the target.
-    // The pawn invalidates checkpoint sampling before the move attempt.
+    // Keep the same driver/clock authority as checkpoints. No recovery
+    // notice or candidate can authorize movement during a paused race.
     const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
-    const latebrake::CircuitPose Pose =
-        latebrake::PlayerRecovery(Race.GetNextCheckpoint());
-    const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
-    const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
-    if (!latebrake::TryChargePlayerRecoveryAfterVerifiedTeleport(
-            Race, RecoveriesThisRace, bCircuitReady, bInactive,
-            // Match the exact same driver authorization as race clock,
-            // checkpoints and rival readiness. Physical Chaos validity
-            // alone does not prove a failed RESTART reached the grid.
-            HasLocalPlayerDriver(),
-            [Car, Target, Facing]() { return Car->TryRecoverTo(Target, Facing); }))
+    const bool bDriverReady=HasLocalPlayerDriver();
+    if (!latebrake::CanScorePlayerCheckpoint(Race,bCircuitReady,bInactive,bDriverReady))
+        return;
+
+    // Time Attack is explicitly solo. A missing expected rival, an
+    // unexpected actor, or an invalid physical observation is not proof
+    // of empty traffic in the original single-rival circuit.
+    const bool bExpectsRival=latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
+    const bool bObservedRival=IsValid(RivalCar);
+    latebrake::RecoveryObstacle Other{};
+    if (bObservedRival && RivalCar.Get()!=Car && RivalCar->IsRacePhysicsReady())
+    {
+        const FVector Position=RivalCar->GetActorLocation();
+        const FVector Velocity=RivalCar->GetVelocity();
+        Other={true,latebrake::PrimaryRivalGridSlot,
+            static_cast<std::uint64_t>(RivalCar->GetUniqueID())+1u,
+            {{Position.X,Position.Y},RivalCar->GetActorRotation().Yaw},
+            Velocity.X,Velocity.Y};
+    }
+    const auto Clearance=latebrake::EvaluatePlayerRecoveryClearance(
+        Race.GetNextCheckpoint(),bExpectsRival,bObservedRival,Other);
+    // TryPaidRecoveryWithClearance composes the existing staged
+    // TryChargePlayerRecoveryAfterVerifiedTeleport transaction with this
+    // preflight. It never calls the engine when the landing is blocked.
+    const auto Notice=latebrake::TryPaidRecoveryWithClearance(
+        Race,RecoveriesThisRace,bCircuitReady,bInactive,bDriverReady,Clearance,
+        [Car](latebrake::CircuitPose Pose) {
+            const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
+            const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
+            return Car->TryRecoverTo(Target, Facing);
+        });
+    RecoveryNotice.Record(Notice,Race.GetElapsedSeconds());
+    if (Notice!=latebrake::PlayerRecoveryNotice::VerifiedAndCharged)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("Latebrake: recovery rejected; ineligible, penalty unavailable "
-                 "or Unreal did not verify the car's new position/heading; no fee charged"));
+            TEXT("Latebrake: recovery rejected (notice %d); no fee charged"),
+            static_cast<int32>(Notice));
         return;
     }
     // A real paid teleport cannot be mistaken for a grid launch. A rejected
