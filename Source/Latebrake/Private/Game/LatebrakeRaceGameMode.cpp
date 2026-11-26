@@ -127,6 +127,10 @@ void ALatebrakeRaceGameMode::BeginPlay()
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
     Race.Reset();
+    TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision=0;
+    StewardCheckpointSessionRevision=0;
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
@@ -181,7 +185,7 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // A 3D cosmetic reflection of this SAME authoritative light phase.
     // It is not another timer and cannot authorize GO, brakes or gates.
     UpdateStartGantryVisual();
-    latebrake::AdvancePlayerRaceClockIfReady(
+    const bool bActualClockAdvanced=latebrake::AdvancePlayerRaceClockIfReady(
         Race, bCircuitReady, bInactive || !StartLights.IsGreen(),
         bLocalPlayerReady, LiveDelta);
     // Unofficial reference trace observes the SAME guarded player/clock
@@ -190,6 +194,55 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // session revision guard also refuses to stitch resumed frames.
     const ALatebrakeCarPawn* GhostDriver = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
+    // No off-pavement sample survives a replaced driver, recovery,
+    // pause/menu epoch, or actual clock refusal. The same real driver
+    // that supplies ghost observations supplies the projected wheel pose.
+    const bool bStewardDriverValid=IsValid(GhostDriver) &&
+        GhostDriver->IsRacePhysicsReady() && bLocalPlayerReady;
+    const bool bStewardContinuous=bStewardDriverValid &&
+        StewardTrackedPawn.Get()==GhostDriver &&
+        StewardTeleportRevision==GhostDriver->GetTeleportRevision() &&
+        StewardCheckpointSessionRevision==CheckpointSession.Current();
+    if (!bStewardContinuous)
+    {
+        TrackLimits.Suspend();
+        StewardTrackedPawn=bStewardDriverValid
+            ? const_cast<ALatebrakeCarPawn*>(GhostDriver) : nullptr;
+        StewardTeleportRevision=bStewardDriverValid
+            ? GhostDriver->GetTeleportRevision() : 0;
+        StewardCheckpointSessionRevision=CheckpointSession.Current();
+    }
+    if (bStartQualified && StartLights.IsGreen() && bActualClockAdvanced &&
+        bStewardDriverValid && bStewardContinuous)
+    {
+        const FVector P=GhostDriver->GetActorLocation();
+        const auto StewardEvent=TrackLimits.Observe(Race,
+            {static_cast<double>(P.X),static_cast<double>(P.Y)},
+            static_cast<double>(GhostDriver->GetActorRotation().Yaw),
+            static_cast<double>(GhostDriver->GetSpeedKmH()),
+            LiveDelta,bActualClockAdvanced,bStewardContinuous);
+        if (StewardEvent==latebrake::TrackLimitsEvent::PenaltyApplied)
+        {
+            // A fee creates a clock discontinuity in the sampled ghost.
+            SuspendBestLapGhost();
+        }
+#if !UE_BUILD_SHIPPING
+        if (StewardEvent==latebrake::TrackLimitsEvent::ViolationRecorded ||
+            StewardEvent==latebrake::TrackLimitsEvent::PenaltyApplied ||
+            StewardEvent==latebrake::TrackLimitsEvent::PenaltyRefused)
+        {
+            const auto Snapshot=TrackLimits.Snapshot();
+            UE_LOG(LogLatebrakeRaceAudit, Display,
+                TEXT("LATEBRAKE_TRACK_LIMITS event=%d violations=%d charged=%d"),
+                static_cast<int32>(StewardEvent),Snapshot.Violations,Snapshot.Penalties);
+        }
+#endif
+    }
+    else
+    {
+        TrackLimits.Suspend();
+    }
+
     if (bStartQualified && StartLights.IsGreen() && LiveDelta > 0.0 &&
         IsValid(GhostDriver) && GhostDriver->IsRacePhysicsReady())
     {
@@ -1489,6 +1542,7 @@ void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()
 
 void ALatebrakeRaceGameMode::CloseMenuForRace()
 {
+    TrackLimits.Suspend();
     GaragePurchaseConfirm.Reset();
     DismissGaragePalette();
     if (!Menu.IsOpen())
@@ -1515,6 +1569,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
+    TrackLimits.Suspend();
     GaragePurchaseConfirm.Reset();
     DismissGaragePalette();
     SuspendBestLapGhost();
@@ -1541,6 +1596,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
 
 void ALatebrakeRaceGameMode::ToggleRacePause()
 {
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     // Standalone keyboard/gamepad/touch PAUSE does not open the menu.
     // An engine-world pause may fail, so the *player's requested pause*
@@ -1597,6 +1653,7 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
 
 void ALatebrakeRaceGameMode::PauseForAppInterruption()
 {
+    TrackLimits.Suspend();
     DismissGaragePalette(); // No chooser may survive an OS focus interruption.
     // Menu focus loss may not latch race suspension; still cancel spending.
     if (GaragePurchaseConfirm.HasPending())
@@ -2810,6 +2867,10 @@ void ALatebrakeRaceGameMode::RestartRace()
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     ManualPause.OnExplicitResume();
     Race.Reset();
+    TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision=0;
+    StewardCheckpointSessionRevision=0;
     // A saved PB may change at finish; Results needs the previous record.
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     StartLights.Reset();
@@ -2927,6 +2988,7 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     }
     // A real paid teleport cannot be mistaken for a grid launch. A rejected
     // recovery above returns without erasing an otherwise valid sample.
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     LaunchMeter.Invalidate();
 }

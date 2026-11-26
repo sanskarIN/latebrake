@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/PlayerRecoveryClearance.h"
+#include "Track/TrackLimitsSession.h"
 #include "Racing/RivalGateGap.h"
 #include "Racing/RivalMatchedGateSplits.h"
 #include "Racing/RivalFinishObservation.h"
@@ -134,6 +135,11 @@ public:
     }
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
+    const latebrake::TrackLimitsSession& GetTrackLimits() const { return TrackLimits; }
+    latebrake::TrackLimitsReview GetTrackLimitsReview() const noexcept
+    {
+        return TrackLimits.Review(Race,RecoveriesThisRace);
+    }
     bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
@@ -258,6 +264,10 @@ private:
     int32 CareerStartedVehicleId = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
     latebrake::RaceProgress Race{4, 3};
+    latebrake::TrackLimitsSession TrackLimits;
+    TWeakObjectPtr<ALatebrakeCarPawn> StewardTrackedPawn;
+    uint64 StewardTeleportRevision=0;
+    uint64 StewardCheckpointSessionRevision=0;
     // Explicit per-attempt start gate: no paid race clock or chassis force
     // until a genuine local player, map and safe grid are ready.
     latebrake::RaceStartLights StartLights;

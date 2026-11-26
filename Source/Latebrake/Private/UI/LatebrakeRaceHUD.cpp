@@ -1238,6 +1238,36 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Race.GetLastLapPenaltySeconds()));
                 }
             }
+            const auto TrackReview=Mode->GetTrackLimitsReview();
+            if (TrackReview.Valid)
+            {
+                MenuLine(FString::Printf(TEXT("TRACK LIMITS: %d VIOLATIONS | %d CHARGES"),
+                    TrackReview.Violations,TrackReview.Penalties),true);
+                if (TrackReview.Penalties>0 || TrackReview.RecoveryCount>0)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Track fees +%.2fs | recovery fees +%.2fs (included)"),
+                        TrackReview.TrackLimitsSeconds,TrackReview.RecoverySeconds));
+                }
+                if (!bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Warnings %d | rejoins %d | refused charges %d"),
+                        TrackReview.Warnings,TrackReview.CleanRejoins,TrackReview.RefusedCharges));
+                    for (int32 Index=0;Index<TrackReview.RetainedReceipts;++Index)
+                    {
+                        const auto Receipt=Mode->GetTrackLimits().Recent(Index);
+                        if (Receipt.Event!=latebrake::TrackLimitsEvent::ViolationRecorded &&
+                            Receipt.Event!=latebrake::TrackLimitsEvent::PenaltyApplied &&
+                            Receipt.Event!=latebrake::TrackLimitsEvent::PenaltyRefused)
+                            continue;
+                        MenuLine(FString::Printf(
+                            TEXT("Lap %d | next gate %d | clock %.2fs | fee +%.2fs"),
+                            Receipt.Lap,Receipt.NextGate+1,Receipt.RaceSeconds,
+                            Receipt.ActualChargedSeconds));
+                    }
+                }
+            }
             // Review the actual run's latest eight timed laps. Results
             // pagination keeps each row reachable even on small Android
             // viewports, without changing records or reward authority.
@@ -2681,6 +2711,26 @@ void ALatebrakeRaceHUD::DrawHUD()
                 ToRoad.DistanceMeters, ReturnDirection), Accent);
         }
     }
+    // The source steward observes projected decorative wheel overlap.
+    // Time penalties are already included in the authoritative clock.
+    const auto TrackReport=Mode->GetTrackLimits().Snapshot();
+    if (bWayfindingEligible)
+    {
+        const auto Notice=Mode->GetTrackLimits().Notice(Race.GetElapsedSeconds());
+        if (Notice.Event==latebrake::TrackLimitsEvent::PenaltyApplied)
+            Line(TEXT("TRACK LIMITS | +5s INCLUDED IN TIME"), Accent);
+        else if (Notice.Event==latebrake::TrackLimitsEvent::PenaltyRefused)
+            Line(TEXT("TRACK LIMIT CHARGE REFUSED | NO FEE"), Accent);
+        else if (Notice.Event==latebrake::TrackLimitsEvent::ViolationRecorded)
+            Line(FString::Printf(TEXT("TRACK LIMITS | VIOLATION %d"),
+                TrackReport.Violations), Accent);
+        else if (TrackReport.Warning && !TrackReport.PendingCleanRejoin)
+            Line(TEXT("TRACK LIMIT WARNING | RETURN TO PAVEMENT"), Accent);
+        if (!bCompact && TrackReport.Violations>0)
+            Line(FString::Printf(TEXT("TRACK LIMITS %d | CHARGES %d"),
+                TrackReport.Violations,TrackReport.Penalties), Primary);
+    }
+
     // Guidance is projected from the actual next authoritative gate;
     // the direct-line range is NOT a track distance or a scoring shortcut.
     const latebrake::CircuitRouteAdvice RouteAdvice =

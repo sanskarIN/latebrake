@@ -1,4 +1,5 @@
 #include "Track/TrackLimitsSteward.h"
+#include "Track/TrackLimitsSession.h"
 #include "Racing/RaceProgress.h"
 #include "Track/TrackLimitsFootprint.h"
 
@@ -314,8 +315,72 @@ void TestActualRaceProgressClock()
             "both clock and steward reset for the next attempt");
 }
 
+void TestSessionReceiptsAndAttribution()
+{
+    using namespace latebrake;
+    RaceProgress race(4,3);
+    TrackLimitsSession session;
+    Require(!session.Review(race,0).Valid,"no observations no review");
+    const auto frame=[&](CircuitPoint p,bool advancing=true,bool continuous=true,
+        double speed=90.0,double dt=0.1) {
+        if(advancing) race.Advance(dt);
+        return session.Observe(race,p,0.0,speed,dt,advancing,continuous);
+    };
+    for(int i=0;i<20;++i)
+        Require(frame(kGrass,false)==TrackLimitsEvent::Suspended,
+            "no clock movement means no penalty exposure");
+    for(int i=0;i<20;++i)
+        Require(frame(kGrass,true,false)==TrackLimitsEvent::Suspended,
+            "driver discontinuity refuses exposure");
+    for(int i=0;i<20;++i)
+        Require(frame(kGrass,true,true,361.0)==TrackLimitsEvent::Suspended,
+            "impossible chassis speed is not penalty authority");
+    for(int excursion=0;excursion<3;++excursion)
+    {
+        for(int i=0;i<17;++i) frame(kGrass);
+        for(int i=0;i<6;++i) frame(kRoad);
+    }
+    const auto review=session.Review(race,0);
+    Require(review.Valid && review.Violations==3 && review.Penalties==1 &&
+        review.Warnings==3 && review.CleanRejoins==3 &&
+        std::abs(review.TrackLimitsSeconds-5.0)<1e-8 &&
+        race.GetTimePenaltyCount()==1 && review.RecoverySeconds==0.0,
+        "session reconciles actual charged time and observed events");
+    Require(session.Recent(0).Event==TrackLimitsEvent::CleanRejoin &&
+        session.Notice(race.GetElapsedSeconds()).Event==TrackLimitsEvent::CleanRejoin &&
+        session.Notice(race.GetElapsedSeconds()+3.01).Event==TrackLimitsEvent::None,
+        "bounded notice is based on actual current race clock");
+    Require(!session.Review(race,1).Valid,"incorrect recovery count hides attribution");
+    Require(race.AddTimePenalty(5.0),"separate verified recovery fee fixture");
+    const auto mixed=session.Review(race,1);
+    Require(mixed.Valid && mixed.RecoveryCount==1 &&
+        std::abs(mixed.RecoverySeconds-5.0)<1e-8 &&
+        std::abs(mixed.TrackLimitsSeconds-5.0)<1e-8,
+        "mixed charges do not count track fee twice");
+    Require(!session.Review(race,0).Valid,"unattributed fee hides review");
+    Require(!session.Review(race,2).Valid,"invented recovery count hides review");
+    for(int excursion=0;excursion<10;++excursion)
+    {
+        for(int i=0;i<17;++i) frame(kGrass);
+        for(int i=0;i<6;++i) frame(kRoad);
+    }
+    const auto retained=session.Review(race,1);
+    Require(retained.Valid && retained.Violations==13 &&
+        retained.Penalties==4 && retained.RetainedReceipts==16 &&
+        session.Recent(16).Event==TrackLimitsEvent::None &&
+        session.Recent(-1).Event==TrackLimitsEvent::None,
+        "fixed retention keeps aggregate accounting for all strikes");
+    session.Suspend();
+    Require(session.Review(race,1).Valid,"pause retains committed receipt history");
+    race.Reset();session.Reset();
+    Require(!session.Review(race,0).Valid && session.Snapshot().Violations==0 &&
+        session.Recent(0).Event==TrackLimitsEvent::None,
+        "new race clears previous steward evidence");
+}
+
 int main()
 {
+    TestSessionReceiptsAndAttribution();
     TestThresholdsAndThreeStrikePenalty();
     TestFailedPenaltyDoesNotInventCredit();
     TestSuspensionInvalidInputAndRejoin();
