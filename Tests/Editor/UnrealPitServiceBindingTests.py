@@ -52,6 +52,26 @@ class UnrealPitServiceBindingTests(unittest.TestCase):
         self.assertIn("NitroBoost.RefillAtPit()", tick)
         self.assertNotIn("SaveRecords(", tick)
 
+    def test_service_receipt_observes_actual_effects_and_resets(self):
+        tick = self.pawn.split("void ALatebrakeCarPawn::Tick(float DeltaSeconds)", 1)[1]
+        tick = tick.split("\nvoid ALatebrakeCarPawn::", 1)[0]
+        for marker in ("const auto Before = latebrake::ObservePitVehicleCondition(",
+                       "const auto After = latebrake::ObservePitVehicleCondition(",
+                       "PitJournal.RecordCompleted(PitService.StopCount()",
+                       "PitRace.GetElapsedSeconds()"):
+            self.assertIn(marker, tick)
+        self.assertLess(tick.index("PitService.Observe({"), tick.index("const auto Before ="))
+        self.assertLess(tick.index("const auto Before ="), tick.index("CollisionDamage.RepairAtPit()"))
+        self.assertLess(tick.index("NitroBoost.RefillAtPit()"), tick.index("const auto After ="))
+        self.assertLess(tick.index("const auto After ="), tick.index("PitJournal.RecordCompleted("))
+        self.assertIn("PitJournal.Reset(); PitService.Reset();", self.header)
+        self.assertIn("Car->GetPitJournal().Review(", self.hud)
+        self.assertIn("PIT SERVICE | %d COMPLETED", self.hud)
+        journal = read("Source/Latebrake/Public/Racing/PitServiceJournal.h")
+        for forbidden in ("RepairAtPit(", "ReplaceAtPit(", "RefillAtPit(",
+                          "SaveRecords(", "AddTimePenalty("):
+            self.assertNotIn(forbidden, journal)
+
     def test_controller_menu_confirm_cannot_cancel_closed_menu_pit_hold(self):
         confirm = self.pawn.split(
             "void ALatebrakeCarPawn::MenuActivate()", 1)[1].split(

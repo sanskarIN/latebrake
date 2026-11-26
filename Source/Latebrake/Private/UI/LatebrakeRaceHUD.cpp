@@ -1432,6 +1432,36 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            if (latebrake::CanAwardFinishedRace(Race))
+            {
+                const auto PitSummary = Car->GetPitJournal().Review(
+                    Car->GetPitService().StopCount());
+                if (PitSummary.Valid)
+                {
+                    MenuLine(FString::Printf(TEXT("PIT SERVICE | %d COMPLETED"),
+                        PitSummary.Count), true);
+                    MenuLine(FString::Printf(
+                        TEXT("Damage -%.1f pp | wear -%.1f pp | boost +%.1f pp"),
+                        PitSummary.DamageRestored*100.0,
+                        PitSummary.WearRemoved*100.0,
+                        PitSummary.ChargeRestored*100.0));
+                    if (!bCompact)
+                    {
+                        const auto& Journal=Car->GetPitJournal();
+                        for (int32 Index=0; Index<Journal.RetainedCount(); ++Index)
+                        {
+                            const auto Receipt=Journal.GetRecent(Index);
+                            MenuLine(FString::Printf(
+                                TEXT("STOP %d | LAP %d | CLOCK %.2fs"),
+                                Receipt.Stop, Receipt.Lap, Receipt.RaceSeconds));
+                            MenuLine(FString::Printf(
+                                TEXT("Damage -%.1f pp | wear -%.1f pp | boost +%.1f pp"),
+                                Receipt.DamageRestored*100.0, Receipt.WearRemoved*100.0,
+                                Receipt.ChargeRestored*100.0));
+                        }
+                    }
+                }
+            }
             // Observational chassis direction mismatch, not tire slip
             // physics, race awards or a saved drifting leaderboard.
             if (latebrake::CanAwardFinishedRace(Race) &&
@@ -2322,6 +2352,15 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 Line(FString::Printf(TEXT("PIT SERVICED %d | EXIT BAY TO REARM"),
                     Pit.StopCount()), Accent);
+                const auto Summary=Car->GetPitJournal().Review(Pit.StopCount());
+                if (Summary.Valid)
+                {
+                    const auto Receipt=Car->GetPitJournal().GetRecent(0);
+                    Line(FString::Printf(
+                        TEXT("RESTORED: DAMAGE %.0f pp | WEAR %.0f pp | BOOST %.0f pp"),
+                        Receipt.DamageRestored*100.0, Receipt.WearRemoved*100.0,
+                        Receipt.ChargeRestored*100.0), Primary);
+                }
             }
             else
             {

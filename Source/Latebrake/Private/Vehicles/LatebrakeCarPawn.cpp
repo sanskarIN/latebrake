@@ -1732,10 +1732,20 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         latebrake::HasStablePitGroundSupport(
             GroundContact, static_cast<double>(Velocity.Z))}))
     {
+        const auto Before = latebrake::ObservePitVehicleCondition(
+            CollisionDamage, TireCondition, NitroBoost);
         CollisionDamage.RepairAtPit();
         TireCondition.ReplaceAtPit();
         NitroBoost.RefillAtPit();
         CurrentNitroSpeedCapScale = 1.f;
+        const auto After = latebrake::ObservePitVehicleCondition(
+            CollisionDamage, TireCondition, NitroBoost);
+        const auto& PitRace = Mode->GetRace();
+        // Observe actual effects once, only after the existing completed
+        // service latch. Receipt failure cannot grant or deny repairs.
+        PitJournal.RecordCompleted(PitService.StopCount(),
+            PitRace.GetCompletedLaps() + 1, PitRace.GetElapsedSeconds(),
+            Before, After);
     }
 
     // Purely visual: gently widen the human camera with measured forward
