@@ -44,3 +44,14 @@ The five AI cars use the five cosmetic vehicle IDs and five distinct paints
 other than the selected player appearance at spawn; their existing neutral
 physics multipliers remain unchanged. This is a run-local visual plan, not
 five newly simulated vehicle types or evidence of rendered pixels.
+
+## Startup watchdog
+The development grid must have 0.30 seconds of consecutive valid settled
+observations before the real three-second countdown begins. Losing that
+qualification while still red resets the countdown, never an active race.
+The 15-second pre-GO active-tick budget includes countdown time, excludes
+pauses and invalid/hitch samples, and faults until explicit restart if
+exhausted. HUD diagnostics identify the blocking condition and slot. The
+physical gantry and HUD cannot advertise GO while fleet driving is denied.
+These time limits are conservative developer-mode choices, not native
+playtest measurements or new race-time fees.

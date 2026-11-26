@@ -37,7 +37,8 @@ enum class FleetAttemptFault
     MissingActor,
     InvalidPhysics,
     UnexpectedGreen,
-    InvalidFrame
+    InvalidFrame,
+    GridTimeout
 };
 
 struct FleetAttemptConfig final
@@ -162,6 +163,15 @@ public:
         {
             Fail(FleetAttemptFault::SpawnFailed, -1);
         }
+    }
+
+    void ReportGridTimeout(std::uint64_t attempt) noexcept
+    {
+        if (attempt==State.AttemptToken && State.Required &&
+            (State.Phase==FleetAttemptPhase::AwaitingRoster ||
+             State.Phase==FleetAttemptPhase::AwaitingGrid ||
+             State.Phase==FleetAttemptPhase::CountdownQualified))
+            Fail(FleetAttemptFault::GridTimeout,State.Grid.Slot);
     }
 
     // Only a newly collected frame may authorize countdown or traffic.

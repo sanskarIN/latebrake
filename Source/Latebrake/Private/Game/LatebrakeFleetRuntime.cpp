@@ -41,6 +41,7 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
         ++FleetAttemptToken;
     FleetFrameToken=0;
     FleetObservedEpoch=0;
+    FleetStartup.Begin(FleetAttemptToken);
     FleetBoundActors={};
     bFleetActorsBound=false;
     FleetReviewLedger.Reset();
@@ -244,12 +245,29 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
             Race.GetCheckpointCount(),Race.GetRequiredLaps());
     }
     if (Accepted) FleetObservedEpoch=CheckpointSession.Current();
-    if (Current.Phase==latebrake::FleetAttemptPhase::Faulted && Previous!=Current.Phase)
+    bool CountdownAllowed=Current.CountdownAllowed;
+    if (!StartLights.IsGreen())
+    {
+        const auto Startup=FleetStartup.Observe({FleetAttemptToken,FleetFrameToken,
+            CheckpointSession.Current(),static_cast<double>(DeltaSeconds),!Inactive,
+            bCircuitReady,HasLocalPlayerDriver(),IsRestartPlacementReady(),Accepted,Current});
+        if (Startup.ResetCountdown) StartLights.Reset();
+        if (Startup.Phase==latebrake::FleetStartupPhase::TimedOut)
+        {
+            FleetAttempt.ReportGridTimeout(FleetAttemptToken);
+            UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_GRID_TIMEOUT cause=%s slot=%d"),
+                UTF8_TO_TCHAR(latebrake::FleetStartupCauseName(Startup.Cause)),Startup.Grid.Slot);
+        }
+        CountdownAllowed=Startup.CountdownAllowed &&
+            FleetStartup.IsCurrentPermission(FleetAttemptToken,FleetFrameToken,CheckpointSession.Current());
+    }
+    const auto Final=FleetAttempt.Readout();
+    if (Final.Phase==latebrake::FleetAttemptPhase::Faulted && Previous!=Final.Phase)
     {
         UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_FAULT reason=%d slot=%d"),
-            static_cast<int32>(Current.Fault),Current.FaultSlot);
+            static_cast<int32>(Final.Fault),Final.FaultSlot);
     }
-    return Accepted && (StartLights.IsGreen()?Current.RunningAllowed:Current.CountdownAllowed);
+    return Accepted && (StartLights.IsGreen()?Final.RunningAllowed:CountdownAllowed);
 }
 
 bool ALatebrakeRaceGameMode::IsExperimentalFleetDriveReady() const
@@ -389,4 +407,14 @@ bool ALatebrakeRaceGameMode::TryGetExperimentalGridSettlingSlot(
         FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Actor) return false;
     OutSlot=Slot;
     return true;
+}
+
+bool ALatebrakeRaceGameMode::IsFleetStartPresentationReady() const
+{
+    if (!IsExperimentalFleetRequested()) return true;
+    if (StartLights.IsGreen()) return IsExperimentalFleetDriveReady();
+    return FleetStartup.IsCurrentPermission(FleetAttemptToken,FleetFrameToken,
+        CheckpointSession.Current()) && FleetAttempt.Readout().CountdownAllowed &&
+        !Menu.IsOpen() && !UGameplayStatics::IsGamePaused(this) &&
+        !AppFocusGuard.IsSuspended() && !ManualPause.IsSuspended();
 }

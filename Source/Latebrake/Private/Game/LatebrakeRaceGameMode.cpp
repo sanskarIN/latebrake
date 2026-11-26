@@ -682,7 +682,8 @@ void ALatebrakeRaceGameMode::UpdateStartGantryVisual()
     const latebrake::StartGantryVisual Plan =
         latebrake::PlanStartGantryVisual(
             StartLights.Phase(), bCircuitReady, HasLocalPlayerDriver() &&
-                IsRestartPlacementReady(), bSuspended, Race.IsFinished());
+                IsRestartPlacementReady() && IsFleetStartPresentationReady(),
+            bSuspended, Race.IsFinished());
 
     int32 NewMask = 0;
     if (Plan.Active)

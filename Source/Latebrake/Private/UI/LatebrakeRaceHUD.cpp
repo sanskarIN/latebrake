@@ -2284,7 +2284,29 @@ void ALatebrakeRaceHUD::DrawHUD()
     // priority row only when track, physical player and grid are ready.
     // The authoritative clock / gate / physics / rival policies all use
     // this same GameMode start light (not an independent HUD timer).
-    if (Mode->IsCircuitReadyForGameplay() &&
+    if (Mode->IsExperimentalFleetRequested() && !Mode->IsFleetStartPresentationReady() &&
+        !Race.IsFinished())
+    {
+        const auto Fleet=Mode->GetFleetAttemptReadout();
+        const auto Startup=Mode->GetFleetStartupReadout();
+        if (Fleet.Phase==latebrake::FleetAttemptPhase::Faulted)
+            Line(FString::Printf(TEXT("FLEET: %s | RESTART"),
+                UTF8_TO_TCHAR(latebrake::FleetAttemptFaultName(Fleet.Fault))),Accent,true);
+        else if (Fleet.Phase!=latebrake::FleetAttemptPhase::Running)
+        {
+            const char* Detail=Startup.Cause==latebrake::FleetStartupCause::UnsafeGrid
+                ? latebrake::FleetGridFailureName(Startup.Grid.Failure)
+                : latebrake::FleetStartupCauseName(Startup.Cause);
+            if (Startup.Phase==latebrake::FleetStartupPhase::Settling)
+                Detail="verifying settled grid";
+            Line(FString::Printf(TEXT("GRID: %s | %.0fs left"),
+                UTF8_TO_TCHAR(Detail),Startup.RemainingSeconds),Accent,true);
+            if (Startup.Grid.Slot>=0 && Startup.Cause==latebrake::FleetStartupCause::UnsafeGrid)
+                Line(FString::Printf(TEXT("Check grid slot %d"),Startup.Grid.Slot+1),Primary);
+        }
+        else Line(TEXT("FLEET DRIVE SUSPENDED"),Accent,true);
+    }
+    else if (Mode->IsCircuitReadyForGameplay() &&
         Mode->HasLocalPlayerDriver() && Mode->IsRestartPlacementReady())
     {
         switch (Mode->GetRaceStartPhase())
@@ -2756,8 +2778,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(TEXT("EXPERIMENTAL GRID %d/6 | NO SAVED REWARDS"),
             Mode->GetPhysicalFleetCount()),Accent);
         if (Fleet.Phase==latebrake::FleetAttemptPhase::Faulted)
-            Line(FString::Printf(TEXT("FLEET FAULT %d | RESTART REQUIRED"),
-                static_cast<int32>(Fleet.Fault)),Accent,true);
+            Line(TEXT("RESTART REQUIRED | FLEET UNAVAILABLE"),Accent,true);
         else if (!Fleet.RunningAllowed)
             Line(TEXT("WAITING FOR VERIFIED SIX-CAR GRID"),Primary);
         else if (FleetReview.ValidRoster && FleetReview.PlayerRouteValid)

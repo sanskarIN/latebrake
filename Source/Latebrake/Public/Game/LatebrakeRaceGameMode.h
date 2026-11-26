@@ -14,6 +14,7 @@
 #include "AI/ExperimentalFleetLiveRecovery.h"
 #include "AI/FleetRaceReview.h"
 #include "AI/FleetGridPresentation.h"
+#include "AI/FleetStartupWatchdog.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -106,6 +107,9 @@ public:
     bool HasRival() const;
     bool IsExperimentalFleetRequested() const noexcept;
     bool IsExperimentalFleetDriveReady() const;
+    bool IsFleetStartPresentationReady() const;
+    latebrake::FleetStartupReadout GetFleetStartupReadout() const noexcept
+    {return FleetStartup.Readout();}
     bool TryGetExperimentalGridSettlingSlot(const ALatebrakeCarPawn* Actor,int32& OutSlot) const;
     bool IsRegisteredRaceRival(const ALatebrakeRivalCar* Actor) const;
     latebrake::FleetAttemptReadout GetFleetAttemptReadout() const noexcept
@@ -359,6 +363,7 @@ private:
     UPROPERTY(Transient)
     TArray<TObjectPtr<ALatebrakeRivalCar>> ExtraFleet;
     latebrake::ExperimentalFleetAttempt FleetAttempt;
+    latebrake::FleetStartupWatchdog FleetStartup;
     latebrake::GridRivalLedger FleetReviewLedger;
     latebrake::FleetRaceReview FleetFinishReview;
     std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};
