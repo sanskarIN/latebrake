@@ -559,7 +559,7 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.write_receipt()
         result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
         self.assertEqual(result.returncode, 2)
-        self.assertIn("does not belong to this receipt", result.stderr)
+        self.assertIn("symbolic link", result.stderr)
 
 
 
