@@ -225,6 +225,72 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("Refusing to overwrite", result.stderr)
 
+    def assert_link_created(self, link, target, *, directory=False):
+        try:
+            link.symlink_to(target, target_is_directory=directory)
+        except (OSError, NotImplementedError):
+            self.skipTest("Creating links requires permissions on this host")
+
+    def test_receipt_symlink_rejected_even_with_correct_bytes(self):
+        link = self.private / "linked-receipt.json"
+        self.assert_link_created(link, self.receipt)
+        result = self.invoke("init", "--receipt", link, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("symlink or reparse point", result.stderr)
+        self.assertFalse(self.checklist.exists())
+
+    def test_checklist_symlink_rejected_even_with_correct_bytes(self):
+        self.make_template()
+        link = self.private / "linked-checklist.json"
+        self.assert_link_created(link, self.checklist)
+        result = self.invoke("evaluate", "--receipt", self.receipt,
+                             "--checklist", link, "--output", self.evaluation)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_output_linked_parent_rejected_without_writing(self):
+        outside = self.root / "other-evidence"
+        outside.mkdir()
+        link = self.private / "linked-output"
+        self.assert_link_created(link, outside, directory=True)
+        result = self.invoke("init", "--receipt", self.receipt,
+                             "--output", link / "new.json")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertFalse((outside / "new.json").exists())
+
+    def test_dangling_absent_runtime_log_link_is_rejected(self):
+        log = self.set_schema2_log(None)
+        self.assert_link_created(log, self.private / "nonexistent.log")
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("symbolic link", result.stderr)
+        self.assertFalse(self.checklist.exists())
+
+    def test_boolean_checklist_schema_is_not_integer_version(self):
+        template = self.make_template()
+        template["schema_version"] = True
+        self.checklist.write_text(json.dumps(template), encoding="utf-8")
+        result = self.invoke("evaluate", "--receipt", self.receipt,
+                             "--checklist", self.checklist, "--output", self.evaluation)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("Unsupported manual QA checklist", result.stderr)
+        self.assertFalse(self.evaluation.exists())
+
+    def test_receipt_inside_candidate_rejected_before_archive_scan(self):
+        inside = self.candidate / "receipt.json"
+        inside.write_bytes(self.receipt.read_bytes())
+        result = self.invoke("init", "--receipt", inside, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("receipt must remain OUTSIDE", result.stderr)
+        self.assertFalse(self.checklist.exists())
+
+    def test_oversized_receipt_is_rejected(self):
+        self.receipt.write_bytes(b" " * (128 * 1024 + 1))
+        result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("oversized JSON", result.stderr)
+        self.assertFalse(self.checklist.exists())
+
     def test_duplicate_receipt_keys_rejected(self):
         self.receipt.write_text('{"schema_version":1,"schema_version":2}', encoding="utf-8")
         result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
