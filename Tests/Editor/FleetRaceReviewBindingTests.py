@@ -19,7 +19,8 @@ class FleetRaceReviewBindingTests(unittest.TestCase):
             self.assertIn(marker,mode)
     def test_finish_review_precedes_revocation_and_save(self):
         mode=read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
-        a=mode.index("FleetFinishReview=CollectFleetRaceReview()")
+        a=mode.index("FleetFinishReview=FinishTiming==latebrake::FinishTimingEligibility::Eligible")
+        self.assertIn("? CollectFleetRaceReview() : latebrake::FleetRaceReview{}",mode[a:])
         b=mode.index("FleetAttempt.Finish(FleetAttemptToken)")
         c=mode.index("latebrake::ProfileWriteCheckpoint SavedProfile",b)
         self.assertLess(a,b);self.assertLess(b,c)

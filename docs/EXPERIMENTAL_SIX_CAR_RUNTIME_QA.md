@@ -34,3 +34,13 @@ radar groups nearby measured positions without inventing off-map markers.
 At the player's actual final gate, freeze an observational review before
 revoking the attempt. Differences within 0.25 active-clock seconds are
 uncertain, and no sampled comparison grants a place or persistent award.
+
+## Pre-GO settling and visual identity
+The optional fleet preserves only a bounded, already observed downward
+velocity during pre-GO blocked-drive neutralization. This lets Chaos settle
+from elevated spawn without adding force or accepting an unsupported grid.
+Pause, menu, focus loss, invalid poses, fault and GO are excluded.
+The five AI cars use the five cosmetic vehicle IDs and five distinct paints
+other than the selected player appearance at spawn; their existing neutral
+physics multipliers remain unchanged. This is a run-local visual plan, not
+five newly simulated vehicle types or evidence of rendered pixels.

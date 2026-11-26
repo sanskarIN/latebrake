@@ -1495,7 +1495,26 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             Mode->GetRace().IsFinished(),
             Mode->IsRestartPlacementReady()}))
     {
+        // The developer-only grid may be waiting for the actual bodies to
+        // settle from the authored elevated spawn. Preserve only their
+        // already-measured downward component, never a commanded force.
+        // All ordinary blocked states still use the exact zero reset.
+        latebrake::FleetGridSettleDecision Settling;
+        int32 Slot=INDEX_NONE;
+        if (Mode && Mode->TryGetExperimentalGridSettlingSlot(this,Slot) &&
+            IsValid(Chassis) && Chassis->IsSimulatingPhysics())
+        {
+            const FVector Position=GetActorLocation();
+            const FVector Velocity=Chassis->GetPhysicsLinearVelocity();
+            Settling=latebrake::PlanFleetGridSettling({true,Slot,
+                {{Position.X,Position.Y},GetActorRotation().Yaw},Position.Z,
+                Velocity.X,Velocity.Y,Velocity.Z,static_cast<double>(DeltaSeconds)});
+        }
         NeutralizeMotionWhenDrivingBlocked();
+        if (Settling.PreserveDownward && IsValid(Chassis) && Chassis->IsSimulatingPhysics())
+        {
+            Chassis->SetPhysicsLinearVelocity(FVector(0.0,0.0,Settling.VerticalVelocityCmS));
+        }
         return;
     }
 

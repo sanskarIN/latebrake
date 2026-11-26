@@ -45,6 +45,8 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
     bFleetActorsBound=false;
     FleetReviewLedger.Reset();
     FleetFinishReview={};
+    if (!IsExperimentalFleetRequested() && IsValid(RivalCar))
+        RivalCar->SetGarageTuning(1.f,1.f,1.f,0,latebrake::FactoryGarageLook(0));
     FleetAttempt.Begin({IsExperimentalFleetRequested(),SelectedEvent==latebrake::EventKind::Circuit,
         bCareerRace,FleetAttemptToken});
 }
@@ -125,6 +127,18 @@ void ALatebrakeRaceGameMode::SpawnExtraFleet()
         }
         Actor->ResetDrivingStats();
         Actor->ConfigurePilot(Race.GetCheckpointCount(),Race.GetRequiredLaps());
+    }
+    // Visual choices are independent from player ownership and AI forces.
+    const auto Visuals=latebrake::BuildFleetVisualPlan(GetSelectedVehicleId(),GetSelectedGarageLook());
+    if (latebrake::ValidFleetVisualPlan(Visuals))
+    {
+        for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+        {
+            auto* Actor=FleetRivalAt(Slot);
+            const auto& Entry=Visuals.Cars[static_cast<std::size_t>(Slot)];
+            if (IsValid(Actor))
+                Actor->SetGarageTuning(1.f,1.f,1.f,Entry.VehicleId,Entry.Look);
+        }
     }
     UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_SPAWNED extra=%d native_qa=required"),ExtraFleet.Num());
 #endif
@@ -344,4 +358,35 @@ latebrake::FleetRaceReview ALatebrakeRaceGameMode::GetFleetRaceReview() const
     if (!IsExperimentalFleetRequested()) return {};
     if (Race.IsFinished()) return FleetFinishReview;
     return CollectFleetRaceReview();
+}
+
+bool ALatebrakeRaceGameMode::TryGetExperimentalGridSettlingSlot(
+    const ALatebrakeCarPawn* Actor,int32& OutSlot) const
+{
+    OutSlot=INDEX_NONE;
+    if (!IsExperimentalFleetRequested() || StartLights.IsGreen() ||
+        !IsValid(Actor) || !Actor->IsRacePhysicsReady() ||
+        !bCircuitReady || !HasLocalPlayerDriver() || Race.IsFinished() ||
+        !IsRestartPlacementReady() || Menu.IsOpen() ||
+        UGameplayStatics::IsGamePaused(this) ||
+        AppFocusGuard.IsSuspended() || ManualPause.IsSuspended())
+        return false;
+    const auto Phase=FleetAttempt.Readout().Phase;
+    if (Phase!=latebrake::FleetAttemptPhase::AwaitingRoster &&
+        Phase!=latebrake::FleetAttemptPhase::AwaitingGrid &&
+        Phase!=latebrake::FleetAttemptPhase::CountdownQualified)
+        return false;
+    if (Actor==UGameplayStatics::GetPlayerPawn(this,0))
+    {
+        if (bFleetActorsBound && FleetBoundActors[0].Get()!=Actor) return false;
+        OutSlot=latebrake::HumanGridSlot;
+        return true;
+    }
+    const auto* Rival=Cast<ALatebrakeRivalCar>(Actor);
+    if (!IsRegisteredRaceRival(Rival)) return false;
+    const auto Slot=Rival->GetGridSlot();
+    if (bFleetActorsBound &&
+        FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Actor) return false;
+    OutSlot=Slot;
+    return true;
 }

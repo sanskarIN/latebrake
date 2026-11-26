@@ -13,6 +13,7 @@
 #include "AI/ExperimentalFleetAttempt.h"
 #include "AI/ExperimentalFleetLiveRecovery.h"
 #include "AI/FleetRaceReview.h"
+#include "AI/FleetGridPresentation.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -105,6 +106,7 @@ public:
     bool HasRival() const;
     bool IsExperimentalFleetRequested() const noexcept;
     bool IsExperimentalFleetDriveReady() const;
+    bool TryGetExperimentalGridSettlingSlot(const ALatebrakeCarPawn* Actor,int32& OutSlot) const;
     bool IsRegisteredRaceRival(const ALatebrakeRivalCar* Actor) const;
     latebrake::FleetAttemptReadout GetFleetAttemptReadout() const noexcept
     { return FleetAttempt.Readout(); }

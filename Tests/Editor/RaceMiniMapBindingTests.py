@@ -49,7 +49,8 @@ class RaceMiniMapBindingTests(unittest.TestCase):
         for marker in (
             '#include "Track/RaceMiniMap.h"',
             "Mode->TryGetRivalRadarPosition(RivalWorldPosition)",
-            "const bool bRivalRace = !bTimeAttack && Mode->HasRival();",
+            "const bool bRivalRace = !bExperimentalFleet && !bTimeAttack && Mode->HasRival();",
+            "GroupFleetRadar(FleetReview,0.075)",
             "latebrake::BuildRaceMiniMapSnapshot(",
             "Car->GetActorRotation().Yaw",
             "Race.GetNextCheckpoint()",

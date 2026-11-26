@@ -2627,3 +2627,5 @@ add_latebrake_portable_research_test(ExperimentalFleetAttempt)
 add_latebrake_portable_research_test(ExperimentalFleetLiveRecovery)
 
 add_latebrake_portable_research_test(FleetRaceReview)
+
+add_latebrake_portable_research_test(FleetGridPresentation)

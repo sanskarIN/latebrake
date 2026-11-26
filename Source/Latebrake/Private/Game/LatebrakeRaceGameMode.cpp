@@ -1419,7 +1419,8 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     if (IsExperimentalFleetRequested())
     {
         // Capture actual observed results before revoking run permissions.
-        FleetFinishReview=CollectFleetRaceReview();
+        FleetFinishReview=FinishTiming==latebrake::FinishTimingEligibility::Eligible
+            ? CollectFleetRaceReview() : latebrake::FleetRaceReview{};
         FleetAttempt.Finish(FleetAttemptToken);
         LastRaceCredits=0;
         LastCareerAward={};
