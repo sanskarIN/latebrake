@@ -40,7 +40,7 @@ void ALatebrakeRivalCar::ResetPilot()
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
-        StraightPassAssist.Reset();
+    StraightPassAssist.Reset();
     FleetRisk.Reset();
     FleetQueue.Reset();
     SetAutonomousControls(0.f, 0.f, false);
@@ -58,7 +58,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     GripPace.Reset();
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
-        StraightPassAssist.Reset();
+    StraightPassAssist.Reset();
     FleetRisk.Reset();
     FleetQueue.Reset();
     SetAutonomousControls(0.f, 0.f, false);

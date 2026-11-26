@@ -111,10 +111,10 @@ void RouteComposition()
         "verified forward crossing takes precedence over traffic deferral");
     Require(queue.Observe(1,0.05,sample).DeferStallRecovery,"new route segment");
     route.Reset();
-    for(int i=0;i<=80;++i)
+    for(int i=0;i<80;++i)
     {
         const auto obs=route.ObserveVerifiedGate(2500.0,1000.0,0.1,false,true);
-        Require(obs.NeedsRecovery==(i==80),"moving no-approach stall is never deferred");
+        Require(obs.NeedsRecovery==(i==79),"moving no-approach stall is never deferred");
     }
     route.Reset();
     for(int i=0;i<80;++i)

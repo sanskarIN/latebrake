@@ -48,7 +48,9 @@ class RivalDirectionalGateBindingTests(unittest.TestCase):
         self.assertNotIn("Route.Observe(", tick)
         self.assertIn("Next, 0, {{Position.X, Position.Y}, Position.Z}", tick)
         self.assertIn("Velocity.X, Velocity.Y", tick)
-        self.assertIn("bVerifiedGateCrossed);", tick)
+        self.assertIn("bVerifiedGateCrossed,bVerifiedTrafficWait);", tick)
+        self.assertLess(tick.index("RivalGateTrace.Sample("), tick.index("FleetQueue.Observe("))
+        self.assertLess(tick.index("FleetQueue.Observe("), tick.index("Route.ObserveVerifiedGate("))
         self.assertIn("RivalGateTrace.Reset();", tick)
 
     def test_route_requires_event_for_real_rival_but_old_contract_remains(self):
