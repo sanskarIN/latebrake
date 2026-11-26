@@ -2608,3 +2608,6 @@ add_latebrake_preview_policy_test(PreviewKeyboardFocusGuard)
 add_latebrake_preview_policy_test(PreviewRaceTimeText)
 add_latebrake_preview_policy_test(PreviewSettingsPersistence)
 add_latebrake_preview_policy_test(PreviewViewportMath)
+
+# Six-car lifecycle, independent of native actor spawning.
+add_latebrake_portable_research_test(ExperimentalFleetAttempt)
