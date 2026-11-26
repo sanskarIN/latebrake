@@ -135,6 +135,43 @@ void AllGateCounts()
             "last race lap retains report");
     }
 }
+void PublicGateComparisonRequiresWholeEvidence()
+{
+    MeasuredLapSplitReference source;
+    source.Reset(4);
+    for (int i=0;i<4;++i)
+        source.Observe(1,i,5.0*(i+1),0.0,true);
+    source.Complete(1,20.0,0.0);
+    const auto reference=source.BestReference();
+    auto prefix=reference;
+    prefix.LapNumber=2;
+    prefix.Complete=false;
+    prefix.GateCount=3;
+    prefix.LapSeconds=0.0;
+    Check(CompareMeasuredLapGate(prefix,reference,2).Valid,
+        "valid actual prefix compares with fully valid reference");
+    auto invalid=prefix;
+    invalid.Gates[0].CumulativeSeconds=std::numeric_limits<double>::quiet_NaN();
+    Check(!CompareMeasuredLapGate(invalid,reference,2).Valid,
+        "earlier corrupt actual gate cannot be hidden by selected pair");
+    invalid=reference;
+    invalid.Gates[3].CumulativeSeconds=19.0;
+    Check(!CompareMeasuredLapGate(prefix,invalid,0).Valid,
+        "invalid later reference gate cannot be ignored");
+    invalid=reference;
+    invalid.LapSeconds=21.0;
+    Check(!CompareMeasuredLapGate(prefix,invalid,0).Valid,
+        "reference end clock must match its last gate");
+    invalid=prefix;
+    invalid.Complete=true;
+    invalid.LapSeconds=15.0;
+    Check(!CompareMeasuredLapGate(invalid,reference,0).Valid,
+        "completed trace cannot have fewer gates than its reference");
+    invalid=prefix;
+    invalid.Gates[2].CumulativeFeeSeconds=16.0;
+    Check(!CompareMeasuredLapGate(invalid,reference,0).Valid,
+        "corrupt later actual prefix invalidates its earlier comparisons");
+}
 void PublicInputGuards()
 {
     MeasuredLapSplitReference reference;
@@ -163,6 +200,7 @@ void PublicInputGuards()
 int main()
 {
     ReferenceAndDeltas();InvalidAndRecovery();AllGateCounts();PublicInputGuards();
+    PublicGateComparisonRequiresWholeEvidence();
     std::cout<<"Actual fee-free lap reference and all 256 gate capacities passed\n";
     return EXIT_SUCCESS;
 }
