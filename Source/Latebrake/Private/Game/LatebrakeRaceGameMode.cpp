@@ -1,4 +1,6 @@
 #include "Game/LatebrakeRaceGameMode.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Game/LatebrakePlayerController.h"
 
 #include "Engine/StaticMesh.h"
@@ -124,6 +126,9 @@ bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const
 void ALatebrakeRaceGameMode::BeginPlay()
 {
     Super::BeginPlay();
+#if !UE_BUILD_SHIPPING
+    bExperimentalFleetFlag=FParse::Param(FCommandLine::Get(),TEXT("LatebrakeExperimentalSixCarGrid"));
+#endif
     LoadRecords();
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
@@ -144,6 +149,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     StartRaceAuditAttempt(-1); // initial pawn placement not yet observed
 #endif
     RefreshRival();
+    BeginExperimentalFleetAttempt();
 }
 
 #if !UE_BUILD_SHIPPING
@@ -175,19 +181,23 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     const bool bInactive =
         UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
+    const bool bWasGreen=StartLights.IsGreen();
+    const bool bFleetReady=ObserveExperimentalFleet(DeltaSeconds,bInactive);
     const bool bStartQualified =
         bCircuitReady && bLocalPlayerReady && !bInactive &&
-        !Race.IsFinished() && IsRestartPlacementReady();
+        !Race.IsFinished() && IsRestartPlacementReady() && bFleetReady;
     // The countdown consumes ready, unpaused frames only. On the first
     // GO frame it returns JUST the residual frame time after green.
     // Keep authoritative timing and checkpoint-scoring on one light gate.
     const double LiveDelta = StartLights.Advance(
         static_cast<double>(DeltaSeconds), bStartQualified);
+    if (IsExperimentalFleetRequested() && !bWasGreen && StartLights.IsGreen())
+        FleetAttempt.CommitGreen(FleetAttemptToken,FleetFrameToken);
     // A 3D cosmetic reflection of this SAME authoritative light phase.
     // It is not another timer and cannot authorize GO, brakes or gates.
     UpdateStartGantryVisual();
     const bool bActualClockAdvanced=latebrake::AdvancePlayerRaceClockIfReady(
-        Race, bCircuitReady, bInactive || !StartLights.IsGreen(),
+        Race, bCircuitReady, bInactive || !IsRaceStartGreen(),
         bLocalPlayerReady, LiveDelta);
     // Unofficial reference trace observes the SAME guarded player/clock
     // frame as official lap timing, but can never modify timing or physics.
@@ -1339,7 +1349,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
     // A failed ground/road/barrier spawn cannot produce legitimate racing
     // progress or a career medal, even when four gate actors exist.
-    if (!StartLights.IsGreen())
+    if (!IsRaceStartGreen())
     {
         return; // Gate 0 is not scoreable during the red start lights.
     }
@@ -1406,6 +1416,16 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     // recordable completions. The existing seven-day float bound still applies.
     const latebrake::FinishTimingEligibility FinishTiming =
         latebrake::ValidateFinishTiming(Race);
+    if (IsExperimentalFleetRequested())
+    {
+        FleetAttempt.Finish(FleetAttemptToken);
+        LastRaceCredits=0;
+        LastCareerAward={};
+        LastRivalFinishObservation={};
+        LastRivalFinishClockComparison={};
+        CareerFeedback=TEXT("Experimental fleet test: no persistent rewards or records.");
+        return;
+    }
     if (FinishTiming != latebrake::FinishTimingEligibility::Eligible)
     {
         LastRivalFinishObservation = {};
@@ -2098,7 +2118,7 @@ bool ALatebrakeRaceGameMode::TryGetRivalCreditedGateGap(
     // blocked start, menu, focus loss or failed player grid placement.
     // Rival progress is independently advanced only by its true forward
     // directional gate trace; this API never grants an actual placement.
-    if (!latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
+    if (IsExperimentalFleetRequested() || !latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
         !bCircuitReady || !StartLights.IsGreen() ||
         Race.IsFinished() || !IsRestartPlacementReady() ||
         !HasLocalPlayerDriver() || Menu.IsOpen() ||
@@ -2125,7 +2145,7 @@ void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
     // Never invent a rival actor, stamp an unqualified clock, or award
     // player checkpoint credit through this observation-only path.
     latebrake::RivalGateGap Eligibility;
-    if (!TryGetRivalCreditedGateGap(Eligibility) || !IsValid(RivalCar))
+    if (IsExperimentalFleetRequested() || !TryGetRivalCreditedGateGap(Eligibility) || !IsValid(RivalCar))
     {
         return;
     }
@@ -2808,6 +2828,7 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 void ALatebrakeRaceGameMode::RefreshRival()
 {
     const bool bNeedsRival = latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
+    if (!IsExperimentalFleetRequested()) DestroyExtraFleet();
     if (!bNeedsRival)
     {
         if (IsValid(RivalCar))
@@ -2899,6 +2920,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     // Restart invalidates sampled positions even if no pawn exists yet or
     // its physics recovery is not observed until the next actor tick.
     CheckpointSession.OnRaceRestart();
+    BeginExperimentalFleetAttempt();
     // Restarting from the mobile PAUSE screen must return to a live race.
     if (UGameplayStatics::IsGamePaused(this))
     {
@@ -2978,7 +3000,7 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     // Only the possessed local player may request a paid race recovery.
     // A stale pawn or a rival is not allowed to charge the race clock.
     if (!IsValid(Car) || Car != UGameplayStatics::GetPlayerPawn(this, 0) ||
-        !StartLights.IsGreen())
+        !IsRaceStartGreen())
     {
         return; // No paid recovery or circuit jumps before GO.
     }
@@ -3006,8 +3028,16 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
             {{Position.X,Position.Y},RivalCar->GetActorRotation().Yaw},
             Velocity.X,Velocity.Y};
     }
-    const auto Clearance=latebrake::EvaluatePlayerRecoveryClearance(
+    auto Clearance=latebrake::EvaluatePlayerRecoveryClearance(
         Race.GetNextCheckpoint(),bExpectsRival,bObservedRival,Other);
+    if (IsExperimentalFleetRequested())
+    {
+        latebrake::FleetPhysicalFrame Fresh;
+        CollectFleetFrame(Fresh,0.0,false);
+        Clearance=latebrake::SelectFleetPlayerRecovery(Race.GetNextCheckpoint(),
+            Fresh,FleetAttempt.BoundIdentity(),
+            static_cast<std::uint64_t>(Car->GetUniqueID())+1u);
+    }
     // TryPaidRecoveryWithClearance composes the existing staged
     // TryChargePlayerRecoveryAfterVerifiedTeleport transaction with this
     // preflight. It never calls the engine when the landing is blocked.

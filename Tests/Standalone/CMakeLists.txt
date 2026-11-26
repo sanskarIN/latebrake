@@ -2621,3 +2621,7 @@ add_latebrake_portable_research_test(GarageAppearanceGlyph)
 add_latebrake_portable_research_test(GaragePaletteNavigation)
 add_latebrake_portable_research_test(OriginalVehicleRoofStripe)
 add_latebrake_portable_research_test(OriginalVehicleMaterialFinish)
+
+# Experimental fleet lifecycle and fresh recovery preflight.
+add_latebrake_portable_research_test(ExperimentalFleetAttempt)
+add_latebrake_portable_research_test(ExperimentalFleetLiveRecovery)

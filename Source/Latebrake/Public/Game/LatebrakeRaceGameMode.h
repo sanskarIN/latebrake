@@ -10,6 +10,8 @@
 #include "Racing/RivalFinishObservation.h"
 #include "Racing/RivalFinishClockReview.h"
 #include "AI/RivalDifficultyPreset.h"
+#include "AI/ExperimentalFleetAttempt.h"
+#include "AI/ExperimentalFleetLiveRecovery.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -100,6 +102,16 @@ public:
     float GetEventBestSeconds() const;
     float GetAttemptPreviousBestSeconds() const { return AttemptPreviousBestSeconds; }
     bool HasRival() const;
+    bool IsExperimentalFleetRequested() const noexcept;
+    bool IsExperimentalFleetDriveReady() const;
+    bool IsRegisteredRaceRival(const ALatebrakeRivalCar* Actor) const;
+    latebrake::FleetAttemptReadout GetFleetAttemptReadout() const noexcept
+    { return FleetAttempt.Readout(); }
+    int32 GetPhysicalFleetCount() const;
+    bool TryGetFleetRivalProgress(int32 Slot,int32& Laps,int32& NextGate,bool& Finished) const;
+    bool TryGetFreshFleetTraffic(const ALatebrakeRivalCar* Actor,
+        bool BrakeQualified,double BrakeScale,latebrake::RivalFleetTrafficSample& Out) const;
+    latebrake::FleetRivalRecovery GetFleetRivalRecovery(const ALatebrakeRivalCar* Actor,int32 Gate) const;
     bool TryGetSkidRoadSurface(const UPrimitiveComponent* HitComponent,
         int32& OutBlockIndex) const;
     bool TryGetRivalRadarPosition(FVector& OutPosition) const;
@@ -143,7 +155,7 @@ public:
     {
         return TrackLimits.Review(Race,RecoveriesThisRace);
     }
-    bool IsRaceStartGreen() const { return StartLights.IsGreen(); }
+    bool IsRaceStartGreen() const { return StartLights.IsGreen() && IsExperimentalFleetDriveReady(); }
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
     bool HasBestLapGhost() const { return GhostRecorder.HasBest(); }
@@ -227,6 +239,13 @@ private:
     void LoadRecords();
     void SaveRecords();
     void RefreshRival();
+    void BeginExperimentalFleetAttempt();
+    void DestroyExtraFleet();
+    void SpawnExtraFleet();
+    bool ObserveExperimentalFleet(float DeltaSeconds,bool Inactive);
+    bool CollectFleetFrame(latebrake::FleetPhysicalFrame& Out,
+        float DeltaSeconds,bool IncludeGridProbes) const;
+    ALatebrakeRivalCar* FleetRivalAt(int32 Slot) const;
     void ApplyGarageToPlayer();
     void CommitGarageVehicleSelection(int32 VehicleId);
     bool RejectGarageMutationIfBlocked();
@@ -330,6 +349,13 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<ALatebrakeRivalCar> RivalCar;
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<ALatebrakeRivalCar>> ExtraFleet;
+    latebrake::ExperimentalFleetAttempt FleetAttempt;
+    uint64 FleetAttemptToken=0;
+    uint64 FleetFrameToken=0;
+    uint64 FleetObservedEpoch=0;
+    bool bExperimentalFleetFlag=false;
 
     // Decorative asset-free fixture. Components belong to its Actor and
     // never participate in gate overlap or physics. No replicated state.

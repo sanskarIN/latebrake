@@ -22,6 +22,13 @@ ALatebrakeRivalCar::ALatebrakeRivalCar()
     AutoPossessPlayer = EAutoReceiveInput::Disabled;
 }
 
+bool ALatebrakeRivalCar::AssignGridSlot(int32 Slot)
+{
+    if (Slot<latebrake::PrimaryRivalGridSlot || Slot>=latebrake::StartGridCapacity) return false;
+    if (Slot!=GridSlot) { ResetPilot(); GridSlot=Slot; }
+    return true;
+}
+
 void ALatebrakeRivalCar::ResetPilot()
 {
     LastQualifiedSessionRevision = 0;
@@ -33,6 +40,7 @@ void ALatebrakeRivalCar::ResetPilot()
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -49,6 +57,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -59,7 +68,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // A malformed rival Chaos body must neither accrue approximate route
     // progress nor receive another physics control update. The base pawn
     // independently neutralizes the chassis before it can apply forces.
-    if (!Mode || !Mode->IsRaceStartGreen() ||
+    if (!Mode || !Mode->IsRaceStartGreen() || !Mode->IsRegisteredRaceRival(this) ||
         !IsRacePhysicsReady() || !latebrake::CanDriveRival(
             Mode->GetRace(), Mode->GetSelectedEvent(),
             Mode->IsCircuitReadyForGameplay(),
@@ -77,6 +86,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -97,6 +107,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -118,6 +129,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
         LastQualifiedSessionRevision = CurrentSessionRevision;
         bHasQualifiedSessionRevision = true;
     }
@@ -138,6 +150,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -163,7 +176,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         // Never bridge a frame sample across two different gate planes.
         RivalGateTrace.Reset();
         // Only the physical directional gate trace can trigger this call.
-        Mode->ObserveRivalVerifiedGate();
+        if (GridSlot==latebrake::PrimaryRivalGridSlot) Mode->ObserveRivalVerifiedGate();
     }
 
     if (Observation.NeedsRecovery)
@@ -174,6 +187,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         // Collect the actual human on the current game-thread snapshot.
         // No missing player or fictional grid occupant can clear a landing.
@@ -194,11 +208,13 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 HumanVelocity.X,HumanVelocity.Y};
         }
         const auto Selection=latebrake::SelectSingleRivalRecovery(RecoveryIndex,Human);
-        const latebrake::CircuitPose Pose=Selection.Pose;
+        const auto FleetSelection=Mode->GetFleetRivalRecovery(this,RecoveryIndex);
+        const bool bFleetMode=Mode->IsExperimentalFleetRequested();
+        const latebrake::CircuitPose Pose=bFleetMode?FleetSelection.Pose:Selection.Pose;
         // A blocked preflight consumes the existing bounded attempt but
         // never invokes a transform. A clear landing still needs actual
         // engine placement and post-move physics verification.
-        const bool bRecovered = Selection.Safe() && TryRecoverTo(
+        const bool bRecovered = (bFleetMode?FleetSelection.Clear:Selection.Safe()) && TryRecoverTo(
             FVector(Pose.Position.X, Pose.Position.Y, 180.0),
             FRotator(0.0, Pose.HeadingDegrees, 0.0));
         const bool bReported = Route.ReportRecoveryResult(bRecovered);
@@ -223,6 +239,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
+    FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -326,8 +343,9 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // licensed-engine positions/speeds, not a scripted opponent phantom.
     // Passing only changes bounded STEERING on a paved, away-from-corners
     // straight. The independent traffic-brake guard still runs afterward.
-    const latebrake::RivalPassOutput Passing =
-        StraightPassAssist.Apply(Command, {
+    const latebrake::RivalPassOutput Passing = Mode->IsExperimentalFleetRequested()
+        ? latebrake::RivalPassOutput{Command,false,0.0}
+        : StraightPassAssist.Apply(Command, {
             static_cast<double>(DeltaSeconds),
             Route.GetNextWaypoint(),
             {Position.X, Position.Y},
@@ -375,6 +393,28 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.AbortUntilGateChange();
     }
     const latebrake::PilotCommand FollowingCommand = PassResolution.Command;
+    latebrake::PilotCommand FleetCommand=FollowingCommand;
+    if (Mode->IsExperimentalFleetRequested())
+    {
+        const double BrakeScale=bCornerPhysicsQualified ?
+            GetTireCondition().GripMultiplier()*GetBrakeHeat().ServiceBrakeMultiplier()*
+            GetCollisionDamage().LateralGripMultiplier()*(bOffPavement?
+                latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier:1.0):0.0;
+        latebrake::RivalFleetTrafficSample Snapshot;
+        const bool Observed=Mode->TryGetFreshFleetTraffic(this,bCornerPhysicsQualified,BrakeScale,Snapshot);
+        if (Observed)
+        {
+            const auto Immediate=latebrake::ApplyRivalFleetTraffic(FollowingCommand,Snapshot);
+            const auto Supervised=FleetRisk.Apply(Immediate.Command,Snapshot,DeltaSeconds);
+            FleetCommand=Supervised.Command;
+        }
+        else
+        {
+            FleetRisk.Reset();
+            FleetCommand.Throttle=0.0;
+            FleetCommand.Brake=true;
+        }
+    }
 
     // Read real Chaos angular velocity AFTER all route, corner, road,
     // collision and traffic decisions. Reduce same-direction steering
@@ -383,7 +423,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     const FVector ActualAngularVelocity =
         Chassis->GetPhysicsAngularVelocityInRadians();
     const latebrake::PilotCommand SafeTrafficCommand =
-        latebrake::ModerateRivalYawRate(FollowingCommand, {
+        latebrake::ModerateRivalYawRate(FleetCommand, {
             static_cast<double>(DeltaSeconds),
             FlatSpeed,
             static_cast<double>(ActualAngularVelocity.Z),

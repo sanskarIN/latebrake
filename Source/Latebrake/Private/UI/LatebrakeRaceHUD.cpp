@@ -1238,6 +1238,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Race.GetLastLapPenaltySeconds()));
                 }
             }
+            if (Mode->IsExperimentalFleetRequested())
+                MenuLine(TEXT("EXPERIMENTAL FLEET | NO SAVED REWARDS OR RANK"),true);
             const auto TrackReview=Mode->GetTrackLimitsReview();
             if (TrackReview.Valid)
             {
@@ -2713,6 +2715,27 @@ void ALatebrakeRaceHUD::DrawHUD()
     }
     // The source steward observes projected decorative wheel overlap.
     // Time penalties are already included in the authoritative clock.
+    if (Mode->IsExperimentalFleetRequested())
+    {
+        const auto Fleet=Mode->GetFleetAttemptReadout();
+        Line(FString::Printf(TEXT("EXPERIMENTAL GRID %d/6 | NO SAVED REWARDS"),
+            Mode->GetPhysicalFleetCount()),Accent);
+        if (Fleet.Phase==latebrake::FleetAttemptPhase::Faulted)
+            Line(FString::Printf(TEXT("FLEET FAULT %d | RESTART REQUIRED"),
+                static_cast<int32>(Fleet.Fault)),Accent,true);
+        else if (!Fleet.RunningAllowed)
+            Line(TEXT("WAITING FOR VERIFIED SIX-CAR GRID"),Primary);
+        else if (!bCompact)
+        {
+            for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+            {
+                int32 Laps=0,NextGate=-1;bool Finished=false;
+                if (Mode->TryGetFleetRivalProgress(Slot,Laps,NextGate,Finished))
+                    Line(FString::Printf(TEXT("AI %d | LAP %d | GATE %d%s"),
+                        Slot,Laps,NextGate+1,Finished?TEXT(" | DONE"):TEXT("")),Primary);
+            }
+        }
+    }
     const auto TrackReport=Mode->GetTrackLimits().Snapshot();
     if (bWayfindingEligible)
     {
