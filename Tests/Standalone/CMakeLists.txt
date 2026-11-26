@@ -2633,3 +2633,5 @@ add_latebrake_portable_research_test(FleetGridPresentation)
 add_latebrake_portable_research_test(FleetStartupWatchdog)
 
 add_latebrake_portable_research_test(FleetLineAim)
+
+add_latebrake_portable_research_test(FleetQueueDeferral)

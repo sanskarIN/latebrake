@@ -66,3 +66,12 @@ samples, and failed geometry checks it falls back to the original target.
 Gate credit, route recovery distance, original nonexperimental AI, and
 all downstream brake/traffic/steering guards are unchanged. This does not
 claim overtaking, avoidance guarantees or measured handling quality.
+
+## Queue-aware recovery
+A stationary experimental rival can defer its ordinary eight-second stall
+recovery only while a fresh, complete six-body observation shows a nearby
+slow, aligned, nonoverlapping car ahead on pavement. The allowance is at
+most 12 seconds per accepted route segment; missing evidence, moving
+stalls, collisions and exhausted budgets use the existing recovery policy.
+Pause and same-gate teleport do not replenish that allowance. A real
+forward checkpoint is still processed before any recovery deferral.

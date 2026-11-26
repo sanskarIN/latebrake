@@ -41,7 +41,8 @@ void ALatebrakeRivalCar::ResetPilot()
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-        FleetRisk.Reset();
+    FleetRisk.Reset();
+    FleetQueue.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -58,7 +59,8 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-        FleetRisk.Reset();
+    FleetRisk.Reset();
+    FleetQueue.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -88,6 +90,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
         FleetRisk.Reset();
+        FleetQueue.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -109,6 +112,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
         FleetRisk.Reset();
+        FleetQueue.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -131,6 +135,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
         FleetRisk.Reset();
+        FleetQueue.Suspend();
         LastQualifiedSessionRevision = CurrentSessionRevision;
         bHasQualifiedSessionRevision = true;
     }
@@ -152,6 +157,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
         FleetRisk.Reset();
+        FleetQueue.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -169,9 +175,23 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         Velocity.X, Velocity.Y);
     // The distance/speed still drive the existing stationary and
     // moving-without-approach recovery policies when no gate was crossed.
+    bool bVerifiedTrafficWait=false;
+    if (Mode->IsExperimentalFleetRequested() && !bVerifiedGateCrossed &&
+        FlatSpeed<latebrake::FleetQueueMaximumSelfSpeedCmS)
+    {
+        latebrake::RivalFleetTrafficSample QueueSample;
+        if (Mode->TryGetFreshFleetTraffic(this,false,0.0,QueueSample))
+        {
+            const int Ordinal=Route.GetCompletedLaps()*Route.GetWaypointCount()+Next;
+            bVerifiedTrafficWait=FleetQueue.Observe(Ordinal,
+                static_cast<double>(DeltaSeconds),QueueSample).DeferStallRecovery;
+        }
+        else FleetQueue.Suspend();
+    }
+    else FleetQueue.Suspend();
     const latebrake::RouteObservation Observation = Route.ObserveVerifiedGate(
         Distance, FlatSpeed, static_cast<double>(DeltaSeconds),
-        bVerifiedGateCrossed);
+        bVerifiedGateCrossed,bVerifiedTrafficWait);
     if (Observation.Advanced)
     {
         // Never bridge a frame sample across two different gate planes.
@@ -190,6 +210,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
         FleetRisk.Reset();
+        FleetQueue.Suspend();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         // Collect the actual human on the current game-thread snapshot.
         // No missing player or fictional grid occupant can clear a landing.
@@ -243,6 +264,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
         FleetRisk.Reset();
+        FleetQueue.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
