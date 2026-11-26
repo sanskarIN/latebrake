@@ -14,16 +14,28 @@ enum class GarageEquipUiState
     InvalidVehicle, LockedVehicle, Equipped, Ready
 };
 
-constexpr GarageEquipUiState EvaluateGarageEquipUi(
+// Shared permission for paid and equipment actions; ordinary menu pause
+// is not external/manual suspension.
+constexpr GarageEquipUiState EvaluateGarageMutationUi(
     bool menuOpen, MenuPage page, bool suspended,
-    bool newerSave, bool careerAllowsChanges,
-    bool ownsViewed, int viewedId, int equippedId) noexcept
+    bool newerSave, bool careerAllowsChanges) noexcept
 {
     if (!menuOpen || page != MenuPage::Garage)
         return GarageEquipUiState::NotInGarage;
     if (suspended) return GarageEquipUiState::Suspended;
     if (newerSave) return GarageEquipUiState::ReadOnly;
     if (!careerAllowsChanges) return GarageEquipUiState::CareerLocked;
+    return GarageEquipUiState::Ready;
+}
+
+constexpr GarageEquipUiState EvaluateGarageEquipUi(
+    bool menuOpen, MenuPage page, bool suspended,
+    bool newerSave, bool careerAllowsChanges,
+    bool ownsViewed, int viewedId, int equippedId) noexcept
+{
+    const auto access = EvaluateGarageMutationUi(
+        menuOpen, page, suspended, newerSave, careerAllowsChanges);
+    if (access != GarageEquipUiState::Ready) return access;
     if (!GarageState::IsVehicle(viewedId) ||
         !GarageState::IsVehicle(equippedId))
         return GarageEquipUiState::InvalidVehicle;
@@ -55,6 +67,13 @@ constexpr const char* GarageEquipUiCaption(
     }
     return "NO GARAGE";
 }
+constexpr const char* GarageCycleUiCaption(GarageEquipUiState state) noexcept
+{
+    if (state == GarageEquipUiState::Ready) return "NEXT CAR";
+    if (state == GarageEquipUiState::Equipped) return "NO OTHER CAR";
+    return GarageEquipUiCaption(state);
+}
+
 static_assert(CanActivateGarageEquip(EvaluateGarageEquipUi(
     true, MenuPage::Garage, false, false, true, true, 2, 0)));
 static_assert(!CanActivateGarageEquip(EvaluateGarageEquipUi(

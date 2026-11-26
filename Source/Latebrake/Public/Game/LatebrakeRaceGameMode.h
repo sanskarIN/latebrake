@@ -19,6 +19,7 @@
 #include "Racing/ManualRacePauseGuard.h"
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
+#include "Garage/GarageEquipUiPolicy.h"
 #include "Garage/GaragePurchaseConfirmation.h"
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
@@ -155,6 +156,7 @@ public:
     bool HasProgressSaveError() const { return bProgressSaveFailed; }
     int32 GetNextEngineUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Engine); }
     int32 GetNextGripUpgradeCost() const { return Garage.NextUpgradeCost(latebrake::UpgradeKind::Grip); }
+    latebrake::GarageEquipUiState GetGarageCycleUiState() const;
     void GarageNextVehicle();
     // Explicit six-slot equip is menu-only and never buys a car.
     void GarageSelectVehicle(int32 VehicleId);
@@ -179,6 +181,8 @@ private:
     void RefreshRival();
     void ApplyGarageToPlayer();
     void CommitGarageVehicleSelection(int32 VehicleId);
+    latebrake::GarageEquipUiState GetGarageMutationUiState() const;
+    bool RejectGarageMutationIfBlocked();
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void CloseMenuForRace();

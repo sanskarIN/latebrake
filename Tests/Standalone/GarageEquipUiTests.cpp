@@ -42,6 +42,42 @@ void BoundaryAndAuthority()
     }
 }
 
+void MutationAdmissionAndCycle()
+{
+    using namespace latebrake;
+    for(int page=0;page<static_cast<int>(MenuPageNames.size());++page)
+        for(unsigned flags=0;flags<16u;++flags)
+        {
+            const bool menu=(flags&1u)!=0u, suspended=(flags&2u)!=0u,
+                future=(flags&4u)!=0u, career=(flags&8u)!=0u;
+            const auto state=EvaluateGarageMutationUi(menu,
+                static_cast<MenuPage>(page),suspended,future,career);
+            const bool allowed=menu&&page==static_cast<int>(MenuPage::Garage)
+                &&!suspended&&!future&&career;
+            Check(CanActivateGarageEquip(state)==allowed,
+                "all menu and suspension combinations gate mutations");
+        }
+    for(int mask=1;mask<=KnownVehicleMask;mask+=2)
+        for(int id=0;id<VehicleCount;++id)
+        {
+            GarageState garage;
+            GarageSnapshot snapshot;
+            snapshot.OwnedVehicleMask=mask;
+            snapshot.SelectedVehicle=id;
+            garage.Load(snapshot);
+            const int next=garage.NextOwnedVehicle();
+            const auto state=EvaluateGarageEquipUi(true,MenuPage::Garage,
+                false,false,true,garage.Owns(next),next,garage.SelectedVehicle());
+            Check(CanActivateGarageEquip(state)==(mask!=1),
+                "cycle requires another owned car");
+            Check(std::strcmp(GarageCycleUiCaption(state),
+                mask==1?"NO OTHER CAR":"NEXT CAR")==0,
+                "cycle caption describes current main behavior");
+            Check(garage.Snapshot().OwnedVehicleMask==mask,
+                "read-only observation preserves ownership");
+        }
+}
+
 void ButtonRenderAndClickAgreement()
 {
     using namespace latebrake;
@@ -122,6 +158,7 @@ void DeterministicStress()
 int main()
 {
     BoundaryAndAuthority();
+    MutationAdmissionAndCycle();
     ButtonRenderAndClickAgreement();
     DeterministicStress();
     std::cout<<"Unreal garage equip button authority + captions passed.\n";

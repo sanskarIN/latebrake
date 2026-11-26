@@ -116,7 +116,13 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
         # the exact same visible-page/pager availability policy.
         # Click, wheel and rendering must all consult the same pager.
         self.assertEqual(self.hud.count(
-            "latebrake::AvailableDesktopMenuDetails("), 3)
+            "latebrake::AvailableDesktopMenuDetails("), 1)
+        self.assertEqual(self.hud.count(
+            "latebrake::AvailableDesktopMenuActions("), 2)
+        self.assertIn("Mode->GetGarageCycleUiState()", self.hud)
+        self.assertIn("CanActivateGarageEquip(GarageCycleState)", self.hud)
+        self.assertIn("GarageCycleUiCaption(GarageCycleState)", self.hud)
+        self.assertIn("AvailableDesktopMenuDetails(page, pager)", self.policy)
         self.assertIn("Mode->GetMenuPage(), MenuPager", self.hud)
         self.assertIn("Mode->GetMenuPage(), MenuPager);", self.hud)
         self.assertIn(
@@ -138,6 +144,24 @@ class DesktopMenuMouseBindingTests(unittest.TestCase):
             self.assertIn(source_marker, self.policy)
         self.assertNotIn("Mode->MenuActivate(", self.hud)
         self.assertNotIn("Mode->MenuNext(", self.hud)
+
+    def test_garage_mutation_admission_is_shared(self):
+        for name in ("GarageNextVehicle", "GarageSelectVehicle",
+                     "GarageUnlockNext", "GarageUpgradeEngine",
+                     "GarageUpgradeGrip"):
+            entry = self.mode.split(
+                "void ALatebrakeRaceGameMode::" + name + "(", 1)[1]
+            first_statement = entry.split("{", 1)[1].lstrip()
+            self.assertTrue(first_statement.startswith(
+                "if (RejectGarageMutationIfBlocked()) return;"), name)
+        gate = self.mode.split(
+            "ALatebrakeRaceGameMode::GetGarageMutationUiState() const", 1
+        )[1].split("ALatebrakeRaceGameMode::GetGarageCycleUiState()", 1)[0]
+        for token in ("EvaluateGarageMutationUi(", "Menu.IsOpen()",
+                      "Menu.Current()", "IsFocusLossGuardActive()",
+                      "IsManualRacePauseActive()", "bFutureSaveSchema",
+                      "CanEditGarageDuringRace"):
+            self.assertIn(token, gate)
 
     def test_bounded_pure_test_policy(self):
         for term in ("touchUI || !menuOpen || layout.Compact",
