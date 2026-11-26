@@ -44,27 +44,10 @@ inline bool SameGaragePalettePresentation(const GaragePresentedPalette& shown,
     const GaragePaletteSession& current,const GaragePaletteLayout& layout) noexcept
 {
     if(!shown.Session.Matches(current.VehicleId,current.Look,current.Open)||
-        shown.Session.Layer!=current.Layer||!shown.Layout.Valid||!layout.Valid||
-        shown.Layout.Count!=layout.Count||
-        layout.Count!=GarageLookChoiceCount(current.Layer)||
-        layout.Count<=0||layout.Count>static_cast<int>(GaragePaletteMaxChoices))
+        shown.Session.Layer!=current.Layer||
+        layout.Count!=GarageLookChoiceCount(current.Layer))
         return false;
-    const auto sameRect=[](const DesktopMenuMouseRect& a,const DesktopMenuMouseRect& b)
-    {
-        return a.X==b.X&&a.Y==b.Y&&a.Width==b.Width&&a.Height==b.Height;
-    };
-    if(!sameRect(shown.Layout.Panel,layout.Panel)||
-        !sameRect(shown.Layout.Close.Bounds,layout.Close.Bounds)||
-        shown.Layout.Close.Action!=layout.Close.Action)
-        return false;
-    for(int i=0;i<layout.Count;++i)
-    {
-        const auto k=static_cast<std::size_t>(i);
-        if(shown.Layout.Choices[k].Action!=layout.Choices[k].Action||
-            !sameRect(shown.Layout.Choices[k].Bounds,layout.Choices[k].Bounds))
-            return false;
-    }
-    return true;
+    return SameValidGaragePaletteLayout(shown.Layout,layout);
 }
 
 // Moving focus never commits a choice. A confirm is permitted only when

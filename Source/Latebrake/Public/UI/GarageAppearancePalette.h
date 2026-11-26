@@ -148,31 +148,85 @@ inline bool GaragePaletteRectOverlap(const DesktopMenuMouseRect& a,
         a.Y<b.Y+b.Height&&a.Y+a.Height>b.Y;
 }
 
-inline DesktopMenuMouseAction HitTestGaragePalette(
-    const GaragePaletteLayout& layout, double x, double y) noexcept
+// Shared by mouse admission, keyboard admission and final dispatch.
+// Matching two malformed presentations is not evidence of a visible target.
+inline bool ValidGaragePaletteLayout(const GaragePaletteLayout& layout) noexcept
 {
+    const auto& p=layout.Panel;
     if(!layout.Valid || layout.Count<=0 ||
         layout.Count>static_cast<int>(layout.Choices.size()) ||
-        !std::isfinite(x)||!std::isfinite(y)||
-        !layout.Panel.Contains(x,y)||
+        !std::isfinite(p.X)||!std::isfinite(p.Y)||
+        !std::isfinite(p.Width)||!std::isfinite(p.Height)||
+        !std::isfinite(p.X+p.Width)||!std::isfinite(p.Y+p.Height)||
+        p.X<0.0||p.Y<0.0||p.Width<44.0||p.Height<44.0||
+        p.X+p.Width<=p.X||p.Y+p.Height<=p.Y||
         layout.Close.Action!=DesktopMenuMouseAction::GaragePaletteClose||
-        !ValidGaragePaletteRect(layout.Close.Bounds,layout.Panel))
-        return DesktopMenuMouseAction::None;
-    auto action=layout.Close.Bounds.Contains(x,y)
-        ? layout.Close.Action:DesktopMenuMouseAction::None;
+        !ValidGaragePaletteRect(layout.Close.Bounds,p))
+        return false;
     for(int i=0;i<layout.Count;++i)
     {
         const auto& b=layout.Choices[static_cast<std::size_t>(i)];
         if(b.Action!=GaragePaletteChoiceAction(i)||
-            !ValidGaragePaletteRect(b.Bounds,layout.Panel)||
+            !ValidGaragePaletteRect(b.Bounds,p)||
             GaragePaletteRectOverlap(b.Bounds,layout.Close.Bounds))
-            return DesktopMenuMouseAction::None;
+            return false;
         for(int j=0;j<i;++j)
             if(GaragePaletteRectOverlap(b.Bounds,layout.Choices[static_cast<std::size_t>(j)].Bounds))
-                return DesktopMenuMouseAction::None;
-        if(b.Bounds.Contains(x,y)) action=b.Action;
+                return false;
     }
-    return action;
+    return true;
+}
+
+inline bool SameGaragePaletteRect(const DesktopMenuMouseRect& a,
+    const DesktopMenuMouseRect& b) noexcept
+{
+    return a.X==b.X&&a.Y==b.Y&&a.Width==b.Width&&a.Height==b.Height;
+}
+
+inline bool SameValidGaragePaletteLayout(const GaragePaletteLayout& before,
+    const GaragePaletteLayout& now) noexcept
+{
+    if(!ValidGaragePaletteLayout(before)||!ValidGaragePaletteLayout(now)||
+        before.Count!=now.Count||
+        !SameGaragePaletteRect(before.Panel,now.Panel)||
+        before.Close.Action!=now.Close.Action||
+        !SameGaragePaletteRect(before.Close.Bounds,now.Close.Bounds))
+        return false;
+    for(int i=0;i<now.Count;++i)
+    {
+        const auto index=static_cast<std::size_t>(i);
+        if(before.Choices[index].Action!=now.Choices[index].Action||
+            !SameGaragePaletteRect(before.Choices[index].Bounds,now.Choices[index].Bounds))
+            return false;
+    }
+    return true;
+}
+
+inline DesktopMenuMouseAction HitTestGaragePalette(
+    const GaragePaletteLayout& layout, double x, double y) noexcept
+{
+    if(!ValidGaragePaletteLayout(layout)||!layout.Panel.Contains(x,y))
+        return DesktopMenuMouseAction::None;
+    if(layout.Close.Bounds.Contains(x,y))
+        return layout.Close.Action;
+    for(int i=0;i<layout.Count;++i)
+    {
+        const auto& b=layout.Choices[static_cast<std::size_t>(i)];
+        if(b.Bounds.Contains(x,y)) return b.Action;
+    }
+    return DesktopMenuMouseAction::None;
+}
+
+// An open modal owns its background, not just its buttons. A corrupt
+// active plan blocks all pointer dispatch until the next valid draw.
+inline bool GaragePaletteBlocksUnderlyingPointer(bool open,
+    const GaragePaletteLayout& layout,double x,double y,
+    DesktopMenuMouseAction paletteAction) noexcept
+{
+    if(!open) return false;
+    if(!ValidGaragePaletteLayout(layout)) return true;
+    if(!layout.Panel.Contains(x,y)) return false;
+    return paletteAction==DesktopMenuMouseAction::None;
 }
 
 struct GaragePresentedPalette final
@@ -188,8 +242,8 @@ inline bool CanClickPresentedGaragePalette(
     const GaragePaletteLayout& current,DesktopMenuMouseAction action) noexcept
 {
     if(!shown.Session.Matches(session.VehicleId,session.Look,session.Open)||
-        shown.Session.Layer!=session.Layer||!current.Valid||
-        !shown.Layout.Valid||shown.Layout.Count!=current.Count||
+        shown.Session.Layer!=session.Layer||
+        !SameValidGaragePaletteLayout(shown.Layout,current)||
         current.Count!=GarageLookChoiceCount(session.Layer)) return false;
     const int index=GaragePaletteChoiceIndex(action);
     const bool close=action==DesktopMenuMouseAction::GaragePaletteClose;

@@ -47,6 +47,24 @@ class GarageAppearancePaletteBindingTests(unittest.TestCase):
         self.assertIn("before.Action==action&&now.Action==action",self.policy)
         self.assertIn("a.X==b.X&&a.Y==b.Y&&a.Width==b.Width&&a.Height==b.Height",self.policy)
 
+    def test_complete_presentation_revalidated_before_dispatch(self):
+        hit = self.hud.split("ALatebrakeRaceHUD::HitTestMenuMouse(",1)[1]
+        hit = hit.split("void ALatebrakeRaceHUD::DrawHUD()",1)[0]
+        self.assertIn("GaragePaletteBlocksUnderlyingPointer(",hit)
+        self.assertLess(hit.index("GaragePaletteBlocksUnderlyingPointer("),
+                        hit.index("CollectGaragePointerClaims("))
+        apply = self.hud.split("void ALatebrakeRaceHUD::ApplyGaragePaletteChoice(",1)[1]
+        apply = apply.split("ALatebrakeRaceHUD::HitTestMenuMouse(",1)[0]
+        for marker in ("Mode && Canvas && Choice >= 0", "CalculateGaragePaletteLayout(",
+                       "CanClickPresentedGaragePalette(", "CloseGaragePalette();",
+                       "Mode->GarageChooseAppearance("):
+            self.assertIn(marker,apply)
+        self.assertLess(apply.index("CanClickPresentedGaragePalette("),
+                        apply.index("Mode->GarageChooseAppearance("))
+        self.assertIn("SameValidGaragePaletteLayout(shown.Layout,current)",self.policy)
+        nav = source("Source/Latebrake/Public/UI/GaragePaletteNavigation.h")
+        self.assertIn("SameValidGaragePaletteLayout(shown.Layout,layout)",nav)
+
     def test_free_chooser_cancels_pending_spend_before_presentation(self):
         start = self.mode.split("bool ALatebrakeRaceGameMode::BeginGarageAppearancePreview()",1)[1]
         start = start.split("void ALatebrakeRaceGameMode::GarageCycleAppearance(",1)[0]

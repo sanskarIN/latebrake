@@ -134,6 +134,16 @@ void StaleAndInvalidPresentation()
     moved=layout;
     moved.Count=std::numeric_limits<int>::max();
     expectIgnore(session,moved,shown,"invalid count");
+    auto corrupted=layout;
+    corrupted.Choices[1].Bounds=corrupted.Choices[0].Bounds;
+    auto forged=shown;forged.Layout=corrupted;
+    expectIgnore(session,corrupted,forged,"identical overlapping layout cannot commit");
+    corrupted=layout;corrupted.Close.Action=DesktopMenuMouseAction::Activate;
+    forged.Layout=corrupted;
+    expectIgnore(session,corrupted,forged,"identical corrupt close target cannot commit");
+    corrupted=layout;corrupted.Panel.Width=std::numeric_limits<double>::infinity();
+    forged.Layout=corrupted;
+    expectIgnore(session,corrupted,forged,"nonfinite modal cannot commit");
     auto closed=session;closed.Open=false;
     expectIgnore(closed,layout,shown,"closed palette never commits");
     Require(NavigateGaragePalette(session,{}, {},-1,-1,Input::Cancel).Effect==Effect::Cancel,

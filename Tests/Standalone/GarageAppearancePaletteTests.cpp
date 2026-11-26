@@ -103,6 +103,70 @@ void InvalidRequests()
         "malformed action safe");
 }
 
+void FullPresentationAndModalGuards()
+{
+    using Action=DesktopMenuMouseAction;
+    const auto hud=CalculateHudLayout(1920,1080);
+    const auto lane=CalculateGarageShowroomLane(1920,1080,hud,false,true,MenuPage::Garage);
+    for(auto layer:{GarageLookLayer::Paint,GarageLookLayer::Stripe,GarageLookLayer::Wheels})
+    {
+        const auto layout=CalculateGaragePaletteLayout(lane,1920,1080,hud,layer);
+        const GaragePaletteSession session{true,0,FactoryGarageLook(0),layer};
+        GaragePresentedPalette shown;
+        shown.Session=session;
+        shown.Layout=layout;
+        shown.CloseVisible=true;
+        shown.ChoiceVisible.fill(true);
+        Require(ValidGaragePaletteLayout(layout),"baseline layout valid");
+        const auto choice=layout.Choices[0].Action;
+        const auto checkInvalid=[&](const GaragePaletteLayout& bad)
+        {
+            Require(!ValidGaragePaletteLayout(bad),"invalid surface detected");
+            auto forged=shown;
+            forged.Layout=bad;
+            Require(!CanClickPresentedGaragePalette(forged,session,bad,choice),
+                "identical malformed receipts cannot authorize choice");
+            Require(!CanClickPresentedGaragePalette(forged,session,bad,Action::GaragePaletteClose),
+                "malformed surface cannot authorize another visible button");
+            Require(GaragePaletteBlocksUnderlyingPointer(true,bad,0,0,Action::None),
+                "malformed open surface blocks underlying dispatch");
+            Require(!GaragePaletteBlocksUnderlyingPointer(false,bad,0,0,Action::None),
+                "inactive modal cannot intercept normal menu");
+        };
+        auto bad=layout;
+        bad.Panel.Width=std::numeric_limits<double>::infinity();
+        checkInvalid(bad);
+        bad=layout;bad.Panel.X=-1.0;checkInvalid(bad);
+        bad=layout;bad.Panel.Height=0.0;checkInvalid(bad);
+        bad=layout;bad.Close.Action=Action::Activate;checkInvalid(bad);
+        bad=layout;bad.Choices[1].Bounds=bad.Choices[0].Bounds;checkInvalid(bad);
+        bad=layout;bad.Choices[1].Bounds.Width=0.0;checkInvalid(bad);
+        bad=layout;bad.Choices[1].Action=Action::Close;checkInvalid(bad);
+        bad=layout;bad.Count=std::numeric_limits<int>::max();checkInvalid(bad);
+        bad=layout;bad.Choices[0].Bounds.X=std::numeric_limits<double>::quiet_NaN();
+        checkInvalid(bad);
+
+        // A different valid geometry elsewhere in the chooser invalidates
+        // even a choice whose own rectangle still matches the last draw.
+        auto moved=layout;
+        moved.Panel.Height+=1.0;
+        Require(ValidGaragePaletteLayout(moved),"expanded panel remains valid");
+        Require(!CanClickPresentedGaragePalette(shown,session,moved,choice),
+            "changed panel revokes untouched button");
+        const double blankX=layout.Panel.X+1.0,blankY=layout.Panel.Y+1.0;
+        Require(HitTestGaragePalette(layout,blankX,blankY)==Action::None,
+            "panel padding not a choice");
+        Require(GaragePaletteBlocksUnderlyingPointer(true,layout,blankX,blankY,Action::None),
+            "panel padding cannot click behind overlay");
+        Require(!GaragePaletteBlocksUnderlyingPointer(true,layout,-1,-1,Action::None),
+            "outside panel remains normal navigation");
+        const auto& bounds=layout.Choices[0].Bounds;
+        const double x=bounds.X+bounds.Width/2.0,y=bounds.Y+bounds.Height/2.0;
+        Require(!GaragePaletteBlocksUnderlyingPointer(true,layout,x,y,
+            HitTestGaragePalette(layout,x,y)),"real choice goes to claim arbitration");
+    }
+}
+
 void LayoutsAndPresentation()
 {
     for(const auto& size:{std::array<int,2>{900,600},{1280,720},{1366,768},
@@ -186,6 +250,7 @@ int main()
     AllChoices();
     InvalidRequests();
     LayoutsAndPresentation();
+    FullPresentationAndModalGuards();
     std::cout<<"Garage direct appearance palette tests passed.\n";
     return EXIT_SUCCESS;
 }

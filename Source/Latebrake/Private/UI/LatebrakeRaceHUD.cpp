@@ -206,15 +206,25 @@ void ALatebrakeRaceHUD::ApplyGaragePaletteChoice(latebrake::DesktopMenuMouseActi
         ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     const auto Session = GaragePalette;
     const int Choice = latebrake::GaragePaletteChoiceIndex(Action);
-    const bool bPresented = Choice >= 0 &&
-        PresentedGaragePalette.Session.Matches(Session.VehicleId,Session.Look,Session.Open) &&
-        PresentedGaragePalette.Session.Layer == Session.Layer &&
-        Choice < PresentedGaragePalette.Layout.Count &&
-        PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(Choice)];
-    CloseGaragePalette();
-    if (Mode && bPresented &&
+    // Recompute at the final mutation boundary, not just during hit test.
+    // Resize, focus loss, ownership changes or stale draw receipts must
+    // never select an invisible option even if an input handler is called.
+    bool bPresented = false;
+    if (Mode && Canvas && Choice >= 0 &&
         Session.Matches(Mode->GetGaragePreviewVehicleId(),
             Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
+    {
+        const double W=Canvas->SizeX,H=Canvas->SizeY;
+        const auto Hud=latebrake::CalculateHudLayout(W,H);
+        const auto Lane=latebrake::CalculateGarageShowroomLane(
+            W,H,Hud,false,Mode->IsMenuOpen(),Mode->GetMenuPage());
+        const auto Layout=latebrake::CalculateGaragePaletteLayout(
+            Lane,W,H,Hud,Session.Layer);
+        bPresented=latebrake::CanClickPresentedGaragePalette(
+            PresentedGaragePalette,Session,Layout,Action);
+    }
+    CloseGaragePalette();
+    if (Mode && bPresented)
         Mode->GarageChooseAppearance({Session.VehicleId,Session.Look,Session.Layer,Choice});
 }
 
@@ -273,6 +283,9 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
             const auto paletteLayout = latebrake::CalculateGaragePaletteLayout(
                 lane,width,height,hud,GaragePalette.Layer);
             const auto paletteAction = latebrake::HitTestGaragePalette(paletteLayout,x,y);
+            if (latebrake::GaragePaletteBlocksUnderlyingPointer(
+                    true,paletteLayout,x,y,paletteAction))
+                return latebrake::DesktopMenuMouseAction::None;
             paletteClaim = {paletteAction, paletteAction != latebrake::DesktopMenuMouseAction::None &&
                 latebrake::CanClickPresentedGaragePalette(
                     PresentedGaragePalette,GaragePalette,paletteLayout,paletteAction)};
