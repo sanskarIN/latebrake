@@ -433,7 +433,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         if (Observed)
         {
             const auto Immediate=latebrake::ApplyRivalFleetTraffic(FollowingCommand,Snapshot);
-            const auto Supervised=FleetRisk.Apply(Immediate.Command,Snapshot,DeltaSeconds);
+            const auto Supervised=FleetRisk.Apply(Immediate.Command,Snapshot,DeltaSeconds,
+                latebrake::FleetForecastRoadPolicy::ObservedOffroadBlockers);
             FleetCommand=Supervised.Command;
         }
         else

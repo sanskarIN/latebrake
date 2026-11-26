@@ -507,10 +507,77 @@ void TestDeterministicPerturbations()
         }
     }
 }
+void TestObservedOffroadBlockers()
+{
+    using namespace latebrake;
+    constexpr auto policy=FleetForecastRoadPolicy::ObservedOffroadBlockers;
+    auto sample=ValidSixCars();
+    sample.Self.VelocityX=500.0;
+    sample.Blockers[4].Pose={{0.0,0.0},0.0};
+    Require(!ForecastSixCarRisk(sample).Qualified(),
+        "strict default still rejects off-road bodies");
+    auto context=InspectFleetRoadContext(sample,policy);
+    Require(context.Valid && context.OffroadBlockers==1 &&
+        context.Roster[5]==sample.Blockers[4].ActorToken,
+        "known off-road body retained in exact roster");
+    auto risk=ForecastSixCarRisk(sample,policy);
+    Require(risk.Qualified() && risk.OffroadBlockers==1 &&
+        risk.ThrottleCeiling<=FleetDegradedThrottleCeiling &&
+        !risk.RoadSpeedExceeded && !risk.Emergency(),
+        "separated on-road rival gets only bounded degraded motor demand");
+    RivalFleetRiskSupervisor supervisor;
+    auto result=supervisor.Apply({0.8,0.15,false,false},sample,0.05,policy);
+    Require(result.Qualified && !result.Command.Brake &&
+        result.Command.Throttle<=FleetDegradedThrottleCeiling &&
+        result.Command.Steering==0.15,
+        "known distant off-road body does not stop entire fleet");
+    sample.Self.VelocityX=FleetDegradedMaximumSpeedCmS+1.0;
+    risk=ForecastSixCarRisk(sample,policy);
+    Require(risk.Qualified() && risk.Emergency() && risk.RoadSpeedExceeded &&
+        risk.ThrottleCeiling==0.0,"degraded speed ceiling independently requests brake");
+    result=supervisor.Apply({0.8,0.15,false,false},sample,0.05,policy);
+    Require(result.Command.Brake && result.Command.Throttle==0.0,
+        "actual supervisor enforces degraded speed brake");
+    sample.Self.VelocityX=500.0;
+    sample.Blockers[4].Pose={{-1900.0,-1100.0},-90.0};
+    sample.Blockers[4].VelocityY=-1000.0;
+    risk=ForecastSixCarRisk(sample,policy);
+    Require(risk.Qualified() && risk.Emergency() && risk.LimitingSlot==5,
+        "off-road crossing actor still participates in continuous contact");
+    sample.Blockers[4].VelocityY=0.0;
+    sample.Blockers[4].Pose={{0.0,0.0},0.0};
+    sample.Blockers[3].Pose={{1000.0,0.0},0.0};
+    Require(InspectFleetRoadContext(sample,policy).OffroadBlockers==2,
+        "multiple observed off-road bodies still counted");
+    sample.Blockers[3].Pose={{6000.0,0.0},0.0};
+    Require(!ForecastSixCarRisk(sample,policy).Qualified(),
+        "outside-authored-ground actor is not a qualified degraded observation");
+    sample.Blockers[3]=ValidSixCars().Blockers[3];
+    sample.Blockers[4].ActorToken=0;
+    Require(!ForecastSixCarRisk(sample,policy).Qualified(),
+        "unidentified off-road actor denies all propulsion");
+    sample.Blockers[4].ActorToken=1005;
+    sample.Blockers[4].VelocityX=std::numeric_limits<double>::quiet_NaN();
+    Require(!ForecastSixCarRisk(sample,policy).Qualified(),
+        "nonfinite off-road body denies all propulsion");
+    sample.Blockers[4].VelocityX=0.0;
+    sample.Self.Pose.Position={0.0,0.0};
+    Require(!ForecastSixCarRisk(sample,policy).Qualified(),
+        "off-road subject itself must still recover normally");
+    sample.Self=ValidSixCars().Self;
+    sample.BrakeObservationQualified=false;
+    Require(!ForecastSixCarRisk(sample,policy).Qualified(),
+        "degraded mode does not invent missing brake evidence");
+    sample.BrakeObservationQualified=true;
+    sample.ConservativeBrakeScale=0.149;
+    Require(!ForecastSixCarRisk(sample,policy).Qualified(),
+        "degraded mode preserves physical brake scale admission");
+}
 } // namespace
 
 int main()
 {
+    TestObservedOffroadBlockers();
     TestExactPhysicalRoster();
     TestContinuousSweptGeometry();
     TestDistanceAndPriority();

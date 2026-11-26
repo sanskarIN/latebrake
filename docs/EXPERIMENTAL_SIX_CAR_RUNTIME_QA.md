@@ -75,3 +75,14 @@ most 12 seconds per accepted route segment; missing evidence, moving
 stalls, collisions and exhausted budgets use the existing recovery policy.
 Pause and same-gate teleport do not replenish that allowance. A real
 forward checkpoint is still processed before any recovery deferral.
+
+## Known off-road opponents
+Strict fleet forecasts still require every body on pavement by default.
+Only the experimental runtime admits the separately identified degraded
+context when the controlled car is on road and all five genuine blockers
+remain valid within authored ground. Every blocker participates in the
+same swept-contact and stopping-distance evaluation. Motor demand is
+capped at 25 percent and speed over 900 cm/s requests braking. Unknown,
+missing, out-of-ground or invalid actors and invalid brake evidence still
+fail closed. An off-road subject uses the existing recovery path. These
+are conservative prototype constants, not measured handling performance.
