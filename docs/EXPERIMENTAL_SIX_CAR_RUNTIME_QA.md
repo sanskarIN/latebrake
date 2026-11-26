@@ -86,3 +86,21 @@ capped at 25 percent and speed over 900 cm/s requests braking. Unknown,
 missing, out-of-ground or invalid actors and invalid brake evidence still
 fail closed. An off-road subject uses the existing recovery path. These
 are conservative prototype constants, not measured handling performance.
+
+## Native audit capture
+The private Win64 Development launch wrapper accepts the opt-in
+`-ExperimentalSixCarGrid` switch; ordinary invocations are unchanged.
+
+```powershell
+pwsh ./scripts/Run-WindowsPlaytest.ps1 -CandidateDirectory 'D:/LateBrakeCandidates/<candidate>' -ExperimentalSixCarGrid
+python ./scripts/AnalyzeFleetAudit.py 'D:/LateBrakeCandidates/LateBrakePlaytestLogs/<actual-log>.log' --require-finish --require-all-rivals
+```
+
+A versioned fleet-audit stream reports actual attempt, six bound identities,
+GO, individual accepted gate/recovery receipts, any refused receipts,
+terminal faults and the player's no-save finish. The parser checks the
+closed grammar, identities, ordered route ordinals, active clocks, start
+qualification, recovery sequences and result consistency. Keep the sealed
+Win64 run receipt and original log with the candidate archive. The parser
+does not authenticate text, prove physics, qualify rendered pixels,
+establish competitive race order or authorize a release.

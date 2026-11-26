@@ -48,8 +48,16 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
     FleetFinishReview={};
     if (!IsExperimentalFleetRequested() && IsValid(RivalCar))
         RivalCar->SetGarageTuning(1.f,1.f,1.f,0,latebrake::FactoryGarageLook(0));
-    FleetAttempt.Begin({IsExperimentalFleetRequested(),SelectedEvent==latebrake::EventKind::Circuit,
-        bCareerRace,FleetAttemptToken});
+    const bool Began=FleetAttempt.Begin({IsExperimentalFleetRequested(),
+        SelectedEvent==latebrake::EventKind::Circuit,bCareerRace,FleetAttemptToken});
+#if !UE_BUILD_SHIPPING
+    if (Began && IsExperimentalFleetRequested())
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=begin attempt=%llu gates=%d laps=%d"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            Race.GetCheckpointCount(),Race.GetRequiredLaps());
+#else
+    static_cast<void>(Began);
+#endif
 }
 
 ALatebrakeRivalCar* ALatebrakeRaceGameMode::FleetRivalAt(int32 Slot) const
@@ -212,6 +220,7 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
     if (Race.IsFinished()) return false;
     if (FleetFrameToken==std::numeric_limits<uint64>::max()) return false;
     ++FleetFrameToken;
+    const auto Previous=FleetAttempt.Readout().Phase;
     if (!Inactive && !StartLights.IsGreen()) SpawnExtraFleet();
     latebrake::FleetPhysicalFrame Frame;
     Frame.AttemptToken=FleetAttemptToken;
@@ -228,7 +237,6 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
             FleetAttempt.ReportSpawnFailure(FleetAttemptToken);
         }
     }
-    const auto Previous=FleetAttempt.Readout().Phase;
     const bool Accepted=FleetAttempt.Observe(Frame);
     const auto Current=FleetAttempt.Readout();
     // The portable token array is necessary, not sufficient. UObject
@@ -241,8 +249,24 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
         for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
             FleetBoundActors[static_cast<std::size_t>(Slot)]=FleetRivalAt(Slot);
         bFleetActorsBound=true;
-        latebrake::BindFleetReviewLedger(FleetReviewLedger,FleetAttempt.BoundIdentity(),
-            Race.GetCheckpointCount(),Race.GetRequiredLaps());
+        const bool LedgerBound=latebrake::BindFleetReviewLedger(FleetReviewLedger,
+            FleetAttempt.BoundIdentity(),Race.GetCheckpointCount(),Race.GetRequiredLaps());
+#if !UE_BUILD_SHIPPING
+        if (LedgerBound)
+        {
+            const auto& Ids=FleetAttempt.BoundIdentity();
+            UE_LOG(LogTemp,Display,
+                TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=roster attempt=%llu frame=%llu "
+                     "id0=%llu id1=%llu id2=%llu id3=%llu id4=%llu id5=%llu"),
+                static_cast<unsigned long long>(FleetAttemptToken),
+                static_cast<unsigned long long>(FleetFrameToken),
+                static_cast<unsigned long long>(Ids[0]),static_cast<unsigned long long>(Ids[1]),
+                static_cast<unsigned long long>(Ids[2]),static_cast<unsigned long long>(Ids[3]),
+                static_cast<unsigned long long>(Ids[4]),static_cast<unsigned long long>(Ids[5]));
+        }
+#else
+        static_cast<void>(LedgerBound);
+#endif
     }
     if (Accepted) FleetObservedEpoch=CheckpointSession.Current();
     bool CountdownAllowed=Current.CountdownAllowed;
@@ -267,6 +291,11 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
     {
         UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_FAULT reason=%d slot=%d"),
             static_cast<int32>(Final.Fault),Final.FaultSlot);
+#if !UE_BUILD_SHIPPING
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=fault attempt=%llu reason=%d slot=%d"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            static_cast<int32>(Final.Fault),Final.FaultSlot);
+#endif
     }
     return Accepted && (StartLights.IsGreen()?Final.RunningAllowed:CountdownAllowed);
 }
@@ -328,12 +357,22 @@ void ALatebrakeRaceGameMode::ObserveFleetRivalGate(const ALatebrakeRivalCar* Act
     if (!latebrake::FleetRouteOrdinal(Actor->GetApproximateLaps(),
         Actor->GetNextVerifiedGate(),Actor->HasCompletedRoute(),
         Race.GetCheckpointCount(),Race.GetRequiredLaps(),Ordinal)) return;
-    if (!FleetReviewLedger.RecordAcceptedGate(Slot,FleetToken(Actor),Ordinal,
-        Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds()))
+    const double Clock=Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds();
+    if (!FleetReviewLedger.RecordAcceptedGate(Slot,FleetToken(Actor),Ordinal,Clock))
     {
         UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_GATE_RECEIPT_REFUSED slot=%d ordinal=%d"),
             Slot,Ordinal);
+#if !UE_BUILD_SHIPPING
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=refused attempt=%llu kind=gate slot=%d ordinal=%d"),
+            static_cast<unsigned long long>(FleetAttemptToken),Slot,Ordinal);
+#endif
+        return;
     }
+#if !UE_BUILD_SHIPPING
+    UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=gate attempt=%llu slot=%d id=%llu ordinal=%d clock=%.9f"),
+        static_cast<unsigned long long>(FleetAttemptToken),Slot,
+        static_cast<unsigned long long>(FleetToken(Actor)),Ordinal,Clock);
+#endif
 }
 
 void ALatebrakeRaceGameMode::ObserveFleetRivalRecovery(
@@ -341,12 +380,22 @@ void ALatebrakeRaceGameMode::ObserveFleetRivalRecovery(
 {
     if (!IsExperimentalFleetRequested() || !IsExperimentalFleetDriveReady() ||
         !IsRegisteredRaceRival(Actor) || Race.IsFinished()) return;
-    if (!FleetReviewLedger.RecordRecoveryResult(Actor->GetGridSlot(),FleetToken(Actor),
-        Actor->GetPilotRecoveries(),Verified))
+    const int Slot=Actor->GetGridSlot();
+    const int Ordinal=Actor->GetPilotRecoveries();
+    if (!FleetReviewLedger.RecordRecoveryResult(Slot,FleetToken(Actor),Ordinal,Verified))
     {
-        UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_RECOVERY_RECEIPT_REFUSED slot=%d"),
-            Actor->GetGridSlot());
+        UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_RECOVERY_RECEIPT_REFUSED slot=%d"),Slot);
+#if !UE_BUILD_SHIPPING
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=refused attempt=%llu kind=recovery slot=%d ordinal=%d"),
+            static_cast<unsigned long long>(FleetAttemptToken),Slot,Ordinal);
+#endif
+        return;
     }
+#if !UE_BUILD_SHIPPING
+    UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=recovery attempt=%llu slot=%d id=%llu ordinal=%d verified=%d"),
+        static_cast<unsigned long long>(FleetAttemptToken),Slot,
+        static_cast<unsigned long long>(FleetToken(Actor)),Ordinal,Verified?1:0);
+#endif
 }
 
 latebrake::FleetRaceReview ALatebrakeRaceGameMode::CollectFleetRaceReview() const

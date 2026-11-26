@@ -12,7 +12,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$CandidateDirectory,
-    [string]$LogDirectory
+    [string]$LogDirectory,
+    [switch]$ExperimentalSixCarGrid
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -76,6 +77,10 @@ try {
     # -ABSLOG is documented by Epic. Explicitly quote a path with spaces
     # because PowerShell Start-Process joins ArgumentList elements.
     $argsForUnreal = @('-log', ('-ABSLOG="' + $log + '"'))
+    if ($ExperimentalSixCarGrid) {
+        Write-Host 'Requesting developer-only six-car Circuit; no experimental race rewards.'
+        $argsForUnreal += '-LatebrakeExperimentalSixCarGrid'
+    }
     $process = Start-Process -FilePath $game.FullName -WorkingDirectory $game.DirectoryName -ArgumentList $argsForUnreal -PassThru -Wait -ErrorAction Stop
     $exitCode = $process.ExitCode
 } catch {

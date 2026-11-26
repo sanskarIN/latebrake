@@ -192,7 +192,27 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     const double LiveDelta = StartLights.Advance(
         static_cast<double>(DeltaSeconds), bStartQualified);
     if (IsExperimentalFleetRequested() && !bWasGreen && StartLights.IsGreen())
-        FleetAttempt.CommitGreen(FleetAttemptToken,FleetFrameToken);
+    {
+        const bool Committed=FleetAttempt.CommitGreen(FleetAttemptToken,FleetFrameToken);
+#if !UE_BUILD_SHIPPING
+        if (Committed)
+        {
+            const auto Startup=FleetStartup.Readout();
+            UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=go attempt=%llu frame=%llu stable=%.9f startup=%.9f"),
+                static_cast<unsigned long long>(FleetAttemptToken),
+                static_cast<unsigned long long>(FleetFrameToken),Startup.StableSeconds,Startup.ActiveSeconds);
+        }
+        else
+        {
+            const auto Failed=FleetAttempt.Readout();
+            UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=fault attempt=%llu reason=%d slot=%d"),
+                static_cast<unsigned long long>(FleetAttemptToken),
+                static_cast<int32>(Failed.Fault),Failed.FaultSlot);
+        }
+#else
+        static_cast<void>(Committed);
+#endif
+    }
     // A 3D cosmetic reflection of this SAME authoritative light phase.
     // It is not another timer and cannot authorize GO, brakes or gates.
     UpdateStartGantryVisual();
@@ -1381,6 +1401,11 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
             Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds());
     }
 #if !UE_BUILD_SHIPPING
+    if (IsExperimentalFleetRequested())
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=gate attempt=%llu slot=0 id=%llu ordinal=%d clock=%.9f"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            static_cast<unsigned long long>(FleetAttempt.BoundIdentity()[0]),
+            static_cast<int32>(PlayerGateOrdinal),Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds());
     // Only genuinely accepted, ordered, player-authoritative checkpoints
     // produce this low-volume diagnostic. The audit cannot award a lap.
     if (RaceAuditAttempt > 0 && FMath::IsFinite(Race.GetElapsedSeconds()))
@@ -1428,6 +1453,15 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         LastRivalFinishObservation={};
         LastRivalFinishClockComparison={};
         CareerFeedback=TEXT("Experimental fleet test: no persistent rewards or records.");
+#if !UE_BUILD_SHIPPING
+        UE_LOG(LogTemp,Display,
+            TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=finish attempt=%llu clock=%.9f fees=%.9f timing=%d review=%d completed_routes=%d saved=0"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds(),Race.GetTotalPenaltySeconds(),
+            FinishTiming==latebrake::FinishTimingEligibility::Eligible?1:0,
+            FleetFinishReview.ValidRoster && FleetFinishReview.PlayerRouteValid?1:0,
+            FleetFinishReview.ObservedCompletedRoutes);
+#endif
         return;
     }
     if (FinishTiming != latebrake::FinishTimingEligibility::Eligible)
@@ -3060,6 +3094,12 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
             static_cast<int32>(Notice));
         return;
     }
+#if !UE_BUILD_SHIPPING
+    if (IsExperimentalFleetRequested())
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=recovery attempt=%llu slot=0 id=%llu ordinal=%d verified=1"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            static_cast<unsigned long long>(FleetAttempt.BoundIdentity()[0]),RecoveriesThisRace);
+#endif
     // A real paid teleport cannot be mistaken for a grid launch. A rejected
     // recovery above returns without erasing an otherwise valid sample.
     TrackLimits.Suspend();
