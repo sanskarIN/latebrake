@@ -26,6 +26,7 @@ struct PlayerRecoveryClearance final
 {
     PlayerRecoveryClearanceStatus Status=PlayerRecoveryClearanceStatus::InvalidGate;
     CircuitPose Pose{};
+    int Gate=-1;
     bool Safe() const noexcept { return Status==PlayerRecoveryClearanceStatus::Clear; }
 };
 
@@ -38,6 +39,7 @@ inline PlayerRecoveryClearance EvaluatePlayerRecoveryClearance(
         return result;
 
     const auto pose=PlayerRecovery(nextGate);
+    result.Gate=nextGate;
     result.Status=PlayerRecoveryClearanceStatus::InvalidLanding;
     if (!RecoveryChassisFitsPhysicalAsphalt(pose) ||
         StartGridFootprintTouchesBarrier(pose) ||
@@ -168,8 +170,19 @@ PlayerRecoveryNotice TryPaidRecoveryWithClearance(
 {
     if (!CanScorePlayerCheckpoint(race,circuitReady,inactive,driverReady))
         return PlayerRecoveryNotice::None;
+    if (!IsCircuitGate(clearance.Gate) ||
+        clearance.Gate!=race.GetNextCheckpoint())
+        return PlayerRecoveryNotice::LandingUnavailable;
     if (!clearance.Safe())
         return DescribeRecoveryClearanceFailure(clearance.Status);
+
+    // Clearance belongs to the exact current checkpoint. A stale or
+    // altered candidate must never inherit a previous landing approval.
+    const auto expected=PlayerRecovery(clearance.Gate);
+    if (clearance.Pose.Position.X!=expected.Position.X ||
+        clearance.Pose.Position.Y!=expected.Position.Y ||
+        clearance.Pose.HeadingDegrees!=expected.HeadingDegrees)
+        return PlayerRecoveryNotice::LandingUnavailable;
 
     bool attempted=false;
     const bool committed=TryChargePlayerRecoveryAfterVerifiedTeleport(

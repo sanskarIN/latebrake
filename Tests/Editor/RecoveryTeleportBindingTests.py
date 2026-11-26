@@ -37,7 +37,7 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::RecoverPlayer(",
             "void ALatebrakeRaceGameMode::LoadRecords(",
         )
-        self.assertIn("TryChargePlayerRecoveryAfterVerifiedTeleport(", recovery)
+        self.assertIn("TryPaidRecoveryWithClearance(", recovery)
         self.assertIn("Car->TryRecoverTo(Target, Facing)", recovery)
         self.assertIn("ManualPause.IsSuspended()", recovery)
         self.assertIn("AppFocusGuard.IsSuspended()", recovery)
@@ -63,6 +63,9 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
             encoding="utf-8")
         self.assertIn("expectsRival!=observedRival", clearance)
         self.assertIn("EvaluateRivalRecoveryClearance(pose,observed,1)", clearance)
+        self.assertIn("clearance.Gate!=race.GetNextCheckpoint()", clearance)
+        self.assertIn("clearance.Pose.Position.X!=expected.Position.X", clearance)
+        self.assertIn("clearance.Pose.HeadingDegrees!=expected.HeadingDegrees", clearance)
         self.assertLess(clearance.index("if (!clearance.Safe())"),
                         clearance.index("TryChargePlayerRecoveryAfterVerifiedTeleport("))
         hud = (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp").read_text(

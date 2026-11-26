@@ -329,6 +329,8 @@ int main()
 
         RaceProgress attempt(4,2);
         attempt.Advance(12.0);
+        for(int prior=0;prior<gate;++prior)
+            Require(attempt.PassCheckpoint(prior),"advance exact ordered gate");
         int charges=0,calls=0;
         const auto callback=[&](CircuitPose pose) {
             ++calls;
@@ -339,6 +341,15 @@ int main()
             occupied,callback)==PlayerRecoveryNotice::Occupied &&
             calls==0 && charges==0 && attempt.GetElapsedSeconds()==12.0,
             "blocked landing cannot move or charge");
+        const auto stale=EvaluatePlayerRecoveryClearance(
+            (gate+1)%CircuitGateCount,false,false,{});
+        Require(TryPaidRecoveryWithClearance(attempt,charges,true,false,true,
+            stale,callback)==PlayerRecoveryNotice::LandingUnavailable &&
+            calls==0 && charges==0,"clearance for another gate is stale");
+        auto altered=clear;altered.Pose.Position.X+=1.0;
+        Require(TryPaidRecoveryWithClearance(attempt,charges,true,false,true,
+            altered,callback)==PlayerRecoveryNotice::LandingUnavailable &&
+            calls==0 && charges==0,"modified landing cannot use clear status");
         Require(TryPaidRecoveryWithClearance(attempt,charges,true,true,true,
             clear,callback)==PlayerRecoveryNotice::None && calls==0,
             "paused recovery cannot create a notice or engine request");
