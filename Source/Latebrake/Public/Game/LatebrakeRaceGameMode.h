@@ -41,6 +41,7 @@ class ALatebrakeCarPawn;
 class ALatebrakeRivalCar;
 class UPointLightComponent;
 class UStaticMeshComponent;
+class UPrimitiveComponent;
 class UStaticMesh;
 
 UCLASS()
@@ -99,6 +100,8 @@ public:
     float GetEventBestSeconds() const;
     float GetAttemptPreviousBestSeconds() const { return AttemptPreviousBestSeconds; }
     bool HasRival() const;
+    bool TryGetSkidRoadSurface(const UPrimitiveComponent* HitComponent,
+        int32& OutBlockIndex) const;
     bool TryGetRivalRadarPosition(FVector& OutPosition) const;
     // Reject interposed track collision in the real world before handing
     // a rival state to the optional player-only drafting policy. Observer
@@ -311,6 +314,9 @@ private:
     int32 LastRaceCredits = 0;
     int32 RecoveriesThisRace = 0;
     latebrake::PlayerRecoveryNoticeState RecoveryNotice;
+
+    // Exact live original-asphalt components, indexed by collision plan.
+    TArray<TWeakObjectPtr<UStaticMeshComponent>> SkidRoadComponents;
 
     // The two existing source-spawned track lights are retained for
     // Settings preview; no additional light actors on each toggle.

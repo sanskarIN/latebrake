@@ -47,6 +47,7 @@
 #include "Track/CornerApproachChevrons.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
+#include "Vehicles/ArcadeSkidRoadGeometry.h"
 #include "Track/CollisionBlockSetup.h"
 #include "Track/CollisionResponsePolicy.h"
 #include "Track/CircuitSpawnSafety.h"
@@ -961,6 +962,8 @@ void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
     bCircuitReady = false;
+    SkidRoadComponents.Reset();
+    SkidRoadComponents.SetNum(latebrake::CircuitCollisionBlockCount);
     // Spawning an Actor does not prove rendering or collision on installed
     // devices, but failed block creation must never be hidden by the
     // four-checkpoint startup success marker.
@@ -998,9 +1001,13 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             Block.Style == latebrake::CollisionBlockStyle::Ground ? GroundColor :
             Block.Style == latebrake::CollisionBlockStyle::Asphalt ? AsphaltColor :
             BarrierColor;
-        RecordBlock(Labels[Index],
+        AStaticMeshActor* BlockActor=RecordBlock(Labels[Index],
             FVector(Block.Center.X, Block.Center.Y, Block.Height),
             FVector(Block.ScaleX, Block.ScaleY, Block.ScaleZ), Color);
+        if (Block.Style==latebrake::CollisionBlockStyle::Asphalt && IsValid(BlockActor))
+        {
+            SkidRoadComponents[Index]=BlockActor->GetStaticMeshComponent();
+        }
     }
 
     // All ninety-three collision-free decorative cubes now share one scene
@@ -1929,6 +1936,36 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
 float ALatebrakeRaceGameMode::GetEventBestSeconds() const
 {
     return SelectedEvent == latebrake::EventKind::TimeAttack ? BestTimeAttackSeconds : PersonalBestSeconds;
+}
+
+bool ALatebrakeRaceGameMode::TryGetSkidRoadSurface(
+    const UPrimitiveComponent* HitComponent,int32& OutBlockIndex) const
+{
+    OutBlockIndex=INDEX_NONE;
+    if (!bCircuitReady || !IsValid(HitComponent) ||
+        SkidRoadComponents.Num()!=latebrake::CircuitCollisionBlockCount)
+        return false;
+    for (int32 Index=0;Index<SkidRoadComponents.Num();++Index)
+    {
+        const auto* Road=SkidRoadComponents[Index].Get();
+        if (!IsValid(Road) || Road!=HitComponent ||
+            !latebrake::IsArcadeSkidAsphaltBlock(Index))
+            continue;
+        const auto Plan=latebrake::PlannedCollisionBlock(Index);
+        // Do not qualify a moved/scaled or repurposed actor as the
+        // original asphalt plane just because its identity is retained.
+        if (Road->GetCollisionObjectType()!=ECC_WorldStatic ||
+            Road->GetCollisionEnabled()!=ECollisionEnabled::QueryAndPhysics ||
+            !Road->GetComponentLocation().Equals(
+                FVector(Plan.Center.X,Plan.Center.Y,Plan.Height),0.01) ||
+            !Road->GetComponentScale().Equals(
+                FVector(Plan.ScaleX,Plan.ScaleY,Plan.ScaleZ),0.001) ||
+            !Road->GetComponentQuat().Equals(FQuat::Identity,0.001))
+            return false;
+        OutBlockIndex=Index;
+        return true;
+    }
+    return false;
 }
 
 bool ALatebrakeRaceGameMode::HasRival() const

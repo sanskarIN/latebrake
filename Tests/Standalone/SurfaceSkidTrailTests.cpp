@@ -1,4 +1,5 @@
 #include "Vehicles/SurfaceSkidTrail.h"
+#include "Vehicles/ArcadeSkidProbeObservation.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -116,5 +117,76 @@ int main()
             std::abs(SkidDot(s.Center-start,normal)-0.24)<1.0e-7,
             "100k independently constructed planes retain tangent length and fixed surface lift");
     }
-    std::cout<<"Skid trails: plane geometry, contact/teleport lifecycle, FPS coverage and 100000 plane samples passed\n";
+    // Original live arcade probes, with no accepted spring load or
+    // modeled slip. Explicit road identity and full strip containment.
+    const auto arcadeFrame=[](double x,double y,int block=1) {
+        SurfaceSkidFrame frame;
+        frame.DeltaSeconds=1.0/60.0;frame.DrivingAllowed=true;
+        for(unsigned i=0;i<4;++i)
+        {
+            ArcadeSkidProbeObservation probe{true,block,101,
+                {true,80.0,1.0},{x,y+static_cast<double>(i)*40.0,-1.0},
+                {0.0,0.0,1.0},3000.0,1500.0};
+            frame.Contacts[i]=MakeArcadeSkidProbeContact(probe);
+        }
+        return frame;
+    };
+    SurfaceSkidTrail arcade;
+    auto frame=arcadeFrame(0.0,-1900.0);
+    for(const auto& contact:frame.Contacts)
+        Require(contact.Supported && contact.Evidence==SkidContactEvidence::ArcadeGroundProbe &&
+            contact.NormalLoadNewtons==0.0 && !contact.ModeledSlipAvailable,
+            "actual probe path never invents wheel load or braking slip");
+    Require(arcade.Advance(frame).Count==0,"first arcade probe anchors");
+    auto actual=arcade.Advance(arcadeFrame(100.0,-1900.0));
+    Require(actual.Valid && actual.Count==4,"four accepted arcade probes produce marks");
+    for(unsigned i=0;i<actual.Count;++i)
+        Require(IsRenderableSkidStrip(actual.Strips[i]) &&
+            IsArcadeSkidStripInsideRoad(1,actual.Strips[i]),
+            "every renderable strip fits its original asphalt slab");
+    auto newSession=arcadeFrame(200.0,-1900.0);
+    newSession.SessionRevision=1;
+    Require(arcade.Advance(newSession).Count==0,"pause/session epoch breaks trail");
+    auto sameSession=arcadeFrame(300.0,-1900.0);sameSession.SessionRevision=1;
+    Require(arcade.Advance(sameSession).Count==4,"fresh session marks resume");
+    auto fabricated=arcadeFrame(400.0,-1900.0);fabricated.SessionRevision=1;
+    for(auto& c:fabricated.Contacts)c.NormalLoadNewtons=1000.0;
+    Require(arcade.Advance(fabricated).Count==0,"fabricated arcade load rejected");
+    auto braking=arcadeFrame(500.0,-1900.0);braking.SessionRevision=1;
+    for(auto& c:braking.Contacts){c.LateralCmPerSecond=0.0;c.ModeledSlipAvailable=true;
+        c.ModeledBrakingSlip=0.6;}
+    Require(arcade.Advance(braking).Count==0,"arcade cannot claim modeled braking slip");
+    arcade.BreakContinuity();
+    Require(arcade.Advance(arcadeFrame(0.0,-1002.0)).Count==0,"edge baseline");
+    Require(arcade.Advance(arcadeFrame(100.0,-1002.0)).Count==0,
+        "strip width crossing the real asphalt edge rejects whole piece");
+    arcade.BreakContinuity();
+    auto crossing=arcadeFrame(0.0,-1900.0);
+    arcade.Advance(crossing);
+    auto anotherEvidence=crossing;
+    for(auto& c:anotherEvidence.Contacts){c.Evidence=SkidContactEvidence::MeasuredWheelLoad;
+        c.NormalLoadNewtons=1000.0;c.Position.X+=100.0;}
+    Require(arcade.Advance(anotherEvidence).Count==0,"evidence mode change breaks anchor");
+    ArcadeSkidProbeObservation probe{true,1,11,{true,80.0,1.0},
+        {0.0,-1800.0,-1.0},{0.0,0.0,1.0},3000.0,1500.0};
+    Require(MakeArcadeSkidProbeContact(probe).Supported,"valid exact asphalt witness");
+    probe.VerifiedAsphaltComponent=false;
+    Require(!MakeArcadeSkidProbeContact(probe).Supported,"unowned hit cannot stamp");
+    probe.VerifiedAsphaltComponent=true;probe.RoadBlock=0;
+    Require(!MakeArcadeSkidProbeContact(probe).Supported,"ground block cannot stamp");
+    probe.RoadBlock=5;
+    Require(!MakeArcadeSkidProbeContact(probe).Supported,"barrier block cannot stamp");
+    probe.RoadBlock=1;probe.HitPosition.Z=1.0;
+    Require(!MakeArcadeSkidProbeContact(probe).Supported,"false road plane rejected");
+    probe.HitPosition.Z=-1.0;probe.Ground.DistanceCm=116.0;
+    Require(!MakeArcadeSkidProbeContact(probe).Supported,"unsupported airborne probe rejected");
+    probe.Ground.DistanceCm=80.0;probe.Ground.GroundNormalZ=0.8;
+    Require(!MakeArcadeSkidProbeContact(probe).Supported,"mismatched hit normal rejected");
+    auto malformed=actual.Strips[0];malformed.Right=malformed.Forward;
+    Require(!IsRenderableSkidStrip(malformed),"parallel basis rejected at renderer boundary");
+    malformed=actual.Strips[0];malformed.WidthCm=100.0;
+    Require(!IsRenderableSkidStrip(malformed),"oversized strip rejected");
+    malformed=actual.Strips[0];malformed.Center.X=nan;
+    Require(!IsRenderableSkidStrip(malformed),"nonfinite instance translation rejected");
+    std::cout<<"Skid trails: plane geometry, arcade probe admission, road containment, lifecycle and 100000 plane samples passed\n";
 }

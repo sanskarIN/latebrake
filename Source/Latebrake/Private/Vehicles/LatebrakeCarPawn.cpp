@@ -1,5 +1,7 @@
 #include "UI/GarageShowroomLane.h"
 #include "Vehicles/LatebrakeCarPawn.h"
+#include "Vehicles/LatebrakeSkidTrailActor.h"
+#include "Vehicles/ArcadeSkidProbeObservation.h"
 #include "Vehicles/SteeringFilter.h"
 #include "Vehicles/VehicleVisualRecipe.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
@@ -444,6 +446,8 @@ void ALatebrakeCarPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
     FCoreDelegates::ApplicationHasEnteredForegroundDelegate.Remove(ForegroundInputHandle);
     TouchViewport.Reset();
     ClearDriverInputs();
+    if (IsValid(SkidTrailActor)) SkidTrailActor->Destroy();
+    SkidTrailActor=nullptr;
     OriginalRenderCache.Reset();
     GarageCameraGeometry.Reset();
     GarageCameraFit.Reset();
@@ -1328,6 +1332,7 @@ void ALatebrakeCarPawn::UpdateGarageShowroomPresentation(
 
 void ALatebrakeCarPawn::ClearDriverInputs()
 {
+    BreakSkidTrailContinuity();
     Throttle = 0.f;
     Steering = 0.f;
     SmoothedThrottle = 0.f;
@@ -1536,6 +1541,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     {
         // A rejected physics frame must not leave last tick's full road
         // contact displayed after simulation stops or frame validity fails.
+        BreakSkidTrailContinuity();
         LastGroundContact = {};
         ResetSpeedCameraFov();
         ResetCornerCameraYaw();
@@ -1613,6 +1619,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // Ignoring this actor prevents a ray from treating its own chassis
     // as a supporting road surface.
     latebrake::ChassisGroundContactSample GroundSample{};
+    latebrake::SurfaceSkidFrame SkidFrame{};
+    SkidFrame.DeltaSeconds=static_cast<double>(DeltaSeconds);
+    SkidFrame.TeleportRevision=GetTeleportRevision();
+    SkidFrame.SessionRevision=Mode->GetCheckpointSessionRevision();
     GroundSample.DeltaSeconds = static_cast<double>(DeltaSeconds);
     GroundSample.ChassisVerticalSpeedCmPerSecond =
         static_cast<double>(Velocity.Z);
@@ -1651,6 +1661,21 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
                 true, static_cast<double>(Hit.Distance),
                 static_cast<double>(Hit.ImpactNormal.Z)
             };
+            int32 AsphaltBlock=INDEX_NONE;
+            if (Mode->TryGetSkidRoadSurface(Hit.GetComponent(),AsphaltBlock))
+            {
+                const FVector PointVelocity=
+                    Chassis->GetPhysicsLinearVelocityAtPoint(Hit.ImpactPoint);
+                SkidFrame.Contacts[static_cast<unsigned>(Index)]=
+                    latebrake::MakeArcadeSkidProbeContact({
+                        true,AsphaltBlock,
+                        static_cast<std::uint64_t>(Hit.GetComponent()->GetUniqueID())+1u,
+                        GroundSample.Probes[static_cast<unsigned>(Index)],
+                        {Hit.ImpactPoint.X,Hit.ImpactPoint.Y,Hit.ImpactPoint.Z},
+                        {Hit.ImpactNormal.X,Hit.ImpactNormal.Y,Hit.ImpactNormal.Z},
+                        FVector::DotProduct(PointVelocity,Forward),
+                        FVector::DotProduct(PointVelocity,Right)});
+            }
         }
     }
     const latebrake::ChassisGroundContactOutput GroundContact =
@@ -2108,6 +2133,44 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<float>(ReverseLimit.VelocityY),
             PostCapVelocity.Z));
     }
+    // Optional marks consume only the already admitted physics frame.
+    // Never synthesize an individual wheel load or a braking slip value.
+    if (!GroundContact.HasDriveContact) SkidFrame.Contacts={};
+    SkidFrame.DrivingAllowed=true;
+    SubmitSkidTrailFrame(SkidFrame);
+}
+
+void ALatebrakeCarPawn::SubmitSkidTrailFrame(const latebrake::SurfaceSkidFrame& Frame)
+{
+    if (!bSkidRendererAttempted)
+    {
+        // One lazy, cosmetic world-space holder per accepted live car.
+        // Do not respawn every physics frame on optional asset failure.
+        bSkidRendererAttempted=true;
+        if (UWorld* World=GetWorld())
+        {
+            FActorSpawnParameters Parameters;
+            Parameters.Owner=this;
+            Parameters.ObjectFlags|=RF_Transient;
+            Parameters.SpawnCollisionHandlingOverride=
+                ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+            SkidTrailActor=World->SpawnActor<ALatebrakeSkidTrailActor>(
+                ALatebrakeSkidTrailActor::StaticClass(),FVector::ZeroVector,
+                FRotator::ZeroRotator,Parameters);
+        }
+    }
+    if (IsValid(SkidTrailActor)) SkidTrailActor->Submit(Frame);
+}
+
+void ALatebrakeCarPawn::BreakSkidTrailContinuity()
+{
+    if (IsValid(SkidTrailActor)) SkidTrailActor->BreakContinuity();
+}
+
+void ALatebrakeCarPawn::ResetSkidTrails()
+{
+    if (IsValid(SkidTrailActor)) SkidTrailActor->ResetTrails();
+    else bSkidRendererAttempted=false;
 }
 
 void ALatebrakeCarPawn::ApplySignalLights(
