@@ -3,6 +3,10 @@
 Integrates the existing projected-wheel steward from prior research
 into the actual GameMode after a successful official clock advance.
 A real clock/driver/teleport/session interruption suspends exposure.
+The new motion admission also requires three or four supported probes,
+matching active-clock advance, bounded vertical speed and consecutive
+world-position displacement. Unmarked jumps and implausible yaw rebase;
+reported speed without displacement cannot count as moving exposure.
 The draft adopts the existing 0.6s warning, 1.5s strike, 0.5s rejoin
 and five-second fee per third accepted violation. Existing records
 created before this rule are not proof of comparable clean driving.

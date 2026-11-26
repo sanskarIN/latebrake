@@ -315,35 +315,100 @@ void TestActualRaceProgressClock()
             "both clock and steward reset for the next attempt");
 }
 
+void TestTrackLimitsMotionAdmission()
+{
+    using namespace latebrake;
+    TrackLimitsMotionAdmission admission;
+    TrackLimitsMotionSample s{{0.0,-1800.0},0.0,36.0,0.0,0.0625,
+        {ChassisContactStatus::Full,4,100,true}};
+    double clock=1.0;
+    Require(admission.Observe(s,clock).Status==TrackLimitsMotionStatus::Baseline,
+        "first supported sample is baseline, not exposure");
+    clock+=s.DeltaSeconds;
+    s.Position.X+=62.5;
+    auto accepted=admission.Observe(s,clock);
+    Require(accepted.Accepted() &&
+        std::abs(accepted.MovingSpeedKmH-36.0)<1e-8 &&
+        accepted.DisplacementCm==62.5,"actual consecutive motion qualifies");
+    clock+=s.DeltaSeconds;
+    accepted=admission.Observe(s,clock);
+    Require(accepted.Accepted() && accepted.MovingSpeedKmH==0.0,
+        "reported speed without measured displacement cannot count moving");
+    clock+=s.DeltaSeconds;s.Position.X+=5000.0;
+    Require(admission.Observe(s,clock).Status==TrackLimitsMotionStatus::Discontinuous,
+        "unmarked teleport clears exposure");
+    clock+=s.DeltaSeconds;s.Position.X+=62.5;
+    Require(admission.Observe(s,clock).Accepted(),"fresh pair after discontinuity");
+    Require(admission.Observe(s,clock).Status==TrackLimitsMotionStatus::Discontinuous,
+        "duplicate active clock never admits a frame");
+    clock+=s.DeltaSeconds;s.Ground={ChassisContactStatus::Partial,2,45,true};
+    Require(!admission.Observe(s,clock).Accepted(),"unstable two-probe support denied");
+    clock+=s.DeltaSeconds;s.Ground={ChassisContactStatus::Full,4,75,true};
+    Require(!admission.Observe(s,clock).Accepted(),"inconsistent ground evidence denied");
+    clock+=s.DeltaSeconds;s.Ground={ChassisContactStatus::Full,4,100,true};
+    s.VerticalSpeedCmPerSecond=251.0;
+    Require(!admission.Observe(s,clock).Accepted(),"airborne vertical speed denied");
+    clock+=s.DeltaSeconds;s.VerticalSpeedCmPerSecond=0.0;
+    Require(admission.Observe(s,clock).Status==TrackLimitsMotionStatus::Baseline,
+        "invalid support requires fresh baseline");
+    clock+=s.DeltaSeconds;s.HeadingDegrees=180.0;
+    Require(admission.Observe(s,clock).Status==TrackLimitsMotionStatus::Discontinuous,
+        "implausible single-frame orientation cannot bridge exposure");
+    clock+=s.DeltaSeconds;s.HeadingDegrees=179.0;
+    Require(admission.Observe(s,clock).Accepted(),"new stable heading qualifies");
+    clock+=s.DeltaSeconds;s.HeadingDegrees=-179.0;
+    Require(admission.Observe(s,clock).Accepted(),"wrapped heading continuity");
+    clock+=0.125;
+    Require(admission.Observe(s,clock).Status==TrackLimitsMotionStatus::Discontinuous,
+        "sample must match actual active clock increment");
+    s.DeltaSeconds=0.2;
+    Require(!admission.Observe(s,clock+0.2).Accepted(),"unqualified contact hitch rejected");
+}
+
 void TestSessionReceiptsAndAttribution()
 {
     using namespace latebrake;
     RaceProgress race(4,3);
     TrackLimitsSession session;
     Require(!session.Review(race,0).Valid,"no observations no review");
-    const auto frame=[&](CircuitPoint p,bool advancing=true,bool continuous=true,
-        double speed=90.0,double dt=0.1) {
+    CircuitPoint position=kRoad;
+    const ChassisContactReadout ground{ChassisContactStatus::Full,4,100,true};
+    // Binary-exact frame step keeps the fee precision test independent
+    // of platform-specific decimal accumulation near the clock threshold.
+    constexpr double dt=0.0625;
+    const auto frame=[&](CircuitPoint p,double speed=28.8,
+        bool advancing=true,bool continuous=true) {
         if(advancing) race.Advance(dt);
-        return session.Observe(race,p,0.0,speed,dt,advancing,continuous);
+        position=p;
+        return session.Observe(race,{p,0.0,speed,0.0,dt,ground},
+            advancing,continuous);
     };
     for(int i=0;i<20;++i)
-        Require(frame(kGrass,false)==TrackLimitsEvent::Suspended,
+        Require(frame(kGrass,90.0,false)==TrackLimitsEvent::Suspended,
             "no clock movement means no penalty exposure");
     for(int i=0;i<20;++i)
-        Require(frame(kGrass,true,false)==TrackLimitsEvent::Suspended,
+        Require(frame(kGrass,90.0,true,false)==TrackLimitsEvent::Suspended,
             "driver discontinuity refuses exposure");
     for(int i=0;i<20;++i)
-        Require(frame(kGrass,true,true,361.0)==TrackLimitsEvent::Suspended,
+        Require(frame(kGrass,361.0)==TrackLimitsEvent::Suspended,
             "impossible chassis speed is not penalty authority");
-    for(int excursion=0;excursion<3;++excursion)
-    {
-        for(int i=0;i<17;++i) frame(kGrass);
-        for(int i=0;i<6;++i) frame(kRoad);
-    }
+    frame(kRoad,0.0);
+    const auto excursion=[&] {
+        // Continuous 50cm steps from actual road to grass and back.
+        // A 28.8km/h report matches 50cm per 1/16s physical motion.
+        for(int y=-1750;y<=-700;y+=50) frame({0.0,static_cast<double>(y)});
+        for(int i=1;i<=30;++i)
+            frame({static_cast<double>(i<=15?i*50:(30-i)*50),-700.0});
+        for(int y=-750;y>=-1800;y-=50) frame({0.0,static_cast<double>(y)});
+        for(int i=0;i<12;++i) frame(kRoad,0.0);
+        Require(position.X==kRoad.X && position.Y==kRoad.Y,
+            "continuous excursion returns to starting road");
+    };
+    for(int i=0;i<3;++i) excursion();
     const auto review=session.Review(race,0);
     Require(review.Valid && review.Violations==3 && review.Penalties==1 &&
         review.Warnings==3 && review.CleanRejoins==3 &&
-        std::abs(review.TrackLimitsSeconds-5.0)<1e-8 &&
+        review.TrackLimitsSeconds==5.0 &&
         race.GetTimePenaltyCount()==1 && review.RecoverySeconds==0.0,
         "session reconciles actual charged time and observed events");
     Require(session.Recent(0).Event==TrackLimitsEvent::CleanRejoin &&
@@ -354,16 +419,11 @@ void TestSessionReceiptsAndAttribution()
     Require(race.AddTimePenalty(5.0),"separate verified recovery fee fixture");
     const auto mixed=session.Review(race,1);
     Require(mixed.Valid && mixed.RecoveryCount==1 &&
-        std::abs(mixed.RecoverySeconds-5.0)<1e-8 &&
-        std::abs(mixed.TrackLimitsSeconds-5.0)<1e-8,
+        mixed.RecoverySeconds==5.0 && mixed.TrackLimitsSeconds==5.0,
         "mixed charges do not count track fee twice");
     Require(!session.Review(race,0).Valid,"unattributed fee hides review");
     Require(!session.Review(race,2).Valid,"invented recovery count hides review");
-    for(int excursion=0;excursion<10;++excursion)
-    {
-        for(int i=0;i<17;++i) frame(kGrass);
-        for(int i=0;i<6;++i) frame(kRoad);
-    }
+    for(int i=0;i<10;++i) excursion();
     const auto retained=session.Review(race,1);
     Require(retained.Valid && retained.Violations==13 &&
         retained.Penalties==4 && retained.RetainedReceipts==16 &&
@@ -380,6 +440,7 @@ void TestSessionReceiptsAndAttribution()
 
 int main()
 {
+    TestTrackLimitsMotionAdmission();
     TestSessionReceiptsAndAttribution();
     TestThresholdsAndThreeStrikePenalty();
     TestFailedPenaltyDoesNotInventCredit();

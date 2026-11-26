@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Track/TrackLimitsSteward.h"
+#include "Track/TrackLimitsMotionAdmission.h"
 #include "Racing/RaceProgress.h"
 #include "Progression/RecordValidation.h"
 
@@ -48,12 +49,12 @@ class TrackLimitsSession final
 {
 public:
     static constexpr int Capacity=16;
-    static constexpr double MaximumSpeedKmH=360.0;
     static constexpr double NoticeSeconds=3.0;
 
     void Reset() noexcept
     {
         Steward.Reset();
+        Motion.Reset();
         Entries.fill({});
         Next=0;
         Retained=0;
@@ -65,20 +66,30 @@ public:
         Complete=true;
     }
 
-    void Suspend() noexcept { Steward.Suspend(); }
+    void Suspend() noexcept
+    {
+        Steward.Suspend();
+        Motion.Reset();
+    }
 
-    TrackLimitsEvent Observe(RaceProgress& race,CircuitPoint position,
-        double headingDegrees,double speedKmH,double activeDelta,
+    TrackLimitsEvent Observe(RaceProgress& race,const TrackLimitsMotionSample& sample,
         bool actualClockAdvanced,bool continuousDriver) noexcept
     {
         if (!actualClockAdvanced || !continuousDriver || race.IsFinished() ||
             !IsValidFinishedRaceTime(race.GetElapsedSeconds()) ||
-            !std::isfinite(speedKmH) || speedKmH<0.0 ||
-            speedKmH>MaximumSpeedKmH ||
             race.GetCheckpointCount()!=CircuitGateCount ||
             !IsCircuitGate(race.GetNextCheckpoint()))
         {
             Suspend();
+            return TrackLimitsEvent::Suspended;
+        }
+        const auto admitted=Motion.Observe(sample,
+            race.GetElapsedSeconds()-race.GetTotalPenaltySeconds());
+        if (!admitted.Accepted())
+        {
+            // Keep the fresh baseline when an otherwise valid observation
+            // rebases the motion admission. No off-road exposure survives.
+            Steward.Suspend();
             return TrackLimitsEvent::Suspended;
         }
         const double beforeTime=race.GetElapsedSeconds();
@@ -86,8 +97,8 @@ public:
         const int beforeCount=race.GetTimePenaltyCount();
         const auto before=Steward.Snapshot();
         double charged=0.0;
-        const auto event=Steward.Update(position,headingDegrees,speedKmH,
-            activeDelta,true,[&](double seconds) noexcept {
+        const auto event=Steward.Update(sample.Position,sample.HeadingDegrees,
+            admitted.MovingSpeedKmH,sample.DeltaSeconds,true,[&](double seconds) noexcept {
                 // The existing RaceProgress transaction is the sole
                 // source of truth. Never calculate or apply a second fee.
                 if (!race.AddTimePenalty(seconds)) return false;
@@ -190,6 +201,7 @@ private:
     }
 
     TrackLimitsSteward Steward;
+    TrackLimitsMotionAdmission Motion;
     std::array<TrackLimitsReceipt,Capacity> Entries{};
     int Next=0;
     int Retained=0;

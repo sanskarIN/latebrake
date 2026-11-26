@@ -216,11 +216,14 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
         bStewardDriverValid && bStewardContinuous)
     {
         const FVector P=GhostDriver->GetActorLocation();
-        const auto StewardEvent=TrackLimits.Observe(Race,
+        const FVector V=GhostDriver->GetVelocity();
+        const auto StewardEvent=TrackLimits.Observe(Race,{
             {static_cast<double>(P.X),static_cast<double>(P.Y)},
             static_cast<double>(GhostDriver->GetActorRotation().Yaw),
             static_cast<double>(GhostDriver->GetSpeedKmH()),
-            LiveDelta,bActualClockAdvanced,bStewardContinuous);
+            static_cast<double>(V.Z),LiveDelta,
+            GhostDriver->GetGroundContactReadout()},
+            bActualClockAdvanced,bStewardContinuous);
         if (StewardEvent==latebrake::TrackLimitsEvent::PenaltyApplied)
         {
             // A fee creates a clock discontinuity in the sampled ghost.

@@ -18,7 +18,14 @@ class TrackLimitsSessionBindingTests(unittest.TestCase):
         self.assertEqual(offsets, sorted(offsets))
         self.assertIn("StewardTeleportRevision==GhostDriver->GetTeleportRevision()",tick)
         self.assertIn("StewardCheckpointSessionRevision==CheckpointSession.Current()",tick)
-        self.assertIn("LiveDelta,bActualClockAdvanced,bStewardContinuous",tick)
+        self.assertIn("static_cast<double>(V.Z),LiveDelta,",tick)
+        self.assertIn("GhostDriver->GetGroundContactReadout()",tick)
+        self.assertIn("bActualClockAdvanced,bStewardContinuous",tick)
+        motion = (ROOT / "Source/Latebrake/Public/Track/TrackLimitsMotionAdmission.h").read_text()
+        for marker in ("HasTrackLimitsGroundEvidence(sample.Ground)",
+                       "elapsed-sample.DeltaSeconds", "displacement>permittedTravel",
+                       "std::min(sample.PlanarSpeedKmH,measuredSpeed)"):
+            self.assertIn(marker,motion)
         self.assertEqual(mode.count("TrackLimits.Reset();"),2)
         for name in ("CloseMenuForRace","ToggleMenu","ToggleRacePause","PauseForAppInterruption"):
             self.assertIn("void ALatebrakeRaceGameMode::"+name+"()\n{\n    TrackLimits.Suspend();",mode)
