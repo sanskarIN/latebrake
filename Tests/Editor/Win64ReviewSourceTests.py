@@ -291,6 +291,37 @@ class Win64ReviewSourceTests(unittest.TestCase):
         self.assertIn("oversized JSON", result.stderr)
         self.assertFalse(self.checklist.exists())
 
+    def test_receipt_change_during_archive_verification_fails_closed(self):
+        # Deterministic mutation, not a timing-dependent thread or real game.
+        import importlib.util
+        from unittest import mock
+
+        spec = importlib.util.spec_from_file_location("review_win64_fixture", SCRIPT)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        with mock.patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
+            spec.loader.exec_module(module)
+
+        original_verify = module.verify_candidate_archive
+
+        def mutate_after_archive_verification(root, manifest):
+            result = original_verify(root, manifest)
+            self.receipt_data["process_exit_code"] = 17
+            self.write_receipt()
+            return result
+
+        with mock.patch.object(module, "verify_candidate_archive",
+                               side_effect=mutate_after_archive_verification):
+            with self.assertRaisesRegex(ValueError, "Runtime receipt changed"):
+                module.candidate_context(self.receipt)
+        self.assertFalse(self.checklist.exists())
+
+    def test_receipt_snapshot_digest_includes_exact_bom_and_whitespace(self):
+        raw = b"\xef\xbb\xbf" + json.dumps(self.receipt_data, indent=2).encode("utf-8") + b"\n"
+        self.receipt.write_bytes(raw)
+        template = self.make_template()
+        self.assertEqual(template["receipt_sha256"], sha(raw))
+
     def test_duplicate_receipt_keys_rejected(self):
         self.receipt.write_text('{"schema_version":1,"schema_version":2}', encoding="utf-8")
         result = self.invoke("init", "--receipt", self.receipt, "--output", self.checklist)
