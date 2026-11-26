@@ -16,7 +16,8 @@ from pathlib import Path
 import re
 import sys
 
-from candidate_file_integrity import require_unlinked_path, verify_candidate_archive
+from candidate_file_integrity import MAX_MANIFEST_BYTES, require_unlinked_path, verify_candidate_archive
+import garage_native_qa as garage
 from AnalyzeRaceAudit import MAX_LOG_BYTES, RaceAuditError, analyze_race_audit
 
 SCHEMA = 1
@@ -375,23 +376,202 @@ def audit_race(args: argparse.Namespace) -> None:
     print("A hash-consistent, editable runtime log never certifies actual gameplay.")
 
 
+def garage_context(args: argparse.Namespace) -> tuple[dict, Path, dict]:
+    """Require a modern sealed runtime session at the operator-reviewed SHA."""
+    expected = garage.checked_source_sha(args.expected_source)
+    receipt_file = args.receipt.absolute()
+    require_unlinked_path(receipt_file)
+    before = sha256(receipt_file)
+    receipt, root, _, manifest, receipt_hash = candidate_context(receipt_file)
+    if before != receipt_hash:
+        fail("Runtime receipt changed during verification.")
+    if (receipt["schema_version"] != 2 or
+            receipt["unreal_log_present"] is not True or
+            receipt.get("candidate_integrity_at_exit_pass") is not True):
+        fail("Garage review requires a schema-2 receipt, sealed log and preserved exit archive.")
+    if manifest.stat().st_size > MAX_MANIFEST_BYTES:
+        fail("Candidate manifest exceeds the integrity parser limit.")
+    raw = manifest.read_bytes()
+    if (len(raw) > MAX_MANIFEST_BYTES or hashlib.sha256(raw).hexdigest() !=
+            require_hash(receipt["candidate_manifest_sha256"], "Manifest hash")):
+        fail("Manifest changed during Garage review.")
+    metadata = json.loads(raw.decode("utf-8-sig"), object_pairs_hook=unique_pairs)
+    if garage.checked_source_sha(metadata.get("source_commit")) != expected:
+        fail("Candidate source commit differs from the exact reviewed SHA.")
+    identity = {
+        "source_commit": expected,
+        "receipt_sha256": receipt_hash,
+        "executable_sha256": require_hash(receipt["executable_sha256"], "EXE hash"),
+        "candidate_manifest_sha256": require_hash(receipt["candidate_manifest_sha256"], "Manifest hash"),
+        "runtime_log_sha256": require_hash(receipt["unreal_log_sha256"], "Runtime log hash"),
+        "unreal_engine_build_sha256": require_hash(metadata["unreal_engine_build_sha256"], "Engine hash"),
+        "starter_map_sha256": require_hash(metadata["starter_map_sha256"], "Map hash"),
+    }
+    return receipt, root, identity
+
+
+def garage_template(args: argparse.Namespace) -> None:
+    _, root, identity = garage_context(args)
+    template = {
+        "schema_version": garage.SCHEMA,
+        "status": garage.STATUS,
+        "gameplay_verified": False,
+        "ready_for_release": False,
+        "identity": identity,
+        "environment": garage.empty_environment(),
+        "checks": garage.empty_checks(),
+        "warning": garage.WARNING,
+    }
+    if sha256(args.receipt) != identity["receipt_sha256"]:
+        fail("Runtime receipt changed before writing Garage checklist.")
+    require_unlinked_path(args.output.absolute().parent)
+    write_new(args.output, template, root)
+    print(f"Unverified Garage checklist created: {args.output}")
+    print(f"Manual scenarios: {len(template['checks'])}. No scenario is pre-passed.")
+
+
+def garage_read_checklist(args: argparse.Namespace, identity: dict) -> dict:
+    require_unlinked_path(args.checklist.absolute())
+    checklist = read_json(args.checklist)
+    if (type(checklist.get("schema_version")) is not int or
+            checklist["schema_version"] != garage.SCHEMA or
+            checklist.get("status") != garage.STATUS or
+            checklist.get("gameplay_verified") is not False or
+            checklist.get("ready_for_release") is not False):
+        fail("Garage checklist schema/status cannot certify gameplay or release.")
+    if checklist.get("identity") != identity:
+        fail("Garage checklist belongs to a different source or runtime session.")
+    garage.evaluate_observations(checklist.get("environment"), checklist.get("checks"))
+    return checklist
+
+
+def garage_evaluate(args: argparse.Namespace) -> None:
+    receipt, root, identity = garage_context(args)
+    checklist = garage_read_checklist(args, identity)
+    observations = garage.evaluate_observations(checklist["environment"], checklist["checks"])
+    blockers = []
+    if receipt["process_exit_code"] != 0:
+        blockers.append("runtime_exit_not_zero")
+    if receipt["startup_log_markers_pass"] is not True:
+        blockers.append("startup_markers_not_passing")
+    if not observations["environment_complete"]:
+        blockers.append("environment_incomplete")
+    if observations["unresolved_scenarios"]:
+        blockers.append("manual_observations_incomplete_or_failed")
+    summary = {
+        "schema_version": garage.SCHEMA,
+        "status": garage.SUMMARY_STATUS,
+        "source_authenticity_verified": False,
+        "gameplay_verified": False,
+        "ready_for_release": False,
+        "identity": identity,
+        "manual_observations": observations,
+        "runtime_exit_ok": receipt["process_exit_code"] == 0,
+        "startup_log_markers_pass": receipt["startup_log_markers_pass"],
+        "candidate_integrity_at_exit_verified": True,
+        "runtime_log_integrity_verified": True,
+        "blocking_observations": blockers,
+        "warning": garage.WARNING,
+    }
+    if sha256(args.receipt) != identity["receipt_sha256"]:
+        fail("Runtime receipt changed before writing Garage summary.")
+    require_unlinked_path(args.output.absolute().parent)
+    write_new(args.output, summary, root)
+    print(f"Unverified Garage summary created: {args.output}")
+    print("Manual results: " + str(observations["counts"]))
+    print("No automated merge or release authorization.")
+
+
+def garage_aggregate(args: argparse.Namespace) -> None:
+    if not 1 <= len(args.session) <= garage.MAX_SESSIONS:
+        fail("Garage aggregation requires one to sixteen receipt/checklist pairs.")
+    sessions = []
+    source_identity = None
+    roots = []
+    diagnostics = []
+    for receipt_path, checklist_path in args.session:
+        session_args = argparse.Namespace(receipt=Path(receipt_path),
+            checklist=Path(checklist_path), expected_source=args.expected_source)
+        receipt, root, identity = garage_context(session_args)
+        checklist = garage_read_checklist(session_args, identity)
+        # Session receipts differ; all actual build identities must agree.
+        build = {key: value for key, value in identity.items()
+                 if key not in ("receipt_sha256", "runtime_log_sha256")}
+        if source_identity is None:
+            source_identity = build
+        elif source_identity != build:
+            fail("Cannot combine Garage observations from different build identities.")
+        roots.append(root)
+        sessions.append(checklist)
+        diagnostics.append({
+            "receipt_sha256": identity["receipt_sha256"],
+            "runtime_log_sha256": identity["runtime_log_sha256"],
+            "runtime_exit_ok": receipt["process_exit_code"] == 0,
+            "startup_log_markers_pass": receipt["startup_log_markers_pass"],
+            "environment_complete": all(value.strip() for value in checklist["environment"].values()),
+        })
+        if sha256(session_args.receipt) != identity["receipt_sha256"]:
+            fail("Runtime receipt changed during Garage aggregation.")
+    observations = garage.merge_session_observations(sessions)
+    blockers = []
+    if any(not d["runtime_exit_ok"] for d in diagnostics):
+        blockers.append("runtime_exit_not_zero")
+    if any(not d["startup_log_markers_pass"] for d in diagnostics):
+        blockers.append("startup_markers_not_passing")
+    if any(not d["environment_complete"] for d in diagnostics):
+        blockers.append("environment_incomplete")
+    if observations["unresolved_scenarios"]:
+        blockers.append("manual_observations_incomplete_or_failed")
+    if observations["conflicting_scenarios"]:
+        blockers.append("conflicting_manual_observations")
+    destination = args.output.resolve(strict=False)
+    if any(destination == root or destination.is_relative_to(root) for root in roots):
+        fail("Aggregate must stay OUTSIDE every sealed game candidate.")
+    require_unlinked_path(args.output.absolute().parent)
+    summary = {
+        "schema_version": garage.SCHEMA,
+        "status": "MULTI_SESSION_NATIVE_GARAGE_OBSERVATIONS_UNVERIFIED",
+        "source_authenticity_verified": False,
+        "gameplay_verified": False,
+        "ready_for_release": False,
+        "build_identity": source_identity,
+        "sessions": diagnostics,
+        "manual_observations": observations,
+        "blocking_observations": blockers,
+        "warning": garage.WARNING,
+    }
+    write_new(args.output, summary, roots[0])
+    print(f"Unverified aggregate Garage observations: {args.output}")
+    print(f"Sessions={len(sessions)}; conflicting scenarios={len(observations['conflicting_scenarios'])}.")
+    print("Prior failures are preserved. No automated merge or release authorization.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("init", "evaluate", "audit"):
+    for command in ("init", "evaluate", "audit", "garage-init", "garage-evaluate"):
         step = commands.add_parser(command)
         step.add_argument("--receipt", type=Path, required=True, help="Private JSON receipt from Run-WindowsPlaytest.ps1")
         step.add_argument("--output", type=Path, required=True, help="New JSON path outside the candidate game")
-        if command == "evaluate":
+        if command in ("evaluate", "garage-evaluate"):
             step.add_argument("--checklist", type=Path, required=True, help="Edited private manual test checklist")
+        if command.startswith("garage-"):
+            step.add_argument("--expected-source", required=True, help="Exact reviewed 40-character source SHA")
         if command == "audit":
             step.add_argument(
                 "--require-finish", action="store_true",
                 help="Reject records without a complete reported ordered race finish",
             )
+    aggregate = commands.add_parser("garage-aggregate")
+    aggregate.add_argument("--expected-source", required=True)
+    aggregate.add_argument("--session", nargs=2, action="append", required=True,
+                           metavar=("RECEIPT", "CHECKLIST"))
+    aggregate.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        {"init": new_template, "evaluate": evaluate, "audit": audit_race}[args.command](args)
+        {"init": new_template, "evaluate": evaluate, "audit": audit_race,
+         "garage-init": garage_template, "garage-evaluate": garage_evaluate,
+         "garage-aggregate": garage_aggregate}[args.command](args)
         return 0
     except (ValueError, OSError, TypeError, KeyError) as error:
         print(f"Private Win64 QA review rejected: {error}", file=sys.stderr)
