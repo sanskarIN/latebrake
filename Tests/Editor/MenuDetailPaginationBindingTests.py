@@ -36,7 +36,10 @@ class MenuDetailPaginationBindingTests(unittest.TestCase):
             self.assertIn(mark, self.hud_h)
         for mark in (
             "TArray<TPair<FString, bool>> MenuDetails;",
-            "MenuDetails.Emplace(Fitted, bAccent);",
+            "latebrake::WrapHudDetailText(",
+            "MenuDetails.Emplace(Value.Mid(Begin, Count), bAccent);",
+            "if (!Wrapped.Complete)",
+            "DETAIL TEXT COULD NOT BE FITTED",
             "MenuPager.Synchronize(Mode->GetMenuPage(), MenuDetails.Num()",
             "const latebrake::MenuDetailWindow DetailWindow = MenuPager.Window();",
             "Index = DetailWindow.Begin;", "Index < DetailWindow.End;",
