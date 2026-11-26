@@ -290,6 +290,8 @@ public:
     }
 
     const MeasuredLapTrace& BestReference() const noexcept { return best_; }
+    // Read-only exact accepted prefix; never an extrapolated gate or saved record.
+    const MeasuredLapTrace& CurrentTrace() const noexcept { return current_; }
     const MeasuredLapComparison& LastComparison() const noexcept { return last_; }
 
     // Last accepted gate only. This does not estimate an in-between
