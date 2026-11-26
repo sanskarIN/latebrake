@@ -252,7 +252,8 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
             CheckpointSession.Current(),static_cast<double>(DeltaSeconds),!Inactive,
             bCircuitReady,HasLocalPlayerDriver(),IsRestartPlacementReady(),Accepted,Current});
         if (Startup.ResetCountdown) StartLights.Reset();
-        if (Startup.Phase==latebrake::FleetStartupPhase::TimedOut)
+        if (Startup.Phase==latebrake::FleetStartupPhase::TimedOut &&
+            Current.Phase!=latebrake::FleetAttemptPhase::Faulted)
         {
             FleetAttempt.ReportGridTimeout(FleetAttemptToken);
             UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_GRID_TIMEOUT cause=%s slot=%d"),

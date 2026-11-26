@@ -55,3 +55,14 @@ exhausted. HUD diagnostics identify the blocking condition and slot. The
 physical gantry and HUD cannot advertise GO while fleet driving is denied.
 These time limits are conservative developer-mode choices, not native
 playtest measurements or new race-time fees.
+
+## Distinct AI lane targets
+Five AI slots retain their original grid-side lane preference. For an
+aligned physical car on the incoming straight, a bounded speed-dependent
+lookahead targets a narrow offset inside the exact authored asphalt slab.
+The target tapers near the real gate corridor and is constrained by the
+padded body footprint. During corners, large heading errors, invalid
+samples, and failed geometry checks it falls back to the original target.
+Gate credit, route recovery distance, original nonexperimental AI, and
+all downstream brake/traffic/steering guards are unchanged. This does not
+claim overtaking, avoidance guarantees or measured handling quality.

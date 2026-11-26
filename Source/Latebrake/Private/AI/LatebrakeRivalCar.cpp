@@ -2,6 +2,7 @@
 
 #include "AI/RivalPilot.h"
 #include "AI/RivalGateRunThrough.h"
+#include "AI/FleetLineAim.h"
 #include "AI/RivalCornerAnticipation.h"
 #include "AI/RivalCornerBrakeEnvelope.h"
 #include "AI/RivalTrafficAwareness.h"
@@ -251,8 +252,11 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     // not when we approach its 440cm radius. Aim 550cm THROUGH that plane
     // and disable the generic proximity-arrival stop. Otherwise the rival
     // can halt before crossing and never complete the real gated lap.
-    const latebrake::CircuitPoint NextTarget =
-        latebrake::RivalGateRunThroughPoint(Route.GetNextWaypoint());
+    const latebrake::CircuitPoint NextTarget = Mode->IsExperimentalFleetRequested()
+        ? latebrake::PlanFleetLineAim({GridSlot,Route.GetNextWaypoint(),
+            {{Position.X,Position.Y},GetActorRotation().Yaw},FlatSpeed,
+            IsRacePhysicsReady()}).Target
+        : latebrake::RivalGateRunThroughPoint(Route.GetNextWaypoint());
     latebrake::PilotCommand Command = latebrake::AnticipateRivalCorner(
         latebrake::PlanRivalTurn(
             Position.X, Position.Y, Heading, FlatSpeed,
