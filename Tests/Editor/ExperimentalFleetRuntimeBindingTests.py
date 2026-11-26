@@ -12,6 +12,10 @@ class ExperimentalFleetRuntimeBindingTests(unittest.TestCase):
         self.assertIn("FleetAttempt.ReportSpawnFailure",mode)
         self.assertIn("!StartLights.IsGreen()",mode)
         self.assertIn("FleetObservedEpoch!=CheckpointSession.Current()",mode)
+        self.assertIn("FleetBoundActors[0].Get()!=Human",mode)
+        self.assertIn("FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Rival",mode)
+        self.assertIn("IsArcadeSkidRoadPoint(Road,",mode)
+        self.assertNotIn("&& Road==1",mode)
     def test_no_experimental_finish_save(self):
         mode=read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
         gate=mode.split("void ALatebrakeRaceGameMode::RegisterCheckpoint(",1)[1].split(

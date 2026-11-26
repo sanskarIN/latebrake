@@ -352,6 +352,8 @@ private:
     UPROPERTY(Transient)
     TArray<TObjectPtr<ALatebrakeRivalCar>> ExtraFleet;
     latebrake::ExperimentalFleetAttempt FleetAttempt;
+    std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};
+    bool bFleetActorsBound=false;
     uint64 FleetAttemptToken=0;
     uint64 FleetFrameToken=0;
     uint64 FleetObservedEpoch=0;

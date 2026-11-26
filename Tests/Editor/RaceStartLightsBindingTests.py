@@ -33,7 +33,7 @@ class RaceStartLightsBindingTests(unittest.TestCase):
 
     def test_source_mode_owns_single_authoritative_start(self):
         self.assertIn("latebrake::RaceStartLights StartLights;", self.mode_h)
-        self.assertIn("StartLights.IsGreen();", self.mode_h)
+        self.assertIn("StartLights.IsGreen() && IsExperimentalFleetDriveReady();", self.mode_h)
         self.assertIn("StartLights.Phase();", self.mode_h)
         tick = self.mode.split(
             "void ALatebrakeRaceGameMode::Tick(", 1)[1].split(
@@ -42,11 +42,13 @@ class RaceStartLightsBindingTests(unittest.TestCase):
             "bCircuitReady && bLocalPlayerReady && !bInactive",
             "!Race.IsFinished() && IsRestartPlacementReady()",
             "StartLights.Advance(",
-            "bInactive || !StartLights.IsGreen()",
+            "bInactive || !IsRaceStartGreen()",
             "bLocalPlayerReady, LiveDelta",
         ):
             self.assertIn(code, tick)
-        self.assertLess(tick.index("StartLights.Advance("),
+        self.assertLess(tick.index("ObserveExperimentalFleet("), tick.index("StartLights.Advance("))
+        self.assertLess(tick.index("StartLights.Advance("), tick.index("FleetAttempt.CommitGreen("))
+        self.assertLess(tick.index("FleetAttempt.CommitGreen("),
                         tick.index("AdvancePlayerRaceClockIfReady("))
 
     def test_gate_recovery_and_restart_must_share_start(self):
@@ -67,9 +69,9 @@ class RaceStartLightsBindingTests(unittest.TestCase):
             self.assertIn("StartLights.Reset();", segment)
             self.assertLess(segment.index("Race.Reset();"),
                             segment.index("StartLights.Reset();"))
-        self.assertLess(checkpoint.index("!StartLights.IsGreen()"),
+        self.assertLess(checkpoint.index("!IsRaceStartGreen()"),
                         checkpoint.index("CanScorePlayerCheckpoint("))
-        self.assertLess(recovery.index("!StartLights.IsGreen()"),
+        self.assertLess(recovery.index("!IsRaceStartGreen()"),
                         recovery.index("TryPaidRecoveryWithClearance("))
 
     def test_gate_trace_does_not_sample_motion_during_red(self):

@@ -43,7 +43,7 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
         recovery = tick.split("if (Observation.NeedsRecovery)", 1)[1].split(
             "if (Observation.Completed)", 1
         )[0]
-        self.assertIn("const bool bRecovered = Selection.Safe() && TryRecoverTo(", recovery)
+        self.assertIn("const bool bRecovered = (bFleetMode?FleetSelection.Clear:Selection.Safe()) && TryRecoverTo(", recovery)
         self.assertIn("Route.ReportRecoveryResult(bRecovered)", recovery)
         self.assertIn("SetAutonomousControls(0.f, 0.f, !bRecovered);", recovery)
         self.assertNotIn("RecoverTo(FVector(", recovery)
@@ -62,7 +62,7 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
             "RecoveryPlayer->IsRacePhysicsReady()",
             "RecoveryPlayer->GetUniqueID()",
             "SelectSingleRivalRecovery(RecoveryIndex,Human)",
-            "Selection.Safe() && TryRecoverTo(",
+            "(bFleetMode?FleetSelection.Clear:Selection.Safe()) && TryRecoverTo(",
             "Route.ReportRecoveryResult(bRecovered)",
         )
         positions = [recovery.index(marker) for marker in markers]
@@ -135,10 +135,10 @@ class RivalRecoveryFeedbackBindingTests(unittest.TestCase):
     def test_mutation_rejects_void_teleport_and_false_success(self):
         tick = self.rival_tick()
         no_check = tick.replace(
-            "const bool bRecovered = Selection.Safe() && TryRecoverTo(",
+            "const bool bRecovered = (bFleetMode?FleetSelection.Clear:Selection.Safe()) && TryRecoverTo(",
             "RecoverTo(",
         )
-        self.assertNotIn("const bool bRecovered = Selection.Safe() && TryRecoverTo(", no_check)
+        self.assertNotIn("const bool bRecovered = (bFleetMode?FleetSelection.Clear:Selection.Safe()) && TryRecoverTo(", no_check)
         no_feedback = tick.replace(
             "Route.ReportRecoveryResult(bRecovered)",
             "true /* dropped outcome */",

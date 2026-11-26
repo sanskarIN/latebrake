@@ -7,7 +7,9 @@ are spawned only before GO, with collision-aware engine placement. A failed
 spawn or subsequent roster change cannot silently become a two-car race.
 
 Pre-GO validates six current bodies and fresh road probes on the original
-south asphalt slab. After GO, roster identity and usable physics replace
+original asphalt slabs (including their coplanar overlaps). The exact live
+component, hit plane and weak UObject generation are checked. After GO,
+roster identity and usable physics replace
 grid-position checks. Pause/session changes invalidate permission until
 the next admitted observation. All five other bodies are collected anew
 before AI traffic or recovery preflight; the player still uses the original

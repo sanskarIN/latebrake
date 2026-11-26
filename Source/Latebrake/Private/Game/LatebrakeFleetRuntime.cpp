@@ -2,6 +2,7 @@
 #include "AI/LatebrakeRivalCar.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "Track/CircuitStartGrid.h"
+#include "Vehicles/ArcadeSkidRoadGeometry.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "CollisionQueryParams.h"
@@ -40,6 +41,8 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
         ++FleetAttemptToken;
     FleetFrameToken=0;
     FleetObservedEpoch=0;
+    FleetBoundActors={};
+    bFleetActorsBound=false;
     FleetAttempt.Begin({IsExperimentalFleetRequested(),SelectedEvent==latebrake::EventKind::Circuit,
         bCareerRace,FleetAttemptToken});
 }
@@ -77,7 +80,8 @@ bool ALatebrakeRaceGameMode::TryGetFleetRivalProgress(
         return false;
     const auto* Car=FleetRivalAt(Slot);
     if (!IsRegisteredRaceRival(Car) || !Car->IsRacePhysicsReady() ||
-        FleetAttempt.BoundIdentity()[static_cast<std::size_t>(Slot)]!=FleetToken(Car))
+        FleetAttempt.BoundIdentity()[static_cast<std::size_t>(Slot)]!=FleetToken(Car) ||
+        !bFleetActorsBound || FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Car)
         return false;
     Laps=Car->GetApproximateLaps();
     NextGate=Car->GetNextVerifiedGate();
@@ -140,6 +144,7 @@ bool ALatebrakeRaceGameMode::CollectFleetFrame(latebrake::FleetPhysicalFrame& Ou
         const auto* Rival=Slot==0?nullptr:FleetRivalAt(Slot);
         const ALatebrakeCarPawn* Car=Slot==0?Human:Rival;
         if (!IsValid(Car) || !Car->IsRacePhysicsReady() ||
+            (bFleetActorsBound && FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Car) ||
             (Slot!=0 && (!IsRegisteredRaceRival(Rival) || Rival->GetGridSlot()!=Slot)))
             return false;
         const auto Position=Car->GetActorLocation();
@@ -171,7 +176,10 @@ bool ALatebrakeRaceGameMode::CollectFleetFrame(latebrake::FleetPhysicalFrame& Ou
             if (World->LineTraceSingleByChannel(Hit,Origin,
                 Origin-FVector(0.0,0.0,latebrake::ChassisContactProbeTraceLengthCm),
                 ECC_WorldStatic,Query) && Hit.bBlockingHit &&
-                TryGetSkidRoadSurface(Hit.GetComponent(),Road) && Road==1)
+                TryGetSkidRoadSurface(Hit.GetComponent(),Road) &&
+                latebrake::IsArcadeSkidRoadPoint(Road,
+                    {Hit.ImpactPoint.X,Hit.ImpactPoint.Y,Hit.ImpactPoint.Z},
+                    {Hit.ImpactNormal.X,Hit.ImpactNormal.Y,Hit.ImpactNormal.Z}))
             {
                 Height.Ground.Probes[static_cast<std::size_t>(Index)]=
                     {true,Hit.Distance,Hit.ImpactNormal.Z};
@@ -192,10 +200,31 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
     Frame.AttemptToken=FleetAttemptToken;
     Frame.FrameToken=FleetFrameToken;
     Frame.Inactive=Inactive;
-    if (!Inactive) CollectFleetFrame(Frame,DeltaSeconds,!StartLights.IsGreen());
+    if (!Inactive)
+    {
+        const bool Collected=CollectFleetFrame(Frame,DeltaSeconds,!StartLights.IsGreen());
+        if (!Collected && FleetAttempt.CanAttemptSpawn() &&
+            ExtraFleet.Num()==latebrake::StartGridCapacity-2 && HasLocalPlayerDriver())
+        {
+            // A completed spawn transaction with a broken roster cannot
+            // wait forever as if the additional actors had not been made.
+            FleetAttempt.ReportSpawnFailure(FleetAttemptToken);
+        }
+    }
     const auto Previous=FleetAttempt.Readout().Phase;
     const bool Accepted=FleetAttempt.Observe(Frame);
     const auto Current=FleetAttempt.Readout();
+    // The portable token array is necessary, not sufficient. UObject
+    // UniqueIDs may be reused after destruction. Bind the actual weak
+    // object generation when the first complete roster is observed,
+    // even when the grid has not yet settled enough for countdown.
+    if (!bFleetActorsBound && FleetAttempt.BoundIdentity()[0]!=0)
+    {
+        FleetBoundActors[0]=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+            FleetBoundActors[static_cast<std::size_t>(Slot)]=FleetRivalAt(Slot);
+        bFleetActorsBound=true;
+    }
     if (Accepted) FleetObservedEpoch=CheckpointSession.Current();
     if (Current.Phase==latebrake::FleetAttemptPhase::Faulted && Previous!=Current.Phase)
     {
@@ -208,18 +237,21 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
 bool ALatebrakeRaceGameMode::IsExperimentalFleetDriveReady() const
 {
     if (!IsExperimentalFleetRequested()) return true;
-    if (!FleetAttempt.Readout().RunningAllowed || FleetObservedEpoch!=CheckpointSession.Current() ||
+    if (!FleetAttempt.Readout().RunningAllowed || !bFleetActorsBound ||
+        FleetObservedEpoch!=CheckpointSession.Current() ||
         !GetWorld() || Menu.IsOpen() || UGameplayStatics::IsGamePaused(this) ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended()) return false;
     // Detect a destroyed/replaced body even between GameMode ticks.
     const auto* Human=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
     const auto& Bound=FleetAttempt.BoundIdentity();
-    if (!IsValid(Human) || FleetToken(Human)!=Bound[0] || !Human->IsRacePhysicsReady()) return false;
+    if (!IsValid(Human) || FleetToken(Human)!=Bound[0] || FleetBoundActors[0].Get()!=Human ||
+        !Human->IsRacePhysicsReady()) return false;
     for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
     {
         const auto* Rival=FleetRivalAt(Slot);
         if (!IsRegisteredRaceRival(Rival) || !Rival->IsRacePhysicsReady() ||
-            FleetToken(Rival)!=Bound[static_cast<std::size_t>(Slot)]) return false;
+            FleetToken(Rival)!=Bound[static_cast<std::size_t>(Slot)] ||
+            FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Rival) return false;
     }
     return true;
 }

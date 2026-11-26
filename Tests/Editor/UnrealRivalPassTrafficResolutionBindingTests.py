@@ -30,7 +30,9 @@ class UnrealRivalPassTrafficResolutionBindingTests(unittest.TestCase):
             "if (PassResolution.AbortPassing)",
             "StraightPassAssist.Reset();",
             "const latebrake::PilotCommand FollowingCommand = PassResolution.Command;",
-            "latebrake::ModerateRivalYawRate(FollowingCommand, {",
+            "latebrake::PilotCommand FleetCommand=FollowingCommand;",
+            "FleetRisk.Apply(Immediate.Command",
+            "latebrake::ModerateRivalYawRate(FleetCommand, {",
             "SpinThrottleGuard.Apply(",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         ):
@@ -42,7 +44,9 @@ class UnrealRivalPassTrafficResolutionBindingTests(unittest.TestCase):
             "FollowingBrakeHold.Apply(",
             "latebrake::ResolveRivalPassTraffic(",
             "const latebrake::PilotCommand FollowingCommand = PassResolution.Command;",
-            "latebrake::ModerateRivalYawRate(FollowingCommand, {",
+            "latebrake::PilotCommand FleetCommand=FollowingCommand;",
+            "FleetRisk.Apply(Immediate.Command",
+            "latebrake::ModerateRivalYawRate(FleetCommand, {",
             "SpinThrottleGuard.Apply(",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         )

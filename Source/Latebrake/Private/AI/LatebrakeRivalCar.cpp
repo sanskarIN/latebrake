@@ -40,7 +40,7 @@ void ALatebrakeRivalCar::ResetPilot()
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -57,7 +57,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     SurfaceDamagePace.Reset();
     SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -86,7 +86,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -107,7 +107,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -129,7 +129,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
         LastQualifiedSessionRevision = CurrentSessionRevision;
         bHasQualifiedSessionRevision = true;
     }
@@ -150,7 +150,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -187,7 +187,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         // Collect the actual human on the current game-thread snapshot.
         // No missing player or fictional grid occupant can clear a landing.
@@ -239,7 +239,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         SurfaceDamagePace.Reset();
         SpinThrottleGuard.Reset();
         StraightPassAssist.Reset();
-    FleetRisk.Reset();
+        FleetRisk.Reset();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;

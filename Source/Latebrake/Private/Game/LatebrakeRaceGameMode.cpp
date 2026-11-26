@@ -1373,7 +1373,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     const int64 PlayerGateOrdinal =
         static_cast<int64>(Race.GetCompletedLaps()) * Race.GetCheckpointCount() +
         Race.GetNextCheckpoint();
-    if (latebrake::GetRaceEvent(SelectedEvent).SpawnRival &&
+    if (!IsExperimentalFleetRequested() && latebrake::GetRaceEvent(SelectedEvent).SpawnRival &&
         PlayerGateOrdinal >= 1 && PlayerGateOrdinal <= 25600)
     {
         RivalSplits.RecordPlayer(static_cast<int32>(PlayerGateOrdinal),
@@ -2019,7 +2019,7 @@ bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
     // A rival state must belong to this very live race and a distinct,
     // physics-ready following pawn. Never infer a view from the HUD.
     UWorld* World = GetWorld();
-    if (!World || !IsValid(Observer) || Observer == RivalCar.Get() ||
+    if (IsExperimentalFleetRequested() || !World || !IsValid(Observer) || Observer == RivalCar.Get() ||
         Observer->GetWorld() != World ||
         !latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
         !IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady() ||

@@ -32,8 +32,11 @@ class RivalYawRateSteeringBindingTests(unittest.TestCase):
             "SurfaceDamagePace.Apply(Command, {",
             "latebrake::YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
+            "const latebrake::PilotCommand FollowingCommand = PassResolution.Command;",
+            "latebrake::PilotCommand FleetCommand=FollowingCommand;",
+            "FleetRisk.Apply(Immediate.Command",
             "Chassis->GetPhysicsAngularVelocityInRadians()",
-            "latebrake::ModerateRivalYawRate(FollowingCommand, {",
+            "latebrake::ModerateRivalYawRate(FleetCommand, {",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         )
         self.assertEqual(
