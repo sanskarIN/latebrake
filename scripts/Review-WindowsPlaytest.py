@@ -52,13 +52,24 @@ def unique_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
-def read_json(path: Path) -> dict:
+def read_json_snapshot(path: Path) -> tuple[dict, str]:
+    """Parse and hash the same bounded byte snapshot of private evidence."""
+    path = path.absolute()
+    require_unlinked_path(path)
     if not path.is_file() or path.stat().st_size > MAX_JSON_BYTES:
         fail(f"Missing or oversized JSON input: {path}")
-    data = json.loads(path.read_text(encoding="utf-8-sig"), object_pairs_hook=unique_pairs)
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_JSON_BYTES + 1)
+    if len(raw) > MAX_JSON_BYTES:
+        fail(f"Oversized JSON input: {path}")
+    data = json.loads(raw.decode("utf-8-sig"), object_pairs_hook=unique_pairs)
     if not isinstance(data, dict):
         fail("Expected a JSON object.")
-    return data
+    return data, hashlib.sha256(raw).hexdigest()
+
+
+def read_json(path: Path) -> dict:
+    return read_json_snapshot(path)[0]
 
 
 def sha256(path: Path) -> str:
@@ -91,6 +102,13 @@ def verify_runtime_log(receipt_file: Path, receipt: dict, candidate_root: Path) 
         fail("Runtime log path must be absolute.")
     # The runtime runner places the log and receipt together, with an
     # identical session basename. Reject swapped unrelated session logs.
+    # The absent-log case still requires a real, unlinked parent. Check
+    # before resolve(), which would conceal a dangling or redirected link.
+    require_unlinked_path(raw_log.parent)
+    if raw_log.is_symlink():
+        fail("Runtime log must not be a symbolic link.")
+    if raw_log.exists():
+        require_unlinked_path(raw_log)
     log = raw_log.resolve(strict=False)
     current_receipt = receipt_file.resolve()
     if log.parent != current_receipt.parent or log.stem != current_receipt.stem:
@@ -148,7 +166,7 @@ def check_postrun_archive_receipt(receipt: dict) -> bool:
 
 
 def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
-    receipt = read_json(receipt_file)
+    receipt, receipt_hash = read_json_snapshot(receipt_file)
     if type(receipt.get("schema_version")) is not int or receipt["schema_version"] not in (1, 2) or receipt.get("status") != "UNVERIFIED_PERSONAL_RUNTIME_PROBE":
         fail("Only private Win64 runtime-probe receipts are accepted.")
     if receipt.get("gameplay_verified") is not False:
@@ -167,6 +185,8 @@ def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
     require_unlinked_path(Path(raw_root))
     require_unlinked_path(Path(raw_exe))
     root, exe = Path(raw_root).resolve(), Path(raw_exe).resolve()
+    if receipt_file.resolve().is_relative_to(root):
+        fail("Runtime receipt must remain OUTSIDE the sealed candidate.")
     if not root.is_dir() or not exe.is_file() or exe.name.lower() != "latebrake.exe":
         fail("The candidate and its genuine-named EXE must exist locally.")
     if exe == root or not exe.is_relative_to(root):
@@ -184,11 +204,17 @@ def candidate_context(receipt_file: Path) -> tuple[dict, Path, Path, Path, str]:
     # Unreal compilation, game launch or manual gameplay claims.
     verify_candidate_archive(root, manifest)
     verify_runtime_log(receipt_file, receipt, root)
-    return receipt, root, exe, manifest, sha256(receipt_file)
+    if sha256(receipt_file) != receipt_hash:
+        fail("Runtime receipt changed while verifying candidate evidence.")
+    return receipt, root, exe, manifest, receipt_hash
 
 
 def write_new(path: Path, value: dict, candidate_root: Path) -> None:
-    destination = path.resolve(strict=False)
+    supplied = path.absolute()
+    if supplied.is_symlink():
+        fail("Refusing to overwrite linked private QA evidence.")
+    require_unlinked_path(supplied.parent)
+    destination = supplied.resolve(strict=False)
     if destination == candidate_root or destination.is_relative_to(candidate_root):
         fail("QA notes must stay OUTSIDE the sealed game candidate directory.")
     if destination.exists():
@@ -213,6 +239,8 @@ def new_template(args: argparse.Namespace) -> None:
         "checks": {name: {"result": "not_tested", "notes": ""} for name in CHECKS},
         "warning": WARN,
     }
+    if sha256(args.receipt) != receipt_hash:
+        fail("Runtime receipt changed while constructing manual QA checklist.")
     write_new(args.output, template, root)
     print(f"Unverified manual QA checklist created: {args.output}")
 
@@ -220,7 +248,7 @@ def new_template(args: argparse.Namespace) -> None:
 def evaluate(args: argparse.Namespace) -> None:
     receipt, root, _, _, receipt_hash = candidate_context(args.receipt)
     checklist = read_json(args.checklist)
-    if checklist.get("schema_version") != SCHEMA or checklist.get("status") != "MANUAL_WIN64_QA_UNVERIFIED":
+    if type(checklist.get("schema_version")) is not int or checklist["schema_version"] != SCHEMA or checklist.get("status") != "MANUAL_WIN64_QA_UNVERIFIED":
         fail("Unsupported manual QA checklist schema/status.")
     if checklist.get("gameplay_verified") is not False:
         fail("A manually edited checklist cannot assert gameplay certification.")
@@ -279,6 +307,8 @@ def evaluate(args: argparse.Namespace) -> None:
             "and review issue #148 before publishing any playable game."
         ),
     }
+    if sha256(args.receipt) != receipt_hash:
+        fail("Runtime receipt changed while constructing manual QA review.")
     write_new(args.output, evaluation, root)
     print(f"Unverified self-reported QA summary created: {args.output}")
     print(f"Observed pass={counts['pass']}, fail={counts['fail']}, not_tested={counts['not_tested']}.")
