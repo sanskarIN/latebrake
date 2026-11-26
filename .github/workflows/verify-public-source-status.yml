@@ -42,7 +42,7 @@ jobs:
             const fs = require('fs');
             const {owner, repo} = context.repo;
             const latestText = fs.readFileSync('README.md', 'utf8');
-            const regex = /Latest published: \[v(\d+\.\d+\.\d+)\]/;
+            const regex = /Latest published: \[v(\d+\.\d+\.\d+(?:-test\.\d+)?)\]/;
             const m = latestText.match(regex);
             if (!m) throw new Error('README missing explicit published tag');
             const tag = 'v' + m[1];
