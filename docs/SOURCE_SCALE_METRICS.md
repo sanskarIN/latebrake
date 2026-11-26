@@ -36,6 +36,13 @@ separates these categories:
 | `automation_code` | `scripts/` Python/PowerShell | No |
 | `ci_workflows` | Workflow YAML | No |
 
+The additive `languages` report partitions exactly the same measured files
+by suffix into C++, C#, Python, PowerShell and YAML. It reports physical and
+nonblank lines, not a new milestone metric. C++ headers count as C++ in
+this C++20 project. Language totals and category totals describe the same
+source, so never add them together. JavaScript release tests and auxiliary
+tools outside the existing category scope are not included.
+
 Production reports **physical lines**, **nonblank lines** (including
 comments), and **nonblank noncomment lines** separately. Comment syntax
 inside string/character/raw literals remains literal code. C++ continued
@@ -53,7 +60,28 @@ usefulness of code still require human review. This is a lexical source
 audit, not a language compiler, semantic complexity score or proof that
 all measured code is functional. Never add padding to satisfy the number.
 
-## Latest independently verified mainline scale (November 14, 2026)
+## Latest measured mainline scale (November 25, 2026)
+
+The [exact-main source-count CI](https://github.com/sanskarIN/latebrake/actions/runs/45646564285/job/139319032838)
+at `d79b31b1af59df3870f24cb75b755e0e20c8de28` reported the following using schema 2, before the
+additive language-report change:
+
+| Metric | Measured value |
+| --- | ---: |
+| Production C++ files | 452 |
+| Physical production C++ lines | 121,536 |
+| Nonblank production C++ lines | 117,227 |
+| Qualifying production C++ lines | 112,808 |
+| Remaining to v0.6.0 | 87,192 |
+| Test code physical lines | 73,246 |
+| All measured category physical lines | 216,326 |
+
+The count step succeeded; the overall workflow failed due to release-label
+errors. This is a source measurement, not a successful native build.
+Neither unmerged branches nor auxiliary files outside the measured scope
+are included.
+
+## Historical independently verified mainline scale (November 14, 2026)
 
 The exact protected-main source CI at
 [`aeb5a885412b2ad8ceb1de0091dbf6c462811878`](https://github.com/sanskarIN/latebrake/commit/aeb5a885412b2ad8ceb1de0091dbf6c462811878)

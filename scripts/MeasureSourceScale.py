@@ -24,6 +24,16 @@ CATEGORIES = {
     "ci_workflows": (".github/workflows/", frozenset({".yml", ".yaml"})),
 }
 
+# Language reporting is additive to schema 2. It uses the same counted
+# files and duplicate exclusions as the category totals. Headers in this
+# C++20 project are classified as C++ rather than guessed as C.
+LANGUAGE_BY_SUFFIX = {
+    ".h": "C++", ".hpp": "C++", ".cpp": "C++", ".cc": "C++",
+    ".cxx": "C++", ".inl": "C++", ".cs": "C#",
+    ".py": "Python", ".ps1": "PowerShell", ".yml": "YAML", ".yaml": "YAML",
+}
+
+
 def count_code_lines(text: str, *, csharp: bool = False) -> int:
     """Count physical lines with noncomment tokens, preserving literal content.
 
@@ -177,6 +187,7 @@ def metrics(root: Path) -> dict:
     }
     for name in ("game_source", "unreal_build_rules"):
         totals[name]["nonblank_noncomment_lines"] = 0
+    languages: dict[str, dict[str, int]] = {}
     skipped_links = 0
     duplicate_game_source_files = 0
     source_digests: set[bytes] = set()
@@ -216,9 +227,17 @@ def metrics(root: Path) -> dict:
             source_digests.add(digest)
         lines = text.splitlines()
         group_count = totals[group]
+        nonblank = sum(bool(line.strip()) for line in lines)
         group_count["files"] += 1
         group_count["physical_lines"] += len(lines)
-        group_count["nonblank_lines"] += sum(bool(line.strip()) for line in lines)
+        group_count["nonblank_lines"] += nonblank
+        language = LANGUAGE_BY_SUFFIX[PurePosixPath(relative).suffix.lower()]
+        language_count = languages.setdefault(language, {
+            "files": 0, "physical_lines": 0, "nonblank_lines": 0,
+        })
+        language_count["files"] += 1
+        language_count["physical_lines"] += len(lines)
+        language_count["nonblank_lines"] += nonblank
         if group in ("game_source", "unreal_build_rules"):
             group_count["nonblank_noncomment_lines"] += count_code_lines(
                 text, csharp=group == "unreal_build_rules")
@@ -236,6 +255,8 @@ def metrics(root: Path) -> dict:
         "excluded_exact_duplicate_game_source_files": duplicate_game_source_files,
         "limitations": "lexical LOC; meaningfulness, partial duplication and runtime require review",
         "categories": totals,
+        "languages": languages,
+        "language_scope": "same files as categories; C++ includes project headers",
     }
 
 def main() -> None:
@@ -257,6 +278,11 @@ def main() -> None:
                   f"{values['nonblank_lines']:7} nonblank" +
                   (f"  {values['nonblank_noncomment_lines']:7} noncomment"
                    if "nonblank_noncomment_lines" in values else ""))
+        print("Language totals (same measured files; do not add to categories):")
+        for name, values in sorted(result["languages"].items()):
+            print(f"{name:22} {values['files']:4} files  "
+                  f"{values['physical_lines']:7} lines  "
+                  f"{values['nonblank_lines']:7} nonblank")
         print(f"Game-source goal: {GOAL_LINES:,}; "
               f"remaining: {result['remaining_game_source_lines']:,}")
     # Regular source CI remains informational. v0.6.0 publication must
