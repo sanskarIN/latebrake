@@ -1239,7 +1239,40 @@ void ALatebrakeRaceHUD::DrawHUD()
                 }
             }
             if (Mode->IsExperimentalFleetRequested())
+            {
                 MenuLine(TEXT("EXPERIMENTAL FLEET | NO SAVED REWARDS OR RANK"),true);
+                const auto Review=Mode->GetFleetRaceReview();
+                if (!Review.ValidRoster || !Review.PlayerRouteValid)
+                    MenuLine(TEXT("Fleet finish observations unavailable"));
+                else
+                {
+                    MenuLine(FString::Printf(TEXT("Verified routes completed: %d/5 at player finish"),
+                        Review.ObservedCompletedRoutes));
+                    for(const auto& Row:Review.Rivals)
+                    {
+                        if (!Row.RouteEvidenceValid)
+                        {
+                            MenuLine(FString::Printf(TEXT("AI %d | evidence unavailable"),Row.Slot));
+                            continue;
+                        }
+                        FString Status;
+                        switch(Row.FinishRelation)
+                        {
+                        case latebrake::FleetFinishRelation::EarlierObserved:
+                            Status=FString::Printf(TEXT("final gate %.2fs earlier (active clock)"),Row.EarlierObservedSeconds);
+                            break;
+                        case latebrake::FleetFinishRelation::SameClockWindow:
+                            Status=TEXT("final gate in uncertain clock window");break;
+                        case latebrake::FleetFinishRelation::RouteIncompleteAtPlayerFinish:
+                            Status=FString::Printf(TEXT("%d/%d verified gates"),Row.AcceptedGates,
+                                Review.RequiredLaps*Review.GateCount);break;
+                        default:Status=TEXT("finish comparison unavailable");break;
+                        }
+                        MenuLine(FString::Printf(TEXT("AI %d | %s | recovery %d/%d verified"),
+                            Row.Slot,*Status,Row.SuccessfulRecoveries,Row.RecoveryAttempts));
+                    }
+                }
+            }
             const auto TrackReview=Mode->GetTrackLimitsReview();
             if (TrackReview.Valid)
             {
@@ -2560,7 +2593,9 @@ void ALatebrakeRaceHUD::DrawHUD()
         RivalRelativeMotionHint.Reset();
         LastRivalVerifiedRecoveries = CurrentRivalVerifiedRecoveries;
     }
-    const bool bRivalRace = !bTimeAttack && Mode->HasRival();
+    const bool bExperimentalFleet=Mode->IsExperimentalFleetRequested();
+    const auto FleetReview=bExperimentalFleet?Mode->GetFleetRaceReview():latebrake::FleetRaceReview{};
+    const bool bRivalRace = !bExperimentalFleet && !bTimeAttack && Mode->HasRival();
     FVector RivalWorldPosition = FVector::ZeroVector;
     const bool bRivalPositionVerified =
         bRivalRace && bWayfindingEligible &&
@@ -2725,16 +2760,26 @@ void ALatebrakeRaceHUD::DrawHUD()
                 static_cast<int32>(Fleet.Fault)),Accent,true);
         else if (!Fleet.RunningAllowed)
             Line(TEXT("WAITING FOR VERIFIED SIX-CAR GRID"),Primary);
-        else if (!bCompact)
+        else if (FleetReview.ValidRoster && FleetReview.PlayerRouteValid)
         {
-            for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+            Line(FString::Printf(TEXT("GATE COUNTS | MORE %d | SAME %d | FEWER %d"),
+                FleetReview.MoreGates,FleetReview.SameGates,FleetReview.FewerGates),Primary);
+            if (FleetReview.UnavailableRivals>0)
+                Line(FString::Printf(TEXT("AI EVIDENCE UNAVAILABLE %d"),FleetReview.UnavailableRivals),Accent);
+            if (!bCompact)
             {
-                int32 Laps=0,NextGate=-1;bool Finished=false;
-                if (Mode->TryGetFleetRivalProgress(Slot,Laps,NextGate,Finished))
-                    Line(FString::Printf(TEXT("AI %d | LAP %d | GATE %d%s"),
-                        Slot,Laps,NextGate+1,Finished?TEXT(" | DONE"):TEXT("")),Primary);
+                for(const auto& Row:FleetReview.Rivals)
+                {
+                    if (!Row.RouteEvidenceValid) continue;
+                    if (Row.RouteFinished)
+                        Line(FString::Printf(TEXT("AI %d | ROUTE COMPLETE"),Row.Slot),Primary);
+                    else
+                        Line(FString::Printf(TEXT("AI %d | LAPS %d/%d | NEXT %d"),
+                            Row.Slot,Row.CompletedLaps,FleetReview.RequiredLaps,Row.NextGate+1),Primary);
+                }
             }
         }
+        else Line(TEXT("FLEET ROUTE EVIDENCE UNAVAILABLE"),Accent);
     }
     const auto TrackReport=Mode->GetTrackLimits().Snapshot();
     if (bWayfindingEligible)
@@ -2968,7 +3013,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             Line(FString::Printf(TEXT("ALL-TIME FASTEST LAP  %.2fs"),
                 Mode->GetPersonalBestLapSeconds()), Accent);
         }
-        if (!bTimeAttack)
+        if (!bTimeAttack && !bExperimentalFleet)
         {
             Line(Mode->HasRival()
                 ? FString::Printf(TEXT("RIVAL ROUTE  %d/%d LAPS | RECOVERY ATTEMPTS  %d%s"),
@@ -3053,6 +3098,32 @@ void ALatebrakeRaceHUD::DrawHUD()
                     TEXT("RIVAL %.0fm DIRECT"), Radar.DirectRivalSeparationMeters),
                     Accent, MapLeft, MapTop + MapSize + 8.f * Scale,
                     GEngine->GetSmallFont(), 0.75f * Scale);
+            }
+        }
+        if (bExperimentalFleet && bWayfindingEligible)
+        {
+            const auto Clusters=latebrake::GroupFleetRadar(FleetReview,0.075);
+            const FLinearColor FleetColor(1.f,0.39f,0.23f);
+            for(int32 Index=0;Index<Clusters.Count;++Index)
+            {
+                const auto& Group=Clusters.Groups[static_cast<std::size_t>(Index)];
+                const FVector2D Point=ScreenMarker(Group.Marker);
+                DrawRect(FleetColor,Point.X-4.f*Scale,Point.Y-4.f*Scale,8.f*Scale,8.f*Scale);
+                FString Label;
+                if (Group.Count>1) Label=FString::Printf(TEXT("AI x%d"),Group.Count);
+                else
+                {
+                    for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+                        if ((Group.SlotMask&(1u<<static_cast<unsigned>(Slot)))!=0u)
+                            Label=FString::Printf(TEXT("AI%d"),Slot);
+                }
+                // Clamp the label into the radar's visual bounding box.
+                DrawText(Label,FleetColor,
+                    FMath::Clamp(static_cast<float>(Point.X+5.f*Scale),
+                        MapLeft,MapLeft+MapSize-34.f*Scale),
+                    FMath::Clamp(static_cast<float>(Point.Y-9.f*Scale),
+                        MapTop,MapTop+MapSize-12.f*Scale),
+                    GEngine->GetSmallFont(),0.65f*Scale);
             }
         }
         if (Radar.Player.Position.Valid)

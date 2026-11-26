@@ -43,6 +43,8 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
     FleetObservedEpoch=0;
     FleetBoundActors={};
     bFleetActorsBound=false;
+    FleetReviewLedger.Reset();
+    FleetFinishReview={};
     FleetAttempt.Begin({IsExperimentalFleetRequested(),SelectedEvent==latebrake::EventKind::Circuit,
         bCareerRace,FleetAttemptToken});
 }
@@ -224,6 +226,8 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
         for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
             FleetBoundActors[static_cast<std::size_t>(Slot)]=FleetRivalAt(Slot);
         bFleetActorsBound=true;
+        latebrake::BindFleetReviewLedger(FleetReviewLedger,FleetAttempt.BoundIdentity(),
+            Race.GetCheckpointCount(),Race.GetRequiredLaps());
     }
     if (Accepted) FleetObservedEpoch=CheckpointSession.Current();
     if (Current.Phase==latebrake::FleetAttemptPhase::Faulted && Previous!=Current.Phase)
@@ -277,4 +281,67 @@ latebrake::FleetRivalRecovery ALatebrakeRaceGameMode::GetFleetRivalRecovery(
     if (!CollectFleetFrame(Frame,0.0,false)) return {};
     return latebrake::SelectFleetRivalRecovery(Gate,Actor->GetGridSlot(),FleetToken(Actor),
         Frame,FleetAttempt.BoundIdentity());
+}
+
+void ALatebrakeRaceGameMode::ObserveFleetRivalGate(const ALatebrakeRivalCar* Actor)
+{
+    if (!IsExperimentalFleetRequested() || !IsExperimentalFleetDriveReady() ||
+        !IsRegisteredRaceRival(Actor) || Race.IsFinished() ||
+        Actor->GetVerifiedGateCount()!=Race.GetCheckpointCount() ||
+        Actor->GetExpectedLaps()!=Race.GetRequiredLaps())
+        return;
+    const int Slot=Actor->GetGridSlot();
+    int Ordinal=0;
+    if (!latebrake::FleetRouteOrdinal(Actor->GetApproximateLaps(),
+        Actor->GetNextVerifiedGate(),Actor->HasCompletedRoute(),
+        Race.GetCheckpointCount(),Race.GetRequiredLaps(),Ordinal)) return;
+    if (!FleetReviewLedger.RecordAcceptedGate(Slot,FleetToken(Actor),Ordinal,
+        Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds()))
+    {
+        UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_GATE_RECEIPT_REFUSED slot=%d ordinal=%d"),
+            Slot,Ordinal);
+    }
+}
+
+void ALatebrakeRaceGameMode::ObserveFleetRivalRecovery(
+    const ALatebrakeRivalCar* Actor,bool Verified)
+{
+    if (!IsExperimentalFleetRequested() || !IsExperimentalFleetDriveReady() ||
+        !IsRegisteredRaceRival(Actor) || Race.IsFinished()) return;
+    if (!FleetReviewLedger.RecordRecoveryResult(Actor->GetGridSlot(),FleetToken(Actor),
+        Actor->GetPilotRecoveries(),Verified))
+    {
+        UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_RECOVERY_RECEIPT_REFUSED slot=%d"),
+            Actor->GetGridSlot());
+    }
+}
+
+latebrake::FleetRaceReview ALatebrakeRaceGameMode::CollectFleetRaceReview() const
+{
+    if (!IsExperimentalFleetRequested() || !IsExperimentalFleetDriveReady()) return {};
+    latebrake::FleetPhysicalFrame Frame;
+    if (!CollectFleetFrame(Frame,0.0,false)) return {};
+    std::array<latebrake::FleetRouteObservation,latebrake::StartGridCapacity> Routes{};
+    for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+    {
+        const auto* Rival=FleetRivalAt(Slot);
+        if (!IsRegisteredRaceRival(Rival) || !Rival->IsRacePhysicsReady()) return {};
+        Routes[static_cast<std::size_t>(Slot)]={
+            Rival->GetExpectedLaps()==Race.GetRequiredLaps() &&
+            Rival->GetVerifiedGateCount()==Race.GetCheckpointCount(),
+            Rival->GetApproximateLaps(),Rival->GetNextVerifiedGate(),
+            Rival->GetPilotRecoveries(),Rival->GetPilotSuccessfulRecoveries(),
+            Rival->GetPilotFailedRecoveries(),Rival->HasCompletedRoute()};
+    }
+    return latebrake::BuildFleetRaceReview(Frame,FleetAttempt.BoundIdentity(),
+        FleetReviewLedger,Routes,Race.GetCompletedLaps(),Race.GetNextCheckpoint(),
+        Race.IsFinished(),Race.GetCheckpointCount(),Race.GetRequiredLaps(),
+        Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds());
+}
+
+latebrake::FleetRaceReview ALatebrakeRaceGameMode::GetFleetRaceReview() const
+{
+    if (!IsExperimentalFleetRequested()) return {};
+    if (Race.IsFinished()) return FleetFinishReview;
+    return CollectFleetRaceReview();
 }

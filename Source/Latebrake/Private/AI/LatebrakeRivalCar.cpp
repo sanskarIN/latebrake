@@ -176,7 +176,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         // Never bridge a frame sample across two different gate planes.
         RivalGateTrace.Reset();
         // Only the physical directional gate trace can trigger this call.
-        if (GridSlot==latebrake::PrimaryRivalGridSlot) Mode->ObserveRivalVerifiedGate();
+        if (Mode->IsExperimentalFleetRequested()) Mode->ObserveFleetRivalGate(this);
+        else if (GridSlot==latebrake::PrimaryRivalGridSlot) Mode->ObserveRivalVerifiedGate();
     }
 
     if (Observation.NeedsRecovery)
@@ -218,6 +219,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             FVector(Pose.Position.X, Pose.Position.Y, 180.0),
             FRotator(0.0, Pose.HeadingDegrees, 0.0));
         const bool bReported = Route.ReportRecoveryResult(bRecovered);
+        if (bReported && bFleetMode) Mode->ObserveFleetRivalRecovery(this,bRecovered);
         if (!bReported || !bRecovered)
         {
             UE_LOG(LogTemp, Warning,

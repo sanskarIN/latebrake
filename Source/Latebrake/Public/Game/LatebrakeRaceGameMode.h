@@ -12,6 +12,7 @@
 #include "AI/RivalDifficultyPreset.h"
 #include "AI/ExperimentalFleetAttempt.h"
 #include "AI/ExperimentalFleetLiveRecovery.h"
+#include "AI/FleetRaceReview.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -108,6 +109,9 @@ public:
     latebrake::FleetAttemptReadout GetFleetAttemptReadout() const noexcept
     { return FleetAttempt.Readout(); }
     int32 GetPhysicalFleetCount() const;
+    latebrake::FleetRaceReview GetFleetRaceReview() const;
+    void ObserveFleetRivalGate(const ALatebrakeRivalCar* Actor);
+    void ObserveFleetRivalRecovery(const ALatebrakeRivalCar* Actor,bool Verified);
     bool TryGetFleetRivalProgress(int32 Slot,int32& Laps,int32& NextGate,bool& Finished) const;
     bool TryGetFreshFleetTraffic(const ALatebrakeRivalCar* Actor,
         bool BrakeQualified,double BrakeScale,latebrake::RivalFleetTrafficSample& Out) const;
@@ -246,6 +250,7 @@ private:
     bool CollectFleetFrame(latebrake::FleetPhysicalFrame& Out,
         float DeltaSeconds,bool IncludeGridProbes) const;
     ALatebrakeRivalCar* FleetRivalAt(int32 Slot) const;
+    latebrake::FleetRaceReview CollectFleetRaceReview() const;
     void ApplyGarageToPlayer();
     void CommitGarageVehicleSelection(int32 VehicleId);
     bool RejectGarageMutationIfBlocked();
@@ -352,6 +357,8 @@ private:
     UPROPERTY(Transient)
     TArray<TObjectPtr<ALatebrakeRivalCar>> ExtraFleet;
     latebrake::ExperimentalFleetAttempt FleetAttempt;
+    latebrake::GridRivalLedger FleetReviewLedger;
+    latebrake::FleetRaceReview FleetFinishReview;
     std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};
     bool bFleetActorsBound=false;
     uint64 FleetAttemptToken=0;
