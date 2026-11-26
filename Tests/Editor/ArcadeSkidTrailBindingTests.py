@@ -60,7 +60,9 @@ class ArcadeSkidTrailBindingTests(unittest.TestCase):
         recover=pawn.split("bool ALatebrakeCarPawn::TryRecoverTo(",1)[1].split(
             "void ALatebrakeCarPawn::RecoverTo(",1)[0]
         self.assertIn("ClearDriverInputs();",recover)
-        self.assertIn("SurfaceSkidTrailTests.cpp",read("Tests/Standalone/CMakeLists.txt"))
+        self.assertIn("add_latebrake_portable_research_test(SurfaceSkidTrail)",
+                      read("Tests/Standalone/CMakeLists.txt"))
+        self.assertTrue((ROOT/"Tests/Standalone/SurfaceSkidTrailTests.cpp").is_file())
 
 if __name__=="__main__":
     unittest.main()
