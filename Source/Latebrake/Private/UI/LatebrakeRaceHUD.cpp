@@ -1430,6 +1430,31 @@ void ALatebrakeRaceHUD::DrawHUD()
                             TEXT("High lateral slip %.0f%% of sampled time"),
                             DriveReview.HighLateralSlipPercent));
                     }
+                    const auto& Distribution=DriveReview.SpeedDistribution;
+                    if (Distribution.Valid)
+                    {
+                        MenuLine(FString::Printf(
+                            TEXT("Average sampled speed %.1f km/h"),
+                            Distribution.AverageSpeedKmH));
+                        if (!bCompact)
+                        {
+                            const auto Median=static_cast<std::size_t>(Distribution.MedianBand);
+                            const auto P90=static_cast<std::size_t>(Distribution.P90Band);
+                            const auto& Edges=latebrake::SampledSpeedEdgesKmH;
+                            MenuLine(FString::Printf(
+                                TEXT("Time-weighted median %.0f-%.0f | P90 %.0f-%.0f km/h"),
+                                Edges[Median],Edges[Median+1],Edges[P90],Edges[P90+1]));
+                            for (std::size_t Index=0;Index<Distribution.Rows.size();++Index)
+                            {
+                                const auto& Row=Distribution.Rows[Index];
+                                if (Row.Frames==0) continue;
+                                MenuLine(FString::Printf(
+                                    TEXT("%.0f-%.0f km/h | %.1fs | %.0f%% of sample"),
+                                    Edges[Index],Edges[Index+1],Row.Seconds,
+                                    100.0*Row.Seconds/Distribution.TotalSeconds));
+                            }
+                        }
+                    }
                 }
             }
             if (latebrake::CanAwardFinishedRace(Race))

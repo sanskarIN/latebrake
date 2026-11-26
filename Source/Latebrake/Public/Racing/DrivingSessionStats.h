@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Racing/SampledSpeedDistribution.h"
+
 namespace latebrake
 {
 // Advisory, run-local driving metrics. Never changes physics, credits,
@@ -26,6 +28,11 @@ public:
     double GetHighSlipSeconds() const noexcept { return HighSlipSeconds; }
     int GetBrakeApplications() const noexcept { return BrakeApplications; }
     int GetAcceptedSamples() const noexcept { return AcceptedSamples; }
+    SampledSpeedDistribution GetSpeedDistribution() const noexcept
+    {
+        return SpeedDistribution.Review(AcceptedSamples,ActiveSeconds,
+            DistanceCm,BrakingSeconds);
+    }
 
 private:
     double DistanceCm = 0.0;
@@ -36,5 +43,6 @@ private:
     int BrakeApplications = 0;
     int AcceptedSamples = 0;
     bool PreviousBraking = false;
+    SampledSpeedAccumulator SpeedDistribution;
 };
 } // namespace latebrake
