@@ -1,8 +1,11 @@
 #include "Racing/LiveRacePaceProjection.h"
+#include "Racing/GateAwareRacePace.h"
 
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <initializer_list>
+#include <limits>
 
 namespace
 {
@@ -21,6 +24,136 @@ void CompleteLap(latebrake::RaceProgress& race, double seconds)
     {
         race.Advance(seconds / static_cast<double>(race.GetCheckpointCount()));
         Require(race.PassCheckpoint(checkpoint), "ordered checkpoint pass");
+    }
+}
+bool Near(double a,double b)
+{
+    return std::abs(a-b)<1e-7;
+}
+
+void AcceptGate(latebrake::RaceProgress& race,double time,double fee=0.0)
+{
+    race.Advance(time);
+    if (fee>0.0) Require(race.AddTimePenalty(fee),"charge actual penalty");
+    Require(race.PassCheckpoint(race.GetNextCheckpoint()),"ordered measured gate");
+}
+
+void GatePaceUsesReferenceAndChargedClock()
+{
+    using namespace latebrake;
+    RaceProgress race(4,3);
+    Require(ProjectGateAwareRacePace(race).Status==GatePaceStatus::Unavailable,
+        "no reference before first measured lap");
+    for(double seconds:{2.0,4.0,6.0,8.0}) AcceptGate(race,seconds);
+    auto p=ProjectGateAwareRacePace(race);
+    Require(p.Status==GatePaceStatus::Estimated && p.ReferenceLapNumber==1 &&
+        p.CurrentLapNumber==2 && p.NextGateIndex==0 && p.LapsRemaining==2 &&
+        Near(p.EstimatedFinishSeconds,60.0) &&
+        Near(p.RemainingCurrentSectorSeconds,2.0) &&
+        Near(p.RemainingLaterSectorsSeconds,18.0) &&
+        Near(p.RemainingLaterLapsSeconds,20.0),"entire reference duration at lap start");
+    race.Advance(1.0);
+    Require(race.AddTimePenalty(3.0),"current fee accepted");
+    p=ProjectGateAwareRacePace(race);
+    Require(p.Status==GatePaceStatus::Estimated && Near(p.CurrentSectorClockSeconds,4.0) &&
+        Near(p.CurrentSectorFeeSeconds,3.0) &&
+        Near(p.CurrentSectorDrivingClockSeconds,1.0) &&
+        Near(p.EstimatedFinishSeconds,63.0),"fee already charged never replaces driving");
+    Require(race.PassCheckpoint(0),"first gate completed early");
+    p=ProjectGateAwareRacePace(race);
+    Require(p.Status==GatePaceStatus::Estimated && p.NextGateIndex==1 &&
+        Near(p.CurrentSectorFeeSeconds,0.0) && Near(p.EstimatedFinishSeconds,62.0),
+        "accepted gate updates estimate using actual early progress");
+    race.Advance(4.0);
+    p=ProjectGateAwareRacePace(race);
+    Require(p.Status==GatePaceStatus::CurrentSectorOverdue &&
+        p.EstimatedFinishSeconds==0.0 && Near(p.CurrentSectorOverdueSeconds,0.0),
+        "unfinished gate at reference deadline never claims zero remaining");
+    race.Advance(2.0);
+    p=ProjectGateAwareRacePace(race);
+    Require(p.Status==GatePaceStatus::CurrentSectorOverdue &&
+        Near(p.CurrentSectorOverdueSeconds,2.0),"overdue sector gives no finish estimate");
+    Require(race.PassCheckpoint(1),"late physical gate restores next reference");
+    p=ProjectGateAwareRacePace(race);
+    Require(p.Status==GatePaceStatus::Estimated && p.NextGateIndex==2 &&
+        Near(p.EstimatedFinishSeconds,64.0),"next gate reconciles actual late progress");
+    AcceptGate(race,6.0);
+    AcceptGate(race,8.0);
+    p=ProjectGateAwareRacePace(race);
+    Require(p.Status==GatePaceStatus::Estimated && p.ReferenceLapNumber==1 &&
+        p.CurrentLapNumber==3 && p.LapsRemaining==1 &&
+        p.RemainingLaterLapsSeconds==0.0 && Near(p.EstimatedFinishSeconds,64.0),
+        "penalized lap cannot replace the fee-free reference");
+    for(double seconds:{2.0,4.0,6.0,8.0}) AcceptGate(race,seconds);
+    Require(race.IsFinished() &&
+        ProjectGateAwareRacePace(race).Status==GatePaceStatus::Unavailable,
+        "official finish clears projection");
+    race.Reset();
+    Require(ProjectGateAwareRacePace(race).Status==GatePaceStatus::Unavailable,
+        "restart removes exact reference");
+}
+
+void GatePaceRejectsUnqualifiedPrefixes()
+{
+    using namespace latebrake;
+    RaceProgress race(2,5);
+    Require(race.AddTimePenalty(3.0),"charge fee without driving");
+    Require(race.PassCheckpoint(0),"fee-only gate accepted by race model");
+    AcceptGate(race,5.0);
+    Require(ProjectGateAwareRacePace(race).Status==GatePaceStatus::Unavailable,
+        "fee-only sector cannot become measured reference");
+    AcceptGate(race,3.0); AcceptGate(race,5.0);
+    Require(ProjectGateAwareRacePace(race).Status==GatePaceStatus::Estimated,
+        "next complete active lap establishes reference");
+    Require(race.PassCheckpoint(0),"zero-clock sector accepted by race model");
+    Require(ProjectGateAwareRacePace(race).Status==GatePaceStatus::Unavailable,
+        "invalid current prefix cannot produce reference projection");
+    AcceptGate(race,8.0);
+    Require(ProjectGateAwareRacePace(race).Status==GatePaceStatus::Estimated,
+        "following lap can recover independent projection evidence");
+
+    RaceProgress overflow(1,3);
+    AcceptGate(overflow,300000.0);
+    Require(ProjectGateAwareRacePace(overflow).Status==GatePaceStatus::Unavailable,
+        "projection outside supported clock range rejected");
+    RaceProgress extreme(1,std::numeric_limits<int>::max());
+    AcceptGate(extreme,2.0);
+    Require(ProjectGateAwareRacePace(extreme).Status==GatePaceStatus::Unavailable,
+        "large required lap count cannot overflow bounded finish clock");
+}
+
+void GatePaceAllCheckpointCounts()
+{
+    using namespace latebrake;
+    for(int gates=1;gates<=MeasuredLapMaxGates;++gates)
+    {
+        RaceProgress race(gates,3);
+        double reference=0.0;
+        for(int i=0;i<gates;++i)
+        {
+            const double seconds=2.0+static_cast<double>(i%5);
+            AcceptGate(race,seconds);
+            reference+=seconds;
+        }
+        double fees=0.0;
+        for(int i=0;i<gates;++i)
+        {
+            const double seconds=2.0+static_cast<double>(i%5);
+            race.Advance(seconds*0.5);
+            Require(race.AddTimePenalty(0.5),"exact half-second fee");
+            fees+=0.5;
+            const auto p=ProjectGateAwareRacePace(race);
+            Require(p.Status==GatePaceStatus::Estimated && p.NextGateIndex==i &&
+                Near(p.CurrentSectorDrivingClockSeconds,seconds*0.5) &&
+                Near(p.CurrentSectorFeeSeconds,0.5) &&
+                Near(p.EstimatedFinishSeconds,3.0*reference+fees),
+                "all supported gate capacities use exact gate and fee evidence");
+            AcceptGate(race,seconds*0.5);
+        }
+        const auto last=ProjectGateAwareRacePace(race);
+        Require(last.Status==GatePaceStatus::Estimated && last.NextGateIndex==0 &&
+            Near(last.EstimatedFinishSeconds,3.0*reference+fees),
+            "full paid lap keeps fee-free reference for final lap");
     }
 }
 }
@@ -143,6 +276,9 @@ int main()
     Require(!ProjectLiveRacePace(overflow).Valid,
             "unrealistic projection beyond record clock bound is hidden");
 
-    std::cout << "Live race pace projection passed.\n";
+    GatePaceUsesReferenceAndChargedClock();
+    GatePaceRejectsUnqualifiedPrefixes();
+    GatePaceAllCheckpointCounts();
+    std::cout << "Live race pace projection and gate-aware reference checks passed.\n";
     return EXIT_SUCCESS;
 }

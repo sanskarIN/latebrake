@@ -14,9 +14,11 @@
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/RecentLapReview.h"
 #include "Racing/RecentLapPaceStatistics.h"
+#include "Racing/CleanLapPaceReview.h"
 #include "Racing/BestSectorReview.h"
 #include "Racing/SampledDrivingReview.h"
 #include "Racing/LiveRacePaceProjection.h"
+#include "Racing/GateAwareRacePace.h"
 #include "Racing/TimeAttackPersonalBestTarget.h"
 #include "Racing/QuickRaceRecordReview.h"
 #include "Racing/RivalFinishObservation.h"
@@ -705,6 +707,33 @@ void ALatebrakeRaceHUD::DrawHUD()
                     MenuLine(FString::Printf(
                         TEXT("Faster in last %d consecutive lap comparisons"),
                         PaceStatistics.ConsecutiveImprovements));
+                }
+            }
+
+            // Fee-free physical laps, not adjusted versions of penalized
+            // times. Keep the retained-window scope explicit in Results.
+            const auto CleanPace = latebrake::BuildCleanLapPaceReview(Race);
+            if (CleanPace.Valid)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("FEE-FREE LAPS: %d/%d RETAINED"),
+                    CleanPace.CleanLaps, CleanPace.RetainedLaps), true);
+                MenuLine(FString::Printf(
+                    TEXT("Fastest fee-free lap %d: %.2fs"),
+                    CleanPace.FastestLap, CleanPace.FastestSeconds));
+                if (CleanPace.HasVariation && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Fee-free median %.2fs | median deviation %.2fs"),
+                        CleanPace.MedianSeconds,
+                        CleanPace.MedianAbsoluteDeviationSeconds));
+                }
+                if (CleanPace.HasAdjacentComparison && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Fee-free lap %d vs %d: %+.2fs"),
+                        CleanPace.AdjacentNewerLap, CleanPace.AdjacentOlderLap,
+                        CleanPace.AdjacentDeltaSeconds));
                 }
             }
 
@@ -1766,13 +1795,33 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
         // Estimate based only on actual completed timed laps. Never
         // display a fabricated finish pace before the first valid lap.
-        const latebrake::LiveRacePaceProjection Pace =
-            latebrake::ProjectLiveRacePace(Race);
-        if (Pace.Valid)
+        const auto GatePace = latebrake::ProjectGateAwareRacePace(Race);
+        if (GatePace.Status == latebrake::GatePaceStatus::Estimated)
         {
-            Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
-                Pace.ReferenceLapSeconds, Pace.SampledLaps,
-                Pace.ProjectedFinishSeconds), Accent);
+            Line(FString::Printf(
+                TEXT("REF LAP %d | GATE %d | EST. FINISH %.1fs"),
+                GatePace.ReferenceLapNumber, GatePace.NextGateIndex+1,
+                GatePace.EstimatedFinishSeconds), Accent);
+        }
+        else if (GatePace.Status == latebrake::GatePaceStatus::CurrentSectorOverdue)
+        {
+            Line(FString::Printf(
+                TEXT("GATE %d PAST REF PACE | FINISH EST. UNAVAILABLE"),
+                GatePace.NextGateIndex+1), Accent);
+        }
+        else if (!Race.GetMeasuredLapSplits().BestReference().Complete)
+        {
+            // Older timed-lap fallback is only allowed before a complete
+            // measured reference exists. An invalid current gate prefix
+            // must not be hidden by reverting to the lap-average estimate.
+            const latebrake::LiveRacePaceProjection Pace =
+                latebrake::ProjectLiveRacePace(Race);
+            if (Pace.Valid)
+            {
+                Line(FString::Printf(TEXT("PACE  %.1fs/lap (%d recent) | EST. FINISH  %.1fs"),
+                    Pace.ReferenceLapSeconds, Pace.SampledLaps,
+                    Pace.ProjectedFinishSeconds), Accent);
+            }
         }
         // Exact gate clock delta to one completed reference lap.
         // It remains a discrete gate observation, not live positional gap.
