@@ -20,6 +20,9 @@ do not certify actual on-screen updates or keyboard focus.
   instruction that falsely implies the old approval remains active.
 - E, Ctrl+1..6, Escape/Tab, changing pages, starting a race, or otherwise
   changing context must preserve their existing cancellation behavior.
+- App deactivation/background notification cancels a pending offer even
+  while the Garage menu is already paused. The pinned status requests a
+  new preview; repeated notifications do not stage or spend anything.
 - On a short screen, the pinned feedback is visible regardless of which
   paginated Garage detail window the player is currently reading.
 
@@ -51,6 +54,13 @@ do not certify actual on-screen updates or keyboard focus.
    high-DPI monitor; inspect menu feedback on first and subsequent pager
    screens, plus Ctrl+digit quick-select and gamepad navigation. Confirm
    paused input and page changes cannot hide an actionable confirmation.
+
+9. **Focus interruption** — stage Q, U or I, switch to another window or
+   background the app, and return before the original eight-second deadline.
+   Verify the old countdown is gone and cancellation feedback is visible.
+   The first matching key must only preview again; the second may attempt
+   the normal transaction. Repeat for all three keys and record real OS
+   event delivery, credits, ownership and tuning before/after.
 
 ## Coverage and release boundaries
 
