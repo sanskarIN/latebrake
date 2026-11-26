@@ -14,6 +14,7 @@
 #include "Racing/FinishedRaceInsights.h"
 #include "Racing/RecentLapReview.h"
 #include "Racing/RecentLapPaceStatistics.h"
+#include "Racing/CleanLapPaceReview.h"
 #include "Racing/BestSectorReview.h"
 #include "Racing/SampledDrivingReview.h"
 #include "Racing/LiveRacePaceProjection.h"
@@ -705,6 +706,33 @@ void ALatebrakeRaceHUD::DrawHUD()
                     MenuLine(FString::Printf(
                         TEXT("Faster in last %d consecutive lap comparisons"),
                         PaceStatistics.ConsecutiveImprovements));
+                }
+            }
+
+            // Fee-free physical laps, not adjusted versions of penalized
+            // times. Keep the retained-window scope explicit in Results.
+            const auto CleanPace = latebrake::BuildCleanLapPaceReview(Race);
+            if (CleanPace.Valid)
+            {
+                MenuLine(FString::Printf(
+                    TEXT("FEE-FREE LAPS: %d/%d RETAINED"),
+                    CleanPace.CleanLaps, CleanPace.RetainedLaps), true);
+                MenuLine(FString::Printf(
+                    TEXT("Fastest fee-free lap %d: %.2fs"),
+                    CleanPace.FastestLap, CleanPace.FastestSeconds));
+                if (CleanPace.HasVariation && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Fee-free median %.2fs | median deviation %.2fs"),
+                        CleanPace.MedianSeconds,
+                        CleanPace.MedianAbsoluteDeviationSeconds));
+                }
+                if (CleanPace.HasAdjacentComparison && !bCompact)
+                {
+                    MenuLine(FString::Printf(
+                        TEXT("Fee-free lap %d vs %d: %+.2fs"),
+                        CleanPace.AdjacentNewerLap, CleanPace.AdjacentOlderLap,
+                        CleanPace.AdjacentDeltaSeconds));
                 }
             }
 

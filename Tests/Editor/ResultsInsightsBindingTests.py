@@ -53,6 +53,27 @@ class ResultsInsightsBindingTests(unittest.TestCase):
             self.hud.index("MenuPager.Synchronize("))
         self.assertIn("if (!bCompact)", self.hud)
 
+    def test_fee_free_results_use_actual_retained_laps(self):
+        clean = (ROOT / "Source/Latebrake/Public/Racing/CleanLapPaceReview.h").read_text(
+            encoding="utf-8")
+        for fragment in (
+            "BuildRecentLapReview(race)", "review.CompletePenaltyAttribution",
+            "lap.ActiveClockEvidence", "row.IncludedPenaltySeconds != 0.0",
+            "previousWasClean = false;", "MedianAbsoluteDeviationSeconds",
+        ):
+            self.assertIn(fragment, clean)
+        for forbidden in ("AddTimePenalty(", "PassCheckpoint(", "SaveRecords(",
+                          "SetActorLocation(", "CareerAward("):
+            self.assertNotIn(forbidden, clean)
+        for fragment in (
+            '#include "Racing/CleanLapPaceReview.h"',
+            "BuildCleanLapPaceReview(Race)", "FEE-FREE LAPS: %d/%d RETAINED",
+            "CleanPace.HasAdjacentComparison", "CleanPace.FastestLap",
+        ):
+            self.assertIn(fragment, self.hud)
+        self.assertLess(self.hud.index("BuildCleanLapPaceReview(Race)"),
+                        self.hud.index("MenuPager.Synchronize("))
+
     def test_all_policies_are_read_only_and_fail_closed(self):
         for src in (self.stats, self.sectors, self.driving):
             for forbidden in (

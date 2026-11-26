@@ -109,7 +109,12 @@ inline bool ValidMeasuredLapTrace(const MeasuredLapTrace& trace) noexcept
         trace.FeeFree==(previous.CumulativeFeeSeconds==0.0);
 }
 
-inline MeasuredGateComparison CompareMeasuredLapGate(
+namespace measured_lap_detail
+{
+// Internal helper: callers establish complete reference and valid actual
+// prefix. Keeping this separate avoids repeatedly walking 256 gates when
+// producing a full lap report or consuming already-validated live events.
+inline MeasuredGateComparison CompareValidatedGate(
     const MeasuredLapTrace& actual,const MeasuredLapTrace& reference,
     int gateIndex) noexcept
 {
@@ -136,6 +141,40 @@ inline MeasuredGateComparison CompareMeasuredLapGate(
         a.CumulativeFeeSeconds};
 }
 
+} // namespace measured_lap_detail
+
+inline MeasuredGateComparison CompareMeasuredLapGate(
+    const MeasuredLapTrace& actual,const MeasuredLapTrace& reference,
+    int gateIndex) noexcept
+{
+    // Public callers can construct their own traces. The selected pair
+    // alone is insufficient evidence: an earlier corrupt gate or later
+    // invalid reference gate must not create a credible-looking delta.
+    if (!ValidMeasuredLapTrace(reference) || !reference.FeeFree ||
+        actual.LapNumber <= reference.LapNumber ||
+        !actual.AllGatesActivelyTimed || actual.GateCount < 1 ||
+        actual.GateCount > reference.GateCount ||
+        gateIndex < 0 || gateIndex >= actual.GateCount)
+        return {};
+    if (actual.Complete)
+    {
+        if (actual.GateCount != reference.GateCount ||
+            !ValidMeasuredLapTrace(actual))
+            return {};
+    }
+    else
+    {
+        MeasuredLapGate previous{};
+        for (int i = 0; i < actual.GateCount; ++i)
+        {
+            const auto gate = actual.Gates[static_cast<std::size_t>(i)];
+            if (!ValidMeasuredLapGate(gate,previous)) return {};
+            previous = gate;
+        }
+    }
+    return measured_lap_detail::CompareValidatedGate(actual,reference,gateIndex);
+}
+
 inline MeasuredLapComparison CompareMeasuredLaps(
     const MeasuredLapTrace& actual,const MeasuredLapTrace& reference) noexcept
 {
@@ -154,7 +193,7 @@ inline MeasuredLapComparison CompareMeasuredLaps(
     double totalDelta=0.0;
     for(int i=0;i<actual.GateCount;++i)
     {
-        const auto row=CompareMeasuredLapGate(actual,reference,i);
+        const auto row=measured_lap_detail::CompareValidatedGate(actual,reference,i);
         if(!row.Valid)return {};
         out.Rows[static_cast<std::size_t>(i)]=row;
         totalDelta+=row.SectorDeltaSeconds;
@@ -223,7 +262,7 @@ public:
             activeSectorClock&&ValidMeasuredLapGate(gate,previous);
         latestGate_={};
         if(current_.AllGatesActivelyTimed&&best_.Complete)
-            latestGate_=CompareMeasuredLapGate(current_,best_,gateIndex);
+            latestGate_=measured_lap_detail::CompareValidatedGate(current_,best_,gateIndex);
     }
 
     void Complete(int lapNumber,double lapSeconds,double includedFeeSeconds) noexcept
