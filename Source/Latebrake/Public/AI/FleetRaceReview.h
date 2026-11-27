@@ -5,6 +5,7 @@
 #include "AI/FleetGateTimingJournal.h"
 #include "AI/FleetPlayerTraffic.h"
 #include "Racing/RivalFinishClockReview.h"
+#include "Racing/RivalSameSegmentOrder.h"
 #include "Track/RaceMiniMap.h"
 
 #include <array>
@@ -63,6 +64,7 @@ struct FleetRivalReadout final
     FleetGateRelation GateRelation=FleetGateRelation::Unavailable;
     FleetFinishRelation FinishRelation=FleetFinishRelation::Unavailable;
     double EarlierObservedSeconds=0.0;
+    RivalSameSegmentOrder Straight{};
 };
 
 struct FleetRaceReview final
@@ -79,6 +81,10 @@ struct FleetRaceReview final
     int FewerGates=0;
     int UnavailableRivals=0;
     int ObservedCompletedRoutes=0;
+    int StraightPlayerAhead=0;
+    int StraightRivalAhead=0;
+    int StraightClose=0;
+    int StraightUnavailable=0;
     double PlayerActiveSeconds=0.0;
     std::array<FleetRivalReadout,StartGridCapacity-1> Rivals{};
     FleetTimingReadout Timing{};
@@ -225,6 +231,23 @@ inline FleetRaceReview BuildFleetRaceReview(const FleetPhysicalFrame& live,
         {
             row.GateRelation=FleetGateRelation::SameAcceptedGates;
             ++out.SameGates;
+            // Same accepted ordinal is necessary, but not sufficient.
+            // The existing two-car projection rejects ambiguous corners,
+            // off-road positions, and positions outside the gate segment.
+            // Never project a finished vehicle or use a differently
+            // configured course as if it were the original circuit.
+            if (!playerFinished && !row.RouteFinished &&
+                gateCount==CircuitGateCount)
+            {
+                const RivalGateGap gap{true,RivalGateGapKind::SameCreditedGateCount,
+                    0,out.PlayerAcceptedGates,ordinal};
+                row.Straight=CompareRivalSameSegment({gap,playerNext,
+                    live.Cars[0].Pose.Position,live.Cars[index].Pose.Position,true});
+            }
+            if (!row.Straight.Valid) ++out.StraightUnavailable;
+            else if (row.Straight.Leader==RivalSegmentLeader::Player) ++out.StraightPlayerAhead;
+            else if (row.Straight.Leader==RivalSegmentLeader::Rival) ++out.StraightRivalAhead;
+            else ++out.StraightClose;
         }
 
         if (!playerFinished) continue;

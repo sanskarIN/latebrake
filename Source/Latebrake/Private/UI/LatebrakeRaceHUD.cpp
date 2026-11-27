@@ -2814,6 +2814,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                 FleetReview.MoreGates,FleetReview.SameGates,FleetReview.FewerGates),Primary);
             if (FleetReview.UnavailableRivals>0)
                 Line(FString::Printf(TEXT("AI EVIDENCE UNAVAILABLE %d"),FleetReview.UnavailableRivals),Accent);
+            if (FleetReview.SameGates>0 && !bCompact)
+            {
+                Line(FString::Printf(TEXT("SAME STRAIGHT | YOU AHEAD %d | AI AHEAD %d | CLOSE %d"),
+                    FleetReview.StraightPlayerAhead,FleetReview.StraightRivalAhead,
+                    FleetReview.StraightClose),Primary);
+                if (FleetReview.StraightUnavailable>0)
+                    Line(FString::Printf(TEXT("STRAIGHT COMPARISON UNAVAILABLE %d"),
+                        FleetReview.StraightUnavailable),Accent);
+            }
             const auto& Traffic=FleetReview.Traffic;
             if (Traffic.Valid && Traffic.StrongestSlot>=1 &&
                 Traffic.StrongestSlot<latebrake::StartGridCapacity)
@@ -2845,6 +2854,16 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Line(FString::Printf(TEXT("AI %d | G%d %s | %d/%d LAPS"),
                             Row.Slot,Timing.CommonOrdinal,*Delta,Row.CompletedLaps,
                             FleetReview.RequiredLaps),Primary);
+                    }
+                    else if (Row.Straight.Valid)
+                    {
+                        if (Row.Straight.Leader==latebrake::RivalSegmentLeader::TooClose)
+                            Line(FString::Printf(TEXT("AI %d | SAME STRAIGHT | CLOSE"),Row.Slot),Primary);
+                        else
+                            Line(FString::Printf(TEXT("AI %d | SAME STRAIGHT | %s %.1fm"),
+                                Row.Slot,Row.Straight.Leader==latebrake::RivalSegmentLeader::Player
+                                    ? TEXT("YOU AHEAD"):TEXT("AI AHEAD"),
+                                Row.Straight.AlongRoadSeparationMeters),Primary);
                     }
                     else if (Row.RouteFinished)
                         Line(FString::Printf(TEXT("AI %d | ROUTE COMPLETE"),Row.Slot),Primary);

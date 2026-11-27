@@ -140,6 +140,68 @@ void IdentityAndRadar()
     Require(GroupFleetRadar(review,-1.0).Count==0,"invalid cluster threshold rejected");
 }
 
+void SameStraightEvidence()
+{
+    for(int gate=0;gate<CircuitGateCount;++gate)
+    {
+        Fixture f;
+        const auto from=CircuitGate((gate+CircuitGateCount-1)%CircuitGateCount);
+        const auto to=CircuitGate(gate);
+        const auto point=[&](double t,double offset=0.0)
+        {
+            const auto dx=to.X-from.X,dy=to.Y-from.Y;
+            const auto length=std::hypot(dx,dy);
+            return CircuitPoint{from.X+t*dx-offset*dy/length,
+                from.Y+t*dy+offset*dx/length};
+        };
+        // Each rival has the same real accepted gate count. Their
+        // longitudinal positions alone distinguish the three outcomes.
+        const int ordinal=CircuitGateCount+gate;
+        for(int slot=1;slot<StartGridCapacity;++slot) f.AdvanceTo(slot,ordinal,10.0);
+        f.Frame.Cars[0].Pose.Position=point(0.5);
+        f.Frame.Cars[1].Pose.Position=point(0.3);
+        f.Frame.Cars[2].Pose.Position=point(0.7);
+        f.Frame.Cars[3].Pose.Position=point(0.5,200.0);
+        f.Frame.Cars[4].Pose.Position=point(0.01);
+        f.Frame.Cars[5].Pose.Position=point(0.5,900.0);
+        const auto review=f.Review(ordinal,12.0);
+        Require(review.ValidRoster && review.PlayerRouteValid &&
+            review.SameGates==5 && review.StraightPlayerAhead==1 &&
+            review.StraightRivalAhead==1 && review.StraightClose==1 &&
+            review.StraightUnavailable==2,"all four segments conserve evidence");
+        Require(review.Rivals[0].Straight.Leader==RivalSegmentLeader::Player &&
+            review.Rivals[1].Straight.Leader==RivalSegmentLeader::Rival &&
+            review.Rivals[2].Straight.Leader==RivalSegmentLeader::TooClose &&
+            !review.Rivals[3].Straight.Valid && !review.Rivals[4].Straight.Valid,
+            "signed direction and unavailable evidence");
+        const auto length=std::hypot(to.X-from.X,to.Y-from.Y);
+        Require(std::abs(review.Rivals[0].Straight.AlongRoadSeparationMeters-
+            0.2*length/100.0)<1e-9,"physical distance in metres");
+
+        // Unverified gate evidence must not produce a spatial comparison,
+        // even when the physical body is on the exact same straight.
+        f.Routes[1].Verified=false;
+        const auto missing=f.Review(ordinal,12.0);
+        Require(missing.UnavailableRivals==1 && missing.SameGates==4 &&
+            missing.StraightPlayerAhead==0 && !missing.Rivals[0].Straight.Valid,
+            "missing gate evidence cannot be recovered from coordinates");
+        f.Routes[1].Verified=true;
+        f.Frame.Cars[0].Pose.Position=point(0.99);
+        const auto corner=f.Review(ordinal,12.0);
+        Require(corner.SameGates==5 && corner.StraightUnavailable==5 &&
+            corner.StraightPlayerAhead==0 && corner.StraightRivalAhead==0 &&
+            corner.StraightClose==0,"human near corner suppresses all projections");
+    }
+
+    Fixture finished;
+    for(int slot=1;slot<StartGridCapacity;++slot)
+        finished.AdvanceTo(slot,12,10.0);
+    const auto review=finished.Review(12,11.0);
+    Require(review.PlayerFinished && review.SameGates==5 &&
+        review.StraightUnavailable==5 && review.StraightClose==0,
+        "finished race is not projected as active spatial order");
+}
+
 void RandomizedClusterConservation()
 {
     Fixture f;
@@ -175,6 +237,6 @@ void RandomizedClusterConservation()
 }
 int main()
 {
-    GateRelations();FinishAndRecovery();IdentityAndRadar();RandomizedClusterConservation();
+    GateRelations();FinishAndRecovery();IdentityAndRadar();SameStraightEvidence();RandomizedClusterConservation();
     std::cout<<"Fleet gate receipts, finish review and radar grouping passed\n";
 }
