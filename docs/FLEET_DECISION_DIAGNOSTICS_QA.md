@@ -37,3 +37,9 @@ compares observed intervals to the elapsed race window; completed rivals
 and absent samples may both reduce coverage. Teleport revision rollback
 is refused even after a missing sample, and never lowers the accepted
 revision baseline.
+
+The Results fleet coverage denominator is five rivals multiplied by the
+player's elapsed fee-free active clock. Only independently verified,
+contiguous sampled intervals enter the numerator. One endpoint alone is
+not a duration. This deliberately exposes incomplete observation rather
+than normalizing missing rivals away; it is not a score for AI quality.

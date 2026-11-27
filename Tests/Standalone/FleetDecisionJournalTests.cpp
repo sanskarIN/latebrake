@@ -375,6 +375,36 @@ void CurrentRowsAndIndependentRouteEvidence()
     Require(!f.Read().Valid,"restart clears evidence");
 }
 
+void FleetCoverageUsesAllFiveSlots()
+{
+    Fixture f;
+    f.Open();f.Add(Request());f.Add(Request(2));f.Next();
+    f.Open();f.Add(Request());f.Next();
+    f.Open();f.Add(Request());f.Add(Request(3));
+    auto coverage=f.Read(true).Coverage;
+    Require(coverage.Valid && coverage.VerifiedSlots==3 &&
+        coverage.DurationSlots==1 && Near(coverage.ActiveSeconds,0.15) &&
+        Near(coverage.ExpectedCarSeconds,0.75) &&
+        Near(coverage.ObservedCarSeconds,0.10) &&
+        Near(coverage.Fraction(),0.10/0.75),
+        "all five slots in denominator, single endpoints are not duration");
+    f.Evidence[0].Verified=false;
+    coverage=f.Read(true).Coverage;
+    Require(coverage.Valid && coverage.VerifiedSlots==2 &&
+        coverage.DurationSlots==0 && coverage.Fraction()==0.0,
+        "unverified history does not contribute coverage");
+    f.Evidence[0].Verified=true;
+    f.Next();f.Open();
+    coverage=f.Read(true).Coverage;
+    Require(Near(coverage.ObservedCarSeconds,0.10) &&
+        Near(coverage.ExpectedCarSeconds,1.0),
+        "later race clock changes denominator but not sampled duration");
+    Require(!f.Journal.Read(1,f.Identity,0,0,true,f.Evidence).Coverage.Valid,
+        "zero clock has no coverage denominator");
+    Require(!f.Journal.Read(2,f.Identity,0.2,4,true,f.Evidence).Coverage.Valid,
+        "foreign attempt cannot expose coverage");
+}
+
 void RandomizedCoverageAndInvariants()
 {
     Fixture f;
@@ -398,6 +428,10 @@ void RandomizedCoverageAndInvariants()
             f.Add(s);++accepted[i];
         }
         const auto r=f.Read();
+        Require(r.Coverage.Valid && r.Coverage.VerifiedSlots==r.ObservedRivals &&
+            r.Coverage.DurationSlots<=r.Coverage.VerifiedSlots &&
+            r.Coverage.Fraction()>=0.0 && r.Coverage.Fraction()<=1.0,
+            "fleet coverage bounded across asynchronous slots");
         for(std::size_t i=0;i<r.Rivals.size();++i)
         {
             const auto& row=r.Rivals[i];
@@ -444,6 +478,7 @@ int main()
     TeleportRevisionCannotRollBack();
     MissingFramesAndRecovery();
     CurrentRowsAndIndependentRouteEvidence();
+    FleetCoverageUsesAllFiveSlots();
     RandomizedCoverageAndInvariants();
     std::cout<<"Fleet AI command-stage observation and continuity tests passed\n";
 }

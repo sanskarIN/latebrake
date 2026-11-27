@@ -1324,6 +1324,12 @@ void ALatebrakeRaceHUD::DrawHUD()
                     if (Decisions.Valid && Decisions.ObservedRivals>0)
                     {
                         MenuLine(TEXT("AI COMMAND OBSERVATIONS | SAMPLED, NOT PHYSICAL FORCE"),true);
+                        if (Decisions.Coverage.Valid)
+                        {
+                            const auto& Coverage=Decisions.Coverage;
+                            MenuLine(FString::Printf(TEXT("Race-window samples: %.1f%% | %d/5 AI with intervals"),
+                                100.0*Coverage.Fraction(),Coverage.DurationSlots));
+                        }
                         for (const auto& Entry:Decisions.Rivals)
                         {
                             if (!Entry.Valid || !Entry.History.HasDuration()) continue;

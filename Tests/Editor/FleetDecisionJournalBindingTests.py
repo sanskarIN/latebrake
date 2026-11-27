@@ -64,6 +64,9 @@ class FleetDecisionJournalBindingTests(unittest.TestCase):
         self.assertIn("H.NoDriveContexts.Dominant()", hud)
         self.assertIn("Main sampled no-drive context", hud)
         self.assertIn("FleetNoDriveContextName(Context)", hud)
+        self.assertIn("Decisions.Coverage.Valid", hud)
+        self.assertIn("Coverage.Fraction()", hud)
+        self.assertIn("Coverage.DurationSlots", hud)
         self.assertNotIn("FleetDecisions.Observe(", hud)
         self.assertIn("add_latebrake_portable_research_test(FleetDecisionJournal)",
                       read("Tests/Standalone/CMakeLists.txt"))

@@ -485,6 +485,23 @@ struct FleetDecisionRivalReview final
     FleetDecisionSlotSummary History{};
 };
 
+// Coverage describes the sampled portion of the race clock, not the
+// quality of driving or a missing car's behavior.
+struct FleetDecisionCoverage final
+{
+    bool Valid=false;
+    int VerifiedSlots=0;
+    int DurationSlots=0;
+    double ActiveSeconds=0.0;
+    double ObservedCarSeconds=0.0;
+    double ExpectedCarSeconds=0.0;
+    double Fraction() const noexcept
+    {
+        return Valid && ExpectedCarSeconds>0.0 ?
+            std::clamp(ObservedCarSeconds/ExpectedCarSeconds,0.0,1.0) : 0.0;
+    }
+};
+
 struct FleetDecisionReadout final
 {
     bool Valid=false;
@@ -493,6 +510,7 @@ struct FleetDecisionReadout final
     int CurrentBraking=0;
     int CurrentTrafficHold=0;
     int CurrentPassing=0;
+    FleetDecisionCoverage Coverage{};
     std::array<FleetDecisionRivalReview,StartGridCapacity-1> Rivals{};
 };
 
@@ -597,6 +615,12 @@ public:
             !std::isfinite(clock) || clock<0.0 || clock>FleetDecisionMaxSeconds)
             return out;
         out.Valid=true;
+        if(clock>0.0)
+        {
+            out.Coverage.Valid=true;
+            out.Coverage.ActiveSeconds=clock;
+            out.Coverage.ExpectedCarSeconds=clock*(StartGridCapacity-1);
+        }
         for(int i=0;i<StartGridCapacity-1;++i)
         {
             const auto index=static_cast<std::size_t>(i);
@@ -611,6 +635,16 @@ public:
             row.Valid=true;
             row.History=slot.History;
             ++out.ObservedRivals;
+            if(out.Coverage.Valid)
+            {
+                ++out.Coverage.VerifiedSlots;
+                if(row.History.HasDuration())
+                {
+                    ++out.Coverage.DurationSlots;
+                    out.Coverage.ObservedCarSeconds+=
+                        row.History.RaceWindowCoverage(clock)*clock;
+                }
+            }
             if(!finished && Open && frame==Latest.Frame &&
                 slot.PreviousAdmission.Frame==frame && slot.HavePrevious &&
                 slot.Previous.Valid && slot.Previous.GateOrdinal==e.AcceptedGates &&
