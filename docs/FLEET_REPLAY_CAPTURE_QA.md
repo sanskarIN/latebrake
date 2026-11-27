@@ -18,3 +18,7 @@ road hits, six real actor samples, clock continuity, pause and recovery,
 finish with an incomplete frame and unchanged normal race modes. Control
 values are sampled demands, not measured forces. Observed traffic swaps
 are not official race verdicts.
+
+## Discontinuous finish fallback
+
+The recorder retains at most one earlier playable segment on a segment boundary. The latest playable window is preferred. If recovery or a missing sample leaves only a single-frame fragment at finish, Results can select the previous contiguous segment, explicitly labelled earlier. No samples or highlights are joined across a boundary. An ineligible finish discards both windows, and reset clears the archive. Foreign or duplicate admissions and foreign finish callbacks cannot close the current pending frame. Test recovery on the last gate, two successive discontinuities, and restart after fallback in installed Unreal before qualification.

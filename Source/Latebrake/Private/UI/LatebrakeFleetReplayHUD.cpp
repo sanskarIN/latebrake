@@ -125,7 +125,8 @@ void ALatebrakeRaceHUD::DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
 
     Rect(Layout.Panel,Surface);
     Rect({Layout.Panel.X,Layout.Panel.Y,Layout.Panel.Width,2.0*S},Gold);
-    Label(TEXT("RECENT RACE REPLAY"),Layout.Header,Gold,0.85f*S);
+    Label(Review.Coverage.EarlierSegmentUsed?TEXT("EARLIER REPLAY WINDOW"):TEXT("RECENT RACE REPLAY"),
+        Layout.Header,Gold,0.85f*S);
     Rect(Layout.Map,FLinearColor(0.10f,0.16f,0.21f,1.f));
     // Fixed original circuit only; position projections outside the
     // visible map are omitted, not pinned to a misleading edge.

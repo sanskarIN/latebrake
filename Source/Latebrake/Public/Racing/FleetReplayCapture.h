@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
+#include <new>
 
 namespace latebrake
 {
@@ -62,6 +64,9 @@ struct FleetReplayCoverage final
     double FirstClockSeconds=0.0;
     double LastClockSeconds=0.0;
     bool HasReplay=false;
+    // True only when finish selected an earlier complete segment rather
+    // than the latest, unplayable one-frame fragment.
+    bool EarlierSegmentUsed=false;
     bool Frozen=false;
     FleetReplayCaptureStatus Status=FleetReplayCaptureStatus::Unavailable;
 };
@@ -148,6 +153,7 @@ public:
     {
         Timeline.Reset();
         Events.Reset();
+        Archive.reset();
         Bound={};
         Attempt=0;
         LatestAdmission={};
@@ -164,11 +170,17 @@ public:
     bool BeginFrame(const FleetReplayFrameAdmission& admission) noexcept
     {
         if(Finished) return false;
-        CloseIncomplete();
-        if(!ValidFleetReplayAdmission(admission) ||
-            (Attempt!=0 && (admission.Attempt!=Attempt || admission.Identity!=Bound)) ||
+        // A stale or foreign admission is not a real break in the
+        // current attempt. In particular it cannot close a newer frame.
+        if((Attempt!=0 && (admission.Attempt!=Attempt || admission.Identity!=Bound)) ||
             (LatestAdmission.LocalFrame!=0 &&
                 !FleetReplayFreshAdmission(LatestAdmission,admission)))
+        {
+            Increment(Coverage.RefusedAdmissions);
+            return false;
+        }
+        CloseIncomplete();
+        if(!ValidFleetReplayAdmission(admission))
         {
             Increment(Coverage.RefusedAdmissions);
             Coverage.Status=FleetReplayCaptureStatus::InvalidAdmission;
@@ -251,20 +263,33 @@ public:
     {
         if(Finished)
             return attempt==Attempt && identity==Bound && eligible ? Review : FleetReplayReview{};
+        // Foreign callbacks must not freeze or discard the real attempt.
+        if(attempt==0 || attempt!=Attempt || identity!=Bound) return {};
         // A finish may precede the sixth actor's tick. Keep only complete
         // observed frames and the actual last sampled clock.
         CloseIncomplete();
         Finished=true;
         Coverage.Frozen=true;
-        if(!eligible || attempt==0 || attempt!=Attempt || identity!=Bound)
+        if(!eligible)
         {
             Timeline.Reset();
             Events.Reset();
+            Archive.reset();
             Coverage.Status=FleetReplayCaptureStatus::Discarded;
             RefreshCoverage();
             Review={};
             return Review;
         }
+        // Never join disjoint windows. If the latest fragment contains
+        // fewer than two samples, restore the last independently playable
+        // segment and its own event log. Preserve total capture counters.
+        if(!Timeline.HasReplay() && Archive && Archive->Timeline.HasReplay())
+        {
+            Timeline=Archive->Timeline;
+            Events=Archive->Events;
+            Coverage.EarlierSegmentUsed=true;
+        }
+        Archive.reset();
         Coverage.Status=FleetReplayCaptureStatus::Frozen;
         RefreshCoverage();
         Review=BuildReview();
@@ -285,6 +310,31 @@ public:
     }
 
 private:
+    struct ArchivedSegment final
+    {
+        PhysicalSixCarReplayTimeline Timeline;
+        PhysicalReplayRaceEventLog Events;
+    };
+
+    // Allocate at most one additional fixed-capacity ring, and only on
+    // an actual segment boundary. Allocation failure leaves capture
+    // functional with the latest segment; it never grants authority.
+    void StartSegment() noexcept
+    {
+        if(Timeline.HasReplay())
+        {
+            if(!Archive)
+                Archive.reset(new(std::nothrow) ArchivedSegment{Timeline,Events});
+            else
+            {
+                Archive->Timeline=Timeline;
+                Archive->Events=Events;
+            }
+        }
+        Timeline.Reset();
+        Events.Reset();
+    }
+
     struct Assembly final
     {
         PhysicalReplayFrame Frame{};
@@ -336,11 +386,7 @@ private:
             BreakContinuity();
             newSegment=true;
         }
-        if(newSegment)
-        {
-            Timeline.Reset();
-            Events.Reset();
-        }
+        if(newSegment) StartSegment();
         auto receipt=Timeline.Record(Pending.Frame);
         // A measured position discontinuity cannot be interpolated.
         // Retain a new complete starting point instead of a fake bridge.
@@ -348,8 +394,7 @@ private:
         {
             BreakContinuity();
             newSegment=true;
-            Timeline.Reset();
-            Events.Reset();
+            StartSegment();
             receipt=Timeline.Record(Pending.Frame);
         }
         if(!receipt.Accepted)
@@ -418,6 +463,7 @@ private:
 
     PhysicalSixCarReplayTimeline Timeline;
     PhysicalReplayRaceEventLog Events;
+    std::unique_ptr<ArchivedSegment> Archive;
     FleetReplayIdentity Bound{};
     std::uint64_t Attempt=0;
     FleetReplayFrameAdmission LatestAdmission{};

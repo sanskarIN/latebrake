@@ -1370,6 +1370,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                         static_cast<unsigned long long>(Coverage.RecordedFrames),
                         static_cast<unsigned long long>(Coverage.IncompleteFrames),
                         static_cast<unsigned long long>(Coverage.Segments)));
+                    if (Coverage.EarlierSegmentUsed)
+                        MenuLine(TEXT("Earlier contiguous replay window | latest fragment too short"));
                     MenuLine(TEXT("Sampled replay only | no official pass or collision verdict"));
                     MenuLine(TEXT("Wide desktop: replay panel | J/L seek | K play/pause | H next highlight"));
                     if (Replay.HighlightCount==0)

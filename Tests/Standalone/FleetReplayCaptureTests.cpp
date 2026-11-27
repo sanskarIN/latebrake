@@ -108,8 +108,8 @@ void AdmissionValidation()
     Require(!f.Capture.BeginFrame(a),"same stamp denied");
     f.Advance();f.Frame();
     const auto c=f.Capture.ReadCoverage();
-    Require(c.RecordedFrames==2 && c.Segments==2 && c.ContinuityBreaks==1,
-        "replayed admission breaks interpolation");
+    Require(c.RecordedFrames==2 && c.Segments==1 && c.ContinuityBreaks==0,
+        "replayed admission cannot break current interpolation");
 }
 
 void PartialAndDuplicateAssembly()
@@ -236,6 +236,101 @@ void FinishBeforeSixthActorAndRestart()
     Require(!f.Freeze(false).Valid && !f.Capture.EvaluateFrozen(2,0.075).Valid,"ineligible finish");
 }
 
+void ForeignAdmissionAndFinishIsolation()
+{
+    Fixture f;
+    f.Frame();f.Frame();
+    f.Open();
+    Require(f.Capture.Submit(f.Sample(0)),"first real contribution");
+    const auto before=f.Capture.ReadCoverage();
+    auto foreign=f.Admission;
+    ++foreign.Attempt;
+    Require(!f.Capture.BeginFrame(foreign),"foreign admission rejected");
+    foreign=f.Admission;
+    foreign.Identity[3]=700;
+    Require(!f.Capture.BeginFrame(foreign),"foreign identity rejected");
+    auto stale=f.Admission;
+    --stale.LocalFrame;--stale.EngineFrame;
+    stale.ActiveSeconds-=stale.AdvancedSeconds;
+    Require(!f.Capture.BeginFrame(stale),"stale admission rejected");
+    Require(!f.Capture.BeginFrame(f.Admission),"duplicate admission rejected");
+    Require(!f.Capture.Freeze(99,f.Admission.Identity,true).Valid,
+        "foreign eligible finish ignored");
+    auto wrong=f.Admission.Identity;wrong[0]=700;
+    Require(!f.Capture.Freeze(f.Admission.Attempt,wrong,false).Valid,
+        "wrong roster ineligible finish ignored");
+    const auto after=f.Capture.ReadCoverage();
+    Require(!after.Frozen && after.Status==FleetReplayCaptureStatus::AwaitingCars &&
+        after.IncompleteFrames==before.IncompleteFrames &&
+        after.ContinuityBreaks==before.ContinuityBreaks &&
+        after.RefusedAdmissions==before.RefusedAdmissions+4,
+        "foreign callbacks preserve pending frame");
+    for(int i=1;i<6;++i) Require(f.Capture.Submit(f.Sample(i)),"pending frame completes");
+    const auto r=f.Freeze();
+    Require(r.Valid && r.Coverage.RetainedFrames==3 && r.Coverage.Segments==1 &&
+        !r.Coverage.EarlierSegmentUsed,"actual finish succeeds");
+}
+
+void PreviousSegmentFallback()
+{
+    Fixture f;
+    for(int i=0;i<20;++i) f.Frame();
+    const double last=f.Capture.ReadCoverage().LastClockSeconds;
+    ++f.Teleport[2];f.Along[2]+=5000;
+    f.Frame();
+    Require(f.Capture.ReadCoverage().RetainedFrames==1,"latest single sample");
+    const double later=f.Capture.ReadCoverage().LastClockSeconds;
+    const auto r=f.Freeze();
+    Require(r.Valid && r.Coverage.EarlierSegmentUsed &&
+        r.Coverage.RetainedFrames==20 && r.Coverage.RecordedFrames==21 &&
+        r.Coverage.Segments==2 && r.Coverage.LastClockSeconds==last,
+        "restore complete earlier window only");
+    Require(f.Capture.EvaluateFrozen(1,last).Valid &&
+        !f.Capture.EvaluateFrozen(1,later).Valid,"no interpolation across recovery");
+    for(unsigned i=0;i<r.HighlightCount;++i)
+        Require(r.Highlights[i].EndSeconds<=last,"highlight from restored segment");
+    f.Capture.Reset();
+    Require(!f.Capture.ReadCoverage().EarlierSegmentUsed,"restart clears fallback flag");
+    ++f.Admission.Attempt;f.Admission.LocalFrame=1;
+    f.Admission.ActiveSeconds=0.05;
+    f.Frame();
+    Require(!f.Freeze().Valid,"earlier attempt cannot be restored");
+}
+
+void MostRecentPlayableSegment()
+{
+    Fixture f;
+    for(int i=0;i<15;++i) f.Frame();
+    f.Capture.Suspend();
+    f.Frame();f.Frame();f.Frame();
+    const auto recent=f.Capture.ReadCoverage();
+    Require(recent.RetainedFrames==3,"recent window playable");
+    f.Capture.Suspend();f.Frame();
+    f.Capture.Suspend();f.Frame();
+    const auto r=f.Freeze();
+    Require(r.Valid && r.Coverage.EarlierSegmentUsed &&
+        r.Coverage.RetainedFrames==3 &&
+        r.Coverage.FirstClockSeconds==recent.FirstClockSeconds &&
+        r.Coverage.LastClockSeconds==recent.LastClockSeconds,
+        "most recent playable segment survives repeated one-frame fragments");
+}
+
+void EligibleLatestAndIneligibleDiscard()
+{
+    Fixture f;
+    for(int i=0;i<15;++i) f.Frame();
+    f.Capture.Suspend();f.Frame();f.Frame();
+    const auto r=f.Freeze();
+    Require(r.Valid && !r.Coverage.EarlierSegmentUsed &&
+        r.Coverage.RetainedFrames==2,"latest playable segment preferred");
+    f.Capture.Reset();
+    ++f.Admission.Attempt;f.Admission.LocalFrame=1;f.Admission.ActiveSeconds=0.05;
+    f.Frame();f.Frame();
+    f.Capture.Suspend();f.Frame();
+    Require(!f.Freeze(false).Valid && !f.Capture.ReadCoverage().HasReplay &&
+        !f.Capture.ReadCoverage().EarlierSegmentUsed,"ineligible finish discards all segments");
+}
+
 void RingAndHighlightScope()
 {
     Fixture f;
@@ -295,6 +390,10 @@ int main()
     FreezeAndInterpolation();
     ContinuityBreaks();
     FinishBeforeSixthActorAndRestart();
+    ForeignAdmissionAndFinishIsolation();
+    PreviousSegmentFallback();
+    MostRecentPlayableSegment();
+    EligibleLatestAndIneligibleDiscard();
     RingAndHighlightScope();
     RandomizedAssembly();
     std::cout<<"Fleet replay assembly and frozen observation tests passed\n";
