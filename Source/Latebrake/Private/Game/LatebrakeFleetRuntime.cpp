@@ -49,6 +49,7 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
     FleetBoundActors={};
     bFleetActorsBound=false;
     FleetReviewLedger.Reset();
+    FleetGateTiming.Reset();
     FleetFinishReview={};
     if (!IsExperimentalFleetRequested() && IsValid(RivalCar))
         RivalCar->SetGarageTuning(1.f,1.f,1.f,0,latebrake::FactoryGarageLook(0));
@@ -270,6 +271,9 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
             RegisterFleetTickDependent(Actor.Get());
         const bool LedgerBound=latebrake::BindFleetReviewLedger(FleetReviewLedger,
             FleetAttempt.BoundIdentity(),Race.GetCheckpointCount(),Race.GetRequiredLaps());
+        if (LedgerBound && !FleetGateTiming.Configure(FleetAttemptToken,
+                FleetAttempt.BoundIdentity(),Race.GetCheckpointCount(),Race.GetRequiredLaps()))
+            UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TIMING_CONFIGURATION_REFUSED"));
 #if !UE_BUILD_SHIPPING
         if (LedgerBound)
         {
@@ -388,6 +392,8 @@ void ALatebrakeRaceGameMode::ObserveFleetRivalGate(const ALatebrakeRivalCar* Act
 #endif
         return;
     }
+    if (!FleetGateTiming.Record({FleetAttemptToken,FleetToken(Actor),Slot,Ordinal,Clock}))
+        UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TIMING_RECEIPT_REFUSED slot=%d ordinal=%d"),Slot,Ordinal);
 #if !UE_BUILD_SHIPPING
     UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=gate attempt=%llu slot=%d id=%llu ordinal=%d clock=%.9f"),
         static_cast<unsigned long long>(FleetAttemptToken),Slot,
@@ -435,10 +441,13 @@ latebrake::FleetRaceReview ALatebrakeRaceGameMode::CollectFleetRaceReview() cons
             Rival->GetPilotRecoveries(),Rival->GetPilotSuccessfulRecoveries(),
             Rival->GetPilotFailedRecoveries(),Rival->HasCompletedRoute()};
     }
-    return latebrake::BuildFleetRaceReview(Frame,FleetAttempt.BoundIdentity(),
+    auto Review=latebrake::BuildFleetRaceReview(Frame,FleetAttempt.BoundIdentity(),
         FleetReviewLedger,Routes,Race.GetCompletedLaps(),Race.GetNextCheckpoint(),
         Race.IsFinished(),Race.GetCheckpointCount(),Race.GetRequiredLaps(),
         Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds());
+    Review.Timing=latebrake::ReviewFleetGateTiming(Review,FleetGateTiming,
+        FleetAttemptToken,FleetAttempt.BoundIdentity());
+    return Review;
 }
 
 latebrake::FleetRaceReview ALatebrakeRaceGameMode::GetFleetRaceReview() const

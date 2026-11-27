@@ -2,6 +2,7 @@
 
 #include "AI/ExperimentalFleetLiveRecovery.h"
 #include "AI/GridRivalLedger.h"
+#include "AI/FleetGateTimingJournal.h"
 #include "Racing/RivalFinishClockReview.h"
 #include "Track/RaceMiniMap.h"
 
@@ -11,6 +12,10 @@
 
 namespace latebrake
 {
+static_assert(StartGridCapacity == FleetTimingCarCount);
+static_assert(GridRivalLedger::MaxGateCount == FleetTimingMaxGates);
+static_assert(GridRivalLedger::MaxRaceLaps == FleetTimingMaxLaps);
+static_assert(RivalFinishClockReview::NearFinishToleranceSeconds == FleetTimingUncertainSeconds);
 // Advisory evidence only. Neither discrete gate order, sampled callback
 // times nor map coordinates establish an official classification.
 struct FleetRouteObservation final
@@ -75,6 +80,7 @@ struct FleetRaceReview final
     int ObservedCompletedRoutes=0;
     double PlayerActiveSeconds=0.0;
     std::array<FleetRivalReadout,StartGridCapacity-1> Rivals{};
+    FleetTimingReadout Timing{};
 };
 
 inline bool FleetRouteOrdinal(int laps,int nextGate,bool finished,
@@ -233,6 +239,27 @@ inline FleetRaceReview BuildFleetRaceReview(const FleetPhysicalFrame& live,
         }
     }
     return out;
+}
+
+// Enrich an already validated physical route review with independently
+// recorded timing. No timing information can repair invalid route evidence.
+inline FleetTimingReadout ReviewFleetGateTiming(const FleetRaceReview& review,
+    const FleetGateTimingJournal& journal, std::uint64_t attempt,
+    const SixCarIdentity& identity) noexcept
+{
+    if (!review.ValidRoster || !review.PlayerRouteValid)
+        return {};
+    std::array<FleetTimingEvidence, FleetTimingCarCount> evidence{};
+    evidence[0] = {true, review.PlayerAcceptedGates, 0.0};
+    for (int slot = 1; slot < StartGridCapacity; ++slot)
+    {
+        const auto& row = review.Rivals[static_cast<std::size_t>(slot - 1)];
+        evidence[static_cast<std::size_t>(slot)] = {
+            row.Slot == slot && row.BodyObserved && row.RouteEvidenceValid,
+            row.AcceptedGates, row.LastGateActiveSeconds};
+    }
+    return journal.Review(attempt, identity, review.GateCount,
+        review.RequiredLaps, review.PlayerActiveSeconds, evidence);
 }
 
 // Keep overlapping rival markers legible on the compact course radar.

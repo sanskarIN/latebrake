@@ -1410,6 +1410,14 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         RivalSplits.RecordPlayer(static_cast<int32>(PlayerGateOrdinal),
             Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds());
     }
+    if (IsExperimentalFleetRequested() && PlayerGateOrdinal >= 1 && PlayerGateOrdinal <= 25600)
+    {
+        if (!FleetGateTiming.Record({FleetAttemptToken,FleetAttempt.BoundIdentity()[0],0,
+                static_cast<int32>(PlayerGateOrdinal),
+                Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds()}))
+            UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TIMING_RECEIPT_REFUSED slot=0 ordinal=%d"),
+                static_cast<int32>(PlayerGateOrdinal));
+    }
 #if !UE_BUILD_SHIPPING
     if (IsExperimentalFleetRequested())
         UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=gate attempt=%llu slot=0 id=%llu ordinal=%d clock=%.9f"),

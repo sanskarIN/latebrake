@@ -374,6 +374,7 @@ private:
     TArray<TWeakObjectPtr<ALatebrakeCheckpoint>> FleetCheckpointActors;
     TArray<TWeakObjectPtr<AActor>> FleetTickDependents;
     latebrake::GridRivalLedger FleetReviewLedger;
+    latebrake::FleetGateTimingJournal FleetGateTiming;
     latebrake::FleetRaceReview FleetFinishReview;
     std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};
     bool bFleetActorsBound=false;

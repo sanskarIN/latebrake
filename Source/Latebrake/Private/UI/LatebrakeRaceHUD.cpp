@@ -1268,6 +1268,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                                 Review.RequiredLaps*Review.GateCount);break;
                         default:Status=TEXT("finish comparison unavailable");break;
                         }
+                        const auto& Timing=Review.Timing.Rivals[static_cast<std::size_t>(Row.Slot-1)];
+                        if (Timing.Availability==latebrake::FleetTimingAvailability::Matched)
+                        {
+                            if (Timing.Relation==latebrake::FleetTimingRelation::SameClockWindow)
+                                Status+=FString::Printf(TEXT(" | G%d close"),Timing.CommonOrdinal);
+                            else
+                                Status+=FString::Printf(TEXT(" | G%d %+.1fs"),Timing.CommonOrdinal,
+                                    Timing.RivalMinusPlayerSeconds);
+                        }
                         MenuLine(FString::Printf(TEXT("AI %d | %s | recovery %d/%d verified"),
                             Row.Slot,*Status,Row.SuccessfulRecoveries,Row.RecoveryAttempts));
                     }
@@ -2787,12 +2796,28 @@ void ALatebrakeRaceHUD::DrawHUD()
                 FleetReview.MoreGates,FleetReview.SameGates,FleetReview.FewerGates),Primary);
             if (FleetReview.UnavailableRivals>0)
                 Line(FString::Printf(TEXT("AI EVIDENCE UNAVAILABLE %d"),FleetReview.UnavailableRivals),Accent);
+            const auto& Timing=FleetReview.Timing;
+            if (Timing.CommonCohortValid)
+                Line(FString::Printf(TEXT("MATCHED G%d | AI EARLIER %d | CLOSE %d | LATER %d"),
+                    Timing.CohortOrdinal,Timing.CohortEarlier,Timing.CohortUncertain,Timing.CohortLater),Primary);
+            else if (Timing.ValidPlayer && Timing.MatchedRivals>0)
+                Line(FString::Printf(TEXT("MATCHED ACTIVE-CLOCK SPLITS %d/5 | NOT RANK"),
+                    Timing.MatchedRivals),Primary);
             if (!bCompact)
             {
                 for(const auto& Row:FleetReview.Rivals)
                 {
                     if (!Row.RouteEvidenceValid) continue;
-                    if (Row.RouteFinished)
+                    const auto& Timing=FleetReview.Timing.Rivals[static_cast<std::size_t>(Row.Slot-1)];
+                    if (Timing.Availability==latebrake::FleetTimingAvailability::Matched)
+                    {
+                        const FString Delta=Timing.Relation==latebrake::FleetTimingRelation::SameClockWindow
+                            ? TEXT("CLOSE") : FString::Printf(TEXT("%+.1fs"),Timing.RivalMinusPlayerSeconds);
+                        Line(FString::Printf(TEXT("AI %d | G%d %s | %d/%d LAPS"),
+                            Row.Slot,Timing.CommonOrdinal,*Delta,Row.CompletedLaps,
+                            FleetReview.RequiredLaps),Primary);
+                    }
+                    else if (Row.RouteFinished)
                         Line(FString::Printf(TEXT("AI %d | ROUTE COMPLETE"),Row.Slot),Primary);
                     else
                         Line(FString::Printf(TEXT("AI %d | LAPS %d/%d | NEXT %d"),
