@@ -1441,6 +1441,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
             RaceAuditAttempt, CheckpointIndex, Race.GetCompletedLaps(),
             Race.GetNextCheckpoint(), Race.GetElapsedSeconds(),
             Race.GetActiveTimedLapCount(), Race.IsFinished() ? 1 : 0);
+        LogPlayerSectorMotionAudit(CheckpointIndex,static_cast<int32>(PlayerGateOrdinal));
     }
 #endif
     if (Race.GetCompletedLaps() > LapsBeforeGate)

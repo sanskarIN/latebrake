@@ -297,6 +297,7 @@ private:
 #if !UE_BUILD_SHIPPING
     // Event-only, no per-frame telemetry, no effect on scoring or saves.
     void StartRaceAuditAttempt(int32 GridAtBegin);
+    void LogPlayerSectorMotionAudit(int32 Gate,int32 AcceptedOrdinal) const;
     int32 RaceAuditAttempt = 0;
 #endif
 

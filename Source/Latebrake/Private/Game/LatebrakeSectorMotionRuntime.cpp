@@ -84,3 +84,40 @@ latebrake::SectorMotionHistory ALatebrakeRaceGameMode::GetPlayerSectorMotionHist
         Race.GetCompletedLaps()*Race.GetCheckpointCount()+Race.GetNextCheckpoint(),
         Race.GetElapsedSeconds(),Race.GetTotalPenaltySeconds());
 }
+
+#if !UE_BUILD_SHIPPING
+void ALatebrakeRaceGameMode::LogPlayerSectorMotionAudit(int32 Gate,int32 AcceptedOrdinal) const
+{
+    // One record per independently accepted player gate, immediately
+    // following the authoritative race audit. Do not emit frame logs.
+    if (RaceAuditAttempt<=0) return;
+    const auto Review=GetPlayerSectorMotionReview();
+    const auto& Row=Review.Last;
+    const double Elapsed=Race.GetElapsedSeconds();
+    const double Penalty=Race.GetTotalPenaltySeconds();
+    if (!latebrake::ValidSectorMotionClock(Elapsed,Penalty)) return;
+    const bool Available=Review.Valid && Row.ValidTiming &&
+        Row.Ordinal==AcceptedOrdinal && Row.Gate==Gate;
+    if (!Available)
+    {
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_SECTOR_AUDIT v=1 attempt=%d ordinal=%d gate=%d "
+            "elapsed=%.9f penalty=%.9f available=0"),
+            RaceAuditAttempt,AcceptedOrdinal,Gate,Elapsed,Penalty);
+        return;
+    }
+    const auto& M=Row.Motion;
+    UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_SECTOR_AUDIT v=1 attempt=%d ordinal=%d gate=%d "
+        "elapsed=%.9f penalty=%.9f available=1 quality=%d "
+        "active=%.9f fee=%.9f official=%.9f observed=%.9f coverage=%.9f "
+        "samples=%llu intervals=%llu breaks=%llu rejected=%llu recovery=%llu jump=%llu "
+        "distance_cm=%.9f speed_integral=%.9f peak=%.9f lateral_integral=%.9f "
+        "low=%.9f slip=%.9f reverse=%.9f partial=%.9f off=%.9f"),
+        RaceAuditAttempt,AcceptedOrdinal,Gate,Elapsed,Penalty,static_cast<int32>(Row.Quality),
+        Row.ActiveSeconds,Row.FeeSeconds,Row.OfficialSeconds,M.ObservedSeconds,Row.Coverage,
+        static_cast<unsigned long long>(M.Samples),static_cast<unsigned long long>(M.Intervals),
+        static_cast<unsigned long long>(M.Breaks),static_cast<unsigned long long>(M.Rejected),
+        static_cast<unsigned long long>(M.RecoveryBreaks),static_cast<unsigned long long>(M.PositionBreaks),
+        M.PlanarDistanceCm,M.SpeedIntegral,M.PeakSpeed,M.LateralIntegral,
+        M.LowSpeedSeconds,M.HighSlipSeconds,M.ReverseSeconds,M.PartialRoadSeconds,M.FullOffRoadSeconds);
+}
+#endif

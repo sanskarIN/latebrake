@@ -18,6 +18,7 @@ import sys
 
 from candidate_file_integrity import require_unlinked_path, verify_candidate_archive
 from AnalyzeRaceAudit import MAX_LOG_BYTES, RaceAuditError, analyze_race_audit
+from AnalyzeSectorMotionAudit import MARKER as SECTOR_MARKER, SectorAuditError, analyze_sector_audit
 
 SCHEMA = 1
 CHECKS = (
@@ -339,11 +340,12 @@ def audit_race(args: argparse.Namespace) -> None:
             )):
         fail("Runtime log changed while constructing race audit report.")
     try:
-        events = analyze_race_audit(
-            log_bytes.decode("utf-8-sig"),
-            require_finish=args.require_finish,
-        )
-    except RaceAuditError as error:
+        log_text = log_bytes.decode("utf-8-sig")
+        events = analyze_race_audit(log_text, require_finish=args.require_finish)
+        sector = (analyze_sector_audit(log_text, require_finish=args.require_finish)
+                  if SECTOR_MARKER in log_text or getattr(args, "require_sector_motion", False)
+                  else None)
+    except (RaceAuditError, SectorAuditError) as error:
         fail(f"Race audit rejected: {error}")
     # candidate_context() has already independently rehashed the complete
     # closed-world UAT archive. The manifest is also pinned to this receipt
@@ -393,6 +395,8 @@ def audit_race(args: argparse.Namespace) -> None:
             "controls, saves and hardware under issue #148."
         ),
     }
+    if sector is not None:
+        report["sector_motion_audit"] = sector
     if sha256(args.receipt) != receipt_hash:
         fail("Runtime receipt changed while constructing race audit report.")
     write_new(args.output, report, root)
@@ -419,6 +423,8 @@ def main() -> int:
                 "--require-finish", action="store_true",
                 help="Reject records without a complete reported ordered race finish",
             )
+            step.add_argument("--require-sector-motion", action="store_true",
+                              help="Reject logs without matched sector observation records")
     args = parser.parse_args()
     try:
         {"init": new_template, "evaluate": evaluate, "audit": audit_race}[args.command](args)

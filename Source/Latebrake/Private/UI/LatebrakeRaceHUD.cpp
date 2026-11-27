@@ -2951,7 +2951,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         const auto Fleet=Mode->GetFleetAttemptReadout();
         Line(FString::Printf(TEXT("EXPERIMENTAL GRID %d/6 | NO SAVED REWARDS"),
-            Mode->GetPhysicalFleetCount()),Accent, false, HudTelemetryKind::Context);
+            Mode->GetPhysicalFleetCount()),Accent, false, HudTelemetryKind::Urgent);
         if (Fleet.Phase==latebrake::FleetAttemptPhase::Faulted)
             Line(TEXT("RESTART REQUIRED | FLEET UNAVAILABLE"),Accent,true, HudTelemetryKind::Blocking);
         else if (!Fleet.RunningAllowed)
