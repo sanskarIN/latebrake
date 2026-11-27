@@ -1269,6 +1269,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                 {
                     MenuLine(FString::Printf(TEXT("Verified routes completed: %d/5 at player finish"),
                         Review.ObservedCompletedRoutes));
+                    if (Review.Timing.CohortSector.Valid)
+                    {
+                        const auto& Sector=Review.Timing.CohortSector;
+                        MenuLine(FString::Printf(TEXT("Shared sector G%d: AI gained %d | close %d | lost %d"),
+                            Sector.ToOrdinal,Sector.RivalsGained,Sector.RivalsClose,Sector.RivalsLost));
+                        if (!bCompact)
+                            MenuLine(FString::Printf(TEXT("Sector duration: YOU %.2fs | AI %.2f-%.2fs"),
+                                Sector.PlayerSeconds,Sector.MinimumRivalSeconds,Sector.MaximumRivalSeconds));
+                    }
                     const auto& Traffic=Review.TrafficHistory;
                     if (Traffic.HasSamples && Traffic.ObservedSeconds>0.0)
                     {
@@ -3060,13 +3069,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                     {
                         const FString Delta=Timing.Relation==latebrake::FleetTimingRelation::SameClockWindow
                             ? TEXT("CLOSE") : FString::Printf(TEXT("%+.1fs"),Timing.RivalMinusPlayerSeconds);
-                        Line(FString::Printf(TEXT("AI %d | G%d %s | %d/%d LAPS"),
+                        // Preserve the existing single-line per rival budget.
+                        // A suffix labels the matched sector, not official rank.
+                        FString Detail=FString::Printf(TEXT("AI %d | G%d %s | %d/%d LAPS"),
                             Row.Slot,Timing.CommonOrdinal,*Delta,Row.CompletedLaps,
-                            FleetReview.RequiredLaps),Primary);
+                            FleetReview.RequiredLaps);
                         if (Timing.PreviousSectorTrend!=latebrake::FleetSectorTrend::Unavailable)
-                            Line(FString::Printf(TEXT("AI %d | LAST MATCHED SECTOR | %s"),
-                                Row.Slot,UTF8_TO_TCHAR(latebrake::FleetSectorTrendName(
-                                    Timing.PreviousSectorTrend))),Primary,false,HudTelemetryKind::Pace);
+                            Detail+=FString::Printf(TEXT(" | %s"),
+                                UTF8_TO_TCHAR(latebrake::FleetSectorTrendName(Timing.PreviousSectorTrend)));
+                        Line(Detail,Primary);
                     }
                     else if (Row.Straight.Valid)
                     {

@@ -49,6 +49,25 @@ class FleetGateTimingBindingTests(unittest.TestCase):
         self.assertIn("add_latebrake_portable_research_test(FleetGateTimingJournal)",
                       read("Tests/Standalone/CMakeLists.txt"))
 
+    def test_sector_feedback_is_from_live_and_frozen_matched_receipts(self):
+        hud = read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
+        frozen = hud.index("const auto Review=Mode->GetFleetRaceReview()")
+        frozen_sector = hud.index("if (Review.Timing.CohortSector.Valid)", frozen)
+        frozen_end = hud.index("const auto& Traffic=Review.TrafficHistory;", frozen_sector)
+        block = hud[frozen_sector:frozen_end]
+        for marker in ("Sector.ToOrdinal", "Sector.RivalsGained", "Sector.RivalsClose",
+                       "Sector.RivalsLost", "Sector.PlayerSeconds",
+                       "Sector.MinimumRivalSeconds", "Sector.MaximumRivalSeconds"):
+            self.assertIn(marker, block)
+        live = hud.index("const auto& Timing=FleetReview.Timing;")
+        live_sector = hud.index("if (!bCompact && Timing.CohortSector.Valid)", live)
+        self.assertGreater(live_sector, live)
+        row = hud.index("Timing.PreviousSectorTrend!=latebrake::FleetSectorTrend::Unavailable", live_sector)
+        self.assertIn("FleetSectorTrendName", hud[row:row+500])
+        policy = read("Source/Latebrake/Public/AI/FleetGateTimingJournal.h")
+        self.assertIn("out.CohortSector=BuildCohortSector(cohortOrdinal);", policy)
+        self.assertIn("2.0*FleetTimingUncertainSeconds", policy)
+
 
 if __name__ == "__main__":
     unittest.main()

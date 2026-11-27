@@ -24,6 +24,21 @@ award or shipping feature.
 - The finish snapshot is captured before experimental permissions are
   revoked. No later callbacks modify that published snapshot.
 
+## Shared-sector feedback
+
+The expanded race HUD compares the previous retained sector for each rival
+and, separately, one exact shared sector for the whole six-car cohort.
+The Results snapshot displays the common sector ordinal, gained/close/lost
+counts and measured player duration with the minimum/maximum rival duration
+on expanded layouts. All durations use the fee-free active clock.
+
+A rival may be ahead on arrival time and still lose time in the latest
+sector. The sector classifier uses a conservative inclusive +/-0.50s
+window (two +/-0.25s arrival comparisons). If even one prior endpoint has
+expired or a roster receipt cannot be reconciled, the cohort sector is
+unavailable; a retained common arrival can still be displayed independently.
+These observations are not physical speed estimates, placement or rewards.
+
 ## Native acceptance checklist (not yet performed)
 
 1. Build the exact candidate using the licensed Unreal Engine and UHT.
@@ -34,6 +49,9 @@ award or shipping feature.
    Verify each row labels the exact shared gate, not either car's next gate.
 5. Confirm equal sampled clock values display CLOSE rather than rank or a
    precise winning margin. Compare a separated common-gate observation.
+   Verify that a rival arriving earlier but losing time over that sector
+   is labelled separately. At Results compare all five same-sector receipts;
+   confirm unavailable evidence never produces a fabricated zero duration.
 6. Pause, resume, recover and restart. Confirm no old-attempt timing survives
    and that fee-free active clock evidence never includes recovery penalties.
 7. At the genuine player finish, confirm the frozen rows reflect only the
