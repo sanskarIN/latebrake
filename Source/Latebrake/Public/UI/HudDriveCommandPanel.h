@@ -96,6 +96,10 @@ struct DriveCommandColumn final
     double FilteredSteeringY=0.0;
     double ModeratedSteeringY=0.0;
     double CenterX=0.0;
+    double ThrottleRangeTop=0.0;
+    double ThrottleRangeBottom=0.0;
+    double SteeringRangeTop=0.0;
+    double SteeringRangeBottom=0.0;
 };
 
 struct HudDriveCommandPlot final
@@ -103,6 +107,16 @@ struct HudDriveCommandPlot final
     bool Valid=false;
     std::array<DriveCommandColumn,DriveTraceBinCount> Columns{};
 };
+
+inline bool ValidDriveTraceAxisRange(DriveTraceAxisRange range,double mean) noexcept
+{
+    return ValidDriveCommandAxis(range.Minimum) &&
+        ValidDriveCommandAxis(range.Maximum) &&
+        range.Minimum<=range.Maximum &&
+        std::isfinite(mean) &&
+        mean>=range.Minimum-1e-9 &&
+        mean<=range.Maximum+1e-9;
+}
 
 inline bool ValidDriveTraceBin(const DriveTraceBin& b) noexcept
 {
@@ -117,7 +131,9 @@ inline bool ValidDriveTraceBin(const DriveTraceBin& b) noexcept
         std::isfinite(b.FilteredSteering) && std::abs(b.FilteredSteering)<=1.0+1e-9 &&
         std::isfinite(b.ModeratedSteering) && std::abs(b.ModeratedSteering)<=1.0+1e-9 &&
         fraction(b.ServiceBrakeFraction) && fraction(b.HandbrakeFraction) &&
-        fraction(b.GroundFraction);
+        fraction(b.GroundFraction) &&
+        ValidDriveTraceAxisRange(b.ModeratedThrottleRange,b.ModeratedThrottle) &&
+        ValidDriveTraceAxisRange(b.ModeratedSteeringRange,b.ModeratedSteering);
 }
 
 inline double DriveTraceAxisY(DesktopMenuMouseRect graph,double axis) noexcept
@@ -158,11 +174,14 @@ inline HudDriveCommandPlot BuildHudDriveCommandPlot(
         seenObserved=true;
         auto& col=out.Columns[i];
         const double step=panel.ThrottleGraph.Width/DriveTraceBinCount;
-        const double right=panel.ThrottleGraph.X+(i+1)*step;
+        const double left=panel.ThrottleGraph.X+i*step;
+        const double right=i+1==DriveTraceBinCount?
+            panel.ThrottleGraph.X+panel.ThrottleGraph.Width:
+            panel.ThrottleGraph.X+(i+1)*step;
         // The oldest partial bin uses only its observed width.
         const double coverage=std::clamp(bin.ObservedSeconds/DriveTraceBinSeconds,0.0,1.0);
-        const double width=step*coverage;
-        const double x=right-width;
+        const double x=std::max(left,right-(right-left)*coverage);
+        const double width=right-x;
         col.Visible=true;
         col.CenterX=x+width*0.5;
         col.Throttle={x,panel.ThrottleGraph.Y,width,panel.ThrottleGraph.Height};
@@ -171,6 +190,10 @@ inline HudDriveCommandPlot BuildHudDriveCommandPlot(
         col.ModeratedThrottleY=DriveTraceAxisY(panel.ThrottleGraph,bin.ModeratedThrottle);
         col.FilteredSteeringY=DriveTraceAxisY(panel.SteeringGraph,bin.FilteredSteering);
         col.ModeratedSteeringY=DriveTraceAxisY(panel.SteeringGraph,bin.ModeratedSteering);
+        col.ThrottleRangeTop=DriveTraceAxisY(panel.ThrottleGraph,bin.ModeratedThrottleRange.Maximum);
+        col.ThrottleRangeBottom=DriveTraceAxisY(panel.ThrottleGraph,bin.ModeratedThrottleRange.Minimum);
+        col.SteeringRangeTop=DriveTraceAxisY(panel.SteeringGraph,bin.ModeratedSteeringRange.Maximum);
+        col.SteeringRangeBottom=DriveTraceAxisY(panel.SteeringGraph,bin.ModeratedSteeringRange.Minimum);
         const double half=panel.BrakeGraph.Height*0.5;
         col.ServiceBrake={x,panel.BrakeGraph.Y,width*std::clamp(bin.ServiceBrakeFraction,0.0,1.0),half};
         col.Handbrake={x,panel.BrakeGraph.Y+half,width*std::clamp(bin.HandbrakeFraction,0.0,1.0),half};

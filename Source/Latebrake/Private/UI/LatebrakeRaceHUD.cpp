@@ -2286,6 +2286,14 @@ void ALatebrakeRaceHUD::DrawHUD()
             UTF8_TO_TCHAR(latebrake::DriveCommandPathName(DriveCommandReview.Path)),
             D.ServiceBrake?TEXT("ON"):TEXT("OFF"),D.Handbrake?TEXT("ON"):TEXT("OFF")),
             Primary,false,HudTelemetryKind::Vehicle);
+        Line(FString::Printf(TEXT("COMMAND DIFFERENCE | THR %.0f | STEER %.0f pp (%.1fs)"),
+            DriveCommandReview.MeanThrottleModeration*100.0,
+            DriveCommandReview.MeanSteeringModeration*100.0,
+            DriveCommandReview.ObservedSeconds),Primary,false,HudTelemetryKind::Analysis);
+        Line(FString::Printf(TEXT("PEAK COMMAND DIFFERENCE | THR %.0f | STEER %.0f pp"),
+            DriveCommandReview.PeakThrottleModeration*100.0,
+            DriveCommandReview.PeakSteeringModeration*100.0),
+            Primary,false,HudTelemetryKind::Analysis);
     }
 
     const bool bTimeAttack = Mode->GetSelectedEvent() == latebrake::EventKind::TimeAttack;

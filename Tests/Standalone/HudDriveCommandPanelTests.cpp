@@ -68,6 +68,45 @@ void LayoutSafety()
         }
     Require(accepted>100,"substantial valid layout sweep");
 }
+void TransientEnvelopeGeometry()
+{
+    DriveCommandTrace trace;
+    trace.BeginFrame(1);
+    Require(trace.Observe({1,4,5,6,0.06,1,1,-1,-1,false,false,true,true}),
+        "positive command sample");
+    trace.BeginFrame(2);
+    Require(trace.Observe({2,4,5,6,0.06,-1,-1,1,1,false,false,true,true}),
+        "negative command sample");
+    auto review=trace.Read(2,4,5,6,true);
+    const auto panel=Layout(1920,1080);
+    auto plot=BuildHudDriveCommandPlot(panel,review);
+    Require(plot.Valid,"transient range plot");
+    const auto& col=plot.Columns.back();
+    Require(std::abs(col.ThrottleRangeTop-panel.ThrottleGraph.Y)<1e-8 &&
+        std::abs(col.ThrottleRangeBottom-panel.ThrottleGraph.Y-panel.ThrottleGraph.Height)<1e-8,
+        "full signed throttle envelope bounded by fixed graph");
+    Require(std::abs(col.SteeringRangeTop-panel.SteeringGraph.Y)<1e-8 &&
+        std::abs(col.SteeringRangeBottom-panel.SteeringGraph.Y-panel.SteeringGraph.Height)<1e-8,
+        "full signed steering envelope bounded by fixed graph");
+    Require(col.ModeratedThrottleY>col.ThrottleRangeTop &&
+        col.ModeratedThrottleY<col.ThrottleRangeBottom,
+        "average line inside actual command range");
+    for(int variant=0;variant<4;++variant)
+    {
+        auto invalid=review;
+        auto& range=invalid.Bins.back().ModeratedThrottleRange;
+        switch(variant)
+        {
+        case 0:range.Minimum=2;break;
+        case 1:range.Maximum=std::numeric_limits<double>::infinity();break;
+        case 2:range.Minimum=1;range.Maximum=-1;break;
+        case 3:range.Minimum=0.5;range.Maximum=0.9;break;
+        default:break;
+        }
+        Require(!BuildHudDriveCommandPlot(panel,invalid).Valid,
+            "untrustworthy envelope rejected before draw");
+    }
+}
 void PlotSafety()
 {
     const auto panel=Layout(1920,1080);
@@ -113,5 +152,6 @@ int main()
 {
     LayoutSafety();
     PlotSafety();
+    TransientEnvelopeGeometry();
     std::cout<<"HudDriveCommandPanel passed\n";
 }

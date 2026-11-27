@@ -16,6 +16,7 @@ void ALatebrakeRaceHUD::DrawDriveCommandPanel(
     const FLinearColor Midline(0.31f,0.36f,0.42f,1.f);
     const FLinearColor Filtered(0.63f,0.72f,0.86f,1.f);
     const FLinearColor Moderated(0.37f,0.91f,0.78f,1.f);
+    const FLinearColor Range(0.37f,0.91f,0.78f,0.33f);
     const FLinearColor Service(1.f,0.39f,0.32f,1.f);
     const FLinearColor Handbrake(1.f,0.72f,0.21f,1.f);
     const FLinearColor Support(0.45f,0.64f,0.95f,1.f);
@@ -42,7 +43,7 @@ void ALatebrakeRaceHUD::DrawDriveCommandPanel(
         }
     };
     Rect(Layout.Panel,Background);
-    Label(Layout.Header,TEXT("COMMAND TRACE / FILTERED > MODERATED"),
+    Label(Layout.Header,TEXT("FILTERED (GRAY) / COMMAND (MINT)"),
         TEXT("COMMAND TRACE"),Ink);
     const auto& D=Review.Latest;
     Label(Layout.ThrottleTitle,FString::Printf(TEXT("THROTTLE  %+.0f > %+.0f%%"),
@@ -68,6 +69,11 @@ void ALatebrakeRaceHUD::DrawDriveCommandPanel(
             Previous=nullptr;
             continue;
         }
+        // The faint envelope shows the real extreme moderated commands
+        // observed within this bin, including rapid direction changes
+        // that cancel in the weighted average.
+        DrawLine(C.CenterX,C.ThrottleRangeTop,C.CenterX,C.ThrottleRangeBottom,Range,2.f*S);
+        DrawLine(C.CenterX,C.SteeringRangeTop,C.CenterX,C.SteeringRangeBottom,Range,2.f*S);
         // A short visible stroke even if only one physics sample exists.
         DrawLine(C.Throttle.X,C.ModeratedThrottleY,
             C.Throttle.X+C.Throttle.Width,C.ModeratedThrottleY,Moderated,1.2f*S);

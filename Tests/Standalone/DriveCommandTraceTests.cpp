@@ -153,6 +153,59 @@ void ExactWindowAndWeightedBuckets()
     Require(Near(r.Bins[DriveTraceBinCount-2].ObservedSeconds,0.025),
         "oldest partial bin");
 }
+void TransientCommandsAndWindowExtrema()
+{
+    DriveCommandTrace trace;
+    auto positive=Sample(1,0.06);
+    positive.FilteredThrottle=0.5;
+    positive.ModeratedThrottle=1;
+    positive.FilteredSteering=0;
+    positive.ModeratedSteering=-1;
+    auto negative=Sample(2,0.06);
+    negative.FilteredThrottle=0;
+    negative.ModeratedThrottle=-1;
+    negative.FilteredSteering=0.5;
+    negative.ModeratedSteering=1;
+    Require(Push(trace,positive) && Push(trace,negative),"brief signed commands");
+    auto review=Read(trace,2);
+    CheckConservation(review);
+    const auto& bin=review.Bins.back();
+    Require(Near(bin.ModeratedThrottle,0) && Near(bin.ModeratedSteering,0),
+        "opposite commands cancel in the mean");
+    Require(bin.ModeratedThrottleRange.Minimum==-1 &&
+        bin.ModeratedThrottleRange.Maximum==1 &&
+        bin.ModeratedSteeringRange.Minimum==-1 &&
+        bin.ModeratedSteeringRange.Maximum==1,
+        "actual brief extrema retained despite cancellation");
+    Require(Near(review.PeakThrottleModeration,1) &&
+        Near(review.PeakSteeringModeration,1),"peak command differences");
+    Require(Near(review.MeanThrottleModeration,0.75) &&
+        Near(review.MeanSteeringModeration,0.75),"mean differs from peak");
+    for(std::uint64_t frame=3;frame<=82;++frame)
+    {
+        auto current=Sample(frame);
+        current.ModeratedThrottle=current.FilteredThrottle=0.25;
+        current.ModeratedSteering=current.FilteredSteering=-0.25;
+        Require(Push(trace,current),"advance past transient observation");
+    }
+    review=Read(trace,82);
+    Require(Near(review.ObservedSeconds,4) && Near(review.PeakThrottleModeration,0) &&
+        Near(review.PeakSteeringModeration,0),"old peaks expire with observed window");
+    for(const auto& current:review.Bins)
+    {
+        Require(current.ModeratedThrottleRange.Minimum==0.25 &&
+            current.ModeratedThrottleRange.Maximum==0.25 &&
+            current.ModeratedSteeringRange.Minimum==-0.25 &&
+            current.ModeratedSteeringRange.Maximum==-0.25,
+            "constant observed extrema");
+    }
+    trace.Suspend();
+    Require(Push(trace,Sample(83)),"new trace after reset");
+    review=Read(trace,83);
+    Require(review.Bins.back().ModeratedThrottleRange.Minimum==0.5 &&
+        review.Bins.back().ModeratedThrottleRange.Maximum==0.5,
+        "no transient range leaks into a new trace");
+}
 void RejectMalformedSamples()
 {
     const double nan=std::numeric_limits<double>::quiet_NaN();
@@ -227,6 +280,7 @@ int main()
     FreshnessAndDiscontinuity();
     CommandPaths();
     ExactWindowAndWeightedBuckets();
+    TransientCommandsAndWindowExtrema();
     RejectMalformedSamples();
     CapacityAndVariableRate();
     std::cout<<"DriveCommandTrace passed\n";

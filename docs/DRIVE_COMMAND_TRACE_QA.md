@@ -20,3 +20,8 @@ Native checks still required: verify fonts and overlay fit in Unreal at
 touch controls; observe pause, focus-loss, recovery and restart; check
 negative throttle/steering, service and handbrake, and loss of support.
 The standalone suite and editor source tests do not certify these.
+
+Mint envelopes preserve the actual minimum and maximum moderated commands
+within each observed bin. They are not uncertainty bounds or predicted
+motion. Compact text reports mean and peak differences between filtered
+and moderated commands in percentage points, over the observed window.

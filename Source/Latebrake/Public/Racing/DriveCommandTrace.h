@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace latebrake
 {
@@ -86,6 +87,28 @@ inline DriveCommandPath ClassifyDriveCommandPath(const DriveCommandSample& s) no
     return DriveCommandPath::OpposingThrottle;
 }
 
+// Preserve brief command changes even when opposite signed values cancel
+// in the weighted mean of a 125ms display bin.
+struct DriveTraceAxisRange final
+{
+    double Minimum=0.0;
+    double Maximum=0.0;
+
+    void Include(double axis,bool first) noexcept
+    {
+        if(first)
+        {
+            Minimum=axis;
+            Maximum=axis;
+        }
+        else
+        {
+            Minimum=std::min(Minimum,axis);
+            Maximum=std::max(Maximum,axis);
+        }
+    }
+};
+
 struct DriveTraceBin final
 {
     double ObservedSeconds=0.0;
@@ -96,6 +119,8 @@ struct DriveTraceBin final
     double ServiceBrakeFraction=0.0;
     double HandbrakeFraction=0.0;
     double GroundFraction=0.0;
+    DriveTraceAxisRange ModeratedThrottleRange{};
+    DriveTraceAxisRange ModeratedSteeringRange{};
 };
 
 struct DriveCommandReview final
@@ -114,6 +139,8 @@ struct DriveCommandReview final
     double UnsupportedSeconds=0.0;
     double MeanThrottleModeration=0.0;
     double MeanSteeringModeration=0.0;
+    double PeakThrottleModeration=0.0;
+    double PeakSteeringModeration=0.0;
     std::array<DriveTraceBin,DriveTraceBinCount> Bins{};
 };
 
@@ -132,7 +159,7 @@ public:
     void BeginFrame(std::uint64_t frame) noexcept
     {
         if(!frame || PendingFrame || (Count &&
-            (Newest().Frame==UINT64_MAX || frame!=Newest().Frame+1)))
+            (Newest().Frame==std::numeric_limits<std::uint64_t>::max() || frame!=Newest().Frame+1)))
             Suspend();
         PendingFrame=frame;
     }
@@ -227,15 +254,20 @@ private:
         case DriveCommandPath::BrakeCommand:out.BrakeCommandSeconds+=seconds;break;
         default:break;
         }
-        out.MeanThrottleModeration+=
-            std::abs(s.FilteredThrottle-s.ModeratedThrottle)*seconds;
-        out.MeanSteeringModeration+=
-            std::abs(s.FilteredSteering-s.ModeratedSteering)*seconds;
+        const double throttleDifference=std::abs(s.FilteredThrottle-s.ModeratedThrottle);
+        const double steeringDifference=std::abs(s.FilteredSteering-s.ModeratedSteering);
+        out.MeanThrottleModeration+=throttleDifference*seconds;
+        out.MeanSteeringModeration+=steeringDifference*seconds;
+        out.PeakThrottleModeration=std::max(out.PeakThrottleModeration,throttleDifference);
+        out.PeakSteeringModeration=std::max(out.PeakSteeringModeration,steeringDifference);
     }
 
     static void AccumulateBin(DriveTraceBin& bin,const DriveCommandSample& s,
         double seconds) noexcept
     {
+        const bool first=bin.ObservedSeconds==0.0;
+        bin.ModeratedThrottleRange.Include(s.ModeratedThrottle,first);
+        bin.ModeratedSteeringRange.Include(s.ModeratedSteering,first);
         bin.ObservedSeconds+=seconds;
         bin.FilteredThrottle+=s.FilteredThrottle*seconds;
         bin.ModeratedThrottle+=s.ModeratedThrottle*seconds;
