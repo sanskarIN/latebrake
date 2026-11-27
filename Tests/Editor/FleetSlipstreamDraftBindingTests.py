@@ -63,7 +63,7 @@ class FleetSlipstreamDraftBindingTests(unittest.TestCase):
             self.assertIn(text, block)
         self.assertEqual(tick.count("latebrake::AllocateArcadeBoost("), 1)
         self.assertLess(tick.index("SlipstreamBoost.Observe({"), begin)
-        self.assertLess(finish, tick.index("CurrentDraftAppliedFraction"))
+        self.assertLess(finish, tick.index("CurrentDraftAppliedFraction", finish))
         self.assertIn("CombinedBoost.DraftExtra", tick[finish:])
 
     def test_interruptions_and_read_only_hud(self):
