@@ -1248,6 +1248,16 @@ void ALatebrakeRaceHUD::DrawHUD()
                 {
                     MenuLine(FString::Printf(TEXT("Verified routes completed: %d/5 at player finish"),
                         Review.ObservedCompletedRoutes));
+                    const auto& Traffic=Review.TrafficHistory;
+                    if (Traffic.HasSamples && Traffic.ObservedSeconds>0.0)
+                    {
+                        MenuLine(FString::Printf(TEXT("Traffic sampled %.1fs | alerts %.1fs | projected paths %.1fs"),
+                            Traffic.ObservedSeconds,Traffic.AnyWarningSeconds,Traffic.AnyProjectedSeconds));
+                        if (Traffic.HasDistance)
+                            MenuLine(FString::Printf(TEXT("Closest sampled centres: AI %d | %.1fm | peak alerts %d"),
+                                Traffic.NearestObservedSlot,Traffic.MinimumCentreDistanceCm/100.0,
+                                Traffic.MaximumConcurrentWarnings));
+                    }
                     for(const auto& Row:Review.Rivals)
                     {
                         if (!Row.RouteEvidenceValid)
@@ -2796,6 +2806,17 @@ void ALatebrakeRaceHUD::DrawHUD()
                 FleetReview.MoreGates,FleetReview.SameGates,FleetReview.FewerGates),Primary);
             if (FleetReview.UnavailableRivals>0)
                 Line(FString::Printf(TEXT("AI EVIDENCE UNAVAILABLE %d"),FleetReview.UnavailableRivals),Accent);
+            const auto& Traffic=FleetReview.Traffic;
+            if (Traffic.Valid && Traffic.StrongestSlot>=1 &&
+                Traffic.StrongestSlot<latebrake::StartGridCapacity)
+            {
+                const auto& Threat=Traffic.Rivals[static_cast<std::size_t>(Traffic.StrongestSlot-1)];
+                if (Threat.Slot==Traffic.StrongestSlot)
+                    Line(FString::Printf(TEXT("AI %d | %s | %s %.1fm"),
+                        Threat.Slot,UTF8_TO_TCHAR(latebrake::FleetTrafficDirectionName(Threat.Direction)),
+                        UTF8_TO_TCHAR(latebrake::FleetTrafficSeverityName(Threat.Severity)),
+                        Threat.CentreDistanceCm/100.0),Accent,true);
+            }
             const auto& Timing=FleetReview.Timing;
             if (Timing.CommonCohortValid)
                 Line(FString::Printf(TEXT("MATCHED G%d | AI EARLIER %d | CLOSE %d | LATER %d"),

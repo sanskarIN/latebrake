@@ -3,6 +3,7 @@
 #include "AI/ExperimentalFleetLiveRecovery.h"
 #include "AI/GridRivalLedger.h"
 #include "AI/FleetGateTimingJournal.h"
+#include "AI/FleetPlayerTraffic.h"
 #include "Racing/RivalFinishClockReview.h"
 #include "Track/RaceMiniMap.h"
 
@@ -81,6 +82,8 @@ struct FleetRaceReview final
     double PlayerActiveSeconds=0.0;
     std::array<FleetRivalReadout,StartGridCapacity-1> Rivals{};
     FleetTimingReadout Timing{};
+    FleetPlayerTrafficReadout Traffic{};
+    FleetPlayerTrafficSummary TrafficHistory{};
 };
 
 inline bool FleetRouteOrdinal(int laps,int nextGate,bool finished,
@@ -170,6 +173,7 @@ inline FleetRaceReview BuildFleetRaceReview(const FleetPhysicalFrame& live,
         return out;
 
     out.ValidRoster=true;
+    out.Traffic=MeasureFleetPlayerTraffic(live,bound);
     out.GateCount=gateCount;
     out.RequiredLaps=requiredLaps;
     out.PlayerFinished=playerFinished;

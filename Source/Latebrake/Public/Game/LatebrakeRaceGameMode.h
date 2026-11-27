@@ -259,6 +259,7 @@ private:
     bool HasCurrentFleetFrameAuthority() const noexcept;
     void SpawnExtraFleet();
     bool ObserveExperimentalFleet(float DeltaSeconds,bool Inactive);
+    void ObserveFleetPlayerTraffic(double LiveDelta,bool bClockAdvanced);
     bool CollectFleetFrame(latebrake::FleetPhysicalFrame& Out,
         float DeltaSeconds,bool IncludeGridProbes) const;
     ALatebrakeRivalCar* FleetRivalAt(int32 Slot) const;
@@ -375,6 +376,7 @@ private:
     TArray<TWeakObjectPtr<AActor>> FleetTickDependents;
     latebrake::GridRivalLedger FleetReviewLedger;
     latebrake::FleetGateTimingJournal FleetGateTiming;
+    latebrake::FleetPlayerTrafficJournal FleetPlayerTraffic;
     latebrake::FleetRaceReview FleetFinishReview;
     std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};
     bool bFleetActorsBound=false;

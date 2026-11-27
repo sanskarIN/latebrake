@@ -50,6 +50,7 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
     bFleetActorsBound=false;
     FleetReviewLedger.Reset();
     FleetGateTiming.Reset();
+    FleetPlayerTraffic.Reset();
     FleetFinishReview={};
     if (!IsExperimentalFleetRequested() && IsValid(RivalCar))
         RivalCar->SetGarageTuning(1.f,1.f,1.f,0,latebrake::FactoryGarageLook(0));
@@ -274,6 +275,8 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
         if (LedgerBound && !FleetGateTiming.Configure(FleetAttemptToken,
                 FleetAttempt.BoundIdentity(),Race.GetCheckpointCount(),Race.GetRequiredLaps()))
             UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TIMING_CONFIGURATION_REFUSED"));
+        if (LedgerBound && !FleetPlayerTraffic.Configure(FleetAttemptToken,FleetAttempt.BoundIdentity()))
+            UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TRAFFIC_CONFIGURATION_REFUSED"));
 #if !UE_BUILD_SHIPPING
         if (LedgerBound)
         {
@@ -424,6 +427,40 @@ void ALatebrakeRaceGameMode::ObserveFleetRivalRecovery(
 #endif
 }
 
+void ALatebrakeRaceGameMode::ObserveFleetPlayerTraffic(double LiveDelta,bool bClockAdvanced)
+{
+    // Call once after the real player clock's admission, never from DrawHUD.
+    if (!IsExperimentalFleetRequested()) return;
+    if (!bClockAdvanced || Race.IsFinished() || !IsExperimentalFleetDriveReady())
+    {
+        FleetPlayerTraffic.Suspend();
+        return;
+    }
+    latebrake::FleetPlayerTrafficSample Sample;
+    if (!CollectFleetFrame(Sample.Physical,0.0,false))
+    {
+        FleetPlayerTraffic.Suspend();
+        return;
+    }
+    Sample.Identity=FleetAttempt.BoundIdentity();
+    Sample.EngineFrame=static_cast<std::uint64_t>(GFrameCounter);
+    Sample.SessionEpoch=CheckpointSession.Current();
+    Sample.ActiveSeconds=Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds();
+    Sample.AdvancedSeconds=LiveDelta;
+    for (int32 Slot=0;Slot<latebrake::StartGridCapacity;++Slot)
+    {
+        const auto Index=static_cast<std::size_t>(Slot);
+        const auto* Car=FleetBoundActors[Index].Get();
+        if (!IsValid(Car))
+        {
+            FleetPlayerTraffic.Suspend();
+            return;
+        }
+        Sample.TeleportRevisions[Index]=Car->GetTeleportRevision();
+    }
+    FleetPlayerTraffic.Observe(Sample);
+}
+
 latebrake::FleetRaceReview ALatebrakeRaceGameMode::CollectFleetRaceReview() const
 {
     if (!IsExperimentalFleetRequested() || !IsExperimentalFleetDriveReady()) return {};
@@ -447,6 +484,8 @@ latebrake::FleetRaceReview ALatebrakeRaceGameMode::CollectFleetRaceReview() cons
         Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds());
     Review.Timing=latebrake::ReviewFleetGateTiming(Review,FleetGateTiming,
         FleetAttemptToken,FleetAttempt.BoundIdentity());
+    if (Review.ValidRoster && Review.PlayerRouteValid)
+        Review.TrafficHistory=FleetPlayerTraffic.Readout();
     return Review;
 }
 
