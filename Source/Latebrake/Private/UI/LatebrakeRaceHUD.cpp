@@ -1290,6 +1290,42 @@ void ALatebrakeRaceHUD::DrawHUD()
                         MenuLine(FString::Printf(TEXT("AI %d | %s | recovery %d/%d verified"),
                             Row.Slot,*Status,Row.SuccessfulRecoveries,Row.RecoveryAttempts));
                     }
+                    const auto& Pace=Review.Pace;
+                    if (Pace.ValidPlayer && Pace.Player.AllLaps.Valid)
+                    {
+                        MenuLine(TEXT("OBSERVED ACTIVE-CLOCK PACE | NOT CLEAN LAP RECORDS"),true);
+                        const auto& Human=Pace.Player.AllLaps;
+                        MenuLine(FString::Printf(TEXT("Your %d laps | best %.2fs | median %.2fs"),
+                            Human.Count,Human.BestSeconds,Human.MedianSeconds));
+                        if (Human.VariationValid)
+                            MenuLine(FString::Printf(TEXT("Mean %.2fs | lap variation %.2fs"),
+                                Human.MeanSeconds,Human.DeviationSeconds));
+                        if (Pace.Player.AfterLaunch.Valid && !bCompact)
+                            MenuLine(FString::Printf(TEXT("After standing-start lap | mean %.2fs"),
+                                Pace.Player.AfterLaunch.MeanSeconds));
+                        if (Pace.Cohort.Valid)
+                            MenuLine(FString::Printf(TEXT("All six | first %d laps | YOU shorter mean %d | AI %d | close %d"),
+                                Pace.Cohort.CommonLaps,Pace.Cohort.PlayerShorterMeans,
+                                Pace.Cohort.RivalShorterMeans,Pace.Cohort.CloseMeans));
+                        for (const auto& Rival:Pace.Rivals)
+                        {
+                            if (!Rival.EvidenceValid || !Rival.CommonLaps.Valid) continue;
+                            const auto& Pair=Rival.CommonLaps;
+                            MenuLine(FString::Printf(TEXT("AI %d | same %d laps | mean AI-minus-you %+.2fs"),
+                                Rival.Slot,Pair.Count,Pair.Difference.Mean));
+                            if (!bCompact)
+                            {
+                                MenuLine(FString::Printf(TEXT("  You shorter %d | AI shorter %d | close %d"),
+                                    Pair.PlayerShorter,Pair.RivalShorter,Pair.Close));
+                                const auto& Loss=Rival.Sectors.LargestPlayerLoss;
+                                if (Rival.Sectors.Valid && Loss.Valid)
+                                    MenuLine(FString::Printf(TEXT("  Sector %d | your mean %.2fs longer"),
+                                        Loss.Gate,-Loss.RivalMinusPlayerSeconds));
+                                else if (!Rival.Sectors.Valid)
+                                    MenuLine(TEXT("  Sector averages need equal completed-lap coverage"));
+                            }
+                        }
+                    }
                 }
             }
             const auto TrackReview=Mode->GetTrackLimitsReview();

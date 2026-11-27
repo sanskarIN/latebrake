@@ -2645,3 +2645,5 @@ add_latebrake_portable_research_test(FleetPlayerTraffic)
 add_latebrake_portable_research_test(FleetSlipstreamDraft)
 
 add_latebrake_portable_research_test(FleetPassingLane)
+
+add_latebrake_portable_research_test(FleetPaceReview)

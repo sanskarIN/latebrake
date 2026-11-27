@@ -567,6 +567,9 @@ latebrake::FleetRaceReview ALatebrakeRaceGameMode::CollectFleetRaceReview() cons
         FleetAttemptToken,FleetAttempt.BoundIdentity());
     if (Review.ValidRoster && Review.PlayerRouteValid)
         Review.TrafficHistory=FleetPlayerTraffic.Readout();
+    if (Review.PlayerFinished)
+        Review.Pace=latebrake::ReviewFleetWholeRunPace(Review,FleetGateTiming,
+            FleetAttemptToken,FleetAttempt.BoundIdentity());
     return Review;
 }
 

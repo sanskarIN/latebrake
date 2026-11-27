@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AI/FleetPaceReview.h"
+
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -19,6 +21,11 @@ inline constexpr double FleetTimingMaximumSeconds = 7.0 * 24.0 * 3600.0;
 inline constexpr double FleetTimingUncertainSeconds = 0.25;
 
 using FleetTimingIdentity = std::array<std::uint64_t, FleetTimingCarCount>;
+static_assert(FleetPaceCars == FleetTimingCarCount);
+static_assert(FleetPaceMaxGates == FleetTimingMaxGates);
+static_assert(FleetPaceMaxLaps == FleetTimingMaxLaps);
+static_assert(FleetPaceMaxSeconds == FleetTimingMaximumSeconds);
+static_assert(FleetPaceClockWindow == FleetTimingUncertainSeconds);
 
 enum class FleetTimingAvailability
 {
@@ -141,6 +148,8 @@ public:
         GateCount = gates;
         TotalGates = gates * laps;
         Identity = identities;
+        for (auto& stream:Streams)
+            stream.Pace.Configure(gates,laps);
         return true;
     }
 
@@ -160,6 +169,10 @@ public:
         {
             return false;
         }
+        // Share the exact accepted receipt; no separate HUD clock or gate
+        // can add a lap to the whole-run pace history.
+        if (!stream.Pace.Record(receipt.Ordinal,receipt.ActiveSeconds))
+            return false;
         stream.Samples[Index(receipt.Ordinal)] =
             {receipt.Ordinal, receipt.ActiveSeconds};
         stream.LastOrdinal = receipt.Ordinal;
@@ -280,6 +293,45 @@ public:
         return out;
     }
 
+    // Called for the frozen Results snapshot, not on every HUD frame.
+    FleetPaceReadout ReviewPace(std::uint64_t attempt,
+        const FleetTimingIdentity& identities,int gates,int laps,double activeSeconds,
+        const std::array<FleetTimingEvidence,FleetTimingCarCount>& evidence) const noexcept
+    {
+        FleetPaceReadout out;
+        if (Attempt == 0 || attempt != Attempt || identities != Identity ||
+            gates != GateCount || laps < 1 || laps > FleetTimingMaxLaps ||
+            gates*laps != TotalGates || !std::isfinite(activeSeconds) ||
+            activeSeconds < 0.0 || activeSeconds > FleetTimingMaximumSeconds)
+            return out;
+        const auto& player = Streams[0];
+        if (!MatchesEvidence(player,evidence[0],activeSeconds,false) ||
+            !MatchesPace(player))
+            return out;
+        out.ValidPlayer = true;
+        out.Player = player.Pace.Summary(0);
+        std::array<const FleetPaceStream*,FleetPaceCars-1> cohort{};
+        for (int slot=1;slot<FleetTimingCarCount;++slot)
+        {
+            const auto index = static_cast<std::size_t>(slot);
+            auto& row = out.Rivals[index-1];
+            row.Slot = slot;
+            const auto& rival = Streams[index];
+            if (!MatchesEvidence(rival,evidence[index],activeSeconds,true) ||
+                !MatchesPace(rival))
+            {
+                ++out.UnavailableRivals;
+                continue;
+            }
+            row = BuildFleetPaceRival(slot,player.Pace,rival.Pace);
+            ++out.VerifiedRivals;
+            if (row.CommonLaps.Valid) ++out.ComparableRivals;
+            cohort[index-1] = &rival.Pace;
+        }
+        out.Cohort = BuildFleetPaceCohort(player.Pace,cohort);
+        return out;
+    }
+
 private:
     struct Sample final
     {
@@ -296,9 +348,18 @@ private:
     struct Stream final
     {
         std::array<Sample, FleetTimingHistoryCapacity> Samples{};
+        FleetPaceStream Pace{};
         int LastOrdinal = 0;
         double LastSeconds = 0.0;
     };
+
+    bool MatchesPace(const Stream& stream) const noexcept
+    {
+        return stream.Pace.GateCount()==GateCount &&
+            stream.Pace.RequiredLaps()*GateCount==TotalGates &&
+            stream.Pace.AcceptedGates()==stream.LastOrdinal &&
+            stream.Pace.LastGateClock()==stream.LastSeconds;
+    }
 
     static bool ValidSlot(int slot) noexcept
     {

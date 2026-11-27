@@ -88,6 +88,7 @@ struct FleetRaceReview final
     double PlayerActiveSeconds=0.0;
     std::array<FleetRivalReadout,StartGridCapacity-1> Rivals{};
     FleetTimingReadout Timing{};
+    FleetPaceReadout Pace{};
     FleetPlayerTrafficReadout Traffic{};
     FleetPlayerTrafficSummary TrafficHistory{};
 };
@@ -270,13 +271,12 @@ inline FleetRaceReview BuildFleetRaceReview(const FleetPhysicalFrame& live,
 
 // Enrich an already validated physical route review with independently
 // recorded timing. No timing information can repair invalid route evidence.
-inline FleetTimingReadout ReviewFleetGateTiming(const FleetRaceReview& review,
-    const FleetGateTimingJournal& journal, std::uint64_t attempt,
-    const SixCarIdentity& identity) noexcept
+inline std::array<FleetTimingEvidence,FleetTimingCarCount> FleetTimingEvidenceFromReview(
+    const FleetRaceReview& review) noexcept
 {
+    std::array<FleetTimingEvidence,FleetTimingCarCount> evidence{};
     if (!review.ValidRoster || !review.PlayerRouteValid)
-        return {};
-    std::array<FleetTimingEvidence, FleetTimingCarCount> evidence{};
+        return evidence;
     evidence[0] = {true, review.PlayerAcceptedGates, 0.0};
     for (int slot = 1; slot < StartGridCapacity; ++slot)
     {
@@ -285,8 +285,27 @@ inline FleetTimingReadout ReviewFleetGateTiming(const FleetRaceReview& review,
             row.Slot == slot && row.BodyObserved && row.RouteEvidenceValid,
             row.AcceptedGates, row.LastGateActiveSeconds};
     }
+    return evidence;
+}
+
+inline FleetTimingReadout ReviewFleetGateTiming(const FleetRaceReview& review,
+    const FleetGateTimingJournal& journal, std::uint64_t attempt,
+    const SixCarIdentity& identity) noexcept
+{
+    if (!review.ValidRoster || !review.PlayerRouteValid)
+        return {};
     return journal.Review(attempt, identity, review.GateCount,
-        review.RequiredLaps, review.PlayerActiveSeconds, evidence);
+        review.RequiredLaps, review.PlayerActiveSeconds,FleetTimingEvidenceFromReview(review));
+}
+
+inline FleetPaceReadout ReviewFleetWholeRunPace(const FleetRaceReview& review,
+    const FleetGateTimingJournal& journal,std::uint64_t attempt,
+    const SixCarIdentity& identity) noexcept
+{
+    if (!review.ValidRoster || !review.PlayerRouteValid || !review.PlayerFinished)
+        return {};
+    return journal.ReviewPace(attempt,identity,review.GateCount,review.RequiredLaps,
+        review.PlayerActiveSeconds,FleetTimingEvidenceFromReview(review));
 }
 
 // Keep overlapping rival markers legible on the compact course radar.
