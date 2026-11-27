@@ -228,6 +228,86 @@ void PerStageAndEpisodeAccounting()
         "motion is actually sampled");
 }
 
+void NoDriveContextAccounting()
+{
+    Fixture f;
+    auto s=Request();
+    s.SpeedCmS=50;
+    BrakeAt(s,FleetDecisionStage::PredictiveTraffic);
+    s.Risk=FleetRiskKind::SweptContact;
+    s.BrakeHold=true;
+    s.Queue=FleetQueueStatus::Waiting;
+    auto context=[](const FleetDecisionSample& sample)
+    {
+        return ClassifyFleetNoDrive(AnalyzeFleetDecision(sample));
+    };
+    Require(context(s)==FleetNoDriveContext::TrafficEmergency,
+        "forecast wins exclusive context over hold and queue");
+    s.RoadQualified=false;
+    Require(context(s)==FleetNoDriveContext::RoadUnavailable,"road context precedes traffic");
+    s.RoadQualified=true;
+    s.TrafficQualified=false;
+    s.Risk=FleetRiskKind::Unqualified;
+    Require(context(s)==FleetNoDriveContext::TrafficUnavailable,"unqualified forecast distinct");
+    s.TrafficQualified=true;
+    s.Risk=FleetRiskKind::Clear;
+    Require(context(s)==FleetNoDriveContext::TrafficHold,"hold context");
+    s.BrakeHold=false;
+    Require(context(s)==FleetNoDriveContext::Queue,"queue context");
+    s.Queue=FleetQueueStatus::Inactive;
+    Require(context(s)==FleetNoDriveContext::OtherBrake,"other requested brake");
+    auto low=Request();
+    low.SpeedCmS=50;
+    low.Stages.fill({0.0,0.0,false,false});
+    Require(context(low)==FleetNoDriveContext::LowThrottle,"low throttle without brake");
+    Require(context(Request())==FleetNoDriveContext::None,"moving car excluded");
+
+    f.Open();f.Add(s);f.Next();
+    f.Open();f.Add(s);f.Next();
+    f.Open();f.Add(low);f.Next();
+    f.Open();f.Add(low);
+    auto h=f.Read().Rivals[0].History;
+    const auto& buckets=h.NoDriveContexts.Seconds;
+    Require(Near(h.NoDriveSeconds,0.15) &&
+        Near(h.NoDriveContexts.Total(),h.NoDriveSeconds) &&
+        Near(buckets[static_cast<std::size_t>(FleetNoDriveContext::OtherBrake)],0.05) &&
+        Near(buckets[static_cast<std::size_t>(FleetNoDriveContext::Transition)],0.05) &&
+        Near(buckets[static_cast<std::size_t>(FleetNoDriveContext::LowThrottle)],0.05),
+        "exclusive endpoint attribution accounts for transitions");
+    Require(Near(h.RaceWindowCoverage(f.Admission.ClockSeconds),0.75),
+        "coverage does not extrapolate first endpoint");
+    Require(h.RaceWindowCoverage(0)==0 && h.RaceWindowCoverage(0.1)==0 &&
+        h.RaceWindowCoverage(std::numeric_limits<double>::infinity())==0,
+        "invalid or stale denominator refused");
+    f.Next();f.Open();f.Next();
+    f.Open();f.Add(low);
+    h=f.Read().Rivals[0].History;
+    Require(Near(h.NoDriveContexts.Total(),0.15) &&
+        Near(h.RaceWindowCoverage(f.Admission.ClockSeconds),0.5),
+        "missing sample reduces coverage without inventing context");
+}
+
+void TeleportRevisionCannotRollBack()
+{
+    Fixture f;
+    auto s=Request();
+    s.TeleportRevision=4;
+    f.Open();f.Add(s);f.Next();
+    f.Open();f.Add(s);f.Next();
+    s.TeleportRevision=3;
+    f.Open();
+    Require(!f.Journal.Observe(f.Bind(s)),"older teleport revision rejected");
+    s.TeleportRevision=4;
+    Require(!f.Journal.Observe(f.Bind(s)),"invalid frame not reusable");
+    f.Next();f.Open();f.Add(s);
+    auto h=f.Read().Rivals[0].History;
+    Require(h.Refused==1 && Near(h.ObservedSeconds,0.05),
+        "rejected rollback cannot bridge previous intervals");
+    f.Next();f.Open();f.Add(s);
+    Require(Near(f.Read().Rivals[0].History.ObservedSeconds,0.1),
+        "valid same revision resumes after gap");
+}
+
 void MissingFramesAndRecovery()
 {
     Fixture f;
@@ -333,6 +413,10 @@ void RandomizedCoverageAndInvariants()
                 h.MeanThrottle()>=0 && h.MeanThrottle()<=1.0+1e-8 &&
                 h.MeanSpeedKmh()<=h.MaxSpeedCmS*0.036+1e-8,
                 "observed conditional duration and averages");
+            Require(Near(h.NoDriveContexts.Total(),h.NoDriveSeconds) &&
+                h.RaceWindowCoverage(f.Admission.ClockSeconds)>=0.0 &&
+                h.RaceWindowCoverage(f.Admission.ClockSeconds)<=1.0,
+                "exclusive contexts and race-window coverage bounded");
             double attribution=0;
             for(const auto& stage:h.Stages)
             {
@@ -356,6 +440,8 @@ int main()
     InvalidSamplesAndIdentity();
     NativeFrameAuthority();
     PerStageAndEpisodeAccounting();
+    NoDriveContextAccounting();
+    TeleportRevisionCannotRollBack();
     MissingFramesAndRecovery();
     CurrentRowsAndIndependentRouteEvidence();
     RandomizedCoverageAndInvariants();

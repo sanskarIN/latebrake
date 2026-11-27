@@ -334,6 +334,76 @@ struct FleetDecisionEpisode final
     double Duration() const noexcept {return Valid?EndSeconds-StartSeconds:0.0;}
 };
 
+// Exclusive observed contexts, not a causal diagnosis of why a body
+// stopped moving. Mixed endpoint contexts receive a separate bucket.
+enum class FleetNoDriveContext : std::uint8_t
+{
+    None,
+    RoadUnavailable,
+    TrafficUnavailable,
+    TrafficEmergency,
+    TrafficHold,
+    Queue,
+    OtherBrake,
+    LowThrottle,
+    Transition,
+    Count
+};
+
+inline constexpr std::size_t FleetNoDriveContextCount=
+    static_cast<std::size_t>(FleetNoDriveContext::Count);
+
+inline FleetNoDriveContext ClassifyFleetNoDrive(const FleetDecisionEndpoint& e) noexcept
+{
+    if(!e.Valid || !e.StationaryNoDrive) return FleetNoDriveContext::None;
+    if(!e.RoadQualified) return FleetNoDriveContext::RoadUnavailable;
+    if(!e.TrafficQualified) return FleetNoDriveContext::TrafficUnavailable;
+    if(FleetDecisionEmergency(e.Risk) || e.RoadSpeedExceeded)
+        return FleetNoDriveContext::TrafficEmergency;
+    if(e.BrakeHold) return FleetNoDriveContext::TrafficHold;
+    if(e.Queue==FleetQueueStatus::Waiting) return FleetNoDriveContext::Queue;
+    return e.Final.Brake ? FleetNoDriveContext::OtherBrake : FleetNoDriveContext::LowThrottle;
+}
+
+inline const char* FleetNoDriveContextName(FleetNoDriveContext context) noexcept
+{
+    switch(context)
+    {
+        case FleetNoDriveContext::RoadUnavailable: return "road unqualified";
+        case FleetNoDriveContext::TrafficUnavailable: return "traffic unqualified";
+        case FleetNoDriveContext::TrafficEmergency: return "traffic forecast";
+        case FleetNoDriveContext::TrafficHold: return "traffic hold";
+        case FleetNoDriveContext::Queue: return "queue";
+        case FleetNoDriveContext::OtherBrake: return "other brake";
+        case FleetNoDriveContext::LowThrottle: return "low throttle";
+        case FleetNoDriveContext::Transition: return "mixed context";
+        default: return "unavailable";
+    }
+}
+
+struct FleetNoDriveBreakdown final
+{
+    std::array<double,FleetNoDriveContextCount> Seconds{};
+    double Total() const noexcept
+    {
+        double total=0.0;
+        for(const double seconds:Seconds) total+=seconds;
+        return total;
+    }
+    FleetNoDriveContext Dominant() const noexcept
+    {
+        double largest=0.0;
+        auto result=FleetNoDriveContext::None;
+        for(std::size_t i=1;i<Seconds.size();++i)
+            if(Seconds[i]>largest)
+            {
+                largest=Seconds[i];
+                result=static_cast<FleetNoDriveContext>(i);
+            }
+        return result;
+    }
+};
+
 struct FleetDecisionSlotSummary final
 {
     bool HasSamples=false;
@@ -349,6 +419,7 @@ struct FleetDecisionSlotSummary final
     double BrakingSeconds=0.0;
     double StationarySeconds=0.0;
     double NoDriveSeconds=0.0;
+    FleetNoDriveBreakdown NoDriveContexts{};
     double RoadUnqualifiedSeconds=0.0;
     double TrafficUnqualifiedSeconds=0.0;
     double EmergencyForecastSeconds=0.0;
@@ -364,6 +435,17 @@ struct FleetDecisionSlotSummary final
     std::array<FleetDecisionStageSummary,FleetDecisionStageCount> Stages{};
 
     bool HasDuration() const noexcept {return HasSamples && ObservedSeconds>0.0;}
+    // Coverage of the elapsed race window, not a claim of time spent
+    // driving. Finished rivals and missing samples both leave gaps.
+    double RaceWindowCoverage(double activeClock) const noexcept
+    {
+        if(!HasSamples || !std::isfinite(activeClock) || activeClock<=0.0 ||
+            activeClock>FleetDecisionMaxSeconds ||
+            LastClockSeconds>activeClock || !std::isfinite(ObservedSeconds) ||
+            ObservedSeconds<0.0 || ObservedSeconds>activeClock+FleetDecisionClockTolerance)
+            return 0.0;
+        return std::clamp(ObservedSeconds/activeClock,0.0,1.0);
+    }
     double MeanSpeedKmh() const noexcept
     {
         return HasDuration()?0.036*IntegratedSpeed/ObservedSeconds:0.0;
@@ -482,7 +564,8 @@ public:
         const auto endpoint=AnalyzeFleetDecision(sample);
         if(!endpoint.Valid || sample.GateOrdinal>=TotalGates ||
             (slot.History.HasSamples &&
-                sample.GateOrdinal<slot.History.LastGateOrdinal))
+                (sample.GateOrdinal<slot.History.LastGateOrdinal ||
+                 sample.TeleportRevision<slot.PreviousTeleport)))
         {
             Increment(slot.History.Refused);
             Cut(slot);
@@ -636,7 +719,14 @@ private:
         if(before.SpeedCmS<FleetDecisionStationaryCmS &&
             now.SpeedCmS<FleetDecisionStationaryCmS)
             AddSeconds(h.StationarySeconds,dt);
-        if(stationary) AddSeconds(h.NoDriveSeconds,dt);
+        if(stationary)
+        {
+            AddSeconds(h.NoDriveSeconds,dt);
+            const auto a=ClassifyFleetNoDrive(before);
+            const auto b=ClassifyFleetNoDrive(now);
+            const auto context=a==b ? a : FleetNoDriveContext::Transition;
+            AddSeconds(h.NoDriveContexts.Seconds[static_cast<std::size_t>(context)],dt);
+        }
         if(!before.RoadQualified && !now.RoadQualified)
             AddSeconds(h.RoadUnqualifiedSeconds,dt);
         if(!before.TrafficQualified && !now.TrafficQualified)

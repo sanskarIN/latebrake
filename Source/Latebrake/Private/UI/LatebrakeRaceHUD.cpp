@@ -1334,6 +1334,10 @@ void ALatebrakeRaceHUD::DrawHUD()
                             {
                                 MenuLine(FString::Printf(TEXT("  Queue %.1fs | traffic hold %.1fs | no drive %.1fs"),
                                     H.QueueSeconds,H.TrafficHoldSeconds,H.NoDriveSeconds));
+                                const auto Context=H.NoDriveContexts.Dominant();
+                                if (Context!=latebrake::FleetNoDriveContext::None)
+                                    MenuLine(FString::Printf(TEXT("  Main sampled no-drive context: %s"),
+                                        UTF8_TO_TCHAR(latebrake::FleetNoDriveContextName(Context))));
                                 const auto Stage=H.DominantBrakeOrigin();
                                 if (Stage!=latebrake::FleetDecisionStage::Count)
                                     MenuLine(FString::Printf(TEXT("  Main sampled brake origin: %s | longest %.1fs"),

@@ -23,3 +23,17 @@ Native QA: verify the actual six-car game, use a slower rival and corner
 approach, compare the recorded requests with a real physics trace, pause,
 recover and finish. Verify ordinary modes remain unaffected. Portable
 tests establish source policy, not installed Unreal behavior.
+
+## Exclusive no-drive context
+
+For adjacent stationary/no-drive samples, attribute the observed interval
+exactly once: road unqualified, traffic unqualified, traffic forecast,
+traffic hold, queue, other brake, low throttle, or mixed endpoint context.
+This deterministic precedence avoids counting overlapping conditions as
+multiple seconds of lost time. The expanded Results UI reports the most
+frequent sampled context by duration, not a causal diagnosis. A missing
+sample cannot contribute to any bucket. The standalone coverage ratio
+compares observed intervals to the elapsed race window; completed rivals
+and absent samples may both reduce coverage. Teleport revision rollback
+is refused even after a missing sample, and never lowers the accepted
+revision baseline.

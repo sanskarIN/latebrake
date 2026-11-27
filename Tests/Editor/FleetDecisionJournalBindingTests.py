@@ -61,6 +61,9 @@ class FleetDecisionJournalBindingTests(unittest.TestCase):
         hud = read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
         self.assertIn("AI COMMAND OBSERVATIONS | SAMPLED, NOT PHYSICAL FORCE", hud)
         self.assertIn("FleetReview.Decisions.CurrentRivals", hud)
+        self.assertIn("H.NoDriveContexts.Dominant()", hud)
+        self.assertIn("Main sampled no-drive context", hud)
+        self.assertIn("FleetNoDriveContextName(Context)", hud)
         self.assertNotIn("FleetDecisions.Observe(", hud)
         self.assertIn("add_latebrake_portable_research_test(FleetDecisionJournal)",
                       read("Tests/Standalone/CMakeLists.txt"))
