@@ -10,6 +10,7 @@
 #include "AI/RivalStraightPassAssist.h"
 #include "AI/RivalFleetRiskSupervisor.h"
 #include "AI/FleetQueueDeferral.h"
+#include "AI/FleetPassingLane.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -47,6 +48,7 @@ private:
     int32 GridSlot=latebrake::PrimaryRivalGridSlot;
     latebrake::RivalFleetRiskSupervisor FleetRisk;
     latebrake::FleetQueueDeferral FleetQueue;
+    latebrake::FleetPassingLane FleetPassing;
     // Read the GameMode's authoritative pause/menu/restart epoch even
     // when paused Unreal actor ticks never executed the not-ready guard.
     uint64 LastQualifiedSessionRevision = 0;

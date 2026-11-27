@@ -43,6 +43,7 @@ void ALatebrakeRivalCar::ResetPilot()
     StraightPassAssist.Reset();
     FleetRisk.Reset();
     FleetQueue.Reset();
+    FleetPassing.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -61,6 +62,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     StraightPassAssist.Reset();
     FleetRisk.Reset();
     FleetQueue.Reset();
+    FleetPassing.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -91,6 +93,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -113,6 +116,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -136,6 +140,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetPassing.Suspend();
         LastQualifiedSessionRevision = CurrentSessionRevision;
         bHasQualifiedSessionRevision = true;
     }
@@ -158,6 +163,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -211,6 +217,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetPassing.Suspend();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         // Collect the actual human on the current game-thread snapshot.
         // No missing player or fictional grid occupant can clear a landing.
@@ -265,6 +272,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
         return;
@@ -432,14 +440,24 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         const bool Observed=Mode->TryGetFreshFleetTraffic(this,bCornerPhysicsQualified,BrakeScale,Snapshot);
         if (Observed)
         {
-            const auto Immediate=latebrake::ApplyRivalFleetTraffic(FollowingCommand,Snapshot);
+            const int Ordinal=Route.GetCompletedLaps()*Route.GetWaypointCount()+Route.GetNextWaypoint();
+            const auto PassingLane=FleetPassing.Apply(FollowingCommand,{
+                Ordinal,Route.GetNextWaypoint(),static_cast<double>(DeltaSeconds),
+                bCornerPhysicsQualified && !bOffPavement,Snapshot});
+            const auto Immediate=latebrake::ApplyRivalFleetTraffic(PassingLane.Command,Snapshot);
             const auto Supervised=FleetRisk.Apply(Immediate.Command,Snapshot,DeltaSeconds,
                 latebrake::FleetForecastRoadPolicy::ObservedOffroadBlockers);
             FleetCommand=Supervised.Command;
+            if (FleetCommand.Brake || !Supervised.Qualified)
+            {
+                FleetPassing.AbortTraffic();
+                FleetCommand.Steering=FollowingCommand.Steering;
+            }
         }
         else
         {
             FleetRisk.Reset();
+            FleetPassing.Suspend();
             FleetCommand.Throttle=0.0;
             FleetCommand.Brake=true;
         }
