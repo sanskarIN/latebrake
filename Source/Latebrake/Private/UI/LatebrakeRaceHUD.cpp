@@ -312,6 +312,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     PresentedReplayAttempt=0;
     PresentedSector={};
     PresentedSectorRevision=0;
+    PresentedSettings={};
     DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
@@ -1771,18 +1772,34 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("Select to resume the paused race."));
             break;
         case latebrake::MenuPage::Settings:
-            MenuLine(Mode->UsesMilesPerHour()
-                ? TEXT("Speed display: MPH") : TEXT("Speed display: KM/H"));
-            MenuLine(TEXT("Select to switch speed units and save."));
+        {
+            const auto Settings=Mode->GetSettingsMenuSnapshot();
+            // Pin the chosen setting first in the logical details. Even a
+            // compact phone can read the current value before confirming.
+            const auto Selected=latebrake::DescribeSettingsControl(Settings,Settings.Selected);
+            MenuLine(FString::Printf(TEXT("SELECTED: %s | %s"),
+                UTF8_TO_TCHAR(Selected.Title),UTF8_TO_TCHAR(Selected.Value)),true);
+            MenuLine(FString::Printf(TEXT("%s"),UTF8_TO_TCHAR(Selected.Status)));
+#if PLATFORM_ANDROID
+            MenuLine(TEXT("BROWSE: choose setting | SELECT: change"));
+#else
+            MenuLine(TEXT("N / D-PAD RIGHT: BROWSE | ENTER / Y: CHANGE"));
+#endif
+            for(const auto Control:latebrake::SettingsControls)
+            {
+                const auto Desc=latebrake::DescribeSettingsControl(Settings,Control);
+                MenuLine(FString::Printf(TEXT("%s%s: %s | %s"),
+                    Desc.Selected?TEXT("> "):TEXT(""),
+                    UTF8_TO_TCHAR(Desc.Title),UTF8_TO_TCHAR(Desc.Value),
+                    UTF8_TO_TCHAR(Desc.ShortStatus)),Desc.Selected);
+            }
             MenuLine(FString::Printf(TEXT("HUD DETAIL: %s (SESSION ONLY)"),
                 UTF8_TO_TCHAR(latebrake::HudTelemetryModeName(Mode->GetHudTelemetryMode()))),true);
 #if !PLATFORM_ANDROID
             MenuLine(TEXT("F2: cycle Focused / Balanced / Detailed"));
-#endif
-            MenuLine(Mode->IsDuskLightingPreview()
-                ? TEXT("LIGHTING: DUSK (SESSION PREVIEW ONLY)")
-                : TEXT("LIGHTING: DAY (SESSION PREVIEW ONLY)"), true);
             MenuLine(TEXT("F3: TOGGLE DAY/DUSK | NOT SAVED | VISUAL ONLY"));
+#endif
+        }
 #if !UE_BUILD_SHIPPING
             // Real pawn component/material/light-request state. This is a
             // diagnostic of source commands, NOT proof of rendered pixels,
@@ -2160,6 +2177,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             }
         }
 
+        DrawSettingsPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawFleetReplayPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawSectorMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
 

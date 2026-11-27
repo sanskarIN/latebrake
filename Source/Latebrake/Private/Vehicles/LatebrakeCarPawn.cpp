@@ -3284,7 +3284,8 @@ void ALatebrakeCarPawn::MenuMousePressed()
     {
         return;
     }
-    if(Hud->TryHandleFleetReplayPointer(MouseX,MouseY) ||
+    if(Hud->TryHandleSettingsPointer(MouseX,MouseY) ||
+        Hud->TryHandleFleetReplayPointer(MouseX,MouseY) ||
         Hud->TryHandleSectorMotionPointer(MouseX,MouseY))
     {
         ClearDriverInputs();

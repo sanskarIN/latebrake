@@ -997,6 +997,7 @@ void ALatebrakeRaceGameMode::ToggleCircuitLightingPreview()
         IsValid(RuntimeSky->GetLightComponent())))
         return;
     bDuskLightingPreview = !bDuskLightingPreview;
+    SettingsSelection.Changed();
     ApplyCircuitLightingPreview();
     // Deliberately no SaveRecords: this is an optional current-session
     // rendering test, not a new SaveGame schema or permanent unlock.
@@ -1651,6 +1652,7 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
+    SettingsSelection.Reset();
     SyncGarageShowroomPreview(); // Restore equipped car before unpause.
     SyncDesktopMenuPointerMode();
     AppFocusGuard.OnExplicitResume();
@@ -1672,6 +1674,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     DismissGaragePalette();
     SuspendBestLapGhost();
     Menu.Toggle();
+    SettingsSelection.Reset();
     SyncGarageShowroomPreview();
     if (!Menu.IsOpen())
     {
@@ -1798,6 +1801,50 @@ void ALatebrakeRaceGameMode::CycleHudTelemetryMode()
         AppFocusGuard.IsSuspended()))
         return;
     HudTelemetryMode=latebrake::NextHudTelemetryMode(HudTelemetryMode);
+    SettingsSelection.Changed();
+}
+
+latebrake::SettingsMenuSnapshot ALatebrakeRaceGameMode::GetSettingsMenuSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player && HasLocalPlayerDriver();
+    const bool Lights=IsValid(RuntimeSun) && IsValid(RuntimeSky) &&
+        IsValid(RuntimeSun->GetLightComponent()) && IsValid(RuntimeSky->GetLightComponent());
+    return {{Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
+        ManualPause.IsSuspended(),bFutureSaveSchema,Lights},SettingsSelection.Current(),
+        bMilesPerHour,HudTelemetryMode,bDuskLightingPreview,SettingsSelection.Revision()};
+}
+
+void ALatebrakeRaceGameMode::ActivateSettingsControl(latebrake::SettingsControl Control)
+{
+    const auto Current=GetSettingsMenuSnapshot();
+    if(!Current.Access.Allows(Control) || !SettingsSelection.Select(Current.Access,Control))
+        return;
+    switch(Control)
+    {
+    case latebrake::SettingsControl::SpeedUnits:
+    {
+        const bool PreviousMilesPerHour = bMilesPerHour;
+        bMilesPerHour = !bMilesPerHour;
+        SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            bMilesPerHour = PreviousMilesPerHour;
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: speed display unit change was not saved; restoring prior setting"));
+        }
+        break;
+    }
+    case latebrake::SettingsControl::HudDetail:
+        CycleHudTelemetryMode();
+        break;
+    case latebrake::SettingsControl::CircuitLighting:
+        ToggleCircuitLightingPreview();
+        break;
+    default:break;
+    }
 }
 
 void ALatebrakeRaceGameMode::MenuNext()
@@ -1805,6 +1852,7 @@ void ALatebrakeRaceGameMode::MenuNext()
     GaragePurchaseConfirm.Reset();
     DismissGaragePalette();
     Menu.Next();
+    SettingsSelection.Reset();
     SyncGarageShowroomPreview();
 }
 
@@ -1813,6 +1861,7 @@ void ALatebrakeRaceGameMode::MenuPrevious()
     GaragePurchaseConfirm.Reset();
     DismissGaragePalette();
     Menu.Previous();
+    SettingsSelection.Reset();
     SyncGarageShowroomPreview();
 }
 
@@ -1901,15 +1950,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Settings)
     {
-        const bool PreviousMilesPerHour = bMilesPerHour;
-        bMilesPerHour = !bMilesPerHour;
-        SaveRecords();
-        if (bProgressSaveFailed)
-        {
-            bMilesPerHour = PreviousMilesPerHour;
-            UE_LOG(LogTemp, Warning,
-                TEXT("Latebrake: speed display unit change was not saved; restoring prior setting"));
-        }
+        ActivateSettingsControl(SettingsSelection.Current());
     }
     // Profile is deliberately informational; no money or unlock is created.
 }
@@ -1939,6 +1980,11 @@ FString ALatebrakeRaceGameMode::GetCareerEventName() const
 
 void ALatebrakeRaceGameMode::CycleCareerEvent()
 {
+    if (Menu.IsOpen() && Menu.Current()==latebrake::MenuPage::Settings)
+    {
+        SettingsSelection.Browse(GetSettingsMenuSnapshot().Access);
+        return; // Never change a career selection while Settings owns Browse.
+    }
     // Reuse the existing Browse control across keyboard, gamepad and touch.
     // Changing a pending tier never touches the AI in the *active* race,
     // allowing a player to preview choices safely while the menu is open.

@@ -40,6 +40,7 @@
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
 #include "UI/MenuNavigation.h"
+#include "UI/SettingsMenuSelection.h"
 #include "LatebrakeRaceGameMode.generated.h"
 
 class AController;
@@ -103,6 +104,8 @@ public:
     bool UsesMilesPerHour() const { return bMilesPerHour; }
     latebrake::HudTelemetryMode GetHudTelemetryMode() const noexcept { return HudTelemetryMode; }
     void CycleHudTelemetryMode();
+    latebrake::SettingsMenuSnapshot GetSettingsMenuSnapshot() const;
+    void ActivateSettingsControl(latebrake::SettingsControl Control);
     bool IsCareerRace() const { return bCareerRace; }
     int32 GetActiveCareerEventId() const { return bCareerRace ? Career.SelectedEvent() : -1; }
     int32 GetMenuCareerEventId() const { return CareerMenuSelection; }
@@ -304,6 +307,7 @@ private:
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
     latebrake::CareerProgress Career;
     latebrake::MenuNavigation Menu;
+    latebrake::SettingsMenuSelection SettingsSelection;
     bool bMilesPerHour = false;
     // Session-only display preference, never saved with progression.
     latebrake::HudTelemetryMode HudTelemetryMode=latebrake::HudTelemetryMode::Balanced;
