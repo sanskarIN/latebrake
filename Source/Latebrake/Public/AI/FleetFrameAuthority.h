@@ -55,7 +55,7 @@ public:
     // or clock tick, and cannot leave a previously admitted frame usable.
     bool BeginFrame(FleetFrameStamp stamp) noexcept
     {
-        if(State.Status==FleetFrameAuthorityStatus::Unconfigured ||
+        if(stamp.Attempt==0 || State.Status==FleetFrameAuthorityStatus::Unconfigured ||
             stamp.Attempt!=State.Stamp.Attempt)
             return false;
         if(stamp.Observation==0 || stamp.Observation<=State.Stamp.Observation ||
@@ -75,7 +75,9 @@ public:
         // A delayed result from a replaced attempt must not mutate the
         // current attempt. Wrong observation or epoch within this attempt
         // is a denied sample, not a usable old admission.
-        if(stamp.Attempt!=State.Stamp.Attempt)return false;
+        // A default-constructed authority has no attempt to deny or admit.
+        if(stamp.Attempt==0 || State.Status==FleetFrameAuthorityStatus::Unconfigured ||
+            stamp.Attempt!=State.Stamp.Attempt)return false;
         if(State.Status!=FleetFrameAuthorityStatus::Sampling ||
             !SameFleetFrameStamp(stamp,State.Stamp))
         {
@@ -89,7 +91,7 @@ public:
 
     bool IsCurrent(FleetFrameStamp stamp) const noexcept
     {
-        return State.Status==FleetFrameAuthorityStatus::Admitted &&
+        return stamp.Attempt!=0 && State.Status==FleetFrameAuthorityStatus::Admitted &&
             State.HasEngineFrame && SameFleetFrameStamp(stamp,State.Stamp);
     }
 

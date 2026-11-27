@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <initializer_list>
 #include <limits>
 
 namespace
@@ -10,6 +11,53 @@ using namespace latebrake;
 void Require(bool value,const char* message)
 {
     if(!value){std::cerr<<message<<'\n';std::exit(EXIT_FAILURE);}
+}
+void UnconfiguredAndForeignAttempts()
+{
+    FleetFrameAuthority authority;
+    // Commit before Begin previously changed Unconfigured to Denied,
+    // allowing a subsequent zero-attempt observation to acquire authority.
+    const auto maximum=std::numeric_limits<std::uint64_t>::max();
+    for(const std::uint64_t attempt : {std::uint64_t{0},std::uint64_t{1},maximum})
+    {
+        for(const std::uint64_t observation : {std::uint64_t{0},std::uint64_t{1},maximum})
+        {
+            for(bool qualified : {false,true})
+            {
+                const FleetFrameStamp invalid{attempt,observation,100,1};
+                Require(!authority.Commit(invalid,qualified),"commit before begin must fail");
+                Require(!authority.BeginFrame(invalid),"frame before begin must fail");
+                Require(!authority.IsCurrent(invalid),"unconfigured attempt has no capability");
+                authority.Revoke();
+                const auto view=authority.Readout();
+                Require(view.Status==FleetFrameAuthorityStatus::Unconfigured &&
+                        SameFleetFrameStamp(view.Stamp,{}) && !view.HasEngineFrame,
+                        "unconfigured state remains untouched");
+            }
+        }
+    }
+    Require(authority.Begin(1),"valid attempt after malformed calls");
+    const FleetFrameStamp current{1,1,100,1};
+    Require(authority.BeginFrame(current),"real sampling");
+    for(const std::uint64_t attempt : {std::uint64_t{0},std::uint64_t{2},maximum})
+    {
+        auto foreign=current;
+        foreign.Attempt=attempt;
+        Require(!authority.BeginFrame(foreign),"foreign sample refused");
+        Require(!authority.Commit(foreign,true),"foreign commit refused");
+        Require(authority.Readout().Status==FleetFrameAuthorityStatus::Sampling,
+                "foreign calls cannot disturb real sampling");
+    }
+    Require(authority.Commit(current,true),"real sample admitted");
+    for(const std::uint64_t attempt : {std::uint64_t{0},std::uint64_t{2},maximum})
+    {
+        auto foreign=current;
+        foreign.Attempt=attempt;
+        Require(!authority.BeginFrame(foreign),"foreign sample cannot revoke current");
+        Require(!authority.Commit(foreign,false),"foreign rejection cannot revoke current");
+        Require(!authority.IsCurrent(foreign),"foreign stamp not current");
+        Require(authority.IsCurrent(current),"current real admission preserved");
+    }
 }
 void ExactFrame()
 {
@@ -92,6 +140,6 @@ void Sweep()
 }
 int main()
 {
-    ExactFrame();AttemptLifecycle();Sweep();
+    UnconfiguredAndForeignAttempts();ExactFrame();AttemptLifecycle();Sweep();
     std::cout<<"Experimental frame authority: exact stamps, epochs and 65536 observations passed\n";
 }
