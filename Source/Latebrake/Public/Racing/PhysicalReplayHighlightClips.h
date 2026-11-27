@@ -49,6 +49,9 @@ struct PhysicalReplayHighlightClip final
     bool ReplayOnly=true;
     bool OfficialPassingResultChanged=false;
     bool UnrealCameraSpawned=false;
+    std::uint64_t SecondaryActor=0;
+    std::uint64_t RepresentativeSourceFrame=0;
+    double RepresentativeEventClockSeconds=0.0;
 };
 
 struct PhysicalReplayHighlightPlaylist final
@@ -143,6 +146,39 @@ inline bool ReplayHighlightActorInFrame(
     return false;
 }
 
+// Match the exact retained frame, not merely the range of frame numbers.
+inline bool ReplayHighlightHasSourceFrame(
+    const PhysicalSixCarReplayTimeline& source,
+    const ReplayBroadcastEvent& event) noexcept
+{
+    if(event.SourceSession==0 || event.SourceRevision==0 ||
+       event.SourceFrame==0 || event.PrimaryActor==0 ||
+       !std::isfinite(event.ActiveClockSeconds))
+        return false;
+    const bool single=event.Kind==ReplayBroadcastEventKind::StrongMeasuredBraking;
+    if(single ? event.SecondaryActor!=0 :
+        (event.SecondaryActor==0 || event.SecondaryActor==event.PrimaryActor))
+        return false;
+    std::size_t low=0u;
+    std::size_t high=source.FrameCount();
+    PhysicalReplayFrame frame;
+    while(low<high)
+    {
+        const auto mid=low+(high-low)/2u;
+        if(!source.TryReadFrame(mid,frame)) return false;
+        if(frame.SourceFrame<event.SourceFrame) low=mid+1u;
+        else high=mid;
+    }
+    if(!source.TryReadFrame(low,frame) ||
+       frame.SourceFrame!=event.SourceFrame ||
+       frame.Session!=event.SourceSession ||
+       frame.SessionRevision!=event.SourceRevision ||
+       frame.ActiveClockSeconds!=event.ActiveClockSeconds ||
+       !ReplayHighlightActorInFrame(frame,event.PrimaryActor))
+        return false;
+    return single || ReplayHighlightActorInFrame(frame,event.SecondaryActor);
+}
+
 inline PhysicalReplayHighlightPlaylist AssemblePhysicalReplayHighlights(
     const PhysicalSixCarReplayTimeline& source,
     const PhysicalReplayRaceEventLog& events,
@@ -195,8 +231,7 @@ inline PhysicalReplayHighlightPlaylist AssemblePhysicalReplayHighlights(
         // The event is already independently validated by the observer.
         // A second session and actor check prevents stale ring entries
         // from creating clips after the frame-history window has wrapped.
-        if(!ReplayHighlightActorInFrame(
-               first,observation.PrimaryActor))
+        if(!ReplayHighlightHasSourceFrame(source,observation))
         {
             ++out.DiscardedEvents;
             continue;
@@ -225,6 +260,7 @@ inline PhysicalReplayHighlightPlaylist AssemblePhysicalReplayHighlights(
             const double proposedEnd=std::max(
                 candidate.EndClockSeconds,end);
             if(candidate.FocusActor==observation.PrimaryActor &&
+               candidate.SecondaryActor==observation.SecondaryActor &&
                start<=candidate.EndClockSeconds+
                    settings.MergeGapSeconds &&
                proposedEnd-candidate.StartClockSeconds<=
@@ -238,6 +274,8 @@ inline PhysicalReplayHighlightPlaylist AssemblePhysicalReplayHighlights(
                     candidate.SourceEvent=observation.Kind;
                     candidate.PreferredShot=shot;
                     candidate.EditorialPriority=priority;
+                    candidate.RepresentativeSourceFrame=observation.SourceFrame;
+                    candidate.RepresentativeEventClockSeconds=observation.ActiveClockSeconds;
                 }
                 ++candidate.EventsIncluded;
                 merged=true;
@@ -257,6 +295,9 @@ inline PhysicalReplayHighlightPlaylist AssemblePhysicalReplayHighlights(
         clip.PreferredShot=shot;
         clip.Session=observation.SourceSession;
         clip.FocusActor=observation.PrimaryActor;
+        clip.SecondaryActor=observation.SecondaryActor;
+        clip.RepresentativeSourceFrame=observation.SourceFrame;
+        clip.RepresentativeEventClockSeconds=observation.ActiveClockSeconds;
         clip.LastObservedSourceFrame=observation.SourceFrame;
         clip.FirstEventClockSeconds=
             observation.ActiveClockSeconds;
@@ -284,6 +325,11 @@ inline PhysicalReplayHighlightPlaylist AssemblePhysicalReplayHighlights(
            clip.StartClockSeconds<earliest ||
            clip.EndClockSeconds>latest ||
            clip.EndClockSeconds<=clip.StartClockSeconds ||
+           clip.FirstEventClockSeconds<clip.StartClockSeconds ||
+           clip.RepresentativeEventClockSeconds<clip.FirstEventClockSeconds ||
+           clip.RepresentativeEventClockSeconds>clip.EndClockSeconds ||
+           clip.RepresentativeSourceFrame==0 ||
+           clip.RepresentativeSourceFrame>clip.LastObservedSourceFrame ||
            clip.EndClockSeconds-clip.StartClockSeconds>
                settings.MaximumClipSeconds ||
            !source.Evaluate(clip.StartClockSeconds).Valid ||

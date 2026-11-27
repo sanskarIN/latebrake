@@ -447,15 +447,15 @@ private:
             const auto& clip=clips.Clips[i];
             const int slot=FindSlot(clip.FocusActor);
             if(slot<0 || !clip.Valid || clip.Session!=Attempt ||
-                clip.FirstEventClockSeconds<clip.StartClockSeconds ||
-                clip.FirstEventClockSeconds>clip.EndClockSeconds)
+                clip.RepresentativeEventClockSeconds<clip.StartClockSeconds ||
+                clip.RepresentativeEventClockSeconds>clip.EndClockSeconds)
                 continue;
-            const auto playback=Timeline.Evaluate(clip.FirstEventClockSeconds);
+            const auto playback=Timeline.Evaluate(clip.RepresentativeEventClockSeconds);
             if(!playback.Valid) continue;
             const auto& car=playback.Cars[static_cast<std::size_t>(slot)];
             if(!car.ProvenanceMatched || car.Actor!=clip.FocusActor) continue;
             out.Highlights[out.HighlightCount++]={true,slot,clip.SourceEvent,
-                clip.FirstEventClockSeconds,clip.StartClockSeconds,clip.EndClockSeconds,
+                clip.RepresentativeEventClockSeconds,clip.StartClockSeconds,clip.EndClockSeconds,
                 car.ObservedSpeedCmps*0.036,clip.EventsIncluded};
         }
         return out;

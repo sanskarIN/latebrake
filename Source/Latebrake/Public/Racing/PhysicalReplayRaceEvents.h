@@ -73,6 +73,7 @@ struct ReplayBroadcastEvent final
     bool PhysicalSourceRequired=true;
     bool OfficialPassAwarded=false;
     bool GameplayAuthorityChanged=false;
+    std::uint64_t SourceRevision=0;
 };
 
 struct ReplayEventReceipt final
@@ -346,7 +347,7 @@ public:
                             observed.AlongCm,
                             observed.LateralCm,
                             observed.SpeedDifferenceCmps,
-                            0.0,true,false,false});
+                            0.0,true,false,false,frame.SessionRevision});
                         ++receipt.NewEvents;
                     }
                 }
@@ -375,7 +376,7 @@ public:
                         ReplayBroadcastEventKind::StrongMeasuredBraking,
                         frame.Session,frame.SourceFrame,newCar.Actor,0,
                         frame.ActiveClockSeconds,0.0,0.0,0.0,
-                        speed-priorSpeed,decel,true,false,false});
+                        speed-priorSpeed,decel,true,false,false,frame.SessionRevision});
                     ++receipt.NewEvents;
                 }
             }

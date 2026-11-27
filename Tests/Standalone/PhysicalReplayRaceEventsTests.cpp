@@ -124,6 +124,7 @@ int main()
                 ReplayBroadcastEventKind::StrongMeasuredBraking &&
             latest.PrimaryActor==502u &&
             latest.SecondaryActor==0u &&
+            latest.SourceRevision==swap.SessionRevision &&
             latest.MeasuredDecelCmps2>=200.0 &&
             !latest.GameplayAuthorityChanged &&
             !latest.OfficialPassAwarded,
@@ -132,6 +133,7 @@ int main()
                 ReplayBroadcastEventKind::ApparentPositionSwap &&
             previous.PrimaryActor==500u &&
             previous.SecondaryActor==501u &&
+            previous.SourceRevision==swap.SessionRevision &&
             !previous.OfficialPassAwarded,
             "apparent side swap never becomes a certified overtake");
     const auto oldSize=events.Size();
