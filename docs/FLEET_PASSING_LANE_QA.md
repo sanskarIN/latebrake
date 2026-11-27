@@ -19,3 +19,8 @@ observe both long straights with actual slower rivals and nearby traffic,
 abort during lane intrusion, pause and recovery. Verify brake priority and
 that no lane change occurs near corners. The constant-velocity envelope
 is not a proof of actual physics clearance.
+
+Passing confirmation also requires distinct consecutive GameMode and engine
+frames, the same race attempt, session epoch and actor teleport revision.
+The swept envelope includes measured lateral drift in addition to the
+planned translation, and all bounding corners must fit the authored slab.

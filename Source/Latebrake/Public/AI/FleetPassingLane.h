@@ -63,6 +63,42 @@ enum class FleetPassReason
     Interrupted
 };
 
+// GameMode owns attempt and frame authority; a rival observes one actual
+// game-thread physics frame. Teleport and session stamps break continuity
+// even if a recovered vehicle happens to remain in its previous lane.
+struct FleetPassStamp final
+{
+    std::uint64_t Attempt = 0;
+    std::uint64_t Frame = 0;
+    std::uint64_t EngineFrame = 0;
+    std::uint64_t SessionEpoch = 0;
+    std::uint64_t TeleportRevision = 0;
+
+    bool Valid() const noexcept
+    {
+        return Attempt != 0 && Frame != 0 && EngineFrame != 0;
+    }
+};
+
+inline bool FleetPassFresh(const FleetPassStamp& previous,
+    const FleetPassStamp& current) noexcept
+{
+    return previous.Valid() && current.Valid() &&
+        current.Attempt == previous.Attempt &&
+        current.Frame > previous.Frame &&
+        current.EngineFrame > previous.EngineFrame;
+}
+
+inline bool FleetPassContinuous(const FleetPassStamp& previous,
+    const FleetPassStamp& current) noexcept
+{
+    return FleetPassFresh(previous,current) &&
+        current.Frame-previous.Frame == 1 &&
+        current.EngineFrame-previous.EngineFrame == 1 &&
+        current.SessionEpoch == previous.SessionEpoch &&
+        current.TeleportRevision == previous.TeleportRevision;
+}
+
 struct FleetPassSample final
 {
     int GateOrdinal = -1;
@@ -70,6 +106,7 @@ struct FleetPassSample final
     double DeltaSeconds = 0.0;
     bool QualifiedRoad = false;
     RivalFleetTrafficSample Traffic{};
+    FleetPassStamp Stamp{};
 };
 
 struct FleetPassLocalBody final
@@ -279,13 +316,28 @@ inline FleetPassLaneEvidence InspectFleetPassLane(const FleetPassGeometry& geome
     const double endAlong = self.Along + travel;
     if (endAlong > -300.0 || travel <= 0.0)
         return out;
-    const double middle = (self.Side + lane) * 0.5;
-    const double sweepHalf = std::abs(lane - self.Side) * 0.5;
-    const auto finish = FleetLaneWorld(straight, endAlong, lane);
-    if (!FleetLanePoseFitsSlab(actual.Pose, straight.Slab) ||
-        !FleetLanePoseFitsSlab({finish,actual.Pose.HeadingDegrees}, straight.Slab) ||
-        !FleetLanePoseFitsSlab({finish,straight.Heading}, straight.Slab))
+    // Include the measured lateral drift as well as the proposed lane.
+    // A steering command cannot instantaneously cancel existing side
+    // velocity. Reserve its full constant-velocity lateral envelope.
+    const double driftEnd = self.Side + self.Lateral*FleetPassForecastSeconds;
+    const double lower = std::min({self.Side,lane,driftEnd});
+    const double upper = std::max({self.Side,lane,driftEnd});
+    const double middle = (lower+upper)*0.5;
+    const double sweepHalf = (upper-lower)*0.5;
+    if (!FleetLanePoseFitsSlab(actual.Pose, straight.Slab))
         return out;
+    // All corners of the bounded translation envelope must fit the
+    // same convex authored slab, with both relevant fixed headings.
+    for (const double along:{self.Along,endAlong})
+    {
+        for (const double side:{lower,upper})
+        {
+            const auto point = FleetLaneWorld(straight,along,side);
+            if (!FleetLanePoseFitsSlab({point,actual.Pose.HeadingDegrees},straight.Slab) ||
+                !FleetLanePoseFitsSlab({point,straight.Heading},straight.Slab))
+                return out;
+        }
+    }
     out.Valid = true;
     double firstThreat = std::numeric_limits<double>::infinity();
     for (const auto& other : geometry.Others)
@@ -341,6 +393,7 @@ public:
         State = {};
         Identity = {};
         HaveIdentity = false;
+        LastStamp = {};
     }
 
     void Suspend() noexcept
@@ -371,6 +424,22 @@ public:
             State.Reason = FleetPassReason::InvalidObservation;
             return State;
         }
+        if (!sample.Stamp.Valid() ||
+            (LastStamp.Valid() && !FleetPassFresh(LastStamp,sample.Stamp)))
+        {
+            Suspend();
+            State.Command = original;
+            State.Reason = FleetPassReason::InvalidObservation;
+            return State;
+        }
+        if (LastStamp.Valid() && !FleetPassContinuous(LastStamp,sample.Stamp))
+        {
+            Suspend();
+            State.Command = original;
+        }
+        // Consume each fresh stamp once even when the geometry below
+        // is refused. A repeated frame cannot accrue confirmation time.
+        LastStamp = sample.Stamp;
         const auto geometry = InspectFleetPassGeometry(sample);
         if (!geometry.Valid || sample.GateOrdinal < State.GateOrdinal ||
             (HaveIdentity && Identity != geometry.Roster))
@@ -510,5 +579,6 @@ private:
     FleetPassReadout State{};
     std::array<std::uint64_t,StartGridCapacity> Identity{};
     bool HaveIdentity = false;
+    FleetPassStamp LastStamp{};
 };
 } // namespace latebrake

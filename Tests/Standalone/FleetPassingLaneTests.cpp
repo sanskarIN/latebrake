@@ -30,6 +30,7 @@ struct Fixture final
         Sample.NextGate=gate;
         Sample.DeltaSeconds=0.05;
         Sample.QualifiedRoad=true;
+        Sample.Stamp={1,1,101,1,0};
         Sample.Traffic.SessionQualified=true;
         Sample.Traffic.BrakeObservationQualified=true;
         Sample.Traffic.ConservativeBrakeScale=1.0;
@@ -67,7 +68,10 @@ struct Fixture final
 
     FleetPassReadout Step()
     {
-        return Passing.Apply(Original,Sample);
+        const auto out=Passing.Apply(Original,Sample);
+        ++Sample.Stamp.Frame;
+        ++Sample.Stamp.EngineFrame;
+        return out;
     }
 
     FleetPassReadout Confirm()
@@ -239,6 +243,69 @@ void TimingAndContinuity()
     Require(r.Command.Brake && r.Command.Throttle==0.0,"malformed command stopped");
 }
 
+void FrameAuthorityAndDriftEnvelope()
+{
+    const FleetPassStamp stamp{1,10,50,3,0};
+    auto next=stamp;
+    ++next.Frame;++next.EngineFrame;
+    Require(FleetPassContinuous(stamp,next),"exact consecutive frame");
+    ++next.TeleportRevision;
+    Require(FleetPassFresh(stamp,next) && !FleetPassContinuous(stamp,next),
+        "teleport breaks physical continuity");
+    next=stamp;
+    ++next.Frame;
+    Require(!FleetPassFresh(stamp,next),"same engine frame is not fresh");
+    next=stamp;
+    ++next.Attempt;++next.Frame;++next.EngineFrame;
+    Require(!FleetPassFresh(stamp,next),"foreign attempt requires reset");
+
+    Fixture duplicate;
+    Require(duplicate.Step().Phase==FleetPassPhase::Confirming,"confirmation begins");
+    --duplicate.Sample.Stamp.Frame;--duplicate.Sample.Stamp.EngineFrame;
+    Require(!duplicate.Step().SteeringChanged,"duplicate cannot advance confirmation");
+    Require(duplicate.Confirm().Phase==FleetPassPhase::Retired,"duplicate retires manoeuvre");
+
+    Fixture epoch;
+    Require(epoch.Confirm().SteeringChanged,"active before pause");
+    ++epoch.Sample.Stamp.SessionEpoch;
+    Require(epoch.Step().Phase==FleetPassPhase::Retired &&
+        !epoch.Step().SteeringChanged,"changed epoch clears active pass");
+
+    Fixture recovery;
+    Require(recovery.Confirm().SteeringChanged,"active before recovery");
+    ++recovery.Sample.Stamp.TeleportRevision;
+    Require(!recovery.Step().SteeringChanged,"teleported body cannot borrow confirmation");
+
+    Fixture gap;
+    Require(gap.Step().Phase==FleetPassPhase::Confirming,"gap fixture");
+    ++gap.Sample.Stamp.Frame;
+    Require(!gap.Step().SteeringChanged &&
+        gap.Confirm().Phase==FleetPassPhase::Retired,"skipped observation breaks confirmation");
+
+    Fixture foreign;
+    Require(foreign.Confirm().SteeringChanged,"foreign attempt fixture");
+    ++foreign.Sample.Stamp.Attempt;
+    Require(!foreign.Step().SteeringChanged,"foreign attempt rejected");
+    foreign.Passing.Reset();
+    Require(foreign.Confirm().SteeringChanged,"explicit new attempt reset permits fresh observation");
+
+    Fixture drift;
+    drift.SetSelf(-4900,0,1000,-200);
+    drift.SetOther(1,2,-4700,-440,1000);
+    auto geometry=InspectFleetPassGeometry(drift.Sample);
+    Require(geometry.Valid,"drift geometry");
+    const auto evidence=InspectFleetPassLane(geometry,drift.Sample.Traffic.Self,440);
+    Require(evidence.Valid && !evidence.Clear && evidence.BlockerSlot==2,
+        "opposing measured lateral drift reserves the other side too");
+
+    Fixture edge;
+    edge.SetSelf(-4900,300,1000,350);
+    geometry=InspectFleetPassGeometry(edge.Sample);
+    Require(geometry.Valid,"current body remains paved");
+    Require(!InspectFleetPassLane(geometry,edge.Sample.Traffic.Self,440).Valid,
+        "drift beyond authored slab refuses lane proposal");
+}
+
 void RandomizedSweptWindowAndCommands()
 {
     std::mt19937 random(16943);
@@ -286,6 +353,7 @@ int main()
     LeaderAndRosterValidation();
     AbortAndRearm();
     TimingAndContinuity();
+    FrameAuthorityAndDriftEnvelope();
     RandomizedSweptWindowAndCommands();
     std::cout<<"Fleet passing lane geometry and state-machine tests passed\n";
 }

@@ -14,6 +14,7 @@
 #include "Track/CircuitLayout.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
+#include "CoreGlobals.h"
 #include "Game/LatebrakeRaceGameMode.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -441,9 +442,13 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         if (Observed)
         {
             const int Ordinal=Route.GetCompletedLaps()*Route.GetWaypointCount()+Route.GetNextWaypoint();
+            const auto FleetFrame=Mode->GetFleetAttemptReadout();
+            const latebrake::FleetPassStamp PassingStamp{FleetFrame.AttemptToken,
+                FleetFrame.LastFrame,static_cast<std::uint64_t>(GFrameCounter),
+                CurrentSessionRevision,GetTeleportRevision()};
             const auto PassingLane=FleetPassing.Apply(FollowingCommand,{
                 Ordinal,Route.GetNextWaypoint(),static_cast<double>(DeltaSeconds),
-                bCornerPhysicsQualified && !bOffPavement,Snapshot});
+                bCornerPhysicsQualified && !bOffPavement,Snapshot,PassingStamp});
             const auto Immediate=latebrake::ApplyRivalFleetTraffic(PassingLane.Command,Snapshot);
             const auto Supervised=FleetRisk.Apply(Immediate.Command,Snapshot,DeltaSeconds,
                 latebrake::FleetForecastRoadPolicy::ObservedOffroadBlockers);

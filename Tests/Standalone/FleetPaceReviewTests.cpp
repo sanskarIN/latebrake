@@ -36,7 +36,7 @@ struct StreamFixture final
     int Laps;
     int Ordinal=0;
     double Clock=0.0;
-    explicit StreamFixture(int gates=4,int laps=5) : Gates(gates),Laps(laps)
+    StreamFixture(int gates=4,int laps=5) : Gates(gates),Laps(laps)
     {
         Require(Stream.Configure(gates,laps),"configure stream");
     }

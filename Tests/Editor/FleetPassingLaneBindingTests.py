@@ -13,6 +13,10 @@ class FleetPassingLaneBindingTests(unittest.TestCase):
         block = text[start:end]
         for marker in ("FleetPassing.Apply(FollowingCommand", "bCornerPhysicsQualified && !bOffPavement",
                        "Route.GetCompletedLaps()*Route.GetWaypointCount()",
+                       "Mode->GetFleetAttemptReadout()", "FleetFrame.AttemptToken",
+                       "FleetFrame.LastFrame", "GFrameCounter",
+                       "CurrentSessionRevision,GetTeleportRevision()",
+                       "Snapshot,PassingStamp",
                        "ApplyRivalFleetTraffic(PassingLane.Command,Snapshot)",
                        "FleetRisk.Apply(Immediate.Command,Snapshot", "FleetPassing.AbortTraffic()",
                        "FleetCommand.Steering=FollowingCommand.Steering",
