@@ -30,7 +30,7 @@ class SettingsMenuPanelBindingTests(unittest.TestCase):
         mode = read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
         snap = mode.split("ALatebrakeRaceGameMode::GetSettingsMenuSnapshot() const", 1)[1]
         snap, activate = snap.split("void ALatebrakeRaceGameMode::ActivateSettingsControl", 1)
-        activate = activate.split("void ALatebrakeRaceGameMode::MenuNext()", 1)[0]
+        activate = activate.split("void ALatebrakeRaceGameMode::CycleHudTelemetryMode()", 1)[0]
         for marker in ("Controller->IsLocalController()", "Controller->GetPawn()==Player",
                        "HasLocalPlayerDriver()", "AppFocusGuard.IsSuspended()",
                        "ManualPause.IsSuspended()", "bFutureSaveSchema",

@@ -96,8 +96,8 @@ inline SettingsPanelLayout CalculateSettingsPanelLayout(double width,double heig
         row.Bounds={left+pad,start+i*(rowHeight+gap),panel.Width-2.0*pad,rowHeight};
         const auto& b=row.Bounds;
         const double textWidth=b.Width-2.0*pad;
-        row.Title={b.X+pad,b.Y+2.0*s,textWidth,b.Height*0.30-2.0*s};
-        row.Value={b.X+pad,b.Y+b.Height*0.30,textWidth,b.Height*0.37};
+        row.Title={b.X+pad,b.Y+2.0*s,textWidth,b.Height*0.30-3.0*s};
+        row.Value={b.X+pad,b.Y+b.Height*0.30,textWidth,b.Height*0.37-1.0*s};
         row.Status={b.X+pad,b.Y+b.Height*0.67,textWidth,b.Height*0.33-2.0*s};
         if(!ContainsSettingsRect(panel,b) || !ContainsSettingsRect(b,row.Title) ||
             !ContainsSettingsRect(b,row.Value) || !ContainsSettingsRect(b,row.Status))return {};

@@ -1794,16 +1794,6 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
     UpdateStartGantryVisual();
 }
 
-void ALatebrakeRaceGameMode::CycleHudTelemetryMode()
-{
-    if (!latebrake::CanCycleHudTelemetryMode(Menu.IsOpen(),
-        Menu.Current()==latebrake::MenuPage::Settings,HasLocalPlayerDriver(),
-        AppFocusGuard.IsSuspended()))
-        return;
-    HudTelemetryMode=latebrake::NextHudTelemetryMode(HudTelemetryMode);
-    SettingsSelection.Changed();
-}
-
 latebrake::SettingsMenuSnapshot ALatebrakeRaceGameMode::GetSettingsMenuSnapshot() const
 {
     const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
@@ -1845,6 +1835,16 @@ void ALatebrakeRaceGameMode::ActivateSettingsControl(latebrake::SettingsControl 
         break;
     default:break;
     }
+}
+
+void ALatebrakeRaceGameMode::CycleHudTelemetryMode()
+{
+    if (!latebrake::CanCycleHudTelemetryMode(Menu.IsOpen(),
+        Menu.Current()==latebrake::MenuPage::Settings,HasLocalPlayerDriver(),
+        AppFocusGuard.IsSuspended()))
+        return;
+    HudTelemetryMode=latebrake::NextHudTelemetryMode(HudTelemetryMode);
+    SettingsSelection.Changed();
 }
 
 void ALatebrakeRaceGameMode::MenuNext()
