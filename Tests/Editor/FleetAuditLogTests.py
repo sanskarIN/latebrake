@@ -111,6 +111,34 @@ class FleetAuditTests(unittest.TestCase):
                      event("finish", "clock=1.000000000 fees=0.000000000 timing=1 review=1 completed_routes=0 saved=0")],
                     "all ordered player gates")
 
+    def test_shared_clock_tolerance_never_accumulates_across_cars(self):
+        prefix = [begin(), roster(), go()]
+        first = event("gate", "slot=1 id=101 ordinal=1 clock=2.000000002")
+        rounded = event("gate", "slot=2 id=102 ordinal=1 clock=2.000000001")
+        repeated = event("gate", "slot=3 id=103 ordinal=1 clock=2.000000001")
+        drifted = event("gate", "slot=4 id=104 ordinal=1 clock=2.000000000")
+        report = self.analyze([*prefix, first, rounded, repeated])
+        attempt = report["attempts"][0]
+        self.assertEqual(attempt["last_active_clock"], "2.000000002")
+        self.assertEqual(attempt["cars"][2]["last_gate_clock"], "2.000000001")
+        self.reject([*prefix, first, rounded, repeated, drifted], "shared active clock")
+        # Later real progress raises the mark and still permits one rounding unit.
+        later = event("gate", "slot=4 id=104 ordinal=1 clock=3.000000001")
+        nearby = event("gate", "slot=5 id=105 ordinal=1 clock=3.000000000")
+        result = self.analyze([*prefix, first, rounded, repeated, later, nearby])
+        self.assertEqual(result["attempts"][0]["last_active_clock"], "3.000000001")
+
+    def test_finish_cannot_predate_newer_shared_clock_receipt(self):
+        lines = complete()
+        later = event("gate", "slot=1 id=101 ordinal=2 clock=7.000000002")
+        self.reject([*lines[:-1], later, lines[-1]], "finish predates shared active-clock")
+        # A single rounding unit is tolerated; the actual player clock is retained.
+        rounded = later.replace("7.000000002", "7.000000001")
+        report = self.analyze([*lines[:-1], rounded, lines[-1]], require_finish=True)
+        attempt = report["attempts"][0]
+        self.assertEqual(attempt["last_active_clock"], "7.000000001")
+        self.assertEqual(attempt["finish"]["clock"], "7.000000000")
+
     def test_finish_cannot_invent_time_rewards_or_routes(self):
         lines = complete()
         for old, new, reason in (

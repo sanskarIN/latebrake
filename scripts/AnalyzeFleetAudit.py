@@ -18,6 +18,7 @@ MAX_EVENTS = 300_000
 MAX_ATTEMPTS = 10_000
 MAX_TOKEN = (1 << 64) - 1
 MAX_ACTIVE = Decimal("604800")
+CLOCK_TOLERANCE = Decimal("0.000000001")
 U = r"(?:0|[1-9][0-9]{0,19})"
 P = r"(?:[1-9][0-9]{0,19})"
 CLOCK = r"(?:0|[1-9][0-9]{0,6})\.[0-9]{9}"
@@ -156,10 +157,12 @@ def accept_gate(attempt, fields):
     if row["slot"] != 0:
         require(active > 0, "rival receipt lacks positive active clock")
     previous_global = attempt["last_active_clock"]
-    if previous_global is not None:
-        require(active + Decimal("0.000000001") >= Decimal(previous_global),
-                "shared active clock moved backwards")
-    attempt["last_active_clock"] = str(active)
+    # Preserve a high-water mark: a tolerated rounding discrepancy must
+    # never lower the baseline for the next independently logged car.
+    high_water = Decimal(previous_global) if previous_global is not None else active
+    require(active + CLOCK_TOLERANCE >= high_water,
+            "shared active clock moved backwards")
+    attempt["last_active_clock"] = str(max(active, high_water))
     row["last_gate_clock"] = str(active)
     row["accepted_gates"] = ordinal
 
@@ -203,6 +206,9 @@ def accept_finish(attempt, fields):
     require(player["last_gate_clock"] is not None and
             active == Decimal(player["last_gate_clock"]),
             "finish clock does not match last player gate")
+    high_water = attempt["last_active_clock"]
+    require(high_water is not None and active + CLOCK_TOLERANCE >= Decimal(high_water),
+            "finish predates shared active-clock high-water mark")
     require(active + fees <= MAX_ACTIVE, "combined race clock outside review bound")
     require(fees >= Decimal(5 * player["successful_recoveries"]),
             "reported fees omit a verified player recovery")
