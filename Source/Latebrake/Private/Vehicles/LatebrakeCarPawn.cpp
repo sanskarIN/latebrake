@@ -1500,7 +1500,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     // World/GameMode absence also fails closed rather than driving a pawn
     // whose progress cannot be measured or saved.
     UWorld* World = GetWorld();
-    const ALatebrakeRaceGameMode* Mode =
+    ALatebrakeRaceGameMode* Mode =
         World ? World->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
     if (!Mode || !Mode->IsRaceStartGreen() ||
         !latebrake::CanApplyPlayerDrive({
@@ -2032,6 +2032,32 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             NitroDrive.ForceMultiplier, DraftExtraForce, NitroDrive.Active);
     DraftExtraForce = CombinedBoost.DraftExtra;
     CurrentDraftAppliedFraction = static_cast<float>(DraftExtraForce);
+    if (Mode->IsExperimentalFleetRequested())
+    {
+        // The four original asphalt hits come from this exact physics
+        // tick. WorldStatic ground support alone is not road proof.
+        bool bOriginalRoad=latebrake::HasQualifiedDraftGroundSupport(GroundContact);
+        for (const auto& Contact:SkidFrame.Contacts)
+            bOriginalRoad=bOriginalRoad && Contact.Supported && Contact.PavedRoad &&
+                Contact.Evidence==latebrake::SkidContactEvidence::ArcadeGroundProbe;
+        const FVector ReplayPosition=GetActorLocation();
+        latebrake::PhysicalReplayCarSample Sample;
+        Sample.WorldXcm=ReplayPosition.X;
+        Sample.WorldYcm=ReplayPosition.Y;
+        Sample.WorldZcm=ReplayPosition.Z;
+        Sample.VelocityXcmps=Velocity.X;
+        Sample.VelocityYcmps=Velocity.Y;
+        Sample.VelocityZcmps=Velocity.Z;
+        Sample.HeadingRadians=FMath::DegreesToRadians(static_cast<double>(GetActorRotation().Yaw));
+        Sample.SteeringNormalized=AssistedSteering;
+        // The replay schema records positive propulsion demand only.
+        Sample.ThrottleNormalized=FMath::Max(0.0,static_cast<double>(EffectiveThrottle));
+        Sample.BrakeNormalized=bEffectiveBraking?1.0:0.0;
+        Sample.ActualChaosBodyObserved=IsRacePhysicsReady();
+        Sample.OriginalRoadPhysicalContact=bOriginalRoad;
+        Sample.RoadContactConfidence=bOriginalRoad?1.0:0.0;
+        Mode->ObserveFleetReplayCar(this,Sample);
+    }
     // Advisory metrics only: no scoring, lap records or tire-forces use
     // these values. Invalid long frames are rejected by the policy.
     DrivingStats.Observe({static_cast<double>(DeltaSeconds),

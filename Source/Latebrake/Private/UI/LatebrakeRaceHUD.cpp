@@ -1328,6 +1328,38 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            if (Mode->IsExperimentalFleetRequested())
+            {
+                const auto Replay=Mode->GetFleetReplayReview();
+                MenuLine(TEXT("RECENT SIX-CAR REPLAY OBSERVATIONS"),true);
+                if (!Replay.Valid)
+                    MenuLine(TEXT("No contiguous six-car asphalt sample window available"));
+                else
+                {
+                    const auto& Coverage=Replay.Coverage;
+                    MenuLine(FString::Printf(TEXT("Retained %d frames | active %.2f to %.2fs"),
+                        static_cast<int32>(Coverage.RetainedFrames),Coverage.FirstClockSeconds,
+                        Coverage.LastClockSeconds));
+                    MenuLine(FString::Printf(TEXT("Recorded %llu frames | incomplete %llu | segments %llu"),
+                        static_cast<unsigned long long>(Coverage.RecordedFrames),
+                        static_cast<unsigned long long>(Coverage.IncompleteFrames),
+                        static_cast<unsigned long long>(Coverage.Segments)));
+                    MenuLine(TEXT("Sampled replay only | no official pass or collision verdict"));
+                    if (Replay.HighlightCount==0)
+                        MenuLine(TEXT("No qualified highlight in the retained window"));
+                    for (unsigned Index=0;Index<Replay.HighlightCount;++Index)
+                    {
+                        const auto& Highlight=Replay.Highlights[Index];
+                        if (!Highlight.Valid) continue;
+                        const FString Focus=Highlight.FocusSlot==0?FString(TEXT("YOU")):
+                            FString::Printf(TEXT("AI %d"),Highlight.FocusSlot);
+                        MenuLine(FString::Printf(TEXT("%.2fs | %s | %s | %.0f km/h"),
+                            Highlight.EventSeconds,*Focus,
+                            UTF8_TO_TCHAR(latebrake::FleetReplayEventLabel(Highlight.Kind)),
+                            Highlight.SampledSpeedKmh));
+                    }
+                }
+            }
             const auto TrackReview=Mode->GetTrackLimitsReview();
             if (TrackReview.Valid)
             {

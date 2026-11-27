@@ -228,6 +228,7 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
         Race, bCircuitReady, bInactive || !IsRaceStartGreen(),
         bLocalPlayerReady, LiveDelta);
     ObserveFleetPlayerTraffic(LiveDelta,bActualClockAdvanced);
+    BeginFleetReplayFrame(LiveDelta,bActualClockAdvanced);
     // Unofficial reference trace observes the SAME guarded player/clock
     // frame as official lap timing, but can never modify timing or physics.
     // World pause and focus loss can produce zero gameplay ticks; the
@@ -1466,6 +1467,9 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         // Capture actual observed results before revoking run permissions.
         FleetFinishReview=FinishTiming==latebrake::FinishTimingEligibility::Eligible
             ? CollectFleetRaceReview() : latebrake::FleetRaceReview{};
+        FleetReplay.Freeze(FleetAttemptToken,FleetAttempt.BoundIdentity(),
+            FinishTiming==latebrake::FinishTimingEligibility::Eligible &&
+            FleetFinishReview.ValidRoster && FleetFinishReview.PlayerRouteValid);
         FleetAttempt.Finish(FleetAttemptToken);
         FleetFrameAuthority.Revoke();
         LastRaceCredits=0;

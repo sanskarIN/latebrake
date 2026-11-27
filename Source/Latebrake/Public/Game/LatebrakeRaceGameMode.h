@@ -14,6 +14,7 @@
 #include "AI/ExperimentalFleetLiveRecovery.h"
 #include "AI/FleetRaceReview.h"
 #include "Racing/FleetSlipstreamDraft.h"
+#include "Racing/FleetReplayCapture.h"
 #include "AI/FleetGridPresentation.h"
 #include "AI/FleetStartupWatchdog.h"
 #include "AI/FleetFrameAuthority.h"
@@ -120,6 +121,9 @@ public:
     { return FleetAttempt.Readout(); }
     int32 GetPhysicalFleetCount() const;
     latebrake::FleetRaceReview GetFleetRaceReview() const;
+    void ObserveFleetReplayCar(const ALatebrakeCarPawn* Car,latebrake::PhysicalReplayCarSample Sample);
+    latebrake::FleetReplayReview GetFleetReplayReview() const;
+    latebrake::PhysicalReplayPlaybackFrame EvaluateFleetReplay(double Seconds) const;
     void ObserveFleetRivalGate(const ALatebrakeRivalCar* Actor);
     void ObserveFleetRivalRecovery(const ALatebrakeRivalCar* Actor,bool Verified);
     bool TryGetFleetRivalProgress(int32 Slot,int32& Laps,int32& NextGate,bool& Finished) const;
@@ -263,6 +267,7 @@ private:
     void SpawnExtraFleet();
     bool ObserveExperimentalFleet(float DeltaSeconds,bool Inactive);
     void ObserveFleetPlayerTraffic(double LiveDelta,bool bClockAdvanced);
+    void BeginFleetReplayFrame(double LiveDelta,bool bClockAdvanced);
     bool CollectFleetFrame(latebrake::FleetPhysicalFrame& Out,
         float DeltaSeconds,bool IncludeGridProbes) const;
     ALatebrakeRivalCar* FleetRivalAt(int32 Slot) const;
@@ -380,6 +385,7 @@ private:
     latebrake::GridRivalLedger FleetReviewLedger;
     latebrake::FleetGateTimingJournal FleetGateTiming;
     latebrake::FleetPlayerTrafficJournal FleetPlayerTraffic;
+    latebrake::FleetReplayCapture FleetReplay;
     latebrake::FleetRaceReview FleetFinishReview;
     std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};
     bool bFleetActorsBound=false;
