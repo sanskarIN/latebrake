@@ -1333,8 +1333,8 @@ void ALatebrakeCarPawn::UpdateGarageShowroomPresentation(
 
 void ALatebrakeCarPawn::ClearDriverInputs()
 {
-    DriveTrace.Suspend();
     BreakSkidTrailContinuity();
+    DriveTrace.Suspend();
     Throttle = 0.f;
     Steering = 0.f;
     SmoothedThrottle = 0.f;

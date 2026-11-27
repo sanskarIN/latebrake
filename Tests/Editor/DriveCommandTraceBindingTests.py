@@ -23,9 +23,9 @@ class DriveCommandTraceBindingTests(unittest.TestCase):
                        "AssistedSteering,bServiceBraking,BrakeProfile.HandbrakeActive",
                        "GroundContact.HasDriveContact,bObservedMotorBranch"):
             self.assertIn(marker, block)
-        self.assertIn("void ALatebrakeCarPawn::ClearDriverInputs()\n{\n    DriveTrace.Suspend();", source)
+        self.assertIn("void ALatebrakeCarPawn::ClearDriverInputs()\n{\n    BreakSkidTrailContinuity();\n    DriveTrace.Suspend();", source)
         header = read("Source/Latebrake/Public/Vehicles/LatebrakeCarPawn.h")
-        self.assertIn("DrivingStats.Reset(); DriveTrace.Suspend();", header)
+        self.assertIn("DrivingStats.Reset(); DriftMeter.Reset(); DriveTrace.Suspend();", header)
 
     def test_draw_uses_only_fresh_observation_and_detailed_mode(self):
         hud = read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")

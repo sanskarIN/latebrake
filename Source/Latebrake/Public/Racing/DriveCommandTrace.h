@@ -201,7 +201,7 @@ public:
         // Walk backwards from the latest complete frame, clipping only at
         // the requested window boundary. Missing history stays empty;
         // there is no extrapolation to fill four seconds after a reset.
-        for(std::size_t offset=0;offset<Count && age<DriveTraceWindowSeconds;++offset)
+        for(std::size_t offset=0;offset<Count && DriveTraceWindowSeconds-age>1e-12;++offset)
         {
             const auto index=(Next+Samples.size()-1-offset)%Samples.size();
             const auto& sample=Samples[index];
