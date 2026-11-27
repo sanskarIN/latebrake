@@ -2596,6 +2596,14 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(TEXT("SLIPSTREAM +%.1f%% DRIVE"),
             Car->GetAppliedDraftBoostFraction() * 100.0), Primary);
     }
+    else if (!bCompact && Mode->IsExperimentalFleetRequested() &&
+        Car->GetAppliedDraftBoostFraction()>0.f)
+    {
+        const auto Draft=Car->GetFleetSlipstreamReadout();
+        if (Draft.Active())
+            Line(FString::Printf(TEXT("SLIPSTREAM AI %d | +%.1f%% DRIVE"),
+                Draft.TargetSlot,Car->GetAppliedDraftBoostFraction()*100.0),Primary);
+    }
 
     // The warning is pure HUD feedback. It must reset on pawn replacement,
     // checkpoint-session boundary and teleport, and must never influence

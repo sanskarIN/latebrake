@@ -13,6 +13,7 @@
 #include "AI/ExperimentalFleetAttempt.h"
 #include "AI/ExperimentalFleetLiveRecovery.h"
 #include "AI/FleetRaceReview.h"
+#include "Racing/FleetSlipstreamDraft.h"
 #include "AI/FleetGridPresentation.h"
 #include "AI/FleetStartupWatchdog.h"
 #include "AI/FleetFrameAuthority.h"
@@ -133,6 +134,8 @@ public:
     // is the actual following pawn, not an inferred camera or HUD actor.
     bool TryGetRivalDraftingState(const ALatebrakeCarPawn* Observer,
         FVector& OutPosition, FVector& OutForward, FVector& OutVelocity) const;
+    bool TryGetFleetDraftFrame(const ALatebrakeCarPawn* Observer,
+        const latebrake::FleetDraftFollower& Follower,latebrake::FleetDraftFrame& Out) const;
     int32 GetRivalApproximateLaps() const;
     int32 GetRivalPlannedLaps() const;
     int32 GetRivalRecoveryCount() const;

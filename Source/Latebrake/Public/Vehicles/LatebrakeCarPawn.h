@@ -13,6 +13,7 @@
 #include "Racing/ChassisSlipAngleMeter.h"
 #include "Racing/ObservedBrakeDistance.h"
 #include "Racing/SlipstreamDraftBoost.h"
+#include "Racing/FleetSlipstreamDraft.h"
 #include "Vehicles/CameraPresets.h"
 #include "Vehicles/HeldLookBackCamera.h"
 #include "Vehicles/SpeedReactiveCameraFov.h"
@@ -87,7 +88,7 @@ public:
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; BrakeDistance.Reset(); NitroBoost.Reset(); PitJournal.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); ResetSkidTrails(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; BrakeDistance.Reset(); NitroBoost.Reset(); PitJournal.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); FleetSlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); ResetSkidTrails(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -112,6 +113,7 @@ public:
     const latebrake::ArcadeSurfaceTraction& GetSurfaceTraction() const noexcept { return SurfaceTraction; }
     const latebrake::ObservedBrakeDistance& GetObservedBrakeDistance() const { return BrakeDistance; }
     const latebrake::SlipstreamDraftBoost& GetSlipstreamBoost() const noexcept { return SlipstreamBoost; }
+    latebrake::FleetDraftReadout GetFleetSlipstreamReadout() const noexcept { return FleetSlipstreamBoost.Readout(); }
     float GetAppliedDraftBoostFraction() const noexcept { return CurrentDraftAppliedFraction; }
     void SetAutonomousControls(float InThrottle, float InSteering, bool bInBrake);
     void ClearDriverInputs();
@@ -460,6 +462,7 @@ private:
     latebrake::RacePitService PitService;
     latebrake::PitServiceJournal PitJournal;
     latebrake::SlipstreamDraftBoost SlipstreamBoost;
+    latebrake::FleetSlipstreamDraft FleetSlipstreamBoost;
     latebrake::WheelVisualMotion WheelMotion;
     UPROPERTY(Transient)
     TObjectPtr<ALatebrakeSkidTrailActor> SkidTrailActor;

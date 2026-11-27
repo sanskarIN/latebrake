@@ -427,6 +427,87 @@ void ALatebrakeRaceGameMode::ObserveFleetRivalRecovery(
 #endif
 }
 
+bool ALatebrakeRaceGameMode::TryGetFleetDraftFrame(const ALatebrakeCarPawn* Observer,
+    const latebrake::FleetDraftFollower& Follower,latebrake::FleetDraftFrame& Out) const
+{
+    Out={};
+    static_assert(latebrake::FleetDraftCarCount==latebrake::StartGridCapacity);
+    UWorld* World=GetWorld();
+    if (!IsExperimentalFleetRequested() || !World || !IsValid(Observer) ||
+        Observer!=FleetBoundActors[0].Get() || Observer->GetWorld()!=World ||
+        !Observer->IsRacePhysicsReady() || !HasLocalPlayerDriver() ||
+        Race.IsFinished() || !IsExperimentalFleetDriveReady() ||
+        !Follower.EligibleHumanRace || !Follower.GroundSupported)
+        return false;
+
+    latebrake::FleetPhysicalFrame Physical;
+    if (!CollectFleetFrame(Physical,0.0,false) ||
+        !latebrake::MatchLiveFleetIdentity(Physical,FleetAttempt.BoundIdentity()))
+        return false;
+
+    latebrake::FleetDraftFrame CandidateFrame;
+    CandidateFrame.Attempt=FleetAttemptToken;
+    CandidateFrame.LocalFrame=FleetFrameToken;
+    CandidateFrame.EngineFrame=static_cast<std::uint64_t>(GFrameCounter);
+    CandidateFrame.SessionRevision=CheckpointSession.Current();
+    CandidateFrame.BoundIdentity=FleetAttempt.BoundIdentity();
+    CandidateFrame.Follower=Follower;
+    CandidateFrame.Follower.Token=FleetToken(Observer);
+    CandidateFrame.Follower.TeleportRevision=Observer->GetTeleportRevision();
+    const FVector FollowingPosition=Observer->GetActorLocation();
+    if (FollowingPosition.ContainsNaN()) return false;
+
+    for (int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+    {
+        const auto* Rival=FleetRivalAt(Slot);
+        if (!IsValid(Rival) || !IsRegisteredRaceRival(Rival) ||
+            Rival!=FleetBoundActors[static_cast<std::size_t>(Slot)].Get() ||
+            !Rival->IsRacePhysicsReady())
+            return false;
+
+        const FVector Position=Rival->GetActorLocation();
+        const FVector Forward=Rival->GetActorForwardVector();
+        const FVector Velocity=Rival->GetVelocity();
+        if (Position.ContainsNaN() || Forward.ContainsNaN() || Velocity.ContainsNaN())
+            return false;
+
+        auto& Entry=CandidateFrame.Candidates[static_cast<std::size_t>(Slot-1)];
+        Entry.Slot=Slot;
+        Entry.Token=FleetToken(Rival);
+        Entry.TeleportRevision=Rival->GetTeleportRevision();
+        Entry.PhysicalStateValid=true;
+        Entry.GroundSupported=Rival->HasQualifiedDraftRoadSupport();
+        Entry.RouteComplete=Rival->HasCompletedRoute();
+        Entry.PositionX=Position.X;
+        Entry.PositionY=Position.Y;
+        Entry.PositionZ=Position.Z;
+        Entry.ForwardX=Forward.X;
+        Entry.ForwardY=Forward.Y;
+        Entry.VelocityX=Velocity.X;
+        Entry.VelocityY=Velocity.Y;
+
+        // Trace each potentially usable real wake separately. Only the
+        // human and this exact leader are ignored. Other fleet actors
+        // and actual circuit barriers remain physical obstructions.
+        constexpr double MaximumTraceDistanceCm=5000.0;
+        if (Entry.GroundSupported && !Entry.RouteComplete &&
+            FVector::DistSquared(FollowingPosition,Position)<=
+                MaximumTraceDistanceCm*MaximumTraceDistanceCm)
+        {
+            FCollisionQueryParams Params(SCENE_QUERY_STAT(LatebrakeFleetDraftSightline),false);
+            Params.AddIgnoredActor(Observer);
+            Params.AddIgnoredActor(Rival);
+            FHitResult Hit;
+            Entry.ClearPhysicalPath=!World->LineTraceSingleByChannel(
+                Hit,FollowingPosition,Position,ECC_Visibility,Params);
+        }
+    }
+
+    if (!latebrake::ValidateFleetDraftFrame(CandidateFrame)) return false;
+    Out=CandidateFrame;
+    return true;
+}
+
 void ALatebrakeRaceGameMode::ObserveFleetPlayerTraffic(double LiveDelta,bool bClockAdvanced)
 {
     // Call once after the real player clock's admission, never from DrawHUD.

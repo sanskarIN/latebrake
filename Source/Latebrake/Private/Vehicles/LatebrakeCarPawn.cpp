@@ -1356,6 +1356,7 @@ void ALatebrakeCarPawn::ClearDriverInputs()
     CurrentDraftAppliedFraction = 0.f;
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
+    FleetSlipstreamBoost.Suspend();
     TouchDrive.Clear();
     // Recovery, restart, focus loss and interrupted input must never
     // leave the camera facing backwards after the held key is gone.
@@ -1391,6 +1392,7 @@ void ALatebrakeCarPawn::NeutralizeMotionWhenDrivingBlocked()
     SlipAngleMeter.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
+    FleetSlipstreamBoost.Suspend();
     ClearDriverInputs();
     // A failed pause may keep Chaos simulating while race time is frozen.
     // Neutralize driver commands plus current momentum during menu/world
@@ -1578,6 +1580,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         SlipAngleMeter.Suspend();
         BrakeDistance.Suspend();
         SlipstreamBoost.Suspend();
+        FleetSlipstreamBoost.Suspend();
         TireCondition.Suspend();
         BrakeHeat.Suspend();
         EngineHeat.Suspend();
@@ -1625,6 +1628,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         BrakeDistance.Suspend();
         NitroBoost.Suspend();
     SlipstreamBoost.Suspend();
+    FleetSlipstreamBoost.Suspend();
         ApplySignalLights(false, false, 0.0);
         WheelMotion.Suspend();
         ApplyWheelVisualPose();
@@ -1993,6 +1997,33 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     else
     {
         SlipstreamBoost.Suspend();
+    }
+    if (Mode->IsExperimentalFleetRequested() && IsLocallyControlled() &&
+        Cast<APlayerController>(GetController()) != nullptr && Mode->HasLocalPlayerDriver())
+    {
+        const FVector Position=GetActorLocation();
+        latebrake::FleetDraftFollower Follower;
+        Follower.FrameSeconds=static_cast<double>(DeltaSeconds);
+        Follower.PositionX=Position.X;
+        Follower.PositionY=Position.Y;
+        Follower.PositionZ=Position.Z;
+        Follower.ForwardX=Forward.X;
+        Follower.ForwardY=Forward.Y;
+        Follower.ForwardSpeed=static_cast<double>(LongitudinalSpeed);
+        Follower.LateralSpeed=static_cast<double>(LateralSpeed);
+        Follower.Throttle=static_cast<double>(EffectiveThrottle);
+        Follower.Braking=bEffectiveBraking;
+        Follower.GroundSupported=latebrake::HasQualifiedDraftGroundSupport(GroundContact);
+        Follower.EligibleHumanRace=true;
+        latebrake::FleetDraftFrame DraftFrame;
+        if (Mode->TryGetFleetDraftFrame(this,Follower,DraftFrame))
+            DraftExtraForce=FleetSlipstreamBoost.Observe(DraftFrame).ExtraForce;
+        else
+            FleetSlipstreamBoost.Suspend();
+    }
+    else
+    {
+        FleetSlipstreamBoost.Suspend();
     }
     // Both independent arcade effects share one final bounded motor-force
     // budget. Charge-consuming nitro gets first priority.
@@ -2395,6 +2426,7 @@ bool ALatebrakeCarPawn::TryRecoverTo(
     EngineHeat.Suspend();
     BrakeDistance.Suspend();
     SlipstreamBoost.Suspend();
+    FleetSlipstreamBoost.Suspend();
     ApplySignalLights(false, false, 0.0);
     WheelMotion.Reset();
     ApplyWheelVisualPose();

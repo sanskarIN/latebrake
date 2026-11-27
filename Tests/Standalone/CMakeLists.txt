@@ -2641,3 +2641,5 @@ add_latebrake_portable_research_test(FleetFrameAuthority)
 add_latebrake_portable_research_test(FleetGateTimingJournal)
 
 add_latebrake_portable_research_test(FleetPlayerTraffic)
+
+add_latebrake_portable_research_test(FleetSlipstreamDraft)
