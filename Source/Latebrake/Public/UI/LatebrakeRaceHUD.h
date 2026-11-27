@@ -12,9 +12,11 @@
 #include "UI/GaragePurchaseMouseLayout.h"
 #include "UI/GarageAppearancePalette.h"
 #include "UI/GaragePaletteNavigation.h"
+#include "UI/FleetReplayPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
+class ALatebrakeRaceGameMode;
 
 UCLASS()
 class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
@@ -24,6 +26,8 @@ class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
 public:
     virtual void DrawHUD() override;
     void ScrollMenuDetails(int direction);
+    bool HandleFleetReplayAction(latebrake::FleetReplayAction Action);
+    bool TryHandleFleetReplayPointer(double X,double Y);
     bool ToggleGaragePalette(latebrake::GarageLookLayer Layer);
     bool AdvanceGaragePaletteLayer();
     bool HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput Input);
@@ -33,6 +37,12 @@ public:
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    void DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    latebrake::FleetReplayViewer ReplayViewer;
+    latebrake::FleetReplayPanelLayout PresentedReplay{};
+    std::uint64_t PresentedReplayAttempt=0;
     // Advisory only: no race awarding, control input or network telemetry.
     latebrake::WrongWayIndicator WrongWayHint;
     latebrake::StuckRecoveryHint StuckHint;

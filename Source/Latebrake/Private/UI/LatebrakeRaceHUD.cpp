@@ -306,10 +306,13 @@ void ALatebrakeRaceHUD::DrawHUD()
     Super::DrawHUD();
     PresentedGarageOffers = {};
     PresentedGaragePalette = {};
+    PresentedReplay={};
+    PresentedReplayAttempt=0;
     DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
         CloseGaragePalette();
+        ReplayViewer.Reset();
         return;
     }
 
@@ -325,6 +328,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         LastWayfindingPawn.Reset();
         MenuPager.Reset();
         CloseGaragePalette();
+        ReplayViewer.Reset();
         return;
     }
 
@@ -1345,6 +1349,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                         static_cast<unsigned long long>(Coverage.IncompleteFrames),
                         static_cast<unsigned long long>(Coverage.Segments)));
                     MenuLine(TEXT("Sampled replay only | no official pass or collision verdict"));
+                    MenuLine(TEXT("Wide desktop: replay panel | J/L seek | K play/pause | H next highlight"));
                     if (Replay.HighlightCount==0)
                         MenuLine(TEXT("No qualified highlight in the retained window"));
                     for (unsigned Index=0;Index<Replay.HighlightCount;++Index)
@@ -2084,6 +2089,8 @@ void ALatebrakeRaceHUD::DrawHUD()
             }
         }
 
+        DrawFleetReplayPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
+
         // SAVE failures must stay visible even if every optional menu
         // detail row has already been consumed.
         if (MenuPlan.Valid && Mode->HasProgressSaveError())
@@ -2133,6 +2140,7 @@ void ALatebrakeRaceHUD::DrawHUD()
 
     // Closing the menu must not retain a previous page's view offset.
     MenuPager.Reset();
+    ReplayViewer.Reset();
 
     const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
     const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);

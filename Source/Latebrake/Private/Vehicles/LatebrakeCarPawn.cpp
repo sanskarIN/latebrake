@@ -3221,6 +3221,37 @@ void ALatebrakeCarPawn::ScrollMenuMouseWheel(int direction)
 #endif
 }
 
+void ALatebrakeCarPawn::DispatchFleetReplayAction(int32 Action)
+{
+    const auto* Mode=GetWorld()?GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>():nullptr;
+    auto* PC=Cast<APlayerController>(GetController());
+    if(!Mode || !Mode->IsMenuOpen() || Mode->GetMenuPage()!=latebrake::MenuPage::Results ||
+        !Mode->GetRace().IsFinished() || !PC || !PC->IsLocalController()) return;
+    if(auto* Hud=Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+        if(Hud->HandleFleetReplayAction(static_cast<latebrake::FleetReplayAction>(Action)))
+            ClearDriverInputs();
+}
+
+void ALatebrakeCarPawn::FleetReplayPlayPause()
+{
+    DispatchFleetReplayAction(static_cast<int32>(latebrake::FleetReplayAction::PlayPause));
+}
+
+void ALatebrakeCarPawn::FleetReplayPrevious()
+{
+    DispatchFleetReplayAction(static_cast<int32>(latebrake::FleetReplayAction::Previous));
+}
+
+void ALatebrakeCarPawn::FleetReplayNext()
+{
+    DispatchFleetReplayAction(static_cast<int32>(latebrake::FleetReplayAction::Next));
+}
+
+void ALatebrakeCarPawn::FleetReplayHighlight()
+{
+    DispatchFleetReplayAction(static_cast<int32>(latebrake::FleetReplayAction::NextHighlight));
+}
+
 void ALatebrakeCarPawn::MenuMousePressed()
 {
 #if !PLATFORM_ANDROID
@@ -3241,6 +3272,11 @@ void ALatebrakeCarPawn::MenuMousePressed()
     float MouseY = 0.f;
     if (!Hud || !PC->GetMousePosition(MouseX, MouseY))
     {
+        return;
+    }
+    if(Hud->TryHandleFleetReplayPointer(MouseX,MouseY))
+    {
+        ClearDriverInputs();
         return;
     }
     const latebrake::DesktopMenuMouseAction Action =
@@ -3595,6 +3631,14 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& ConfirmMenu = PlayerInputComponent->BindAction(
         TEXT("MenuActivate"), IE_Pressed, this, &ALatebrakeCarPawn::MenuActivate);
     ConfirmMenu.bExecuteWhenPaused = true;
+    PlayerInputComponent->BindAction(TEXT("FleetReplayPlayPause"),IE_Pressed,this,
+        &ALatebrakeCarPawn::FleetReplayPlayPause).bExecuteWhenPaused=true;
+    PlayerInputComponent->BindAction(TEXT("FleetReplayPrevious"),IE_Pressed,this,
+        &ALatebrakeCarPawn::FleetReplayPrevious).bExecuteWhenPaused=true;
+    PlayerInputComponent->BindAction(TEXT("FleetReplayNext"),IE_Pressed,this,
+        &ALatebrakeCarPawn::FleetReplayNext).bExecuteWhenPaused=true;
+    PlayerInputComponent->BindAction(TEXT("FleetReplayHighlight"),IE_Pressed,this,
+        &ALatebrakeCarPawn::FleetReplayHighlight).bExecuteWhenPaused=true;
     FInputActionBinding& DuskView = PlayerInputComponent->BindAction(
         TEXT("CircuitLightingPreview"), IE_Pressed,
         this, &ALatebrakeCarPawn::ToggleCircuitLighting);

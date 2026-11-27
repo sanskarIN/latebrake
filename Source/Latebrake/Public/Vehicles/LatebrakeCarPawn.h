@@ -373,6 +373,11 @@ private:
     void MenuMousePressed();
     void MenuMouseWheelUp();
     void MenuMouseWheelDown();
+    void FleetReplayPlayPause();
+    void FleetReplayPrevious();
+    void FleetReplayNext();
+    void FleetReplayHighlight();
+    void DispatchFleetReplayAction(int32 Action);
     void ScrollMenuMouseWheel(int direction);
     void NextGarageVehicle();
     void SelectGarageSlot(int32 VehicleId);
