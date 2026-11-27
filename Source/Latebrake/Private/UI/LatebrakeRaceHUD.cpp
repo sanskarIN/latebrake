@@ -42,6 +42,7 @@
 #include "Track/RaceMiniMap.h"
 #include "Track/CircuitRouteAdvisor.h"
 #include "Engine/Engine.h"
+#include "CoreGlobals.h"
 #include "Engine/Canvas.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -378,6 +379,9 @@ void ALatebrakeRaceHUD::DrawHUD()
     const auto RadarLayout=latebrake::CalculateHudRaceRadarLayout(
         Canvas->SizeX,Canvas->SizeY,Layout,HorizontalBounds,Instruments,bTouchHUD,
         Mode->IsMenuOpen(),Mode->GetRace().IsFinished());
+    const auto DriveCommandPanel=latebrake::CalculateHudDriveCommandPanel(
+        Canvas->SizeX,Canvas->SizeY,Instruments,RadarLayout,
+        Mode->GetHudTelemetryMode()==latebrake::HudTelemetryMode::Detailed);
     const latebrake::DesktopMenuMouseLayout MouseMenu =
         latebrake::CalculateDesktopMenuMouseLayout(
             static_cast<double>(Canvas->SizeX),
@@ -2264,6 +2268,26 @@ void ALatebrakeRaceHUD::DrawHUD()
             TelemetryRows.Add(FTelemetryRow{Content,Color,bHeading});
     };
 
+    const bool bDriveReviewEligible=Mode->GetHudTelemetryMode()==latebrake::HudTelemetryMode::Detailed &&
+        Mode->IsCircuitReadyForGameplay() && Mode->IsRestartPlacementReady() &&
+        Mode->HasLocalPlayerDriver() && Mode->IsRaceStartGreen() &&
+        !Mode->IsMenuOpen() && !Mode->IsManualRacePauseActive() &&
+        !Mode->IsFocusLossGuardActive() && !Mode->GetRace().IsFinished() &&
+        !UGameplayStatics::IsGamePaused(this);
+    const auto DriveCommandReview=Car->GetDriveCommandReview(
+        static_cast<std::uint64_t>(GFrameCounter),Mode->GetCheckpointSessionRevision(),bDriveReviewEligible);
+    if(DriveCommandReview.Valid && !DriveCommandPanel.Valid)
+    {
+        const auto& D=DriveCommandReview.Latest;
+        Line(FString::Printf(TEXT("COMMANDS | THR %+.0f%% | STEER %+.0f%%"),
+            D.ModeratedThrottle*100.0,D.ModeratedSteering*100.0),
+            Primary,false,HudTelemetryKind::Vehicle);
+        Line(FString::Printf(TEXT("%s | BRAKE %s | HANDBRAKE %s"),
+            UTF8_TO_TCHAR(latebrake::DriveCommandPathName(DriveCommandReview.Path)),
+            D.ServiceBrake?TEXT("ON"):TEXT("OFF"),D.Handbrake?TEXT("ON"):TEXT("OFF")),
+            Primary,false,HudTelemetryKind::Vehicle);
+    }
+
     const bool bTimeAttack = Mode->GetSelectedEvent() == latebrake::EventKind::TimeAttack;
     const int32 DisplayLap = FMath::Min(Race.GetCompletedLaps() + 1, Race.GetRequiredLaps());
     const double Elapsed = FMath::Clamp(Race.GetElapsedSeconds(), 0.0, 3599999.0);
@@ -3784,6 +3808,8 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawMeter(TEXT("CHASSIS CONDITION"),
             Instruments.ChassisConditionFraction, 167.f, Gold);
     }
+
+    DrawDriveCommandPanel(DriveCommandPanel,DriveCommandReview);
 
     // A deterministic footer no longer follows an unbounded telemetry Y.
     const float FooterY = VerticalPlan.Valid

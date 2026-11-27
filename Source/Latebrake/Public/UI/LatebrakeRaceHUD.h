@@ -15,6 +15,7 @@
 #include "UI/FleetReplayPanel.h"
 #include "UI/SectorMotionResultsPanel.h"
 #include "UI/SettingsMenuPanel.h"
+#include "UI/HudDriveCommandPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -41,6 +42,8 @@ public:
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    void DrawDriveCommandPanel(const latebrake::HudDriveCommandPanel& Panel,
+        const latebrake::DriveCommandReview& Review);
     void DrawSettingsPanel(const ALatebrakeRaceGameMode* Mode,
         latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);

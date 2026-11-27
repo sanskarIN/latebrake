@@ -67,6 +67,7 @@
 #include "Engine/World.h"
 #include "CollisionQueryParams.h"
 #include "Misc/CoreDelegates.h"
+#include "CoreGlobals.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 #include <limits>
@@ -1332,6 +1333,7 @@ void ALatebrakeCarPawn::UpdateGarageShowroomPresentation(
 
 void ALatebrakeCarPawn::ClearDriverInputs()
 {
+    DriveTrace.Suspend();
     BreakSkidTrailContinuity();
     Throttle = 0.f;
     Steering = 0.f;
@@ -1490,9 +1492,19 @@ void ALatebrakeCarPawn::PitServiceReleased()
     PitService.Suspend();
 }
 
+latebrake::DriveCommandReview ALatebrakeCarPawn::GetDriveCommandReview(std::uint64_t Frame,
+    std::uint64_t Session,bool bEligible) const noexcept
+{
+    const auto* PC=Cast<APlayerController>(GetController());
+    return DriveTrace.Read(Frame,Session,GetTeleportRevision(),
+        PC?static_cast<std::uint64_t>(PC->GetUniqueID())+1u:0u,
+        bEligible && PC && PC->IsLocalController() && PC->GetPawn()==this && IsRacePhysicsReady());
+}
+
 void ALatebrakeCarPawn::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
+    DriveTrace.BeginFrame(static_cast<std::uint64_t>(GFrameCounter));
 
     // Physics may keep ticking if Unreal rejects manual SetGamePaused, and
     // OS focus loss may occur while already paused. Do not drive at all if
@@ -2108,12 +2120,14 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             static_cast<double>(MaxSpeed * CurrentNitroSpeedCapScale),
             bArcade) * TransmissionFrame.PropulsionFactor *
             ContactTractionScale);
+    bool bObservedMotorBranch=false;
     if (GroundContact.HasDriveContact &&
         !bEffectiveBraking &&
         (FMath::Abs(EffectiveThrottle) < 0.01f ||
          FMath::Sign(LongitudinalSpeed) == FMath::Sign(EffectiveThrottle) ||
          Speed < 100.f))
     {
+        bObservedMotorBranch=true;
         Chassis->AddForce(Forward * DriveForce * EffectiveThrottle *
             static_cast<float>(Surface.MotorMultiplier) * ImpactMotorScale * EngineMotorScale * GearPowerFactor);
         // Preserve the baseline motor path; an active, human-only nitro
@@ -2220,6 +2234,24 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
     if (!GroundContact.HasDriveContact) SkidFrame.Contacts={};
     SkidFrame.DrivingAllowed=true;
     SubmitSkidTrailFrame(SkidFrame);
+
+    // Record only a completed, locally possessed human physics tick. This
+    // cannot modify the motor branch, braking force or race authority.
+    const auto* TracePC=Cast<APlayerController>(GetController());
+    if (bHumanDriver && TracePC && TracePC->IsLocalController() &&
+        TracePC->GetPawn()==this && Mode->HasLocalPlayerDriver())
+    {
+        DriveTrace.Observe({static_cast<std::uint64_t>(GFrameCounter),
+            Mode->GetCheckpointSessionRevision(),GetTeleportRevision(),
+            static_cast<std::uint64_t>(TracePC->GetUniqueID())+1u,
+            DeltaSeconds,RawThrottle,EffectiveThrottle,SmoothedSteering,
+            AssistedSteering,bServiceBraking,BrakeProfile.HandbrakeActive,
+            GroundContact.HasDriveContact,bObservedMotorBranch});
+    }
+    else
+    {
+        DriveTrace.Suspend();
+    }
 }
 
 void ALatebrakeCarPawn::SubmitSkidTrailFrame(const latebrake::SurfaceSkidFrame& Frame)

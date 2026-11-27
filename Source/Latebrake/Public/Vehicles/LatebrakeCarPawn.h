@@ -6,6 +6,7 @@
 #include "UI/TouchDriveState.h"
 #include "UI/TouchPitHold.h"
 #include "Racing/DrivingSessionStats.h"
+#include "Racing/DriveCommandTrace.h"
 #include "Racing/RacePitService.h"
 #include "Racing/PitServiceJournal.h"
 #include "Racing/DriftComboMeter.h"
@@ -87,8 +88,10 @@ public:
     // Signed Chaos forward velocity for advisory start telemetry; NaN if unavailable.
     float GetForwardSpeedKmH() const;
     const latebrake::DrivingSessionStats& GetDrivingStats() const { return DrivingStats; }
+    latebrake::DriveCommandReview GetDriveCommandReview(std::uint64_t Frame,
+        std::uint64_t Session,bool bEligible) const noexcept;
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
-    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; BrakeDistance.Reset(); NitroBoost.Reset(); PitJournal.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); FleetSlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); ResetSkidTrails(); }
+    void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriveTrace.Suspend(); DriftMeter.Reset(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; BrakeDistance.Reset(); NitroBoost.Reset(); PitJournal.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); FleetSlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); ResetSkidTrails(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
     const latebrake::ChassisSlipAngleMeter& GetChassisSlipAngleMeter() const { return SlipAngleMeter; }
@@ -407,6 +410,7 @@ private:
 
     float Throttle = 0.f;
     float Steering = 0.f;
+    latebrake::DriveCommandTrace DriveTrace;
     float SmoothedSteering = 0.f;
     float SmoothedThrottle = 0.f;
     float GarageAcceleration = 1.f;
