@@ -312,6 +312,15 @@ struct SectorMotionReview final
     std::array<SectorMotionGateSummary,CircuitGateCount> Gates{};
 };
 
+struct SectorMotionHistory final
+{
+    bool Valid=false;
+    int AcceptedGates=0;
+    int Count=0;
+    double ActiveSeconds=0.0;
+    std::array<SectorMotionRow,SectorMotionHistoryCapacity> Rows{};
+};
+
 class PlayerSectorMotionJournal final
 {
 public:
@@ -456,6 +465,23 @@ public:
         if(offset>=Size) return false;
         row=History[(Next+History.size()-1-offset)%History.size()];
         return true;
+    }
+
+    SectorMotionHistory ReadFinishedHistory(int authoritativeOrdinal,
+        double elapsed,double penalty) const noexcept
+    {
+        SectorMotionHistory out;
+        const auto review=Read(authoritativeOrdinal,elapsed,penalty,true);
+        if(!review.Valid || !review.Finished || review.RetainedRows<=0) return out;
+        out.Valid=true;
+        out.AcceptedGates=review.AcceptedGates;
+        out.ActiveSeconds=review.ActiveSeconds;
+        for(std::size_t i=0;i<Size;++i)
+        {
+            if(!TryReadRecent(i,out.Rows[i])) return {};
+            ++out.Count;
+        }
+        return out;
     }
 
     SectorMotionReview Read(int authoritativeOrdinal,double elapsed,double penalty,

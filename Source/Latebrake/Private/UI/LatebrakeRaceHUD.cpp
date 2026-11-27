@@ -308,11 +308,14 @@ void ALatebrakeRaceHUD::DrawHUD()
     PresentedGaragePalette = {};
     PresentedReplay={};
     PresentedReplayAttempt=0;
+    PresentedSector={};
+    PresentedSectorRevision=0;
     DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
         CloseGaragePalette();
         ReplayViewer.Reset();
+        SectorViewer.Reset();
         return;
     }
 
@@ -329,6 +332,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         MenuPager.Reset();
         CloseGaragePalette();
         ReplayViewer.Reset();
+        SectorViewer.Reset();
         return;
     }
 
@@ -2144,6 +2148,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
 
         DrawFleetReplayPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
+        DrawSectorMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
 
         // SAVE failures must stay visible even if every optional menu
         // detail row has already been consumed.
@@ -2195,6 +2200,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     // Closing the menu must not retain a previous page's view offset.
     MenuPager.Reset();
     ReplayViewer.Reset();
+    SectorViewer.Reset();
 
     const FLinearColor Primary(0.95f, 0.96f, 1.f, 1.f);
     const FLinearColor Accent(1.f, 0.73f, 0.17f, 1.f);

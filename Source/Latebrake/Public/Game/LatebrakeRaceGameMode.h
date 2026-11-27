@@ -173,6 +173,7 @@ public:
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
     latebrake::SectorMotionReview GetPlayerSectorMotionReview() const noexcept;
+    latebrake::SectorMotionHistory GetPlayerSectorMotionHistory() const noexcept;
     const latebrake::TrackLimitsSession& GetTrackLimits() const { return TrackLimits; }
     latebrake::TrackLimitsReview GetTrackLimitsReview() const noexcept
     {

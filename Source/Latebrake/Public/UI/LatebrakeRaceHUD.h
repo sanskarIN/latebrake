@@ -13,6 +13,7 @@
 #include "UI/GarageAppearancePalette.h"
 #include "UI/GaragePaletteNavigation.h"
 #include "UI/FleetReplayPanel.h"
+#include "UI/SectorMotionResultsPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -28,6 +29,7 @@ public:
     void ScrollMenuDetails(int direction);
     bool HandleFleetReplayAction(latebrake::FleetReplayAction Action);
     bool TryHandleFleetReplayPointer(double X,double Y);
+    bool TryHandleSectorMotionPointer(double X,double Y);
     bool ToggleGaragePalette(latebrake::GarageLookLayer Layer);
     bool AdvanceGaragePaletteLayer();
     bool HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput Input);
@@ -40,6 +42,12 @@ private:
     void DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
         latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    void DrawSectorMotionPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    latebrake::SectorPanelViewer SectorViewer;
+    latebrake::SectorPanelLayout PresentedSector{};
+    std::uint64_t PresentedSectorRevision=0;
     latebrake::FleetReplayViewer ReplayViewer;
     latebrake::FleetReplayPanelLayout PresentedReplay{};
     std::uint64_t PresentedReplayAttempt=0;

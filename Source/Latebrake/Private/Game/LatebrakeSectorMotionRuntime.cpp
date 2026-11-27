@@ -76,3 +76,11 @@ latebrake::SectorMotionReview ALatebrakeRaceGameMode::GetPlayerSectorMotionRevie
         Race.GetCompletedLaps()*Race.GetCheckpointCount()+Race.GetNextCheckpoint(),
         Race.GetElapsedSeconds(),Race.GetTotalPenaltySeconds(),Race.IsFinished());
 }
+
+latebrake::SectorMotionHistory ALatebrakeRaceGameMode::GetPlayerSectorMotionHistory() const noexcept
+{
+    if (!Race.IsFinished()) return {};
+    return PlayerSectorMotion.ReadFinishedHistory(
+        Race.GetCompletedLaps()*Race.GetCheckpointCount()+Race.GetNextCheckpoint(),
+        Race.GetElapsedSeconds(),Race.GetTotalPenaltySeconds());
+}
