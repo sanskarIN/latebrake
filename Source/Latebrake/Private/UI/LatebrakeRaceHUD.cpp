@@ -3043,6 +3043,13 @@ void ALatebrakeRaceHUD::DrawHUD()
             else if (Timing.ValidPlayer && Timing.MatchedRivals>0)
                 Line(FString::Printf(TEXT("MATCHED ACTIVE-CLOCK SPLITS %d/5 | NOT RANK"),
                     Timing.MatchedRivals),Primary, false, HudTelemetryKind::Pace);
+            if (!bCompact && Timing.CohortSector.Valid)
+            {
+                const auto& Sector=Timing.CohortSector;
+                Line(FString::Printf(TEXT("SECTOR G%d | AI GAINED %d | CLOSE %d | LOST %d"),
+                    Sector.ToOrdinal,Sector.RivalsGained,Sector.RivalsClose,Sector.RivalsLost),
+                    Primary,false,HudTelemetryKind::Pace);
+            }
             if (!bCompact)
             {
                 for(const auto& Row:FleetReview.Rivals)
@@ -3056,6 +3063,10 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Line(FString::Printf(TEXT("AI %d | G%d %s | %d/%d LAPS"),
                             Row.Slot,Timing.CommonOrdinal,*Delta,Row.CompletedLaps,
                             FleetReview.RequiredLaps),Primary);
+                        if (Timing.PreviousSectorTrend!=latebrake::FleetSectorTrend::Unavailable)
+                            Line(FString::Printf(TEXT("AI %d | LAST MATCHED SECTOR | %s"),
+                                Row.Slot,UTF8_TO_TCHAR(latebrake::FleetSectorTrendName(
+                                    Timing.PreviousSectorTrend))),Primary,false,HudTelemetryKind::Pace);
                     }
                     else if (Row.Straight.Valid)
                     {

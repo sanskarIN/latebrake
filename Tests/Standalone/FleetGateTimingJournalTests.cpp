@@ -128,6 +128,52 @@ void SameGateNotSameLatestClock()
         "identical callback clock uncertain");
 }
 
+void SectorTrendAndCohort()
+{
+    Require(ClassifyFleetSectorTrend({true,0,1,10,9.5,-0.5})==
+        FleetSectorTrend::WithinClockWindow,"two-endpoint tolerance inclusive");
+    Require(ClassifyFleetSectorTrend({true,0,1,10,9.49,9.49-10})==
+        FleetSectorTrend::RivalGained,"negative duration difference gains time");
+    Require(ClassifyFleetSectorTrend({true,0,1,10,10.51,10.51-10})==
+        FleetSectorTrend::RivalLost,"positive duration difference loses time");
+    Require(ClassifyFleetSectorTrend({true,0,1,10,9,1})==
+        FleetSectorTrend::Unavailable,"fabricated duration difference rejected");
+    Require(ClassifyFleetSectorTrend({true,1,1,10,9,-1})==
+        FleetSectorTrend::Unavailable,"zero ordinal interval rejected");
+    Require(ClassifyFleetSectorTrend({true,0,1,10,
+        std::numeric_limits<double>::quiet_NaN(),0})==
+        FleetSectorTrend::Unavailable,"nonfinite duration rejected");
+
+    Fixture f;
+    f.Gate(0,10);f.Gate(0,20);f.Gate(0,30);
+    f.Gate(1,5);f.Gate(1,17);f.Gate(1,29);
+    f.Gate(2,11);f.Gate(2,19);f.Gate(2,28);
+    f.Gate(3,10);f.Gate(3,20);
+    f.Gate(4,12);f.Gate(4,22);
+    f.Gate(5,8);f.Gate(5,19);
+    auto r=f.Read();
+    Require(r.Rivals[0].Relation==FleetTimingRelation::RivalEarlierObserved &&
+        r.Rivals[0].PreviousSectorTrend==FleetSectorTrend::RivalLost,
+        "earlier arrival can still lose time over previous sector");
+    Require(r.Rivals[1].PreviousSectorTrend==FleetSectorTrend::RivalGained,
+        "faster recent sector is distinct from absolute gap");
+    const auto& cohort=r.CohortSector;
+    Require(cohort.Valid && cohort.FromOrdinal==1 && cohort.ToOrdinal==2 &&
+        cohort.PlayerSeconds==10 && cohort.RivalsGained==1 &&
+        cohort.RivalsClose==2 && cohort.RivalsLost==2 &&
+        cohort.MinimumRivalSeconds==8 && cohort.MaximumRivalSeconds==12,
+        "all five compare the same common interval despite differing progress");
+    f.Evidence[3].Verified=false;
+    Require(!f.Read().CohortSector.Valid,"unverified rival suppresses cohort");
+    Fixture expired(256,3);
+    for(int i=1;i<=300;++i) expired.Gate(0,i*2.0);
+    for(int slot=1;slot<6;++slot)
+        for(int i=1;i<=44;++i) expired.Gate(slot,i*2.0);
+    r=expired.Read();
+    Require(r.CommonCohortValid && !r.CohortSector.Valid,
+        "common gate retained but prior sector endpoint overwritten");
+}
+
 void EvidenceAndClockBoundaries()
 {
     Fixture f;
@@ -230,6 +276,12 @@ void DeterministicAsynchronousSweep()
         if (r.CommonCohortValid)
             Require(r.CohortEarlier+r.CohortUncertain+r.CohortLater==5,
                 "cohort counts exactly five physical rivals");
+        if(r.CohortSector.Valid)
+            Require(r.CohortSector.ToOrdinal==r.CohortOrdinal &&
+                r.CohortSector.FromOrdinal+1==r.CohortOrdinal &&
+                r.CohortSector.RivalsGained+r.CohortSector.RivalsClose+
+                    r.CohortSector.RivalsLost==5,
+                "shared sector counts five rivals at one common gate interval");
     }
 }
 
@@ -253,6 +305,7 @@ int main()
 {
     ConfigurationAndReceiptRejection();
     SameGateNotSameLatestClock();
+    SectorTrendAndCohort();
     EvidenceAndClockBoundaries();
     RetentionAndLapBoundaries();
     DeterministicAsynchronousSweep();

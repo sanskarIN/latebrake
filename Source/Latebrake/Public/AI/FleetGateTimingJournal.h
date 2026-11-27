@@ -71,6 +71,62 @@ struct FleetTimingInterval final
     double RivalMinusPlayerSeconds = 0.0;
 };
 
+// A duration comparison, deliberately separate from the accumulated
+// arrival-time gap. A rival can arrive earlier but lose time this sector.
+enum class FleetSectorTrend
+{
+    Unavailable,
+    RivalGained,
+    WithinClockWindow,
+    RivalLost
+};
+
+inline FleetSectorTrend ClassifyFleetSectorTrend(
+    const FleetTimingInterval& interval) noexcept
+{
+    if(!interval.Valid || interval.FromOrdinal<0 ||
+        interval.ToOrdinal<=interval.FromOrdinal ||
+        !std::isfinite(interval.PlayerSeconds) ||
+        !std::isfinite(interval.RivalSeconds) ||
+        interval.PlayerSeconds<=0.0 || interval.RivalSeconds<=0.0 ||
+        interval.PlayerSeconds>FleetTimingMaximumSeconds ||
+        interval.RivalSeconds>FleetTimingMaximumSeconds ||
+        !std::isfinite(interval.RivalMinusPlayerSeconds) ||
+        interval.RivalMinusPlayerSeconds!=interval.RivalSeconds-interval.PlayerSeconds)
+        return FleetSectorTrend::Unavailable;
+    // Two arrival comparisons define a duration difference. Use twice
+    // the single-gate uncertainty, not a falsely precise sector verdict.
+    constexpr double sectorWindow=2.0*FleetTimingUncertainSeconds;
+    if(std::abs(interval.RivalMinusPlayerSeconds)<=sectorWindow)
+        return FleetSectorTrend::WithinClockWindow;
+    return interval.RivalMinusPlayerSeconds<0.0 ?
+        FleetSectorTrend::RivalGained : FleetSectorTrend::RivalLost;
+}
+
+inline const char* FleetSectorTrendName(FleetSectorTrend trend) noexcept
+{
+    switch(trend)
+    {
+        case FleetSectorTrend::RivalGained: return "AI GAINED";
+        case FleetSectorTrend::WithinClockWindow: return "SECTOR CLOSE";
+        case FleetSectorTrend::RivalLost: return "AI LOST TIME";
+        default: return "";
+    }
+}
+
+struct FleetCohortSectorTiming final
+{
+    bool Valid=false;
+    int FromOrdinal=0;
+    int ToOrdinal=0;
+    double PlayerSeconds=0.0;
+    int RivalsGained=0;
+    int RivalsClose=0;
+    int RivalsLost=0;
+    double MinimumRivalSeconds=0.0;
+    double MaximumRivalSeconds=0.0;
+};
+
 struct FleetMatchedGateTiming final
 {
     int Slot = -1;
@@ -86,6 +142,7 @@ struct FleetMatchedGateTiming final
     double RivalMinusPlayerSeconds = 0.0;
     FleetTimingInterval PreviousSector{};
     FleetTimingInterval LatestCommonLap{};
+    FleetSectorTrend PreviousSectorTrend=FleetSectorTrend::Unavailable;
 };
 
 struct FleetTimingReadout final
@@ -103,6 +160,7 @@ struct FleetTimingReadout final
     int CohortEarlier = 0;
     int CohortUncertain = 0;
     int CohortLater = 0;
+    FleetCohortSectorTiming CohortSector{};
     std::array<FleetMatchedGateTiming, FleetTimingCarCount - 1> Rivals{};
 };
 
@@ -247,6 +305,7 @@ public:
             row.RivalMinusPlayerSeconds = rivalSample.Seconds - playerSample.Seconds;
             row.Relation = RelationFor(row.RivalMinusPlayerSeconds);
             row.PreviousSector = Interval(player, rival, ordinal - 1, ordinal);
+            row.PreviousSectorTrend=ClassifyFleetSectorTrend(row.PreviousSector);
             const int lapEnd = ordinal - ordinal % GateCount;
             if (lapEnd > 0)
             {
@@ -290,6 +349,7 @@ public:
         out.CohortEarlier = earlier;
         out.CohortUncertain = uncertain;
         out.CohortLater = later;
+        out.CohortSector=BuildCohortSector(cohortOrdinal);
         return out;
     }
 
@@ -448,6 +508,45 @@ private:
         const double rivalDuration = r1.Seconds - r0.Seconds;
         return {true, from, to, playerDuration, rivalDuration,
             rivalDuration - playerDuration};
+    }
+
+    FleetCohortSectorTiming BuildCohortSector(int ordinal) const noexcept
+    {
+        FleetCohortSectorTiming out;
+        // Every row must reference the same interval. Never average the
+        // latest per-rival sectors when they describe different gates.
+        if(ordinal<1 || ordinal>TotalGates) return out;
+        out.FromOrdinal=ordinal-1;
+        out.ToOrdinal=ordinal;
+        const auto& player=Streams[0];
+        for(int slot=1;slot<FleetTimingCarCount;++slot)
+        {
+            const auto interval=Interval(player,Streams[static_cast<std::size_t>(slot)],
+                out.FromOrdinal,out.ToOrdinal);
+            switch(ClassifyFleetSectorTrend(interval))
+            {
+                case FleetSectorTrend::RivalGained: ++out.RivalsGained; break;
+                case FleetSectorTrend::WithinClockWindow: ++out.RivalsClose; break;
+                case FleetSectorTrend::RivalLost: ++out.RivalsLost; break;
+                default: return {};
+            }
+            if(slot==1)
+            {
+                out.PlayerSeconds=interval.PlayerSeconds;
+                out.MinimumRivalSeconds=interval.RivalSeconds;
+                out.MaximumRivalSeconds=interval.RivalSeconds;
+            }
+            else
+            {
+                if(interval.PlayerSeconds!=out.PlayerSeconds) return {};
+                if(interval.RivalSeconds<out.MinimumRivalSeconds)
+                    out.MinimumRivalSeconds=interval.RivalSeconds;
+                if(interval.RivalSeconds>out.MaximumRivalSeconds)
+                    out.MaximumRivalSeconds=interval.RivalSeconds;
+            }
+        }
+        out.Valid=true;
+        return out;
     }
 
     std::uint64_t Attempt = 0;
