@@ -1389,6 +1389,36 @@ void ALatebrakeRaceHUD::DrawHUD()
                     }
                 }
             }
+            const auto Motion=Mode->GetPlayerSectorMotionReview();
+            if (Motion.Valid && Motion.AcceptedGates>0)
+            {
+                MenuLine(TEXT("SECTOR MOTION REVIEW | ACTUAL SAMPLED CHASSIS"),true);
+                MenuLine(FString::Printf(TEXT("Qualified sectors %d/%d | timed %d | missing timing %d"),
+                    Motion.QualifiedSectors,Motion.AcceptedGates,Motion.TimedSectors,Motion.MissingTiming));
+                for (const auto& Gate:Motion.Gates)
+                {
+                    if (!Gate.Latest.ValidTiming) continue;
+                    const auto& Row=Gate.Latest;
+                    MenuLine(FString::Printf(TEXT("G%d L%d | %.2fs active | %.0f%% coverage | %s"),
+                        Gate.Gate+1,Row.Lap,Row.ActiveSeconds,100.0*Row.Coverage,
+                        UTF8_TO_TCHAR(latebrake::SectorMotionQualityName(Row.Quality))));
+                    if (Row.Motion.ObservedSeconds>0.0)
+                    {
+                        MenuLine(FString::Printf(TEXT("  %.0f km/h mean | %.0f peak | %.1fm sampled path"),
+                            Row.Motion.AverageKmh(),Row.Motion.PeakKmh(),Row.Motion.DistanceMeters()));
+                        if (!bCompact)
+                            MenuLine(FString::Printf(TEXT("  Low speed %.2fs | lateral slip %.2fs | projected off-road %.2fs"),
+                                Row.Motion.LowSpeedSeconds,Row.Motion.HighSlipSeconds,Row.Motion.FullOffRoadSeconds));
+                    }
+                    const auto& Comparison=Gate.LatestComparison;
+                    if (Comparison.Valid)
+                        MenuLine(FString::Printf(TEXT("  vs L%d: %+.2fs | mean %+.0f km/h | slip %+.2fs"),
+                            Comparison.ReferenceLap,Comparison.TimeDeltaSeconds,
+                            Comparison.MeanSpeedDeltaKmh,Comparison.SlipDeltaSeconds));
+                    else if (Row.StandingStart)
+                        MenuLine(TEXT("  Standing start is not compared with rolling sectors"));
+                }
+            }
             const auto TrackReview=Mode->GetTrackLimitsReview();
             if (TrackReview.Valid)
             {
@@ -3161,6 +3191,11 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
         // Compare the unfinished split against an already measured best
         // of the SAME sector, never against another checkpoint's pace.
+        const auto Motion=Mode->GetPlayerSectorMotionReview();
+        if (Motion.Valid && Motion.LastComparison.Valid && !bCompact)
+            Line(FString::Printf(TEXT("LAST G%d | %+.2fs vs L%d | sampled mean %+.0f km/h"),
+                Motion.LastComparison.Gate+1,Motion.LastComparison.TimeDeltaSeconds,
+                Motion.LastComparison.ReferenceLap,Motion.LastComparison.MeanSpeedDeltaKmh),Primary);
         const latebrake::LiveSectorTarget SectorTarget =
             latebrake::MeasureLiveSectorTarget(Race);
         if (SectorTarget.Valid)

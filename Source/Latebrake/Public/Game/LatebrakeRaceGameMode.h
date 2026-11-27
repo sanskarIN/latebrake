@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
+#include "Racing/PlayerSectorMotionReview.h"
 #include "Racing/PlayerRecoveryClearance.h"
 #include "Track/TrackLimitsSession.h"
 #include "Racing/RivalGateGap.h"
@@ -171,6 +172,7 @@ public:
     }
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
+    latebrake::SectorMotionReview GetPlayerSectorMotionReview() const noexcept;
     const latebrake::TrackLimitsSession& GetTrackLimits() const { return TrackLimits; }
     latebrake::TrackLimitsReview GetTrackLimitsReview() const noexcept
     {
@@ -313,7 +315,13 @@ private:
         latebrake::RivalDifficultyPreset::Standard;
     int32 CareerStartedVehicleId = 0;
     FString CareerFeedback = TEXT("N select career event | M start career | 3/4 quick race");
+    void ResetPlayerSectorMotion() noexcept;
+    void ObservePlayerSectorMotion(double LiveDelta,bool bClockAdvanced);
+    void ObservePlayerSectorGate(int32 Gate,int32 AcceptedOrdinal) noexcept;
     latebrake::RaceProgress Race{4, 3};
+    latebrake::PlayerSectorMotionJournal PlayerSectorMotion;
+    TWeakObjectPtr<ALatebrakeCarPawn> SectorMotionPawn;
+    bool bSectorMotionPawnBound=false;
     latebrake::TrackLimitsSession TrackLimits;
     TWeakObjectPtr<ALatebrakeCarPawn> StewardTrackedPawn;
     uint64 StewardTeleportRevision=0;

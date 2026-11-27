@@ -133,6 +133,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
     Race.Reset();
+    ResetPlayerSectorMotion();
     TrackLimits.Reset();
     StewardTrackedPawn.Reset();
     StewardTeleportRevision=0;
@@ -230,6 +231,7 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     ObserveFleetPlayerTraffic(LiveDelta,bActualClockAdvanced);
     BeginFleetReplayFrame(LiveDelta,bActualClockAdvanced);
     BeginFleetDecisionFrame(LiveDelta,bActualClockAdvanced);
+    ObservePlayerSectorMotion(LiveDelta,bActualClockAdvanced);
     // Unofficial reference trace observes the SAME guarded player/clock
     // frame as official lap timing, but can never modify timing or physics.
     // World pause and focus loss can produce zero gameplay ticks; the
@@ -1407,6 +1409,8 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     const int64 PlayerGateOrdinal =
         static_cast<int64>(Race.GetCompletedLaps()) * Race.GetCheckpointCount() +
         Race.GetNextCheckpoint();
+    if (PlayerGateOrdinal>=1 && PlayerGateOrdinal<=latebrake::CircuitGateCount*latebrake::SectorMotionMaximumLaps)
+        ObservePlayerSectorGate(CheckpointIndex,static_cast<int32>(PlayerGateOrdinal));
     if (!IsExperimentalFleetRequested() && latebrake::GetRaceEvent(SelectedEvent).SpawnRival &&
         PlayerGateOrdinal >= 1 && PlayerGateOrdinal <= 25600)
     {
@@ -2992,6 +2996,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     ManualPause.OnExplicitResume();
     Race.Reset();
+    ResetPlayerSectorMotion();
     TrackLimits.Reset();
     StewardTrackedPawn.Reset();
     StewardTeleportRevision=0;
