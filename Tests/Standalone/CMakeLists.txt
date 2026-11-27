@@ -2659,3 +2659,5 @@ add_latebrake_portable_research_test(PlayerSectorMotionReview)
 add_latebrake_portable_research_test(SectorMotionResultsPanel)
 
 add_latebrake_portable_research_test(HudTelemetryPriority)
+
+add_latebrake_portable_research_test(HudRaceRadar)

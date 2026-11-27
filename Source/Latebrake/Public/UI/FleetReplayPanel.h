@@ -402,7 +402,7 @@ inline FleetReplayMapPoint ProjectFleetReplayMap(CircuitPoint point,
         !std::isfinite(point.Y) || std::abs(point.X)>4200.0 ||
         std::abs(point.Y)>3000.0) return {};
     const auto uv=NormalizeCircuitMap(point);
-    return {true,map.X+uv.U*map.Width,map.Y+uv.V*map.Height};
+    return {true,map.X+uv.U*map.Width,map.Y+(1.0-uv.V)*map.Height};
 }
 
 struct FleetReplayMapCar final
@@ -451,7 +451,7 @@ inline FleetReplayMapReadout BuildFleetReplayMap(
         const double length=7.0*layout.Scale;
         car.Nose={true,std::clamp(car.Position.X+length*std::cos(source.HeadingRadians),
             layout.Map.X,layout.Map.X+layout.Map.Width),
-            std::clamp(car.Position.Y+length*std::sin(source.HeadingRadians),
+            std::clamp(car.Position.Y-length*std::sin(source.HeadingRadians),
             layout.Map.Y,layout.Map.Y+layout.Map.Height)};
         ++out.VisibleCars;
     }

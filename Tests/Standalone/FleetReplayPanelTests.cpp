@@ -182,8 +182,8 @@ void MapProjection()
             c.Position.Valid && c.Nose.Valid,"observed speed and heading");
     const auto left=ProjectFleetReplayMap({-4200,-3000},l.Map);
     const auto right=ProjectFleetReplayMap({4200,3000},l.Map);
-    Require(left.Valid && right.Valid && left.X==l.Map.X && left.Y==l.Map.Y &&
-        Near(right.X,l.Map.X+l.Map.Width) && Near(right.Y,l.Map.Y+l.Map.Height),"map endpoints");
+    Require(left.Valid && right.Valid && left.X==l.Map.X && Near(left.Y,l.Map.Y+l.Map.Height) &&
+        Near(right.X,l.Map.X+l.Map.Width) && Near(right.Y,l.Map.Y),"map endpoints");
     f.Cars[4].Xcm=4300;
     m=BuildFleetReplayMap(f,l,v.Readout());
     Require(m.Valid && m.VisibleCars==5 && !m.Cars[4].Visible,"off-map omitted, not clamped");

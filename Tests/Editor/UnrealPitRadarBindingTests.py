@@ -16,21 +16,21 @@ class UnrealPitRadarBindingTests(unittest.TestCase):
         cls.cmake = (ROOT / "Tests/Standalone/CMakeLists.txt").read_text(encoding="utf-8")
 
     def test_radar_icon_uses_exact_physical_service_point(self):
-        radar = self.hud.split(
-            "// Source-only prototype racing radar:", 1)[1].split(
+        radar = self.hud.split("// Live north-up radar:", 1)[1].split(
             "    if (bCompact)", 1)[0]
-        self.assertIn("if (!bCompact && Canvas->SizeX >= 1120)", radar)
-        self.assertIn("latebrake::RacePitBay", radar)
-        self.assertIn("NormalizeCircuitMap(latebrake::RacePitBay)", radar)
-        self.assertIn("IsOnPavedSurface(latebrake::RacePitBay)", radar)
-        self.assertIn('DrawText(TEXT("PIT")', radar)
-        self.assertIn("DrawRect(PitColor,", radar)
+        policy = (ROOT / "Source/Latebrake/Public/UI/HudRaceRadar.h").read_text(encoding="utf-8")
+        self.assertIn("if (RadarLayout.Valid)", radar)
+        self.assertIn("latebrake::IsOnPavedSurface(latebrake::RacePitBay)", radar)
+        self.assertIn("BuildHudRadarPresentation(", radar)
+        self.assertIn("HudRadarMarkerKind::Pit", radar)
+        self.assertIn('Name=TEXT("PIT")', radar)
+        self.assertIn("NormalizeCircuitMap(RacePitBay)", policy)
+        self.assertIn("if(pitReady && IsOnPavedSurface(RacePitBay))", policy)
         self.assertIn("RacePitBay{0.0, -1300.0}", self.pit)
 
     def test_radar_remains_visual_only(self):
-        block = self.hud.split(
-            "// Optional source-defined pit map marker:", 1)[1].split(
-            "if (Radar.NextGate.Valid)", 1)[0]
+        block = self.hud.split("// Live north-up radar:", 1)[1].split(
+            "    if (bCompact)", 1)[0]
         for forbidden in ("PitService.Observe(", "RepairAtPit(", "RefillAtPit(",
                           "ReplaceAtPit(", "SaveRecords(", "EarnCredits(",
                           "RegisterCheckpoint(", "SpawnActor(", "SetActorLocation(",

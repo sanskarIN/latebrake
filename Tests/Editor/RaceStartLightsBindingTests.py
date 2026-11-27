@@ -117,7 +117,7 @@ class RaceStartLightsBindingTests(unittest.TestCase):
             self.assertIn(x, hud)
         self.assertLess(hud.index('TEXT("TIME  %02d:%05.2f")'),
                         hud.index('TEXT("START LIGHTS  3")'))
-        self.assertIn("Line(TEXT(\"GO!\"), Accent, true)", hud)
+        self.assertIn("Line(TEXT(\"GO!\"), Accent, true, HudTelemetryKind::Start)", hud)
 
     def test_policy_rejects_invalid_and_hitch_time(self):
         for required in (

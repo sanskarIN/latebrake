@@ -8,6 +8,7 @@
 #include "UI/GarageAppearanceGlyph.h"
 #include "UI/GarageShowroomLane.h"
 #include "UI/HudInstrumentCluster.h"
+#include "UI/HudRaceRadar.h"
 #include "UI/HudInstrumentDriveBadge.h"
 #include "UI/NitroHudReadout.h"
 #include "UI/RaceGateProgressGauge.h"
@@ -373,6 +374,9 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetNitroBoost().ChargeFraction(),
             Car->GetEngineHeat().HeatFraction(),
             Car->GetCollisionDamage().DamageFraction());
+    const auto RadarLayout=latebrake::CalculateHudRaceRadarLayout(
+        Canvas->SizeX,Canvas->SizeY,Layout,HorizontalBounds,Instruments,bTouchHUD,
+        Mode->IsMenuOpen(),Mode->GetRace().IsFinished());
     const latebrake::DesktopMenuMouseLayout MouseMenu =
         latebrake::CalculateDesktopMenuMouseLayout(
             static_cast<double>(Canvas->SizeX),
@@ -393,10 +397,13 @@ void ALatebrakeRaceHUD::DrawHUD()
     const auto ShowroomLane = latebrake::CalculateGarageShowroomLane(
         Canvas->SizeX, Canvas->SizeY, Layout, bTouchHUD,
         Mode->IsMenuOpen(), Mode->GetMenuPage());
-    const double DockSafeTextWidth = MouseMenu.Valid
-        ? FMath::Min(InstrumentTextWidth,
-            MouseMenu.Left - HorizontalBounds.Left - 12.0 * Layout.Scale)
+    const double RadarSafeTextWidth=RadarLayout.Valid
+        ? FMath::Min(InstrumentTextWidth,RadarLayout.Panel.X-HorizontalBounds.Left-12.0*Layout.Scale)
         : InstrumentTextWidth;
+    const double DockSafeTextWidth = MouseMenu.Valid
+        ? FMath::Min(RadarSafeTextWidth,
+            MouseMenu.Left - HorizontalBounds.Left - 12.0 * Layout.Scale)
+        : RadarSafeTextWidth;
     const double SafeTextWidth = ShowroomLane.Valid
         ? FMath::Min(DockSafeTextWidth, ShowroomLane.TextWidth)
         : DockSafeTextWidth;
@@ -3275,114 +3282,110 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
     }
 
-    // Source-only prototype racing radar: project real sampled player and
-    // rival actor positions; suppress invalid/unavailable vehicle markers.
-    // It is deliberately NOT an order/placement or reward calculation.
-    if (!bCompact && Canvas->SizeX >= 1120)
+    // Live north-up radar: same original collision-bearing asphalt and
+    // real actor observations, with a dedicated protected screen lane.
+    if (RadarLayout.Valid)
     {
-        const float MapSize = 150.f * Scale;
-        const float MapLeft = Canvas->SizeX - MapSize - 22.f * Scale;
-        const float MapTop = 72.f * Scale;
-        const auto ToScreen = [&](latebrake::CircuitMapPoint M)
+        const auto Clusters=bExperimentalFleet && bWayfindingEligible
+            ? latebrake::GroupFleetRadar(FleetReview,0.075):latebrake::FleetRadarClusters{};
+        const bool bPitReady=Mode->IsCircuitReadyForGameplay() &&
+            latebrake::IsOnPavedSurface(latebrake::RacePitBay);
+        const auto Presentation=latebrake::BuildHudRadarPresentation(
+            RadarLayout,Radar,Clusters,bExperimentalFleet,bPitReady);
+        if(Presentation.Valid)
         {
-            return FVector2D(
-                MapLeft + static_cast<float>(M.U) * MapSize,
-                MapTop + static_cast<float>(1.0 - M.V) * MapSize);
-        };
-        const auto ScreenMarker = [&](latebrake::RadarMarker M)
-        {
-            return ToScreen({M.U, M.V});
-        };
-        DrawText(TEXT("RACE RADAR / NORTH UP"), Accent,
-            MapLeft, MapTop - 30.f * Scale,
-            GEngine->GetSmallFont(), 0.8f * Scale);
-        for (int32 Index = 0; Index < latebrake::CircuitGateCount; ++Index)
-        {
-            const FVector2D From = ToScreen(
-                latebrake::NormalizeCircuitMap(latebrake::CircuitGate(Index)));
-            const FVector2D To = ToScreen(
-                latebrake::NormalizeCircuitMap(latebrake::CircuitGate(
-                    (Index + 1) % latebrake::CircuitGateCount)));
-            DrawLine(From.X, From.Y, To.X, To.Y,
-                FLinearColor(0.75f, 0.78f, 0.85f), 2.f * Scale);
-        }
-        // Optional source-defined pit map marker: same world point
-        // and north-up transform as the real chassis-service policy.
-        // Do not infer leaderboard position, reward, pit eligibility or
-        // modify checkpoint state from this decorative radar symbol.
-        if (Mode->IsCircuitReadyForGameplay() &&
-            latebrake::IsOnPavedSurface(latebrake::RacePitBay))
-        {
-            const FVector2D Pit = ToScreen(
-                latebrake::NormalizeCircuitMap(latebrake::RacePitBay));
-            const FLinearColor PitColor(0.23f, 0.96f, 0.70f);
-            DrawRect(PitColor,
-                Pit.X - 4.f * Scale, Pit.Y - 4.f * Scale,
-                8.f * Scale, 8.f * Scale);
-            DrawText(TEXT("PIT"), PitColor,
-                Pit.X + 6.f * Scale, Pit.Y - 11.f * Scale,
-                GEngine->GetSmallFont(), 0.73f * Scale);
-        }
-
-        if (Radar.NextGate.Valid)
-        {
-            const FVector2D Next = ScreenMarker(Radar.NextGate);
-            DrawRect(Accent, Next.X - 5.f * Scale, Next.Y - 5.f * Scale,
-                     10.f * Scale, 10.f * Scale);
-        }
-        if (Radar.Rival.Valid)
-        {
-            const FVector2D Rival = ScreenMarker(Radar.Rival);
-            DrawRect(FLinearColor(1.f, 0.39f, 0.23f),
-                Rival.X - 4.f * Scale, Rival.Y - 4.f * Scale,
-                8.f * Scale, 8.f * Scale);
-            if (Radar.DirectRivalSeparationValid)
+            const float S=static_cast<float>(RadarLayout.Scale);
+            const FLinearColor Panel(0.018f,0.034f,0.062f,0.92f);
+            const FLinearColor Road(0.25f,0.31f,0.36f,0.98f);
+            const FLinearColor Barrier(0.46f,0.35f,0.29f,0.95f);
+            const FLinearColor PlayerColor(0.08f,0.80f,0.95f);
+            const FLinearColor RivalColor(1.f,0.39f,0.23f);
+            const FLinearColor PitColor(0.23f,0.96f,0.70f);
+            const auto Rect=[&](const latebrake::DesktopMenuMouseRect& R,const FLinearColor& Color)
             {
-                DrawText(FString::Printf(
-                    TEXT("RIVAL %.0fm DIRECT"), Radar.DirectRivalSeparationMeters),
-                    Accent, MapLeft, MapTop + MapSize + 8.f * Scale,
-                    GEngine->GetSmallFont(), 0.75f * Scale);
-            }
-        }
-        if (bExperimentalFleet && bWayfindingEligible)
-        {
-            const auto Clusters=latebrake::GroupFleetRadar(FleetReview,0.075);
-            const FLinearColor FleetColor(1.f,0.39f,0.23f);
-            for(int32 Index=0;Index<Clusters.Count;++Index)
+                if(!latebrake::ValidHudRadarRect(R))return;
+                DrawRect(Color,static_cast<float>(R.X),static_cast<float>(R.Y),
+                    static_cast<float>(R.Width),static_cast<float>(R.Height));
+            };
+            const auto Label=[&](const FString& Value,const latebrake::DesktopMenuMouseRect& R,
+                const FLinearColor& Color,float TextScale)
             {
-                const auto& Group=Clusters.Groups[static_cast<std::size_t>(Index)];
-                const FVector2D Point=ScreenMarker(Group.Marker);
-                DrawRect(FleetColor,Point.X-4.f*Scale,Point.Y-4.f*Scale,8.f*Scale,8.f*Scale);
-                FString Label;
-                if (Group.Count>1) Label=FString::Printf(TEXT("AI x%d"),Group.Count);
-                else
+                UFont* Font=GEngine->GetSmallFont();
+                float W=0.f,H=0.f;
+                if(!Font)return;
+                GetTextSize(Value,W,H,Font,TextScale);
+                if(!FMath::IsFinite(W)||!FMath::IsFinite(H)||W<=0||H<=0||
+                    W>R.Width||H>R.Height)return;
+                DrawText(Value,Color,static_cast<float>(R.X+(R.Width-W)*0.5),
+                    static_cast<float>(R.Y+(R.Height-H)*0.5),Font,TextScale);
+            };
+            Rect(RadarLayout.Panel,Panel);
+            Rect({RadarLayout.Panel.X,RadarLayout.Panel.Y,RadarLayout.Panel.Width,2.0*S},Accent);
+            Label(TEXT("RACE RADAR / NORTH UP"),RadarLayout.Title,Accent,0.80f*S);
+            Rect(RadarLayout.Map,FLinearColor(0.09f,0.14f,0.17f,1.f));
+            for(int32 I=0;I<Presentation.Roads.AsphaltCount;++I)
+                Rect(Presentation.Roads.Asphalt[static_cast<std::size_t>(I)],Road);
+            for(int32 I=0;I<Presentation.Roads.BarrierCount;++I)
+                Rect(Presentation.Roads.Barriers[static_cast<std::size_t>(I)],Barrier);
+            std::array<FString,latebrake::HudRadarMaximumMarkers> Names{};
+            std::array<FLinearColor,latebrake::HudRadarMaximumMarkers> Colors{};
+            std::array<latebrake::HudRadarLabelMeasure,latebrake::HudRadarMaximumMarkers> Measures{};
+            // Draw route/pit, physical rival group and player in that
+            // order; the player heading is clipped into the map.
+            for(int32 I=0;I<Presentation.Count;++I)
+            {
+                const auto Index=static_cast<std::size_t>(I);
+                const auto& Marker=Presentation.Markers[Index];
+                auto& Name=Names[Index];
+                auto& Color=Colors[Index];
+                switch(Marker.Kind)
                 {
-                    for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
-                        if ((Group.SlotMask&(1u<<static_cast<unsigned>(Slot)))!=0u)
-                            Label=FString::Printf(TEXT("AI%d"),Slot);
+                case latebrake::HudRadarMarkerKind::NextGate:
+                    Color=Accent;Name=TEXT("GATE");break;
+                case latebrake::HudRadarMarkerKind::Pit:
+                    Color=PitColor;Name=TEXT("PIT");break;
+                case latebrake::HudRadarMarkerKind::Player:
+                    Color=PlayerColor;Name=TEXT("YOU");break;
+                case latebrake::HudRadarMarkerKind::Rival:
+                    Color=RivalColor;Name=TEXT("AI");break;
+                case latebrake::HudRadarMarkerKind::Fleet:
+                    Color=RivalColor;
+                    if(Marker.Count>1)Name=FString::Printf(TEXT("AI x%d"),Marker.Count);
+                    else for(int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+                        if((Marker.SlotMask&(1u<<static_cast<unsigned>(Slot)))!=0u)
+                            Name=FString::Printf(TEXT("AI%d"),Slot);
+                    break;
+                default:continue;
                 }
-                // Clamp the label into the radar's visual bounding box.
-                DrawText(Label,FleetColor,
-                    FMath::Clamp(static_cast<float>(Point.X+5.f*Scale),
-                        MapLeft,MapLeft+MapSize-34.f*Scale),
-                    FMath::Clamp(static_cast<float>(Point.Y-9.f*Scale),
-                        MapTop,MapTop+MapSize-12.f*Scale),
-                    GEngine->GetSmallFont(),0.65f*Scale);
+                Rect(Marker.Body,Color);
+                if(Marker.Nose.Valid)
+                    DrawLine(Marker.Center.X,Marker.Center.Y,Marker.Nose.X,Marker.Nose.Y,Color,1.8f*S);
+                float W=0.f,H=0.f;
+                if(GEngine->GetSmallFont() && !Name.IsEmpty())
+                {
+                    GetTextSize(Name,W,H,GEngine->GetSmallFont(),0.68f*S);
+                    Measures[Index]={true,static_cast<double>(W),static_cast<double>(H)};
+                }
             }
-        }
-        if (Radar.Player.Position.Valid)
-        {
-            const FVector2D Player = ScreenMarker(Radar.Player.Position);
-            const FLinearColor PlayerColor(0.08f, 0.80f, 0.95f);
-            DrawRect(PlayerColor,
-                Player.X - 4.f * Scale, Player.Y - 4.f * Scale,
-                8.f * Scale, 8.f * Scale);
-            // A heading tick makes a marker useful when player and rival
-            // cross. Screen Y increases downward; radar already converts yaw.
-            DrawLine(Player.X, Player.Y,
-                Player.X + static_cast<float>(Radar.Player.DirectionX) * 12.f * Scale,
-                Player.Y + static_cast<float>(Radar.Player.DirectionY) * 12.f * Scale,
-                PlayerColor, 2.f * Scale);
+            const auto Labels=latebrake::PlaceHudRadarLabels(RadarLayout,Presentation,Measures);
+            if(Labels.Valid)
+            {
+                for(int32 I=0;I<Labels.Count;++I)
+                {
+                    const auto& P=Labels.Labels[static_cast<std::size_t>(I)];
+                    const auto Index=static_cast<std::size_t>(P.MarkerIndex);
+                    DrawText(Names[Index],Colors[Index],static_cast<float>(P.Bounds.X),
+                        static_cast<float>(P.Bounds.Y),GEngine->GetSmallFont(),0.68f*S);
+                }
+            }
+            FString Status;
+            if(!Presentation.PlayerVisible)Status=TEXT("PLAYER POSITION UNAVAILABLE");
+            else if(bExperimentalFleet)
+                Status=FString::Printf(TEXT("AI OBSERVED %d/5 | NOT RANK"),Presentation.ObservedRivals);
+            else if(Presentation.RivalDistanceValid)
+                Status=FString::Printf(TEXT("RIVAL %.0fm DIRECT"),Presentation.RivalDistanceMeters);
+            else Status=TEXT("NEXT VERIFIED GATE");
+            Label(Status,RadarLayout.Status,Primary,0.74f*S);
         }
     }
 
