@@ -2651,3 +2651,5 @@ add_latebrake_portable_research_test(FleetPaceReview)
 add_latebrake_portable_research_test(FleetReplayCapture)
 
 add_latebrake_portable_research_test(FleetReplayPanel)
+
+add_latebrake_portable_research_test(FleetDecisionJournal)

@@ -126,6 +126,7 @@ public:
     latebrake::PhysicalReplayPlaybackFrame EvaluateFleetReplay(double Seconds) const;
     void ObserveFleetRivalGate(const ALatebrakeRivalCar* Actor);
     void ObserveFleetRivalRecovery(const ALatebrakeRivalCar* Actor,bool Verified);
+    void ObserveFleetRivalDecision(const ALatebrakeRivalCar* Actor,latebrake::FleetDecisionSample Sample);
     bool TryGetFleetRivalProgress(int32 Slot,int32& Laps,int32& NextGate,bool& Finished) const;
     bool TryGetFreshFleetTraffic(const ALatebrakeRivalCar* Actor,
         bool BrakeQualified,double BrakeScale,latebrake::RivalFleetTrafficSample& Out) const;
@@ -268,6 +269,7 @@ private:
     bool ObserveExperimentalFleet(float DeltaSeconds,bool Inactive);
     void ObserveFleetPlayerTraffic(double LiveDelta,bool bClockAdvanced);
     void BeginFleetReplayFrame(double LiveDelta,bool bClockAdvanced);
+    void BeginFleetDecisionFrame(double LiveDelta,bool bClockAdvanced);
     bool CollectFleetFrame(latebrake::FleetPhysicalFrame& Out,
         float DeltaSeconds,bool IncludeGridProbes) const;
     ALatebrakeRivalCar* FleetRivalAt(int32 Slot) const;
@@ -386,6 +388,7 @@ private:
     latebrake::FleetGateTimingJournal FleetGateTiming;
     latebrake::FleetPlayerTrafficJournal FleetPlayerTraffic;
     latebrake::FleetReplayCapture FleetReplay;
+    latebrake::FleetDecisionJournal FleetDecisions;
     latebrake::FleetRaceReview FleetFinishReview;
     std::array<TWeakObjectPtr<ALatebrakeCarPawn>,latebrake::StartGridCapacity> FleetBoundActors{};
     bool bFleetActorsBound=false;

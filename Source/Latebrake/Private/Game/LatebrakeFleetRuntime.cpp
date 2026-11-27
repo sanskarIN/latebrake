@@ -52,6 +52,7 @@ void ALatebrakeRaceGameMode::BeginExperimentalFleetAttempt()
     FleetGateTiming.Reset();
     FleetPlayerTraffic.Reset();
     FleetReplay.Reset();
+    FleetDecisions.Reset();
     FleetFinishReview={};
     if (!IsExperimentalFleetRequested() && IsValid(RivalCar))
         RivalCar->SetGarageTuning(1.f,1.f,1.f,0,latebrake::FactoryGarageLook(0));
@@ -278,6 +279,9 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
             UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TIMING_CONFIGURATION_REFUSED"));
         if (LedgerBound && !FleetPlayerTraffic.Configure(FleetAttemptToken,FleetAttempt.BoundIdentity()))
             UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TRAFFIC_CONFIGURATION_REFUSED"));
+        if (LedgerBound && !FleetDecisions.Configure(FleetAttemptToken,FleetAttempt.BoundIdentity(),
+                Race.GetCheckpointCount()*Race.GetRequiredLaps()))
+            UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_DECISION_CONFIGURATION_REFUSED"));
 #if !UE_BUILD_SHIPPING
         if (LedgerBound)
         {
@@ -509,6 +513,45 @@ bool ALatebrakeRaceGameMode::TryGetFleetDraftFrame(const ALatebrakeCarPawn* Obse
     return true;
 }
 
+void ALatebrakeRaceGameMode::BeginFleetDecisionFrame(double LiveDelta,bool bClockAdvanced)
+{
+    if (!IsExperimentalFleetRequested()) return;
+    if (!bClockAdvanced || Race.IsFinished() || !IsExperimentalFleetDriveReady())
+    {
+        FleetDecisions.Suspend();
+        return;
+    }
+    FleetDecisions.BeginFrame({FleetAttemptToken,FleetFrameToken,
+        static_cast<std::uint64_t>(GFrameCounter),CheckpointSession.Current(),
+        Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds(),LiveDelta});
+}
+
+void ALatebrakeRaceGameMode::ObserveFleetRivalDecision(const ALatebrakeRivalCar* Actor,
+    latebrake::FleetDecisionSample Sample)
+{
+    if (!IsExperimentalFleetRequested() || !IsExperimentalFleetDriveReady() ||
+        Race.IsFinished() || !IsRegisteredRaceRival(Actor) || !Actor->IsRacePhysicsReady() ||
+        Actor->GetWorld()!=GetWorld()) return;
+    const int32 Slot=Actor->GetGridSlot();
+    if (Slot<=0 || Slot>=latebrake::StartGridCapacity ||
+        FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Actor ||
+        FleetAttempt.BoundIdentity()[static_cast<std::size_t>(Slot)]!=FleetToken(Actor))
+        return;
+    int Ordinal=0;
+    if (!latebrake::FleetRouteOrdinal(Actor->GetApproximateLaps(),
+        Actor->GetNextVerifiedGate(),Actor->HasCompletedRoute(),
+        Race.GetCheckpointCount(),Race.GetRequiredLaps(),Ordinal) ||
+        Actor->HasCompletedRoute() || Ordinal!=Sample.GateOrdinal) return;
+    Sample.Attempt=FleetAttemptToken;
+    Sample.Frame=FleetFrameToken;
+    Sample.EngineFrame=static_cast<std::uint64_t>(GFrameCounter);
+    Sample.Epoch=CheckpointSession.Current();
+    Sample.Actor=FleetToken(Actor);
+    Sample.Slot=Slot;
+    Sample.TeleportRevision=Actor->GetTeleportRevision();
+    FleetDecisions.Observe(Sample);
+}
+
 void ALatebrakeRaceGameMode::BeginFleetReplayFrame(double LiveDelta,bool bClockAdvanced)
 {
     if (!IsExperimentalFleetRequested()) return;
@@ -622,7 +665,18 @@ latebrake::FleetRaceReview ALatebrakeRaceGameMode::CollectFleetRaceReview() cons
     Review.Timing=latebrake::ReviewFleetGateTiming(Review,FleetGateTiming,
         FleetAttemptToken,FleetAttempt.BoundIdentity());
     if (Review.ValidRoster && Review.PlayerRouteValid)
+    {
         Review.TrafficHistory=FleetPlayerTraffic.Readout();
+        std::array<latebrake::FleetDecisionRouteEvidence,latebrake::StartGridCapacity-1> Evidence{};
+        for (int32 Slot=1;Slot<latebrake::StartGridCapacity;++Slot)
+        {
+            const auto Index=static_cast<std::size_t>(Slot-1);
+            const auto& Row=Review.Rivals[Index];
+            Evidence[Index]={Row.Slot==Slot && Row.BodyObserved && Row.RouteEvidenceValid,Row.AcceptedGates};
+        }
+        Review.Decisions=FleetDecisions.Read(FleetAttemptToken,FleetAttempt.BoundIdentity(),
+            Review.PlayerActiveSeconds,FleetFrameToken,Review.PlayerFinished,Evidence);
+    }
     if (Review.PlayerFinished)
         Review.Pace=latebrake::ReviewFleetWholeRunPace(Review,FleetGateTiming,
             FleetAttemptToken,FleetAttempt.BoundIdentity());

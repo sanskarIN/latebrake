@@ -229,6 +229,7 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
         bLocalPlayerReady, LiveDelta);
     ObserveFleetPlayerTraffic(LiveDelta,bActualClockAdvanced);
     BeginFleetReplayFrame(LiveDelta,bActualClockAdvanced);
+    BeginFleetDecisionFrame(LiveDelta,bActualClockAdvanced);
     // Unofficial reference trace observes the SAME guarded player/clock
     // frame as official lap timing, but can never modify timing or physics.
     // World pause and focus loss can produce zero gameplay ticks; the

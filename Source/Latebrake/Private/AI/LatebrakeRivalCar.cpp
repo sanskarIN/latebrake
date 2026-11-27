@@ -293,6 +293,10 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Position.X, Position.Y, Heading, FlatSpeed,
             NextTarget.X, NextTarget.Y, 440.0, false),
         Route.GetNextWaypoint(), {Position.X, Position.Y}, FlatSpeed);
+    latebrake::FleetDecisionSample Decision;
+    Decision.GateOrdinal=Route.GetCompletedLaps()*Route.GetWaypointCount()+Route.GetNextWaypoint();
+    Decision.SpeedCmS=FlatSpeed;
+    Decision.Set(latebrake::FleetDecisionStage::Route,Command);
 
     // The original anticipator uses a fixed approach window; the newly
     // bounded physical brake forces need an earlier, distance-based forecast.
@@ -317,6 +321,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             GetHandlingMode() == ELatebrakeHandlingMode::Arcade,
             bCornerPhysicsQualified});
     Command = BrakeForecast.Command;
+    Decision.Set(latebrake::FleetDecisionStage::Corner,Command);
 
     // Apply selected Quick Race difficulty only to this already-valid
     // planner command. Existing grip/traffic/heat/spin safety limits run
@@ -324,6 +329,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
     Command = latebrake::ApplyRivalDifficulty(
         Command, Mode->GetActiveRivalDifficulty(), FlatSpeed,
         IsRacePhysicsReady());
+    Decision.Set(latebrake::FleetDecisionStage::Difficulty,Command);
 
     // Rival pace adapts to previous-tick real chassis slip, last valid
     // grip condition and current steering demand. It may only throttle
@@ -335,6 +341,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GetTireCondition().GripMultiplier(),
         GetTireCondition().HasValidSample()
     });
+    Decision.Set(latebrake::FleetDecisionStage::Grip,Command);
 
     // The prior qualified chassis tick already measured actual paved
     // surface hysteresis and accepted collision damage. Use those real,
@@ -354,6 +361,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GetSurfaceTraction().HasValidSample(),
         GetCollisionDamage().HasEligibleFrame()
     });
+    Decision.Set(latebrake::FleetDecisionStage::SurfaceDamage,Command);
+    Decision.RoadQualified=bCornerPhysicsQualified && !bOffPavement;
 
     // The previous qualified physical engine-heat sample can modestly
     // reduce rival throttle at road speed, letting the real shared motor
@@ -363,6 +372,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         GetEngineHeat().HeatFraction(),
         GetEngineHeat().HasValidSample(),
         IsRacePhysicsReady()});
+    Decision.Set(latebrake::FleetDecisionStage::EngineHeat,Command);
 
     // Plan the control for this physics tick, not one frame after applying
     // the previous command. A fully qualified, same-straight slow player
@@ -430,6 +440,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.AbortUntilGateChange();
     }
     const latebrake::PilotCommand FollowingCommand = PassResolution.Command;
+    Decision.Set(latebrake::FleetDecisionStage::HumanFollowing,FollowingCommand);
     latebrake::PilotCommand FleetCommand=FollowingCommand;
     if (Mode->IsExperimentalFleetRequested())
     {
@@ -439,6 +450,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier:1.0):0.0;
         latebrake::RivalFleetTrafficSample Snapshot;
         const bool Observed=Mode->TryGetFreshFleetTraffic(this,bCornerPhysicsQualified,BrakeScale,Snapshot);
+        Decision.TrafficObserved=Observed;
         if (Observed)
         {
             const int Ordinal=Route.GetCompletedLaps()*Route.GetWaypointCount()+Route.GetNextWaypoint();
@@ -449,10 +461,19 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             const auto PassingLane=FleetPassing.Apply(FollowingCommand,{
                 Ordinal,Route.GetNextWaypoint(),static_cast<double>(DeltaSeconds),
                 bCornerPhysicsQualified && !bOffPavement,Snapshot,PassingStamp});
+            Decision.Set(latebrake::FleetDecisionStage::Passing,PassingLane.Command);
             const auto Immediate=latebrake::ApplyRivalFleetTraffic(PassingLane.Command,Snapshot);
+            Decision.Set(latebrake::FleetDecisionStage::ImmediateTraffic,Immediate.Command);
             const auto Supervised=FleetRisk.Apply(Immediate.Command,Snapshot,DeltaSeconds,
                 latebrake::FleetForecastRoadPolicy::ObservedOffroadBlockers);
             FleetCommand=Supervised.Command;
+            Decision.TrafficQualified=Supervised.Qualified;
+            Decision.Risk=Supervised.Forecast.Kind;
+            Decision.BrakeHold=Supervised.HoldingBrake;
+            Decision.OffroadBlockers=Supervised.Forecast.OffroadBlockers;
+            Decision.RoadSpeedExceeded=Supervised.Forecast.RoadSpeedExceeded;
+            Decision.LimitingSlot=Supervised.Forecast.LimitingSlot>=0?
+                Supervised.Forecast.LimitingSlot:Immediate.LimitingSlot;
             if (FleetCommand.Brake || !Supervised.Qualified)
             {
                 FleetPassing.AbortTraffic();
@@ -463,9 +484,14 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         {
             FleetRisk.Reset();
             FleetPassing.Suspend();
+            Decision.Set(latebrake::FleetDecisionStage::Passing,FollowingCommand);
             FleetCommand.Throttle=0.0;
             FleetCommand.Brake=true;
+            Decision.Set(latebrake::FleetDecisionStage::ImmediateTraffic,FleetCommand);
         }
+        Decision.Set(latebrake::FleetDecisionStage::PredictiveTraffic,FleetCommand);
+        Decision.Queue=FleetQueue.Readout().Status;
+        Decision.Passing=FleetPassing.Readout().Phase;
     }
 
     // Read real Chaos angular velocity AFTER all route, corner, road,
@@ -481,6 +507,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             static_cast<double>(ActualAngularVelocity.Z),
             true
         });
+    Decision.Set(latebrake::FleetDecisionStage::Yaw,SafeTrafficCommand);
     // Apply a final, bounded propulsion-only spin guard using actual
     // Chaos angular velocity and chassis lateral motion. Never steer,
     // brake, award laps or bypass existing route/traffic authority.
@@ -491,6 +518,8 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 Velocity, GetActorRightVector())),
             static_cast<double>(ActualAngularVelocity.Z), true
         });
+    Decision.Set(latebrake::FleetDecisionStage::Spin,SafeSpinCommand);
+    if (Mode->IsExperimentalFleetRequested()) Mode->ObserveFleetRivalDecision(this,Decision);
     SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle),
                           static_cast<float>(SafeSpinCommand.Steering),
                           SafeSpinCommand.Brake);

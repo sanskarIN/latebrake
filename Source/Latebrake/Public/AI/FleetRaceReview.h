@@ -4,6 +4,7 @@
 #include "AI/GridRivalLedger.h"
 #include "AI/FleetGateTimingJournal.h"
 #include "AI/FleetPlayerTraffic.h"
+#include "AI/FleetDecisionJournal.h"
 #include "Racing/RivalFinishClockReview.h"
 #include "Racing/RivalSameSegmentOrder.h"
 #include "Track/RaceMiniMap.h"
@@ -91,6 +92,7 @@ struct FleetRaceReview final
     FleetPaceReadout Pace{};
     FleetPlayerTrafficReadout Traffic{};
     FleetPlayerTrafficSummary TrafficHistory{};
+    FleetDecisionReadout Decisions{};
 };
 
 inline bool FleetRouteOrdinal(int laps,int nextGate,bool finished,

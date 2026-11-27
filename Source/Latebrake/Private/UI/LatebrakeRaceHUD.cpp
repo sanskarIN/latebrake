@@ -1294,6 +1294,28 @@ void ALatebrakeRaceHUD::DrawHUD()
                         MenuLine(FString::Printf(TEXT("AI %d | %s | recovery %d/%d verified"),
                             Row.Slot,*Status,Row.SuccessfulRecoveries,Row.RecoveryAttempts));
                     }
+                    const auto& Decisions=Review.Decisions;
+                    if (Decisions.Valid && Decisions.ObservedRivals>0)
+                    {
+                        MenuLine(TEXT("AI COMMAND OBSERVATIONS | SAMPLED, NOT PHYSICAL FORCE"),true);
+                        for (const auto& Entry:Decisions.Rivals)
+                        {
+                            if (!Entry.Valid || !Entry.History.HasDuration()) continue;
+                            const auto& H=Entry.History;
+                            MenuLine(FString::Printf(TEXT("AI %d | %.1fs sampled | %.0f km/h mean | brake %.1fs"),
+                                Entry.Slot,H.ObservedSeconds,H.MeanSpeedKmh(),H.BrakingSeconds));
+                            if (!bCompact)
+                            {
+                                MenuLine(FString::Printf(TEXT("  Queue %.1fs | traffic hold %.1fs | no drive %.1fs"),
+                                    H.QueueSeconds,H.TrafficHoldSeconds,H.NoDriveSeconds));
+                                const auto Stage=H.DominantBrakeOrigin();
+                                if (Stage!=latebrake::FleetDecisionStage::Count)
+                                    MenuLine(FString::Printf(TEXT("  Main sampled brake origin: %s | longest %.1fs"),
+                                        UTF8_TO_TCHAR(latebrake::FleetDecisionStageLabel(Stage)),
+                                        H.LongestBrake.Duration()));
+                            }
+                        }
+                    }
                     const auto& Pace=Review.Pace;
                     if (Pace.ValidPlayer && Pace.Player.AllLaps.Valid)
                     {
@@ -2899,6 +2921,10 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Line(FString::Printf(TEXT("STRAIGHT COMPARISON UNAVAILABLE %d"),
                         FleetReview.StraightUnavailable),Accent);
             }
+            if (!bCompact && FleetReview.Decisions.Valid && FleetReview.Decisions.CurrentRivals>0)
+                Line(FString::Printf(TEXT("AI REQUESTS %d/5 | BRAKE %d | HOLD %d | PASS %d"),
+                    FleetReview.Decisions.CurrentRivals,FleetReview.Decisions.CurrentBraking,
+                    FleetReview.Decisions.CurrentTrafficHold,FleetReview.Decisions.CurrentPassing),Primary);
             const auto& Traffic=FleetReview.Traffic;
             if (Traffic.Valid && Traffic.StrongestSlot>=1 &&
                 Traffic.StrongestSlot<latebrake::StartGridCapacity)
