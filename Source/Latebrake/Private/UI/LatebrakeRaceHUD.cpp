@@ -17,6 +17,7 @@
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "UI/HudVerticalPlan.h"
+#include "UI/HudTelemetryPriority.h"
 #include "UI/HudTextBounds.h"
 #include "UI/HudDetailTextFlow.h"
 #include "UI/HudMenuVerticalPlan.h"
@@ -1766,6 +1767,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(Mode->UsesMilesPerHour()
                 ? TEXT("Speed display: MPH") : TEXT("Speed display: KM/H"));
             MenuLine(TEXT("Select to switch speed units and save."));
+            MenuLine(FString::Printf(TEXT("HUD DETAIL: %s (SESSION ONLY)"),
+                UTF8_TO_TCHAR(latebrake::HudTelemetryModeName(Mode->GetHudTelemetryMode()))),true);
+#if !PLATFORM_ANDROID
+            MenuLine(TEXT("F2: cycle Focused / Balanced / Detailed"));
+#endif
             MenuLine(Mode->IsDuskLightingPreview()
                 ? TEXT("LIGHTING: DUSK (SESSION PREVIEW ONLY)")
                 : TEXT("LIGHTING: DAY (SESSION PREVIEW ONLY)"), true);
@@ -2210,28 +2216,27 @@ void ALatebrakeRaceHUD::DrawHUD()
     float Y = static_cast<float>(Layout.Top);
     int32 DrawnTelemetryLines = 0;
 
-    // Detailed source-only statistics can exceed a real screen height.
-    // Clip optional rows before the reserved SAVE and FINISH/PAUSE region,
-    // never below the fixed controls or into Android GAS/BRAKE targets.
-    const auto Line = [&](const FString& Content, const FLinearColor& Color, bool bHeading = false)
+    // Collect bounded candidates before drawing. The later semantic
+    // selection protects current alerts from earlier optional rows.
+    using latebrake::HudTelemetryKind;
+    struct FTelemetryRow
     {
-        if (!VerticalPlan.Valid ||
-            DrawnTelemetryLines >= VerticalPlan.MaxTelemetryLines ||
-            Content.IsEmpty())
-        {
+        FString Content;
+        FLinearColor Color;
+        bool Heading=false;
+    };
+    TArray<FTelemetryRow> TelemetryRows;
+    TelemetryRows.Reserve(latebrake::HudTelemetryCandidateCapacity);
+    latebrake::HudTelemetryQueue TelemetryQueue;
+    const auto Line = [&](const FString& Content,const FLinearColor& Color,
+        bool bHeading=false,HudTelemetryKind Kind=HudTelemetryKind::Analysis)
+    {
+        if (!VerticalPlan.Valid || Content.IsEmpty() ||
+            TelemetryRows.Num()>=latebrake::HudTelemetryCandidateCapacity)
             return;
-        }
-        UFont* Font = bHeading
-            ? GEngine->GetMediumFont() : GEngine->GetSmallFont();
-        const float TextScale = Scale * (bHeading ? 1.08f : 1.0f);
-        const FString Fitted = FitHudText(Content, Font, TextScale);
-        if (Fitted.IsEmpty())
-        {
-            return;
-        }
-        DrawText(Fitted, Color, Left, Y, Font, TextScale);
-        ++DrawnTelemetryLines;
-        Y += Step;
+        const int32 Index=TelemetryRows.Num();
+        if(TelemetryQueue.Add(Index,Kind))
+            TelemetryRows.Add(FTelemetryRow{Content,Color,bHeading});
     };
 
     const bool bTimeAttack = Mode->GetSelectedEvent() == latebrake::EventKind::TimeAttack;
@@ -2241,20 +2246,20 @@ void ALatebrakeRaceHUD::DrawHUD()
     const double Seconds = Elapsed - static_cast<double>(Minutes) * 60.0;
 
     Line(bCompact ? TEXT("LATEBRAKE") : TEXT("LATEBRAKE  /  RACE BEYOND LIMITS"),
-        Accent, true);
+        Accent, true, HudTelemetryKind::Decorative);
     if (!Mode->IsCircuitReadyForGameplay())
     {
-        Line(TEXT("TRACK NOT READY - RACE CLOCK AND GATES DISABLED"), Accent);
+        Line(TEXT("TRACK NOT READY - RACE CLOCK AND GATES DISABLED"), Accent, false, HudTelemetryKind::Blocking);
     }
     else if (!Mode->IsRestartPlacementReady())
     {
         Line(bCompact ? TEXT("RESTART FAILED - RACE DISABLED")
                       : TEXT("RESTART GRID NOT VERIFIED - PRESS RESTART AGAIN"),
-             Accent);
+             Accent, false, HudTelemetryKind::Blocking);
     }
     else if (!Mode->HasLocalPlayerDriver())
     {
-        Line(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), Accent);
+        Line(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), Accent, false, HudTelemetryKind::Blocking);
     }
     // The focus-loss latch can outlive a failed/OS-controlled world pause.
     // Keep the player informed that racing time remains blocked until an
@@ -2263,13 +2268,13 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(bCompact ? TEXT("FOCUS LOST - RACE SUSPENDED")
                       : TEXT("APP FOCUS LOST - RACE SUSPENDED; RESUME EXPLICITLY"),
-             Accent);
+             Accent, false, HudTelemetryKind::Blocking);
     }
     Line(Mode->IsCareerRace()
         ? (bCompact ? FString(TEXT("CAREER RACE"))
                     : FString::Printf(TEXT("CAREER  %s"), *Mode->GetCareerEventName()))
         : (bTimeAttack ? FString(TEXT("TIME ATTACK"))
-                       : FString(TEXT("CIRCUIT RACE"))), Accent);
+                       : FString(TEXT("CIRCUIT RACE"))), Accent, false, HudTelemetryKind::Context);
     if (Mode->IsCareerRace() && !bCompact)
     {
         const int32 Id = Mode->GetActiveCareerEventId();
@@ -2278,7 +2283,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             Line(FString::Printf(TEXT("SERIES %d  |  POINTS %d  |  ROUND %d/3"),
                 Event->Series + 1, Mode->GetCareer().ChampionshipPoints(Event->Series),
-                Event->Round + 1), Primary);
+                Event->Round + 1), Primary, false, HudTelemetryKind::Context);
         }
     }
     const FString SpeedLine = Mode->UsesMilesPerHour()
@@ -2324,7 +2329,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             *BoostStatusText, DisplayBoostCharge * 100.0)
         : FString();
     Line((Car->IsHandbrakeHeld() && !bCompact
-        ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine) + NitroLabel, Primary);
+        ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine) + NitroLabel, Primary, false, HudTelemetryKind::Speed);
 
     // Always prioritize authoritative lap/next gate and race clock above
     // optional proximity, wayfinding and driving telemetry on small phones.
@@ -2334,8 +2339,8 @@ void ALatebrakeRaceHUD::DrawHUD()
             Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount())
         : FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
             DisplayLap, Race.GetRequiredLaps(),
-            Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary);
-    Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true);
+            Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary, false, HudTelemetryKind::Progress);
+    Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true, HudTelemetryKind::Clock);
     // Optional, clearly ESTIMATED automatic gearbox telemetry on desktop.
     // Preserve gate/time rows and mobile touch controls as first priority.
     if (!bCompact && !bTouchHUD &&
@@ -2352,7 +2357,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("AUTO GEAR %s | RPM EST %d%s"),
                 *GearLabel, Gear.EstimatedRpm,
                 Gear.Shifting ? TEXT(" | SHIFT") : TEXT("")),
-                Gear.Shifting ? Accent : Primary);
+                Gear.Shifting ? Accent : Primary, false, HudTelemetryKind::Vehicle);
         }
     }
     // Saved solo PB is a deadline for official elapsed clock, not predicted
@@ -2378,7 +2383,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     PbTarget.SecondsOver, PbTarget.SavedBestSeconds)
                 : FString::Printf(TEXT("PB CLOCK  %.2fs LEFT  |  TARGET %.2fs"),
                     PbTarget.SecondsRemaining, PbTarget.SavedBestSeconds),
-                Accent);
+                Accent, false, HudTelemetryKind::Pace);
         }
     }
     // Help a human recover from a possible obstacle deadlock: four seconds
@@ -2410,28 +2415,28 @@ void ALatebrakeRaceHUD::DrawHUD()
     switch (RecoveryNotice)
     {
     case latebrake::PlayerRecoveryNotice::Occupied:
-        Line(TEXT("RECOVER BLOCKED: RIVAL AT LANDING | NO FEE"), Accent);
+        Line(TEXT("RECOVER BLOCKED: RIVAL AT LANDING | NO FEE"), Accent, false, HudTelemetryKind::Urgent);
         break;
     case latebrake::PlayerRecoveryNotice::TrafficUnavailable:
-        Line(TEXT("RECOVER BLOCKED: TRAFFIC UNKNOWN | NO FEE"), Accent);
+        Line(TEXT("RECOVER BLOCKED: TRAFFIC UNKNOWN | NO FEE"), Accent, false, HudTelemetryKind::Urgent);
         break;
     case latebrake::PlayerRecoveryNotice::LandingUnavailable:
-        Line(TEXT("RECOVER BLOCKED: LANDING UNAVAILABLE | NO FEE"), Accent);
+        Line(TEXT("RECOVER BLOCKED: LANDING UNAVAILABLE | NO FEE"), Accent, false, HudTelemetryKind::Urgent);
         break;
     case latebrake::PlayerRecoveryNotice::FeeUnavailable:
-        Line(TEXT("RECOVER BLOCKED: CLOCK UNAVAILABLE | NO FEE"), Accent);
+        Line(TEXT("RECOVER BLOCKED: CLOCK UNAVAILABLE | NO FEE"), Accent, false, HudTelemetryKind::Urgent);
         break;
     case latebrake::PlayerRecoveryNotice::PlacementUnverified:
-        Line(TEXT("RECOVER FAILED: PLACEMENT UNVERIFIED | NO FEE"), Accent);
+        Line(TEXT("RECOVER FAILED: PLACEMENT UNVERIFIED | NO FEE"), Accent, false, HudTelemetryKind::Urgent);
         break;
     case latebrake::PlayerRecoveryNotice::VerifiedAndCharged:
-        Line(TEXT("RECOVER VERIFIED | +5s INCLUDED IN TIME"), Primary);
+        Line(TEXT("RECOVER VERIFIED | +5s INCLUDED IN TIME"), Primary, false, HudTelemetryKind::Urgent);
         break;
     default:
         if (bPossiblyStuck)
         {
             Line(bTouchHUD ? TEXT("NO MOTION? TAP RECOVER (+5s)")
-                           : TEXT("NO MOTION? PRESS R TO RECOVER (+5s)"), Accent);
+                           : TEXT("NO MOTION? PRESS R TO RECOVER (+5s)"), Accent, false, HudTelemetryKind::Urgent);
         }
         break;
     }
@@ -2446,7 +2451,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         const auto Startup=Mode->GetFleetStartupReadout();
         if (Fleet.Phase==latebrake::FleetAttemptPhase::Faulted)
             Line(FString::Printf(TEXT("FLEET: %s | RESTART"),
-                UTF8_TO_TCHAR(latebrake::FleetAttemptFaultName(Fleet.Fault))),Accent,true);
+                UTF8_TO_TCHAR(latebrake::FleetAttemptFaultName(Fleet.Fault))),Accent,true, HudTelemetryKind::Start);
         else if (Fleet.Phase!=latebrake::FleetAttemptPhase::Running)
         {
             const char* Detail=Startup.Cause==latebrake::FleetStartupCause::UnsafeGrid
@@ -2455,11 +2460,11 @@ void ALatebrakeRaceHUD::DrawHUD()
             if (Startup.Phase==latebrake::FleetStartupPhase::Settling)
                 Detail="verifying settled grid";
             Line(FString::Printf(TEXT("GRID: %s | %.0fs left"),
-                UTF8_TO_TCHAR(Detail),Startup.RemainingSeconds),Accent,true);
+                UTF8_TO_TCHAR(Detail),Startup.RemainingSeconds),Accent,true, HudTelemetryKind::Start);
             if (Startup.Grid.Slot>=0 && Startup.Cause==latebrake::FleetStartupCause::UnsafeGrid)
-                Line(FString::Printf(TEXT("Check grid slot %d"),Startup.Grid.Slot+1),Primary);
+                Line(FString::Printf(TEXT("Check grid slot %d"),Startup.Grid.Slot+1),Primary, false, HudTelemetryKind::Start);
         }
-        else Line(TEXT("FLEET DRIVE SUSPENDED"),Accent,true);
+        else Line(TEXT("FLEET DRIVE SUSPENDED"),Accent,true, HudTelemetryKind::Start);
     }
     else if (Mode->IsCircuitReadyForGameplay() &&
         Mode->HasLocalPlayerDriver() && Mode->IsRestartPlacementReady())
@@ -2467,16 +2472,16 @@ void ALatebrakeRaceHUD::DrawHUD()
         switch (Mode->GetRaceStartPhase())
         {
         case latebrake::RaceStartPhase::Three:
-            Line(TEXT("START LIGHTS  3"), Accent, true);
+            Line(TEXT("START LIGHTS  3"), Accent, true, HudTelemetryKind::Start);
             break;
         case latebrake::RaceStartPhase::Two:
-            Line(TEXT("START LIGHTS  2"), Accent, true);
+            Line(TEXT("START LIGHTS  2"), Accent, true, HudTelemetryKind::Start);
             break;
         case latebrake::RaceStartPhase::One:
-            Line(TEXT("START LIGHTS  1"), Accent, true);
+            Line(TEXT("START LIGHTS  1"), Accent, true, HudTelemetryKind::Start);
             break;
         case latebrake::RaceStartPhase::Go:
-            Line(TEXT("GO!"), Accent, true);
+            Line(TEXT("GO!"), Accent, true, HudTelemetryKind::Start);
             break;
         default:
             break;
@@ -2535,7 +2540,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(FString::Printf(TEXT("CAMERA %s | C TO CYCLE"),
             ANSI_TO_TCHAR(latebrake::CameraViewName(Car->GetCameraView()))),
-            Primary);
+            Primary, false, HudTelemetryKind::Decorative);
     }
 
     // Measured in-game stopping projection, only while consecutive
@@ -2571,7 +2576,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 GroundName, Contact.QualifiedProbes,
                 Contact.DriveTractionPercent),
                 Contact.Status == latebrake::ChassisContactStatus::Full
-                    ? Primary : Accent);
+                    ? Primary : Accent, false, HudTelemetryKind::Vehicle);
         }
     }
 
@@ -2581,7 +2586,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(FString::Printf(TEXT("ARCADE GRIP %.0f%% | TIRE WEAR %.0f%%"),
             Car->GetTireCondition().GripMultiplier() * 100.0,
-            Car->GetTireCondition().WearFraction() * 100.0), Primary);
+            Car->GetTireCondition().WearFraction() * 100.0), Primary, false, HudTelemetryKind::Vehicle);
     }
     // Optional human Arcade stability hint reports the actual bounded
     // throttle reduction from the last accepted live physical frame.
@@ -2592,7 +2597,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(
             TEXT("SPIN ASSIST  %.0f%% POSITIVE THROTTLE TRIM"),
             Car->GetSpinAssist().CurrentReductionFraction() * 100.0),
-            Accent);
+            Accent, false, HudTelemetryKind::Vehicle);
     }
     // Optional arcade brake-temperature feedback uses measured service
     // brake demand and actual chassis velocity, not decorative wheel heat.
@@ -2603,7 +2608,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(FString::Printf(TEXT("BRAKE HEAT %.0f%% | SERVICE BRAKE %.0f%%"),
             Car->GetBrakeHeat().HeatFraction() * 100.0,
-            Car->GetBrakeHeat().ServiceBrakeMultiplier() * 100.0), Accent);
+            Car->GetBrakeHeat().ServiceBrakeMultiplier() * 100.0), Accent, false, HudTelemetryKind::Vehicle);
     }
     // Sustained propulsion heat lowers normal, nitro and drafting motor
     // output. This is an arcade estimate, not a real engine sensor.
@@ -2615,7 +2620,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(
             TEXT("ENGINE HEAT %.0f%% | MOTOR %.0f%%"),
             Car->GetEngineHeat().HeatFraction() * 100.0,
-            Car->GetEngineHeat().MotorMultiplier() * 100.0), Accent);
+            Car->GetEngineHeat().MotorMultiplier() * 100.0), Accent, false, HudTelemetryKind::Vehicle);
     }
     // Actual high-speed hard chassis collisions can weaken engine and
     // lateral arcade performance until the next race reset. Damage is a
@@ -2628,7 +2633,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetCollisionDamage().DamageFraction() * 100.0,
             Car->GetCollisionDamage().MotorMultiplier() * 100.0,
             Car->GetCollisionDamage().LateralGripMultiplier() * 100.0),
-            Accent);
+            Accent, false, HudTelemetryKind::Vehicle);
     }
     // An optional desktop pit notice is derived from the ACTUAL player
     // vehicle and the shared deterministic service policy. The HUD may
@@ -2643,7 +2648,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             if (!Pit.IsArmed())
             {
                 Line(FString::Printf(TEXT("PIT SERVICED %d | EXIT BAY TO REARM"),
-                    Pit.StopCount()), Accent);
+                    Pit.StopCount()), Accent, false, HudTelemetryKind::Vehicle);
                 const auto Summary=Car->GetPitJournal().Review(Pit.StopCount());
                 if (Summary.Valid)
                 {
@@ -2651,7 +2656,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Line(FString::Printf(
                         TEXT("RESTORED: DAMAGE %.0f pp | WEAR %.0f pp | BOOST %.0f pp"),
                         Receipt.DamageRestored*100.0, Receipt.WearRemoved*100.0,
-                        Receipt.ChargeRestored*100.0), Primary);
+                        Receipt.ChargeRestored*100.0), Primary, false, HudTelemetryKind::Vehicle);
                 }
             }
             else
@@ -2661,35 +2666,35 @@ void ALatebrakeRaceHUD::DrawHUD()
                 switch (Pit.Guidance())
                 {
                 case latebrake::PitServiceGuidance::NoMaintenance:
-                    Line(TEXT("PIT BAY | NO SERVICE NEEDED"), Primary);
+                    Line(TEXT("PIT BAY | NO SERVICE NEEDED"), Primary, false, HudTelemetryKind::Vehicle);
                     break;
                 case latebrake::PitServiceGuidance::SlowDown:
-                    Line(TEXT("PIT: SLOW TO 4.3 KM/H OR LESS"), Accent);
+                    Line(TEXT("PIT: SLOW TO 4.3 KM/H OR LESS"), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 case latebrake::PitServiceGuidance::ReleaseThrottle:
-                    Line(TEXT("PIT: RELEASE THROTTLE"), Accent);
+                    Line(TEXT("PIT: RELEASE THROTTLE"), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 case latebrake::PitServiceGuidance::ReleaseNitro:
-                    Line(TEXT("PIT: RELEASE NITRO"), Accent);
+                    Line(TEXT("PIT: RELEASE NITRO"), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 case latebrake::PitServiceGuidance::SettleChassis:
-                    Line(TEXT("PIT: SETTLE CHASSIS ON ROAD"), Accent);
+                    Line(TEXT("PIT: SETTLE CHASSIS ON ROAD"), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 case latebrake::PitServiceGuidance::HoldButton:
-                    Line(TEXT("PIT: HOLD P / Y FOR 2.5 SECONDS"), Accent);
+                    Line(TEXT("PIT: HOLD P / Y FOR 2.5 SECONDS"), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 case latebrake::PitServiceGuidance::Servicing:
                     Line(FString::Printf(
                         TEXT("PIT: SERVICING %.0f%% | STOP %d"),
                         Pit.ProgressFraction() * 100.0,
-                        Pit.StopCount() + 1), Accent);
+                        Pit.StopCount() + 1), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 case latebrake::PitServiceGuidance::Completed:
                 case latebrake::PitServiceGuidance::ExitToRearm:
-                    Line(TEXT("PIT: EXIT THE BAY BEFORE ANOTHER STOP"), Accent);
+                    Line(TEXT("PIT: EXIT THE BAY BEFORE ANOTHER STOP"), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 default:
-                    Line(TEXT("PIT: WAIT FOR RACE / PHYSICS READINESS"), Primary);
+                    Line(TEXT("PIT: WAIT FOR RACE / PHYSICS READINESS"), Primary, false, HudTelemetryKind::Urgent);
                     break;
                 }
             }
@@ -2706,7 +2711,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             {
                 Line(FString::Printf(
                     TEXT("PIT: INNER SOUTH SHOULDER | %.0f m"),
-                    DistanceCm / 100.0), Primary);
+                    DistanceCm / 100.0), Primary, false, HudTelemetryKind::Navigation);
             }
         }
     }
@@ -2721,7 +2726,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             TEXT("OFF-PAVEMENT TRACTION  MOTOR %.0f%% | GRIP %.0f%%"),
             latebrake::ArcadeSurfaceTraction::OffPavementMotorMultiplier * 100.0,
             latebrake::ArcadeSurfaceTraction::OffPavementGripMultiplier * 100.0),
-            Accent);
+            Accent, false, HudTelemetryKind::Vehicle);
     }
 
     // Optional, verified human-only aerodynamic *arcade* gameplay hint;
@@ -2730,7 +2735,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Car->GetAppliedDraftBoostFraction() > 0.f)
     {
         Line(FString::Printf(TEXT("SLIPSTREAM +%.1f%% DRIVE"),
-            Car->GetAppliedDraftBoostFraction() * 100.0), Primary);
+            Car->GetAppliedDraftBoostFraction() * 100.0), Primary, false, HudTelemetryKind::Vehicle);
     }
     else if (!bCompact && Mode->IsExperimentalFleetRequested() &&
         Car->GetAppliedDraftBoostFraction()>0.f)
@@ -2738,7 +2743,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         const auto Draft=Car->GetFleetSlipstreamReadout();
         if (Draft.Active())
             Line(FString::Printf(TEXT("SLIPSTREAM AI %d | +%.1f%% DRIVE"),
-                Draft.TargetSlot,Car->GetAppliedDraftBoostFraction()*100.0),Primary);
+                Draft.TargetSlot,Car->GetAppliedDraftBoostFraction()*100.0),Primary, false, HudTelemetryKind::Vehicle);
     }
 
     // The warning is pure HUD feedback. It must reset on pawn replacement,
@@ -2868,7 +2873,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("SPLIT L%d G%d: RIVAL %+.2fs (NOT PLACE)"),
                 Matched.LapNumber, Matched.GateNumber,
                 Matched.RivalMinusPlayerSeconds),
-                Matched.RivalMinusPlayerSeconds < 0.0 ? Accent : Primary);
+                Matched.RivalMinusPlayerSeconds < 0.0 ? Accent : Primary, false, HudTelemetryKind::Pace);
         }
     }
     if (RivalProximityHint.Update(
@@ -2878,7 +2883,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(
             bCompact ? TEXT("RIVAL CLOSE | %.0fm DIRECT")
                      : TEXT("RIVAL CLOSE | %.0fm DIRECT (ADVISORY)"),
-            Radar.DirectRivalSeparationMeters), Accent);
+            Radar.DirectRivalSeparationMeters), Accent, false, HudTelemetryKind::Urgent);
     }
     // This is a signed change in DIRECT radar separation, not placement,
     // impact probability or opponent speed. Short-lived/jittery observations
@@ -2892,7 +2897,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(
             bCompact ? TEXT("RIVAL CLOSING | %.0fm/s DIRECT")
                      : TEXT("RIVAL CLOSING | %.1fm/s DIRECT RATE"),
-            RivalTrend.SeparationChangeMetersPerSecond), Accent);
+            RivalTrend.SeparationChangeMetersPerSecond), Accent, false, HudTelemetryKind::Urgent);
     }
     else if (!bCompact &&
              RivalTrend.Trend == latebrake::RivalRelativeTrend::Opening)
@@ -2907,7 +2912,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             GetWorld()->GetDeltaSeconds(), bWayfindingEligible))
     {
         Line(bCompact ? TEXT("WRONG WAY - TURN AROUND")
-                      : TEXT("WRONG WAY - RETURN TO CIRCUIT DIRECTION"), Accent);
+                      : TEXT("WRONG WAY - RETURN TO CIRCUIT DIRECTION"), Accent, false, HudTelemetryKind::Urgent);
     }
     // A second, independent advisory surfaces sustained off-pavement
     // driving and a bounded nearest-road direction. Its geometry uses
@@ -2930,7 +2935,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             Line(FString::Printf(
                 bCompact ? TEXT("OFF TRACK | ROAD %.0fm %s")
                          : TEXT("OFF TRACK | NEAREST PAVED ROAD %.0fm %s"),
-                ToRoad.DistanceMeters, ReturnDirection), Accent);
+                ToRoad.DistanceMeters, ReturnDirection), Accent, false, HudTelemetryKind::Urgent);
         }
     }
     // The source steward observes projected decorative wheel overlap.
@@ -2939,17 +2944,17 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         const auto Fleet=Mode->GetFleetAttemptReadout();
         Line(FString::Printf(TEXT("EXPERIMENTAL GRID %d/6 | NO SAVED REWARDS"),
-            Mode->GetPhysicalFleetCount()),Accent);
+            Mode->GetPhysicalFleetCount()),Accent, false, HudTelemetryKind::Context);
         if (Fleet.Phase==latebrake::FleetAttemptPhase::Faulted)
-            Line(TEXT("RESTART REQUIRED | FLEET UNAVAILABLE"),Accent,true);
+            Line(TEXT("RESTART REQUIRED | FLEET UNAVAILABLE"),Accent,true, HudTelemetryKind::Blocking);
         else if (!Fleet.RunningAllowed)
-            Line(TEXT("WAITING FOR VERIFIED SIX-CAR GRID"),Primary);
+            Line(TEXT("WAITING FOR VERIFIED SIX-CAR GRID"),Primary, false, HudTelemetryKind::Start);
         else if (FleetReview.ValidRoster && FleetReview.PlayerRouteValid)
         {
             Line(FString::Printf(TEXT("GATE COUNTS | MORE %d | SAME %d | FEWER %d"),
-                FleetReview.MoreGates,FleetReview.SameGates,FleetReview.FewerGates),Primary);
+                FleetReview.MoreGates,FleetReview.SameGates,FleetReview.FewerGates),Primary, false, HudTelemetryKind::Pace);
             if (FleetReview.UnavailableRivals>0)
-                Line(FString::Printf(TEXT("AI EVIDENCE UNAVAILABLE %d"),FleetReview.UnavailableRivals),Accent);
+                Line(FString::Printf(TEXT("AI EVIDENCE UNAVAILABLE %d"),FleetReview.UnavailableRivals),Accent, false, HudTelemetryKind::Context);
             if (FleetReview.SameGates>0 && !bCompact)
             {
                 Line(FString::Printf(TEXT("SAME STRAIGHT | YOU AHEAD %d | AI AHEAD %d | CLOSE %d"),
@@ -2972,15 +2977,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Line(FString::Printf(TEXT("AI %d | %s | %s %.1fm"),
                         Threat.Slot,UTF8_TO_TCHAR(latebrake::FleetTrafficDirectionName(Threat.Direction)),
                         UTF8_TO_TCHAR(latebrake::FleetTrafficSeverityName(Threat.Severity)),
-                        Threat.CentreDistanceCm/100.0),Accent,true);
+                        Threat.CentreDistanceCm/100.0),Accent,true, HudTelemetryKind::Urgent);
             }
             const auto& Timing=FleetReview.Timing;
             if (Timing.CommonCohortValid)
                 Line(FString::Printf(TEXT("MATCHED G%d | AI EARLIER %d | CLOSE %d | LATER %d"),
-                    Timing.CohortOrdinal,Timing.CohortEarlier,Timing.CohortUncertain,Timing.CohortLater),Primary);
+                    Timing.CohortOrdinal,Timing.CohortEarlier,Timing.CohortUncertain,Timing.CohortLater),Primary, false, HudTelemetryKind::Pace);
             else if (Timing.ValidPlayer && Timing.MatchedRivals>0)
                 Line(FString::Printf(TEXT("MATCHED ACTIVE-CLOCK SPLITS %d/5 | NOT RANK"),
-                    Timing.MatchedRivals),Primary);
+                    Timing.MatchedRivals),Primary, false, HudTelemetryKind::Pace);
             if (!bCompact)
             {
                 for(const auto& Row:FleetReview.Rivals)
@@ -3013,21 +3018,21 @@ void ALatebrakeRaceHUD::DrawHUD()
                 }
             }
         }
-        else Line(TEXT("FLEET ROUTE EVIDENCE UNAVAILABLE"),Accent);
+        else Line(TEXT("FLEET ROUTE EVIDENCE UNAVAILABLE"),Accent, false, HudTelemetryKind::Context);
     }
     const auto TrackReport=Mode->GetTrackLimits().Snapshot();
     if (bWayfindingEligible)
     {
         const auto Notice=Mode->GetTrackLimits().Notice(Race.GetElapsedSeconds());
         if (Notice.Event==latebrake::TrackLimitsEvent::PenaltyApplied)
-            Line(TEXT("TRACK LIMITS | +5s INCLUDED IN TIME"), Accent);
+            Line(TEXT("TRACK LIMITS | +5s INCLUDED IN TIME"), Accent, false, HudTelemetryKind::Urgent);
         else if (Notice.Event==latebrake::TrackLimitsEvent::PenaltyRefused)
-            Line(TEXT("TRACK LIMIT CHARGE REFUSED | NO FEE"), Accent);
+            Line(TEXT("TRACK LIMIT CHARGE REFUSED | NO FEE"), Accent, false, HudTelemetryKind::Urgent);
         else if (Notice.Event==latebrake::TrackLimitsEvent::ViolationRecorded)
             Line(FString::Printf(TEXT("TRACK LIMITS | VIOLATION %d"),
-                TrackReport.Violations), Accent);
+                TrackReport.Violations), Accent, false, HudTelemetryKind::Urgent);
         else if (TrackReport.Warning && !TrackReport.PendingCleanRejoin)
-            Line(TEXT("TRACK LIMIT WARNING | RETURN TO PAVEMENT"), Accent);
+            Line(TEXT("TRACK LIMIT WARNING | RETURN TO PAVEMENT"), Accent, false, HudTelemetryKind::Urgent);
         if (!bCompact && TrackReport.Violations>0)
             Line(FString::Printf(TEXT("TRACK LIMITS %d | CHARGES %d"),
                 TrackReport.Violations,TrackReport.Penalties), Primary);
@@ -3053,7 +3058,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(
             bCompact ? TEXT("NEXT GATE %.0fm | %s")
                      : TEXT("DIRECT TO NEXT GATE %.0fm | BEARING %s"),
-            RouteAdvice.DirectDistanceMeters, Hint), Primary);
+            RouteAdvice.DirectDistanceMeters, Hint), Primary, false, HudTelemetryKind::Navigation);
     }
 
     // Optional compact drift feedback, AFTER authentic lap/clock and
@@ -3063,7 +3068,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     {
         Line(FString::Printf(TEXT("DRIFT %.0f | x%.2f"),
             Car->GetDriftMeter().GetCurrentComboPoints(),
-            Car->GetDriftMeter().GetCurrentComboMultiplier()), Accent);
+            Car->GetDriftMeter().GetCurrentComboMultiplier()), Accent, false, HudTelemetryKind::Vehicle);
     }
 
     if (!bCompact)
@@ -3111,7 +3116,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     TEXT("DRIFT %.0f pts | x%.2f | %.1fs"),
                     Drift.GetCurrentComboPoints(),
                     Drift.GetCurrentComboMultiplier(),
-                    Drift.GetCurrentComboSeconds()), Accent);
+                    Drift.GetCurrentComboSeconds()), Accent, false, HudTelemetryKind::Vehicle);
             }
         }
     }
@@ -3120,19 +3125,19 @@ void ALatebrakeRaceHUD::DrawHUD()
     if (!bCompact)
     {
         Line(FString::Printf(TEXT("CURRENT LAP  %.2fs  |  LAST  %.2fs"),
-            Race.GetCurrentLapSeconds(), Race.GetLastLapSeconds()), Primary);
+            Race.GetCurrentLapSeconds(), Race.GetLastLapSeconds()), Primary, false, HudTelemetryKind::Pace);
         Line(FString::Printf(TEXT("FASTEST LAP  %.2fs  |  LAST SPLIT  %.2fs"),
-            Race.GetBestLapSeconds(), Race.GetLastSectorSeconds()), Primary);
+            Race.GetBestLapSeconds(), Race.GetLastSectorSeconds()), Primary, false, HudTelemetryKind::Pace);
         // Source-only run-local accounting, not an extra charge or refund.
         // Charged time is already part of TIME, sector and final lap clocks.
         if (Race.GetTimePenaltyCount() > 0)
         {
             Line(FString::Printf(TEXT("TIME PENALTIES  %d  |  +%.2fs ALREADY IN TIME"),
-                Race.GetTimePenaltyCount(), Race.GetTotalPenaltySeconds()), Primary);
+                Race.GetTimePenaltyCount(), Race.GetTotalPenaltySeconds()), Primary, false, HudTelemetryKind::Pace);
             if (!Race.IsFinished() && Race.GetCurrentLapPenaltySeconds() > 0.0)
             {
                 Line(FString::Printf(TEXT("THIS LAP PENALTIES  +%.2fs (IN LAP TIME)"),
-                    Race.GetCurrentLapPenaltySeconds()), Primary);
+                    Race.GetCurrentLapPenaltySeconds()), Primary, false, HudTelemetryKind::Pace);
             }
         }
         // Estimate based only on actual completed timed laps. Never
@@ -3174,7 +3179,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 TEXT("GATE %d | VS FEE-FREE LAP %d  %+.2fs"),
                 GateReference.GateIndex+1, GateReference.ReferenceLapNumber,
                 GateReference.CumulativeDeltaSeconds),
-                GateReference.CumulativeDeltaSeconds <= 0.0 ? Primary : Accent);
+                GateReference.CumulativeDeltaSeconds <= 0.0 ? Primary : Accent, false, HudTelemetryKind::Pace);
         }
         else if (Race.GetMeasuredLapSplits().LastComparison().Valid &&
                  Race.GetNextCheckpoint()==0)
@@ -3182,7 +3187,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             const auto& Last = Race.GetMeasuredLapSplits().LastComparison();
             Line(FString::Printf(TEXT("LAST LAP VS FEE-FREE LAP %d  %+.2fs"),
                 Last.ReferenceLapNumber, Last.DeltaSeconds),
-                Last.DeltaSeconds <= 0.0 ? Primary : Accent);
+                Last.DeltaSeconds <= 0.0 ? Primary : Accent, false, HudTelemetryKind::Pace);
         }
         // A within-run best-sector potential, not a promised finish time.
         // Wait for an actual timed lap and complete positive split history.
@@ -3201,7 +3206,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         if (Motion.Valid && Motion.LastComparison.Valid && !bCompact)
             Line(FString::Printf(TEXT("LAST G%d | %+.2fs vs L%d | sampled mean %+.0f km/h"),
                 Motion.LastComparison.Gate+1,Motion.LastComparison.TimeDeltaSeconds,
-                Motion.LastComparison.ReferenceLap,Motion.LastComparison.MeanSpeedDeltaKmh),Primary);
+                Motion.LastComparison.ReferenceLap,Motion.LastComparison.MeanSpeedDeltaKmh),Primary, false, HudTelemetryKind::Pace);
         const latebrake::LiveSectorTarget SectorTarget =
             latebrake::MeasureLiveSectorTarget(Race);
         if (SectorTarget.Valid)
@@ -3211,14 +3216,14 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Line(FString::Printf(
                     TEXT("SECTOR %d  OVER PREVIOUS BEST  +%.1fs"),
                     SectorTarget.SectorIndex + 1,
-                    SectorTarget.SecondsOverBest), Accent);
+                    SectorTarget.SecondsOverBest), Accent, false, HudTelemetryKind::Pace);
             }
             else
             {
                 Line(FString::Printf(
                     TEXT("SECTOR %d  %.1fs UNTIL PREVIOUS BEST"),
                     SectorTarget.SectorIndex + 1,
-                    SectorTarget.SecondsUntilBest), Primary);
+                    SectorTarget.SecondsUntilBest), Primary, false, HudTelemetryKind::Pace);
             }
         }
         if (Race.GetLastSectorIndex() >= 0)
@@ -3230,13 +3235,13 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Line(FString::Printf(TEXT("SECTOR %d  %.2fs  |  DELTA %+.2fs"),
                     Race.GetLastSectorIndex() + 1,
                     Race.GetLastSectorSeconds(),
-                    Race.GetLastSectorDeltaSeconds()), Primary);
+                    Race.GetLastSectorDeltaSeconds()), Primary, false, HudTelemetryKind::Pace);
             }
             else
             {
                 Line(FString::Printf(TEXT("SECTOR %d  %.2fs  |  FIRST SPLIT"),
                     Race.GetLastSectorIndex() + 1,
-                    Race.GetLastSectorSeconds()), Primary);
+                    Race.GetLastSectorSeconds()), Primary, false, HudTelemetryKind::Pace);
             }
         }
         const double IdealLap = Race.GetTheoreticalBestLapSeconds();
@@ -3250,7 +3255,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         if (Mode->GetPersonalBestLapSeconds() > 0.f)
         {
             Line(FString::Printf(TEXT("ALL-TIME FASTEST LAP  %.2fs"),
-                Mode->GetPersonalBestLapSeconds()), Accent);
+                Mode->GetPersonalBestLapSeconds()), Accent, false, HudTelemetryKind::Decorative);
         }
         if (!bTimeAttack && !bExperimentalFleet)
         {
@@ -3259,7 +3264,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Mode->GetRivalApproximateLaps(), Mode->GetRivalPlannedLaps(),
                     Mode->GetRivalRecoveryCount(),
                     Mode->HasRivalFinishedRoute() ? TEXT(" | DONE") : TEXT(""))
-                : FString(TEXT("RIVAL UNAVAILABLE")), Primary);
+                : FString(TEXT("RIVAL UNAVAILABLE")), Primary, false, HudTelemetryKind::Context);
             if (Mode->HasRival() && Mode->GetRivalRecoveryCount() > 0)
             {
                 Line(FString::Printf(
@@ -3389,27 +3394,27 @@ void ALatebrakeRaceHUD::DrawHUD()
             Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
                 ? TEXT("ARCADE") : TEXT("SIM-INSPIRED"),
             *Mode->GetSelectedVehicleName()), Primary);
-        Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
+        Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent, false, HudTelemetryKind::Decorative);
     }
     else
     {
         if (Mode->GetEventBestSeconds() > 0.f)
         {
             Line(FString::Printf(TEXT("BEST EVENT  %.2fs"),
-                Mode->GetEventBestSeconds()), Primary);
+                Mode->GetEventBestSeconds()), Primary, false, HudTelemetryKind::Decorative);
         }
         Line(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
             ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"), Primary);
-        Line(FString::Printf(TEXT("GARAGE  %s"), *Mode->GetSelectedVehicleName()), Accent);
+        Line(FString::Printf(TEXT("GARAGE  %s"), *Mode->GetSelectedVehicleName()), Accent, false, HudTelemetryKind::Decorative);
         Line(FString::Printf(TEXT("ENGINE %d/3 (NEXT %d) | GRIP %d/3 (NEXT %d)"),
             Mode->GetEngineUpgradeLevel(), Mode->GetNextEngineUpgradeCost(),
-            Mode->GetGripUpgradeLevel(), Mode->GetNextGripUpgradeCost()), Primary);
+            Mode->GetGripUpgradeLevel(), Mode->GetNextGripUpgradeCost()), Primary, false, HudTelemetryKind::Decorative);
         const int32 Cost = Mode->GetNextLockedVehicleCost();
         Line(Cost > 0
             ? FString::Printf(TEXT("NEXT CAR UNLOCK  %d CREDITS"), Cost)
-            : FString(TEXT("ALL PROTOTYPE PROFILES UNLOCKED")), Primary);
-        Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent);
-        Line(Mode->GetGarageFeedback(), Primary);
+            : FString(TEXT("ALL PROTOTYPE PROFILES UNLOCKED")), Primary, false, HudTelemetryKind::Decorative);
+        Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent, false, HudTelemetryKind::Decorative);
+        Line(Mode->GetGarageFeedback(), Primary, false, HudTelemetryKind::Decorative);
     }
     // Dedicated warning baseline is independent of optional text overflow.
     // A save failure must remain visible after all racing stats are clipped.
@@ -3441,7 +3446,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Line(FString::Printf(
                     TEXT("BEST LAP %.2fs  |  GAP TO IDEAL %.2fs"),
                     Insights.BestLapSeconds,
-                    Insights.BestToTheoreticalGapSeconds), Accent);
+                    Insights.BestToTheoreticalGapSeconds), Accent, false, HudTelemetryKind::Pace);
             }
             if (Insights.HasLapSpread)
             {
@@ -3458,24 +3463,43 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
         if (!latebrake::CanAwardFinishedRace(Race))
         {
-            Line(TEXT("FINISH NOT RECORDABLE - UNTIMED LAP OR INVALID CLOCK"), Accent);
+            Line(TEXT("FINISH NOT RECORDABLE - UNTIMED LAP OR INVALID CLOCK"), Accent, false, HudTelemetryKind::Blocking);
         }
         else
         {
             Line(FString::Printf(TEXT("EVENT REWARD  +%d CREDITS"),
-                Mode->GetLastRaceCredits()), Accent);
+                Mode->GetLastRaceCredits()), Accent, false, HudTelemetryKind::Pace);
             if (Mode->IsCareerRace())
             {
                 const auto Award = Mode->GetLastCareerAward();
                 Line(FString::Printf(TEXT("CAREER MEDAL %d/3  |  SERIES BONUS +%d"),
-                    static_cast<int32>(Award.Medal), Award.ChampionshipBonus), Accent);
+                    static_cast<int32>(Award.Medal), Award.ChampionshipBonus), Accent, false, HudTelemetryKind::Pace);
             }
         }
     }
     else if (!bCompact)
     {
-        Line(Mode->GetCareerSelectionFeedback(), Primary);
+        Line(Mode->GetCareerSelectionFeedback(), Primary, false, HudTelemetryKind::Decorative);
     }
+    const auto SelectedTelemetry=TelemetryQueue.Select(
+        Mode->GetHudTelemetryMode(),VerticalPlan.MaxTelemetryLines);
+    latebrake::DrawSelectedHudTelemetry(SelectedTelemetry,[&](int32 Index)
+    {
+        if (!TelemetryRows.IsValidIndex(Index) ||
+            DrawnTelemetryLines >= VerticalPlan.MaxTelemetryLines)
+            return false;
+        const auto& Row=TelemetryRows[Index];
+        const auto& Content=Row.Content;
+        UFont* Font=Row.Heading?GEngine->GetMediumFont():GEngine->GetSmallFont();
+        const float TextScale=Scale*(Row.Heading?1.08f:1.0f);
+        const FString Fitted = FitHudText(Content, Font, TextScale);
+        if (Fitted.IsEmpty()) return false;
+        DrawText(Fitted,Row.Color,Left,Y,Font,TextScale);
+        ++DrawnTelemetryLines;
+        Y+=Step;
+        return true;
+    });
+
     // A reserved lower status baseline stays visible even when the
     // bounded telemetry above exhausts every available row.
     if (VerticalPlan.Valid)

@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/PlayerSectorMotionReview.h"
+#include "UI/HudTelemetryPriority.h"
 #include "Racing/PlayerRecoveryClearance.h"
 #include "Track/TrackLimitsSession.h"
 #include "Racing/RivalGateGap.h"
@@ -100,6 +101,8 @@ public:
     latebrake::MenuPage GetMenuPage() const { return Menu.Current(); }
     FString GetMenuPageTitle() const { return FString(UTF8_TO_TCHAR(Menu.Title())); }
     bool UsesMilesPerHour() const { return bMilesPerHour; }
+    latebrake::HudTelemetryMode GetHudTelemetryMode() const noexcept { return HudTelemetryMode; }
+    void CycleHudTelemetryMode();
     bool IsCareerRace() const { return bCareerRace; }
     int32 GetActiveCareerEventId() const { return bCareerRace ? Career.SelectedEvent() : -1; }
     int32 GetMenuCareerEventId() const { return CareerMenuSelection; }
@@ -301,6 +304,8 @@ private:
     latebrake::CareerProgress Career;
     latebrake::MenuNavigation Menu;
     bool bMilesPerHour = false;
+    // Session-only display preference, never saved with progression.
+    latebrake::HudTelemetryMode HudTelemetryMode=latebrake::HudTelemetryMode::Balanced;
     // Rendering-only session toggle. Never written to ULatebrakePlayerSave.
     bool bDuskLightingPreview = false;
     latebrake::CareerAward LastCareerAward;

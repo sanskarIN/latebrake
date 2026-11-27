@@ -1790,6 +1790,15 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
     UpdateStartGantryVisual();
 }
 
+void ALatebrakeRaceGameMode::CycleHudTelemetryMode()
+{
+    if (!latebrake::CanCycleHudTelemetryMode(Menu.IsOpen(),
+        Menu.Current()==latebrake::MenuPage::Settings,HasLocalPlayerDriver(),
+        AppFocusGuard.IsSuspended()))
+        return;
+    HudTelemetryMode=latebrake::NextHudTelemetryMode(HudTelemetryMode);
+}
+
 void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();

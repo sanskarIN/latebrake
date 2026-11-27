@@ -3221,6 +3221,16 @@ void ALatebrakeCarPawn::ScrollMenuMouseWheel(int direction)
 #endif
 }
 
+void ALatebrakeCarPawn::CycleHudTelemetryMode()
+{
+    auto* Mode=GetWorld()?GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>():nullptr;
+    auto* PC=Cast<APlayerController>(GetController());
+    if (!Mode || !PC || !PC->IsLocalController() || !Mode->IsMenuOpen() ||
+        Mode->GetMenuPage()!=latebrake::MenuPage::Settings) return;
+    ClearDriverInputs();
+    Mode->CycleHudTelemetryMode();
+}
+
 void ALatebrakeCarPawn::DispatchFleetReplayAction(int32 Action)
 {
     const auto* Mode=GetWorld()?GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>():nullptr;
@@ -3632,6 +3642,8 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& ConfirmMenu = PlayerInputComponent->BindAction(
         TEXT("MenuActivate"), IE_Pressed, this, &ALatebrakeCarPawn::MenuActivate);
     ConfirmMenu.bExecuteWhenPaused = true;
+    PlayerInputComponent->BindAction(TEXT("CycleHudTelemetry"),IE_Pressed,this,
+        &ALatebrakeCarPawn::CycleHudTelemetryMode).bExecuteWhenPaused=true;
     PlayerInputComponent->BindAction(TEXT("FleetReplayPlayPause"),IE_Pressed,this,
         &ALatebrakeCarPawn::FleetReplayPlayPause).bExecuteWhenPaused=true;
     PlayerInputComponent->BindAction(TEXT("FleetReplayPrevious"),IE_Pressed,this,

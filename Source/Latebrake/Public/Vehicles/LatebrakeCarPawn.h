@@ -377,6 +377,7 @@ private:
     void FleetReplayPrevious();
     void FleetReplayNext();
     void FleetReplayHighlight();
+    void CycleHudTelemetryMode();
     void DispatchFleetReplayAction(int32 Action);
     void ScrollMenuMouseWheel(int direction);
     void NextGarageVehicle();
