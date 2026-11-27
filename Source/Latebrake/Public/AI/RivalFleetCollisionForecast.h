@@ -206,53 +206,11 @@ inline FleetSweptContact ForecastFleetContact(
     {
         return {true, 0.0}; // malformed input can never mean a clear road
     }
-    const StartGridRect a = MakeStartGridRect(self.Pose);
-    const StartGridRect b = MakeStartGridRect(other.Pose);
-    const double dx = b.X - a.X;
-    const double dy = b.Y - a.Y;
-    const double vx = other.VelocityX - self.VelocityX;
-    const double vy = other.VelocityY - self.VelocityY;
-    double start = 0.0;
-    double end = FleetForecastHorizonSeconds;
-
-    const std::array<CircuitPoint, 4> axes{{
-        {a.ForwardX, a.ForwardY},
-        {a.RightX, a.RightY},
-        {b.ForwardX, b.ForwardY},
-        {b.RightX, b.RightY}
-    }};
-    for (const CircuitPoint axis : axes)
-    {
-        const double separation = dx * axis.X + dy * axis.Y;
-        const double relativeSpeed = vx * axis.X + vy * axis.Y;
-        const double radius =
-            StartGridProjectionRadius(a, axis.X, axis.Y) +
-            StartGridProjectionRadius(b, axis.X, axis.Y) +
-            FleetForecastContactPaddingCm;
-        if (!std::isfinite(separation) ||
-            !std::isfinite(relativeSpeed) ||
-            !std::isfinite(radius))
-        {
-            return {true, 0.0};
-        }
-        if (std::abs(relativeSpeed) < 1.0e-9)
-        {
-            if (std::abs(separation) > radius)
-            {
-                return {};
-            }
-            continue;
-        }
-        const double enter = (-radius - separation) / relativeSpeed;
-        const double leave = (radius - separation) / relativeSpeed;
-        start = std::max(start, std::min(enter, leave));
-        end = std::min(end, std::max(enter, leave));
-        if (start > end)
-        {
-            return {};
-        }
-    }
-    return {true, start};
+    const auto sweep=SweepPlanarFootprints({self.Pose,other.Pose,
+        other.VelocityX-self.VelocityX,other.VelocityY-self.VelocityY,
+        FleetForecastHorizonSeconds,FleetForecastContactPaddingCm});
+    if(!sweep.Valid)return {true,0.0};
+    return sweep.Intersects?FleetSweptContact{true,sweep.EntrySeconds}:FleetSweptContact{};
 }
 
 inline int FleetRiskPriority(FleetRiskKind kind) noexcept
