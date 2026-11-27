@@ -41,6 +41,9 @@ struct FleetReplayViewerState final
     int SpeedIndex=1;
     int SelectedHighlight=-1;
     unsigned HighlightCount=0;
+    double ClipStartSeconds=0.0;
+    double ClipEndSeconds=0.0;
+    bool ClipPrimed=false;
 };
 
 inline bool ValidFleetReplayReview(const FleetReplayReview& review) noexcept
@@ -63,7 +66,10 @@ inline bool ValidFleetReplayHighlight(const FleetReplayReview& review,
     const auto& h=review.Highlights[index];
     return h.Valid && h.FocusSlot>=0 &&
         h.FocusSlot<static_cast<int>(PhysicalReplayCarCount) &&
-        h.Kind!=ReplayBroadcastEventKind::Unknown &&
+        PhysicalReplayEventPriority(h.Kind)>0u &&
+        h.Observations>0u && std::isfinite(h.SampledSpeedKmh) &&
+        h.SampledSpeedKmh>=0.0 &&
+        h.SampledSpeedKmh<=PhysicalReplayMaximumSpeedCmps*0.036 &&
         std::isfinite(h.StartSeconds) && std::isfinite(h.EndSeconds) &&
         std::isfinite(h.EventSeconds) &&
         h.StartSeconds>=review.Coverage.FirstClockSeconds &&
@@ -98,7 +104,15 @@ public:
             Reset();
             return false;
         }
-        if(Matches(review)) return true;
+        if(Matches(review))
+        {
+            if(State.SelectedHighlight>=0 && !SelectedClipMatches(review))
+            {
+                ClearClip();
+                Pause();
+            }
+            return true;
+        }
         Reset();
         State.Valid=true;
         State.Attempt=review.Attempt;
@@ -129,6 +143,7 @@ public:
         switch(action)
         {
             case FleetReplayAction::PlayPause:
+                return State.SelectedHighlight<0 || SelectedClipMatches(review);
             case FleetReplayAction::NextFocus:
             case FleetReplayAction::Speed:
                 return true;
@@ -150,8 +165,18 @@ public:
         switch(action)
         {
             case FleetReplayAction::PlayPause:
-                if(!State.Playing && State.CursorSeconds>=State.LastSeconds)
-                    State.CursorSeconds=State.FirstSeconds;
+                if(!State.Playing)
+                {
+                    if(State.SelectedHighlight>=0)
+                    {
+                        if(State.ClipPrimed || State.CursorSeconds>=State.ClipEndSeconds ||
+                           State.CursorSeconds<State.ClipStartSeconds)
+                            State.CursorSeconds=State.ClipStartSeconds;
+                        State.ClipPrimed=false;
+                    }
+                    else if(State.CursorSeconds>=State.LastSeconds)
+                        State.CursorSeconds=State.FirstSeconds;
+                }
                 State.Playing=!State.Playing;
                 HaveWall=false;
                 return true;
@@ -161,6 +186,11 @@ public:
                 return SeekSeconds(State.CursorSeconds+FleetReplaySeekSeconds);
             case FleetReplayAction::NextFocus:
                 State.FocusSlot=(State.FocusSlot+1)%static_cast<int>(PhysicalReplayCarCount);
+                if(State.SelectedHighlight>=0)
+                {
+                    ClearClip();
+                    Pause();
+                }
                 return true;
             case FleetReplayAction::Speed:
                 State.SpeedIndex=(State.SpeedIndex+1)%static_cast<int>(FleetReplaySpeeds.size());
@@ -177,6 +207,9 @@ public:
                     const auto& h=review.Highlights[i];
                     State.SelectedHighlight=static_cast<int>(i);
                     State.FocusSlot=h.FocusSlot;
+                    State.ClipStartSeconds=h.StartSeconds;
+                    State.ClipEndSeconds=h.EndSeconds;
+                    State.ClipPrimed=true;
                     return SeekSeconds(h.EventSeconds,false);
                 }
                 return false;
@@ -227,16 +260,36 @@ public:
             Pause();
             return;
         }
-        State.CursorSeconds=std::min(State.LastSeconds,State.CursorSeconds+dt*Speed());
-        if(State.CursorSeconds>=State.LastSeconds) Pause();
+        const double end=State.SelectedHighlight>=0 ? State.ClipEndSeconds : State.LastSeconds;
+        State.CursorSeconds=std::min(end,State.CursorSeconds+dt*Speed());
+        if(State.CursorSeconds>=end) Pause();
     }
 
 private:
+    bool SelectedClipMatches(const FleetReplayReview& review) const noexcept
+    {
+        if(State.SelectedHighlight<0) return false;
+        const auto i=static_cast<unsigned>(State.SelectedHighlight);
+        if(!ValidFleetReplayHighlight(review,i)) return false;
+        const auto& h=review.Highlights[i];
+        return h.FocusSlot==State.FocusSlot &&
+            h.StartSeconds==State.ClipStartSeconds &&
+            h.EndSeconds==State.ClipEndSeconds;
+    }
+
+    void ClearClip() noexcept
+    {
+        State.SelectedHighlight=-1;
+        State.ClipStartSeconds=0.0;
+        State.ClipEndSeconds=0.0;
+        State.ClipPrimed=false;
+    }
+
     bool SeekSeconds(double seconds,bool clearHighlight=true) noexcept
     {
         if(!State.Valid || !std::isfinite(seconds)) return false;
         State.CursorSeconds=std::clamp(seconds,State.FirstSeconds,State.LastSeconds);
-        if(clearHighlight) State.SelectedHighlight=-1;
+        if(clearHighlight) ClearClip();
         Pause();
         return true;
     }

@@ -125,8 +125,10 @@ void ALatebrakeRaceHUD::DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
 
     Rect(Layout.Panel,Surface);
     Rect({Layout.Panel.X,Layout.Panel.Y,Layout.Panel.Width,2.0*S},Gold);
-    Label(Review.Coverage.EarlierSegmentUsed?TEXT("EARLIER REPLAY WINDOW"):TEXT("RECENT RACE REPLAY"),
-        Layout.Header,Gold,0.85f*S);
+    const FString Header=State.SelectedHighlight>=0
+        ? FString::Printf(TEXT("CLIP %d / %u"),State.SelectedHighlight+1,State.HighlightCount)
+        : FString(Review.Coverage.EarlierSegmentUsed?TEXT("EARLIER REPLAY WINDOW"):TEXT("RECENT RACE REPLAY"));
+    Label(Header,Layout.Header,Gold,0.85f*S);
     Rect(Layout.Map,FLinearColor(0.10f,0.16f,0.21f,1.f));
     // Fixed original circuit only; position projections outside the
     // visible map are omitted, not pinned to a misleading edge.
@@ -165,6 +167,18 @@ void ALatebrakeRaceHUD::DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
     const double Fill=Layout.Scrub.Width*ReplayViewer.Fraction();
     if(Fill>0.0)
         Rect({Layout.Scrub.X,Layout.Scrub.Y,Fill,Layout.Scrub.Height},Gold);
+    // Mark the selected clip on the full retained-window scrub track.
+    // Manual scrubbing leaves clip mode rather than silently constraining it.
+    if(State.SelectedHighlight>=0)
+    {
+        const double Span=State.LastSeconds-State.FirstSeconds;
+        const double A=std::clamp((State.ClipStartSeconds-State.FirstSeconds)/Span,0.0,1.0);
+        const double B=std::clamp((State.ClipEndSeconds-State.FirstSeconds)/Span,0.0,1.0);
+        if(B>A)
+            Rect({Layout.Scrub.X+A*Layout.Scrub.Width,Layout.Scrub.Y,
+                (B-A)*Layout.Scrub.Width,std::min(3.0*S,Layout.Scrub.Height)},
+                FLinearColor(0.30f,0.74f,0.92f));
+    }
     const double Handle=std::clamp(Layout.Scrub.X+Fill-1.0*S,
         Layout.Scrub.X,Layout.Scrub.X+Layout.Scrub.Width-2.0*S);
     Rect({Handle,Layout.Scrub.Y,2.0*S,Layout.Scrub.Height},White);

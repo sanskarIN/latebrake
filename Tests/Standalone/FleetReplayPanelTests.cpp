@@ -123,6 +123,49 @@ void SeekAndHighlight()
         v.Readout().SelectedHighlight==-1,"new attempt reset");
 }
 
+void ClipPlayback()
+{
+    auto r=Review();
+    FleetReplayViewer v;
+    Require(v.Synchronize(r,true),"valid clip review");
+    Require(v.Act(FleetReplayAction::NextHighlight,r),"select first clip");
+    auto s=v.Readout();
+    Require(s.CursorSeconds==12 && s.ClipStartSeconds==11 &&
+        s.ClipEndSeconds==13 && s.ClipPrimed,"event preview retains exact clip");
+    Require(v.Act(FleetReplayAction::PlayPause,r) &&
+        v.Readout().CursorSeconds==11 && !v.Readout().ClipPrimed,
+        "playing selected event begins at pre-event footage");
+    v.Tick(100,true);v.Tick(100.25,true);
+    Require(Near(v.Readout().CursorSeconds,11.25),"clip advances normally");
+    Require(v.Act(FleetReplayAction::PlayPause,r) &&
+        v.Act(FleetReplayAction::PlayPause,r) &&
+        Near(v.Readout().CursorSeconds,11.25),"pause resumes within clip");
+    Require(v.Act(FleetReplayAction::Speed,r),"clip supports double speed");
+    v.Tick(101,true);
+    for(int i=1;i<=4;++i) v.Tick(101+0.25*i,true);
+    Require(!v.Readout().Playing && v.Readout().CursorSeconds==13,
+        "clip stops exactly at its own end instead of full window");
+    Require(v.Act(FleetReplayAction::PlayPause,r) &&
+        v.Readout().CursorSeconds==11,"replay restarts selected clip");
+    Require(v.SeekFraction(0.8,r) && v.Readout().SelectedHighlight==-1 &&
+        v.Readout().CursorSeconds==18 && !v.Readout().Playing,
+        "manual scrub exits clip mode");
+    Require(v.Act(FleetReplayAction::NextHighlight,r) &&
+        v.Act(FleetReplayAction::NextFocus,r) &&
+        v.Readout().SelectedHighlight==-1,"manual focus exits event selection");
+
+    Require(v.Act(FleetReplayAction::NextHighlight,r),"select clip again");
+    r.Highlights[0].EndSeconds=13.5;
+    Require(!v.CanAct(FleetReplayAction::PlayPause,r),"changed clip blocks stale play");
+    Require(v.Synchronize(r,true) && v.Readout().SelectedHighlight==-1 &&
+        !v.Readout().Playing,"changed bounds clear selected clip");
+    r.Highlights[0].Kind=static_cast<ReplayBroadcastEventKind>(255);
+    r.Highlights[1].SampledSpeedKmh=std::numeric_limits<double>::quiet_NaN();
+    r.Highlights[2].Observations=0;
+    Require(!v.CanAct(FleetReplayAction::NextHighlight,r),
+        "invalid event enum, speed and observation count are not playable");
+}
+
 void LayoutAndPointer()
 {
     const auto l=Layout();
@@ -238,6 +281,6 @@ void RandomViewportsAndControls()
 int main()
 {
     ViewerAdmission();PlayPauseAndSpeed();SeekAndHighlight();
-    LayoutAndPointer();MapProjection();RandomViewportsAndControls();
+    ClipPlayback();LayoutAndPointer();MapProjection();RandomViewportsAndControls();
     std::cout<<"Fleet replay viewer, map projection, safe layout and input tests passed\n";
 }
