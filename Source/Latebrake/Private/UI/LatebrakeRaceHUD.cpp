@@ -1855,6 +1855,39 @@ void ALatebrakeRaceHUD::DrawHUD()
                         MenuLine(TEXT("  Standing start is not compared with rolling sectors"));
                 }
             }
+            const auto LapMotion=Mode->GetPlayerLapMotionReview();
+            if (LapMotion.Valid && LapMotion.Finished && LapMotion.CompletedLaps>0)
+            {
+                MenuLine(TEXT("FULL LAP MOTION | ACTUAL OBSERVATIONS"),true);
+                MenuLine(FString::Printf(TEXT("%d/%d QUALIFIED LAPS | %.0f%% OBSERVED CLOCK"),
+                    LapMotion.QualifiedLaps,LapMotion.CompletedLaps,100.0*LapMotion.Completed.Coverage()));
+                if (LapMotion.Completed.ObservedSeconds>0)
+                    MenuLine(FString::Printf(TEXT("SAMPLED PATH %.1fm | MEAN %.0f | PEAK %.0f km/h"),
+                        LapMotion.Completed.DistanceMeters(),LapMotion.Completed.MeanKmh(),
+                        LapMotion.Completed.PeakKmh()));
+                if (LapMotion.BestRolling.Present)
+                    MenuLine(FString::Printf(TEXT("BEST QUALIFIED ROLLING LAP L%d %.2fs | %d COMPARABLE"),
+                        LapMotion.BestRolling.Lap,LapMotion.BestRolling.Totals.ActiveSeconds,
+                        LapMotion.ComparableLaps));
+                if (!bCompact)
+                {
+                    MenuLine(FString::Printf(TEXT("PENALIZED %d | INTERRUPTED %d | LOW COVERAGE %d | UNTIMED %d"),
+                        LapMotion.PenalizedLaps,LapMotion.InterruptedLaps,
+                        LapMotion.LowCoverageLaps,LapMotion.MissingTimingLaps));
+                    for (int Lap=1;Lap<=LapMotion.CompletedLaps;++Lap)
+                    {
+                        const auto Row=LapMotion.At(Lap);
+                        if (!Row.Present)continue;
+                        MenuLine(FString::Printf(TEXT("L%d | %.2fs ACTIVE + %.2fs FEE | %.0f%% | %s"),
+                            Lap,Row.Totals.ActiveSeconds,Row.Totals.FeeSeconds,
+                            100.0*Row.Totals.Coverage(),
+                            UTF8_TO_TCHAR(latebrake::LapMotionQualityName(Row.Quality))));
+                        if (Row.Totals.ObservedSeconds>0)
+                            MenuLine(FString::Printf(TEXT("  %.0f km/h MEAN | %.1fm PATH | %.2fs SLIP"),
+                                Row.Totals.MeanKmh(),Row.Totals.DistanceMeters(),Row.Totals.HighSlipSeconds));
+                    }
+                }
+            }
             const auto TrackReview=Mode->GetTrackLimitsReview();
             if (TrackReview.Valid)
             {

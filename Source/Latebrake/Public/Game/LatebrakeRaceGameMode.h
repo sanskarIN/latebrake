@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
 #include "Racing/PlayerSectorMotionReview.h"
+#include "Racing/PlayerLapMotionJournal.h"
 #include "UI/HudTelemetryPriority.h"
 #include "Racing/PlayerRecoveryClearance.h"
 #include "Track/TrackLimitsSession.h"
@@ -220,6 +221,7 @@ public:
     const latebrake::RaceProgress& GetRace() const { return Race; }
     latebrake::SectorMotionReview GetPlayerSectorMotionReview() const noexcept;
     latebrake::SectorMotionHistory GetPlayerSectorMotionHistory() const noexcept;
+    latebrake::PlayerLapMotionReview GetPlayerLapMotionReview() const noexcept;
     const latebrake::TrackLimitsSession& GetTrackLimits() const { return TrackLimits; }
     latebrake::TrackLimitsReview GetTrackLimitsReview() const noexcept
     {
@@ -382,6 +384,7 @@ private:
     void ObservePlayerSectorGate(int32 Gate,int32 AcceptedOrdinal) noexcept;
     latebrake::RaceProgress Race{4, 3};
     latebrake::PlayerSectorMotionJournal PlayerSectorMotion;
+    latebrake::PlayerLapMotionJournal PlayerLapMotion;
     TWeakObjectPtr<ALatebrakeCarPawn> SectorMotionPawn;
     bool bSectorMotionPawnBound=false;
     latebrake::TrackLimitsSession TrackLimits;

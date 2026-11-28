@@ -7,6 +7,7 @@
 void ALatebrakeRaceGameMode::ResetPlayerSectorMotion() noexcept
 {
     PlayerSectorMotion.Reset(Race.GetCheckpointCount(),Race.GetRequiredLaps());
+    PlayerLapMotion.Reset(Race.GetCheckpointCount(),Race.GetRequiredLaps());
     SectorMotionPawn.Reset();
     bSectorMotionPawnBound=false;
 }
@@ -66,8 +67,18 @@ void ALatebrakeRaceGameMode::ObservePlayerSectorGate(int32 Gate,int32 AcceptedOr
 {
     // This caller is reached only after the actual ordered gate was
     // accepted. Keep the official split, active time and fees distinct.
-    PlayerSectorMotion.AcceptGate({AcceptedOrdinal,Gate,Race.GetElapsedSeconds(),
-        Race.GetTotalPenaltySeconds(),Race.GetLastSectorSeconds()});
+    const latebrake::SectorMotionReceipt Receipt{AcceptedOrdinal,Gate,Race.GetElapsedSeconds(),
+        Race.GetTotalPenaltySeconds(),Race.GetLastSectorSeconds()};
+    PlayerSectorMotion.AcceptGate(Receipt);
+    const auto Sector=GetPlayerSectorMotionReview();
+    PlayerLapMotion.Accept(Receipt,Sector.Valid?Sector.Last:latebrake::SectorMotionRow{});
+}
+
+latebrake::PlayerLapMotionReview ALatebrakeRaceGameMode::GetPlayerLapMotionReview() const noexcept
+{
+    return PlayerLapMotion.Read(
+        Race.GetCompletedLaps()*Race.GetCheckpointCount()+Race.GetNextCheckpoint(),
+        Race.GetElapsedSeconds(),Race.GetTotalPenaltySeconds(),Race.IsFinished());
 }
 
 latebrake::SectorMotionReview ALatebrakeRaceGameMode::GetPlayerSectorMotionReview() const noexcept
