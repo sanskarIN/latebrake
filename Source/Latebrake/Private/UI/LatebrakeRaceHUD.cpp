@@ -872,6 +872,21 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Y=static_cast<float>(Dashboard.NextDetailY);
                 }
             }
+            if (Mode->GetMenuPage()==latebrake::MenuPage::Results)
+            {
+                const auto OverviewLayout=latebrake::CalculateResultsOverviewLayout(
+                    Layout,MenuPlan,ReadablePanel,SafeTextWidth,Y,DrawnMenuRows,true,bTouchHUD);
+                const auto Overview=latebrake::ReadResultsOverview(Race,{
+                    Mode->GetSelectedEvent(),Mode->IsCareerRace(),Mode->IsPracticeRace(),
+                    Mode->IsExperimentalFleetRequested(),Mode->IsProfileReadOnly(),
+                    Mode->HasProgressSaveError(),Mode->GetAttemptPreviousBestSeconds(),
+                    Mode->GetEventBestSeconds()});
+                if (DrawResultsOverview(OverviewLayout,Overview))
+                {
+                    DrawnMenuRows+=OverviewLayout.ReservedRows;
+                    Y=static_cast<float>(OverviewLayout.NextDetailY);
+                }
+            }
         }
         if (!Mode->IsCircuitReadyForGameplay())
         {
