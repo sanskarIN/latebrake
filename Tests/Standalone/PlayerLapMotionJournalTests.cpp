@@ -29,8 +29,9 @@ SectorMotionRow Row(int ordinal,double active,double fee,double observed,
     row.Motion.ObservedSeconds=observed;
     if(observed>0)
     {
-        row.Motion.Samples=100;
-        row.Motion.Intervals=99;
+        row.Motion.Intervals=static_cast<std::uint64_t>(
+            std::ceil(observed/SectorMotionMaximumDelta));
+        row.Motion.Samples=row.Motion.Intervals+1;
         row.Motion.SpeedIntegral=1000*observed;
         row.Motion.PeakSpeed=1200;
         row.Motion.PlanarDistanceCm=1000*observed;
@@ -115,7 +116,7 @@ void MotionBounds()
         switch(fault)
         {
         case 0:bad.ObservedSeconds=11;break;
-        case 1:bad.Intervals=101;break;
+        case 1:bad.Intervals=bad.Samples+1;break;
         case 2:bad.SpeedIntegral=-1;break;
         case 3:bad.PlanarDistanceCm=-1;break;
         case 4:bad.PeakSpeed=16000;break;
@@ -128,6 +129,60 @@ void MotionBounds()
         Require(!ValidLapMotionMetrics(bad,10),"malformed metrics refused");
     }
 }
+void PhysicalMetricConservation()
+{
+    const auto row=Row(1,10,0,9);
+    const auto& good=row.Motion;
+    Require(ValidLapMotionMetrics(good,10),"physical fixture satisfies interval budget");
+    for(int fault=0;fault<17;++fault)
+    {
+        auto bad=good;
+        switch(fault)
+        {
+        case 0:bad.Intervals=bad.Samples;break;
+        case 1:bad.Intervals=1;break;
+        case 2:bad.Breaks=bad.Samples+1;break;
+        case 3:bad.RecoveryBreaks=1;break;
+        case 4:bad.Breaks=1;bad.RecoveryBreaks=1;bad.PositionBreaks=1;break;
+        case 5:bad.MinimumSpeed=bad.PeakSpeed+1;break;
+        case 6:bad.FirstSpeed=-1;break;
+        case 7:bad.LastSpeed=std::numeric_limits<double>::infinity();break;
+        case 8:bad.MinimumSpeed=1100;bad.FirstSpeed=1200;bad.LastSpeed=1200;break;
+        case 9:bad.LateralIntegral=bad.SpeedIntegral+1;break;
+        case 10:bad.LateralIntegral=-1;break;
+        case 11:bad.LongestLowSpeedSeconds=bad.LowSpeedSeconds+1;break;
+        case 12:bad.LongestSlipSeconds=-1;break;
+        case 13:bad.AccelerationIntegral=std::numeric_limits<double>::quiet_NaN();break;
+        case 14:bad.DecelerationIntegral=bad.Intervals*bad.PeakSpeed+1;break;
+        case 15:bad.PlanarDistanceCm=1e12;break;
+        case 16:bad.MinimumSpeed=500;bad.FirstSpeed=400;break;
+        }
+        Require(!ValidLapMotionMetrics(bad,10),"physical contradiction rejected");
+    }
+    SectorMotionMetrics empty;
+    Require(ValidLapMotionMetrics(empty,10),"no motion is not invented");
+    empty.PeakSpeed=1000;
+    Require(!ValidLapMotionMetrics(empty,10),"unobserved peak rejected");
+    SectorMotionMetrics single;
+    single.Samples=1;
+    single.PeakSpeed=single.MinimumSpeed=single.FirstSpeed=single.LastSpeed=1000;
+    Require(ValidLapMotionMetrics(single,10),"one sample has speed but no duration");
+    PlayerLapMotionJournal journal;
+    journal.Reset(4,1);
+    for(int i=1;i<=4;++i)
+    {
+        auto sector=Row(i,10,0,10);
+        if(i==2)sector.Motion.LateralIntegral=1e12;
+        Require(journal.Accept({i,i-1,10.0*i,0,10},sector),
+            "official timing survives malformed physical metrics");
+    }
+    const auto result=journal.Read(4,40,0,true);
+    Require(result.Valid && result.Completed.TimedGates==4 &&
+        result.Completed.SampledGates==3 && result.Completed.ObservedSeconds==30 &&
+        result.At(1).Quality==LapMotionQuality::InsufficientCoverage,
+        "corrupt telemetry cannot qualify a completed lap");
+}
+
 void RandomizedWholeRun()
 {
     std::mt19937 rng(3711);
@@ -163,6 +218,6 @@ void RandomizedWholeRun()
 }
 int main()
 {
-    TenLapRollup();MissingAndMalformedMotion();MotionBounds();RandomizedWholeRun();
+    TenLapRollup();MissingAndMalformedMotion();MotionBounds();PhysicalMetricConservation();RandomizedWholeRun();
     std::cout<<"Player lap motion journal tests passed\n";
 }
