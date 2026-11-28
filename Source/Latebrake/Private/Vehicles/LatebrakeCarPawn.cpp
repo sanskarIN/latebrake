@@ -3354,7 +3354,8 @@ void ALatebrakeCarPawn::MenuMousePressed()
     {
         return;
     }
-    if(Hud->TryHandleLapMotionPointer(MouseX,MouseY) ||
+    if(Hud->TryHandleMainMenuDashboardPointer(MouseX,MouseY) ||
+        Hud->TryHandleLapMotionPointer(MouseX,MouseY) ||
         Hud->TryHandlePracticeResultsPointer(MouseX,MouseY) ||
         Hud->TryHandleQuickRaceChoicePointer(MouseX,MouseY) ||
         Hud->TryHandleSettingsPointer(MouseX,MouseY) ||
