@@ -92,6 +92,34 @@ int main()
         std::numeric_limits<double>::max();
     Check(!CompareGaragePerformance(corrupt, 2).Valid,
           "overflow ratio is suppressed");
+    // All ownership states are explicit; never compare against an
+    // apparently equipped row when the catalogue marks it otherwise.
+    for (const auto status : {GarageCatalogOwnership::Owned,
+         GarageCatalogOwnership::LockedAffordable,
+         GarageCatalogOwnership::LockedInsufficientCredits,
+         static_cast<GarageCatalogOwnership>(99)})
+    {
+        corrupt = catalog;
+        corrupt.Cars[0].Ownership = status;
+        for (int id = 0; id < VehicleCount; ++id)
+            Check(!CompareGaragePerformance(corrupt, id).Valid,
+                  "unreliable equipped baseline invalidates comparison");
+    }
+    corrupt = catalog;
+    corrupt.Cars[2].Ownership = GarageCatalogOwnership::Equipped;
+    Check(!CompareGaragePerformance(corrupt, 2).Valid,
+          "second equipped row is not a coherent candidate");
+    corrupt.Cars[2].Ownership = static_cast<GarageCatalogOwnership>(99);
+    Check(!CompareGaragePerformance(corrupt, 2).Valid,
+          "unknown candidate ownership is not shown as performance");
+    for (const auto status : {GarageCatalogOwnership::Owned,
+         GarageCatalogOwnership::LockedAffordable,
+         GarageCatalogOwnership::LockedInsufficientCredits})
+    {
+        corrupt.Cars[2].Ownership = status;
+        Check(CompareGaragePerformance(corrupt, 2).Valid,
+              "comparison of a known non-equipped status remains read-only");
+    }
     for (int i = 0; i < 10000; ++i)
     {
         const auto result = CompareGaragePerformance(catalog, i % VehicleCount);

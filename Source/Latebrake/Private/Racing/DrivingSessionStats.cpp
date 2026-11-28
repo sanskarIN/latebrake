@@ -17,6 +17,7 @@ void DrivingSessionStats::Reset() noexcept
     AcceptedSamples = 0;
     PreviousBraking = false;
     SpeedDistribution.Reset();
+    Coach.Reset();
 }
 
 void DrivingSessionStats::Suspend() noexcept
@@ -24,22 +25,20 @@ void DrivingSessionStats::Suspend() noexcept
     // A new valid frame following pause/teleport is a fresh input
     // sequence; never join a held brake across discontinuities.
     PreviousBraking = false;
+    Coach.Suspend();
 }
 
 bool DrivingSessionStats::Observe(DrivingSample sample) noexcept
 {
-    constexpr double MaxSpeed = 10000.0; // 360 km/h
     constexpr double MaxDistanceCm = 1000000000.0;
     constexpr double MaxSeconds = 10000000.0;
-    if (!std::isfinite(sample.DeltaSeconds) ||
-        sample.DeltaSeconds <= 0.0 || sample.DeltaSeconds > 0.25 ||
-        !std::isfinite(sample.PlanarSpeedCmPerSecond) ||
-        sample.PlanarSpeedCmPerSecond < 0.0 ||
-        sample.PlanarSpeedCmPerSecond > MaxSpeed ||
-        !std::isfinite(sample.LateralSpeedCmPerSecond) ||
-        std::abs(sample.LateralSpeedCmPerSecond) > MaxSpeed)
+    // One input policy now guards both existing telemetry and the new
+    // observation-only coach. Invalid samples close only local histories.
+    if (!Coach.Observe({sample.DeltaSeconds,
+        sample.PlanarSpeedCmPerSecond,sample.LateralSpeedCmPerSecond,
+        sample.Braking}))
     {
-        Suspend();
+        PreviousBraking = false;
         return false;
     }
 

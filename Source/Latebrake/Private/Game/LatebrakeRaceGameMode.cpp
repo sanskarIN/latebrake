@@ -136,6 +136,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     // and traffic adapters reserve zero for uninitialized session stamps.
     CheckpointSession.OnRaceRestart();
     Race.Reset();
+    CoachSectorJournal.Reset(Race.GetCheckpointCount());
     ResetPlayerSectorMotion();
     TrackLimits.Reset();
     StewardTrackedPawn.Reset();
@@ -1446,6 +1447,21 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     const int64 PlayerGateOrdinal =
         static_cast<int64>(Race.GetCompletedLaps()) * Race.GetCheckpointCount() +
         Race.GetNextCheckpoint();
+    // Only the real player-authoritative accepted gate emits an advisory
+    // chassis interval; neither an overlap nor a replay can advance it.
+    const ALatebrakeCarPawn* CoachDriver=Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this,0));
+    if(IsValid(CoachDriver) && PlayerGateOrdinal>0 && PlayerGateOrdinal<=16000 &&
+        latebrake::VerifyDrivingCoachIntegrity(CoachDriver->GetDrivingStats()).Valid)
+    {
+        CoachSectorJournal.ObserveGate({
+            true,CoachDriver->IsRacePhysicsReady(),false,
+            static_cast<std::uint64_t>(CoachDriver->GetUniqueID())+1u,
+            static_cast<int>(PlayerGateOrdinal),Race.GetCheckpointCount(),
+            Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds(),
+            CoachDriver->GetDrivingStats().GetCoachReview()});
+    }
+    else CoachSectorJournal.Suspend();
     if (IsPracticeRace())
     {
         const auto* PracticeDriver=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
@@ -3004,6 +3020,8 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
         GarageFeedback = TEXT("Appearance NOT saved; previous car look restored.");
         return;
     }
+    const latebrake::GarageLook AfterLook=GarageLooks.Get(Viewed);
+    GarageLookHistory.RecordCommittedChange(Viewed,Before.Get(Viewed),AfterLook);
     SyncGarageShowroomPreview();
     const latebrake::GarageLook Look = GarageLooks.Get(Viewed);
     const int32 Choice = latebrake::GarageLookChoice(Look,layer);
@@ -3043,6 +3061,79 @@ void ALatebrakeRaceGameMode::GarageCycleWheels()
 void ALatebrakeRaceGameMode::GarageResetAppearance()
 {
     GarageCycleAppearance(latebrake::GarageLookLayer::Paint, true);
+}
+
+void ALatebrakeRaceGameMode::GarageUndoAppearance()
+{
+    CommitGarageAppearanceHistory(true);
+}
+
+void ALatebrakeRaceGameMode::GarageRedoAppearance()
+{
+    CommitGarageAppearanceHistory(false);
+}
+
+void ALatebrakeRaceGameMode::CommitGarageAppearanceHistory(bool bUndo)
+{
+    if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
+    // A free cosmetic history request always discards pending paid consent.
+    GaragePurchaseConfirm.Reset();
+    if (!CanCustomizeGarage())
+    {
+        GarageFeedback=TEXT("Garage look history is unavailable until an owned car can be styled.");
+        return;
+    }
+    const int32 Viewed=GarageGallery.Viewed();
+    const auto Current=GarageLooks.Get(Viewed);
+    const auto Direction=bUndo ? latebrake::GarageLookHistoryDirection::Undo :
+        latebrake::GarageLookHistoryDirection::Redo;
+    const auto Proposal=GarageLookHistory.Preview(Direction,Viewed,Current);
+    if (!Proposal.Valid)
+    {
+        if (Proposal.Status==latebrake::GarageLookHistoryStatus::StaleCurrent)
+            GarageLookHistory.ResetVehicle(Viewed);
+        GarageFeedback=bUndo ? TEXT("No saved look edit is available to undo.") :
+            TEXT("No saved look edit is available to redo.");
+        return;
+    }
+    // Prepare on a private snapshot and SAVE before moving the ledger. A
+    // failed disk write restores the original cosmetic and live Pawn look.
+    const latebrake::GarageAppearanceState Before=GarageLooks;
+    if (!GarageLooks.Choose(Viewed,latebrake::GarageLookLayer::Paint,
+             Proposal.ProposedLook.Paint) ||
+        !GarageLooks.Choose(Viewed,latebrake::GarageLookLayer::Stripe,
+             Proposal.ProposedLook.Stripe) ||
+        !GarageLooks.Choose(Viewed,latebrake::GarageLookLayer::Wheels,
+             Proposal.ProposedLook.Wheels))
+    {
+        GarageLooks=Before;
+        GarageFeedback=TEXT("Invalid look history: appearance not changed.");
+        return;
+    }
+    if (Viewed==Garage.SelectedVehicle())
+        ApplyGarageToPlayer();
+    SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        GarageLooks=Before;
+        if (Viewed==Garage.SelectedVehicle())
+            ApplyGarageToPlayer();
+        SyncGarageShowroomPreview();
+        GarageFeedback=TEXT("Look history NOT saved; previous appearance restored.");
+        return;
+    }
+    const bool bRecorded=GarageLookHistory.Commit(Proposal,GarageLooks.Get(Viewed));
+    if (!bRecorded)
+    {
+        // A stale receipt cannot authorize another rollback after save.
+        GarageLookHistory.ResetVehicle(Viewed);
+        GarageFeedback=TEXT("LOOK SAVED; stale undo history safely cleared.");
+    }
+    else
+        GarageFeedback=bUndo ? TEXT("PREVIOUS LOOK RESTORED AND SAVED.") :
+            TEXT("NEXT LOOK RESTORED AND SAVED.");
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::GarageUnlockNext()
@@ -3335,6 +3426,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     ManualPause.OnExplicitResume();
     Race.Reset();
+    CoachSectorJournal.Reset(Race.GetCheckpointCount());
     ResetPlayerSectorMotion();
     TrackLimits.Reset();
     StewardTrackedPawn.Reset();
@@ -3471,6 +3563,8 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
             static_cast<int32>(Notice));
         return;
     }
+    // Teleport restarts the source-sample continuity without rewriting laps.
+    CoachSectorJournal.Suspend();
 #if !UE_BUILD_SHIPPING
     if (IsExperimentalFleetRequested())
         UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=recovery attempt=%llu slot=0 id=%llu ordinal=%d verified=1"),
@@ -3486,6 +3580,8 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
 
 void ALatebrakeRaceGameMode::LoadRecords()
 {
+    // In-memory undo history is scoped to the currently loaded profile.
+    GarageLookHistory.Reset();
     if (const ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
             UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser)))
     {

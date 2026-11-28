@@ -29,8 +29,18 @@ class GarageCatalogBindingTests(unittest.TestCase):
         garage_page = self.hud.split(
             "case latebrake::MenuPage::Garage:", 1
         )[1].split("case latebrake::MenuPage::Results:", 1)[0]
+        cache = self.policy.split("class GarageCatalogCache final", 1)[1]
+        self.assertIn("garage.Load(saved);", cache)
+        self.assertIn("Cached=BuildGarageCatalogView(current);", cache)
+        self.assertIn("const auto current=garage.Snapshot();", cache)
+        self.assertLess(garage_page.index("if (!PreviewRow)"),
+                        garage_page.index("const auto& Preview = *PreviewRow;"))
+        self.assertNotIn("BuildGarageCatalogView(Mode->GetGarageSnapshot())", garage_page)
         for marker in (
-            "BuildGarageCatalogView(Mode->GetGarageSnapshot())",
+            "GarageCatalogue.Read(Mode->GetGarageSnapshot())",
+            "FindGarageCatalogEntry(Catalog, PreviewId)",
+            "if (!PreviewRow)", "const auto& Preview = *PreviewRow;",
+            "GARAGE PREVIEW UNAVAILABLE:",
             "Catalog.Cars", "Entry.VehicleId", "Entry.Name",
             "GarageCatalogOwnership::Equipped",
             "GarageCatalogOwnership::Owned",

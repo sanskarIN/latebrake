@@ -29,7 +29,7 @@ class IntegratedGarageSourceBindingsTests(unittest.TestCase):
         page = self.hud.split("case latebrake::MenuPage::Garage:", 1)[1].split(
             "case latebrake::MenuPage::Results:", 1)[0]
         for essential in (
-            "BuildGarageCatalogView(Mode->GetGarageSnapshot())",
+            "GarageCatalogue.Read(Mode->GetGarageSnapshot())",
             "Catalog.NextUnlockId", "Catalog.OwnedVehicleCount",
             "GARAGE CAR %d/%d | OWNED %d/%d", "Entry.RouteValid",
             "Entry.RouteBudgetReady", "Entry.RouteCost",

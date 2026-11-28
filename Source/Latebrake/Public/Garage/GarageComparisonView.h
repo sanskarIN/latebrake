@@ -47,6 +47,24 @@ inline GaragePerformanceComparison CompareGaragePerformance(
         return {};
     }
 
+    // A finite performance number is not enough if the rows disagree on
+    // which car is equipped. Locked previews remain legitimate candidates.
+    if (equipped.Ownership != GarageCatalogOwnership::Equipped)
+        return {};
+    switch (candidate.Ownership)
+    {
+    case GarageCatalogOwnership::Equipped:
+        if (vehicleId != catalog.SelectedVehicle) return {};
+        break;
+    case GarageCatalogOwnership::Owned:
+    case GarageCatalogOwnership::LockedAffordable:
+    case GarageCatalogOwnership::LockedInsufficientCredits:
+        if (vehicleId == catalog.SelectedVehicle) return {};
+        break;
+    default:
+        return {};
+    }
+
     const double acceleration =
         (candidate.Effective.Acceleration / equipped.Effective.Acceleration - 1.0) * 100.0;
     const double grip =
