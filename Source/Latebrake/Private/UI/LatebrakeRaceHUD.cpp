@@ -1003,6 +1003,37 @@ void ALatebrakeRaceHUD::DrawHUD()
                 MenuLine(FString::Printf(TEXT("NEXT U ENGINE: %s | NEXT I GRIP: %s"),
                     *OfferText(EngineOffer), *OfferText(GripOffer)));
             }
+            // Budget advice is cached per exact sanitized garage snapshot.
+            // It is descriptive only and never executes a purchase action.
+            const auto& Advice=BudgetAdvisor.Read(Mode->GetGarageSnapshot(),PreviewId);
+            if (Advice.Valid)
+            {
+                MenuLine(TEXT("GARAGE BUDGET ADVICE | CONFIGURED MULTIPLIERS ONLY"),true);
+                for (const auto& Focus:Advice.Focuses)
+                {
+                    if (bCompact && Focus.Focus!=latebrake::GarageBudgetFocus::Balanced) continue;
+                    const auto& Best=Focus.BestAffordable;
+                    const FString Label=UTF8_TO_TCHAR(latebrake::GarageBudgetFocusName(Focus.Focus));
+                    if (Best.Valid)
+                        MenuLine(FString::Printf(TEXT("%s | %s E%d/G%d | %d CR | %+.1f%% (EST)"),
+                            *Label,UTF8_TO_TCHAR(latebrake::GarageState::Definition(Best.Target.VehicleId).Name),
+                            Best.Target.EngineLevel,Best.Target.GripLevel,Best.Cost,
+                            Focus.AffordableImprovementPercent()));
+                    const auto& Next=Focus.NextImprovement;
+                    if (!bCompact && Next.Valid)
+                        MenuLine(FString::Printf(TEXT("  Next higher %s | %s E%d/G%d | save %lld CR"),
+                            *Label,UTF8_TO_TCHAR(latebrake::GarageState::Definition(Next.Target.VehicleId).Name),
+                            Next.Target.EngineLevel,Next.Target.GripLevel,
+                            static_cast<long long>(Next.CreditsShort)));
+                }
+                const auto& Viewed=Advice.Focuses[0].BestViewedAffordable;
+                if (Viewed.Valid)
+                    MenuLine(FString::Printf(TEXT("VIEWED BUDGET BUILD | E%d/G%d | %d CR TOTAL"),
+                        Viewed.Target.EngineLevel,Viewed.Target.GripLevel,Viewed.Cost));
+                else
+                    MenuLine(TEXT("VIEWED CAR HAS NO AFFORDABLE BUILD"));
+                MenuLine(TEXT("PLANNING ONLY: Q/U/I CONFIRM INDIVIDUAL PURCHASES"));
+            }
             MenuLine(TEXT("ENTER/SELECT: EQUIP VIEWED OWNED CAR | E: NEXT OWNED"));
             MenuLine(TEXT("GARAGE ONLY: Q UNLOCKS | U/I UPGRADES"));
             if (!bTouchHUD)

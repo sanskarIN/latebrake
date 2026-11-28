@@ -11,6 +11,7 @@
 #include "UI/HudMenuMouseControls.h"
 #include "UI/GaragePurchaseMouseLayout.h"
 #include "UI/GarageAppearancePalette.h"
+#include "Garage/GarageBudgetAdvisor.h"
 #include "UI/GaragePaletteNavigation.h"
 #include "UI/FleetReplayPanel.h"
 #include "UI/SectorMotionResultsPanel.h"
@@ -69,6 +70,7 @@ private:
     latebrake::RivalProximityIndicator RivalProximityHint;
     latebrake::RivalRelativeMotionTracker RivalRelativeMotionHint;
     latebrake::MenuDetailPager MenuPager;
+    latebrake::GarageBudgetAdvisor BudgetAdvisor;
     latebrake::GaragePresentedOffers PresentedGarageOffers{};
     latebrake::GaragePaletteSession GaragePalette{};
     latebrake::GaragePresentedPalette PresentedGaragePalette{};
