@@ -216,6 +216,70 @@ void ContinuityBreaks()
     Require(!f.Capture.EvaluateFrozen(1,0.05).Valid,"old segment not stitched");
 }
 
+void TeleportRollbackCannotBecomeNewSegment()
+{
+    Fixture f;
+    f.Teleport[2]=5;
+    f.Frame();f.Frame();
+    f.Teleport[2]=4;
+    f.Open();
+    Require(f.Capture.Submit(f.Sample(0)),"first actor before rollback");
+    Require(!f.Capture.Submit(f.Sample(2)),"authenticated revision rollback refused");
+    Require(!f.Capture.Submit(f.Sample(1)),"poisoned frame closed");
+    const auto bad=f.Capture.ReadCoverage();
+    Require(bad.TeleportRollbackRefusals==1 && bad.RecordedFrames==2 &&
+        bad.IncompleteFrames==1 && bad.ContinuityBreaks==1 &&
+        bad.Status==FleetReplayCaptureStatus::InvalidContribution,
+        "rollback cannot start a replay segment");
+    f.Advance();
+    f.Teleport[2]=5;f.Frame();f.Frame();
+    Require(f.Capture.ReadCoverage().Segments==2 &&
+        f.Capture.ReadCoverage().RetainedFrames==2,"current revision resumes in new segment");
+
+    f.Open();
+    f.Teleport[4]=17;
+    Require(f.Capture.Submit(f.Sample(4)),"authenticated revision in partial frame");
+    f.Advance();
+    f.Teleport[4]=16;
+    f.Open();
+    Require(!f.Capture.Submit(f.Sample(4)),"partial observation also establishes high water");
+    f.Advance();
+    f.Teleport[4]=17;
+    f.Frame();f.Frame();
+    auto r=f.Freeze();
+    Require(r.Valid && r.Coverage.TeleportRollbackRefusals==2 &&
+        r.Coverage.RecordedFrames==6 && r.Coverage.IncompleteFrames==3,
+        "only six-car qualified frames contribute");
+
+    f.Capture.Reset();
+    ++f.Admission.Attempt;f.Admission.LocalFrame=1;f.Admission.ActiveSeconds=0.05;
+    f.Teleport={};
+    f.Frame();f.Frame();
+    r=f.Freeze();
+    Require(r.Valid && r.Coverage.TeleportRollbackRefusals==0,
+        "new attempt clears revision history");
+}
+
+void ForeignOrMalformedRevisionCannotPoisonIdentity()
+{
+    Fixture f;
+    f.Frame();f.Frame();
+    f.Open();
+    auto bogus=f.Sample(3);bogus.TeleportRevision=999;++bogus.Attempt;
+    Require(!f.Capture.Submit(bogus),"foreign attempt cannot establish revision");
+    f.FinishFrame();f.Advance();
+    f.Open();
+    bogus=f.Sample(3);bogus.TeleportRevision=999;bogus.Car.Actor=777;
+    Require(!f.Capture.Submit(bogus),"wrong actor cannot establish revision");
+    f.Advance();f.Open();
+    bogus=f.Sample(3);bogus.TeleportRevision=999;bogus.Car.OriginalRoadPhysicalContact=false;
+    Require(!f.Capture.Submit(bogus),"malformed actor evidence cannot establish revision");
+    f.Advance();f.Frame();f.Frame();
+    const auto r=f.Freeze();
+    Require(r.Valid && r.Coverage.TeleportRollbackRefusals==0 &&
+        r.Coverage.RecordedFrames==5,"genuine identity remains usable");
+}
+
 void FinishBeforeSixthActorAndRestart()
 {
     Fixture f;
@@ -389,6 +453,8 @@ int main()
     ForeignAndInvalidContributions();
     FreezeAndInterpolation();
     ContinuityBreaks();
+    TeleportRollbackCannotBecomeNewSegment();
+    ForeignOrMalformedRevisionCannotPoisonIdentity();
     FinishBeforeSixthActorAndRestart();
     ForeignAdmissionAndFinishIsolation();
     PreviousSegmentFallback();

@@ -22,3 +22,13 @@ are not official race verdicts.
 ## Discontinuous finish fallback
 
 The recorder retains at most one earlier playable segment on a segment boundary. The latest playable window is preferred. If recovery or a missing sample leaves only a single-frame fragment at finish, Results can select the previous contiguous segment, explicitly labelled earlier. No samples or highlights are joined across a boundary. An ineligible finish discards both windows, and reset clears the archive. Foreign or duplicate admissions and foreign finish callbacks cannot close the current pending frame. Test recovery on the last gate, two successive discontinuities, and restart after fallback in installed Unreal before qualification.
+
+### Monotonic physical teleport evidence
+
+Each bound physical car retains its highest authenticated teleport revision
+through incomplete assemblies and suspension. A rollback invalidates the open
+frame, increments a separate refusal counter, and cannot create a new segment.
+Foreign attempts, wrong actor identities and invalid physical samples do not
+advance that high-water mark. Only an explicit attempt reset clears it.
+Portable tests cover rollback after a complete frame, after a partial frame,
+resumption at the current revision, and isolation from malformed evidence.

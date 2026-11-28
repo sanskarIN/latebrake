@@ -58,6 +58,7 @@ struct FleetReplayCoverage final
     std::uint64_t IncompleteFrames=0;
     std::uint64_t RefusedAdmissions=0;
     std::uint64_t RefusedContributions=0;
+    std::uint64_t TeleportRollbackRefusals=0;
     std::uint64_t ContinuityBreaks=0;
     std::uint64_t Segments=0;
     std::size_t RetainedFrames=0;
@@ -159,6 +160,7 @@ public:
         LatestAdmission={};
         LatestRecorded={};
         LatestTeleport={};
+        ObservedTeleportHighWater={};
         Pending={};
         Open=false;
         ForceBreak=false;
@@ -241,6 +243,16 @@ public:
             RefuseOpen(FleetReplayCaptureStatus::InvalidContribution);
             return false;
         }
+        // A later callback for the same authenticated physical actor
+        // cannot undo an already observed teleport revision, even when
+        // that observation belonged to an incomplete six-car frame.
+        if(contribution.TeleportRevision<ObservedTeleportHighWater[index])
+        {
+            Increment(Coverage.TeleportRollbackRefusals);
+            RefuseOpen(FleetReplayCaptureStatus::InvalidContribution);
+            return false;
+        }
+        ObservedTeleportHighWater[index]=contribution.TeleportRevision;
         Pending.Frame.Cars[index]=car;
         Pending.Teleport[index]=contribution.TeleportRevision;
         Pending.Seen[index]=true;
@@ -469,6 +481,7 @@ private:
     FleetReplayFrameAdmission LatestAdmission{};
     FleetReplayFrameAdmission LatestRecorded{};
     FleetReplayIdentity LatestTeleport{};
+    FleetReplayIdentity ObservedTeleportHighWater{};
     Assembly Pending{};
     bool Open=false;
     bool ForceBreak=false;
