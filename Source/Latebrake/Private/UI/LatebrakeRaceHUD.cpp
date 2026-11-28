@@ -863,6 +863,16 @@ void ALatebrakeRaceHUD::DrawHUD()
                     DrawnMenuRows+=VehicleCards.ReservedRows;
                     Y=static_cast<float>(VehicleCards.NextDetailY);
                 }
+                const auto& UnlockRoute=UnlockRouteCache.Read(
+                    Mode->GetGarageSnapshot(),Mode->GetGaragePreviewVehicleId());
+                const auto UnlockLayout=latebrake::CalculateGarageUnlockRouteLayout(
+                    Layout,MenuPlan,ReadablePanel,SafeTextWidth,Y,DrawnMenuRows,
+                    UnlockRoute.Count,true,bTouchHUD);
+                if (DrawGarageUnlockRoute(UnlockLayout,UnlockRoute))
+                {
+                    DrawnMenuRows+=UnlockLayout.ReservedRows;
+                    Y=static_cast<float>(UnlockLayout.NextDetailY);
+                }
                 // Keep the performance comparison in the left menu lane;
                 // it must never cover the showroom or a purchase target.
                 const auto ComparisonLayout=latebrake::CalculateGarageComparisonPanelLayout(
@@ -1249,19 +1259,21 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Q is sequential. Report the whole route to the viewed car,
             // not just its sticker price or today's first unlock.
             // This simulation owns a private snapshot; no real purchase.
-            const auto ViewedPath = latebrake::PlanGaragePurchasePath(
-                Mode->GetGarageSnapshot(),
-                {PreviewId, Catalog.EngineLevel, Catalog.GripLevel, 0});
-            if (ViewedPath.AdditionalCarsUnlocked > 0 &&
-                ViewedPath.Status != latebrake::GaragePlanStatus::Invalid)
+            const auto& ViewedPath=UnlockRouteCache.Read(Mode->GetGarageSnapshot(),PreviewId);
+            if(ViewedPath.Valid && ViewedPath.Count>0)
             {
-                // Reserve is zero and route cost is the bounded sum of
-                // six fixed car prices, so the shortfall fits int32.
                 MenuLine(FString::Printf(
                     TEXT("VIEWED UNLOCK ROUTE: %d CAR(S) | %d CR TOTAL | NEED %d"),
-                    ViewedPath.AdditionalCarsUnlocked, ViewedPath.UnlockCost,
-                    static_cast<int32>(ViewedPath.CreditsShort)), true);
-                if (ViewedPath.AdditionalCarsUnlocked > 1)
+                    ViewedPath.Count,ViewedPath.TotalCost,ViewedPath.Shortfall),true);
+                MenuLine(UTF8_TO_TCHAR(latebrake::GarageUnlockRouteStateName(ViewedPath.State)),true);
+                for(int StepIndex=0;StepIndex<ViewedPath.Count;++StepIndex)
+                {
+                    const auto& Step=ViewedPath.Steps[static_cast<std::size_t>(StepIndex)];
+                    MenuLine(FString::Printf(TEXT("%d. %s | %d CR | TOTAL %d | NEED %d"),
+                        StepIndex+1,UTF8_TO_TCHAR(latebrake::GarageState::Definition(Step.Vehicle).Name),
+                        Step.Cost,Step.CumulativeCost,Step.CumulativeShortfall),Step.Next);
+                }
+                if(ViewedPath.Count>1)
                     MenuLine(TEXT("Q BUYS ONE NEXT CAR AT A TIME; TOTAL IS A PREVIEW."));
             }
             MenuLine(TEXT("CLICK 1-6 ABOVE TOP VIEW: DIRECT CAR PREVIEW ONLY"));
