@@ -2656,6 +2656,8 @@ add_latebrake_portable_research_test(QuickRaceChoicePanel)
 add_latebrake_portable_research_test(PracticeGateResultsPanel)
 add_latebrake_portable_research_test(PracticeTrialSetup)
 add_latebrake_portable_research_test(PracticeTrialPanel)
+add_latebrake_portable_research_test(PracticeAttemptSeries)
+target_sources(latebrake_research_PracticeAttemptSeries PRIVATE ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 target_sources(latebrake_research_PracticeGateReference PRIVATE
     ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 target_sources(latebrake_research_PracticeSessionHistory PRIVATE

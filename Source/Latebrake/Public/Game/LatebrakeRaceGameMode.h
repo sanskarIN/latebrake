@@ -90,6 +90,9 @@ public:
     latebrake::QuickPracticePreset GetQuickPracticeSelection() const { return QuickPracticeSelection; }
     latebrake::PracticeComparison GetPracticeComparison() const noexcept
     {return PracticeHistory.LastComparison();}
+    latebrake::PracticeAttemptSeriesReview GetPracticeAttemptSeries(
+        latebrake::PracticeConfiguration Key) const noexcept
+    {return PracticeHistory.ReadSeries(Key);}
     latebrake::PracticeGateReview GetPracticeGateReview() const noexcept
     {return PracticeGateHistory.Read();}
     void NotifyPracticeHandlingChange(const ALatebrakeCarPawn* Car);

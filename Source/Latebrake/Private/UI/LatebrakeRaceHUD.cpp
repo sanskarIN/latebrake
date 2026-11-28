@@ -1407,6 +1407,33 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Comparison.Configuration.Tuning.Engine,Comparison.Configuration.Tuning.Grip,
                         Comparison.Configuration.Handling==0?TEXT("ARCADE"):TEXT("SIM-INSPIRED"),
                         Comparison.Record.BestLapSeconds));
+                    const auto Series=Mode->GetPracticeAttemptSeries(Comparison.Configuration);
+                    if (Series.Valid && Series.Finishes==Comparison.Record.FinishedAttempts)
+                    {
+                        MenuLine(FString::Printf(TEXT("SESSION MEAN %.2fs | SPREAD %.2fs | SD %.2fs"),
+                            Series.Finish.Mean,Series.Finish.Maximum-Series.Finish.Minimum,
+                            Series.Finish.PopulationDeviation));
+                        MenuLine(FString::Printf(TEXT("FEE-FREE FINISHES %u/%u | LAPS %.0f%%"),
+                            Series.FeeFreeFinishes,Series.Finishes,Series.FeeFreeLapPercent()));
+                        if (Series.FeeFreeFinishes)
+                            MenuLine(FString::Printf(TEXT("BEST FEE-FREE FINISH %.2fs | ATTEMPT %u"),
+                                Series.FeeFreeFinish.Minimum,Series.BestFeeFreeFinishAttempt));
+                        if (Series.BestFeeFreeLap>0)
+                            MenuLine(FString::Printf(TEXT("BEST FEE-FREE LAP %.2fs"),Series.BestFeeFreeLap));
+                        if (!bCompact)
+                        {
+                            MenuLine(FString::Printf(TEXT("MEAN ACTIVE %.2fs | MEAN FEES %.2fs"),
+                                Series.Active.Mean,Series.Fees.Mean));
+                            MenuLine(TEXT("RECENT MATCHING ATTEMPTS | NEWEST FIRST"),true);
+                            for (int I=0;I<Series.RecentCount;++I)
+                            {
+                                const auto& Attempt=Series.Recent[static_cast<std::size_t>(I)];
+                                MenuLine(FString::Printf(TEXT("#%u | %.2fs | FEES %.2fs | BEST LAP %.2fs"),
+                                    Attempt.Number,Attempt.Sample.FinishSeconds,
+                                    Attempt.Sample.FeeSeconds,Attempt.Sample.BestLapSeconds));
+                            }
+                        }
+                    }
                     if (Comparison.PreviousFinishSeconds>0.0 && !bCompact)
                         MenuLine(FString::Printf(TEXT("VS PREVIOUS COMPARABLE FINISH: %+.3fs"),
                             Comparison.DeltaToPreviousFinishSeconds));

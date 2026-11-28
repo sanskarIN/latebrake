@@ -2,6 +2,7 @@
 
 #include "Garage/GarageTuningKey.h"
 #include "Racing/FinishTimingEligibility.h"
+#include "Racing/PracticeAttemptSeries.h"
 #include "Racing/QuickRaceModePicker.h"
 
 #include <array>
@@ -98,6 +99,7 @@ public:
     void ResetSession() noexcept
     {
         Records.fill({});
+        for(auto& series:Series)series.Reset();
         CancelAttempt();
     }
 
@@ -128,6 +130,12 @@ public:
         return index>=0?Records[static_cast<std::size_t>(index)]:PracticeSessionRecord{};
     }
 
+    PracticeAttemptSeriesReview ReadSeries(PracticeConfiguration key) const noexcept
+    {
+        const int index=PracticeConfigurationIndex(key);
+        return index>=0?Series[static_cast<std::size_t>(index)].Read():PracticeAttemptSeriesReview{};
+    }
+
     PracticeComparison Finish(PracticeConfiguration key,std::uint64_t actor,
         const RaceProgress& race) noexcept
     {
@@ -150,6 +158,9 @@ public:
         const auto full=race.GetWholeRaceLapSummary();
         if(!full.Valid || full.All.Count!=definition.RequiredLaps)
             return Last;
+        // Keep series and comparison records transactionally aligned.
+        const auto sample=MakePracticeAttemptSample(race);
+        if(!Series[static_cast<std::size_t>(index)].Observe(sample))return Last;
         const double seconds=race.GetElapsedSeconds();
         const double lap=race.GetBestLapSeconds();
         auto& record=Records[static_cast<std::size_t>(index)];
@@ -188,6 +199,7 @@ public:
 
 private:
     std::array<PracticeSessionRecord,PracticeConfigurationCount> Records{};
+    std::array<PracticeAttemptSeries,PracticeConfigurationCount> Series{};
     bool Active=false;
     bool Changed=false;
     PracticeConfiguration Key{};
