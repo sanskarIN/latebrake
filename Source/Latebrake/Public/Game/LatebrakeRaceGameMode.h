@@ -22,6 +22,7 @@
 #include "AI/FleetFrameAuthority.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/PracticeSessionHistory.h"
+#include "Racing/PracticeGateReference.h"
 #include "Career/CareerMenuSelection.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
@@ -80,6 +81,8 @@ public:
     latebrake::QuickPracticePreset GetQuickPracticeSelection() const { return QuickPracticeSelection; }
     latebrake::PracticeComparison GetPracticeComparison() const noexcept
     {return PracticeHistory.LastComparison();}
+    latebrake::PracticeGateReview GetPracticeGateReview() const noexcept
+    {return PracticeGateHistory.Read();}
     void NotifyPracticeHandlingChange(const ALatebrakeCarPawn* Car);
     bool StartCareerEvent(int32 Id);
     void StartNextAvailableCareerEvent();
@@ -340,6 +343,7 @@ private:
     latebrake::QuickPracticePreset QuickPracticeSelection = latebrake::QuickPracticePreset::None;
     latebrake::QuickPracticePreset ActivePractice = latebrake::QuickPracticePreset::None;
     latebrake::PracticeSessionHistory PracticeHistory;
+    latebrake::PracticeGateReferenceHistory PracticeGateHistory;
     latebrake::PracticeConfiguration ReadPracticeConfiguration(const ALatebrakeCarPawn* Car) const;
     latebrake::RivalDifficultyPreset ActiveRivalDifficulty =
         latebrake::RivalDifficultyPreset::Standard;

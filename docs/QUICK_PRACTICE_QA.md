@@ -46,3 +46,7 @@ Ten-lap practice results distinguish the full attempt from the retained eight-la
 ## Session-only practice comparisons
 
 Completed practice attempts can be compared against earlier attempts using exactly the same practice preset, car ID, engine/grip levels and handling mode. Records exist only in the current GameMode instance; no SaveGame changes are made. Mid-attempt tuning, handling or player-pawn changes permanently disqualify that attempt's comparison, even when the original configuration is restored. A valid ordered timed finish is still required. Verify repeat attempts with matching and different configurations, returning to a previously used configuration, changing handling during a run, and leaving/re-entering the level. Results must clearly distinguish session bests from saved personal bests.
+
+## Session reference at each ordered gate
+
+A complete practice with positive active time in every sector can become a session-local reference for the same preset, vehicle, engine/grip levels and handling. Each cumulative gate and sector is compared against a single prior completed attempt, with charged fee deltas separate from active-clock differences. The reference changes only on a faster complete comparable run. Missing or zero-active-time sectors, inconsistent gate order and configuration changes suppress exact-gate comparisons without changing the legitimate race result. Verify the live HUD, full results rows, resets, fee attribution and different configurations. No comparison writes to the saved profile.

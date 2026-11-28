@@ -1330,6 +1330,37 @@ void ALatebrakeRaceHUD::DrawHUD()
             else if (Mode->IsPracticeRace())
             {
                 MenuLine(TEXT("PRACTICE COMPLETE | NO SAVED REWARDS OR RECORDS"), true);
+                const auto GateReview=Mode->GetPracticeGateReview();
+                if (GateReview.Finished && GateReview.NewReference)
+                    MenuLine(TEXT("NEW COMPLETE SESSION GATE REFERENCE"),true);
+                if (GateReview.Valid && GateReview.Finished)
+                {
+                    MenuLine(FString::Printf(TEXT("VS PRIOR GATE REFERENCE %.2fs | %d/%d MATCHED GATES"),
+                        GateReview.ReferenceFinishSeconds,GateReview.ObservedGates,GateReview.ExpectedGates));
+                    MenuLine(FString::Printf(TEXT("SECTORS FASTER %d | SLOWER %d | MATCHED %d"),
+                        GateReview.FasterSectors,GateReview.SlowerSectors,GateReview.MatchedSectors));
+                    MenuLine(FString::Printf(TEXT("FINAL DELTA %+.2fs | ACTIVE %+.2fs | FEES %+.2fs"),
+                        GateReview.Latest.TotalDeltaSeconds,GateReview.Latest.ActiveDeltaSeconds,
+                        GateReview.Latest.FeeDeltaSeconds));
+                    if (!bCompact && GateReview.LargestLoss.Valid)
+                        MenuLine(FString::Printf(TEXT("BIGGEST LOSS L%d G%d: +%.2fs"),
+                            GateReview.LargestLoss.Lap,GateReview.LargestLoss.Gate+1,
+                            GateReview.LargestLoss.SectorDeltaSeconds));
+                    if (!bCompact && GateReview.LargestGain.Valid)
+                        MenuLine(FString::Printf(TEXT("BIGGEST GAIN L%d G%d: %.2fs"),
+                            GateReview.LargestGain.Lap,GateReview.LargestGain.Gate+1,
+                            GateReview.LargestGain.SectorDeltaSeconds));
+                    if (!bCompact)
+                        for (int I=0;I<GateReview.ObservedGates;++I)
+                        {
+                            const auto& Gate=GateReview.Rows[static_cast<std::size_t>(I)];
+                            if (Gate.Valid)
+                                MenuLine(FString::Printf(TEXT("L%d G%d | SECTOR %+.2fs | CUMULATIVE %+.2fs"),
+                                    Gate.Lap,Gate.Gate+1,Gate.SectorDeltaSeconds,Gate.TotalDeltaSeconds));
+                        }
+                }
+                else if (GateReview.EvidenceRejected)
+                    MenuLine(TEXT("EXACT GATE COMPARISON UNAVAILABLE"));
                 const auto Comparison=Mode->GetPracticeComparison();
                 using ComparisonStatus=latebrake::PracticeComparisonStatus;
                 switch (Comparison.Status)
@@ -3495,6 +3526,19 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
         // Estimate based only on actual completed timed laps. Never
         // display a fabricated finish pace before the first valid lap.
+        if (Mode->IsPracticeRace())
+        {
+            const auto PracticeGate=Mode->GetPracticeGateReview();
+            if (PracticeGate.Valid && PracticeGate.Latest.Valid)
+                Line(FString::Printf(TEXT("SESSION REF L%d G%d | %+.2fs | FEES %+.2fs"),
+                    PracticeGate.Latest.Lap,PracticeGate.Latest.Gate+1,
+                    PracticeGate.Latest.TotalDeltaSeconds,PracticeGate.Latest.FeeDeltaSeconds),
+                    PracticeGate.Latest.TotalDeltaSeconds<=0.0?Primary:Accent,
+                    false,HudTelemetryKind::Pace);
+            else if (PracticeGate.ReferenceAvailable && !PracticeGate.EvidenceRejected)
+                Line(FString::Printf(TEXT("SESSION REF %.2fs | WAITING FOR FIRST GATE"),
+                    PracticeGate.ReferenceFinishSeconds),Accent,false,HudTelemetryKind::Pace);
+        }
         const auto GatePace = latebrake::ProjectGateAwareRacePace(Race);
         if (GatePace.Status == latebrake::GatePaceStatus::Estimated)
         {
