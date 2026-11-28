@@ -109,7 +109,7 @@ inline GaragePaletteLayout CalculateGaragePaletteLayout(
     const double gap=std::max(6.0,8.0*hud.Scale);
     const double pad=gap;
     const double rowH=std::max(44.0,52.0*hud.Scale);
-    const int columns=layer==GarageLookLayer::Paint || layer==GarageLookLayer::Preset?2:1;
+    const int columns=layer==GarageLookLayer::Paint?2:1;
     const int rows=(count+columns-1)/columns;
     const double panelW=std::min(a.Width,420.0*hud.Scale);
     const double panelH=2*pad+rowH*(rows+1)+gap*rows;
