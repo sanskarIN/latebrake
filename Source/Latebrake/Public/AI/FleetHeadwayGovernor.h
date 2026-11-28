@@ -98,6 +98,7 @@ inline FleetHeadwayCandidate EvaluateFleetHeadwayCandidate(
 {
     FleetHeadwayCandidate out;
     if(!std::isfinite(brakeScale) || brakeScale<0.15 || brakeScale>1.0 ||
+        self.Slot<=HumanGridSlot || self.Slot>=StartGridCapacity || !self.Token ||
         !std::isfinite(self.Along) || !std::isfinite(other.Along) ||
         !std::isfinite(self.Side) || !std::isfinite(other.Side) ||
         !std::isfinite(self.Forward) || !std::isfinite(other.Forward) ||
@@ -238,7 +239,13 @@ public:
             FleetPassContinuous(LastStamp,sample.Stamp);
         LastStamp=sample.Stamp;
         const auto assessment=AssessFleetHeadway(sample);
-        if(!assessment.Qualified() || prior.Arrived)
+        if(prior.Arrived)
+        {
+            Suspend();
+            Last.Command=prior;
+            return Last;
+        }
+        if(!assessment.Qualified())
         {
             // Off-road, corners and unqualified observations remain under
             // the original traffic/route policy. No stale cap survives.
@@ -265,7 +272,7 @@ public:
         }
         Last.Assessment=assessment;
         Last.Status=assessment.Status;
-        if(Ceiling+FleetPassEpsilon<assessment.TargetCeiling)
+        if(Ceiling<assessment.TargetCeiling)
             Last.Status=FleetHeadwayStatus::Releasing;
         Last.AppliedCeiling=Ceiling;
         Last.Command=prior;
