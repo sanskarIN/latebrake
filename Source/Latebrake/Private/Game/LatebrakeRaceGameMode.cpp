@@ -1926,6 +1926,19 @@ latebrake::PracticeTrialAccess ALatebrakeRaceGameMode::GetPracticeTrialAccess() 
         Snapshot.FocusSuspended || IsManualRacePauseActive(),QuickPracticeSelection};
 }
 
+latebrake::PracticeExperimentPlan ALatebrakeRaceGameMode::GetPendingPracticeExperimentPlan() const
+{
+    if (!GetPracticeTrialAccess().AllowsEdit())return {};
+    const auto* Car=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    if (!IsValid(Car))return {};
+    const auto Handling=Car->GetHandlingMode();
+    const int HandlingId=Handling==ELatebrakeHandlingMode::Arcade?0:
+        Handling==ELatebrakeHandlingMode::SimulationInspired?1:-1;
+    const latebrake::PracticeConfiguration Key{QuickPracticeSelection,
+        GetPendingPracticeTrial().Key,HandlingId};
+    return latebrake::BuildPracticeExperimentPlan(GetPracticeSetupCatalogue(Key),Key);
+}
+
 bool ALatebrakeRaceGameMode::HandlePracticeTrialInput(
     latebrake::PracticeTrialAction Action,int32 Vehicle)
 {
@@ -1933,7 +1946,17 @@ bool ALatebrakeRaceGameMode::HandlePracticeTrialInput(
     // including blocked edits. Never fall through to a paid garage action.
     if (!Menu.IsOpen() || Menu.Current()!=latebrake::MenuPage::QuickRace ||
         !latebrake::IsQuickPractice(QuickPracticeSelection))return false;
-    if (PracticeTrial.Edit(GetPracticeTrialAccess(),Action,Garage.Snapshot(),Vehicle))
+    bool Changed=false;
+    if (Action==latebrake::PracticeTrialAction::NextTest ||
+        Action==latebrake::PracticeTrialAction::RetestBest)
+    {
+        const auto Choices=GetPendingPracticeExperimentChoices();
+        const bool Next=Action==latebrake::PracticeTrialAction::NextTest;
+        if (Next?Choices.NextValid:Choices.BestValid)
+            Changed=PracticeTrial.Stage(GetPracticeTrialAccess(),Next?Choices.Next:Choices.Best);
+    }
+    else Changed=PracticeTrial.Edit(GetPracticeTrialAccess(),Action,Garage.Snapshot(),Vehicle);
+    if (Changed)
     {
         BumpQuickChoiceRevision();
         GaragePurchaseConfirm.Reset();

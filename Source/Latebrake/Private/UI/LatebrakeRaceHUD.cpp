@@ -984,6 +984,37 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Trial.Performance.Acceleration,Trial.Performance.Grip,Trial.Performance.TopSpeed));
                     MenuLine(TEXT("E NEXT CAR | U ENGINE | I GRIP | CTRL+1..6 CAR"));
                     MenuLine(TEXT("Q RETURNS TO SAVED GARAGE; SELECT STARTS PRACTICE."));
+                    const auto Plan=Mode->GetPendingPracticeExperimentPlan();
+                    if (Plan.Valid)
+                    {
+                        MenuLine(TEXT("PRACTICE TEST PLAN | SAME MODE & HANDLING"),true);
+                        MenuLine(FString::Printf(TEXT("UNTESTED %d | NO FEE-FREE FINISH %d | NEED REPEATS %d"),
+                            Plan.Untested,Plan.NoFeeFreeFinish,Plan.NeedsRepeats));
+                        MenuLine(FString::Printf(TEXT("COVERAGE %d/%d | %u REPEATS TARGET PER SETUP"),
+                            Plan.Sufficient,latebrake::PracticeSetupsPerGroup,
+                            latebrake::PracticeRecommendedRepeats));
+                        if (Plan.Current.Valid)
+                            MenuLine(FString::Printf(TEXT("CURRENT SETUP: %s"),
+                                UTF8_TO_TCHAR(latebrake::PracticeExperimentReasonLabel(Plan.Current.Reason))));
+                        if (Plan.NextAlternative.Valid)
+                        {
+                            const auto& Next=Plan.NextAlternative;
+                            MenuLine(FString::Printf(TEXT("NEXT TEST: %s E%d/G%d | %s"),
+                                UTF8_TO_TCHAR(latebrake::GarageState::Definition(Next.Key.Tuning.Selected).Name),
+                                Next.Key.Tuning.Engine,Next.Key.Tuning.Grip,
+                                UTF8_TO_TCHAR(latebrake::PracticeExperimentReasonLabel(Next.Reason))));
+                            MenuLine(TEXT("LARGE DESKTOP: NEXT TEST STAGES SETUP; SELECT STARTS."));
+                        }
+                        if (Plan.CoverageComplete())MenuLine(TEXT("SESSION TEST COVERAGE COMPLETE."),true);
+                        if (Plan.FastestFeeFree.Valid)
+                        {
+                            const auto& Best=Plan.FastestFeeFree;
+                            MenuLine(FString::Printf(TEXT("MEASURED FEE-FREE BEST: %s E%d/G%d | %.2fs"),
+                                UTF8_TO_TCHAR(latebrake::GarageState::Definition(Best.Key.Tuning.Selected).Name),
+                                Best.Key.Tuning.Engine,Best.Key.Tuning.Grip,Best.BestFeeFreeFinish));
+                        }
+                        MenuLine(TEXT("SUGGESTIONS ARE TEST COVERAGE, NOT PREDICTED SPEED."));
+                    }
                 }
             }
             else if (Mode->GetQuickRaceSoloTimeAttackSelection())

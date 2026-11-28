@@ -25,7 +25,7 @@ PracticeTrialPanelLayout Layout(double w,double h)
 PracticeTrialPanelSnapshot Snapshot()
 {
     return {{true,MenuPage::QuickRace,true,false,false,false,4,1,2},
-        false,true,{2,1,3},false};
+        false,true,{2,1,3},false,{true,{3,1,3},PracticeExperimentReason::Untested,true,{1,1,3},60}};
 }
 PracticeTrialPanelHit Hit(const PracticeTrialPanelPresentation& shown,
     const PracticeTrialPanelSnapshot& now,std::size_t i)
@@ -55,6 +55,8 @@ void ButtonsAndPermissions()
         Require(!Hit(shown,stale,i).Accepted,"changed actual tuning");
         stale=now;stale.Owned=true;
         Require(!Hit(shown,stale,i).Accepted,"changed caption");
+        stale=now;stale.Experiments.Next.Engine=2;
+        Require(!Hit(shown,stale,i).Accepted,"changed recommended target");
         stale=now;stale.ManualPause=true;
         Require(!Hit(shown,stale,i).Accepted,"manual pause");
         stale=now;stale.Choice.FocusSuspended=true;

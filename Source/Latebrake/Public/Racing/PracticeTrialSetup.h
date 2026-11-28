@@ -13,7 +13,7 @@ namespace latebrake
 // The saved garage remains the sole authority for ownership and rewards.
 enum class PracticeTrialAction : std::uint8_t
 {
-    Toggle, NextCar, ChooseCar, NextEngine, NextGrip, Reset
+    Toggle, NextCar, ChooseCar, NextEngine, NextGrip, Reset, NextTest, RetestBest
 };
 
 struct PracticeTrialAccess final
@@ -111,6 +111,16 @@ public:
         }
         if(next==PendingKey)return false;
         PendingKey=next;
+        return true;
+    }
+
+    // Stage an explicitly chosen measured or untested configuration.
+    // A caller must already resolve the exact pending practice menu context.
+    bool Stage(PracticeTrialAccess access,GarageTuningKey key) noexcept
+    {
+        if(!access.AllowsEdit() || !PendingEnabled || !ValidPracticeTrialKey(key) ||
+            key==PendingKey)return false;
+        PendingKey=key;
         return true;
     }
 

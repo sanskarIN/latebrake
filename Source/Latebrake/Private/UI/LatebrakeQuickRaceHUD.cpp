@@ -17,7 +17,7 @@ bool ALatebrakeRaceHUD::TryHandleQuickRaceChoicePointer(double X,double Y)
         return false;
     const auto TrialSnapshot=latebrake::BuildPracticeTrialPanelSnapshot(
         Mode->GetQuickRaceChoiceSnapshot(),Mode->GetPendingPracticeTrial(),
-        Mode->IsManualRacePauseActive());
+        Mode->IsManualRacePauseActive(),Mode->GetPendingPracticeExperimentChoices());
     const auto TrialHit=latebrake::HitPresentedPracticeTrial(PresentedTrial,
         TrialSnapshot,Canvas->SizeX,Canvas->SizeY,X,Y);
     if(TrialHit.Consumed)
@@ -115,7 +115,7 @@ void ALatebrakeRaceHUD::DrawQuickRaceChoicePanel(const ALatebrakeRaceGameMode* M
     if(!TrialLayout.Valid)return;
     const auto Trial=Mode->GetPendingPracticeTrial();
     const auto TrialSnapshot=latebrake::BuildPracticeTrialPanelSnapshot(
-        Snapshot,Trial,Mode->IsManualRacePauseActive());
+        Snapshot,Trial,Mode->IsManualRacePauseActive(),Mode->GetPendingPracticeExperimentChoices());
     latebrake::PracticeTrialPanelPresentation TrialPresentation;
     TrialPresentation.Valid=true;
     TrialPresentation.Layout=TrialLayout;
@@ -153,6 +153,10 @@ void ALatebrakeRaceHUD::DrawQuickRaceChoicePanel(const ALatebrakeRaceGameMode* M
         case latebrake::PracticeTrialAction::NextGrip:
             Caption=FString::Printf(TEXT("GRIP %d"),Trial.Key.Grip);
             Short=FString::Printf(TEXT("G%d"),Trial.Key.Grip);break;
+        case latebrake::PracticeTrialAction::NextTest:
+            Caption=TEXT("NEXT TEST SETUP");Short=TEXT("NEXT TEST");break;
+        case latebrake::PracticeTrialAction::RetestBest:
+            Caption=TEXT("RETEST MEASURED BEST");Short=TEXT("RETEST");break;
         case latebrake::PracticeTrialAction::ChooseCar:
             Caption=UTF8_TO_TCHAR(latebrake::GarageState::Definition(Button.Vehicle).Name);
             Short=FString::FromInt(Button.Vehicle+1);break;

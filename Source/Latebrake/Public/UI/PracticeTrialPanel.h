@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Racing/PracticeTrialSetup.h"
+#include "Racing/PracticeExperimentPlan.h"
 #include "UI/QuickRaceChoicePanel.h"
 
 #include <array>
@@ -11,7 +12,7 @@ namespace latebrake
 // A secondary, independent panel beneath the eight mode cards. It is
 // intentionally absent when the existing readable text or viewport would
 // be crowded. Keyboard setup remains available in that case.
-inline constexpr std::size_t PracticeTrialControlCount=11;
+inline constexpr std::size_t PracticeTrialControlCount=13;
 
 struct PracticeTrialControl final
 {
@@ -54,8 +55,14 @@ inline bool ValidPracticeTrialPanelLayout(const PracticeTrialPanelLayout& layout
         {
             if(button.Action!=expected[i] || button.Vehicle!=-1)return false;
         }
-        else if(button.Action!=PracticeTrialAction::ChooseCar ||
-            button.Vehicle!=static_cast<int>(i-5))return false;
+        else if(i<11)
+        {
+            if(button.Action!=PracticeTrialAction::ChooseCar ||
+                button.Vehicle!=static_cast<int>(i-5))return false;
+        }
+        else if(button.Vehicle!=-1 ||
+            button.Action!=(i==11?PracticeTrialAction::NextTest:PracticeTrialAction::RetestBest))
+            return false;
         for(std::size_t j=0;j<i;++j)
             if(SettingsRectsOverlap(layout.Controls[j].Bounds,button.Bounds))return false;
     }
@@ -70,7 +77,7 @@ inline PracticeTrialPanelLayout CalculatePracticeTrialPanel(
     const double left=choices.Panel.X,top=choices.Panel.Y+choices.Panel.Height+8*s;
     const double width=choices.Panel.Width;
     const double header=24*s,summary=23*s,row=std::max(32.0,35*s);
-    const double height=2*pad+header+summary+3*row+4*gap;
+    const double height=2*pad+header+summary+4*row+5*gap;
     const DesktopMenuMouseRect viewport{0,0,choices.Width,choices.Height-8*s};
     const DesktopMenuMouseRect textRect{text.X,text.Y,text.Width,text.Height};
     PracticeTrialPanelLayout out;
@@ -96,6 +103,9 @@ inline PracticeTrialPanelLayout CalculatePracticeTrialPanel(
     for(int i=0;i<VehicleCount;++i)
         out.Controls[static_cast<std::size_t>(5+i)]={PracticeTrialAction::ChooseCar,i,
             {x+i*(sixth+gap),y,sixth,row}};
+    y+=row+gap;
+    out.Controls[11]={PracticeTrialAction::NextTest,-1,{x,y,half,row}};
+    out.Controls[12]={PracticeTrialAction::RetestBest,-1,{x+half+gap,y,half,row}};
     return ValidPracticeTrialPanelLayout(out)?out:PracticeTrialPanelLayout{};
 }
 
@@ -106,6 +116,7 @@ struct PracticeTrialPanelSnapshot final
     bool TrialEnabled=false;
     GarageTuningKey Key{};
     bool Owned=false;
+    PracticeExperimentChoices Experiments{};
 
     bool CanEdit() const noexcept
     {
@@ -117,9 +128,10 @@ struct PracticeTrialPanelSnapshot final
 };
 
 inline PracticeTrialPanelSnapshot BuildPracticeTrialPanelSnapshot(
-    QuickRaceChoiceSnapshot choice,PracticeTrialReadout trial,bool manualPause) noexcept
+    QuickRaceChoiceSnapshot choice,PracticeTrialReadout trial,bool manualPause,
+    PracticeExperimentChoices experiments={}) noexcept
 {
-    return {choice,manualPause,trial.Enabled,trial.Key,trial.Owned};
+    return {choice,manualPause,trial.Enabled,trial.Key,trial.Owned,experiments};
 }
 
 inline bool PracticeTrialControlEnabled(const PracticeTrialPanelSnapshot& snapshot,
@@ -130,6 +142,14 @@ inline bool PracticeTrialControlEnabled(const PracticeTrialPanelSnapshot& snapsh
     if(!snapshot.TrialEnabled)return false;
     switch(control.Action)
     {
+    case PracticeTrialAction::NextTest:
+        return control.Vehicle==-1 && snapshot.Experiments.NextValid &&
+            ValidPracticeTrialKey(snapshot.Experiments.Next) &&
+            !(snapshot.Experiments.Next==snapshot.Key);
+    case PracticeTrialAction::RetestBest:
+        return control.Vehicle==-1 && snapshot.Experiments.BestValid &&
+            ValidPracticeTrialKey(snapshot.Experiments.Best) &&
+            !(snapshot.Experiments.Best==snapshot.Key);
     case PracticeTrialAction::ChooseCar:
         return GarageState::IsVehicle(control.Vehicle) &&
             control.Vehicle!=snapshot.Key.Selected;

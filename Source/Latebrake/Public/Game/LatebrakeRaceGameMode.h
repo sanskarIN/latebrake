@@ -24,6 +24,7 @@
 #include "Racing/PracticeSessionHistory.h"
 #include "Racing/PracticeTrialSetup.h"
 #include "Racing/PracticeSetupCatalogue.h"
+#include "Racing/PracticeExperimentPlan.h"
 #include "Racing/PracticeGateReference.h"
 #include "Career/CareerMenuSelection.h"
 #include "Racing/RaceSessionEpoch.h"
@@ -82,6 +83,9 @@ public:
     latebrake::QuickRaceChoiceSnapshot GetQuickRaceChoiceSnapshot() const;
     bool SelectQuickRaceChoice(int32 Index);
     bool HandlePracticeTrialInput(latebrake::PracticeTrialAction Action,int32 Vehicle=-1);
+    latebrake::PracticeExperimentPlan GetPendingPracticeExperimentPlan() const;
+    latebrake::PracticeExperimentChoices GetPendingPracticeExperimentChoices() const
+    {return latebrake::GetPracticeExperimentChoices(GetPendingPracticeExperimentPlan());}
     latebrake::PracticeTrialReadout GetPendingPracticeTrial() const noexcept
     {return PracticeTrial.Pending(Garage.Snapshot());}
     latebrake::PracticeTrialReadout GetActivePracticeTrial() const noexcept
