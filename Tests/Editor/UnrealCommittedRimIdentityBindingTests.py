@@ -38,6 +38,10 @@ class UnrealCommittedRimIdentityBindingTests(unittest.TestCase):
         self.assertIn("GarageLookChoiceName(",settings)
         self.assertIn("FALLBACK / NO SOURCE MESH",settings)
         self.assertNotIn("GarageGallery.Viewed()",settings)
-        self.assertIn("GarageLooks.Get(Garage.SelectedVehicle())",self.mode)
+        self.assertIn("PracticeTrialLook(Trial,GarageLooks)",self.mode)
+        self.assertIn("Requested.Selected, Look",self.mode)
+        policy=read("Source/Latebrake/Public/Racing/PracticeTrialSetup.h")
+        self.assertIn("saved.Get(trial.Key.Selected)",policy)
+        self.assertIn("FactoryGarageLook(trial.Key.Selected)",policy)
 if __name__=="__main__":
     unittest.main()

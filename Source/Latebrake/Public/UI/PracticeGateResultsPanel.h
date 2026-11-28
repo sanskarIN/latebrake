@@ -308,7 +308,13 @@ inline PracticePanelBarGeometry BuildPracticePanelBarGeometry(DesktopMenuMouseRe
     const double extent=std::abs(bar.SignedFraction)*width*0.5;
     out.Gain=bar.SignedFraction<0;
     if(extent>0)
-        out.Fill={out.Gain?center-extent:center,out.Track.Y,extent,out.Track.Height};
+    {
+        // At full negative extent, subtraction can round just outside
+        // the track's left edge. Clamp both endpoints before deriving width.
+        const double start=out.Gain?std::max(out.Track.X,center-extent):center;
+        const double end=out.Gain?center:std::min(out.Track.X+width,center+extent);
+        if(end>start)out.Fill={start,out.Track.Y,end-start,out.Track.Height};
+    }
     if(!FleetReplayContainsRect(row,out.Label) || !FleetReplayContainsRect(row,out.Track) ||
         !FleetReplayContainsRect(out.Track,out.Zero) ||
         (extent>0 && !FleetReplayContainsRect(out.Track,out.Fill)))

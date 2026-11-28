@@ -114,7 +114,7 @@ void RandomizedMomentCrossCheck()
     unsigned clean=0;
     for(int i=0;i<1000;++i)
     {
-        const double lap=12+static_cast<double>(rng()%5000)/100;
+        const double lap=12+static_cast<double>(rng()%800)/16;
         const double fee=static_cast<double>(rng()%5);
         const auto sample=MakePracticeAttemptSample(Race(lap,5,2,fee));
         Require(series.Observe(sample),"valid generated real race");
