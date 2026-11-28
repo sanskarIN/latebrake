@@ -173,6 +173,9 @@ void LayoutAndPointer()
     Require(Near(l.Map.Width/l.Map.Height,8400.0/6000.0),"preserved track aspect");
     Require(FleetReplayContainsRect({0,0,1280,800},l.Panel),"visible panel");
     Require(!FleetReplayRectsOverlap(l.Map,l.Scrub),"map and scrub independent");
+    Require(FleetReplayContainsRect(l.Panel,l.ControlsStatus) &&
+        !FleetReplayRectsOverlap(l.ControlsStatus,l.Status) &&
+        !FleetReplayRectsOverlap(l.ControlsStatus,l.Scrub),"control telemetry owns separate row");
     for(const auto& b:l.Buttons)
     {
         Require(FleetReplayContainsRect(l.Panel,b.Bounds),"button inside panel");
@@ -242,6 +245,71 @@ void MapProjection()
     Require(!BuildFleetReplayMap(f,l,v.Readout()).Valid,"unqualified sixth sample");
 }
 
+void MapFocusAndControlTelemetry()
+{
+    const auto l=Layout();
+    auto r=Review();FleetReplayViewer v;
+    Require(v.Synchronize(r,true),"visible review");
+    auto f=Frame();
+    f.Cars[3].ThrottleNormalized=0.75;
+    f.Cars[3].BrakeNormalized=0.4;
+    f.Cars[3].SteeringNormalized=-0.3;
+    auto m=BuildFleetReplayMap(f,l,v.Readout());
+    Require(m.Valid && m.Cars[3].Observed && Near(m.Cars[3].Throttle,0.75) &&
+        Near(m.Cars[3].Brake,0.4) && Near(m.Cars[3].Steering,-0.3),
+        "actual interpolated control observations");
+    const auto hit=m.Cars[3].Position;
+    Require(HitFleetReplayMapCar(l,m,hit.X,hit.Y)==3,"direct marker selection");
+    Require(v.SelectFocus(3,10,r) && v.Readout().FocusSlot==3 &&
+        !v.Readout().Playing,"direct focus pauses exact presented frame");
+    Require(!v.SelectFocus(-1,10,r) && !v.SelectFocus(6,10,r) &&
+        !v.SelectFocus(2,10.1,r),"bad slot or stale clock refused");
+    Require(v.Act(FleetReplayAction::NextHighlight,r),"select event");
+    const auto event=v.Readout();
+    Require(v.SelectFocus(0,event.CursorSeconds,r) &&
+        v.Readout().SelectedHighlight==-1 && v.Readout().FocusSlot==0,
+        "map focus exits highlight");
+    Require(v.Act(FleetReplayAction::PlayPause,r),"play");
+    v.Tick(100,true);v.Tick(100.1,true);
+    Require(!v.SelectFocus(3,event.CursorSeconds,r),"old rendered clock cannot select");
+    Require(v.SelectFocus(3,v.Readout().CursorSeconds,r) && !v.Readout().Playing,
+        "exact presented selection stops playback");
+
+    m.Cars[2].Position=m.Cars[3].Position;
+    Require(HitFleetReplayMapCar(l,m,hit.X,hit.Y)==-1,"overlapping markers ambiguous");
+    m.Cars[2].Visible=false;
+    Require(HitFleetReplayMapCar(l,m,hit.X,hit.Y)==3,"invisible marker not selectable");
+    m.Cars[3].Observed=false;
+    Require(HitFleetReplayMapCar(l,m,hit.X,hit.Y)==-1,"unobserved marker not selectable");
+    Require(HitFleetReplayMapCar(l,m,std::numeric_limits<double>::quiet_NaN(),hit.Y)==-1,
+        "invalid pointer rejected");
+    f.Cars[3].ThrottleNormalized=1.01;
+    v.Synchronize(r,false);v.Synchronize(r,true);
+    Require(!BuildFleetReplayMap(f,l,v.Readout()).Valid,"malformed controls refuse map");
+    f=Frame();f.Cars[3].Xcm=4300;f.Cars[3].BrakeNormalized=0.5;
+    m=BuildFleetReplayMap(f,l,v.Readout());
+    Require(m.Valid && !m.Cars[3].Visible && m.Cars[3].Observed &&
+        Near(m.Cars[3].Brake,0.5),"off-map telemetry retained without edge pin");
+    auto malformed=l;malformed.Scale=std::numeric_limits<double>::infinity();
+    Require(!BuildFleetReplayMap(f,malformed,v.Readout()).Valid,"invalid layout scale");
+}
+
+void ExactClipIdentity()
+{
+    auto r=Review();FleetReplayViewer v;
+    Require(v.Synchronize(r,true) && v.Act(FleetReplayAction::NextHighlight,r),"event selected");
+    auto changed=r;changed.Highlights[0].EventSeconds=12.1;
+    Require(!v.CanAct(FleetReplayAction::PlayPause,changed),"changed representative clock");
+    changed=r;changed.Highlights[0].Kind=ReplayBroadcastEventKind::SideBySide;
+    Require(!v.CanAct(FleetReplayAction::PlayPause,changed),"changed kind");
+    changed=r;++changed.Highlights[0].Observations;
+    Require(!v.CanAct(FleetReplayAction::PlayPause,changed),"changed sample count");
+    changed=r;changed.Highlights[0].SampledSpeedKmh+=1;
+    Require(!v.CanAct(FleetReplayAction::PlayPause,changed),"changed representative speed");
+    Require(v.Synchronize(changed,true) && v.Readout().SelectedHighlight==-1,
+        "new evidence invalidates selected clip");
+}
+
 void RandomViewportsAndControls()
 {
     std::mt19937 rng(682);
@@ -281,6 +349,7 @@ void RandomViewportsAndControls()
 int main()
 {
     ViewerAdmission();PlayPauseAndSpeed();SeekAndHighlight();
-    ClipPlayback();LayoutAndPointer();MapProjection();RandomViewportsAndControls();
+    ClipPlayback();LayoutAndPointer();MapProjection();MapFocusAndControlTelemetry();
+    ExactClipIdentity();RandomViewportsAndControls();
     std::cout<<"Fleet replay viewer, map projection, safe layout and input tests passed\n";
 }

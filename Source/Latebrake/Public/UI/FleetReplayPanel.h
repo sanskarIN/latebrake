@@ -44,6 +44,10 @@ struct FleetReplayViewerState final
     double ClipStartSeconds=0.0;
     double ClipEndSeconds=0.0;
     bool ClipPrimed=false;
+    double ClipEventSeconds=0.0;
+    ReplayBroadcastEventKind ClipKind=ReplayBroadcastEventKind::Unknown;
+    double ClipSampledSpeedKmh=0.0;
+    unsigned ClipObservations=0;
 };
 
 inline bool ValidFleetReplayReview(const FleetReplayReview& review) noexcept
@@ -210,12 +214,27 @@ public:
                     State.ClipStartSeconds=h.StartSeconds;
                     State.ClipEndSeconds=h.EndSeconds;
                     State.ClipPrimed=true;
+                    State.ClipEventSeconds=h.EventSeconds;
+                    State.ClipKind=h.Kind;
+                    State.ClipSampledSpeedKmh=h.SampledSpeedKmh;
+                    State.ClipObservations=h.Observations;
                     return SeekSeconds(h.EventSeconds,false);
                 }
                 return false;
             }
             default: return false;
         }
+    }
+
+    bool SelectFocus(int slot,double presentedSeconds,const FleetReplayReview& review) noexcept
+    {
+        if(!Matches(review) || slot<0 || slot>=static_cast<int>(PhysicalReplayCarCount) ||
+            !std::isfinite(presentedSeconds) || presentedSeconds!=State.CursorSeconds)
+            return false;
+        State.FocusSlot=slot;
+        ClearClip();
+        Pause();
+        return true;
     }
 
     bool SeekFraction(double fraction,const FleetReplayReview& review) noexcept
@@ -274,7 +293,9 @@ private:
         const auto& h=review.Highlights[i];
         return h.FocusSlot==State.FocusSlot &&
             h.StartSeconds==State.ClipStartSeconds &&
-            h.EndSeconds==State.ClipEndSeconds;
+            h.EndSeconds==State.ClipEndSeconds &&
+            h.EventSeconds==State.ClipEventSeconds && h.Kind==State.ClipKind &&
+            h.SampledSpeedKmh==State.ClipSampledSpeedKmh && h.Observations==State.ClipObservations;
     }
 
     void ClearClip() noexcept
@@ -283,6 +304,10 @@ private:
         State.ClipStartSeconds=0.0;
         State.ClipEndSeconds=0.0;
         State.ClipPrimed=false;
+        State.ClipEventSeconds=0.0;
+        State.ClipKind=ReplayBroadcastEventKind::Unknown;
+        State.ClipSampledSpeedKmh=0.0;
+        State.ClipObservations=0;
     }
 
     bool SeekSeconds(double seconds,bool clearHighlight=true) noexcept
@@ -316,6 +341,7 @@ struct FleetReplayPanelLayout final
     DesktopMenuMouseRect Scrub{};
     DesktopMenuMouseRect Header{};
     DesktopMenuMouseRect Status{};
+    DesktopMenuMouseRect ControlsStatus{};
     std::array<FleetReplayPanelButton,6> Buttons{};
 };
 
@@ -374,8 +400,8 @@ inline FleetReplayPanelLayout CalculateFleetReplayPanel(double width,double heig
     const double scrubHeight=18.0*s;
     const double buttonHeight=std::max(32.0,32.0*s);
     const double gap=5.0*s;
-    const double fixed=2.0*inset+headerHeight+statusHeight+scrubHeight+
-        2.0*buttonHeight+5.0*gap;
+    const double fixed=2.0*inset+headerHeight+2.0*statusHeight+scrubHeight+
+        2.0*buttonHeight+6.0*gap;
     const double mapHeight=std::min((panelWidth-2.0*inset)*6000.0/8400.0,usable-fixed);
     if(panelWidth<216.0 || !std::isfinite(mapHeight) || mapHeight<72.0)
         return out;
@@ -398,6 +424,8 @@ inline FleetReplayPanelLayout CalculateFleetReplayPanel(double width,double heig
     y+=mapHeight+gap;
     out.Status={x,y,w,statusHeight};
     y+=statusHeight+gap;
+    out.ControlsStatus={x,y,w,statusHeight};
+    y+=statusHeight+gap;
     out.Scrub={x,y,w,scrubHeight};
     y+=scrubHeight+gap;
     constexpr std::array<FleetReplayAction,6> actions{{
@@ -415,6 +443,7 @@ inline FleetReplayPanelLayout CalculateFleetReplayPanel(double width,double heig
     if(!FleetReplayContainsRect(out.Panel,out.Header) ||
         !FleetReplayContainsRect(out.Panel,out.Map) ||
         !FleetReplayContainsRect(out.Panel,out.Status) ||
+        !FleetReplayContainsRect(out.Panel,out.ControlsStatus) ||
         !FleetReplayContainsRect(out.Panel,out.Scrub))
         return {};
     out.Valid=true;
@@ -465,6 +494,10 @@ struct FleetReplayMapCar final
     FleetReplayMapPoint Position{};
     FleetReplayMapPoint Nose{};
     double SpeedKmh=0.0;
+    bool Observed=false;
+    double Throttle=0.0;
+    double Brake=0.0;
+    double Steering=0.0;
 };
 
 struct FleetReplayMapReadout final
@@ -479,7 +512,9 @@ inline FleetReplayMapReadout BuildFleetReplayMap(
     const FleetReplayViewerState& viewer) noexcept
 {
     FleetReplayMapReadout out;
-    if(!layout.Valid || !viewer.Valid || !frame.Valid || frame.Session!=viewer.Attempt ||
+    if(!layout.Valid || !FleetReplayContainsRect(layout.Panel,layout.Map) ||
+        !std::isfinite(layout.Scale) || layout.Scale<0.6 || layout.Scale>1.2 ||
+        !viewer.Valid || !frame.Valid || frame.Session!=viewer.Attempt ||
         !frame.NoCollisionAuthority || !frame.NoOfficialTimingAuthority ||
         !frame.SourceOnly || !std::isfinite(frame.ActiveClockSeconds) ||
         std::abs(frame.ActiveClockSeconds-viewer.CursorSeconds)>1.0e-6)
@@ -491,16 +526,23 @@ inline FleetReplayMapReadout BuildFleetReplayMap(
             !std::isfinite(source.Xcm) || !std::isfinite(source.Ycm) ||
             !std::isfinite(source.HeadingRadians) ||
             !std::isfinite(source.ObservedSpeedCmps) || source.ObservedSpeedCmps<0.0 ||
-            source.ObservedSpeedCmps>PhysicalReplayMaximumSpeedCmps)
+            source.ObservedSpeedCmps>PhysicalReplayMaximumSpeedCmps ||
+            !std::isfinite(source.ThrottleNormalized) || source.ThrottleNormalized<0.0 || source.ThrottleNormalized>1.0 ||
+            !std::isfinite(source.BrakeNormalized) || source.BrakeNormalized<0.0 || source.BrakeNormalized>1.0 ||
+            !std::isfinite(source.SteeringNormalized) || std::abs(source.SteeringNormalized)>1.0)
             return {};
         for(std::size_t j=0;j<i;++j)
             if(source.Actor==frame.Cars[j].Actor) return {};
         auto& car=out.Cars[i];
         car.Slot=static_cast<int>(i);
+        car.Observed=true;
+        car.SpeedKmh=source.ObservedSpeedCmps*0.036;
+        car.Throttle=source.ThrottleNormalized;
+        car.Brake=source.BrakeNormalized;
+        car.Steering=source.SteeringNormalized;
         car.Position=ProjectFleetReplayMap({source.Xcm,source.Ycm},layout.Map);
         if(!car.Position.Valid) continue;
         car.Visible=true;
-        car.SpeedKmh=source.ObservedSpeedCmps*0.036;
         const double length=7.0*layout.Scale;
         car.Nose={true,std::clamp(car.Position.X+length*std::cos(source.HeadingRadians),
             layout.Map.X,layout.Map.X+layout.Map.Width),
@@ -510,5 +552,41 @@ inline FleetReplayMapReadout BuildFleetReplayMap(
     }
     out.Valid=true;
     return out;
+}
+// Select a uniquely nearest visible marker from the exact presented map.
+// A crowded overlap is intentionally ambiguous; the FOCUS button remains
+// available to cycle the six identities without guessing a hit target.
+inline int HitFleetReplayMapCar(const FleetReplayPanelLayout& layout,
+    const FleetReplayMapReadout& map,double x,double y) noexcept
+{
+    if(!layout.Valid || !map.Valid || !FleetReplayContainsRect(layout.Panel,layout.Map) ||
+        !layout.Map.Contains(x,y) || !std::isfinite(layout.Scale) ||
+        layout.Scale<0.6 || layout.Scale>1.2)
+        return -1;
+    const double radius=std::max(8.0,10.0*layout.Scale);
+    double nearest=radius*radius;
+    int found=-1;
+    bool ambiguous=false;
+    for(std::size_t i=0;i<map.Cars.size();++i)
+    {
+        const auto& car=map.Cars[i];
+        if(!car.Visible) continue;
+        if(!car.Observed || car.Slot!=static_cast<int>(i) ||
+            !car.Position.Valid || !layout.Map.Contains(car.Position.X,car.Position.Y))
+            return -1;
+        const double dx=car.Position.X-x;
+        const double dy=car.Position.Y-y;
+        const double distance=dx*dx+dy*dy;
+        if(distance>radius*radius) continue;
+        if(found<0 || distance<nearest-1.0e-7)
+        {
+            nearest=distance;
+            found=car.Slot;
+            ambiguous=false;
+        }
+        else if(std::abs(distance-nearest)<=1.0e-7)
+            ambiguous=true;
+    }
+    return ambiguous?-1:found;
 }
 } // namespace latebrake

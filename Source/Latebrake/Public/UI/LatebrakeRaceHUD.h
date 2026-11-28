@@ -60,6 +60,8 @@ private:
     latebrake::FleetReplayViewer ReplayViewer;
     latebrake::FleetReplayPanelLayout PresentedReplay{};
     std::uint64_t PresentedReplayAttempt=0;
+    latebrake::FleetReplayMapReadout PresentedReplayMap{};
+    double PresentedReplaySeconds=0.0;
     // Advisory only: no race awarding, control input or network telemetry.
     latebrake::WrongWayIndicator WrongWayHint;
     latebrake::StuckRecoveryHint StuckHint;

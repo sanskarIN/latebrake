@@ -70,6 +70,11 @@ bool ALatebrakeRaceHUD::TryHandleFleetReplayPointer(double X,double Y)
     if(Hit.Seek) ReplayViewer.SeekFraction(Hit.Fraction,Review);
     else if(Hit.Action!=latebrake::FleetReplayAction::None)
         ReplayViewer.Act(Hit.Action,Review);
+    else if(PresentedReplay.Map.Contains(X,Y))
+    {
+        const int Slot=latebrake::HitFleetReplayMapCar(PresentedReplay,PresentedReplayMap,X,Y);
+        if(Slot>=0) ReplayViewer.SelectFocus(Slot,PresentedReplaySeconds,Review);
+    }
     return true;
 #endif
 }
@@ -80,6 +85,8 @@ void ALatebrakeRaceHUD::DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
 {
     PresentedReplay={};
     PresentedReplayAttempt=0;
+    PresentedReplayMap={};
+    PresentedReplaySeconds=0.0;
     if(!Canvas || !GEngine || !GEngine->GetSmallFont() || !CanReviewFleetReplay(Mode))
     {
         ReplayViewer.Reset();
@@ -161,8 +168,11 @@ void ALatebrakeRaceHUD::DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
 
     const FString Focus=State.FocusSlot==0?FString(TEXT("YOU")):
         FString::Printf(TEXT("AI %d"),State.FocusSlot);
-    Label(FString::Printf(TEXT("%.1fs | %s | %d/6 visible"),State.CursorSeconds,*Focus,
-        Map.VisibleCars),Layout.Status,White,0.78f*S);
+    const auto& FocusCar=Map.Cars[static_cast<std::size_t>(State.FocusSlot)];
+    Label(FString::Printf(TEXT("%.1fs | %s | %.0f km/h"),State.CursorSeconds,*Focus,
+        FocusCar.SpeedKmh),Layout.Status,White,0.78f*S);
+    Label(FString::Printf(TEXT("CMD T %.0f%% B %.0f%% S %+.0f%%"),100.0*FocusCar.Throttle,
+        100.0*FocusCar.Brake,100.0*FocusCar.Steering),Layout.ControlsStatus,Muted,0.70f*S);
     Rect(Layout.Scrub,FLinearColor(0.16f,0.23f,0.29f));
     const double Fill=Layout.Scrub.Width*ReplayViewer.Fraction();
     if(Fill>0.0)
@@ -191,4 +201,6 @@ void ALatebrakeRaceHUD::DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
     }
     PresentedReplay=Layout;
     PresentedReplayAttempt=Review.Attempt;
+    PresentedReplayMap=Map;
+    PresentedReplaySeconds=State.CursorSeconds;
 }

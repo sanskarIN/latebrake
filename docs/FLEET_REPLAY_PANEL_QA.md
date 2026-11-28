@@ -18,3 +18,15 @@ review. Mouse input uses the exact presented geometry and frozen attempt,
 not a stale viewport or a hidden map. Native QA must verify rendering,
 font fit, input focus, resize, paused playback and the normal Results
 restart action. This is 2D review, not a native cinematic camera.
+
+### Direct car focus and sampled control readout
+
+Click a uniquely nearest displayed car marker to select that observed slot and
+pause the replay at the presented cursor. Ambiguous overlapping markers do not
+select; use the existing FOCUS control instead. The focus row displays sampled
+speed plus throttle, brake and signed steering command percentages (CMD), not
+physical tire forces. Off-map actors retain sampled telemetry but cannot be
+selected through a fabricated edge marker. Exact clip identity includes the
+representative event clock, type, sampled speed and observation count.
+Verify the expanded desktop panel and controls in the installed game; the
+portable geometry and input tests do not qualify native canvas rendering.
