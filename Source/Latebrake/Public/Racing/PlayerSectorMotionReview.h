@@ -502,6 +502,10 @@ public:
             elapsed<BoundaryElapsed || penalty<BoundaryPenalty ||
             elapsed-penalty+SectorMotionClockTolerance<BoundaryActive() ||
             finished!=(Accepted==TotalGates()) ||
+            // Live reads must not attach samples to an older authoritative clock.
+            (!finished && Previous.EngineFrame &&
+                (elapsed<Previous.ElapsedSeconds || penalty<Previous.PenaltySeconds ||
+                 elapsed-penalty+SectorMotionClockTolerance<SectorMotionActiveClock(Previous))) ||
             (finished && (std::abs(elapsed-BoundaryElapsed)>SectorMotionClockTolerance ||
                 std::abs(penalty-BoundaryPenalty)>SectorMotionClockTolerance)))
             return out;
@@ -513,7 +517,8 @@ public:
         out.QualifiedSectors=Qualified;
         out.MissingTiming=MissingTiming;
         out.RetainedRows=static_cast<int>(Size);
-        out.ActiveSeconds=elapsed-penalty;
+        // A tolerated floating-point difference must not mutate a frozen result.
+        out.ActiveSeconds=finished?BoundaryActive():elapsed-penalty;
         out.CurrentSectorSeconds=finished?0.0:std::max(0.0,out.ActiveSeconds-BoundaryActive());
         out.Current=Current;
         out.Last=Last;
