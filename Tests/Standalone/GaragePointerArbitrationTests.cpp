@@ -62,7 +62,8 @@ void ExactGroupIdentity()
         Action::GarageUnlockOffer, Action::GarageEngineOffer, Action::GarageGripOffer,
         Action::GarageLookChoice0, Action::GarageLookChoice1, Action::GarageLookChoice2,
         Action::GarageLookChoice3, Action::GarageLookChoice4, Action::GarageLookChoice5,
-        Action::GarageLookChoice6, Action::GarageLookChoice7, Action::GaragePaletteClose};
+        Action::GarageLookChoice6, Action::GarageLookChoice7, Action::GaragePaletteClose,
+        Action::GaragePaletteNextLayer};
     for (std::size_t i = 0; i < all.size(); ++i)
     {
         const std::size_t expectedGroup = i < 6u ? 0u :
