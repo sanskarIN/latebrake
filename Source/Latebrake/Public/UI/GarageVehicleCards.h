@@ -86,7 +86,7 @@ struct GarageVehicleCardData final
 };
 
 inline std::array<GarageVehicleCardData,VehicleCount> DescribeGarageVehicleCards(
-    const GarageVehicleCardsSnapshot& s) noexcept
+    const GarageVehicleCardsSnapshot& s,GarageCatalogCache* cache=nullptr) noexcept
 {
     std::array<GarageVehicleCardData,VehicleCount> out{};
     if(!GarageState::IsVehicle(s.Viewed) || !GarageState::IsVehicle(s.Equipped) ||
@@ -96,7 +96,9 @@ inline std::array<GarageVehicleCardData,VehicleCount> DescribeGarageVehicleCards
         return out;
     GarageAppearanceState appearance;
     if(!appearance.Load(s.Looks.data(),s.Looks.size()))return out;
-    const auto catalog=BuildGarageCatalogView({s.Credits,s.OwnedMask,s.Equipped,s.Engine,s.Grip});
+    const GarageSnapshot saved{s.Credits,s.OwnedMask,s.Equipped,s.Engine,s.Grip};
+    GarageCatalogView uncached;
+    const auto& catalog=cache?cache->Read(saved):(uncached=BuildGarageCatalogView(saved));
     for(int id=0;id<VehicleCount;++id)
     {
         const auto& c=catalog.Cars[static_cast<std::size_t>(id)];
