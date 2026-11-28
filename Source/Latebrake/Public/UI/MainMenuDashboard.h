@@ -38,6 +38,24 @@ constexpr bool ValidMainMenuDestination(MenuPage page) noexcept
     return false;
 }
 
+constexpr bool ValidMainMenuFocus(int index) noexcept
+{
+    return index>=0 && index<MainMenuDestinationCount;
+}
+
+constexpr MenuPage MainMenuFocusDestination(int index) noexcept
+{
+    return ValidMainMenuFocus(index)?
+        MainMenuDestinations[static_cast<std::size_t>(index)].Page:MenuPage::Closed;
+}
+
+constexpr int AdvanceMainMenuFocus(int index,int direction) noexcept
+{
+    if(!ValidMainMenuFocus(index))return 0;
+    if(direction!=1 && direction!=-1)return index;
+    return (index+direction+MainMenuDestinationCount)%MainMenuDestinationCount;
+}
+
 struct MainMenuDashboardSnapshot final
 {
     bool MenuOpen=false;
@@ -45,10 +63,11 @@ struct MainMenuDashboardSnapshot final
     bool LocalDriver=false;
     bool FocusSuspended=false;
     std::uint64_t Revision=0;
+    int Focused=0;
     constexpr bool AllowsNavigation() const noexcept
     {
         return MenuOpen && Page==MenuPage::Main && LocalDriver &&
-            !FocusSuspended && Revision!=0;
+            !FocusSuspended && Revision!=0 && ValidMainMenuFocus(Focused);
     }
     constexpr bool operator==(const MainMenuDashboardSnapshot&) const noexcept=default;
 };
