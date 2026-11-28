@@ -46,6 +46,26 @@ class SettingsMenuPanelBindingTests(unittest.TestCase):
         self.assertIn("Player->RefreshCameraMotionPreference()", activate)
         self.assertEqual(activate.count("SaveRecords();"), 1)
 
+    def test_race_hud_size_is_session_only_and_does_not_shift_menu_input(self):
+        mode = read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
+        activate = mode.split("void ALatebrakeRaceGameMode::ActivateSettingsControl", 1)[1].split(
+            "void ALatebrakeRaceGameMode::CycleHudTelemetryMode()", 1)[0]
+        size = activate.split("case latebrake::SettingsControl::HudScale:", 1)[1].split(
+            "default:break;", 1)[0]
+        self.assertIn("HudScale=latebrake::NextHudScalePreference(HudScale)", size)
+        self.assertIn("SettingsSelection.Changed()", size)
+        self.assertNotIn("SaveRecords(", size)
+        hud = read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
+        self.assertIn("Mode->GetHudScalePreference(),Mode->IsMenuOpen(),bTouchHUD", hud)
+        self.assertIn("const latebrake::HudLayout Layout=HudSizing.Layout", hud)
+        self.assertIn("RACE HUD SIZE: %s | %.0f%% OF AUTO%s", hud)
+        policy = read("Source/Latebrake/Public/UI/HudScalePreference.h")
+        self.assertIn("if(menuOpen || !ValidHudScalePreference(preference)", policy)
+        self.assertIn("CalculateHudVerticalPlan(width,height,layout,touchUI)", policy)
+        self.assertIn("CalculateHudTextBounds(width,height,layout,touchUI)", policy)
+        self.assertIn("add_latebrake_portable_research_test(HudScalePreference)",
+                      read("Tests/Standalone/CMakeLists.txt"))
+
     def test_camera_effects_are_local_and_session_only(self):
         pawn = read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
         block = pawn.split("bool ALatebrakeCarPawn::CanApplyCameraMotionPreference()", 1)[1].split(
