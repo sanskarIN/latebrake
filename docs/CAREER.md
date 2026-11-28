@@ -97,3 +97,19 @@ There is no verified Unreal build, authored cooked map, Win64/Android game
 executable, or physical-device playtest. Portable CTest is not a substitute.
 See [issue #2](https://github.com/sanskarIN/latebrake/issues/2) and
 [issue #13](https://github.com/sanskarIN/latebrake/issues/13).
+
+### Career roadmap and conditional credit planning
+
+Career, Championships and Challenges now expose the selected event's actual
+lap count, opponent mode, next medal threshold, prerequisite or required-car
+restriction. The roadmap reconstructs only missing prerequisite medals and
+the target event; a completed target is a replay, not a new credit reward.
+The conditional credit forecast uses the existing garage purchase planner,
+first-medal credits, championship bonuses and bounded credit arithmetic.
+It assumes each listed first medal is actually earned and saved. If a car
+must be purchased before an event, future rewards from that event cannot
+fund its admission. A reported profile-eligible event is not a guarantee
+that native circuit/vehicle/save readiness checks will pass. The menu never
+performs an unlock, medal award or launch on the basis of this roadmap.
+Portable tests exhaust every 12-event raw medal mask and each target against
+sanitized progression; native menu readability still needs playtesting.

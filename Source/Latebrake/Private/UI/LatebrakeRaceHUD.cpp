@@ -15,6 +15,7 @@
 #include "Garage/GarageCatalogView.h"
 #include "Garage/GaragePurchasePlanner.h"
 #include "Garage/GarageComparisonView.h"
+#include "Career/CareerRoadmap.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
 #include "UI/HudVerticalPlan.h"
@@ -855,6 +856,64 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             MenuLine(TEXT("PLAYER CAR NOT READY - RACE CLOCK FROZEN"), true);
         }
+        const auto DrawCareerRoadmapDetails=[&]()
+        {
+            const auto Snapshot=Mode->GetCareer().Snapshot();
+            const auto Plan=latebrake::BuildCareerRoadmap(Snapshot,Mode->GetGarageSnapshot(),
+                Mode->GetMenuCareerEventId());
+            if (!Plan.Valid) return;
+            const auto* Event=latebrake::GetCareerEvent(Plan.Target.EventId);
+            if (!Event) return;
+            const auto& Target=Plan.Target;
+            MenuLine(FString::Printf(TEXT("%d LAP(S) | %s | %s"),Event->Laps,
+                UTF8_TO_TCHAR(latebrake::CareerRoadmapObjectiveName(Event->Objective)),
+                Event->SpawnRival?TEXT("LOCAL RIVAL"):TEXT("SOLO")));
+            if (Target.NextMedal!=latebrake::CareerMedal::None)
+            {
+                const TCHAR* Medal=Target.NextMedal==latebrake::CareerMedal::Bronze?TEXT("BRONZE"):
+                    Target.NextMedal==latebrake::CareerMedal::Silver?TEXT("SILVER"):TEXT("GOLD");
+                MenuLine(FString::Printf(TEXT("NEXT MEDAL: %s | %.2f %s OR LESS"),Medal,
+                    Target.NextMedalTarget,Event->Objective==latebrake::CareerObjective::Clean?
+                        TEXT("RECOVERIES"):TEXT("SEC")));
+            }
+            else MenuLine(TEXT("GOLD MASTERED | REPLAY HAS NO FIRST-MEDAL REWARD"));
+            switch (Target.Readiness)
+            {
+                case latebrake::CareerRoadmapReadiness::Ready:
+                    MenuLine(TEXT("PROFILE ELIGIBLE | SELECT TO REQUEST LAUNCH"),true);break;
+                case latebrake::CareerRoadmapReadiness::PrerequisiteMissing:
+                    if (const auto* Prior=latebrake::GetCareerEvent(Target.MissingPrerequisite))
+                        MenuLine(FString::Printf(TEXT("LOCKED | FIRST MEDAL REQUIRED: %s"),
+                            UTF8_TO_TCHAR(Prior->Name)),true);
+                    break;
+                case latebrake::CareerRoadmapReadiness::RequiredCarMissing:
+                    MenuLine(TEXT("LOCKED CAR REQUIREMENT | OWN IT BEFORE LAUNCH"),true);break;
+                default: break;
+            }
+            if (Target.RequiredVehicle>=0)
+                MenuLine(FString::Printf(TEXT("REQUIRED CAR: %s | UNLOCK ROUTE %d CR | NEED NOW %lld"),
+                    UTF8_TO_TCHAR(latebrake::GarageState::Definition(Target.RequiredVehicle).Name),
+                    Target.RequiredUnlockCost,static_cast<long long>(Target.CurrentUnlockShortfall)));
+            if (Plan.FirstMedalsNeeded>0)
+                MenuLine(FString::Printf(TEXT("FIRST-MEDAL ROUTE: %d EVENT(S) | %d LAPS | IF COMPLETED +%d CR"),
+                    Plan.FirstMedalsNeeded,Plan.RequiredRaceLaps,Plan.NominalConditionalRewards));
+            if (Plan.MinimumAdditionalFunding>0)
+                MenuLine(FString::Printf(TEXT("ROUTE NEEDS %lld EXTRA CR BEFORE REQUIRED CAR PURCHASE"),
+                    static_cast<long long>(Plan.MinimumAdditionalFunding)));
+            if (!bCompact && Plan.StepCount>1)
+            {
+                MenuLine(TEXT("CONDITIONAL PREREQUISITE ROUTE (NOT AWARDED)"),true);
+                for (int I=0;I<Plan.StepCount;++I)
+                {
+                    const auto& Step=Plan.Steps[static_cast<std::size_t>(I)];
+                    const auto* Round=latebrake::GetCareerEvent(Step.EventId);
+                    if (!Round) continue;
+                    MenuLine(FString::Printf(TEXT("%d. %s | %d laps | conditional +%d CR"),
+                        I+1,UTF8_TO_TCHAR(Round->Name),Round->Laps,
+                        Step.ConditionalFirstCredits+Step.ConditionalChampionshipBonus));
+                }
+            }
+        };
         switch (Mode->GetMenuPage())
         {
         case latebrake::MenuPage::Main:
@@ -880,6 +939,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(TEXT("Event: %s"), *Mode->GetCareerEventName()));
             MenuLine(FString::Printf(TEXT("Completed: %d / %d | N browse events"),
                 Mode->GetCareer().CompletedCount(), latebrake::CareerEventCount));
+            DrawCareerRoadmapDetails();
             MenuLine(TEXT("Select to start; medals unlock following rounds."));
             break;
         case latebrake::MenuPage::Championships:
@@ -887,11 +947,13 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Mode->GetCareer().ChampionshipPoints(0),
                 Mode->GetCareer().ChampionshipPoints(1)));
             MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
+            DrawCareerRoadmapDetails();
             MenuLine(TEXT("BROWSE/N selects an eligible round; select starts."));
             break;
         case latebrake::MenuPage::Challenges:
             MenuLine(TEXT("Clock, clean, precision, consistency, Kestrel, endurance."));
             MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
+            DrawCareerRoadmapDetails();
             MenuLine(TEXT("BROWSE/N selects an eligible challenge; select starts."));
             break;
         case latebrake::MenuPage::Garage:
