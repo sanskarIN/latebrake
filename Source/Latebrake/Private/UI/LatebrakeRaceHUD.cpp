@@ -879,7 +879,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Layout,MenuPlan,ReadablePanel,SafeTextWidth,Y,DrawnMenuRows,
                     true,bTouchHUD);
                 const auto Comparison=latebrake::ReadGarageComparisonPanel(
-                    latebrake::BuildGarageCatalogView(Mode->GetGarageSnapshot()),
+                    GarageCatalogue.Read(Mode->GetGarageSnapshot()),
                     Mode->GetGaragePreviewVehicleId());
                 if (DrawGarageComparisonPanel(ComparisonLayout,Comparison))
                 {
@@ -1201,8 +1201,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             // A complete read-only catalogue of EVERY saved car ID, not
             // just the equipped one. The existing detail pager ensures
             // every row stays accessible on short desktop/Android screens.
-            const latebrake::GarageCatalogView Catalog =
-                latebrake::BuildGarageCatalogView(Mode->GetGarageSnapshot());
+            const auto& Catalog=GarageCatalogue.Read(Mode->GetGarageSnapshot());
             MenuLine(FString::Printf(
                 TEXT("GARAGE CAR %d/%d | OWNED %d/%d | %d CR"),
                 Catalog.SelectedVehicle + 1, latebrake::VehicleCount,
