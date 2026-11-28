@@ -2025,6 +2025,36 @@ bool ALatebrakeRaceGameMode::NavigateMainMenuDashboard(latebrake::MenuPage Desti
     return true;
 }
 
+latebrake::CareerEventCardsSnapshot ALatebrakeRaceGameMode::GetCareerEventCardsSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player && HasLocalPlayerDriver();
+    return latebrake::BuildCareerEventCardsSnapshot(Menu.IsOpen(),Menu.Current(),Local,
+        AppFocusGuard.IsSuspended(),bFutureSaveSchema,CareerMenuSelection,
+        SettingsSelection.Revision(),Career.Snapshot(),Garage.Snapshot());
+}
+
+bool ALatebrakeRaceGameMode::SelectCareerEventCard(int32 Id,
+    const latebrake::CareerEventCardsSnapshot& Expected)
+{
+    const auto Current=GetCareerEventCardsSnapshot();
+    const auto Description=latebrake::DescribeCareerEventCard(Current,Id);
+    if(Current!=Expected || !Description.Valid || !Description.Selectable)return false;
+    const auto* Event=latebrake::GetCareerEvent(Id);
+    if(!Event || Career.Status(Id)==latebrake::CareerStatus::Locked ||
+        !latebrake::IsEventInCareerMenu(Menu.Current(),Id))return false;
+    // This is the existing pending Browse cursor, never Career.Select().
+    // SELECT remains the separate launch and persistence transaction.
+    CareerMenuSelection=Id;
+    SettingsSelection.Changed();
+    GaragePurchaseConfirm.Reset();
+    CareerFeedback=FString::Printf(TEXT("Career selected: %s (%d/%d). SELECT to start."),
+        UTF8_TO_TCHAR(Event->Name),Id+1,latebrake::CareerEventCount);
+    return true;
+}
+
 void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
@@ -2208,6 +2238,7 @@ void ALatebrakeRaceGameMode::CycleCareerEvent()
     if (Next.Valid())
     {
         CareerMenuSelection = Next.EventId;
+        SettingsSelection.Changed();
         const auto* Event = latebrake::GetCareerEvent(Next.EventId);
         CareerFeedback = FString::Printf(TEXT("Career selected: %s (%d/%d). M start."),
             UTF8_TO_TCHAR(Event->Name), Next.EventId + 1, latebrake::CareerEventCount);
