@@ -44,7 +44,7 @@ void ALatebrakeRivalCar::ResetPilot()
     StraightPassAssist.Reset();
     FleetRisk.Reset();
     FleetQueue.Reset();
-    FleetPassing.Reset();
+    FleetHeadway.Reset();    FleetPassing.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -63,7 +63,7 @@ void ALatebrakeRivalCar::ConfigurePilot(int32 CheckpointCount, int32 RequiredLap
     StraightPassAssist.Reset();
     FleetRisk.Reset();
     FleetQueue.Reset();
-    FleetPassing.Reset();
+    FleetHeadway.Reset();    FleetPassing.Reset();
     SetAutonomousControls(0.f, 0.f, false);
 }
 
@@ -94,6 +94,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetHeadway.Suspend();
         FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -117,6 +118,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetHeadway.Suspend();
         FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -141,6 +143,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetHeadway.Suspend();
         FleetPassing.Suspend();
         LastQualifiedSessionRevision = CurrentSessionRevision;
         bHasQualifiedSessionRevision = true;
@@ -164,6 +167,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetHeadway.Suspend();
         FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -222,6 +226,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetHeadway.Suspend();
         FleetPassing.Suspend();
         const int32 RecoveryIndex = Route.GetNextWaypoint();
         // Collect the actual human on the current game-thread snapshot.
@@ -277,6 +282,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         StraightPassAssist.Reset();
         FleetRisk.Reset();
         FleetQueue.Suspend();
+        FleetHeadway.Suspend();
         FleetPassing.Suspend();
         SetAutonomousControls(0.f, 0.f, true);
         Super::Tick(DeltaSeconds);
@@ -471,6 +477,17 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             const auto Supervised=FleetRisk.Apply(Immediate.Command,Snapshot,DeltaSeconds,
                 latebrake::FleetForecastRoadPolicy::ObservedOffroadBlockers);
             FleetCommand=Supervised.Command;
+            // Headway can only reduce already supervised motor demand.
+            // Passing, emergency brakes and route authority stay upstream.
+            latebrake::FleetHeadwayReadout Headway;
+            if (Supervised.Qualified)
+            {
+                Headway=FleetHeadway.Apply(FleetCommand,{
+                    Ordinal,Route.GetNextWaypoint(),static_cast<double>(DeltaSeconds),
+                    bCornerPhysicsQualified && !bOffPavement,Snapshot,PassingStamp});
+                FleetCommand=Headway.Command;
+            }
+            else FleetHeadway.Suspend();
             Decision.TrafficQualified=Supervised.Qualified;
             Decision.Risk=Supervised.Forecast.Kind;
             Decision.BrakeHold=Supervised.HoldingBrake;
@@ -478,6 +495,9 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Decision.RoadSpeedExceeded=Supervised.Forecast.RoadSpeedExceeded;
             Decision.LimitingSlot=Supervised.Forecast.LimitingSlot>=0?
                 Supervised.Forecast.LimitingSlot:Immediate.LimitingSlot;
+            if (Decision.LimitingSlot<0 && Headway.Restricted &&
+                Headway.Assessment.Leader.Valid && Headway.Assessment.TargetCeiling<1.0)
+                Decision.LimitingSlot=Headway.Assessment.Leader.Slot;
             if (FleetCommand.Brake || !Supervised.Qualified)
             {
                 FleetPassing.AbortTraffic();
@@ -487,6 +507,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         else
         {
             FleetRisk.Reset();
+            FleetHeadway.Suspend();
             FleetPassing.Suspend();
             Decision.Set(latebrake::FleetDecisionStage::Passing,FollowingCommand);
             FleetCommand.Throttle=0.0;
