@@ -25,6 +25,7 @@
 #include "UI/HudRaceStatusPanel.h"
 #include "UI/GarageComparisonPanel.h"
 #include "UI/MainMenuDashboard.h"
+#include "UI/RaceResultsOverview.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -57,6 +58,8 @@ public:
 
 private:
     latebrake::MainMenuDashboardPresentation PresentedMainMenu{};
+    bool DrawResultsOverview(const latebrake::ResultsOverviewLayout& Layout,
+        const latebrake::ResultsOverviewReadout& Readout);
     bool DrawMainMenuDashboard(const ALatebrakeRaceGameMode* Mode,
         const latebrake::MainMenuDashboardLayout& Layout);
     bool DrawGarageComparisonPanel(const latebrake::GarageComparisonPanelLayout& Layout,
