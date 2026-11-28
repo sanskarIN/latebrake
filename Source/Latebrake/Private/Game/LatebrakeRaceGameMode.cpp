@@ -3006,9 +3006,7 @@ void ALatebrakeRaceGameMode::GarageCycleAppearance(
     }
     SyncGarageShowroomPreview();
     const latebrake::GarageLook Look = GarageLooks.Get(Viewed);
-    const int32 Choice = layer == latebrake::GarageLookLayer::Paint
-        ? Look.Paint : layer == latebrake::GarageLookLayer::Stripe
-            ? Look.Stripe : Look.Wheels;
+    const int32 Choice = latebrake::GarageLookChoice(Look,layer);
     if (bReset)
     {
         GarageFeedback = FString::Printf(
