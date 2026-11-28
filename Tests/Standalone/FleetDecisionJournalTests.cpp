@@ -362,6 +362,88 @@ void NoDriveContextAccounting()
         "missing sample reduces coverage without inventing context");
 }
 
+FleetDecisionSample HeadwayRequest(double before,double after,double ceiling,
+    FleetHeadwayStatus status,int leader=0)
+{
+    auto s=Request();
+    s.Headway={true,status,leader,before,after,ceiling};
+    EditCommands(s,[after](auto& commands)
+    {
+        for(std::size_t i=FleetDecisionIndex(FleetDecisionStage::PredictiveTraffic);
+            i<commands.size();++i)commands[i].Throttle=after;
+    });
+    return s;
+}
+
+void HeadwayEvidenceIsSeparateAndBounded()
+{
+    const auto following=HeadwayRequest(0.8,0.2,0.2,FleetHeadwayStatus::Following);
+    const auto endpoint=AnalyzeFleetDecision(following);
+    Require(endpoint.Valid && endpoint.Headway.Qualified() &&
+        endpoint.Headway.Restricted() && Near(endpoint.Headway.Reduction(),0.6) &&
+        endpoint.Headway.LeaderSlot==0 && endpoint.Risk==FleetRiskKind::Clear &&
+        endpoint.LimitingSlot==-1,"spacing candidate is not a collision forecast");
+    auto bad=following;
+    for(int fault=0;fault<13;++fault)
+    {
+        bad=following;
+        switch(fault)
+        {
+        case 0:bad.Headway.Before=0.1;break;
+        case 1:bad.Headway.After=0.3;break;
+        case 2:bad.Headway.Ceiling=0.1;break;
+        case 3:bad.Headway.LeaderSlot=1;break;
+        case 4:bad.Headway.LeaderSlot=-1;break;
+        case 5:bad.Headway.Status=static_cast<FleetHeadwayStatus>(99);break;
+        case 6:bad.Headway.Observed=false;break;
+        case 7:bad.Headway.Ceiling=std::numeric_limits<double>::infinity();break;
+        case 8:bad.Headway.After=-1;break;
+        case 9:bad.Headway.Status=FleetHeadwayStatus::Clear;break;
+        case 10:bad.Headway.Status=FleetHeadwayStatus::Unavailable;break;
+        case 11:bad.Headway.Before=1.1;break;
+        case 12:bad.TrafficQualified=false;bad.Risk=FleetRiskKind::Unqualified;break;
+        }
+        Require(!AnalyzeFleetDecision(bad).Valid,"inconsistent headway evidence rejected");
+    }
+    const auto missing=Request();
+    Require(AnalyzeFleetDecision(missing).Valid && !AnalyzeFleetDecision(missing).Headway.Qualified(),
+        "legacy trace without headway stays valid");
+    const auto unsupported=HeadwayRequest(0.8,0.8,1.0,
+        FleetHeadwayStatus::UnsupportedGeometry,-1);
+    Require(AnalyzeFleetDecision(unsupported).Valid &&
+        !AnalyzeFleetDecision(unsupported).Headway.Qualified(),"corners are not sampled spacing");
+    const auto interrupted=HeadwayRequest(0.8,0.0,0.0,FleetHeadwayStatus::Interrupted,-1);
+    Require(AnalyzeFleetDecision(interrupted).Valid &&
+        !AnalyzeFleetDecision(interrupted).Headway.Qualified(),
+        "stale frame restriction not attributed to a measured leader");
+
+    Fixture f;
+    f.Open();f.Add(following);f.Next();
+    f.Open();f.Add(following);f.Next();
+    auto release=HeadwayRequest(0.8,0.3,0.3,FleetHeadwayStatus::Releasing,-1);
+    f.Open();f.Add(release);f.Next();
+    release=HeadwayRequest(0.8,0.4,0.4,FleetHeadwayStatus::Releasing,-1);
+    f.Open();f.Add(release);
+    auto review=f.Read();
+    auto h=review.Rivals[0].History;
+    Require(review.CurrentHeadwayRestricted==1 && h.HeadwaySamples==4 &&
+        h.HeadwayRestrictionSamples==4 && Near(h.HeadwayQualifiedSeconds,0.15) &&
+        Near(h.HeadwayRestrictionSeconds,0.15) &&
+        Near(h.HeadwayReleaseSeconds,0.05) && Near(h.MaxHeadwayReduction,0.6) &&
+        Near(h.HeadwayReductionIntegral,0.08),
+        "continuous headway endpoints integrate measured motor reduction");
+    f.Next();f.Open(); // missing body callback
+    f.Next();f.Open();f.Add(following);
+    h=f.Read().Rivals[0].History;
+    Require(Near(h.HeadwayRestrictionSeconds,0.15) &&
+        h.HeadwayRestrictionSamples==5,"no attribution across missing samples");
+    f.Next();f.Open();f.Add(unsupported);
+    h=f.Read().Rivals[0].History;
+    Require(Near(h.HeadwayQualifiedSeconds,0.15) &&
+        f.Read().CurrentHeadwayRestricted==0,"unsupported transition does not add duration");
+    Require(f.Read(true).CurrentHeadwayRestricted==0,"finished review has no live commands");
+}
+
 void TeleportRevisionCannotRollBack()
 {
     Fixture f;
@@ -640,6 +722,7 @@ int main()
     NativeFrameAuthority();
     PerStageAndEpisodeAccounting();
     NoDriveContextAccounting();
+    HeadwayEvidenceIsSeparateAndBounded();
     TeleportRevisionCannotRollBack();
     MissingFramesAndRecovery();
     CurrentRowsAndIndependentRouteEvidence();
