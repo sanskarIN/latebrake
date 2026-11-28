@@ -73,12 +73,15 @@ class FleetHeadwayGovernorBindingTests(unittest.TestCase):
 
     def test_diagnostic_slot_does_not_replace_existing_threat(self):
         source = SOURCE.read_text(encoding="utf-8")
-        begin = source.index("if (Decision.LimitingSlot<0 && Headway.Restricted")
+        begin = source.index("Headway=FleetHeadway.Apply(FleetCommand,")
         end = source.index("if (FleetCommand.Brake", begin)
-        self.assertIn("Headway.Assessment.Leader.Valid", source[begin:end])
-        self.assertIn("Headway.Assessment.TargetCeiling<1.0", source[begin:end])
-        self.assertIn("Decision.LimitingSlot=Headway.Assessment.Leader.Slot;",
-                      source[begin:end])
+        block = source[begin:end]
+        self.assertIn("Decision.Headway=latebrake::RecordFleetDecisionHeadway(FleetCommand,Headway);",
+                      block)
+        self.assertLess(block.index("Decision.Headway="),
+                        block.index("FleetCommand=Headway.Command;"))
+        self.assertIn("Decision.LimitingSlot=Supervised.Forecast.LimitingSlot>=0?", block)
+        self.assertNotIn("Decision.LimitingSlot=Headway", block)
 
     def test_portable_registration(self):
         self.assertIn("add_latebrake_portable_research_test(FleetHeadwayGovernor)",
