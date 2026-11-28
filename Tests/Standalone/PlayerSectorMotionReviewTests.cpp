@@ -261,6 +261,56 @@ void ReceiptAndFinishAuthority()
     Require(!f.Journal.Read(0,0,0,false).Valid,"unsupported track not misrepresented");
 }
 
+void FinishedReviewRequiresExactClocks()
+{
+    Fixture f(1);
+    for(int i=0;i<CircuitGateCount;++i)f.Sector(20);
+    const double elapsed=f.Frame.ElapsedSeconds;
+    const double fee=f.Frame.PenaltySeconds;
+    const int ordinal=f.Frame.Ordinal;
+    Require(f.Journal.ReadFinishedHistory(ordinal,elapsed,fee).Valid,
+        "exact finished history accepted");
+    Require(!f.Journal.Read(ordinal,elapsed+1,fee,true).Valid,
+        "post-finish active time cannot change frozen review");
+    Require(!f.Journal.Read(ordinal,elapsed+1,fee+1,true).Valid,
+        "post-finish fee cannot change frozen review");
+    Require(!f.Journal.ReadFinishedHistory(ordinal,elapsed+1,fee+1).Valid,
+        "finished export also requires exact clock");
+    Require(f.Journal.Read(ordinal,elapsed+SectorMotionClockTolerance/2,fee,true).Valid,
+        "floating point boundary tolerance retained");
+}
+
+void CutDoesNotEraseLatestSampleClock()
+{
+    Fixture f(1);
+    for(int i=0;i<20;++i)f.Tick();
+    f.Journal.Suspend();
+    // Retained motion spans almost a second; the latest sample is later
+    // than this receipt even though the accumulated duration fits it.
+    const double early=f.Frame.ElapsedSeconds-0.025;
+    Require(!f.Journal.AcceptGate({1,0,early,0,early}),
+        "suspended future sample cannot qualify an earlier receipt");
+    const auto review=f.Journal.Read(1,early,0,false);
+    Require(review.Valid && review.MissingTiming==1 && !review.Last.ValidTiming,
+        "ordered receipt consumed without fabricated timing evidence");
+
+    Fixture g;
+    g.Tick();g.Tick();
+    g.Journal.Suspend();
+    auto regressed=g.Frame;
+    ++regressed.EngineFrame;
+    regressed.ElapsedSeconds-=0.025;
+    Require(!g.Journal.Observe(regressed),"cut cannot permit elapsed regression");
+    Require(g.Read().Current.Rejected==1,"clock regression recorded");
+    g.Tick(false);
+    g.Tick();
+    Require(g.Read().Current.Samples==3 && g.Read().Current.Breaks==1,
+        "later valid frame resumes without bridging the cut");
+    g.Tick();
+    Require(Near(g.Read().Current.ObservedSeconds,0.10),
+        "only real intervals on either side of cut counted");
+}
+
 void ConditionalIntervalsAndLongRuns()
 {
     Fixture f;
@@ -336,6 +386,8 @@ int main()
     FeesAndInsufficientCoverage();
     StaleAndForeignObservations();
     ReceiptAndFinishAuthority();
+    FinishedReviewRequiresExactClocks();
+    CutDoesNotEraseLatestSampleClock();
     ConditionalIntervalsAndLongRuns();
     LongHistory();
     RandomizedCoverage();
