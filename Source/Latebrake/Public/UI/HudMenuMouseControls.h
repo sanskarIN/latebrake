@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Garage/GarageAppearance.h"
 #include "UI/HudLayout.h"
 #include "UI/MenuDetailPager.h"
 #include "UI/HudMenuVerticalPlan.h"
@@ -17,8 +18,31 @@ namespace latebrake
 // authoritative GameMode; this policy cannot purchase, race, save or steer.
 enum class DesktopMenuMouseAction
 {
-    None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close
+    None, PreviousPage, NextPage, DetailsUp, DetailsDown, Activate, Close,
+    GaragePaint, GarageStripe, GarageWheels, GarageReset,
+    GarageBrowsePrevious, GarageBrowseNext,
+    GarageQuickView0, GarageQuickView1, GarageQuickView2,
+    GarageQuickView3, GarageQuickView4, GarageQuickView5,
+    GarageOrbit0, GarageOrbit1, GarageOrbit2, GarageOrbit3
 };
+
+constexpr DesktopMenuMouseAction GarageQuickViewAction(int id) noexcept
+{
+    return id >= 0 && id < VehicleCount
+        ? static_cast<DesktopMenuMouseAction>(
+            static_cast<int>(DesktopMenuMouseAction::GarageQuickView0) + id)
+        : DesktopMenuMouseAction::None;
+}
+constexpr int GarageQuickViewIndex(DesktopMenuMouseAction action) noexcept
+{
+    const int value = static_cast<int>(action);
+    constexpr int first = static_cast<int>(DesktopMenuMouseAction::GarageQuickView0);
+    // Check before subtracting: malformed enum values may be INT_MIN.
+    return value >= first && value < first + VehicleCount
+        ? value - first : -1;
+}
+static_assert(GarageQuickViewIndex(GarageQuickViewAction(5)) == 5);
+static_assert(GarageQuickViewAction(VehicleCount) == DesktopMenuMouseAction::None);
 
 struct DesktopMenuMouseRect final
 {
@@ -244,5 +268,141 @@ inline DesktopMenuMouseAction HitTestDesktopMenuMouse(
         }
     }
     return DesktopMenuMouseAction::None;
+}
+// The option displayed in the Garage dock comes from the VIEWED car's
+// saved cosmetic state, never from the equipped race pawn. This is
+// presentation only: disabled buttons cannot gain click authority here.
+struct GarageStyleButtonIndicator final
+{
+    const char* Caption = "";
+    int Ordinal = 0; // human-readable, 1-based for cycling options
+    int Total = 0;   // zero for non-cycling actions
+    bool Valid = false;
+    bool Factory = false;
+};
+
+inline constexpr GarageStyleButtonIndicator DescribeGarageStyleButton(
+    DesktopMenuMouseAction action, int viewedId, GarageLook look) noexcept
+{
+    if (!GarageState::IsVehicle(viewedId) || !ValidGarageLook(look))
+        return {};
+    const bool factory = SameGarageLook(
+        look, FactoryGarageLook(viewedId));
+    switch (action)
+    {
+    case DesktopMenuMouseAction::GaragePaint:
+        return {"PAINT", static_cast<int>(look.Paint) + 1,
+                GaragePaintOptions, true, factory};
+    case DesktopMenuMouseAction::GarageStripe:
+        return {"STRIPE", static_cast<int>(look.Stripe) + 1,
+                GarageStripeOptions, true, factory};
+    case DesktopMenuMouseAction::GarageWheels:
+        return {"RIMS", static_cast<int>(look.Wheels) + 1,
+                GarageWheelOptions, true, factory};
+    case DesktopMenuMouseAction::GarageReset:
+        return {factory ? "FACTORY OK" : "RESET LOOK", 0, 0, true, factory};
+    case DesktopMenuMouseAction::GarageBrowsePrevious:
+        return {"< VIEW CAR", 0, 0, true, factory};
+    case DesktopMenuMouseAction::GarageBrowseNext:
+        return {"VIEW CAR >", 0, 0, true, factory};
+    default:
+        return {};
+    }
+}
+
+// Optional fourth/fifth dock row, only when the visible page is Garage.
+// The pre-existing six menu buttons and their paging semantics are
+// unchanged. Every cosmetic pointer hit maps to one owner-gated action.
+struct GarageStyleMouseLayout final
+{
+    bool Valid = false;
+    std::array<DesktopMenuMouseButton, 6> Buttons{};
+};
+
+inline GarageStyleMouseLayout CalculateGarageStyleMouseLayout(
+    double width, double height, HudLayout hud,
+    bool touchUI, bool menuOpen, MenuPage page) noexcept
+{
+    if (page != MenuPage::Garage) return {};
+    const auto dock = CalculateDesktopMenuMouseLayout(
+        width, height, hud, touchUI, menuOpen);
+    if (!dock.Valid) return {};
+    const auto& first = dock.Buttons[4].Bounds;
+    const auto& last = dock.Buttons[5].Bounds;
+    const double scale = std::clamp(hud.Scale, 0.6, 1.2);
+    const double gap = std::max(8.0, 10.0 * scale);
+    // Keep the existing "WHEEL: DETAILS" hint ABOVE these new controls.
+    const double top = last.Y + last.Height + std::max(26.0, 28.0 * scale);
+    const double finalBottom = top + first.Height * 3.0 + gap * 2.0;
+    if (!std::isfinite(top) || !std::isfinite(finalBottom) ||
+        finalBottom > height - 18.0)
+        return {};
+
+    GarageStyleMouseLayout result;
+    result.Valid = true;
+    result.Buttons = {{
+        {DesktopMenuMouseAction::GaragePaint,
+            {first.X, top, first.Width, first.Height}},
+        {DesktopMenuMouseAction::GarageStripe,
+            {last.X, top, last.Width, last.Height}},
+        {DesktopMenuMouseAction::GarageWheels,
+            {first.X, top + first.Height + gap, first.Width, first.Height}},
+        {DesktopMenuMouseAction::GarageReset,
+            {last.X, top + first.Height + gap, last.Width, last.Height}},
+        {DesktopMenuMouseAction::GarageBrowsePrevious,
+            {first.X, top + 2.0 * (first.Height + gap),
+             first.Width, first.Height}},
+        {DesktopMenuMouseAction::GarageBrowseNext,
+            {last.X, top + 2.0 * (first.Height + gap),
+             last.Width, last.Height}}
+    }};
+    return result;
+}
+
+inline DesktopMenuMouseAction HitTestGarageStyleMouse(
+    const GarageStyleMouseLayout& layout,
+    double x, double y, bool styleEnabled = true,
+    bool browseEnabled = true) noexcept
+{
+    if (!layout.Valid || !std::isfinite(x) || !std::isfinite(y))
+        return DesktopMenuMouseAction::None;
+    // Validate the entire external plan before accepting any individual hit.
+    // A malformed cosmetic button must not masquerade as SELECT or CLOSE.
+    constexpr std::array expected{
+        DesktopMenuMouseAction::GaragePaint,
+        DesktopMenuMouseAction::GarageStripe,
+        DesktopMenuMouseAction::GarageWheels,
+        DesktopMenuMouseAction::GarageReset,
+        DesktopMenuMouseAction::GarageBrowsePrevious,
+        DesktopMenuMouseAction::GarageBrowseNext};
+    DesktopMenuMouseAction found = DesktopMenuMouseAction::None;
+    for (std::size_t i = 0; i < layout.Buttons.size(); ++i)
+    {
+        const auto& button = layout.Buttons[i];
+        const auto& bounds = button.Bounds;
+        const double right = bounds.X + bounds.Width;
+        const double bottom = bounds.Y + bounds.Height;
+        if (button.Action != expected[i] ||
+            !std::isfinite(bounds.X) || !std::isfinite(bounds.Y) ||
+            !std::isfinite(bounds.Width) || !std::isfinite(bounds.Height) ||
+            !std::isfinite(right) || !std::isfinite(bottom) ||
+            bounds.X < 0.0 || bounds.Y < 0.0 ||
+            bounds.Width < 44.0 || bounds.Height < 44.0 ||
+            right <= bounds.X || bottom <= bounds.Y)
+            return DesktopMenuMouseAction::None;
+        for (std::size_t j = 0; j < i; ++j)
+        {
+            const auto& prior = layout.Buttons[j].Bounds;
+            if (bounds.X < prior.X + prior.Width && right > prior.X &&
+                bounds.Y < prior.Y + prior.Height && bottom > prior.Y)
+                return DesktopMenuMouseAction::None;
+        }
+        if (bounds.Contains(x, y))
+            found = button.Action;
+    }
+    const bool isBrowse = found == DesktopMenuMouseAction::GarageBrowsePrevious ||
+        found == DesktopMenuMouseAction::GarageBrowseNext;
+    return (isBrowse ? browseEnabled : styleEnabled)
+        ? found : DesktopMenuMouseAction::None;
 }
 } // namespace latebrake
