@@ -1922,41 +1922,9 @@ void ALatebrakeRaceGameMode::MenuActivate()
         }
         CloseMenuForRace();
     }
-    else if (Page == latebrake::MenuPage::Career)
+    else if (latebrake::IsCareerMenuPage(Page))
     {
-        if (StartCareerEvent(CareerMenuSelection)) CloseMenuForRace();
-    }
-    else if (Page == latebrake::MenuPage::Championships)
-    {
-        int32 Target = CareerMenuSelection >= 0 && CareerMenuSelection < 6 &&
-            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
-            ? CareerMenuSelection : -1;
-        for (int32 Id = 0; Id < 6 && Target < 0; ++Id)
-        {
-            if (Career.Status(Id) == latebrake::CareerStatus::Available)
-            {
-                Target = Id;
-                break;
-            }
-        }
-        if (Target < 0) Target = 0; // Replay an already accessible round.
-        if (StartCareerEvent(Target)) CloseMenuForRace();
-    }
-    else if (Page == latebrake::MenuPage::Challenges)
-    {
-        int32 Target = CareerMenuSelection >= 6 &&
-            CareerMenuSelection < latebrake::CareerEventCount &&
-            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
-            ? CareerMenuSelection : -1;
-        for (int32 Id = 6; Id < latebrake::CareerEventCount && Target < 0; ++Id)
-        {
-            if (Career.Status(Id) == latebrake::CareerStatus::Available)
-            {
-                Target = Id;
-                break;
-            }
-        }
-        if (Target < 0) Target = 6;
+        const int32 Target = GetMenuCareerEventId();
         if (StartCareerEvent(Target)) CloseMenuForRace();
     }
     else if (Page == latebrake::MenuPage::Garage)
@@ -2022,7 +1990,7 @@ bool ALatebrakeRaceGameMode::StartQuickPractice(latebrake::QuickPracticePreset P
 FString ALatebrakeRaceGameMode::GetCareerEventName() const
 {
     const int32 Id = (Menu.IsOpen() || !bCareerRace)
-        ? CareerMenuSelection : Career.SelectedEvent();
+        ? GetMenuCareerEventId() : Career.SelectedEvent();
     const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
     return Event ? FString(UTF8_TO_TCHAR(Event->Name)) : TEXT("No Career Event");
 }
@@ -2048,21 +2016,15 @@ void ALatebrakeRaceGameMode::CycleCareerEvent()
         return;
     }
     const int32 Original = CareerMenuSelection;
-    for (int32 Delta = 1; Delta <= latebrake::CareerEventCount; ++Delta)
+    const auto Page = Menu.IsOpen() && latebrake::IsCareerMenuPage(Menu.Current())
+        ? Menu.Current() : latebrake::MenuPage::Career;
+    const auto Next = latebrake::BrowseCareerMenuTarget(Career, Page, Original);
+    if (Next.Valid())
     {
-        const int32 Id = (Original + Delta) % latebrake::CareerEventCount;
-        if (Menu.IsOpen() &&
-            Menu.Current() == latebrake::MenuPage::Championships && Id >= 6) continue;
-        if (Menu.IsOpen() &&
-            Menu.Current() == latebrake::MenuPage::Challenges && Id < 6) continue;
-        if (Career.Status(Id) != latebrake::CareerStatus::Locked)
-        {
-            CareerMenuSelection = Id;
-            const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
-            CareerFeedback = FString::Printf(TEXT("Career selected: %s (%d/%d). M start."),
-                UTF8_TO_TCHAR(Event->Name), Id + 1, latebrake::CareerEventCount);
-            return;
-        }
+        CareerMenuSelection = Next.EventId;
+        const auto* Event = latebrake::GetCareerEvent(Next.EventId);
+        CareerFeedback = FString::Printf(TEXT("Career selected: %s (%d/%d). M start."),
+            UTF8_TO_TCHAR(Event->Name), Next.EventId + 1, latebrake::CareerEventCount);
     }
 }
 

@@ -21,6 +21,7 @@
 #include "AI/FleetStartupWatchdog.h"
 #include "AI/FleetFrameAuthority.h"
 #include "Racing/QuickRaceModePicker.h"
+#include "Career/CareerMenuSelection.h"
 #include "Racing/RaceSessionEpoch.h"
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
@@ -113,7 +114,11 @@ public:
     void ActivateSettingsControl(latebrake::SettingsControl Control);
     bool IsCareerRace() const { return bCareerRace; }
     int32 GetActiveCareerEventId() const { return bCareerRace ? Career.SelectedEvent() : -1; }
-    int32 GetMenuCareerEventId() const { return CareerMenuSelection; }
+    int32 GetMenuCareerEventId() const
+    {
+        if (!latebrake::IsCareerMenuPage(Menu.Current())) return CareerMenuSelection;
+        return latebrake::ResolveCareerMenuTarget(Career, Menu.Current(), CareerMenuSelection).EventId;
+    }
     const latebrake::CareerProgress& GetCareer() const { return Career; }
     const latebrake::CareerAward& GetLastCareerAward() const { return LastCareerAward; }
     FString GetCareerEventName() const;
