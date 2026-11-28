@@ -22,6 +22,7 @@
 #include "UI/PracticeTrialPanel.h"
 #include "UI/PracticeGateResultsPanel.h"
 #include "UI/HudDriveCommandPanel.h"
+#include "UI/HudRaceStatusPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -52,6 +53,8 @@ public:
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    bool DrawRaceStatusPanel(const latebrake::HudRaceStatusLayout& Layout,
+        const latebrake::HudRaceStatusReadout& Readout);
     void DrawDriveCommandPanel(const latebrake::HudDriveCommandPanel& Panel,
         const latebrake::DriveCommandReview& Review);
     void DrawSettingsPanel(const ALatebrakeRaceGameMode* Mode,
