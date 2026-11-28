@@ -1849,6 +1849,11 @@ void ALatebrakeRaceHUD::DrawHUD()
                 {
                     MenuLine(FString::Printf(TEXT("PIT SERVICE | %d COMPLETED"),
                         PitSummary.Count), true);
+                    const auto PitFrames=Car->GetPitService().ReviewFrames();
+                    if (!bCompact && PitFrames.InterruptedHolds>0)
+                        MenuLine(FString::Printf(TEXT("Interrupted holds %llu | longest canceled %.2fs"),
+                            static_cast<unsigned long long>(PitFrames.InterruptedHolds),
+                            PitFrames.LongestInterruptedHoldSeconds));
                     MenuLine(FString::Printf(
                         TEXT("Damage -%.1f pp | wear -%.1f pp | boost +%.1f pp"),
                         PitSummary.DamageRestored*100.0,
@@ -2901,6 +2906,9 @@ void ALatebrakeRaceHUD::DrawHUD()
                         TEXT("PIT: SERVICING %.0f%% | STOP %d"),
                         Pit.ProgressFraction() * 100.0,
                         Pit.StopCount() + 1), Accent, false, HudTelemetryKind::Urgent);
+                    break;
+                case latebrake::PitServiceGuidance::StopLimitReached:
+                    Line(TEXT("PIT: ATTEMPT SERVICE LIMIT REACHED"), Accent, false, HudTelemetryKind::Urgent);
                     break;
                 case latebrake::PitServiceGuidance::Completed:
                 case latebrake::PitServiceGuidance::ExitToRearm:
@@ -4042,6 +4050,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                 ? FString(TEXT("NO NITRO"))
             : PitGuidance == latebrake::PitServiceGuidance::SettleChassis
                 ? FString(TEXT("SETTLE CAR"))
+            : PitGuidance == latebrake::PitServiceGuidance::StopLimitReached
+                ? FString(TEXT("PIT LIMIT"))
             : PitGuidance == latebrake::PitServiceGuidance::NoMaintenance
                 ? FString(TEXT("PIT OK"))
             : Car->IsTouchPitHeld() && MobilePit.IsInBay() &&

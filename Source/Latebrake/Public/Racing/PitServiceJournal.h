@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Progression/RecordValidation.h"
+#include "Racing/RacePitService.h"
 #include "Vehicles/ArcadeCollisionDamage.h"
 #include "Vehicles/ArcadeTireCondition.h"
 #include "Vehicles/ArcadeNitroBoost.h"
@@ -60,7 +61,7 @@ class PitServiceJournal final
 {
 public:
     static constexpr int Capacity = 8;
-    static constexpr int StopLimit = 1000;
+    static constexpr int StopLimit = RacePitStopLimit;
 
     void Reset() noexcept
     {

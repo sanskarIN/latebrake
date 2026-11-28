@@ -1784,6 +1784,10 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
         CollisionDamage.DamageFraction() > 0.001 ||
         TireCondition.WearFraction() > 0.03 ||
         NitroBoost.ChargeFraction() < 0.99;
+    const auto* PitController=Cast<APlayerController>(GetController());
+    const latebrake::PitServiceFrameStamp PitStamp{static_cast<std::uint64_t>(GFrameCounter),
+        Mode->GetCheckpointSessionRevision(),GetTeleportRevision(),
+        PitController?static_cast<std::uint64_t>(PitController->GetUniqueID())+1u:0u};
     if (PitService.Observe({
         static_cast<double>(DeltaSeconds),
         static_cast<double>(SurfacePosition.X),
@@ -1796,7 +1800,7 @@ void ALatebrakeCarPawn::Tick(float DeltaSeconds)
             Mode->HasLocalPlayerDriver(),
         bPitNeedsService,
         latebrake::HasStablePitGroundSupport(
-            GroundContact, static_cast<double>(Velocity.Z))}))
+            GroundContact, static_cast<double>(Velocity.Z))},PitStamp))
     {
         const auto Before = latebrake::ObservePitVehicleCondition(
             CollisionDamage, TireCondition, NitroBoost);
