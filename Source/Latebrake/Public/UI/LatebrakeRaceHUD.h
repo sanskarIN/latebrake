@@ -29,6 +29,7 @@
 #include "UI/CareerEventCards.h"
 #include "UI/ProfileOverviewPanel.h"
 #include "UI/GarageVehicleCards.h"
+#include "UI/GarageUnlockRoutePanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -62,6 +63,9 @@ public:
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    latebrake::GarageUnlockRouteCache UnlockRouteCache;
+    bool DrawGarageUnlockRoute(const latebrake::GarageUnlockRouteLayout& Layout,
+        const latebrake::GarageUnlockRouteReadout& Data);
     latebrake::GarageVehicleCardsPresentation PresentedGarageCards{};
     bool DrawGarageVehicleCards(const ALatebrakeRaceGameMode* Mode,
         const latebrake::GarageVehicleCardsLayout& Layout);
