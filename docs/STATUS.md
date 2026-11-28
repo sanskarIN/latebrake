@@ -1,11 +1,15 @@
 # Latebrake engineering status
 
-**Updated:** 2026-11-14
-**Latest published milestone:** [v0.5.99 SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99), protected-main source `a3104ea76809ac86d315a8a31550d3215e79f824`, **zero executable attachments**. The [owner-approved one-version publisher](https://github.com/sanskarIN/latebrake/actions/runs/43413547703) verified 3-OS C++20, Python, PowerShell and docs source gates before publishing. The previous v0.5.98 source-only tag separately snapshots **unmerged physics draft PR #295**; v0.5.99 does not incorporate its advanced suspension/wheel-brake systems. Real UE5.8/UHT, cooked Win64 packaging and installed gameplay remain unverified.
+**Updated:** 2026-11-26
+**Latest published milestone:** [v0.5.100-test.2 SOURCE-ONLY pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.100-test.2), direct source tag `79a32648f11888725b1e7e827e222dbc9005aa68`, **zero executable attachments**. The public release exists; strict metadata qualification remains blocked because its target_commitish is `main` rather than the exact tag SHA and its release body is not byte-identical to the tagged notes. No playable game is verified. The official v0.5.100 remains separately gated.
 **Next engineering priority:** genuinely compile licensed UE5.8 Editor/UHT and Game targets, cook the original circuit and run installed Win64 driving at 30/60/120 FPS. Verify reverse contact/braking, front/rear axle suspension, steering, AI and packaging manifest evidence before merging physics.
 **Playable status:** Not verified. GitHub's source archive is not a game or a Windows installer, and Android hardware QA is independently outstanding.
 
-## 2026-11-14: v0.5.100 source release gate and gameplay review
+## 2026-11-25: exact-main source audit
+
+The [source-count CI](https://github.com/sanskarIN/latebrake/actions/runs/45646564285/job/139319032838) at `d79b31b1af59df3870f24cb75b755e0e20c8de28` recorded **112,808 qualifying production C++ lines**, 121,536 physical C++ source lines and 452 game-source files. The v0.6.0 quantity target remains 87,192 qualifying lines away. The count step passed; the full workflow failed on stale release-status labels. These counts include research code, not necessarily native gameplay.
+
+## 2026-11-14: historical v0.5.100 source release gate and gameplay review
 
 - [Native drafting PR #377](https://github.com/sanskarIN/latebrake/pull/377)
   is a **draft** Unreal-runtime change at source candidate

@@ -41,3 +41,18 @@ ultrawide, high DPI, localization/wrapping, page scrolling, purchase
 confirmations and failed-save rollbacks. An Android landscape device must
 be tested separately. Issue #236 remains open. No game installer or release
 artifact is produced by this change.
+
+### Cached budget advisor
+
+Garage details now lists affordable balanced, acceleration, grip and speed
+configurations using the exact sequential purchase planner. For each focus,
+the next savings target is the least additional credit requirement for an
+improvement over both the equipped car and the best currently affordable
+configuration. Viewed-car builds are distinguished from whole-catalogue
+recommendations. Upgrades are shared, and all performance figures are modeled
+multipliers rather than measured vehicle dynamics. No suggestion executes a
+purchase or equip action. The HUD cache is invalidated by any change to
+credits, owned cars, equipped car, upgrades or preview car. Test the actual
+menu at small and wide resolutions and verify that all Q/U/I confirmation
+paths remain unchanged. Portable tests compare recommendations against the
+canonical exhaustive purchase frontier and verify cache invalidation.

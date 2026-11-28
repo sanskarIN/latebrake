@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Track/CircuitStartGrid.h"
+#include "Track/PlanarFootprintSweep.h"
 
 #include <algorithm>
 #include <array>
@@ -90,44 +91,9 @@ inline bool PredictedRecoveryFootprintsOverlap(
     {
         return true; // Unknown physics must not clear a live teleport.
     }
-    const StartGridRect target = MakeStartGridRect(recoveryPose);
-    const StartGridRect blocker = MakeStartGridRect(blockerPose);
-    const double dx = blocker.X - target.X;
-    const double dy = blocker.Y - target.Y;
-    double enter = 0.0;
-    double leave = RecoveryTrafficForecastSeconds;
-    const std::array<CircuitPoint, 4> axes{{
-        {target.ForwardX, target.ForwardY},
-        {target.RightX, target.RightY},
-        {blocker.ForwardX, blocker.ForwardY},
-        {blocker.RightX, blocker.RightY}
-    }};
-    for (const CircuitPoint axis : axes)
-    {
-        const double distance = dx * axis.X + dy * axis.Y;
-        const double speed =
-            blockerVelocityX * axis.X + blockerVelocityY * axis.Y;
-        const double radius =
-            StartGridProjectionRadius(target, axis.X, axis.Y) +
-            StartGridProjectionRadius(blocker, axis.X, axis.Y);
-        if (std::abs(speed) < 1.0e-9)
-        {
-            if (std::abs(distance) > radius)
-            {
-                return false;
-            }
-            continue;
-        }
-        const double t0 = (-radius - distance) / speed;
-        const double t1 = (radius - distance) / speed;
-        enter = std::max(enter, std::min(t0, t1));
-        leave = std::min(leave, std::max(t0, t1));
-        if (enter > leave)
-        {
-            return false;
-        }
-    }
-    return true; // Edge contact is unsafe, including time-zero overlap.
+    const auto prediction=SweepPlanarFootprints({recoveryPose,blockerPose,
+        blockerVelocityX,blockerVelocityY,RecoveryTrafficForecastSeconds,0.0});
+    return !prediction.Valid || prediction.Intersects;
 }
 
 inline RecoveryClearanceResult EvaluateRivalRecoveryClearance(

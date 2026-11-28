@@ -9,8 +9,8 @@
 
 | Item | State |
 | --- | --- |
-| Latest published GitHub pre-release | [v0.5.99](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99), experimental **SOURCE-ONLY**, immutable mainline commit `a3104ea76809ac86d315a8a31550d3215e79f824`, owner-authorized [exact-source publishing matrix](https://github.com/sanskarIN/latebrake/actions/runs/43413547703), **zero executable attachments**; independent v0.5.98 physics draft PR #295 remains unmerged |
-| Latest source-development milestone | [Protected main commit `6bf1320b`](https://github.com/sanskarIN/latebrake/commit/6bf1320b62abe8f4786363045948f0fa81b67d89) includes [merged PR #375](https://github.com/sanskarIN/latebrake/pull/375): **71,567 qualifying source C++ lines in 291 files**, versus 18,506 before (**+53,061 newly integrated research-source lines**). The exact [merged-main source audit](https://github.com/sanskarIN/latebrake/actions/runs/43437251235) uses the same counting script. These are original previously developed *portable* racecraft, telemetry, original audio and mesh-generation models with 203 standalone C++ tests, **NOT wired into or certified by UE5.8 game runtime**. Published v0.5.99 is an earlier independent source snapshot; it does not contain these mainline additions. The 200,000-line v0.6.0 target and verified installed Win64 game remain outstanding. |
+| Latest published GitHub pre-release | [v0.5.100-test.2](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.100-test.2), experimental **SOURCE-ONLY**, direct tag `79a32648f11888725b1e7e827e222dbc9005aa68`, **zero executable attachments**. Published metadata does not satisfy the strict exact-target and exact-notes gate; no playable game is established. Official v0.5.100 remains separately gated. |
+| Latest source-development measurement | [Exact-main audit](https://github.com/sanskarIN/latebrake/actions/runs/45646564285/job/139319032838) at `d79b31b1af59df3870f24cb75b755e0e20c8de28`: **112,808 qualifying production C++ lines in 452 files**, 87,192 remaining to the 200,000-line v0.6.0 target. Count step passed; full CI failed on stale release labels. Portable research source is not proof of native gameplay. |
 | Engine targets | Unreal Engine 5.8 + C++20 |
 | Cross-platform portable tests | Windows, Ubuntu, macOS GitHub Actions |
 | Unreal Editor/UHT | **Not yet verified** |
@@ -34,6 +34,6 @@
 - [GitHub Actions](https://github.com/sanskarIN/latebrake/actions) — source-level test and documentation workflows.
 - [Android hardware qualification issue #13](https://github.com/sanskarIN/latebrake/issues/13).
 - [Unreal directional checkpoint qualification issue #31](https://github.com/sanskarIN/latebrake/issues/31).
-- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.99).
+- [Latest published GitHub source pre-release](https://github.com/sanskarIN/latebrake/releases/tag/v0.5.100-test.2).
 
 Do not rely on CI badges or web deployment as proof that the game can currently be installed and played.

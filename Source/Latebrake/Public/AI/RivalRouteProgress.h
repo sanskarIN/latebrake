@@ -85,21 +85,23 @@ public:
                              double deltaSeconds) noexcept
     {
         return ObserveCore(distanceCm, speedCmPerSecond, deltaSeconds,
-                           false, false);
+                           false, false, false);
     }
 
     RouteObservation ObserveVerifiedGate(
         double distanceCm, double speedCmPerSecond,
-        double deltaSeconds, bool forwardPlaneCrossed) noexcept
+        double deltaSeconds, bool forwardPlaneCrossed,
+        bool deferStationaryForVerifiedTraffic=false) noexcept
     {
         return ObserveCore(distanceCm, speedCmPerSecond, deltaSeconds,
-                           true, forwardPlaneCrossed);
+                           true, forwardPlaneCrossed, deferStationaryForVerifiedTraffic);
     }
 
 private:
     RouteObservation ObserveCore(
         double distanceCm, double speedCmPerSecond, double deltaSeconds,
-        bool requiresPlaneCrossing, bool forwardPlaneCrossed) noexcept
+        bool requiresPlaneCrossing, bool forwardPlaneCrossed,
+        bool deferStationaryForVerifiedTraffic) noexcept
     {
         // Until the engine has reported the outcome, a pending recovery
         // cannot silently advance a waypoint or trigger another attempt.
@@ -142,6 +144,16 @@ private:
                 ++CompletedLaps;
             }
             return {true, false, IsFinished()};
+        }
+
+        // A verified gate is processed above even during traffic. Only
+        // stationary recovery can be deferred, never a moving/no-approach
+        // stall, and never a previously pending teleport transaction.
+        if (requiresPlaneCrossing && deferStationaryForVerifiedTraffic &&
+            speedCmPerSecond < 80.0)
+        {
+            SuspendObservation();
+            return {};
         }
 
         bool noApproachStall = false;

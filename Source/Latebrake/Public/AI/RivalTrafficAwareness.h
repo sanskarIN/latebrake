@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AI/RivalPilot.h"
+#include "AI/RivalNearMerge.h"
 
 #include <algorithm>
 #include <cmath>
@@ -139,6 +140,22 @@ inline PilotCommand YieldRivalToPlayer(
     const double relativeLateralSpeed =
         (sample.PlayerWorldVelocityY - sample.RivalWorldVelocityY) * facingX -
         (sample.PlayerWorldVelocityX - sample.RivalWorldVelocityX) * facingY;
+    // A short forward-footprint overlap can occur before a longitudinal
+    // rear-catch is meaningful, even with matched speeds. Intersect both
+    // measured motion axes over the same bounded time window. The existing
+    // traffic brake hold and passing-abort path consume this brake too.
+    const auto nearMerge=EvaluateRivalNearMerge({
+        forwardDistance,signedLateralDistance,-closingSpeed,
+        relativeLateralSpeed,rivalForwardSpeed});
+    if (!nearMerge.Valid)
+        return {};
+    if (nearMerge.Brake)
+    {
+        command.Throttle=0.0;
+        command.Brake=true;
+        return command;
+    }
+
     bool predictedLaneEntry = false;
     if (closingSpeed >= 230.0 &&
         forwardDistance > 0.0 &&

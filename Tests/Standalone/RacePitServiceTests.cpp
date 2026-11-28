@@ -11,6 +11,96 @@ void Check(bool ok, const char* message)
 {
     if (!ok) throw std::runtime_error(message);
 }
+void StampedObservationContinuity()
+{
+    using namespace latebrake;
+    RacePitService pit;
+    PitServiceObservation input{0.05,0,-1300,0,0,true,false,true,true,true};
+    PitServiceFrameStamp stamp{1,0,0,101};
+    const auto step=[&]()
+    {
+        const bool completed=pit.Observe(input,stamp);
+        ++stamp.EngineFrame;
+        return completed;
+    };
+    for(int i=0;i<30;++i) Check(!step(),"initial partial hold");
+    Check(std::abs(pit.ProgressFraction()-0.6)<1e-8,"partial progress");
+    auto duplicate=stamp;--duplicate.EngineFrame;
+    Check(!pit.Observe(input,duplicate) && pit.ProgressFraction()==0,
+        "duplicate cannot contribute or preserve pending hold");
+    auto r=pit.ReviewFrames();
+    Check(r.RefusedFrames==1 && r.AcceptedFrames==30 && r.InterruptedHolds==1 &&
+        std::abs(r.LongestInterruptedHoldSeconds-1.5)<1e-8,"accurate interruption evidence");
+    for(int i=0;i<10;++i) Check(!step(),"resume fresh");
+    ++stamp.EngineFrame;
+    Check(!step() && std::abs(pit.ProgressFraction()-0.02)<1e-8,
+        "missing tick restarts hold");
+    for(int i=0;i<10;++i) Check(!step(),"before epoch change");
+    ++stamp.SessionRevision;
+    Check(!step() && std::abs(pit.ProgressFraction()-0.02)<1e-8,"epoch cuts hold");
+    for(int i=0;i<10;++i) Check(!step(),"before teleport");
+    ++stamp.TeleportRevision;
+    Check(!step() && std::abs(pit.ProgressFraction()-0.02)<1e-8,"teleport cuts hold");
+    auto stale=stamp;--stale.TeleportRevision;
+    Check(!pit.Observe(input,stale),"teleport rollback");
+    stale=stamp;--stale.SessionRevision;
+    Check(!pit.Observe(input,stale),"session rollback");
+    auto invalid=stamp;invalid.ControllerToken=0;
+    Check(!pit.Observe(input,invalid),"missing controller");
+    Check(!step(),"fresh authentic stamp");
+    ++stamp.ControllerToken;
+    Check(!step() && std::abs(pit.ProgressFraction()-0.02)<1e-8,"controller replacement cuts hold");
+    for(int i=0;i<49;++i) Check(step()==(i==48),"full new physical hold");
+    Check(pit.StopCount()==1 && !pit.IsArmed(),"one completed repair");
+    // A duplicate outside observation cannot rearm the service latch.
+    input.X=500;
+    duplicate=stamp;--duplicate.EngineFrame;
+    Check(!pit.Observe(input,duplicate) && !pit.IsArmed(),"stale exit cannot rearm");
+    Check(!step() && pit.IsArmed(),"actual fresh exit re-arms");
+    input.X=0;
+    Check(!step(),"next visit starts from zero");
+    pit.Suspend();
+    Check(!step() && std::abs(pit.ProgressFraction()-0.02)<1e-8,
+        "explicit suspension cuts hold but preserves high-water frame");
+    r=pit.ReviewFrames();
+    Check(r.RefusedFrames==5 && r.Discontinuities==4 &&
+        r.LongestInterruptedHoldSeconds<2.5,"bounded monotonic counters");
+    pit.Reset();
+    stamp={1,0,0,101};
+    Check(!step() && pit.ReviewFrames().AcceptedFrames==1 &&
+        pit.ReviewFrames().RefusedFrames==0 && pit.StopCount()==0,
+        "new attempt resets stamps and diagnostics");
+}
+
+void FiniteServiceCap()
+{
+    using namespace latebrake;
+    RacePitService pit;
+    PitServiceObservation input{0.10,0,-1300,0,0,true,false,true,true,true};
+    PitServiceFrameStamp stamp{1,1,0,101};
+    const auto step=[&]()
+    {
+        const bool completed=pit.Observe(input,stamp);
+        ++stamp.EngineFrame;
+        return completed;
+    };
+    for(int stop=1;stop<=RacePitStopLimit;++stop)
+    {
+        input.X=500;
+        Check(!step(),"physical exit");
+        input.X=0;
+        for(int frame=0;frame<25;++frame)
+            Check(step()==(frame==24),"one finite stop");
+        Check(pit.StopCount()==stop,"count equals actual service completions");
+    }
+    input.X=500;
+    Check(!step() && !pit.IsArmed(),"cap cannot rearm");
+    input.X=0;
+    for(int frame=0;frame<50;++frame)
+        Check(!step(),"cap never grants uncounted repair");
+    Check(pit.StopCount()==RacePitStopLimit &&
+        pit.Guidance()==PitServiceGuidance::StopLimitReached,"explicit cap guidance");
+}
 }
 
 int main()
@@ -117,6 +207,8 @@ int main()
               pit.ProgressFraction() == 0.0,
           "new race erases pit history");
 
+    StampedObservationContinuity();
+    FiniteServiceCap();
     std::cout << "RacePitService: all scenarios passed\n";
     return 0;
 }

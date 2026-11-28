@@ -36,7 +36,7 @@ class RivalRelativeMotionBindingTests(unittest.TestCase):
         self.assertLess(self.hud.index("BuildRaceMiniMapSnapshot("),
                         self.hud.index("RivalRelativeMotionHint.Update("))
         self.assertLess(self.hud.index("RivalRelativeMotionHint.Update("),
-                        self.hud.index("if (!bCompact && Canvas->SizeX >= 1120)"))
+                        self.hud.index("BuildHudRadarPresentation("))
 
     def test_reset_lifecycle_matches_proximity_warnings(self):
         self.assertGreaterEqual(self.hud.count("RivalRelativeMotionHint.Reset();"), 4)

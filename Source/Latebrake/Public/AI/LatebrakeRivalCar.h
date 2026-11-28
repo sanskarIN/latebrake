@@ -8,6 +8,10 @@
 #include "AI/RivalSurfaceDamagePace.h"
 #include "AI/RivalSpinThrottleGuard.h"
 #include "AI/RivalStraightPassAssist.h"
+#include "AI/RivalFleetRiskSupervisor.h"
+#include "AI/FleetQueueDeferral.h"
+#include "AI/FleetPassingLane.h"
+#include "AI/FleetHeadwayGovernor.h"
 #include "Vehicles/LatebrakeCarPawn.h"
 #include "LatebrakeRivalCar.generated.h"
 
@@ -25,6 +29,8 @@ public:
     ALatebrakeRivalCar();
     virtual void Tick(float DeltaSeconds) override;
     void ResetPilot();
+    bool AssignGridSlot(int32 Slot);
+    int32 GetGridSlot() const noexcept { return GridSlot; }
     // Event configuration controls route-length telemetry; it never grants
     // authoritative race placement or player checkpoint progression.
     void ConfigurePilot(int32 CheckpointCount, int32 RequiredLaps);
@@ -40,6 +46,11 @@ public:
     bool HasCompletedRoute() const { return Route.IsFinished(); }
 
 private:
+    int32 GridSlot=latebrake::PrimaryRivalGridSlot;
+    latebrake::RivalFleetRiskSupervisor FleetRisk;
+    latebrake::FleetQueueDeferral FleetQueue;
+    latebrake::FleetPassingLane FleetPassing;
+    latebrake::FleetHeadwayGovernor FleetHeadway;
     // Read the GameMode's authoritative pause/menu/restart epoch even
     // when paused Unreal actor ticks never executed the not-ready guard.
     uint64 LastQualifiedSessionRevision = 0;

@@ -22,11 +22,12 @@ public:
 
     double Sample(double forwardSpeedCmPerSecond, double steeringAxis,
                   double frameSeconds, bool humanDriver, bool lookingBack,
-                  CameraView view) noexcept
+                  CameraView view,double strength=1.0) noexcept
     {
         // Pauses, reverse, hood/rear view, corrupt chassis samples and
         // long stalls return to neutral. Never pass NaN to Unreal's arm.
         if (!humanDriver || lookingBack || view == CameraView::Hood ||
+            !std::isfinite(strength) || strength<=0.0 || strength>1.0 ||
             !std::isfinite(forwardSpeedCmPerSecond) ||
             forwardSpeedCmPerSecond < 0.0 ||
             forwardSpeedCmPerSecond > 20000.0 ||
@@ -40,7 +41,7 @@ public:
 
         // No camera turn below ~12.6 km/h; full effect by ~91.8 km/h.
         // High chase moves less to preserve route visibility.
-        const double maxYaw = view == CameraView::High ? 4.0 : 6.0;
+        const double maxYaw = (view == CameraView::High ? 4.0 : 6.0)*strength;
         const double speedWeight = std::clamp(
             (forwardSpeedCmPerSecond - 350.0) / 2200.0, 0.0, 1.0);
         const double target = std::clamp(steeringAxis, -1.0, 1.0)

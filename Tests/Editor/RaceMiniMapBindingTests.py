@@ -49,23 +49,24 @@ class RaceMiniMapBindingTests(unittest.TestCase):
         for marker in (
             '#include "Track/RaceMiniMap.h"',
             "Mode->TryGetRivalRadarPosition(RivalWorldPosition)",
-            "const bool bRivalRace = !bTimeAttack && Mode->HasRival();",
+            "const bool bRivalRace = !bExperimentalFleet && !bTimeAttack && Mode->HasRival();",
+            "GroupFleetRadar(FleetReview,0.075)",
             "latebrake::BuildRaceMiniMapSnapshot(",
             "Car->GetActorRotation().Yaw",
             "Race.GetNextCheckpoint()",
-            "Radar.Rival.Valid",
-            "Radar.Player.Position.Valid",
-            "Radar.DirectRivalSeparationValid",
+            "BuildHudRadarPresentation(",
+            "Presentation.PlayerVisible",
+            "Presentation.RivalDistanceValid",
             "RIVAL %.0fm DIRECT",
             "RACE RADAR / NORTH UP",
-            "Radar.Player.DirectionX",
-            "Radar.Player.DirectionY"
+            "Marker.Nose.Valid",
+            "PlaceHudRadarLabels("
         ):
             self.assertIn(marker, self.hud)
         self.assertLess(self.hud.index("TryGetRivalRadarPosition("),
                         self.hud.index("BuildRaceMiniMapSnapshot("))
         self.assertLess(self.hud.index("BuildRaceMiniMapSnapshot("),
-                        self.hud.index("if (Radar.Rival.Valid)"))
+                        self.hud.index("BuildHudRadarPresentation("))
         self.assertNotIn("RankPlayer", self.radar)
         self.assertNotIn("Race.PassCheckpoint(", self.radar)
         self.assertNotIn("SaveRecords(", self.radar)

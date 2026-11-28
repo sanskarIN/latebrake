@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace latebrake
 {
@@ -38,12 +39,19 @@ struct RivalFleetTrafficSample final
     double ConservativeBrakeScale = 0.0;
 };
 
+enum class FleetImmediateThreat : std::uint8_t
+{
+    None,Following,SweptContact,Touching
+};
+
 struct RivalFleetTrafficResult final
 {
     PilotCommand Command{};
     bool Qualified = false;
     bool EmergencyBrake = false;
     int LimitingSlot = -1;
+    FleetImmediateThreat Threat=FleetImmediateThreat::None;
+    double ContactSeconds=FootprintSweepNoContact;
 };
 
 inline bool ValidFleetPhysicalObservation(
@@ -112,68 +120,82 @@ inline RivalFleetTrafficResult ApplyRivalFleetTraffic(
         sample.Self.Pose.HeadingDegrees * (3.14159265358979323846 / 180.0);
     const double forwardX = std::cos(heading);
     const double forwardY = std::sin(heading);
-    int limitingSlot = -1;
-    for (int i = 0; i < sample.BlockerCount; ++i)
+    RivalFleetTrafficResult result{command,true,false,-1};
+    for (int i=0;i<sample.BlockerCount;++i)
     {
-        const RecoveryObstacle& other =
-            sample.Blockers[static_cast<std::size_t>(i)];
-        const double dx =
-            other.Pose.Position.X - sample.Self.Pose.Position.X;
-        const double dy =
-            other.Pose.Position.Y - sample.Self.Pose.Position.Y;
-        const double ahead = dx * forwardX + dy * forwardY;
-        const double lateral = std::abs(
-            dy * forwardX - dx * forwardY);
-        const double relativeVelocityX =
-            other.VelocityX - sample.Self.VelocityX;
-        const double relativeVelocityY =
-            other.VelocityY - sample.Self.VelocityY;
-        const double closing =
-            -(relativeVelocityX * forwardX +
-              relativeVelocityY * forwardY);
-        if (!std::isfinite(ahead) || !std::isfinite(lateral) ||
-            !std::isfinite(closing))
-        {
+        const auto& other=sample.Blockers[static_cast<std::size_t>(i)];
+        const double dx=other.Pose.Position.X-sample.Self.Pose.Position.X;
+        const double dy=other.Pose.Position.Y-sample.Self.Pose.Position.Y;
+        const double ahead=dx*forwardX+dy*forwardY;
+        const double lateral=std::abs(dy*forwardX-dx*forwardY);
+        const double vx=other.VelocityX-sample.Self.VelocityX;
+        const double vy=other.VelocityY-sample.Self.VelocityY;
+        const double closing=-(vx*forwardX+vy*forwardY);
+        if(!std::isfinite(ahead) || !std::isfinite(lateral) || !std::isfinite(closing))
             return {};
-        }
-        // Braking for a car well BEHIND us would increase rear-contact
-        // risk. Safety for the tail car belongs to that tail car's guard.
-        if (ahead < -FleetTrafficRearSkipCm)
-        {
-            continue;
-        }
-        const bool predictedContact = PredictedRecoveryFootprintsOverlap(
-            sample.Self.Pose, other.Pose,
-            relativeVelocityX, relativeVelocityY);
-        if (predictedContact &&
-            (ahead >= -GridPaddedHalfLengthCm ||
-             lateral <= FleetTrafficLaneHalfWidthCm))
-        {
-            command.Throttle = 0.0;
-            command.Brake = true;
-            return {command, true, true, other.Slot};
-        }
 
-        // Gradual follow demand outside immediate swept collision
-        // envelope; only the same lane and physically closing ahead.
-        if (ahead > 0.0 &&
-            ahead < FleetTrafficFollowingRangeCm &&
-            lateral < FleetTrafficLaneHalfWidthCm &&
-            closing > FleetTrafficMinClosingSpeedCmS)
+        // An actual pair may have twice the valid single-body speed.
+        // Do not use the stationary recovery wrapper's 15000 cm/s
+        // blocker bound for this relative-motion collision calculation.
+        const auto sweep=SweepPlanarFootprints({sample.Self.Pose,other.Pose,
+            vx,vy,FleetTrafficHorizonSeconds,0.0});
+        if(!sweep.Valid)return {};
+
+        FleetImmediateThreat threat=FleetImmediateThreat::None;
+        double contact=FootprintSweepNoContact;
+        double ceiling=command.Throttle;
+        if(sweep.StartsOverlapping)
         {
-            const double available =
-                std::clamp((ahead - 450.0) /
-                    (FleetTrafficFollowingRangeCm - 450.0), 0.0, 1.0);
-            const double permitted = 0.15 + 0.65 * available;
-            if (permitted < command.Throttle)
+            // Already touching: zero traction even when the center of
+            // the other car is behind the old courtesy-braking cutoff.
+            threat=FleetImmediateThreat::Touching;
+            contact=0.0;
+            ceiling=0.0;
+        }
+        else if(ahead>=-FleetTrafficRearSkipCm && sweep.Intersects &&
+            (ahead>=-GridPaddedHalfLengthCm || lateral<=FleetTrafficLaneHalfWidthCm))
+        {
+            threat=FleetImmediateThreat::SweptContact;
+            contact=sweep.EntrySeconds;
+            ceiling=0.0;
+        }
+        else if(ahead>0.0 && ahead<FleetTrafficFollowingRangeCm &&
+            lateral<FleetTrafficLaneHalfWidthCm && closing>FleetTrafficMinClosingSpeedCmS)
+        {
+            const double available=std::clamp((ahead-450.0)/
+                (FleetTrafficFollowingRangeCm-450.0),0.0,1.0);
+            const double permitted=0.15+0.65*available;
+            if(permitted<command.Throttle)
             {
-                command.Throttle = permitted;
-                limitingSlot = other.Slot;
+                threat=FleetImmediateThreat::Following;
+                ceiling=permitted;
             }
         }
+
+        if(threat==FleetImmediateThreat::None)continue;
+        // Rank all real threats: touching first, then earliest swept
+        // entry, then strongest soft cap. Stable slot resolves only
+        // equivalent restrictions. No iteration-order brake reporting.
+        bool prefer=static_cast<unsigned>(threat)>static_cast<unsigned>(result.Threat);
+        if(threat==result.Threat)
+        {
+            if(threat==FleetImmediateThreat::Following)
+                prefer=ceiling<result.Command.Throttle ||
+                    (ceiling==result.Command.Throttle && other.Slot<result.LimitingSlot);
+            else
+                prefer=contact<result.ContactSeconds ||
+                    (contact==result.ContactSeconds && other.Slot<result.LimitingSlot);
+        }
+        if(!prefer)continue;
+        result.Threat=threat;
+        result.LimitingSlot=other.Slot;
+        result.ContactSeconds=contact;
+        result.Command.Throttle=ceiling;
+        result.EmergencyBrake=threat==FleetImmediateThreat::Touching ||
+            threat==FleetImmediateThreat::SweptContact;
+        result.Command.Brake=result.EmergencyBrake;
     }
-    // Never return early on a *soft* following cap. A later real car can
-    // still be on a swept collision path and must veto ALL propulsion.
-    return {command, true, false, limitingSlot};
+    return result;
 }
+
 } // namespace latebrake

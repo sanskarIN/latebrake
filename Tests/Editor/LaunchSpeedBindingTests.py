@@ -49,7 +49,7 @@ class LaunchSpeedBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::LoadRecords(", 1)[0]
         for part in (begin, restart):
             self.assertIn("LaunchMeter.Reset();", part)
-        self.assertLess(recover.index("TryChargePlayerRecoveryAfterVerifiedTeleport("),
+        self.assertLess(recover.index("TryPaidRecoveryWithClearance("),
                         recover.index("LaunchMeter.Invalidate();"))
         self.assertIn("return;", recover[:recover.index("LaunchMeter.Invalidate();")])
 

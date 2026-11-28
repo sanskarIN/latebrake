@@ -59,7 +59,8 @@ public:
     FleetRiskSupervision Apply(
         PilotCommand planned,
         const RivalFleetTrafficSample& physical,
-        double deltaSeconds) noexcept
+        double deltaSeconds,
+        FleetForecastRoadPolicy policy=FleetForecastRoadPolicy::StrictAllBodies) noexcept
     {
         // A temporary renderer/engine hitch, invalid route command or
         // missing actual actor cannot authorize throttle from old state.
@@ -75,15 +76,16 @@ public:
             return {};
         }
 
-        const FleetRiskReport forecast = ForecastSixCarRisk(physical);
+        const FleetRiskReport forecast = ForecastSixCarRisk(physical,policy);
         if (!forecast.Qualified())
         {
             Reset();
             return {{}, forecast, false, true, false, 0.0, 0.0};
         }
 
-        std::array<std::uint64_t, StartGridCapacity> observed{};
-        if (!ValidateSixCarFleet(physical, observed))
+        const auto context=InspectFleetRoadContext(physical,policy);
+        const auto& observed=context.Roster;
+        if (!context.Valid)
         {
             Reset();
             return {};

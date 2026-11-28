@@ -33,7 +33,7 @@ class RivalNoApproachBindingTests(unittest.TestCase):
             "RivalGateTrace.Sample(",
             "Route.ObserveVerifiedGate(",
             "if (Observation.NeedsRecovery)",
-            "const bool bRecovered = TryRecoverTo(",
+            "const bool bRecovered = (bFleetMode?FleetSelection.Clear:Selection.Safe()) && TryRecoverTo(",
             "Route.ReportRecoveryResult(bRecovered)",
         )
         self.assertEqual(

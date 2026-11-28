@@ -2,6 +2,7 @@
 
 #include <array>
 #include "Racing/RecentTimedLaps.h"
+#include "Racing/WholeRaceLapHistory.h"
 #include "Racing/MeasuredLapSplitReference.h"
 
 // Portable, engine-independent race progression logic.
@@ -47,6 +48,11 @@ public:
         return RecentLaps.GetRecent(offset);
     }
     int GetRecentTimedLapCount() const noexcept { return RecentLaps.Size(); }
+    // Completed-lap aggregates exclude an unfinished current lap and its fees.
+    WholeRaceLapSummary GetWholeRaceLapSummary() const noexcept
+    {
+        return WholeLapHistory.Review(CompletedLaps,LapStartSeconds,LapPenaltyStartSeconds);
+    }
     // Advisory single-lap reference, independent of official record data.
     const MeasuredLapSplitReference& GetMeasuredLapSplits() const noexcept
     { return MeasuredSplits; }
@@ -91,6 +97,7 @@ private:
     bool ActiveClockAdvancedThisLap = false;
     bool ActiveClockAdvancedThisSector = false;
     RecentTimedLaps RecentLaps;
+    WholeRaceLapHistory WholeLapHistory;
     MeasuredLapSplitReference MeasuredSplits;
     double ElapsedSeconds = 0.0;
     int TimePenaltyCount = 0;

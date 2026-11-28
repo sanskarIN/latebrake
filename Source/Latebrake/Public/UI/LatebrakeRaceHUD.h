@@ -9,9 +9,31 @@
 #include "Track/RivalRelativeMotion.h"
 #include "UI/MenuDetailPager.h"
 #include "UI/HudMenuMouseControls.h"
+#include "UI/GaragePurchaseMouseLayout.h"
+#include "UI/GarageAppearancePalette.h"
+#include "Garage/GarageBudgetAdvisor.h"
+#include "Career/CareerCatalogue.h"
+#include "UI/GaragePaletteNavigation.h"
+#include "UI/FleetReplayPanel.h"
+#include "UI/SectorMotionResultsPanel.h"
+#include "UI/LapMotionResultsPanel.h"
+#include "UI/SettingsMenuPanel.h"
+#include "UI/QuickRaceChoicePanel.h"
+#include "UI/PracticeTrialPanel.h"
+#include "UI/PracticeGateResultsPanel.h"
+#include "UI/HudDriveCommandPanel.h"
+#include "UI/HudRaceStatusPanel.h"
+#include "UI/GarageComparisonPanel.h"
+#include "UI/MainMenuDashboard.h"
+#include "UI/RaceResultsOverview.h"
+#include "UI/CareerEventCards.h"
+#include "UI/ProfileOverviewPanel.h"
+#include "UI/GarageVehicleCards.h"
+#include "UI/GarageUnlockRoutePanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
+class ALatebrakeRaceGameMode;
 
 UCLASS()
 class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
@@ -21,10 +43,83 @@ class LATEBRAKE_API ALatebrakeRaceHUD : public AHUD
 public:
     virtual void DrawHUD() override;
     void ScrollMenuDetails(int direction);
+    bool HandleFleetReplayAction(latebrake::FleetReplayAction Action);
+    bool TryHandleFleetReplayPointer(double X,double Y);
+    bool TryHandleSectorMotionPointer(double X,double Y);
+    bool TryHandleLapMotionPointer(double X,double Y);
+    void ToggleLapMotionPanel();
+    bool TryHandleGarageVehicleCardsPointer(double X,double Y);
+    bool TryHandleCareerEventCardsPointer(double X,double Y);
+    bool TryHandleMainMenuDashboardPointer(double X,double Y);
+    bool TryHandleSettingsPointer(double X,double Y);
+    bool TryHandleQuickRaceChoicePointer(double X,double Y);
+    bool TryHandlePracticeResultsPointer(double X,double Y);
+    bool ToggleGaragePalette(latebrake::GarageLookLayer Layer);
+    bool AdvanceGaragePaletteLayer();
+    bool HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput Input);
+    void CloseGaragePalette();
+    void ApplyGaragePaletteChoice(latebrake::DesktopMenuMouseAction Action);
     bool TryScrollMenuMouse(double x, double y, int direction);
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    latebrake::GarageCatalogCache GarageCatalogue;
+    latebrake::GarageUnlockRouteCache UnlockRouteCache;
+    bool DrawGarageUnlockRoute(const latebrake::GarageUnlockRouteLayout& Layout,
+        const latebrake::GarageUnlockRouteReadout& Data);
+    latebrake::GarageVehicleCardsPresentation PresentedGarageCards{};
+    bool DrawGarageVehicleCards(const ALatebrakeRaceGameMode* Mode,
+        const latebrake::GarageVehicleCardsLayout& Layout);
+    latebrake::MainMenuDashboardPresentation PresentedMainMenu{};
+    latebrake::CareerEventCardsPresentation PresentedCareerCards{};
+    bool DrawCareerEventCards(const ALatebrakeRaceGameMode* Mode,
+        const latebrake::CareerEventCardsLayout& Layout);
+    bool DrawProfileOverview(const latebrake::ProfileOverviewLayout& Layout,
+        const latebrake::ProfileOverviewReadout& Readout);
+    bool DrawResultsOverview(const latebrake::ResultsOverviewLayout& Layout,
+        const latebrake::ResultsOverviewReadout& Readout);
+    bool DrawMainMenuDashboard(const ALatebrakeRaceGameMode* Mode,
+        const latebrake::MainMenuDashboardLayout& Layout);
+    bool DrawGarageComparisonPanel(const latebrake::GarageComparisonPanelLayout& Layout,
+        const latebrake::GarageComparisonPanelReadout& Readout);
+    bool DrawRaceStatusPanel(const latebrake::HudRaceStatusLayout& Layout,
+        const latebrake::HudRaceStatusReadout& Readout);
+    void DrawDriveCommandPanel(const latebrake::HudDriveCommandPanel& Panel,
+        const latebrake::DriveCommandReview& Review);
+    void DrawSettingsPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    latebrake::SettingsPanelPresentation PresentedSettings{};
+    latebrake::QuickRaceChoicePresentation PresentedQuickRace{};
+    latebrake::PracticeTrialPanelPresentation PresentedTrial{};
+    void DrawQuickRaceChoicePanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    void DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    void DrawSectorMotionPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    latebrake::PracticeResultsViewer PracticeViewer;
+    latebrake::PracticePanelPresentation PresentedPractice{};
+    bool DrawPracticeResultsPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    latebrake::LapMotionPanelViewer LapMotionViewer;
+    latebrake::LapPanelPresentation PresentedLapMotion{};
+    std::uint64_t LapMotionPanelRevision=0;
+    bool DrawLapMotionPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    latebrake::SectorPanelViewer SectorViewer;
+    latebrake::SectorPanelLayout PresentedSector{};
+    std::uint64_t PresentedSectorRevision=0;
+    latebrake::FleetReplayViewer ReplayViewer;
+    latebrake::FleetReplayPanelLayout PresentedReplay{};
+    std::uint64_t PresentedReplayAttempt=0;
+    latebrake::FleetReplayMapReadout PresentedReplayMap{};
+    double PresentedReplaySeconds=0.0;
     // Advisory only: no race awarding, control input or network telemetry.
     latebrake::WrongWayIndicator WrongWayHint;
     latebrake::StuckRecoveryHint StuckHint;
@@ -32,6 +127,13 @@ private:
     latebrake::RivalProximityIndicator RivalProximityHint;
     latebrake::RivalRelativeMotionTracker RivalRelativeMotionHint;
     latebrake::MenuDetailPager MenuPager;
+    latebrake::GarageBudgetAdvisor BudgetAdvisor;
+    latebrake::CareerCatalogueCache CareerCatalogue;
+    latebrake::GaragePresentedOffers PresentedGarageOffers{};
+    latebrake::GaragePaletteSession GaragePalette{};
+    latebrake::GaragePresentedPalette PresentedGaragePalette{};
+    int32 GaragePaletteFocus = -1;
+    int32 DrawnGaragePaletteFocus = -1;
     TWeakObjectPtr<APawn> LastWayfindingPawn;
     uint64 LastWayfindingSession = 0;
     uint64 LastWayfindingTeleport = 0;

@@ -1,4 +1,6 @@
 #include "Game/LatebrakeRaceGameMode.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Game/LatebrakePlayerController.h"
 
 #include "Engine/StaticMesh.h"
@@ -22,11 +24,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "Progression/LatebrakePlayerSave.h"
 #include "Progression/ProfileWriteCheckpoint.h"
+#include "Progression/ProfileSaveWriteGuard.h"
 #include "Progression/RecordValidation.h"
 #include "Career/CareerLaunchSelection.h"
 #include "Career/CareerReplayPreparation.h"
 #include "Garage/CareerGaragePolicy.h"
 #include "Garage/GarageQuickSelect.h"
+#include "Track/CircuitLightingPreview.h"
+#include "UI/GarageInputFocusPolicy.h"
 #include "HAL/PlatformTime.h"
 #include "Racing/LatebrakeCheckpoint.h"
 #include "Racing/RaceRewards.h"
@@ -44,6 +49,7 @@
 #include "Track/CornerApproachChevrons.h"
 #include "Track/CircuitStartupAudit.h"
 #include "Track/CircuitCollisionPlan.h"
+#include "Vehicles/ArcadeSkidRoadGeometry.h"
 #include "Track/CollisionBlockSetup.h"
 #include "Track/CollisionResponsePolicy.h"
 #include "Track/CircuitSpawnSafety.h"
@@ -120,10 +126,21 @@ bool ALatebrakeRaceGameMode::HasLocalPlayerDriver() const
 void ALatebrakeRaceGameMode::BeginPlay()
 {
     Super::BeginPlay();
+#if !UE_BUILD_SHIPPING
+    bExperimentalFleetFlag=FParse::Param(FCommandLine::Get(),TEXT("LatebrakeExperimentalSixCarGrid"));
+#endif
     LoadRecords();
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
+    // A newly initialized world is an actual attempt boundary too. Replay
+    // and traffic adapters reserve zero for uninitialized session stamps.
+    CheckpointSession.OnRaceRestart();
     Race.Reset();
+    ResetPlayerSectorMotion();
+    TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision=0;
+    StewardCheckpointSessionRevision=0;
     StartLights.Reset();
     BuildStartGantry();
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
@@ -132,10 +149,12 @@ void ALatebrakeRaceGameMode::BeginPlay()
     LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
+    GhostSetup.Reset();
 #if !UE_BUILD_SHIPPING
     StartRaceAuditAttempt(-1); // initial pawn placement not yet observed
 #endif
     RefreshRival();
+    BeginExperimentalFleetAttempt();
 }
 
 #if !UE_BUILD_SHIPPING
@@ -157,6 +176,14 @@ void ALatebrakeRaceGameMode::StartRaceAuditAttempt(int32 GridAtBegin)
 }
 #endif
 
+void ALatebrakeRaceGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    FleetFrameAuthority.Revoke();
+    ClearFleetTickPrerequisites();
+    FleetCheckpointActors.Reset();
+    Super::EndPlay(EndPlayReason);
+}
+
 void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
@@ -167,28 +194,117 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     const bool bInactive =
         UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
+    const bool bWasGreen=StartLights.IsGreen();
+    const bool bFleetReady=ObserveExperimentalFleet(DeltaSeconds,bInactive);
     const bool bStartQualified =
         bCircuitReady && bLocalPlayerReady && !bInactive &&
-        !Race.IsFinished() && IsRestartPlacementReady();
+        !Race.IsFinished() && IsRestartPlacementReady() && bFleetReady;
     // The countdown consumes ready, unpaused frames only. On the first
     // GO frame it returns JUST the residual frame time after green.
     // Keep authoritative timing and checkpoint-scoring on one light gate.
     const double LiveDelta = StartLights.Advance(
         static_cast<double>(DeltaSeconds), bStartQualified);
+    if (IsExperimentalFleetRequested() && !bWasGreen && StartLights.IsGreen())
+    {
+        const bool Committed=FleetAttempt.CommitGreen(FleetAttemptToken,FleetFrameToken);
+#if !UE_BUILD_SHIPPING
+        if (Committed)
+        {
+            const auto Startup=FleetStartup.Readout();
+            UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=go attempt=%llu frame=%llu stable=%.9f startup=%.9f"),
+                static_cast<unsigned long long>(FleetAttemptToken),
+                static_cast<unsigned long long>(FleetFrameToken),Startup.StableSeconds,Startup.ActiveSeconds);
+        }
+        else
+        {
+            const auto Failed=FleetAttempt.Readout();
+            UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=fault attempt=%llu reason=%d slot=%d"),
+                static_cast<unsigned long long>(FleetAttemptToken),
+                static_cast<int32>(Failed.Fault),Failed.FaultSlot);
+        }
+#else
+        static_cast<void>(Committed);
+#endif
+    }
     // A 3D cosmetic reflection of this SAME authoritative light phase.
     // It is not another timer and cannot authorize GO, brakes or gates.
     UpdateStartGantryVisual();
-    latebrake::AdvancePlayerRaceClockIfReady(
-        Race, bCircuitReady, bInactive || !StartLights.IsGreen(),
+    const bool bActualClockAdvanced=latebrake::AdvancePlayerRaceClockIfReady(
+        Race, bCircuitReady, bInactive || !IsRaceStartGreen(),
         bLocalPlayerReady, LiveDelta);
+    ObserveFleetPlayerTraffic(LiveDelta,bActualClockAdvanced);
+    BeginFleetReplayFrame(LiveDelta,bActualClockAdvanced);
+    BeginFleetDecisionFrame(LiveDelta,bActualClockAdvanced);
+    ObservePlayerSectorMotion(LiveDelta,bActualClockAdvanced);
     // Unofficial reference trace observes the SAME guarded player/clock
     // frame as official lap timing, but can never modify timing or physics.
     // World pause and focus loss can produce zero gameplay ticks; the
     // session revision guard also refuses to stitch resumed frames.
     const ALatebrakeCarPawn* GhostDriver = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
+    // No off-pavement sample survives a replaced driver, recovery,
+    // pause/menu epoch, or actual clock refusal. The same real driver
+    // that supplies ghost observations supplies the projected wheel pose.
+    if (IsPracticeRace() && !Race.IsFinished() && bActualClockAdvanced)
+    {
+        const auto PracticeKey=ReadPracticeConfiguration(GhostDriver);
+        const auto PracticeActor=IsValid(GhostDriver)?
+            static_cast<std::uint64_t>(GhostDriver->GetUniqueID())+1u:0u;
+        PracticeHistory.ObserveConfiguration(PracticeKey,PracticeActor);
+        PracticeGateHistory.ObserveConfiguration(PracticeKey,PracticeActor);
+    }
+    const bool bStewardDriverValid=IsValid(GhostDriver) &&
+        GhostDriver->IsRacePhysicsReady() && bLocalPlayerReady;
+    const bool bStewardContinuous=bStewardDriverValid &&
+        StewardTrackedPawn.Get()==GhostDriver &&
+        StewardTeleportRevision==GhostDriver->GetTeleportRevision() &&
+        StewardCheckpointSessionRevision==CheckpointSession.Current();
+    if (!bStewardContinuous)
+    {
+        TrackLimits.Suspend();
+        StewardTrackedPawn=bStewardDriverValid
+            ? const_cast<ALatebrakeCarPawn*>(GhostDriver) : nullptr;
+        StewardTeleportRevision=bStewardDriverValid
+            ? GhostDriver->GetTeleportRevision() : 0;
+        StewardCheckpointSessionRevision=CheckpointSession.Current();
+    }
+    if (bStartQualified && StartLights.IsGreen() && bActualClockAdvanced &&
+        bStewardDriverValid && bStewardContinuous)
+    {
+        const FVector P=GhostDriver->GetActorLocation();
+        const FVector V=GhostDriver->GetVelocity();
+        const auto StewardEvent=TrackLimits.Observe(Race,{
+            {static_cast<double>(P.X),static_cast<double>(P.Y)},
+            static_cast<double>(GhostDriver->GetActorRotation().Yaw),
+            static_cast<double>(GhostDriver->GetSpeedKmH()),
+            static_cast<double>(V.Z),LiveDelta,
+            GhostDriver->GetGroundContactReadout()},
+            bActualClockAdvanced,bStewardContinuous);
+        if (StewardEvent==latebrake::TrackLimitsEvent::PenaltyApplied)
+        {
+            // A fee creates a clock discontinuity in the sampled ghost.
+            SuspendBestLapGhost();
+        }
+#if !UE_BUILD_SHIPPING
+        if (StewardEvent==latebrake::TrackLimitsEvent::ViolationRecorded ||
+            StewardEvent==latebrake::TrackLimitsEvent::PenaltyApplied ||
+            StewardEvent==latebrake::TrackLimitsEvent::PenaltyRefused)
+        {
+            const auto Snapshot=TrackLimits.Snapshot();
+            UE_LOG(LogLatebrakeRaceAudit, Display,
+                TEXT("LATEBRAKE_TRACK_LIMITS event=%d violations=%d charged=%d"),
+                static_cast<int32>(StewardEvent),Snapshot.Violations,Snapshot.Penalties);
+        }
+#endif
+    }
+    else
+    {
+        TrackLimits.Suspend();
+    }
+
+    if (!Race.IsFinished()) RefreshGhostConfiguration(GhostDriver);
     if (bStartQualified && StartLights.IsGreen() && LiveDelta > 0.0 &&
-        IsValid(GhostDriver) && GhostDriver->IsRacePhysicsReady())
+        IsValid(GhostDriver) && GhostDriver->IsRacePhysicsReady() && GhostSetup.IsBound())
     {
         // A fresh lap may rebind its OWN driver/session after a previous
         // pause or recovery invalidated that previous candidate. Never
@@ -239,6 +355,29 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     ApplyGarageToPlayer();
 }
 
+void ALatebrakeRaceGameMode::RefreshGhostConfiguration(const ALatebrakeCarPawn* Car)
+{
+    latebrake::GhostSetupStamp Stamp;
+    const auto Key=GetActivePracticeTrial().Key;
+    if (IsValid(Car) && Car->IsLocallyControlled() && Car->IsRacePhysicsReady() &&
+        LastTunedPawn.Get()==Car && LastAppliedTuning==Key && Car->GetSelectedVehicleId()==Key.Selected)
+    {
+        const auto Handling=Car->GetHandlingMode();
+        Stamp={static_cast<std::uint64_t>(Car->GetUniqueID())+1u,Key,
+            Handling==ELatebrakeHandlingMode::Arcade?0:
+            Handling==ELatebrakeHandlingMode::SimulationInspired?1:-1};
+    }
+    const auto Change=latebrake::RefreshGhostSetup(GhostSetup,GhostRecorder,Stamp,
+        Race.GetCurrentLapSeconds()==0.0 && !Race.IsFinished());
+    if (Change==latebrake::GhostSetupTransition::Lost ||
+        Change==latebrake::GhostSetupTransition::Rebound ||
+        Change==latebrake::GhostSetupTransition::Unavailable)
+    {
+        GhostTrackedPawn.Reset();
+        if (IsValid(BestLapGhostMarker)) BestLapGhostMarker->SetActorHiddenInGame(true);
+    }
+}
+
 void ALatebrakeRaceGameMode::SuspendBestLapGhost()
 {
     // Paused Unreal worlds can stop ticking before the next GameMode
@@ -278,7 +417,7 @@ bool ALatebrakeRaceGameMode::TryGetBestLapGhostSeparationMeters(
     // Only the currently rendered replay reference is measured. A hidden
     // marker, failed asset spawn or invalid race cannot show stale telemetry.
     if (!bCircuitReady || !StartLights.IsGreen() || Race.IsFinished() ||
-        Race.GetCompletedLaps() <= 0 || !GhostRecorder.HasBest() ||
+        Race.GetCompletedLaps() <= 0 || !GhostSetup.IsBound() || !GhostRecorder.HasBest() ||
         !GhostDisplay.IsEnabled() || Menu.IsOpen() ||
         UGameplayStatics::IsGamePaused(this) ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended() ||
@@ -317,7 +456,7 @@ void ALatebrakeRaceGameMode::UpdateBestLapGhostMarker(bool bReplayAuthorized)
     latebrake::LapGhostPose Sample;
     const bool bShouldShow = GhostDisplay.CanRender(bReplayAuthorized) &&
         !Race.IsFinished() &&
-        Race.GetCompletedLaps() > 0 && GhostRecorder.HasBest() &&
+        Race.GetCompletedLaps() > 0 && GhostSetup.IsBound() && GhostRecorder.HasBest() &&
         GhostRecorder.Evaluate(Race.GetCurrentLapSeconds(), Sample);
     if (!bShouldShow)
     {
@@ -612,7 +751,8 @@ void ALatebrakeRaceGameMode::UpdateStartGantryVisual()
     const latebrake::StartGantryVisual Plan =
         latebrake::PlanStartGantryVisual(
             StartLights.Phase(), bCircuitReady, HasLocalPlayerDriver() &&
-                IsRestartPlacementReady(), bSuspended, Race.IsFinished());
+                IsRestartPlacementReady() && IsFleetStartPresentationReady(),
+            bSuspended, Race.IsFinished());
 
     int32 NewMask = 0;
     if (Plan.Active)
@@ -849,10 +989,63 @@ void ALatebrakeRaceGameMode::BuildCornerApproachChevrons(UStaticMesh* Mesh)
     }
 }
 
+void ALatebrakeRaceGameMode::ApplyCircuitLightingPreview()
+{
+    // One-time and explicit Settings actions only, never regular Tick.
+    // This alters render light color/intensity, not road collision or
+    // timing; all real lights still need UE Editor and packaged QA.
+    const auto Scene = latebrake::LightingForMood(
+        bDuskLightingPreview
+            ? latebrake::CircuitLightingMood::Dusk
+            : latebrake::CircuitLightingMood::Day);
+    if (!latebrake::ValidCircuitLightingPreset(Scene))
+        return;
+    if (IsValid(RuntimeSun) && IsValid(RuntimeSun->GetLightComponent()))
+    {
+        RuntimeSun->SetActorRotation(FRotator(
+            static_cast<float>(Scene.SunPitchDeg),
+            static_cast<float>(Scene.SunYawDeg),0.f));
+        RuntimeSun->GetLightComponent()->SetIntensity(
+            static_cast<float>(Scene.SunIntensity));
+        RuntimeSun->GetLightComponent()->SetLightColor(FLinearColor(
+            static_cast<float>(Scene.SunColor.R),
+            static_cast<float>(Scene.SunColor.G),
+            static_cast<float>(Scene.SunColor.B)));
+    }
+    if (IsValid(RuntimeSky) && IsValid(RuntimeSky->GetLightComponent()))
+    {
+        RuntimeSky->GetLightComponent()->SetIntensity(
+            static_cast<float>(Scene.SkyIntensity));
+        RuntimeSky->GetLightComponent()->SetLightColor(FLinearColor(
+            static_cast<float>(Scene.SkyColor.R),
+            static_cast<float>(Scene.SkyColor.G),
+            static_cast<float>(Scene.SkyColor.B)));
+    }
+}
+
+void ALatebrakeRaceGameMode::ToggleCircuitLightingPreview()
+{
+    if (!latebrake::CanChangeCircuitLighting(
+        Menu.IsOpen(),Menu.Current()==latebrake::MenuPage::Settings,
+        AppFocusGuard.IsSuspended(),ManualPause.IsSuspended(),
+        IsValid(RuntimeSun) && IsValid(RuntimeSky) &&
+        IsValid(RuntimeSun->GetLightComponent()) &&
+        IsValid(RuntimeSky->GetLightComponent())))
+        return;
+    bDuskLightingPreview = !bDuskLightingPreview;
+    SettingsSelection.Changed();
+    ApplyCircuitLightingPreview();
+    // Deliberately no SaveRecords: this is an optional current-session
+    // rendering test, not a new SaveGame schema or permanent unlock.
+}
+
 void ALatebrakeRaceGameMode::BuildCircuit()
 {
     latebrake::CircuitStartupAudit Audit;
     bCircuitReady = false;
+    FleetCheckpointActors.Reset();
+    SkidRoadComponents.Reset();
+    SkidRoadComponents.SetNum(latebrake::CircuitCollisionBlockCount);
     // Spawning an Actor does not prove rendering or collision on installed
     // devices, but failed block creation must never be hidden by the
     // four-checkpoint startup success marker.
@@ -865,15 +1058,9 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         return Block;
     };
     // Runtime sunlight so the starter track remains visible without map assets.
-    if (ADirectionalLight* Sun = GetWorld()->SpawnActor<ADirectionalLight>())
-    {
-        Sun->SetActorRotation(FRotator(-55.f, -30.f, 0.f));
-        Sun->GetLightComponent()->SetIntensity(6.f);
-    }
-    if (ASkyLight* Sky = GetWorld()->SpawnActor<ASkyLight>())
-    {
-        Sky->GetLightComponent()->SetIntensity(1.f);
-    }
+    RuntimeSun = GetWorld()->SpawnActor<ADirectionalLight>();
+    RuntimeSky = GetWorld()->SpawnActor<ASkyLight>();
+    ApplyCircuitLightingPreview();
 
     // This portable single-source-of-truth plan reproduces the prior nine
     // world-space collision actors exactly; it never adds Epic asset copies.
@@ -896,9 +1083,13 @@ void ALatebrakeRaceGameMode::BuildCircuit()
             Block.Style == latebrake::CollisionBlockStyle::Ground ? GroundColor :
             Block.Style == latebrake::CollisionBlockStyle::Asphalt ? AsphaltColor :
             BarrierColor;
-        RecordBlock(Labels[Index],
+        AStaticMeshActor* BlockActor=RecordBlock(Labels[Index],
             FVector(Block.Center.X, Block.Center.Y, Block.Height),
             FVector(Block.ScaleX, Block.ScaleY, Block.ScaleZ), Color);
+        if (Block.Style==latebrake::CollisionBlockStyle::Asphalt && IsValid(BlockActor))
+        {
+            SkidRoadComponents[Index]=BlockActor->GetStaticMeshComponent();
+        }
     }
 
     // All ninety-three collision-free decorative cubes now share one scene
@@ -1175,6 +1366,7 @@ void ALatebrakeRaceGameMode::BuildCircuit()
         if (Checkpoint)
         {
             Checkpoint->SetCheckpointIndex(Index);
+            FleetCheckpointActors.Add(Checkpoint);
             ++SpawnedCheckpoints;
         }
     }
@@ -1230,7 +1422,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
 {
     // A failed ground/road/barrier spawn cannot produce legitimate racing
     // progress or a career medal, even when four gate actors exist.
-    if (!StartLights.IsGreen())
+    if (!IsRaceStartGreen())
     {
         return; // Gate 0 is not scoreable during the red start lights.
     }
@@ -1254,13 +1446,35 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     const int64 PlayerGateOrdinal =
         static_cast<int64>(Race.GetCompletedLaps()) * Race.GetCheckpointCount() +
         Race.GetNextCheckpoint();
-    if (latebrake::GetRaceEvent(SelectedEvent).SpawnRival &&
+    if (IsPracticeRace())
+    {
+        const auto* PracticeDriver=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        PracticeGateHistory.ObserveGate(ReadPracticeConfiguration(PracticeDriver),
+            IsValid(PracticeDriver)?static_cast<std::uint64_t>(PracticeDriver->GetUniqueID())+1u:0u,
+            Race,CheckpointIndex);
+    }
+    if (PlayerGateOrdinal>=1 && PlayerGateOrdinal<=latebrake::CircuitGateCount*latebrake::SectorMotionMaximumLaps)
+        ObservePlayerSectorGate(CheckpointIndex,static_cast<int32>(PlayerGateOrdinal));
+    if (!IsExperimentalFleetRequested() && latebrake::GetRaceEvent(SelectedEvent).SpawnRival &&
         PlayerGateOrdinal >= 1 && PlayerGateOrdinal <= 25600)
     {
         RivalSplits.RecordPlayer(static_cast<int32>(PlayerGateOrdinal),
             Race.GetElapsedSeconds() - Race.GetTotalPenaltySeconds());
     }
+    if (IsExperimentalFleetRequested() && PlayerGateOrdinal >= 1 && PlayerGateOrdinal <= 25600)
+    {
+        if (!FleetGateTiming.Record({FleetAttemptToken,FleetAttempt.BoundIdentity()[0],0,
+                static_cast<int32>(PlayerGateOrdinal),
+                Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds()}))
+            UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TIMING_RECEIPT_REFUSED slot=0 ordinal=%d"),
+                static_cast<int32>(PlayerGateOrdinal));
+    }
 #if !UE_BUILD_SHIPPING
+    if (IsExperimentalFleetRequested())
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=gate attempt=%llu slot=0 id=%llu ordinal=%d clock=%.9f"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            static_cast<unsigned long long>(FleetAttempt.BoundIdentity()[0]),
+            static_cast<int32>(PlayerGateOrdinal),Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds());
     // Only genuinely accepted, ordered, player-authoritative checkpoints
     // produce this low-volume diagnostic. The audit cannot award a lap.
     if (RaceAuditAttempt > 0 && FMath::IsFinite(Race.GetElapsedSeconds()))
@@ -1271,6 +1485,7 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
             RaceAuditAttempt, CheckpointIndex, Race.GetCompletedLaps(),
             Race.GetNextCheckpoint(), Race.GetElapsedSeconds(),
             Race.GetActiveTimedLapCount(), Race.IsFinished() ? 1 : 0);
+        LogPlayerSectorMotionAudit(CheckpointIndex,static_cast<int32>(PlayerGateOrdinal));
     }
 #endif
     if (Race.GetCompletedLaps() > LapsBeforeGate)
@@ -1279,8 +1494,10 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         // ghost frame to accept a checkpoint or create an official time.
         const bool bRealLapHadActiveTime =
             Race.GetActiveTimedLapCount() == Race.GetCompletedLaps();
+        const auto* LapDriver=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        RefreshGhostConfiguration(LapDriver);
         GhostRecorder.FinishLap(Race.GetLastLapSeconds(),
-            bRealLapHadActiveTime,
+            bRealLapHadActiveTime && GhostSetup.IsBound(),
             Race.GetLastLapPenaltySeconds() == 0.0);
     }
     if (!Race.IsFinished())
@@ -1297,8 +1514,35 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     // recordable completions. The existing seven-day float bound still applies.
     const latebrake::FinishTimingEligibility FinishTiming =
         latebrake::ValidateFinishTiming(Race);
+    if (IsExperimentalFleetRequested())
+    {
+        // Capture actual observed results before revoking run permissions.
+        FleetFinishReview=FinishTiming==latebrake::FinishTimingEligibility::Eligible
+            ? CollectFleetRaceReview() : latebrake::FleetRaceReview{};
+        FleetReplay.Freeze(FleetAttemptToken,FleetAttempt.BoundIdentity(),
+            FinishTiming==latebrake::FinishTimingEligibility::Eligible &&
+            FleetFinishReview.ValidRoster && FleetFinishReview.PlayerRouteValid);
+        FleetAttempt.Finish(FleetAttemptToken);
+        FleetFrameAuthority.Revoke();
+        LastRaceCredits=0;
+        LastCareerAward={};
+        LastRivalFinishObservation={};
+        LastRivalFinishClockComparison={};
+        CareerFeedback=TEXT("Experimental fleet test: no persistent rewards or records.");
+#if !UE_BUILD_SHIPPING
+        UE_LOG(LogTemp,Display,
+            TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=finish attempt=%llu clock=%.9f fees=%.9f timing=%d review=%d completed_routes=%d saved=0"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            Race.GetElapsedSeconds()-Race.GetTotalPenaltySeconds(),Race.GetTotalPenaltySeconds(),
+            FinishTiming==latebrake::FinishTimingEligibility::Eligible?1:0,
+            FleetFinishReview.ValidRoster && FleetFinishReview.PlayerRouteValid?1:0,
+            FleetFinishReview.ObservedCompletedRoutes);
+#endif
+        return;
+    }
     if (FinishTiming != latebrake::FinishTimingEligibility::Eligible)
     {
+        if (IsPracticeRace()) PracticeGateHistory.Invalidate();
         LastRivalFinishObservation = {};
         LastRivalFinishClockComparison = {};
         LastCareerAward = {};
@@ -1307,6 +1551,22 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         UE_LOG(LogTemp, Warning,
             TEXT("Latebrake: refusing finish timing eligibility=%d; no rewards, records or SaveGame write"),
             static_cast<int32>(FinishTiming));
+        return;
+    }
+
+    // Practice completes the same physical lap sequence but does not
+    // participate in any profile transaction or competitive observation.
+    if (IsPracticeRace())
+    {
+        const auto* PracticeDriver=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        const auto PracticeResult=PracticeHistory.Finish(ReadPracticeConfiguration(PracticeDriver),
+            IsValid(PracticeDriver)?static_cast<std::uint64_t>(PracticeDriver->GetUniqueID())+1u:0u,Race);
+        PracticeGateHistory.Finish(PracticeResult,Race);
+        LastRaceCredits = 0;
+        LastCareerAward = {};
+        LastRivalFinishObservation = {};
+        LastRivalFinishClockComparison = {};
+        CareerFeedback = TEXT("Practice complete: no saved records or rewards.");
         return;
     }
 
@@ -1443,7 +1703,9 @@ void ALatebrakeRaceGameMode::SyncDesktopMenuPointerMode()
 
 void ALatebrakeRaceGameMode::CloseMenuForRace()
 {
+    TrackLimits.Suspend();
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     if (!Menu.IsOpen())
     {
         return;
@@ -1452,6 +1714,8 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
     // A restart may have unpaused the world before the menu is closed.
     // Neither change may allow a checkpoint to reuse an older position.
     Menu.Close();
+    SettingsSelection.Reset();
+    SyncGarageShowroomPreview(); // Restore equipped car before unpause.
     SyncDesktopMenuPointerMode();
     AppFocusGuard.OnExplicitResume();
     ManualPause.OnExplicitResume();
@@ -1467,9 +1731,14 @@ void ALatebrakeRaceGameMode::CloseMenuForRace()
 
 void ALatebrakeRaceGameMode::ToggleMenu()
 {
+    TrackLimits.Suspend();
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     SuspendBestLapGhost();
     Menu.Toggle();
+    MainMenuFocus=0;
+    SettingsSelection.Reset();
+    SyncGarageShowroomPreview();
     if (!Menu.IsOpen())
     {
         AppFocusGuard.OnExplicitResume(); // Deliberate CLOSE/return to driving.
@@ -1491,6 +1760,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
 
 void ALatebrakeRaceGameMode::ToggleRacePause()
 {
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     // Standalone keyboard/gamepad/touch PAUSE does not open the menu.
     // An engine-world pause may fail, so the *player's requested pause*
@@ -1547,6 +1817,20 @@ void ALatebrakeRaceGameMode::ToggleRacePause()
 
 void ALatebrakeRaceGameMode::PauseForAppInterruption()
 {
+    TrackLimits.Suspend();
+    DismissGaragePalette(); // No chooser may survive an OS focus interruption.
+    // Menu focus loss may not latch race suspension; still cancel spending.
+    if (GaragePurchaseConfirm.HasPending())
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Focus lost: offer canceled. Press Q/U/I to preview again.");
+    }
+
+    // A first Q/U/I press must never authorize a second press after the
+    // user has switched apps, even when Garage is already menu-paused.
+    // AppFocusRaceGuard intentionally ignores menu-open focus loss for
+    // race timing; consent cancellation must happen BEFORE that early return.
+    GaragePurchaseConfirm.Reset();
     // Losing focus can happen without Unreal itself pausing the game loop.
     // Keep a separate fail-closed gate even if SetGamePaused returns false.
     // A foreground notification alone must NEVER resume competition.
@@ -1573,35 +1857,256 @@ void ALatebrakeRaceGameMode::PauseForAppInterruption()
     UpdateStartGantryVisual();
 }
 
+latebrake::SettingsMenuSnapshot ALatebrakeRaceGameMode::GetSettingsMenuSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player && HasLocalPlayerDriver();
+    const bool Lights=IsValid(RuntimeSun) && IsValid(RuntimeSky) &&
+        IsValid(RuntimeSun->GetLightComponent()) && IsValid(RuntimeSky->GetLightComponent());
+    const bool CameraReady=Local && Player->CanApplyCameraMotionPreference();
+    return {{Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
+        ManualPause.IsSuspended(),bFutureSaveSchema,Lights,CameraReady},SettingsSelection.Current(),
+        bMilesPerHour,HudTelemetryMode,bDuskLightingPreview,SettingsSelection.Revision(),CameraMotion,HudScale};
+}
+
+void ALatebrakeRaceGameMode::ActivateSettingsControl(latebrake::SettingsControl Control)
+{
+    const auto Current=GetSettingsMenuSnapshot();
+    if(!Current.Access.Allows(Control) || !SettingsSelection.Select(Current.Access,Control))
+        return;
+    switch(Control)
+    {
+    case latebrake::SettingsControl::SpeedUnits:
+    {
+        const bool PreviousMilesPerHour = bMilesPerHour;
+        bMilesPerHour = !bMilesPerHour;
+        SaveRecords();
+        if (bProgressSaveFailed)
+        {
+            bMilesPerHour = PreviousMilesPerHour;
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: speed display unit change was not saved; restoring prior setting"));
+        }
+        break;
+    }
+    case latebrake::SettingsControl::HudDetail:
+        CycleHudTelemetryMode();
+        break;
+    case latebrake::SettingsControl::CircuitLighting:
+        ToggleCircuitLightingPreview();
+        break;
+    case latebrake::SettingsControl::CameraMotion:
+    {
+        auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        if (!IsValid(Player) || !Player->CanApplyCameraMotionPreference()) break;
+        const auto Previous=CameraMotion;
+        CameraMotion=latebrake::NextCameraMotionMode(CameraMotion);
+        if (!Player->RefreshCameraMotionPreference())
+            CameraMotion=Previous;
+        SettingsSelection.Changed();
+        break;
+    }
+    case latebrake::SettingsControl::HudScale:
+        HudScale=latebrake::NextHudScalePreference(HudScale);
+        SettingsSelection.Changed();
+        break;
+    default:break;
+    }
+}
+
+void ALatebrakeRaceGameMode::CycleHudTelemetryMode()
+{
+    if (!latebrake::CanCycleHudTelemetryMode(Menu.IsOpen(),
+        Menu.Current()==latebrake::MenuPage::Settings,HasLocalPlayerDriver(),
+        AppFocusGuard.IsSuspended()))
+        return;
+    HudTelemetryMode=latebrake::NextHudTelemetryMode(HudTelemetryMode);
+    SettingsSelection.Changed();
+}
+
+latebrake::QuickRaceChoiceSnapshot ALatebrakeRaceGameMode::GetQuickRaceChoiceSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player;
+    return {Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
+        bFutureSaveSchema,bExperimentalFleetFlag,
+        latebrake::QuickRaceChoiceIndex({QuickRaceDifficultySelection,
+            bQuickRaceSoloTimeAttackSelection,QuickPracticeSelection}),
+        SettingsSelection.Revision(),QuickChoiceRevision};
+}
+
+bool ALatebrakeRaceGameMode::SelectQuickRaceChoice(int32 Index)
+{
+    const auto Snapshot=GetQuickRaceChoiceSnapshot();
+    const auto Next=latebrake::QuickRaceChoiceAt(Index);
+    if(!Snapshot.CanSelect() || !latebrake::IsValidQuickRaceMenuChoice(Next))return false;
+    QuickRaceDifficultySelection=Next.Difficulty;
+    bQuickRaceSoloTimeAttackSelection=Next.SoloTimeAttack;
+    QuickPracticeSelection=Next.Practice;
+    BumpQuickChoiceRevision();
+    return true; // Deliberate SELECT still starts the race separately.
+}
+
+latebrake::PracticeTrialAccess ALatebrakeRaceGameMode::GetPracticeTrialAccess() const
+{
+    const auto Snapshot=GetQuickRaceChoiceSnapshot();
+    return {Snapshot.MenuOpen,Snapshot.Page,Snapshot.LocalPlayer,
+        Snapshot.FocusSuspended || IsManualRacePauseActive(),QuickPracticeSelection};
+}
+
+latebrake::PracticeExperimentPlan ALatebrakeRaceGameMode::GetPendingPracticeExperimentPlan() const
+{
+    if (!GetPracticeTrialAccess().AllowsEdit())return {};
+    const auto* Car=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    if (!IsValid(Car))return {};
+    const auto Handling=Car->GetHandlingMode();
+    const int HandlingId=Handling==ELatebrakeHandlingMode::Arcade?0:
+        Handling==ELatebrakeHandlingMode::SimulationInspired?1:-1;
+    const latebrake::PracticeConfiguration Key{QuickPracticeSelection,
+        GetPendingPracticeTrial().Key,HandlingId};
+    return PracticeAnalysis.ReadPlan(PracticeHistory,Key);
+}
+
+latebrake::PracticeLaunchPreview ALatebrakeRaceGameMode::GetPendingPracticeLaunchPreview() const
+{
+    const auto Plan=GetPendingPracticeExperimentPlan();
+    if (!Plan.Valid)return {};
+    return latebrake::BuildPracticeLaunchPreview(Plan.Selected,GetPendingPracticeTrial(),
+        PracticeHistory,PracticeGateHistory);
+}
+
+bool ALatebrakeRaceGameMode::HandlePracticeTrialInput(
+    latebrake::PracticeTrialAction Action,int32 Vehicle)
+{
+    // Consume all trial shortcuts on the visible practice setup page,
+    // including blocked edits. Never fall through to a paid garage action.
+    if (!Menu.IsOpen() || Menu.Current()!=latebrake::MenuPage::QuickRace ||
+        !latebrake::IsQuickPractice(QuickPracticeSelection))return false;
+    bool Changed=false;
+    if (Action==latebrake::PracticeTrialAction::NextTest ||
+        Action==latebrake::PracticeTrialAction::RetestBest)
+    {
+        const auto Choices=GetPendingPracticeExperimentChoices();
+        const bool Next=Action==latebrake::PracticeTrialAction::NextTest;
+        if (Next?Choices.NextValid:Choices.BestValid)
+            Changed=PracticeTrial.Stage(GetPracticeTrialAccess(),Next?Choices.Next:Choices.Best);
+    }
+    else Changed=PracticeTrial.Edit(GetPracticeTrialAccess(),Action,Garage.Snapshot(),Vehicle);
+    if (Changed)
+    {
+        BumpQuickChoiceRevision();
+        GaragePurchaseConfirm.Reset();
+    }
+    return true;
+}
+
+latebrake::MainMenuDashboardSnapshot ALatebrakeRaceGameMode::GetMainMenuDashboardSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player;
+    // Menu navigation remains usable when chassis physics or grid setup
+    // fails. The local possession check is independent of race readiness.
+    return {Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
+        SettingsSelection.Revision(),MainMenuFocus};
+}
+
+bool ALatebrakeRaceGameMode::NavigateMainMenuDashboard(latebrake::MenuPage Destination,
+    const latebrake::MainMenuDashboardSnapshot& Expected)
+{
+    const auto Current=GetMainMenuDashboardSnapshot();
+    if(!Current.AllowsNavigation() || Current!=Expected ||
+        !latebrake::ValidMainMenuDestination(Destination))return false;
+    // Page navigation only: do not start a race, equip, spend or unpause.
+    GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
+    Menu.Open(Destination);
+    MainMenuFocus=0;
+    SettingsSelection.Reset();
+    if(Destination==latebrake::MenuPage::QuickRace)BumpQuickChoiceRevision();
+    SyncGarageShowroomPreview();
+    return true;
+}
+
+latebrake::CareerEventCardsSnapshot ALatebrakeRaceGameMode::GetCareerEventCardsSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player;
+    return latebrake::BuildCareerEventCardsSnapshot(Menu.IsOpen(),Menu.Current(),Local,
+        AppFocusGuard.IsSuspended(),bFutureSaveSchema,CareerMenuSelection,
+        SettingsSelection.Revision(),Career.Snapshot(),Garage.Snapshot());
+}
+
+bool ALatebrakeRaceGameMode::SelectCareerEventCard(int32 Id,
+    const latebrake::CareerEventCardsSnapshot& Expected)
+{
+    const auto Current=GetCareerEventCardsSnapshot();
+    const auto Description=latebrake::DescribeCareerEventCard(Current,Id);
+    if(Current!=Expected || !Description.Valid || !Description.Selectable)return false;
+    const auto* Event=latebrake::GetCareerEvent(Id);
+    if(!Event || Career.Status(Id)==latebrake::CareerStatus::Locked ||
+        !latebrake::IsEventInCareerMenu(Menu.Current(),Id))return false;
+    // This is the existing pending Browse cursor, never Career.Select().
+    // SELECT remains the separate launch and persistence transaction.
+    CareerMenuSelection=Id;
+    SettingsSelection.Changed();
+    GaragePurchaseConfirm.Reset();
+    CareerFeedback=FString::Printf(TEXT("Career selected: %s (%d/%d). SELECT to start."),
+        UTF8_TO_TCHAR(Event->Name),Id+1,latebrake::CareerEventCount);
+    return true;
+}
+
 void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     Menu.Next();
+    MainMenuFocus=0;
+    SettingsSelection.Reset();
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::MenuPrevious()
 {
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     Menu.Previous();
+    MainMenuFocus=0;
+    SettingsSelection.Reset();
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::MenuActivate()
 {
     if (!Menu.IsOpen()) return;
     GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
     const latebrake::MenuPage Page = Menu.Current();
     if (Page == latebrake::MenuPage::Main)
     {
-        Menu.Open(latebrake::MenuPage::QuickRace);
+        const auto Snapshot=GetMainMenuDashboardSnapshot();
+        NavigateMainMenuDashboard(latebrake::MainMenuFocusDestination(Snapshot.Focused),Snapshot);
     }
     else if (Page == latebrake::MenuPage::QuickRace)
     {
+        if (latebrake::IsQuickPractice(QuickPracticeSelection))
+        {
+            if (StartQuickPractice(QuickPracticeSelection)) CloseMenuForRace();
+            return;
+        }
         const latebrake::EventKind ChosenEvent =
             latebrake::QuickRaceMenuEvent({
                 QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection});
         // SelectRaceEvent already restarts when changing event or leaving
         // career mode. Avoid a second immediate reset in that case.
-        const bool bNeedsEventChange = bCareerRace || SelectedEvent != ChosenEvent;
+        const bool bNeedsEventChange = bCareerRace || IsPracticeRace() || SelectedEvent != ChosenEvent;
         if (bNeedsEventChange)
         {
             SelectRaceEvent(ChosenEvent);
@@ -1612,46 +2117,14 @@ void ALatebrakeRaceGameMode::MenuActivate()
         }
         CloseMenuForRace();
     }
-    else if (Page == latebrake::MenuPage::Career)
+    else if (latebrake::IsCareerMenuPage(Page))
     {
-        if (StartCareerEvent(CareerMenuSelection)) CloseMenuForRace();
-    }
-    else if (Page == latebrake::MenuPage::Championships)
-    {
-        int32 Target = CareerMenuSelection >= 0 && CareerMenuSelection < 6 &&
-            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
-            ? CareerMenuSelection : -1;
-        for (int32 Id = 0; Id < 6 && Target < 0; ++Id)
-        {
-            if (Career.Status(Id) == latebrake::CareerStatus::Available)
-            {
-                Target = Id;
-                break;
-            }
-        }
-        if (Target < 0) Target = 0; // Replay an already accessible round.
-        if (StartCareerEvent(Target)) CloseMenuForRace();
-    }
-    else if (Page == latebrake::MenuPage::Challenges)
-    {
-        int32 Target = CareerMenuSelection >= 6 &&
-            CareerMenuSelection < latebrake::CareerEventCount &&
-            Career.Status(CareerMenuSelection) != latebrake::CareerStatus::Locked
-            ? CareerMenuSelection : -1;
-        for (int32 Id = 6; Id < latebrake::CareerEventCount && Target < 0; ++Id)
-        {
-            if (Career.Status(Id) == latebrake::CareerStatus::Available)
-            {
-                Target = Id;
-                break;
-            }
-        }
-        if (Target < 0) Target = 6;
+        const int32 Target = GetMenuCareerEventId();
         if (StartCareerEvent(Target)) CloseMenuForRace();
     }
     else if (Page == latebrake::MenuPage::Garage)
     {
-        GarageNextVehicle();
+        GarageSelectViewedVehicle();
     }
     else if (Page == latebrake::MenuPage::Results)
     {
@@ -1669,26 +2142,20 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::Settings)
     {
-        const bool PreviousMilesPerHour = bMilesPerHour;
-        bMilesPerHour = !bMilesPerHour;
-        SaveRecords();
-        if (bProgressSaveFailed)
-        {
-            bMilesPerHour = PreviousMilesPerHour;
-            UE_LOG(LogTemp, Warning,
-                TEXT("Latebrake: speed display unit change was not saved; restoring prior setting"));
-        }
+        ActivateSettingsControl(SettingsSelection.Current());
     }
     // Profile is deliberately informational; no money or unlock is created.
 }
 
 void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
 {
-    if (!latebrake::IsValidEvent(Kind) || (Kind == SelectedEvent && !bCareerRace))
+    if (!latebrake::IsValidEvent(Kind) || (Kind == SelectedEvent && !bCareerRace && !IsPracticeRace()))
     {
         return;
     }
     bCareerRace = false;
+    PracticeTrial.EndPractice();
+    ActivePractice = latebrake::QuickPracticePreset::None;
     LastCareerAward = {};
     SelectedEvent = Kind;
     const latebrake::RaceEvent Definition = latebrake::GetRaceEvent(SelectedEvent);
@@ -1697,16 +2164,79 @@ void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
     RefreshRival();
 }
 
+bool ALatebrakeRaceGameMode::StartQuickPractice(latebrake::QuickPracticePreset Preset)
+{
+    const auto Definition = latebrake::GetQuickPracticeDefinition(Preset);
+    if (!Definition.Valid || !Menu.IsOpen() ||
+        Menu.Current() != latebrake::MenuPage::QuickRace)
+        return false;
+    // Both active mode and physical race configuration change together.
+    // Browsing later does not affect this mode, its restart or lap count.
+    auto Access=GetPracticeTrialAccess();
+    if (Access.Preset!=Preset || !PracticeTrial.BeginPractice(Access))return false;
+    ActivePractice = Preset;
+    bCareerRace = false;
+    LastCareerAward = {};
+    SelectedEvent = Definition.Event;
+    Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
+    RestartRace();
+    RefreshRival();
+    CareerFeedback = TEXT("Practice: run-local lap timing only; no profile rewards.");
+    return true;
+}
+
+latebrake::PracticeConfiguration ALatebrakeRaceGameMode::ReadPracticeConfiguration(
+    const ALatebrakeCarPawn* Car) const
+{
+    if (!IsPracticeRace() || !IsValid(Car) || !Car->IsRacePhysicsReady() ||
+        LastTunedPawn.Get()!=Car)
+        return {};
+    const auto Key=GetActivePracticeTrial().Key;
+    if (Car->GetSelectedVehicleId()!=Key.Selected)return {};
+    if (!(Key==LastAppliedTuning)) return {};
+    const auto Handling=Car->GetHandlingMode();
+    const int HandlingId=Handling==ELatebrakeHandlingMode::Arcade?0:
+        Handling==ELatebrakeHandlingMode::SimulationInspired?1:-1;
+    return {ActivePractice,Key,HandlingId};
+}
+
+void ALatebrakeRaceGameMode::NotifyPracticeHandlingChange(const ALatebrakeCarPawn* Car)
+{
+    if (!Race.IsFinished() && IsValid(Car) && Car==UGameplayStatics::GetPlayerPawn(this,0))
+        RefreshGhostConfiguration(Car);
+    if (IsPracticeRace() && !Race.IsFinished() && IsValid(Car) &&
+        Car==UGameplayStatics::GetPlayerPawn(this,0))
+    {
+        PracticeHistory.InvalidateConfiguration();
+        PracticeGateHistory.Invalidate();
+    }
+}
+
 FString ALatebrakeRaceGameMode::GetCareerEventName() const
 {
     const int32 Id = (Menu.IsOpen() || !bCareerRace)
-        ? CareerMenuSelection : Career.SelectedEvent();
+        ? GetMenuCareerEventId() : Career.SelectedEvent();
     const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
     return Event ? FString(UTF8_TO_TCHAR(Event->Name)) : TEXT("No Career Event");
 }
 
 void ALatebrakeRaceGameMode::CycleCareerEvent()
 {
+    if (Menu.IsOpen() && Menu.Current()==latebrake::MenuPage::Main)
+    {
+        const auto Snapshot=GetMainMenuDashboardSnapshot();
+        if(Snapshot.AllowsNavigation())
+        {
+            MainMenuFocus=latebrake::AdvanceMainMenuFocus(Snapshot.Focused,1);
+            SettingsSelection.Changed();
+        }
+        return; // Main menu owns Browse even when input is suspended.
+    }
+    if (Menu.IsOpen() && Menu.Current()==latebrake::MenuPage::Settings)
+    {
+        SettingsSelection.Browse(GetSettingsMenuSnapshot().Access);
+        return; // Never change a career selection while Settings owns Browse.
+    }
     // Reuse the existing Browse control across keyboard, gamepad and touch.
     // Changing a pending tier never touches the AI in the *active* race,
     // allowing a player to preview choices safely while the menu is open.
@@ -1714,27 +2244,24 @@ void ALatebrakeRaceGameMode::CycleCareerEvent()
     {
         const latebrake::QuickRaceMenuChoice Next =
             latebrake::NextQuickRaceMenuChoice({
-                QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection});
+                QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection, QuickPracticeSelection});
         QuickRaceDifficultySelection = Next.Difficulty;
         bQuickRaceSoloTimeAttackSelection = Next.SoloTimeAttack;
+        QuickPracticeSelection = Next.Practice;
+        BumpQuickChoiceRevision();
         return;
     }
     const int32 Original = CareerMenuSelection;
-    for (int32 Delta = 1; Delta <= latebrake::CareerEventCount; ++Delta)
+    const auto Page = Menu.IsOpen() && latebrake::IsCareerMenuPage(Menu.Current())
+        ? Menu.Current() : latebrake::MenuPage::Career;
+    const auto Next = latebrake::BrowseCareerMenuTarget(Career, Page, Original);
+    if (Next.Valid())
     {
-        const int32 Id = (Original + Delta) % latebrake::CareerEventCount;
-        if (Menu.IsOpen() &&
-            Menu.Current() == latebrake::MenuPage::Championships && Id >= 6) continue;
-        if (Menu.IsOpen() &&
-            Menu.Current() == latebrake::MenuPage::Challenges && Id < 6) continue;
-        if (Career.Status(Id) != latebrake::CareerStatus::Locked)
-        {
-            CareerMenuSelection = Id;
-            const latebrake::CareerEvent* Event = latebrake::GetCareerEvent(Id);
-            CareerFeedback = FString::Printf(TEXT("Career selected: %s (%d/%d). M start."),
-                UTF8_TO_TCHAR(Event->Name), Id + 1, latebrake::CareerEventCount);
-            return;
-        }
+        CareerMenuSelection = Next.EventId;
+        SettingsSelection.Changed();
+        const auto* Event = latebrake::GetCareerEvent(Next.EventId);
+        CareerFeedback = FString::Printf(TEXT("Career selected: %s (%d/%d). M start."),
+            UTF8_TO_TCHAR(Event->Name), Next.EventId + 1, latebrake::CareerEventCount);
     }
 }
 
@@ -1787,6 +2314,8 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
     CareerMenuSelection = Id;
     CareerStartedVehicleId = Garage.SelectedVehicle();
     bCareerRace = true;
+    PracticeTrial.EndPractice();
+    ActivePractice = latebrake::QuickPracticePreset::None;
     SelectedEvent = Event->SpawnRival
         ? latebrake::EventKind::Circuit : latebrake::EventKind::TimeAttack;
     Race = latebrake::RaceProgress(4, Event->Laps);
@@ -1800,7 +2329,38 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
 
 float ALatebrakeRaceGameMode::GetEventBestSeconds() const
 {
+    if (IsPracticeRace() || IsExperimentalFleetRequested()) return 0.f;
     return SelectedEvent == latebrake::EventKind::TimeAttack ? BestTimeAttackSeconds : PersonalBestSeconds;
+}
+
+bool ALatebrakeRaceGameMode::TryGetSkidRoadSurface(
+    const UPrimitiveComponent* HitComponent,int32& OutBlockIndex) const
+{
+    OutBlockIndex=INDEX_NONE;
+    if (!bCircuitReady || !IsValid(HitComponent) ||
+        SkidRoadComponents.Num()!=latebrake::CircuitCollisionBlockCount)
+        return false;
+    for (int32 Index=0;Index<SkidRoadComponents.Num();++Index)
+    {
+        const auto* Road=SkidRoadComponents[Index].Get();
+        if (!IsValid(Road) || Road!=HitComponent ||
+            !latebrake::IsArcadeSkidAsphaltBlock(Index))
+            continue;
+        const auto Plan=latebrake::PlannedCollisionBlock(Index);
+        // Do not qualify a moved/scaled or repurposed actor as the
+        // original asphalt plane just because its identity is retained.
+        if (Road->GetCollisionObjectType()!=ECC_WorldStatic ||
+            Road->GetCollisionEnabled()!=ECollisionEnabled::QueryAndPhysics ||
+            !Road->GetComponentLocation().Equals(
+                FVector(Plan.Center.X,Plan.Center.Y,Plan.Height),0.01) ||
+            !Road->GetComponentScale().Equals(
+                FVector(Plan.ScaleX,Plan.ScaleY,Plan.ScaleZ),0.001) ||
+            !Road->GetComponentQuat().Equals(FQuat::Identity,0.001))
+            return false;
+        OutBlockIndex=Index;
+        return true;
+    }
+    return false;
 }
 
 bool ALatebrakeRaceGameMode::HasRival() const
@@ -1834,7 +2394,7 @@ bool ALatebrakeRaceGameMode::TryGetRivalDraftingState(
     // A rival state must belong to this very live race and a distinct,
     // physics-ready following pawn. Never infer a view from the HUD.
     UWorld* World = GetWorld();
-    if (!World || !IsValid(Observer) || Observer == RivalCar.Get() ||
+    if (IsExperimentalFleetRequested() || !World || !IsValid(Observer) || Observer == RivalCar.Get() ||
         Observer->GetWorld() != World ||
         !latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
         !IsValid(RivalCar) || !RivalCar->IsRacePhysicsReady() ||
@@ -1933,7 +2493,7 @@ bool ALatebrakeRaceGameMode::TryGetRivalCreditedGateGap(
     // blocked start, menu, focus loss or failed player grid placement.
     // Rival progress is independently advanced only by its true forward
     // directional gate trace; this API never grants an actual placement.
-    if (!latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
+    if (IsExperimentalFleetRequested() || !latebrake::GetRaceEvent(SelectedEvent).SpawnRival ||
         !bCircuitReady || !StartLights.IsGreen() ||
         Race.IsFinished() || !IsRestartPlacementReady() ||
         !HasLocalPlayerDriver() || Menu.IsOpen() ||
@@ -1960,7 +2520,7 @@ void ALatebrakeRaceGameMode::ObserveRivalVerifiedGate()
     // Never invent a rival actor, stamp an unqualified clock, or award
     // player checkpoint credit through this observation-only path.
     latebrake::RivalGateGap Eligibility;
-    if (!TryGetRivalCreditedGateGap(Eligibility) || !IsValid(RivalCar))
+    if (IsExperimentalFleetRequested() || !TryGetRivalCreditedGateGap(Eligibility) || !IsValid(RivalCar))
     {
         return;
     }
@@ -2001,8 +2561,52 @@ FString ALatebrakeRaceGameMode::GetSelectedVehicleName() const
     return FString(UTF8_TO_TCHAR(latebrake::GarageState::Definition(Garage.SelectedVehicle()).Name));
 }
 
+latebrake::GarageEquipUiState ALatebrakeRaceGameMode::GetGarageMutationUiState() const
+{
+    return latebrake::EvaluateGarageMutationUi(
+        Menu.IsOpen(), Menu.Current(),
+        IsFocusLossGuardActive() || IsManualRacePauseActive(),
+        bFutureSaveSchema, latebrake::CanEditGarageDuringRace(bCareerRace, Race));
+}
+
+bool ALatebrakeRaceGameMode::RejectGarageMutationIfBlocked()
+{
+    const auto Access = GetGarageMutationUiState();
+    if (latebrake::CanActivateGarageEquip(Access)) return false;
+    GaragePurchaseConfirm.Reset();
+    switch (Access)
+    {
+    case latebrake::GarageEquipUiState::Suspended:
+        GarageFeedback = TEXT("Resume the suspended session before changing garage.");
+        break;
+    case latebrake::GarageEquipUiState::ReadOnly:
+        GarageFeedback = TEXT("Newer profile version: garage is read-only.");
+        break;
+    case latebrake::GarageEquipUiState::CareerLocked:
+        GarageFeedback = TEXT("Finish or exit this career race before changing garage.");
+        break;
+    default:
+        GarageFeedback = TEXT("Open Garage page to change garage.");
+        break;
+    }
+    return true;
+}
+
+latebrake::GaragePurchasePanelView ALatebrakeRaceGameMode::GetGaragePurchasePanel() const
+{
+    const auto Snapshot = Garage.Snapshot();
+    return latebrake::BuildGaragePurchasePanel(Snapshot,
+        GetGarageMutationUiState(),
+        GaragePurchaseConfirm.Preview(Snapshot, FPlatformTime::Seconds()));
+}
+
 FString ALatebrakeRaceGameMode::GetGaragePurchaseDisplayFeedback() const
 {
+    const auto Access = GetGarageMutationUiState();
+    if (Access == latebrake::GarageEquipUiState::Suspended)
+        return TEXT("Garage suspended: resume before changing cars or spending.");
+    if (Access == latebrake::GarageEquipUiState::ReadOnly)
+        return TEXT("Newer profile version: garage is read-only.");
     // HUD observation never refreshes, authorizes, or consumes an offer.
     // The authorization window uses FPlatformTime while the world is paused.
     if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage ||
@@ -2060,20 +2664,150 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     {
         return;
     }
-    const latebrake::GarageTuningKey Requested = latebrake::MakeGarageTuningKey(Garage.Snapshot());
-    if (LastTunedPawn.Get() == Car && Requested == LastAppliedTuning)
+    const auto Trial=GetActivePracticeTrial();
+    const latebrake::GarageTuningKey Requested = Trial.Key;
+    const auto Look=latebrake::PracticeTrialLook(Trial,GarageLooks);
+    if (LastTunedPawn.Get() != Car || !(Requested == LastAppliedTuning))
     {
-        // Credits and garage ownership alone do not affect live handling.
-        return;
+        if (IsPracticeRace() && !Race.IsFinished())
+        {
+            PracticeHistory.InvalidateConfiguration();
+            PracticeGateHistory.Invalidate();
+        }
+        // Cosmetic changes must NEVER alter physics multiplier authority;
+        // only actual garage tuning/selection changes call SetGarageTuning.
+        const latebrake::VehiclePerformance Performance = Trial.Performance;
+        Car->SetGarageTuning(
+            static_cast<float>(Performance.Acceleration),
+            static_cast<float>(Performance.Grip),
+            static_cast<float>(Performance.TopSpeed),
+            Requested.Selected, Look);
+        LastTunedPawn = Car;
+        LastAppliedTuning = Requested;
+        if (!Race.IsFinished()) RefreshGhostConfiguration(Car);
     }
-    const latebrake::VehiclePerformance Performance = Garage.Performance();
-    Car->SetGarageTuning(
-        static_cast<float>(Performance.Acceleration),
-        static_cast<float>(Performance.Grip),
-        static_cast<float>(Performance.TopSpeed),
-        Garage.SelectedVehicle());
-    LastTunedPawn = Car;
-    LastAppliedTuning = Requested;
+    // Apply separately, including when the same vehicle receives a new
+    // free paint/stripe/wheel choice. No force or collision body changes.
+    Car->SetGarageAppearance(Look);
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::DismissGaragePalette()
+{
+    if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+        if (auto* Hud = Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+            Hud->CloseGaragePalette();
+}
+
+void ALatebrakeRaceGameMode::SyncGarageShowroomPreview()
+{
+    ALatebrakeCarPawn* Car=Cast<ALatebrakeCarPawn>(
+        UGameplayStatics::GetPlayerPawn(this,0));
+    if (!IsValid(Car)) return;
+    const bool bViewing=Menu.IsOpen() &&
+        Menu.Current()==latebrake::MenuPage::Garage;
+    // No work in the normal racing loop; a visual only override exists
+    // while viewing the Garage menu or restoring its equipped car.
+    if (!bViewing && !Car->IsGarageShowroomPreviewActive())
+        return;
+    const int32 Viewed=GarageGallery.Viewed();
+    Car->UpdateGarageShowroomPresentation(
+        bViewing,Viewed,GarageLooks.Get(Viewed));
+}
+
+latebrake::GarageVehicleCardsSnapshot ALatebrakeRaceGameMode::GetGarageVehicleCardsSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player;
+    return latebrake::BuildGarageVehicleCardsSnapshot(CanBrowseGarage(),Local,
+        AppFocusGuard.IsSuspended(),bFutureSaveSchema,GarageGallery.Viewed(),
+        SettingsSelection.Revision(),Garage.Snapshot(),GarageLooks);
+}
+
+bool ALatebrakeRaceGameMode::BrowseGarageVehicleCard(int32 Id,
+    const latebrake::GarageVehicleCardsSnapshot& Expected)
+{
+    const auto Current=GetGarageVehicleCardsSnapshot();
+    if(Current!=Expected || !Current.CanBrowse() || !latebrake::GarageState::IsVehicle(Id))
+        return false;
+    GarageBrowseVehicle(Id);
+    return GarageGallery.Viewed()==Id;
+}
+
+bool ALatebrakeRaceGameMode::CanBrowseGarage() const
+{
+    return Menu.IsOpen() && Menu.Current() == latebrake::MenuPage::Garage;
+}
+
+latebrake::GarageEquipUiState
+ALatebrakeRaceGameMode::GetGarageEquipUiState() const
+{
+    return latebrake::EvaluateGarageEquipUi(
+        Menu.IsOpen(), Menu.Current(),
+        ManualPause.IsSuspended() || AppFocusGuard.IsSuspended(),
+        bFutureSaveSchema,
+        latebrake::CanEditGarageDuringRace(bCareerRace, Race),
+        latebrake::CanEquipGalleryVehicle(Garage, GarageGallery),
+        GarageGallery.Viewed(), Garage.SelectedVehicle());
+}
+
+bool ALatebrakeRaceGameMode::CanEquipGarageViewed() const
+{
+    return latebrake::CanActivateGarageEquip(GetGarageEquipUiState());
+}
+
+void ALatebrakeRaceGameMode::GarageBrowseNext()
+{
+    if (!CanBrowseGarage()) return;
+    DismissGaragePalette();
+    GaragePurchaseConfirm.Reset();
+    const int32 id = GarageGallery.Next();
+    SettingsSelection.Changed();
+    const auto car = latebrake::GarageState::Definition(id);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(car.Name),
+        Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
+{
+    // VIEW is never EQUIP: this handler cannot spend, select or save.
+    if (!CanBrowseGarage() || !latebrake::GarageState::IsVehicle(VehicleId))
+        return;
+    if (!GarageGallery.Browse(VehicleId)) return;
+    SettingsSelection.Changed();
+    DismissGaragePalette();
+    GaragePurchaseConfirm.Reset();
+    const auto& Car = latebrake::GarageState::Definition(VehicleId);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(Car.Name),
+        Garage.Owns(VehicleId) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::GarageBrowsePrevious()
+{
+    if (!CanBrowseGarage()) return;
+    DismissGaragePalette();
+    GaragePurchaseConfirm.Reset();
+    const int32 id = GarageGallery.Previous();
+    SettingsSelection.Changed();
+    const auto car = latebrake::GarageState::Definition(id);
+    GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
+        UTF8_TO_TCHAR(car.Name),
+        Garage.Owns(id) ? TEXT("OWNED") : TEXT("LOCKED / PREVIEW ONLY"));
+    SyncGarageShowroomPreview();
+}
+
+void ALatebrakeRaceGameMode::GarageSelectViewedVehicle()
+{
+    if (RejectGarageMutationIfBlocked()) return;
+    // All direct, next-owned and viewed-car selection uses the same
+    // authoritative transaction, save rollback and visual restoration.
+    GarageSelectVehicle(GarageGallery.Viewed());
 }
 
 void ALatebrakeRaceGameMode::CommitGarageVehicleSelection(int32 VehicleId)
@@ -2101,10 +2835,14 @@ void ALatebrakeRaceGameMode::CommitGarageVehicleSelection(int32 VehicleId)
     {
         SavedProfile.Commit();
     }
+    GarageGallery.Reset(Garage.SelectedVehicle());
+    SyncGarageShowroomPreview();
 }
 
 void ALatebrakeRaceGameMode::GarageNextVehicle()
 {
+    if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     // Keep E/SELECT consistent with the new Ctrl+number shortcuts.
     // Never swap a running car or change equipment on a different page.
@@ -2130,6 +2868,8 @@ void ALatebrakeRaceGameMode::GarageNextVehicle()
 
 void ALatebrakeRaceGameMode::GarageSelectVehicle(int32 VehicleId)
 {
+    if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     // The shortcut cannot operate while driving, on another page, or during
     // an active career race. Never interpret Ctrl+1..6 as purchase commands.
     const bool bGaragePage = Menu.Current() == latebrake::MenuPage::Garage;
@@ -2168,8 +2908,147 @@ void ALatebrakeRaceGameMode::GarageSelectVehicle(int32 VehicleId)
     }
 }
 
+bool ALatebrakeRaceGameMode::CanCustomizeGarage() const
+{
+    return Menu.IsOpen() &&
+        Menu.Current() == latebrake::MenuPage::Garage &&
+        !ManualPause.IsSuspended() && !AppFocusGuard.IsSuspended() &&
+        latebrake::CanEditGarageDuringRace(bCareerRace, Race) &&
+        !bFutureSaveSchema &&
+        latebrake::CanStyleGalleryVehicle(Garage, GarageGallery);
+}
+
+bool ALatebrakeRaceGameMode::BeginGarageAppearancePreview()
+{
+    if (!CanCustomizeGarage()) return false;
+    // Opening a free chooser must never keep earlier paid consent alive.
+    // This is a transient intent boundary, not a profile transaction.
+    if (GaragePurchaseConfirm.HasPending())
+    {
+        GaragePurchaseConfirm.Reset();
+        GarageFeedback = TEXT("Purchase preview cancelled. Choose an appearance for free.");
+    }
+    return true;
+}
+
+void ALatebrakeRaceGameMode::GarageCycleAppearance(
+    latebrake::GarageLookLayer layer, bool bReset,
+    const latebrake::GarageDirectAppearanceRequest* Direct)
+{
+    if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
+    GaragePurchaseConfirm.Reset(); // A cosmetic click cancels pending spend.
+    if (!Menu.IsOpen() || Menu.Current() != latebrake::MenuPage::Garage)
+    {
+        GarageFeedback = TEXT("Open the Garage menu to customize your car.");
+        return;
+    }
+    if (ManualPause.IsSuspended() || AppFocusGuard.IsSuspended())
+    {
+        GarageFeedback = TEXT("Customization suspended: resume the race first.");
+        return;
+    }
+    if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
+    {
+        GarageFeedback = TEXT("Finish or exit the career race before customizing.");
+        return;
+    }
+    if (bFutureSaveSchema)
+    {
+        GarageFeedback = TEXT("Newer saved profile: this version cannot edit its appearance.");
+        return;
+    }
+    // The edited car is ALWAYS the one the player can see. An owned
+    // parked car can be styled without swapping the race pawn or changing
+    // saved selection/physics. Locked previews are strictly read-only.
+    if (!latebrake::CanStyleGalleryVehicle(Garage, GarageGallery))
+    {
+        GarageFeedback = TEXT("LOCKED CAR: unlock this vehicle before styling.");
+        return;
+    }
+    const int32 Viewed = GarageGallery.Viewed();
+    const latebrake::GarageAppearanceState Before = GarageLooks;
+    if (Direct)
+    {
+        const auto Decision = latebrake::PreviewGarageDirectAppearance(
+            Viewed, GarageLooks.Get(Viewed), *Direct);
+        if (Decision.Status != latebrake::GarageDirectAppearanceStatus::Ready ||
+            Direct->Layer != layer || bReset)
+        {
+            GarageFeedback = Decision.Status == latebrake::GarageDirectAppearanceStatus::Unchanged
+                ? TEXT("LOOK ALREADY ACTIVE: no new save needed.")
+                : TEXT("Appearance choice expired or invalid. Open the chooser again.");
+            return;
+        }
+    }
+    const bool bChanged = Direct ? GarageLooks.Choose(Viewed, layer, Direct->Choice) :
+        bReset ? GarageLooks.ResetVehicle(Viewed) : GarageLooks.Cycle(Viewed, layer);
+    if (!bChanged)
+    {
+        GarageFeedback = bReset
+            ? TEXT("FACTORY LOOK ALREADY ACTIVE: no new save needed.")
+            : TEXT("Unknown appearance option; no change saved.");
+        return;
+    }
+    // Only the currently equipped car needs a live 3D Pawn update.
+    // The Canvas showroom reads GarageLooks for the viewed ID directly.
+    if (Viewed == Garage.SelectedVehicle())
+        ApplyGarageToPlayer();
+    SaveRecords();
+    if (bProgressSaveFailed)
+    {
+        GarageLooks = Before;
+        if (Viewed == Garage.SelectedVehicle())
+            ApplyGarageToPlayer();
+        SyncGarageShowroomPreview();
+        GarageFeedback = TEXT("Appearance NOT saved; previous car look restored.");
+        return;
+    }
+    SyncGarageShowroomPreview();
+    const latebrake::GarageLook Look = GarageLooks.Get(Viewed);
+    const int32 Choice = latebrake::GarageLookChoice(Look,layer);
+    if (bReset)
+    {
+        GarageFeedback = FString::Printf(
+            TEXT("FACTORY LOOK RESTORED AND SAVED: %s"),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Viewed).Name));
+    }
+    else
+    {
+        GarageFeedback = FString::Printf(TEXT("LOOK SAVED: %s / %s"),
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Viewed).Name),
+            UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(layer, Choice)));
+    }
+}
+
+void ALatebrakeRaceGameMode::GarageChooseAppearance(
+    latebrake::GarageDirectAppearanceRequest Request)
+{
+    // Reuse the shared ownership/paused/profile guards and one save rollback.
+    GarageCycleAppearance(Request.Layer, false, &Request);
+}
+
+void ALatebrakeRaceGameMode::GarageCyclePaint()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Paint);
+}
+void ALatebrakeRaceGameMode::GarageCycleStripe()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Stripe);
+}
+void ALatebrakeRaceGameMode::GarageCycleWheels()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Wheels);
+}
+void ALatebrakeRaceGameMode::GarageResetAppearance()
+{
+    GarageCycleAppearance(latebrake::GarageLookLayer::Paint, true);
+}
+
 void ALatebrakeRaceGameMode::GarageUnlockNext()
 {
+    if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2230,6 +3109,8 @@ void ALatebrakeRaceGameMode::GarageUnlockNext()
 
 void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 {
+    if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2289,6 +3170,8 @@ void ALatebrakeRaceGameMode::GarageUpgradeEngine()
 
 void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 {
+    if (RejectGarageMutationIfBlocked()) return;
+    DismissGaragePalette();
     if (!latebrake::CanEditGarageDuringRace(bCareerRace, Race))
     {
         GaragePurchaseConfirm.Reset();
@@ -2349,6 +3232,7 @@ void ALatebrakeRaceGameMode::GarageUpgradeGrip()
 void ALatebrakeRaceGameMode::RefreshRival()
 {
     const bool bNeedsRival = latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
+    if (!IsExperimentalFleetRequested()) DestroyExtraFleet();
     if (!bNeedsRival)
     {
         if (IsValid(RivalCar))
@@ -2389,7 +3273,8 @@ void ALatebrakeRaceGameMode::RefreshRival()
 
 void ALatebrakeRaceGameMode::RestartRace()
 {
-    GaragePurchaseConfirm.Reset(); // Race transitions invalidate pending spend approvals.
+    GaragePurchaseConfirm.Reset();
+    DismissGaragePalette(); // Race transitions invalidate pending spend approvals.
     if (bCareerRace && Race.IsFinished())
     {
         // After a career finish the garage is editable. A new attempt
@@ -2439,6 +3324,9 @@ void ALatebrakeRaceGameMode::RestartRace()
     // Restart invalidates sampled positions even if no pawn exists yet or
     // its physics recovery is not observed until the next actor tick.
     CheckpointSession.OnRaceRestart();
+    PracticeHistory.CancelAttempt();
+    PracticeGateHistory.CancelAttempt();
+    BeginExperimentalFleetAttempt();
     // Restarting from the mobile PAUSE screen must return to a live race.
     if (UGameplayStatics::IsGamePaused(this))
     {
@@ -2447,6 +3335,11 @@ void ALatebrakeRaceGameMode::RestartRace()
     AppFocusGuard.OnExplicitResume(); // An accepted restart is intentional gameplay.
     ManualPause.OnExplicitResume();
     Race.Reset();
+    ResetPlayerSectorMotion();
+    TrackLimits.Reset();
+    StewardTrackedPawn.Reset();
+    StewardTeleportRevision=0;
+    StewardCheckpointSessionRevision=0;
     // A saved PB may change at finish; Results needs the previous record.
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     StartLights.Reset();
@@ -2454,7 +3347,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     // Only a new, accepted race attempt latches the pending preset.
     // Career medals/challenges always use the existing Standard opponent.
     ActiveRivalDifficulty = latebrake::EffectiveRivalDifficulty(
-        QuickRaceDifficultySelection, bCareerRace ||
+        QuickRaceDifficultySelection, bCareerRace || IsPracticeRace() ||
             SelectedEvent == latebrake::EventKind::TimeAttack);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
@@ -2462,6 +3355,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
+    GhostSetup.Reset();
     GhostTrackedPawn.Reset();
     GhostTeleportRevision = 0;
     GhostSessionRevision = CheckpointSession.Current();
@@ -2473,6 +3367,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     ApplyGarageToPlayer();
     LastRaceCredits = 0;
     RecoveriesThisRace = 0;
+    RecoveryNotice.Reset();
     ALatebrakeCarPawn* Car = Cast<ALatebrakeCarPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
     if (IsValid(Car))
@@ -2483,6 +3378,13 @@ void ALatebrakeRaceGameMode::RestartRace()
         IsValid(Car) && Car->TryRecoverTo(GetStartPosition(), GetStartRotation());
     RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);
     VerifiedRestartPawn = bPlacedOnGrid ? Car : nullptr;
+    if (bPlacedOnGrid && IsPracticeRace())
+    {
+        const auto PracticeKey=ReadPracticeConfiguration(Car);
+        const auto PracticeActor=static_cast<std::uint64_t>(Car->GetUniqueID())+1u;
+        PracticeHistory.Begin(PracticeKey,PracticeActor);
+        PracticeGateHistory.Begin(PracticeKey,PracticeActor);
+    }
     if (!bPlacedOnGrid)
     {
         UE_LOG(LogTemp, Warning,
@@ -2513,37 +3415,71 @@ void ALatebrakeRaceGameMode::RecoverPlayer(ALatebrakeCarPawn* Car)
     // Only the possessed local player may request a paid race recovery.
     // A stale pawn or a rival is not allowed to charge the race clock.
     if (!IsValid(Car) || Car != UGameplayStatics::GetPlayerPawn(this, 0) ||
-        !StartLights.IsGreen())
+        !IsRaceStartGreen())
     {
         return; // No paid recovery or circuit jumps before GO.
     }
 
-    // An engine teleport can fail even after the race is eligible to
-    // recover. Stage the full penalty and recovery count first, attempt a
-    // verified placement, then commit the cost only if Unreal actually
-    // accepted the move and the resulting chassis pose matches the target.
-    // The pawn invalidates checkpoint sampling before the move attempt.
+    // Keep the same driver/clock authority as checkpoints. No recovery
+    // notice or candidate can authorize movement during a paused race.
     const bool bInactive = UGameplayStatics::IsGamePaused(this) || Menu.IsOpen() ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended();
-    const latebrake::CircuitPose Pose =
-        latebrake::PlayerRecovery(Race.GetNextCheckpoint());
-    const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
-    const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
-    if (!latebrake::TryChargePlayerRecoveryAfterVerifiedTeleport(
-            Race, RecoveriesThisRace, bCircuitReady, bInactive,
-            // Match the exact same driver authorization as race clock,
-            // checkpoints and rival readiness. Physical Chaos validity
-            // alone does not prove a failed RESTART reached the grid.
-            HasLocalPlayerDriver(),
-            [Car, Target, Facing]() { return Car->TryRecoverTo(Target, Facing); }))
+    const bool bDriverReady=HasLocalPlayerDriver();
+    if (!latebrake::CanScorePlayerCheckpoint(Race,bCircuitReady,bInactive,bDriverReady))
+        return;
+
+    // Time Attack is explicitly solo. A missing expected rival, an
+    // unexpected actor, or an invalid physical observation is not proof
+    // of empty traffic in the original single-rival circuit.
+    const bool bExpectsRival=latebrake::GetRaceEvent(SelectedEvent).SpawnRival;
+    const bool bObservedRival=IsValid(RivalCar);
+    latebrake::RecoveryObstacle Other{};
+    if (bObservedRival && RivalCar.Get()!=Car && RivalCar->IsRacePhysicsReady())
+    {
+        const FVector Position=RivalCar->GetActorLocation();
+        const FVector Velocity=RivalCar->GetVelocity();
+        Other={true,latebrake::PrimaryRivalGridSlot,
+            static_cast<std::uint64_t>(RivalCar->GetUniqueID())+1u,
+            {{Position.X,Position.Y},RivalCar->GetActorRotation().Yaw},
+            Velocity.X,Velocity.Y};
+    }
+    auto Clearance=latebrake::EvaluatePlayerRecoveryClearance(
+        Race.GetNextCheckpoint(),bExpectsRival,bObservedRival,Other);
+    if (IsExperimentalFleetRequested())
+    {
+        latebrake::FleetPhysicalFrame Fresh;
+        CollectFleetFrame(Fresh,0.0,false);
+        Clearance=latebrake::SelectFleetPlayerRecovery(Race.GetNextCheckpoint(),
+            Fresh,FleetAttempt.BoundIdentity(),
+            static_cast<std::uint64_t>(Car->GetUniqueID())+1u);
+    }
+    // TryPaidRecoveryWithClearance composes the existing staged
+    // TryChargePlayerRecoveryAfterVerifiedTeleport transaction with this
+    // preflight. It never calls the engine when the landing is blocked.
+    const auto Notice=latebrake::TryPaidRecoveryWithClearance(
+        Race,RecoveriesThisRace,bCircuitReady,bInactive,bDriverReady,Clearance,
+        [Car](latebrake::CircuitPose Pose) {
+            const FVector Target(Pose.Position.X, Pose.Position.Y, 180.0);
+            const FRotator Facing(0.0, Pose.HeadingDegrees, 0.0);
+            return Car->TryRecoverTo(Target, Facing);
+        });
+    RecoveryNotice.Record(Notice,Race.GetElapsedSeconds());
+    if (Notice!=latebrake::PlayerRecoveryNotice::VerifiedAndCharged)
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("Latebrake: recovery rejected; ineligible, penalty unavailable "
-                 "or Unreal did not verify the car's new position/heading; no fee charged"));
+            TEXT("Latebrake: recovery rejected (notice %d); no fee charged"),
+            static_cast<int32>(Notice));
         return;
     }
+#if !UE_BUILD_SHIPPING
+    if (IsExperimentalFleetRequested())
+        UE_LOG(LogTemp,Display,TEXT("LATEBRAKE_FLEET_AUDIT v=1 action=recovery attempt=%llu slot=0 id=%llu ordinal=%d verified=1"),
+            static_cast<unsigned long long>(FleetAttemptToken),
+            static_cast<unsigned long long>(FleetAttempt.BoundIdentity()[0]),RecoveriesThisRace);
+#endif
     // A real paid teleport cannot be mistaken for a grid launch. A rejected
     // recovery above returns without erasing an otherwise valid sample.
+    TrackLimits.Suspend();
     SuspendBestLapGhost();
     LaunchMeter.Invalidate();
 }
@@ -2563,6 +3499,39 @@ void ALatebrakeRaceGameMode::LoadRecords()
         Garage.Load({Save->TotalCredits, Save->OwnedVehicleMask,
                      Save->SelectedVehicleId, Save->EngineUpgradeLevel,
                      Save->GripUpgradeLevel});
+        GarageGallery.Reset(Garage.SelectedVehicle());
+        if (Save->GarageAppearanceSchemaVersion >
+            latebrake::GarageAppearanceState::SaveVersion)
+        {
+            // A future appearance format may contain unknown information.
+            // Do not write older saves over that newer person's choices.
+            bFutureSaveSchema = true;
+            bProgressSaveFailed = true;
+            UE_LOG(LogTemp, Warning,
+                TEXT("Latebrake: newer garage appearance schema - profile is read-only"));
+        }
+        else if (Save->GarageAppearanceSchemaVersion ==
+                 latebrake::GarageAppearanceState::SaveVersion)
+        {
+            latebrake::GarageAppearanceState::Packed packed{};
+            bool bValid = Save->GarageAppearanceBytes.Num() ==
+                static_cast<int32>(packed.size());
+            if (bValid)
+            {
+                for (int32 i = 0; i < static_cast<int32>(packed.size()); ++i)
+                    packed[static_cast<std::size_t>(i)] =
+                        Save->GarageAppearanceBytes[i];
+                bValid = Save->GarageAppearanceChecksum ==
+                    latebrake::GarageAppearanceState::Checksum(packed) &&
+                    GarageLooks.Load(packed.data(), packed.size());
+            }
+            if (!bValid)
+            {
+                GarageLooks.Reset();
+                UE_LOG(LogTemp, Warning,
+                    TEXT("Latebrake: garage appearance invalid; factory cosmetics restored"));
+            }
+        }
 
         if (Save->SaveSchemaVersion > latebrake::CareerSaveSchema)
         {
@@ -2598,6 +3567,35 @@ void ALatebrakeRaceGameMode::SaveRecords()
         UE_LOG(LogTemp, Warning, TEXT("Latebrake: refusing to overwrite future save schema"));
         return;
     }
+    // The profile may have changed since BeginPlay (for example, a newer
+    // build was opened separately). Never write an old schema over an
+    // on-disk profile we can no longer understand or even deserialize.
+    // This is a best-effort preflight, NOT an interprocess atomic lock:
+    // two concurrent game instances must still be avoided.
+    const bool bSlotPresent =
+        UGameplayStatics::DoesSaveGameExist(SaveSlot, SaveUser);
+    const ULatebrakePlayerSave* DiskProfile = bSlotPresent
+        ? Cast<ULatebrakePlayerSave>(
+            UGameplayStatics::LoadGameFromSlot(SaveSlot, SaveUser))
+        : nullptr;
+    const latebrake::ProfileSaveWriteState DiskState =
+        latebrake::AssessProfileSaveWrite(
+            bSlotPresent, DiskProfile != nullptr,
+            DiskProfile ? DiskProfile->SaveSchemaVersion : 0,
+            DiskProfile ? DiskProfile->GarageAppearanceSchemaVersion : 0);
+    if (!latebrake::CanWriteProfileSave(DiskState))
+    {
+        bProgressSaveFailed = true;
+        if (DiskState == latebrake::ProfileSaveWriteState::NewerCareer ||
+            DiskState == latebrake::ProfileSaveWriteState::NewerAppearance)
+        {
+            bFutureSaveSchema = true;
+        }
+        UE_LOG(LogTemp, Warning,
+            TEXT("Latebrake: refusing SaveGame overwrite of a newer, corrupt or unreadable on-disk profile (%d)"),
+            static_cast<int32>(DiskState));
+        return;
+    }
     ULatebrakePlayerSave* Save = Cast<ULatebrakePlayerSave>(
         UGameplayStatics::CreateSaveGameObject(ULatebrakePlayerSave::StaticClass()));
     if (!Save)
@@ -2618,6 +3616,18 @@ void ALatebrakeRaceGameMode::SaveRecords()
     Save->SelectedVehicleId = Profile.SelectedVehicle;
     Save->EngineUpgradeLevel = Profile.EngineLevel;
     Save->GripUpgradeLevel = Profile.GripLevel;
+    // Visual data is additional to the existing career schema: no car ID,
+    // economy, results or medal fields are repurposed.
+    const auto packedLooks = GarageLooks.Serialize();
+    Save->GarageAppearanceSchemaVersion =
+        latebrake::GarageAppearanceState::SaveVersion;
+    Save->GarageAppearanceBytes.SetNumUninitialized(
+        static_cast<int32>(packedLooks.size()));
+    for (int32 i = 0; i < static_cast<int32>(packedLooks.size()); ++i)
+        Save->GarageAppearanceBytes[i] =
+            packedLooks[static_cast<std::size_t>(i)];
+    Save->GarageAppearanceChecksum =
+        latebrake::GarageAppearanceState::Checksum(packedLooks);
     const latebrake::CareerSnapshot CareerData = Career.Snapshot();
     Save->SaveSchemaVersion = latebrake::CareerSaveSchema;
     Save->bSpeedInMilesPerHour = bMilesPerHour;

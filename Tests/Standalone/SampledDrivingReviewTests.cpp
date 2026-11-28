@@ -42,6 +42,11 @@ int main()
           Near(r.BrakingPercent, 50.0) &&
           Near(r.HighLateralSlipPercent, 30.0),
           "speed-integrated distance, brake time and high-slip sample ratios");
+    Check(r.SpeedDistribution.Valid && r.SpeedDistribution.TotalFrames==10 &&
+          Near(r.SpeedDistribution.AverageSpeedKmH,54.0) &&
+          Near(r.SpeedDistribution.Rows[1].Seconds,2.0) &&
+          Near(r.SpeedDistribution.Rows[1].BrakingSeconds,1.0),
+          "results carry actual speed-band exposure");
     stats.Suspend();
     Check(stats.Observe({0.2, 1000.0, 0.0, true}),
           "braking after interrupted sampling");

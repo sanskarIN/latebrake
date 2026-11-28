@@ -18,6 +18,7 @@ struct SampledDrivingReview final
     double PeakSpeedKmH = 0.0;
     double BrakingPercent = 0.0;
     double HighLateralSlipPercent = 0.0;
+    SampledSpeedDistribution SpeedDistribution{};
 };
 
 inline SampledDrivingReview BuildSampledDrivingReview(
@@ -48,6 +49,7 @@ inline SampledDrivingReview BuildSampledDrivingReview(
     result.PeakSpeedKmH = peak;
     result.BrakingPercent = 100.0 * braking / time;
     result.HighLateralSlipPercent = 100.0 * slipping / time;
+    result.SpeedDistribution = stats.GetSpeedDistribution();
     return result;
 }
 } // namespace latebrake

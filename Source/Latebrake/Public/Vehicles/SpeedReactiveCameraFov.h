@@ -19,7 +19,7 @@ public:
     bool HasActiveSample() const noexcept { return Active; }
 
     double Sample(double baseFovDegrees, double forwardSpeedKmH,
-                  double frameSeconds, bool eligible, bool lookingBack) noexcept
+                  double frameSeconds, bool eligible, bool lookingBack,double strength=1.0) noexcept
     {
         // Camera presets are validated independently. Do not return a NaN
         // to Unreal even if a future/malformed caller violates that contract.
@@ -29,7 +29,7 @@ public:
             Reset();
             return 90.0;
         }
-        if (!eligible || lookingBack ||
+        if (!eligible || lookingBack || !std::isfinite(strength) || strength<=0.0 || strength>1.0 ||
             !std::isfinite(forwardSpeedKmH) || forwardSpeedKmH < 0.0 ||
             forwardSpeedKmH > 300.0 ||
             !std::isfinite(frameSeconds) || frameSeconds <= 0.0 ||
@@ -43,7 +43,7 @@ public:
         // Start widening at road speeds and saturate by racing speed.
         const double fraction = std::clamp(
             (forwardSpeedKmH - 40.0) / 150.0, 0.0, 1.0);
-        const double extra = std::min(6.0, 105.0 - baseFovDegrees);
+        const double extra = std::min(6.0*strength, 105.0 - baseFovDegrees);
         const double target = baseFovDegrees + fraction * extra;
 
         if (!Active)

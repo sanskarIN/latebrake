@@ -31,6 +31,7 @@ class QuickRaceModePickerBindingTests(unittest.TestCase):
         self.assertIn("NextQuickRaceMenuChoice(", cycle)
         self.assertIn("QuickRaceDifficultySelection = Next.Difficulty;", cycle)
         self.assertIn("bQuickRaceSoloTimeAttackSelection = Next.SoloTimeAttack;", cycle)
+        self.assertIn("QuickPracticeSelection = Next.Practice;", cycle)
         self.assertLess(cycle.index("return;"),
                         cycle.index("const int32 Original = CareerMenuSelection;"))
 
@@ -49,6 +50,33 @@ class QuickRaceModePickerBindingTests(unittest.TestCase):
         self.assertIn("QuickRaceDifficultySelection, bCareerRace ||", self.mode)
         self.assertIn("SelectedEvent == latebrake::EventKind::TimeAttack", self.mode)
         self.assertIn("GetQuickRaceSoloTimeAttackSelection() const", self.mode_header)
+
+    def test_practice_is_latched_and_nonpersistent(self):
+        activate = self.mode.split("void ALatebrakeRaceGameMode::MenuActivate()", 1)[1].split(
+            "void ALatebrakeRaceGameMode::SelectRaceEvent(", 1)[0]
+        self.assertIn("StartQuickPractice(QuickPracticeSelection)", activate)
+        self.assertIn("IsPracticeRace() || SelectedEvent != ChosenEvent", activate)
+        launch = self.mode.split("bool ALatebrakeRaceGameMode::StartQuickPractice(", 1)[1].split(
+            "FString ALatebrakeRaceGameMode::GetCareerEventName()", 1)[0]
+        self.assertLess(launch.index("if (!Definition.Valid"), launch.index("ActivePractice = Preset"))
+        self.assertLess(launch.index("ActivePractice = Preset"), launch.index("RestartRace();"))
+        self.assertIn("Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);", launch)
+        self.assertIn("RefreshRival();", launch)
+        self.assertNotIn("SaveRecords(", launch)
+        finish = self.mode.split("const latebrake::FinishTimingEligibility FinishTiming", 1)[1]
+        practice = finish.split("if (IsPracticeRace())", 1)[1].split("// Read the live rival", 1)[0]
+        for phrase in ("LastRaceCredits = 0;", "LastCareerAward = {};", "return;"):
+            self.assertIn(phrase, practice)
+        self.assertNotIn("SaveRecords(", practice)
+        self.assertLess(finish.index("if (IsPracticeRace())"),
+                        finish.index("latebrake::ProfileWriteCheckpoint SavedProfile"))
+        self.assertIn("bCareerRace || IsPracticeRace() ||", self.mode)
+        self.assertIn("if (IsPracticeRace() || IsExperimentalFleetRequested()) return 0.f;", self.mode)
+        self.assertEqual(self.mode.count("ActivePractice = latebrake::QuickPracticePreset::None;"), 2)
+        fleet = read("Source/Latebrake/Private/Game/LatebrakeFleetRuntime.cpp")
+        self.assertIn("!bCareerRace && !IsPracticeRace()", fleet)
+        self.assertIn("PRACTICE COMPLETE | NO SAVED REWARDS", self.hud)
+        self.assertIn("GetActivePractice()", self.hud)
 
     def test_quick_race_menu_explains_event_and_browse(self):
         page = self.hud.split("case latebrake::MenuPage::QuickRace:", 1)[1].split(

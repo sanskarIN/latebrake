@@ -4,6 +4,8 @@
 #include "Garage/GaragePurchasePlanner.h"
 
 #include <array>
+#include <cstdint>
+#include <limits>
 
 namespace latebrake
 {
@@ -102,4 +104,37 @@ inline GarageCatalogView BuildGarageCatalogView(GarageSnapshot persisted) noexce
     }
     return view;
 }
+
+// Single shared HUD cache for the comparison, vehicle cards and textual
+// catalogue. It never stores a purchase authorization or appearance state.
+class GarageCatalogCache final
+{
+public:
+    const GarageCatalogView& Read(GarageSnapshot saved) noexcept
+    {
+        GarageState garage;
+        garage.Load(saved);
+        const auto current=garage.Snapshot();
+        if(!Initialized || current.Credits!=Key.Credits ||
+            current.OwnedVehicleMask!=Key.OwnedVehicleMask ||
+            current.SelectedVehicle!=Key.SelectedVehicle ||
+            current.EngineLevel!=Key.EngineLevel || current.GripLevel!=Key.GripLevel)
+        {
+            Key=current;
+            Cached=BuildGarageCatalogView(current);
+            Initialized=true;
+            if(Rebuilds!=std::numeric_limits<std::uint64_t>::max())++Rebuilds;
+        }
+        return Cached;
+    }
+
+    std::uint64_t RebuildCount() const noexcept {return Rebuilds;}
+    void Reset() noexcept {Initialized=false;Key={};Cached={};Rebuilds=0;}
+
+private:
+    bool Initialized=false;
+    GarageSnapshot Key{};
+    GarageCatalogView Cached{};
+    std::uint64_t Rebuilds=0;
+};
 } // namespace latebrake

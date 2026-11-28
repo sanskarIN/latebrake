@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 
 namespace latebrake
 {
@@ -14,6 +16,7 @@ namespace latebrake
 inline constexpr CircuitPoint RacePitBay{0.0, -1300.0};
 inline constexpr double RacePitBayRadiusCm = 250.0;
 inline constexpr double RacePitServiceHoldSeconds = 2.5;
+inline constexpr int RacePitStopLimit=1000;
 
 struct PitServiceObservation final
 {
@@ -58,7 +61,8 @@ enum class PitServiceGuidance
     SettleChassis,
     HoldButton,
     Servicing,
-    Completed
+    Completed,
+    StopLimitReached
 };
 
 inline PitServiceGuidance DiagnosePitService(
@@ -96,6 +100,38 @@ inline PitServiceGuidance DiagnosePitService(
     return PitServiceGuidance::Servicing;
 }
 
+struct PitServiceFrameStamp final
+{
+    std::uint64_t EngineFrame=0;
+    std::uint64_t SessionRevision=0;
+    std::uint64_t TeleportRevision=0;
+    std::uint64_t ControllerToken=0;
+
+    bool Valid() const noexcept {return EngineFrame!=0 && ControllerToken!=0;}
+
+    bool FreshAfter(const PitServiceFrameStamp& previous) const noexcept
+    {
+        return Valid() && previous.Valid() && EngineFrame>previous.EngineFrame &&
+            SessionRevision>=previous.SessionRevision && TeleportRevision>=previous.TeleportRevision;
+    }
+
+    bool ContinuousAfter(const PitServiceFrameStamp& previous) const noexcept
+    {
+        return FreshAfter(previous) && EngineFrame-previous.EngineFrame==1 &&
+            SessionRevision==previous.SessionRevision && TeleportRevision==previous.TeleportRevision &&
+            ControllerToken==previous.ControllerToken;
+    }
+};
+
+struct PitServiceFrameReview final
+{
+    std::uint64_t AcceptedFrames=0;
+    std::uint64_t RefusedFrames=0;
+    std::uint64_t Discontinuities=0;
+    std::uint64_t InterruptedHolds=0;
+    double LongestInterruptedHoldSeconds=0.0;
+};
+
 // A single service is earned by a CONTINUOUS 2.5s valid, nearly stationary
 // hold inside the bay. Exiting the bay is required to arm another stop.
 // This policy changes no score, physics, saved garage, timer, or checkpoint.
@@ -105,6 +141,8 @@ public:
     void Reset() noexcept
     {
         HeldSeconds = 0.0;
+        LastFrame={};
+        FrameReview={};
         Stops = 0;
         Armed = true;
         InBay = false;
@@ -112,10 +150,32 @@ public:
     }
     void Suspend() noexcept
     {
-        HeldSeconds = 0.0;
+        ClearHold();
         InBay = false;
         LastGuidance = PitServiceGuidance::Unavailable;
     }
+    // Production callers must submit one actual local player physics
+    // frame. A duplicate or rollback cannot spend hold time or rearm a
+    // completed stop. Explicit Suspend leaves the high-water stamp intact.
+    bool Observe(PitServiceObservation sample,const PitServiceFrameStamp& stamp) noexcept
+    {
+        if(!stamp.Valid() || (LastFrame.Valid() && !stamp.FreshAfter(LastFrame)))
+        {
+            Increment(FrameReview.RefusedFrames);
+            Suspend();
+            return false;
+        }
+        if(LastFrame.Valid() && !stamp.ContinuousAfter(LastFrame))
+        {
+            Increment(FrameReview.Discontinuities);
+            Suspend();
+        }
+        LastFrame=stamp;
+        Increment(FrameReview.AcceptedFrames);
+        return Observe(sample);
+    }
+
+    // Portable state-machine observation; native pawn uses stamped overload.
     bool Observe(PitServiceObservation sample) noexcept
     {
         LastGuidance = DiagnosePitService(sample, Armed);
@@ -133,10 +193,17 @@ public:
             return false;
         }
         InBay = IsInRacePitBay(sample.X, sample.Y);
+        if(Stops>=RacePitStopLimit)
+        {
+            ClearHold();
+            Armed=false;
+            LastGuidance=PitServiceGuidance::StopLimitReached;
+            return false;
+        }
         if (!InBay)
         {
             Armed = true;
-            HeldSeconds = 0.0;
+            ClearHold();
             return false;
         }
         if (!Armed || !sample.ButtonHeld || sample.NitroHeld ||
@@ -144,7 +211,7 @@ public:
             sample.PlanarSpeedCmPerSecond > 120.0 ||
             std::abs(sample.RequestedThrottle) > 0.05)
         {
-            HeldSeconds = 0.0;
+            ClearHold();
             return false;
         }
         HeldSeconds = std::min(
@@ -156,7 +223,7 @@ public:
         HeldSeconds = 0.0;
         Armed = false;
         LastGuidance = PitServiceGuidance::Completed;
-        if (Stops < 1000) ++Stops;
+        ++Stops;
         return true;
     }
     bool IsInBay() const noexcept { return InBay; }
@@ -166,9 +233,28 @@ public:
         return HeldSeconds / RacePitServiceHoldSeconds;
     }
     int StopCount() const noexcept { return Stops; }
+    PitServiceFrameReview ReviewFrames() const noexcept {return FrameReview;}
     PitServiceGuidance Guidance() const noexcept { return LastGuidance; }
 
 private:
+    static void Increment(std::uint64_t& counter) noexcept
+    {
+        if(counter!=std::numeric_limits<std::uint64_t>::max()) ++counter;
+    }
+
+    void ClearHold() noexcept
+    {
+        if(HeldSeconds>0.0)
+        {
+            Increment(FrameReview.InterruptedHolds);
+            FrameReview.LongestInterruptedHoldSeconds=std::max(
+                FrameReview.LongestInterruptedHoldSeconds,HeldSeconds);
+        }
+        HeldSeconds=0.0;
+    }
+
+    PitServiceFrameStamp LastFrame{};
+    PitServiceFrameReview FrameReview{};
     double HeldSeconds = 0.0;
     int Stops = 0;
     bool Armed = true;

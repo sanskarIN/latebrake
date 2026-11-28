@@ -39,22 +39,49 @@ int main()
     Require(!chosen.SoloTimeAttack &&
             chosen.Difficulty == RivalDifficultyPreset::Rookie,
             "browse solo -> Rookie");
+    const QuickPracticePreset practicePresets[] = {
+        QuickPracticePreset::SoloThree, QuickPracticePreset::SoloFive,
+        QuickPracticePreset::RivalFive, QuickPracticePreset::RivalTen
+    };
+    const int practiceLaps[] = {3, 5, 5, 10};
+    for (int index = 0; index < 4; ++index)
+    {
+        chosen = NextQuickRaceMenuChoice(chosen);
+        const auto def = GetQuickPracticeDefinition(chosen.Practice);
+        Require(chosen.Practice == practicePresets[index] && def.Valid &&
+                def.CheckpointCount == 4 && def.RequiredLaps == practiceLaps[index] &&
+                def.SpawnRival == (index >= 2) &&
+                QuickRaceMenuEvent(chosen) == def.Event &&
+                QuickRaceRivalDifficulty(chosen) == RivalDifficultyPreset::Standard,
+                "practice choices select physical race shapes and Standard AI");
+    }
     chosen = NextQuickRaceMenuChoice(chosen);
     Require(chosen.Difficulty == selected.Difficulty &&
             !chosen.SoloTimeAttack &&
             GetRaceEvent(QuickRaceMenuEvent(chosen)).RequiredLaps == 3 &&
             GetRaceEvent(QuickRaceMenuEvent(chosen)).SpawnRival,
-            "browse all four choices returns to original Standard circuit");
+            "browse all eight choices returns to original Standard circuit");
     for (int i = 0; i < 10000; ++i)
     {
         chosen = NextQuickRaceMenuChoice(chosen);
         Require(IsValidQuickRaceMenuChoice(chosen),
                 "cycling never leaves finite valid menu state");
         const auto event = GetRaceEvent(QuickRaceMenuEvent(chosen));
-        Require(event.CheckpointCount == 4 &&
-                event.RequiredLaps == (chosen.SoloTimeAttack ? 1 : 3) &&
-                event.SpawnRival != chosen.SoloTimeAttack,
-                "each selection agrees with real race catalog");
+        if (IsQuickPractice(chosen.Practice))
+        {
+            const auto def = GetQuickPracticeDefinition(chosen.Practice);
+            Require(def.Valid && def.CheckpointCount == event.CheckpointCount &&
+                    def.SpawnRival == event.SpawnRival &&
+                    def.RequiredLaps >= 3 && def.RequiredLaps <= 10,
+                    "practice uses the existing physical route, not fabricated events");
+        }
+        else
+        {
+            Require(event.CheckpointCount == 4 &&
+                    event.RequiredLaps == (chosen.SoloTimeAttack ? 1 : 3) &&
+                    event.SpawnRival != chosen.SoloTimeAttack,
+                    "each normal selection agrees with real race catalog");
+        }
     }
 
     const QuickRaceMenuChoice invalid{
@@ -78,5 +105,22 @@ int main()
     const QuickRaceMenuChoice preserved{RivalDifficultyPreset::Expert, false};
     Require(QuickRaceRivalDifficulty(preserved) == RivalDifficultyPreset::Expert,
             "regular Circuit Quick Race retains selected Expert tier");
-    std::cout << "Quick Race four-way event picker passed.\n";
+    const auto invalidPreset = static_cast<QuickPracticePreset>(99);
+    Require(!IsQuickPractice(invalidPreset) &&
+            !IsQuickPractice(QuickPracticePreset::None) &&
+            !GetQuickPracticeDefinition(invalidPreset).Valid,
+            "invalid practice has no authorized configuration");
+    Require(!IsValidQuickRaceMenuChoice({RivalDifficultyPreset::Expert, false,
+                QuickPracticePreset::SoloThree}) &&
+            !IsValidQuickRaceMenuChoice({RivalDifficultyPreset::Standard, true,
+                QuickPracticePreset::RivalTen}) &&
+            !IsValidQuickRaceMenuChoice({RivalDifficultyPreset::Standard, false,
+                invalidPreset}),
+            "reject ambiguous or unknown practice choices");
+    const auto fallback = NextQuickRaceMenuChoice(
+        {RivalDifficultyPreset::Standard, false, invalidPreset});
+    Require(fallback.Practice == QuickPracticePreset::None &&
+            fallback.Difficulty == RivalDifficultyPreset::Standard &&
+            !fallback.SoloTimeAttack, "invalid preset resets to normal race");
+    std::cout << "Quick Race eight-way event picker passed.\n";
 }

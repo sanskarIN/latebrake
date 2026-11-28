@@ -43,7 +43,7 @@ class UnrealRivalStraightPassBindingTests(unittest.TestCase):
             "YieldRivalToPlayer(SafePassCommand, {",
             "FollowingBrakeHold.Apply(",
             "TrafficCommand.Brake && !SafePassCommand.Brake",
-            "ModerateRivalYawRate(FollowingCommand, {",
+            "ModerateRivalYawRate(FleetCommand, {",
             "SpinThrottleGuard.Apply(SafeTrafficCommand, {",
             "SetAutonomousControls(static_cast<float>(SafeSpinCommand.Throttle)",
         ):

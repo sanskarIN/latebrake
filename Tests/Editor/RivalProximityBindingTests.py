@@ -46,8 +46,9 @@ class RivalProximityBindingTests(unittest.TestCase):
         self.assertIn("bWayfindingEligible && bRivalRace", self.hud)
         self.assertIn('TEXT("RIVAL CLOSE | %.0fm DIRECT")', self.hud)
         self.assertLess(self.hud.index("RivalProximityHint.Update("),
-                        self.hud.index("if (!bCompact && Canvas->SizeX >= 1120)"))
-        self.assertIn("if (Radar.Rival.Valid)", self.hud)
+                        self.hud.index("BuildHudRadarPresentation("))
+        self.assertIn("RadarLayout,Radar,Clusters,bExperimentalFleet,bPitReady", self.hud)
+        self.assertIn("if (RadarLayout.Valid)", self.hud)
 
     def test_resets_on_menu_pawn_epoch_recovery_and_ineligible_frames(self):
         self.assertGreaterEqual(self.hud.count("RivalProximityHint.Reset();"), 4)

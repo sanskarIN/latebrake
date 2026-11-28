@@ -40,6 +40,15 @@ enum class FleetRiskKind
     Touching
 };
 
+// The legacy strict policy remains the default for research callers.
+enum class FleetForecastRoadPolicy
+{
+    StrictAllBodies,
+    ObservedOffroadBlockers
+};
+inline constexpr double FleetDegradedThrottleCeiling=0.25;
+inline constexpr double FleetDegradedMaximumSpeedCmS=900.0;
+
 struct FleetSweptContact final
 {
     bool Intersects = false;
@@ -54,11 +63,14 @@ struct FleetRiskReport final
     double ForwardGapCm = 0.0;
     double ClosingSpeedCmS = 0.0;
     double ThrottleCeiling = 0.0;
+    // Distinguish a degraded road context from an actual opponent hazard.
+    int OffroadBlockers=0;
+    bool RoadSpeedExceeded=false;
 
     bool Qualified() const noexcept { return Kind != FleetRiskKind::Unqualified; }
     bool Emergency() const noexcept
     {
-        return Kind == FleetRiskKind::Touching ||
+        return RoadSpeedExceeded || Kind == FleetRiskKind::Touching ||
                Kind == FleetRiskKind::SweptContact ||
                Kind == FleetRiskKind::StoppingDistance;
     }
@@ -113,53 +125,71 @@ inline bool FleetBodyInsideAuthoredAsphalt(CircuitPose pose) noexcept
     return FleetBodyCoveredByAsphaltUnion(body);
 }
 
-// All six actor tokens must be unique, the slot inventory exact, and all
-// observed padded chassis must be inside original asphalt and clear walls.
-// This intentionally does NOT assume the sorted order of Unreal's TArray.
-// A missing fifth rival is NOT an empty drivable road.
-inline bool ValidateSixCarFleet(
-    const RivalFleetTrafficSample& sample,
-    std::array<std::uint64_t, StartGridCapacity>& roster) noexcept
+// A known off-pavement actor is still a real moving obstacle. Only the
+// opt-in runtime may use degraded road context; identity and physics
+// checks are unchanged and the controlled car must be on authored road.
+struct FleetRoadContext final
 {
-    roster.fill(0);
-    if (!sample.SessionQualified ||
-        sample.BlockerCount != MaxRecoveryObstacles ||
-        !ValidFleetPhysicalObservation(sample.Self) ||
-        sample.Self.Slot == HumanGridSlot ||
-        !FleetBodyInsideAuthoredAsphalt(sample.Self.Pose))
-    {
-        return false;
-    }
+    bool Valid=false;
+    int OffroadBlockers=0;
+    std::array<std::uint64_t,StartGridCapacity> Roster{};
+};
 
-    roster[static_cast<std::size_t>(sample.Self.Slot)] =
-        sample.Self.ActorToken;
-    for (int i = 0; i < MaxRecoveryObstacles; ++i)
+inline bool FleetBodyInsideAuthoredGround(CircuitPose pose) noexcept
+{
+    if(!IsValidStartGridPose(pose))return false;
+    const auto ground=PlannedCollisionBlock(0);
+    if(ground.Style!=CollisionBlockStyle::Ground || !IsValidCollisionBlock(ground))
+        return false;
+    const auto body=MakeStartGridRect(pose);
+    return std::abs(body.X-ground.Center.X)+StartGridProjectionRadius(body,1.0,0.0)
+                <=ground.ScaleX*50.0 &&
+        std::abs(body.Y-ground.Center.Y)+StartGridProjectionRadius(body,0.0,1.0)
+                <=ground.ScaleY*50.0;
+}
+
+inline FleetRoadContext InspectFleetRoadContext(const RivalFleetTrafficSample& sample,
+    FleetForecastRoadPolicy policy) noexcept
+{
+    FleetRoadContext result;
+    if((policy!=FleetForecastRoadPolicy::StrictAllBodies &&
+         policy!=FleetForecastRoadPolicy::ObservedOffroadBlockers) ||
+        !sample.SessionQualified || sample.BlockerCount!=MaxRecoveryObstacles ||
+        !ValidFleetPhysicalObservation(sample.Self) ||
+        sample.Self.Slot==HumanGridSlot ||
+        !FleetBodyInsideAuthoredAsphalt(sample.Self.Pose))
+        return {};
+    result.Roster[static_cast<std::size_t>(sample.Self.Slot)]=sample.Self.ActorToken;
+    for(int i=0;i<MaxRecoveryObstacles;++i)
     {
-        const RecoveryObstacle& other =
-            sample.Blockers[static_cast<std::size_t>(i)];
-        if (!ValidFleetPhysicalObservation(other) ||
-            !FleetBodyInsideAuthoredAsphalt(other.Pose) ||
-            other.Slot == sample.Self.Slot ||
-            roster[static_cast<std::size_t>(other.Slot)] != 0)
+        const auto& other=sample.Blockers[static_cast<std::size_t>(i)];
+        if(!ValidFleetPhysicalObservation(other) || other.Slot==sample.Self.Slot ||
+            result.Roster[static_cast<std::size_t>(other.Slot)]!=0)
+            return {};
+        for(auto token:result.Roster)
+            if(token==other.ActorToken)return {};
+        if(!FleetBodyInsideAuthoredAsphalt(other.Pose))
         {
-            return false;
+            if(policy!=FleetForecastRoadPolicy::ObservedOffroadBlockers ||
+                !FleetBodyInsideAuthoredGround(other.Pose))
+                return {};
+            ++result.OffroadBlockers;
         }
-        for (int prior = 0; prior < i; ++prior)
-        {
-            if (other.ActorToken ==
-                sample.Blockers[static_cast<std::size_t>(prior)].ActorToken)
-            {
-                return false;
-            }
-        }
-        if (other.ActorToken == sample.Self.ActorToken)
-        {
-            return false;
-        }
-        roster[static_cast<std::size_t>(other.Slot)] = other.ActorToken;
+        result.Roster[static_cast<std::size_t>(other.Slot)]=other.ActorToken;
     }
-    return std::all_of(roster.begin(), roster.end(),
-                       [](std::uint64_t id) { return id != 0; });
+    result.Valid=std::all_of(result.Roster.begin(),result.Roster.end(),
+        [](std::uint64_t token){return token!=0;});
+    return result.Valid?result:FleetRoadContext{};
+}
+
+// Preserve the strict public validator. No research caller can silently
+// inherit the experimental runtime's bounded degraded-road behavior.
+inline bool ValidateSixCarFleet(const RivalFleetTrafficSample& sample,
+    std::array<std::uint64_t,StartGridCapacity>& roster) noexcept
+{
+    const auto context=InspectFleetRoadContext(sample,FleetForecastRoadPolicy::StrictAllBodies);
+    roster=context.Roster;
+    return context.Valid;
 }
 
 // Continuous OBB-v-OBB separating-axis collision window with constant
@@ -176,53 +206,11 @@ inline FleetSweptContact ForecastFleetContact(
     {
         return {true, 0.0}; // malformed input can never mean a clear road
     }
-    const StartGridRect a = MakeStartGridRect(self.Pose);
-    const StartGridRect b = MakeStartGridRect(other.Pose);
-    const double dx = b.X - a.X;
-    const double dy = b.Y - a.Y;
-    const double vx = other.VelocityX - self.VelocityX;
-    const double vy = other.VelocityY - self.VelocityY;
-    double start = 0.0;
-    double end = FleetForecastHorizonSeconds;
-
-    const std::array<CircuitPoint, 4> axes{{
-        {a.ForwardX, a.ForwardY},
-        {a.RightX, a.RightY},
-        {b.ForwardX, b.ForwardY},
-        {b.RightX, b.RightY}
-    }};
-    for (const CircuitPoint axis : axes)
-    {
-        const double separation = dx * axis.X + dy * axis.Y;
-        const double relativeSpeed = vx * axis.X + vy * axis.Y;
-        const double radius =
-            StartGridProjectionRadius(a, axis.X, axis.Y) +
-            StartGridProjectionRadius(b, axis.X, axis.Y) +
-            FleetForecastContactPaddingCm;
-        if (!std::isfinite(separation) ||
-            !std::isfinite(relativeSpeed) ||
-            !std::isfinite(radius))
-        {
-            return {true, 0.0};
-        }
-        if (std::abs(relativeSpeed) < 1.0e-9)
-        {
-            if (std::abs(separation) > radius)
-            {
-                return {};
-            }
-            continue;
-        }
-        const double enter = (-radius - separation) / relativeSpeed;
-        const double leave = (radius - separation) / relativeSpeed;
-        start = std::max(start, std::min(enter, leave));
-        end = std::min(end, std::max(enter, leave));
-        if (start > end)
-        {
-            return {};
-        }
-    }
-    return {true, start};
+    const auto sweep=SweepPlanarFootprints({self.Pose,other.Pose,
+        other.VelocityX-self.VelocityX,other.VelocityY-self.VelocityY,
+        FleetForecastHorizonSeconds,FleetForecastContactPaddingCm});
+    if(!sweep.Valid)return {true,0.0};
+    return sweep.Intersects?FleetSweptContact{true,sweep.EntrySeconds}:FleetSweptContact{};
 }
 
 inline int FleetRiskPriority(FleetRiskKind kind) noexcept
@@ -243,10 +231,11 @@ inline int FleetRiskPriority(FleetRiskKind kind) noexcept
 // second, then stable slot number. A low-severity first car must never
 // hide a more dangerous fifth car later in the observation array.
 inline FleetRiskReport ForecastSixCarRisk(
-    const RivalFleetTrafficSample& sample) noexcept
+    const RivalFleetTrafficSample& sample,
+    FleetForecastRoadPolicy policy=FleetForecastRoadPolicy::StrictAllBodies) noexcept
 {
-    std::array<std::uint64_t, StartGridCapacity> roster{};
-    if (!ValidateSixCarFleet(sample, roster) ||
+    const auto context=InspectFleetRoadContext(sample,policy);
+    if (!context.Valid ||
         !sample.BrakeObservationQualified ||
         !std::isfinite(sample.ConservativeBrakeScale) ||
         sample.ConservativeBrakeScale < 0.15 ||
@@ -259,6 +248,7 @@ inline FleetRiskReport ForecastSixCarRisk(
     FleetRiskReport result;
     result.Kind = FleetRiskKind::Clear;
     result.ThrottleCeiling = 1.0;
+    result.OffroadBlockers=context.OffroadBlockers;
 
     constexpr double RadPerDegree = std::numbers::pi / 180.0;
     const double heading = std::remainder(
@@ -382,6 +372,16 @@ inline FleetRiskReport ForecastSixCarRisk(
             result.ClosingSpeedCmS = closing;
             result.ThrottleCeiling = ceiling;
         }
+    }
+    // Every physical opponent was evaluated above, including each
+    // observed off-road body. Do not label an isolated road-context speed
+    // reduction as a made-up collision or fake limiting opponent.
+    if(context.OffroadBlockers>0)
+    {
+        result.ThrottleCeiling=std::min(result.ThrottleCeiling,FleetDegradedThrottleCeiling);
+        result.RoadSpeedExceeded=std::hypot(sample.Self.VelocityX,sample.Self.VelocityY)>
+            FleetDegradedMaximumSpeedCmS;
+        if(result.RoadSpeedExceeded)result.ThrottleCeiling=0.0;
     }
     return result;
 }

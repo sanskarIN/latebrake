@@ -37,18 +37,45 @@ class RecoveryTeleportBindingTests(unittest.TestCase):
             "void ALatebrakeRaceGameMode::RecoverPlayer(",
             "void ALatebrakeRaceGameMode::LoadRecords(",
         )
-        self.assertIn("TryChargePlayerRecoveryAfterVerifiedTeleport(", recovery)
+        self.assertIn("TryPaidRecoveryWithClearance(", recovery)
         self.assertIn("Car->TryRecoverTo(Target, Facing)", recovery)
         self.assertIn("ManualPause.IsSuspended()", recovery)
         self.assertIn("AppFocusGuard.IsSuspended()", recovery)
         # Physical chassis readiness alone does not prove the player
         # reached the start grid after a failed race RESTART.
         self.assertIn("HasLocalPlayerDriver()", recovery)
-        self.assertNotIn("Car->IsRacePhysicsReady()", recovery)
+        self.assertNotRegex(recovery, r"(?<![A-Za-z0-9_])Car->IsRacePhysicsReady\(\)")
+        self.assertIn("const bool bDriverReady=HasLocalPlayerDriver();", recovery)
+        self.assertIn("Race,RecoveriesThisRace,bCircuitReady,bInactive,bDriverReady,Clearance,", recovery)
         self.assertLess(recovery.index("HasLocalPlayerDriver()"),
                         recovery.index("Car->TryRecoverTo(Target, Facing)"))
         self.assertNotIn("Car->RecoverTo(", recovery)
         self.assertNotIn("TryChargePlayerRecoveryIfReady(", recovery)
+
+    def test_live_clearance_precedes_actual_paid_move_and_hud_feedback(self):
+        recovery = body(self.mode, "void ALatebrakeRaceGameMode::RecoverPlayer(",
+                        "void ALatebrakeRaceGameMode::LoadRecords(")
+        markers = ("HasLocalPlayerDriver()", "GetRaceEvent(SelectedEvent).SpawnRival",
+                   "RivalCar->IsRacePhysicsReady()", "RivalCar->GetVelocity()",
+                   "EvaluatePlayerRecoveryClearance(", "TryPaidRecoveryWithClearance(",
+                   "Car->TryRecoverTo(Target, Facing)", "RecoveryNotice.Record(")
+        positions = [recovery.index(marker) for marker in markers]
+        self.assertEqual(positions, sorted(positions))
+        clearance = (ROOT / "Source/Latebrake/Public/Racing/PlayerRecoveryClearance.h").read_text(
+            encoding="utf-8")
+        self.assertIn("expectsRival!=observedRival", clearance)
+        self.assertIn("EvaluateRivalRecoveryClearance(pose,observed,1)", clearance)
+        self.assertIn("clearance.Gate!=race.GetNextCheckpoint()", clearance)
+        self.assertIn("clearance.Pose.Position.X!=expected.Position.X", clearance)
+        self.assertIn("clearance.Pose.HeadingDegrees!=expected.HeadingDegrees", clearance)
+        self.assertLess(clearance.index("if (!clearance.Safe())"),
+                        clearance.index("TryChargePlayerRecoveryAfterVerifiedTeleport("))
+        hud = (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp").read_text(
+            encoding="utf-8")
+        self.assertIn("Mode->GetRecoveryNotice()", hud)
+        self.assertIn("RECOVER BLOCKED: RIVAL AT LANDING | NO FEE", hud)
+        self.assertIn("RECOVER VERIFIED | +5s INCLUDED IN TIME", hud)
+        self.assertIn("RecoveryNotice.Reset();", self.mode)
 
     def test_regression_omitting_restart_driver_gate_is_observable(self):
         recovery = body(

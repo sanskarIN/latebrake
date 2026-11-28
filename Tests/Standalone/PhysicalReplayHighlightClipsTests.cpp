@@ -176,6 +176,68 @@ int main()
             lastOnly.Clips[0].SourceEvent==
                 ReplayBroadcastEventKind::StrongMeasuredBraking,
             "bounded playlist retains recent footage without heap growth");
+    // A later, higher priority event must supply its own displayed timestamp,
+    // while the earlier event remains in the cinematic interval.
+    replay.Reset();
+    events.Reset();
+    for(std::uint64_t id=1u;id<=60u;++id)
+    {
+        auto frame=Frame(id,static_cast<double>(id)*0.05);
+        frame.Cars[1].WorldXcm=id==1u ? 1350.0 : id==2u ? 1030.0 : 970.0;
+        frame.Cars[2].VelocityXcmps=10000.0;
+        frame.Cars[2].BrakeNormalized=0.0;
+        Require(replay.Record(frame).Accepted && events.Observe(frame).Valid,
+                "continuous source supports highlight promotion");
+    }
+    auto promoted=AssemblePhysicalReplayHighlights(replay,events);
+    Require(promoted.Valid && promoted.Count==1u,
+            "same pair observations merge into one bounded clip");
+    const auto& clip=promoted.Clips[0];
+    Require(clip.SourceEvent==ReplayBroadcastEventKind::ApparentPositionSwap &&
+            clip.SecondaryActor==501u && clip.EventsIncluded==2u &&
+            Near(clip.FirstEventClockSeconds,0.10) &&
+            Near(clip.RepresentativeEventClockSeconds,0.15) &&
+            clip.RepresentativeSourceFrame==3u,
+            "promotion retains the exact event clock and source frame");
+
+    ReplayBroadcastEvent event;
+    Require(events.TryReadEvent(0u,event) &&
+            ReplayHighlightHasSourceFrame(replay,event),
+            "matching event is bound to its exact retained source");
+    auto forged=event;
+    ++forged.SourceRevision;
+    Require(!ReplayHighlightHasSourceFrame(replay,forged),
+            "same attempt with another continuity revision rejected");
+    forged=event;
+    ++forged.SourceFrame;
+    Require(!ReplayHighlightHasSourceFrame(replay,forged),
+            "another retained frame cannot supply the event clock");
+    forged=event;
+    forged.ActiveClockSeconds+=0.001;
+    Require(!ReplayHighlightHasSourceFrame(replay,forged),
+            "interpolated timestamp is not exact event evidence");
+    forged=event;
+    forged.SecondaryActor=99999u;
+    Require(!ReplayHighlightHasSourceFrame(replay,forged),
+            "unknown secondary actor cannot qualify");
+    forged=event;
+    forged.SecondaryActor=forged.PrimaryActor;
+    Require(!ReplayHighlightHasSourceFrame(replay,forged),
+            "same actor cannot supply both pair witnesses");
+
+    // Identical session/frame/clock ranges are insufficient after an epoch change.
+    replay.Reset();
+    for(std::uint64_t id=1u;id<=60u;++id)
+    {
+        auto frame=Frame(id,static_cast<double>(id)*0.05);
+        ++frame.SessionRevision;
+        for(auto& car:frame.Cars) car.SessionRevision=frame.SessionRevision;
+        Require(replay.Record(frame).Accepted,"new revision source captured");
+    }
+    auto stale=AssemblePhysicalReplayHighlights(replay,events);
+    Require(stale.Valid && stale.Count==0u &&
+            stale.DiscardedEvents==stale.ConsideredEvents,
+            "stale continuity events cannot attach to a new replay segment");
     policy={};
     events.Reset();
     auto empty=AssemblePhysicalReplayHighlights(
