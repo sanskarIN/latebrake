@@ -2650,6 +2650,9 @@ add_latebrake_portable_research_test(CareerRoadmap)
 add_latebrake_portable_research_test(CareerMenuSelection)
 add_latebrake_portable_research_test(CareerCatalogue)
 add_latebrake_portable_research_test(WholeRaceLapHistory)
+add_latebrake_portable_research_test(PracticeSessionHistory)
+target_sources(latebrake_research_PracticeSessionHistory PRIVATE
+    ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 target_sources(latebrake_research_WholeRaceLapHistory PRIVATE
     ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
 add_latebrake_portable_research_test(CameraMotionPreference)

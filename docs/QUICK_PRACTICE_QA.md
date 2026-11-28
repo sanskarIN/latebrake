@@ -42,3 +42,7 @@ require a native playtest.
 ## Whole-run practice timing
 
 Ten-lap practice results distinguish the full attempt from the retained eight-lap detail window. Whole-attempt mean, deviation, fastest/slowest lap identities, fee-free totals and streaks are computed from authoritative ordered lap completions using bounded constant-memory statistics. No extrapolation or extra persistent record is created. Invalid or missing active-clock evidence suppresses the full-run summary. Verify the first two laps remain included in the ten-lap aggregate even after they leave the recent window.
+
+## Session-only practice comparisons
+
+Completed practice attempts can be compared against earlier attempts using exactly the same practice preset, car ID, engine/grip levels and handling mode. Records exist only in the current GameMode instance; no SaveGame changes are made. Mid-attempt tuning, handling or player-pawn changes permanently disqualify that attempt's comparison, even when the original configuration is restored. A valid ordered timed finish is still required. Verify repeat attempts with matching and different configurations, returning to a previously used configuration, changing handling during a run, and leaving/re-entering the level. Results must clearly distinguish session bests from saved personal bests.

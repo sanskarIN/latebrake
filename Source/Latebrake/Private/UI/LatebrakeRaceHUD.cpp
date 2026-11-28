@@ -1330,6 +1330,37 @@ void ALatebrakeRaceHUD::DrawHUD()
             else if (Mode->IsPracticeRace())
             {
                 MenuLine(TEXT("PRACTICE COMPLETE | NO SAVED REWARDS OR RECORDS"), true);
+                const auto Comparison=Mode->GetPracticeComparison();
+                using ComparisonStatus=latebrake::PracticeComparisonStatus;
+                switch (Comparison.Status)
+                {
+                case ComparisonStatus::ConfigurationChanged:
+                    MenuLine(TEXT("SESSION COMPARISON UNAVAILABLE: CAR/TUNING/HANDLING CHANGED"));break;
+                case ComparisonStatus::First:
+                    MenuLine(TEXT("FIRST COMPARABLE SESSION ATTEMPT"),true);break;
+                case ComparisonStatus::Improved:
+                    MenuLine(FString::Printf(TEXT("SESSION BEST IMPROVED BY %.3fs"),
+                        -Comparison.DeltaToPreviousBestSeconds),true);break;
+                case ComparisonStatus::Matched:
+                    MenuLine(TEXT("MATCHED SESSION BEST"));break;
+                case ComparisonStatus::Slower:
+                    MenuLine(FString::Printf(TEXT("SESSION BEST GAP +%.3fs"),
+                        Comparison.DeltaToPreviousBestSeconds));break;
+                default:break;
+                }
+                if (Comparison.Record.FinishedAttempts>0)
+                {
+                    MenuLine(FString::Printf(TEXT("SESSION ONLY | %u COMPARABLE FINISHES | BEST %.2fs"),
+                        Comparison.Record.FinishedAttempts,Comparison.Record.BestFinishSeconds));
+                    MenuLine(FString::Printf(TEXT("%s E%d/G%d | %s | SESSION BEST LAP %.2fs"),
+                        UTF8_TO_TCHAR(latebrake::GarageState::Definition(Comparison.Configuration.Tuning.Selected).Name),
+                        Comparison.Configuration.Tuning.Engine,Comparison.Configuration.Tuning.Grip,
+                        Comparison.Configuration.Handling==0?TEXT("ARCADE"):TEXT("SIM-INSPIRED"),
+                        Comparison.Record.BestLapSeconds));
+                    if (Comparison.PreviousFinishSeconds>0.0 && !bCompact)
+                        MenuLine(FString::Printf(TEXT("VS PREVIOUS COMPARABLE FINISH: %+.3fs"),
+                            Comparison.DeltaToPreviousFinishSeconds));
+                }
             }
             else
             {

@@ -3625,12 +3625,20 @@ void ALatebrakeCarPawn::ToggleCircuitLighting()
 
 void ALatebrakeCarPawn::SelectArcade()
 {
+    if (HandlingMode==ELatebrakeHandlingMode::Arcade) return;
     HandlingMode = ELatebrakeHandlingMode::Arcade;
+    if (auto* World=GetWorld())
+        if (auto* Mode=World->GetAuthGameMode<ALatebrakeRaceGameMode>())
+            Mode->NotifyPracticeHandlingChange(this);
 }
 
 void ALatebrakeCarPawn::SelectSimulation()
 {
+    if (HandlingMode==ELatebrakeHandlingMode::SimulationInspired) return;
     HandlingMode = ELatebrakeHandlingMode::SimulationInspired;
+    if (auto* World=GetWorld())
+        if (auto* Mode=World->GetAuthGameMode<ALatebrakeRaceGameMode>())
+            Mode->NotifyPracticeHandlingChange(this);
 }
 
 void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

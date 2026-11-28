@@ -241,6 +241,9 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     // No off-pavement sample survives a replaced driver, recovery,
     // pause/menu epoch, or actual clock refusal. The same real driver
     // that supplies ghost observations supplies the projected wheel pose.
+    if (IsPracticeRace() && !Race.IsFinished() && bActualClockAdvanced)
+        PracticeHistory.ObserveConfiguration(ReadPracticeConfiguration(GhostDriver),
+            IsValid(GhostDriver)?static_cast<std::uint64_t>(GhostDriver->GetUniqueID())+1u:0u);
     const bool bStewardDriverValid=IsValid(GhostDriver) &&
         GhostDriver->IsRacePhysicsReady() && bLocalPlayerReady;
     const bool bStewardContinuous=bStewardDriverValid &&
@@ -1512,6 +1515,9 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
     // participate in any profile transaction or competitive observation.
     if (IsPracticeRace())
     {
+        const auto* PracticeDriver=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        PracticeHistory.Finish(ReadPracticeConfiguration(PracticeDriver),
+            IsValid(PracticeDriver)?static_cast<std::uint64_t>(PracticeDriver->GetUniqueID())+1u:0u,Race);
         LastRaceCredits = 0;
         LastCareerAward = {};
         LastRivalFinishObservation = {};
@@ -1987,6 +1993,27 @@ bool ALatebrakeRaceGameMode::StartQuickPractice(latebrake::QuickPracticePreset P
     return true;
 }
 
+latebrake::PracticeConfiguration ALatebrakeRaceGameMode::ReadPracticeConfiguration(
+    const ALatebrakeCarPawn* Car) const
+{
+    if (!IsPracticeRace() || !IsValid(Car) || !Car->IsRacePhysicsReady() ||
+        LastTunedPawn.Get()!=Car || Car->GetSelectedVehicleId()!=Garage.SelectedVehicle())
+        return {};
+    const auto Key=latebrake::MakeGarageTuningKey(Garage.Snapshot());
+    if (!(Key==LastAppliedTuning)) return {};
+    const auto Handling=Car->GetHandlingMode();
+    const int HandlingId=Handling==ELatebrakeHandlingMode::Arcade?0:
+        Handling==ELatebrakeHandlingMode::SimulationInspired?1:-1;
+    return {ActivePractice,Key,HandlingId};
+}
+
+void ALatebrakeRaceGameMode::NotifyPracticeHandlingChange(const ALatebrakeCarPawn* Car)
+{
+    if (IsPracticeRace() && !Race.IsFinished() && IsValid(Car) &&
+        Car==UGameplayStatics::GetPlayerPawn(this,0))
+        PracticeHistory.InvalidateConfiguration();
+}
+
 FString ALatebrakeRaceGameMode::GetCareerEventName() const
 {
     const int32 Id = (Menu.IsOpen() || !bCareerRace)
@@ -2429,6 +2456,8 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     const latebrake::GarageTuningKey Requested = latebrake::MakeGarageTuningKey(Garage.Snapshot());
     if (LastTunedPawn.Get() != Car || !(Requested == LastAppliedTuning))
     {
+        if (IsPracticeRace() && !Race.IsFinished())
+            PracticeHistory.InvalidateConfiguration();
         // Cosmetic changes must NEVER alter physics multiplier authority;
         // only actual garage tuning/selection changes call SetGarageTuning.
         const latebrake::VehiclePerformance Performance = Garage.Performance();
@@ -3057,6 +3086,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     // Restart invalidates sampled positions even if no pawn exists yet or
     // its physics recovery is not observed until the next actor tick.
     CheckpointSession.OnRaceRestart();
+    PracticeHistory.CancelAttempt();
     BeginExperimentalFleetAttempt();
     // Restarting from the mobile PAUSE screen must return to a live race.
     if (UGameplayStatics::IsGamePaused(this))
@@ -3108,6 +3138,9 @@ void ALatebrakeRaceGameMode::RestartRace()
         IsValid(Car) && Car->TryRecoverTo(GetStartPosition(), GetStartRotation());
     RestartPlacement.OnRestartPlacementResult(bPlacedOnGrid);
     VerifiedRestartPawn = bPlacedOnGrid ? Car : nullptr;
+    if (bPlacedOnGrid && IsPracticeRace())
+        PracticeHistory.Begin(ReadPracticeConfiguration(Car),
+            static_cast<std::uint64_t>(Car->GetUniqueID())+1u);
     if (!bPlacedOnGrid)
     {
         UE_LOG(LogTemp, Warning,
