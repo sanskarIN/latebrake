@@ -1713,6 +1713,9 @@ void ALatebrakeRaceHUD::DrawHUD()
                             {
                                 MenuLine(FString::Printf(TEXT("  Queue %.1fs | traffic hold %.1fs | no drive %.1fs"),
                                     H.QueueSeconds,H.TrafficHoldSeconds,H.NoDriveSeconds));
+                                if (H.HeadwayQualifiedSeconds>0.0)
+                                    MenuLine(FString::Printf(TEXT("  Headway limit %.1fs / %.1fs sampled | release %.1fs"),
+                                        H.HeadwayRestrictionSeconds,H.HeadwayQualifiedSeconds,H.HeadwayReleaseSeconds));
                                 const auto Context=H.NoDriveContexts.Dominant();
                                 if (Context!=latebrake::FleetNoDriveContext::None)
                                     MenuLine(FString::Printf(TEXT("  Main sampled no-drive context: %s"),
@@ -3522,9 +3525,10 @@ void ALatebrakeRaceHUD::DrawHUD()
                         FleetReview.StraightUnavailable),Accent);
             }
             if (!bCompact && FleetReview.Decisions.Valid && FleetReview.Decisions.CurrentRivals>0)
-                Line(FString::Printf(TEXT("AI REQUESTS %d/5 | BRAKE %d | HOLD %d | PASS %d"),
+                Line(FString::Printf(TEXT("AI %d/5 | BRAKE %d | HOLD %d | PASS %d | GAP %d"),
                     FleetReview.Decisions.CurrentRivals,FleetReview.Decisions.CurrentBraking,
-                    FleetReview.Decisions.CurrentTrafficHold,FleetReview.Decisions.CurrentPassing),Primary);
+                    FleetReview.Decisions.CurrentTrafficHold,FleetReview.Decisions.CurrentPassing,
+                    FleetReview.Decisions.CurrentHeadwayRestricted),Primary);
             const auto& Traffic=FleetReview.Traffic;
             if (Traffic.Valid && Traffic.StrongestSlot>=1 &&
                 Traffic.StrongestSlot<latebrake::StartGridCapacity)
