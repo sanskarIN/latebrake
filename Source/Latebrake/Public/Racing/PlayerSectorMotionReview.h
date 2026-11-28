@@ -346,7 +346,11 @@ public:
         const auto endpoint=MeasureSectorMotionEndpoint(frame);
         if(!endpoint.Valid || frame.ElapsedSeconds<BoundaryElapsed ||
             frame.PenaltySeconds<BoundaryPenalty ||
-            SectorMotionActiveClock(frame)+SectorMotionClockTolerance<BoundaryActive())
+            SectorMotionActiveClock(frame)+SectorMotionClockTolerance<BoundaryActive() ||
+            (Previous.EngineFrame && (frame.ElapsedSeconds<Previous.ElapsedSeconds ||
+                frame.PenaltySeconds<Previous.PenaltySeconds ||
+                SectorMotionActiveClock(frame)+SectorMotionClockTolerance<
+                    SectorMotionActiveClock(Previous))))
         {
             ++Current.Rejected;
             Cut(SectorMotionBreak::InvalidSample);
@@ -398,7 +402,12 @@ public:
         row.ValidTiming=std::isfinite(row.OfficialSeconds) && row.OfficialSeconds>0.0 &&
             row.ActiveSeconds>0.0 && std::abs(row.OfficialSeconds-row.FeeSeconds-
                 row.ActiveSeconds)<=SectorMotionClockTolerance &&
-            (!HavePrevious || Previous.ElapsedSeconds<=receipt.ElapsedSeconds) &&
+            // A continuity cut does not erase the timestamp of the last accepted
+            // sample. Future motion must not qualify an earlier checkpoint.
+            (!Previous.EngineFrame || (Previous.ElapsedSeconds<=receipt.ElapsedSeconds &&
+                Previous.PenaltySeconds<=receipt.PenaltySeconds &&
+                SectorMotionActiveClock(Previous)<=receipt.ElapsedSeconds-
+                    receipt.PenaltySeconds+SectorMotionClockTolerance)) &&
             Current.ObservedSeconds<=row.ActiveSeconds+SectorMotionClockTolerance;
         if(row.ValidTiming)
         {
@@ -492,7 +501,9 @@ public:
             !ValidSectorMotionClock(elapsed,penalty) ||
             elapsed<BoundaryElapsed || penalty<BoundaryPenalty ||
             elapsed-penalty+SectorMotionClockTolerance<BoundaryActive() ||
-            finished!=(Accepted==TotalGates()))
+            finished!=(Accepted==TotalGates()) ||
+            (finished && (std::abs(elapsed-BoundaryElapsed)>SectorMotionClockTolerance ||
+                std::abs(penalty-BoundaryPenalty)>SectorMotionClockTolerance)))
             return out;
         out.Valid=true;
         out.Finished=finished;
