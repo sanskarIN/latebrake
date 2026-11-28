@@ -619,13 +619,16 @@ void ALatebrakeRaceHUD::DrawHUD()
                     P.X,P.Y,P.Width,P.Height);
                 DrawRect(Gold,P.X,P.Y,P.Width,3.f*UIScale);
                 const auto& Close = Palette.Close.Bounds;
-                const latebrake::DesktopMenuMouseRect Header{
-                    P.X,Close.Y,Close.X-P.X,Close.Height};
+                const auto& Header=Palette.NextLayer.Bounds;
                 const FString HeaderText = GaragePalette.Layer == latebrake::GarageLookLayer::Paint
                     ? TEXT("CHOOSE PAINT") : GaragePalette.Layer == latebrake::GarageLookLayer::Stripe
                     ? TEXT("CHOOSE STRIPES") : GaragePalette.Layer == latebrake::GarageLookLayer::Preset
                     ? TEXT("CHOOSE FULL LOOK") : TEXT("CHOOSE RIMS");
-                DrawButtonCaption(HeaderText,FString(TEXT("CHOOSE")),Header,Gold,0.78f*UIScale,0.0);
+                DrawRect(FLinearColor(0.14f,0.20f,0.29f,0.98f),
+                    Header.X,Header.Y,Header.Width,Header.Height);
+                PresentedGaragePalette.NextLayerVisible=DrawButtonCaption(
+                    HeaderText+TEXT(" >"),FString(TEXT("NEXT STYLE >")),
+                    Header,Gold,0.78f*UIScale,0.0);
                 DrawRect(FLinearColor(0.14f,0.20f,0.29f,0.98f),Close.X,Close.Y,Close.Width,Close.Height);
                 PresentedGaragePalette.CloseVisible =
                     DrawButtonCaption(FString(TEXT("CLOSE")),FString(TEXT("X")),Close,White,0.76f*UIScale,0.0);
