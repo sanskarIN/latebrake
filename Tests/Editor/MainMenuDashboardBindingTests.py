@@ -50,10 +50,24 @@ class MainMenuDashboardBindingTests(unittest.TestCase):
         block = block.split("bool ALatebrakeRaceGameMode::NavigateMainMenuDashboard", 1)[0]
         for marker in (
             "Controller->IsLocalController()", "Controller->GetPawn()==Player",
-            "HasLocalPlayerDriver()", "Menu.IsOpen()", "Menu.Current()",
+            "Menu.IsOpen()", "Menu.Current()",
             "AppFocusGuard.IsSuspended()", "SettingsSelection.Revision()",
         ):
             self.assertIn(marker, block)
+
+    def test_browse_and_activate_share_focus_without_requiring_race_physics(self):
+        start = self.mode.index("void ALatebrakeRaceGameMode::CycleCareerEvent()")
+        end = self.mode.index("Menu.Current()==latebrake::MenuPage::Settings", start)
+        block = self.mode[start:end]
+        self.assertIn("MainMenuFocus=latebrake::AdvanceMainMenuFocus(Snapshot.Focused,1)", block)
+        self.assertIn("SettingsSelection.Changed()", block)
+        self.assertIn("NavigateMainMenuDashboard(latebrake::MainMenuFocusDestination(Snapshot.Focused),Snapshot)",
+                      self.mode)
+        self.assertIn("Snapshot.Focused==static_cast<int>(I)", self.renderer)
+        self.assertIn("SELECT: OPEN %s", self.hud)
+        snapshot = self.mode.split("ALatebrakeRaceGameMode::GetMainMenuDashboardSnapshot()", 1)[1].split(
+            "bool ALatebrakeRaceGameMode::NavigateMainMenuDashboard", 1)[0]
+        self.assertNotIn("HasLocalPlayerDriver()", snapshot)
 
     def test_measure_every_title_before_publishing_hit_targets(self):
         self.assertIn("GetTextSize(Text,W,H,Font,Scale)", self.renderer)
