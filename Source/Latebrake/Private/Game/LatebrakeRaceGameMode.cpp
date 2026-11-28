@@ -1894,6 +1894,31 @@ void ALatebrakeRaceGameMode::CycleHudTelemetryMode()
     SettingsSelection.Changed();
 }
 
+latebrake::QuickRaceChoiceSnapshot ALatebrakeRaceGameMode::GetQuickRaceChoiceSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player;
+    return {Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
+        bFutureSaveSchema,bExperimentalFleetFlag,
+        latebrake::QuickRaceChoiceIndex({QuickRaceDifficultySelection,
+            bQuickRaceSoloTimeAttackSelection,QuickPracticeSelection}),
+        SettingsSelection.Revision(),QuickChoiceRevision};
+}
+
+bool ALatebrakeRaceGameMode::SelectQuickRaceChoice(int32 Index)
+{
+    const auto Snapshot=GetQuickRaceChoiceSnapshot();
+    const auto Next=latebrake::QuickRaceChoiceAt(Index);
+    if(!Snapshot.CanSelect() || !latebrake::IsValidQuickRaceMenuChoice(Next))return false;
+    QuickRaceDifficultySelection=Next.Difficulty;
+    bQuickRaceSoloTimeAttackSelection=Next.SoloTimeAttack;
+    QuickPracticeSelection=Next.Practice;
+    BumpQuickChoiceRevision();
+    return true; // Deliberate SELECT still starts the race separately.
+}
+
 void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
@@ -1921,6 +1946,7 @@ void ALatebrakeRaceGameMode::MenuActivate()
     if (Page == latebrake::MenuPage::Main)
     {
         Menu.Open(latebrake::MenuPage::QuickRace);
+        BumpQuickChoiceRevision();
     }
     else if (Page == latebrake::MenuPage::QuickRace)
     {
@@ -2060,6 +2086,7 @@ void ALatebrakeRaceGameMode::CycleCareerEvent()
         QuickRaceDifficultySelection = Next.Difficulty;
         bQuickRaceSoloTimeAttackSelection = Next.SoloTimeAttack;
         QuickPracticeSelection = Next.Practice;
+        BumpQuickChoiceRevision();
         return;
     }
     const int32 Original = CareerMenuSelection;

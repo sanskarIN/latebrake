@@ -17,6 +17,7 @@
 #include "UI/FleetReplayPanel.h"
 #include "UI/SectorMotionResultsPanel.h"
 #include "UI/SettingsMenuPanel.h"
+#include "UI/QuickRaceChoicePanel.h"
 #include "UI/HudDriveCommandPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
@@ -35,6 +36,7 @@ public:
     bool TryHandleFleetReplayPointer(double X,double Y);
     bool TryHandleSectorMotionPointer(double X,double Y);
     bool TryHandleSettingsPointer(double X,double Y);
+    bool TryHandleQuickRaceChoicePointer(double X,double Y);
     bool ToggleGaragePalette(latebrake::GarageLookLayer Layer);
     bool AdvanceGaragePaletteLayer();
     bool HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput Input);
@@ -50,6 +52,10 @@ private:
         latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);
     latebrake::SettingsPanelPresentation PresentedSettings{};
+    latebrake::QuickRaceChoicePresentation PresentedQuickRace{};
+    void DrawQuickRaceChoicePanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
     void DrawFleetReplayPanel(const ALatebrakeRaceGameMode* Mode,
         latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);

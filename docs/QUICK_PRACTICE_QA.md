@@ -50,3 +50,7 @@ Completed practice attempts can be compared against earlier attempts using exact
 ## Session reference at each ordered gate
 
 A complete practice with positive active time in every sector can become a session-local reference for the same preset, vehicle, engine/grip levels and handling. Each cumulative gate and sector is compared against a single prior completed attempt, with charged fee deltas separate from active-clock differences. The reference changes only on a faster complete comparable run. Missing or zero-active-time sectors, inconsistent gate order and configuration changes suppress exact-gate comparisons without changing the legitimate race result. Verify the live HUD, full results rows, resets, fee attribution and different configurations. No comparison writes to the saved profile.
+
+## Direct desktop mode chooser
+
+When the desktop menu has sufficient room, Quick Race shows eight mode cards below the existing navigation dock. A card chooses a pending preset only; a separate SELECT starts the race. Each card discloses lap count, requested local rivals and whether a finish can update saved records or remains session-only. The experimental fleet flag and read-only profile are reflected in normal mode cards. Stale, resized, unrendered or focus-suspended cards cannot select. Compact and touch layouts retain Browse/Select. Verify all cards, navigation, hover, narrow-window fallback and intentional launch separately in native gameplay.

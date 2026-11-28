@@ -315,6 +315,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     PresentedSector={};
     PresentedSectorRevision=0;
     PresentedSettings={};
+    PresentedQuickRace={};
     DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
@@ -983,6 +984,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("BROWSE/N or gamepad Right: ROOKIE / STANDARD / EXPERT / SOLO TIME ATTACK."));
             MenuLine(TEXT("More choices: SOLO PRACTICE 3/5 LAPS | RIVAL PRACTICE 5/10 LAPS."));
             MenuLine(TEXT("Select starts choice. Career uses STANDARD; choices not saved."));
+            MenuLine(TEXT("DESKTOP: CLICK A MODE CARD TO SELECT, THEN SELECT TO START."));
             break;
         case latebrake::MenuPage::Career:
             MenuLine(FString::Printf(TEXT("Event: %s"), *Mode->GetCareerEventName()));
@@ -2491,6 +2493,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
 
         DrawSettingsPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
+        DrawQuickRaceChoicePanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawFleetReplayPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawSectorMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
 

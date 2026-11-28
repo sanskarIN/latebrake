@@ -44,6 +44,7 @@
 #include "Career/CareerProgress.h"
 #include "UI/MenuNavigation.h"
 #include "UI/SettingsMenuSelection.h"
+#include "UI/QuickRaceChoicePanel.h"
 #include "LatebrakeRaceGameMode.generated.h"
 
 class AController;
@@ -76,6 +77,8 @@ public:
     void RestartRace();
     void SelectRaceEvent(latebrake::EventKind Kind);
     bool StartQuickPractice(latebrake::QuickPracticePreset Preset);
+    latebrake::QuickRaceChoiceSnapshot GetQuickRaceChoiceSnapshot() const;
+    bool SelectQuickRaceChoice(int32 Index);
     bool IsPracticeRace() const { return latebrake::IsQuickPractice(ActivePractice); }
     latebrake::QuickPracticePreset GetActivePractice() const { return ActivePractice; }
     latebrake::QuickPracticePreset GetQuickPracticeSelection() const { return QuickPracticeSelection; }
@@ -325,6 +328,8 @@ private:
     latebrake::CareerProgress Career;
     latebrake::MenuNavigation Menu;
     latebrake::SettingsMenuSelection SettingsSelection;
+    std::uint64_t QuickChoiceRevision=1;
+    void BumpQuickChoiceRevision() noexcept {if(++QuickChoiceRevision==0)++QuickChoiceRevision;}
     bool bMilesPerHour = false;
     // Session-only display preference, never saved with progression.
     latebrake::HudTelemetryMode HudTelemetryMode=latebrake::HudTelemetryMode::Balanced;
