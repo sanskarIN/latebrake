@@ -1015,8 +1015,18 @@ void ALatebrakeRaceHUD::DrawHUD()
         switch (Mode->GetMenuPage())
         {
         case latebrake::MenuPage::Main:
-            MenuLine(TEXT("Offline racing. Select to open Quick Race."));
+        {
+            const auto Focus=Mode->GetMainMenuDashboardSnapshot();
+            const auto Destination=latebrake::MainMenuFocusDestination(Focus.Focused);
+            if(latebrake::ValidMainMenuDestination(Destination))
+                MenuLine(FString::Printf(TEXT("SELECT: OPEN %s"),
+                    UTF8_TO_TCHAR(latebrake::MenuPageNames[static_cast<std::size_t>(Destination)])),true);
+            MenuLine(bTouchHUD?TEXT("BROWSE: NEXT SECTION | SELECT: OPEN"):
+                TEXT("N / PAD RIGHT: NEXT SECTION | ENTER: OPEN"));
+            if(!Focus.AllowsNavigation())MenuLine(TEXT("SECTION INPUT UNAVAILABLE"),true);
+            MenuLine(TEXT("PAGE UP/DOWN: CYCLE MENU PAGES"));
             break;
+        }
         case latebrake::MenuPage::QuickRace:
             if (const auto Practice = latebrake::GetQuickPracticeDefinition(Mode->GetQuickPracticeSelection()); Practice.Valid)
             {
