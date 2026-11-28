@@ -52,6 +52,7 @@
 #include "UI/MenuNavigation.h"
 #include "UI/MainMenuDashboard.h"
 #include "UI/CareerEventCards.h"
+#include "UI/GarageVehicleCards.h"
 #include "UI/SettingsMenuSelection.h"
 #include "UI/QuickRaceChoicePanel.h"
 #include "LatebrakeRaceGameMode.generated.h"
@@ -268,6 +269,8 @@ public:
     {
         return GarageLooks.Get(GarageGallery.Viewed());
     }
+    latebrake::GarageVehicleCardsSnapshot GetGarageVehicleCardsSnapshot() const;
+    bool BrowseGarageVehicleCard(int32 Id,const latebrake::GarageVehicleCardsSnapshot& Expected);
     bool CanBrowseGarage() const;
     latebrake::GarageEquipUiState GetGarageEquipUiState() const;
     bool CanEquipGarageViewed() const;
