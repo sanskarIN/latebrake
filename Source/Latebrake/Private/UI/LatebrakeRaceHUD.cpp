@@ -309,6 +309,7 @@ void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
     PresentedMainMenu={};
+    PresentedCareerCards={};
     PresentedGarageOffers = {};
     PresentedGaragePalette = {};
     PresentedReplay={};
@@ -885,6 +886,17 @@ void ALatebrakeRaceHUD::DrawHUD()
                 {
                     DrawnMenuRows+=OverviewLayout.ReservedRows;
                     Y=static_cast<float>(OverviewLayout.NextDetailY);
+                }
+            }
+            if (latebrake::IsCareerMenuPage(Mode->GetMenuPage()))
+            {
+                const auto Cards=latebrake::CalculateCareerEventCardsLayout(
+                    Canvas->SizeX,Canvas->SizeY,Layout,MenuPlan,ReadablePanel,
+                    SafeTextWidth,Y,DrawnMenuRows,bTouchHUD,Mode->GetMenuPage());
+                if (DrawCareerEventCards(Mode,Cards))
+                {
+                    DrawnMenuRows+=Cards.ReservedRows;
+                    Y=static_cast<float>(Cards.NextDetailY);
                 }
             }
         }
