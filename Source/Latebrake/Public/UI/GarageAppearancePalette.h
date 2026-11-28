@@ -27,7 +27,8 @@ constexpr int GaragePaletteChoiceIndex(DesktopMenuMouseAction action) noexcept
 constexpr bool IsGaragePaletteAction(DesktopMenuMouseAction action) noexcept
 {
     return GaragePaletteChoiceIndex(action)>=0 ||
-        action==DesktopMenuMouseAction::GaragePaletteClose;
+        action==DesktopMenuMouseAction::GaragePaletteClose ||
+        action==DesktopMenuMouseAction::GaragePaletteNextLayer;
 }
 constexpr bool IsGaragePaletteTab(DesktopMenuMouseAction action) noexcept
 {
@@ -84,6 +85,7 @@ struct GaragePaletteLayout final
     bool Valid = false;
     DesktopMenuMouseRect Panel{};
     DesktopMenuMouseButton Close{};
+    DesktopMenuMouseButton NextLayer{};
     std::array<DesktopMenuMouseButton,GaragePaletteMaxChoices> Choices{};
     int Count = 0;
 };
@@ -123,6 +125,9 @@ inline GaragePaletteLayout CalculateGaragePaletteLayout(
     result.Panel={x,y,panelW,panelH};
     result.Close={DesktopMenuMouseAction::GaragePaletteClose,
         {x+panelW-pad-60.0,y+pad,60.0,rowH}};
+    result.NextLayer={DesktopMenuMouseAction::GaragePaletteNextLayer,
+        {x+pad,y+pad,panelW-2*pad-60.0-gap,rowH}};
+    if(result.NextLayer.Bounds.Width<44.0)return {};
     result.Count=count;
     for(int i=0;i<count;++i)
         result.Choices[static_cast<std::size_t>(i)]={GaragePaletteChoiceAction(i),
@@ -164,14 +169,18 @@ inline bool ValidGaragePaletteLayout(const GaragePaletteLayout& layout) noexcept
         p.X<0.0||p.Y<0.0||p.Width<44.0||p.Height<44.0||
         p.X+p.Width<=p.X||p.Y+p.Height<=p.Y||
         layout.Close.Action!=DesktopMenuMouseAction::GaragePaletteClose||
-        !ValidGaragePaletteRect(layout.Close.Bounds,p))
+        !ValidGaragePaletteRect(layout.Close.Bounds,p)||
+        layout.NextLayer.Action!=DesktopMenuMouseAction::GaragePaletteNextLayer||
+        !ValidGaragePaletteRect(layout.NextLayer.Bounds,p)||
+        GaragePaletteRectOverlap(layout.NextLayer.Bounds,layout.Close.Bounds))
         return false;
     for(int i=0;i<layout.Count;++i)
     {
         const auto& b=layout.Choices[static_cast<std::size_t>(i)];
         if(b.Action!=GaragePaletteChoiceAction(i)||
             !ValidGaragePaletteRect(b.Bounds,p)||
-            GaragePaletteRectOverlap(b.Bounds,layout.Close.Bounds))
+            GaragePaletteRectOverlap(b.Bounds,layout.Close.Bounds)||
+            GaragePaletteRectOverlap(b.Bounds,layout.NextLayer.Bounds))
             return false;
         for(int j=0;j<i;++j)
             if(GaragePaletteRectOverlap(b.Bounds,layout.Choices[static_cast<std::size_t>(j)].Bounds))
@@ -193,7 +202,9 @@ inline bool SameValidGaragePaletteLayout(const GaragePaletteLayout& before,
         before.Count!=now.Count||
         !SameGaragePaletteRect(before.Panel,now.Panel)||
         before.Close.Action!=now.Close.Action||
-        !SameGaragePaletteRect(before.Close.Bounds,now.Close.Bounds))
+        !SameGaragePaletteRect(before.Close.Bounds,now.Close.Bounds)||
+        before.NextLayer.Action!=now.NextLayer.Action||
+        !SameGaragePaletteRect(before.NextLayer.Bounds,now.NextLayer.Bounds))
         return false;
     for(int i=0;i<now.Count;++i)
     {
@@ -212,6 +223,7 @@ inline DesktopMenuMouseAction HitTestGaragePalette(
         return DesktopMenuMouseAction::None;
     if(layout.Close.Bounds.Contains(x,y))
         return layout.Close.Action;
+    if(layout.NextLayer.Bounds.Contains(x,y))return layout.NextLayer.Action;
     for(int i=0;i<layout.Count;++i)
     {
         const auto& b=layout.Choices[static_cast<std::size_t>(i)];
@@ -238,6 +250,7 @@ struct GaragePresentedPalette final
     GaragePaletteLayout Layout{};
     std::array<bool,GaragePaletteMaxChoices> ChoiceVisible{};
     bool CloseVisible=false;
+    bool NextLayerVisible=false;
 };
 
 inline bool CanClickPresentedGaragePalette(
@@ -250,12 +263,16 @@ inline bool CanClickPresentedGaragePalette(
         current.Count!=GarageLookChoiceCount(session.Layer)) return false;
     const int index=GaragePaletteChoiceIndex(action);
     const bool close=action==DesktopMenuMouseAction::GaragePaletteClose;
-    if(!close&&(index<0||index>=current.Count))return false;
-    const auto& before=close?shown.Layout.Close:shown.Layout.Choices[static_cast<std::size_t>(index)];
-    const auto& now=close?current.Close:current.Choices[static_cast<std::size_t>(index)];
+    const bool next=action==DesktopMenuMouseAction::GaragePaletteNextLayer;
+    if(!close&&!next&&(index<0||index>=current.Count))return false;
+    const auto& before=close?shown.Layout.Close:next?shown.Layout.NextLayer:
+        shown.Layout.Choices[static_cast<std::size_t>(index)];
+    const auto& now=close?current.Close:next?current.NextLayer:
+        current.Choices[static_cast<std::size_t>(index)];
     const auto& a=before.Bounds;
     const auto& b=now.Bounds;
-    return (close?shown.CloseVisible:shown.ChoiceVisible[static_cast<std::size_t>(index)])&&
+    return (close?shown.CloseVisible:next?shown.NextLayerVisible:
+        shown.ChoiceVisible[static_cast<std::size_t>(index)])&&
         before.Action==action&&now.Action==action&&
         a.X==b.X&&a.Y==b.Y&&a.Width==b.Width&&a.Height==b.Height;
 }
