@@ -2715,6 +2715,27 @@ void ALatebrakeRaceGameMode::SyncGarageShowroomPreview()
         bViewing,Viewed,GarageLooks.Get(Viewed));
 }
 
+latebrake::GarageVehicleCardsSnapshot ALatebrakeRaceGameMode::GetGarageVehicleCardsSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player;
+    return latebrake::BuildGarageVehicleCardsSnapshot(CanBrowseGarage(),Local,
+        AppFocusGuard.IsSuspended(),bFutureSaveSchema,GarageGallery.Viewed(),
+        SettingsSelection.Revision(),Garage.Snapshot(),GarageLooks);
+}
+
+bool ALatebrakeRaceGameMode::BrowseGarageVehicleCard(int32 Id,
+    const latebrake::GarageVehicleCardsSnapshot& Expected)
+{
+    const auto Current=GetGarageVehicleCardsSnapshot();
+    if(Current!=Expected || !Current.CanBrowse() || !latebrake::GarageState::IsVehicle(Id))
+        return false;
+    GarageBrowseVehicle(Id);
+    return GarageGallery.Viewed()==Id;
+}
+
 bool ALatebrakeRaceGameMode::CanBrowseGarage() const
 {
     return Menu.IsOpen() && Menu.Current() == latebrake::MenuPage::Garage;
@@ -2743,6 +2764,7 @@ void ALatebrakeRaceGameMode::GarageBrowseNext()
     DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     const int32 id = GarageGallery.Next();
+    SettingsSelection.Changed();
     const auto car = latebrake::GarageState::Definition(id);
     GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
         UTF8_TO_TCHAR(car.Name),
@@ -2756,6 +2778,7 @@ void ALatebrakeRaceGameMode::GarageBrowseVehicle(int32 VehicleId)
     if (!CanBrowseGarage() || !latebrake::GarageState::IsVehicle(VehicleId))
         return;
     if (!GarageGallery.Browse(VehicleId)) return;
+    SettingsSelection.Changed();
     DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     const auto& Car = latebrake::GarageState::Definition(VehicleId);
@@ -2771,6 +2794,7 @@ void ALatebrakeRaceGameMode::GarageBrowsePrevious()
     DismissGaragePalette();
     GaragePurchaseConfirm.Reset();
     const int32 id = GarageGallery.Previous();
+    SettingsSelection.Changed();
     const auto car = latebrake::GarageState::Definition(id);
     GarageFeedback = FString::Printf(TEXT("SHOWROOM: %s (%s)"),
         UTF8_TO_TCHAR(car.Name),
