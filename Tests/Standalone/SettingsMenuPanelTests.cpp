@@ -47,8 +47,10 @@ void TestAccessAndSelection()
         "lighting selectable");
     Require(selection.Browse(access) && selection.Current()==SettingsControl::CameraMotion,
         "camera effects selectable");
+    Require(selection.Browse(access) && selection.Current()==SettingsControl::HudScale,
+        "HUD scale selectable");
     Require(selection.Browse(access) && selection.Current()==SettingsControl::SpeedUnits,
-        "browse wraps after fourth control");
+        "browse wraps after fifth control");
     Require(selection.Select(access,SettingsControl::CircuitLighting),"direct card selection");
     selection.Reset();
     Require(selection.Current()==SettingsControl::SpeedUnits,"page transition reset");
@@ -126,6 +128,14 @@ void TestDescriptions()
     snapshot.Access.ActualCameraReady=false;
     Require(!DescribeSettingsControl(snapshot,SettingsControl::CameraMotion).Enabled,
         "unavailable camera shown");
+    snapshot.HudScale=HudScalePreference::Larger;
+    auto size=DescribeSettingsControl(snapshot,SettingsControl::HudScale);
+    Require(size.Enabled && !size.Saved && std::string_view(size.Value)=="LARGER",
+        "HUD sizing available independently of camera, lights and profile write");
+    snapshot.HudScale=static_cast<HudScalePreference>(255);
+    Require(!DescribeSettingsControl(snapshot,SettingsControl::HudScale).Enabled,
+        "unknown HUD sizing preference fails closed");
+    snapshot.HudScale=HudScalePreference::Automatic;
     snapshot.HudMode=static_cast<HudTelemetryMode>(255);
     Require(!DescribeSettingsControl(snapshot,SettingsControl::HudDetail).Enabled,"invalid mode fails closed");
 }
@@ -181,7 +191,8 @@ void TestPointerReceipt()
     Require(layout.Valid,"valid pointer test layout");
     SettingsMenuSnapshot snapshot{OpenAccess(),SettingsControl::SpeedUnits,false,
         HudTelemetryMode::Balanced,false,7};
-    SettingsPanelPresentation shown{true,layout,snapshot,{true,true,true,true}};
+    SettingsPanelPresentation shown{true,layout,snapshot,{}};
+    shown.Rendered.fill(true);
     for(std::size_t i=0;i<layout.Rows.size();++i)
     {
         const auto& b=layout.Rows[i].Bounds;
@@ -200,6 +211,7 @@ void TestPointerReceipt()
     changed=snapshot;changed.MilesPerHour=true;rejects(changed);
     changed=snapshot;changed.Dusk=true;rejects(changed);
     changed=snapshot;changed.CameraMotion=CameraMotionMode::Reduced;rejects(changed);
+    changed=snapshot;changed.HudScale=HudScalePreference::Larger;rejects(changed);
     changed=snapshot;changed.Access.ActualCameraReady=false;rejects(changed);
     changed=snapshot;changed.HudMode=HudTelemetryMode::Detailed;rejects(changed);
     changed=snapshot;changed.Selected=SettingsControl::HudDetail;rejects(changed);
