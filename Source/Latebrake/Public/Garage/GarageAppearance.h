@@ -13,12 +13,13 @@ namespace latebrake
 // Appearance has NO physics, purchase, award, ownership or race authority.
 enum class GarageLookLayer : std::uint8_t
 {
-    Paint, Stripe, Wheels
+    Paint, Stripe, Wheels, Preset
 };
 
 inline constexpr int GaragePaintOptions = 8;
 inline constexpr int GarageStripeOptions = 3;
 inline constexpr int GarageWheelOptions = 3;
+inline constexpr int GaragePresetOptions = 6;
 
 inline constexpr const char* GaragePaintNames[GaragePaintOptions] = {
     "SKY BLUE", "EMBER ORANGE", "ELECTRIC VIOLET", "RACING SCARLET",
@@ -57,6 +58,44 @@ inline constexpr bool SameGarageLook(GarageLook a, GarageLook b) noexcept
     return a.Paint == b.Paint && a.Stripe == b.Stripe &&
            a.Wheels == b.Wheels;
 }
+// Complete cosmetic combinations use existing persisted indices. No new
+// save fields, materials, unlocks, costs, physics or tuning are introduced.
+struct GarageLookPreset final
+{
+    const char* Name;
+    const char* ShortName;
+    GarageLook Look;
+};
+inline constexpr std::array<GarageLookPreset,GaragePresetOptions> GarageLookPresets{{
+    {"MIDNIGHT TRACK","MIDNIGHT",{6,2,2}},
+    {"PEARL TOURING","PEARL",{7,0,1}},
+    {"SCARLET SPRINT","SCARLET",{3,1,1}},
+    {"SOLAR CLUB","SOLAR",{5,2,0}},
+    {"SEA GLASS GT","SEA GLASS",{4,1,2}},
+    {"VIOLET SPORT","VIOLET",{2,0,2}}
+}};
+
+inline constexpr int GarageLookPresetIndex(GarageLook look) noexcept
+{
+    if(!ValidGarageLook(look))return -1;
+    for(int i=0;i<GaragePresetOptions;++i)
+        if(SameGarageLook(look,GarageLookPresets[static_cast<std::size_t>(i)].Look))
+            return i;
+    return -1; // hand-customized or factory look may not match a preset
+}
+
+inline constexpr bool ValidGarageLookPresets() noexcept
+{
+    for(std::size_t i=0;i<GarageLookPresets.size();++i)
+    {
+        if(!ValidGarageLook(GarageLookPresets[i].Look))return false;
+        for(std::size_t j=0;j<i;++j)
+            if(SameGarageLook(GarageLookPresets[i].Look,GarageLookPresets[j].Look))return false;
+    }
+    return true;
+}
+static_assert(ValidGarageLookPresets());
+
 inline constexpr int GarageLookChoiceCount(GarageLookLayer layer) noexcept
 {
     switch (layer)
@@ -64,6 +103,7 @@ inline constexpr int GarageLookChoiceCount(GarageLookLayer layer) noexcept
     case GarageLookLayer::Paint: return GaragePaintOptions;
     case GarageLookLayer::Stripe: return GarageStripeOptions;
     case GarageLookLayer::Wheels: return GarageWheelOptions;
+    case GarageLookLayer::Preset: return GaragePresetOptions;
     default: return 0;
     }
 }
@@ -76,6 +116,7 @@ inline constexpr const char* GarageLookChoiceName(
     case GarageLookLayer::Paint: return GaragePaintNames[index];
     case GarageLookLayer::Stripe: return GarageStripeNames[index];
     case GarageLookLayer::Wheels: return GarageWheelNames[index];
+    case GarageLookLayer::Preset: return GarageLookPresets[static_cast<std::size_t>(index)].Name;
     default: return "INVALID";
     }
 }
@@ -113,6 +154,8 @@ public:
             look.Stripe = static_cast<std::uint8_t>(choice);
         else if (layer == GarageLookLayer::Wheels)
             look.Wheels = static_cast<std::uint8_t>(choice);
+        else if (layer == GarageLookLayer::Preset)
+            look = GarageLookPresets[static_cast<std::size_t>(choice)].Look;
         else return false;
         return true;
     }
@@ -137,7 +180,8 @@ public:
         if (!GarageState::IsVehicle(id) || count <= 0) return false;
         const GarageLook look = Get(id);
         const int selected = layer == GarageLookLayer::Paint ? look.Paint :
-            layer == GarageLookLayer::Stripe ? look.Stripe : look.Wheels;
+            layer == GarageLookLayer::Stripe ? look.Stripe :
+            layer == GarageLookLayer::Wheels ? look.Wheels : GarageLookPresetIndex(look);
         return Choose(id, layer, (selected + 1) % count);
     }
 
