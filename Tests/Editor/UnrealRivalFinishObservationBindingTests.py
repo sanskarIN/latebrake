@@ -39,11 +39,19 @@ class UnrealRivalFinishObservationBindingTests(unittest.TestCase):
         self.assertIn("LastRivalFinishObservation = {};", finish)
 
     def test_new_attempt_and_load_clear_old_finish(self):
-        self.assertEqual(self.cpp.count("LastRivalFinishObservation = {};"), 3)
+        self.assertEqual(self.cpp.count("LastRivalFinishObservation = {};"), 4)
         restart = self.cpp.split("void ALatebrakeRaceGameMode::RestartRace()",1)[1].split(
             "void ALatebrakeRaceGameMode::RecoverPlayer(",1)[0]
         self.assertLess(restart.index("LastRivalFinishObservation = {};"),
                         restart.index("LaunchMeter.Reset();"))
+
+    def test_practice_finish_clears_previous_rival_review(self):
+        finish = self.cpp.split("void ALatebrakeRaceGameMode::RegisterCheckpoint(", 1)[1]
+        practice = finish.split("if (IsPracticeRace())", 1)[1].split(
+            "// Read the live rival", 1)[0]
+        self.assertIn("LastRivalFinishObservation = {};", practice)
+        self.assertIn("return;", practice)
+        self.assertNotIn("SaveRecords(", practice)
 
     def test_results_text_never_claims_race_rank(self):
         results = self.hud.split("case latebrake::MenuPage::Results:",1)[1].split(

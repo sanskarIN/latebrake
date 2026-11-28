@@ -37,8 +37,16 @@ class UnrealRivalFinishClockBindingTests(unittest.TestCase):
             ), 2
         )
         self.assertEqual(
-            self.mode_cpp.count("LastRivalFinishClockComparison = {};"), 3
+            self.mode_cpp.count("LastRivalFinishClockComparison = {};"), 4
         )
+
+    def test_practice_finish_clears_previous_rival_review(self):
+        finish = self.mode_cpp.split("void ALatebrakeRaceGameMode::RegisterCheckpoint(", 1)[1]
+        practice = finish.split("if (IsPracticeRace())", 1)[1].split(
+            "// Read the live rival", 1)[0]
+        self.assertIn("LastRivalFinishClockComparison = {};", practice)
+        self.assertIn("return;", practice)
+        self.assertNotIn("SaveRecords(", practice)
 
     def test_only_actual_accepted_rival_final_gate_can_record(self):
         observer = self.mode_cpp.split(
