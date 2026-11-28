@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UI/HudTelemetryPriority.h"
+#include "UI/HudScalePreference.h"
 #include "UI/MenuNavigation.h"
 #include "Vehicles/CameraMotionPreference.h"
 
@@ -19,13 +20,14 @@ enum class SettingsControl : std::uint8_t
     HudDetail,
     CircuitLighting,
     CameraMotion,
+    HudScale,
     Count
 };
 
 inline constexpr int SettingsControlCount=static_cast<int>(SettingsControl::Count);
 inline constexpr std::array<SettingsControl,SettingsControlCount> SettingsControls{{
     SettingsControl::SpeedUnits,SettingsControl::HudDetail,SettingsControl::CircuitLighting,
-    SettingsControl::CameraMotion
+    SettingsControl::CameraMotion,SettingsControl::HudScale
 }};
 
 constexpr bool ValidSettingsControl(SettingsControl control) noexcept
@@ -61,7 +63,8 @@ struct SettingsMenuAccess final
         switch(control)
         {
         case SettingsControl::SpeedUnits:return !ProfileReadOnly;
-        case SettingsControl::HudDetail:return true;
+        case SettingsControl::HudDetail:
+        case SettingsControl::HudScale:return true;
         case SettingsControl::CircuitLighting:return !ManualPauseSuspended && ActualLightsReady;
         case SettingsControl::CameraMotion:return ActualCameraReady;
         default:return false;
@@ -79,6 +82,7 @@ struct SettingsMenuSnapshot final
     bool Dusk=false;
     std::uint64_t Revision=0;
     CameraMotionMode CameraMotion=CameraMotionMode::Dynamic;
+    HudScalePreference HudScale=HudScalePreference::Automatic;
     constexpr bool operator==(const SettingsMenuSnapshot&) const noexcept=default;
 };
 
@@ -98,7 +102,7 @@ constexpr SettingsControlDescription DescribeSettingsControl(
     const SettingsMenuSnapshot& snapshot,SettingsControl control) noexcept
 {
     if(!ValidSettingsControl(control) || !ValidHudTelemetryMode(snapshot.HudMode) ||
-        !ValidCameraMotionMode(snapshot.CameraMotion))
+        !ValidCameraMotionMode(snapshot.CameraMotion) || !ValidHudScalePreference(snapshot.HudScale))
         return {};
     const bool enabled=snapshot.Access.Allows(control);
     const bool selected=snapshot.Selected==control;
@@ -139,6 +143,13 @@ constexpr SettingsControlDescription DescribeSettingsControl(
         value=CameraMotionModeName(snapshot.CameraMotion);
         status=enabled?"CURRENT SESSION ONLY":!owns?"INPUT UNAVAILABLE":"CAMERA UNAVAILABLE";
         shortStatus=enabled?"SESSION":!owns?"LOCKED":"UNAVAILABLE";
+        break;
+    case SettingsControl::HudScale:
+        title="RACE HUD SIZE";
+        shortTitle="HUD SIZE";
+        value=HudScalePreferenceName(snapshot.HudScale);
+        status=enabled?"SESSION / FIT TO SCREEN":"INPUT UNAVAILABLE";
+        shortStatus=enabled?"SESSION":"LOCKED";
         break;
     default:return {};
     }
