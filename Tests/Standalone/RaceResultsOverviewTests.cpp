@@ -303,8 +303,23 @@ void RandomActualAttempts()
             if(rng()%3==0)
             {
                 const double fee=0.1+static_cast<double>(rng()%20)/10;
-                Require(race.AddTimePenalty(fee),"random accepted fee");
-                fees+=fee;
+                const double priorElapsed=race.GetElapsedSeconds();
+                const double priorFees=race.GetTotalPenaltySeconds();
+                const int priorCount=race.GetTimePenaltyCount();
+                if(race.AddTimePenalty(fee))
+                {
+                    const double charged=race.GetElapsedSeconds()-priorElapsed;
+                    Require(charged>=fee && race.GetTimePenaltyCount()==priorCount+1,
+                        "accepted charge represents the requested fee");
+                    fees+=charged;
+                }
+                else
+                {
+                    Require(race.GetElapsedSeconds()==priorElapsed &&
+                        race.GetTotalPenaltySeconds()==priorFees &&
+                        race.GetTimePenaltyCount()==priorCount,
+                        "unrepresentable random fee leaves race unchanged");
+                }
             }
             Require(race.PassCheckpoint(1),"random second gate");
         }
