@@ -36,6 +36,18 @@ class GarageLookPresetsBindingTests(unittest.TestCase):
         self.assertNotIn("Garage.Unlock(", block)
         self.assertNotIn("Garage.Select(", block)
 
+    def test_visible_mouse_layer_switch_is_not_a_cosmetic_mutation(self):
+        policy = read("Source/Latebrake/Public/UI/GarageAppearancePalette.h")
+        hud = read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
+        pawn = read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
+        self.assertIn("GaragePaletteNextLayer", policy)
+        self.assertIn("shown.NextLayerVisible", policy)
+        self.assertIn("SameGaragePaletteRect(before.NextLayer.Bounds,now.NextLayer.Bounds)", policy)
+        self.assertIn("PresentedGaragePalette.NextLayerVisible=DrawButtonCaption", hud)
+        self.assertIn('TEXT("NEXT STYLE >")', hud)
+        self.assertIn("else if (Action == latebrake::DesktopMenuMouseAction::GaragePaletteNextLayer)", pawn)
+        self.assertIn("Hud->AdvanceGaragePaletteLayer();", pawn)
+
     def test_palette_cycle_and_full_look_preview(self):
         nav = read("Source/Latebrake/Public/UI/GaragePaletteNavigation.h")
         glyph = read("Source/Latebrake/Public/UI/GarageAppearanceGlyph.h")
