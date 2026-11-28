@@ -32,7 +32,7 @@ bool ALatebrakeRaceHUD::DrawGarageVehicleCards(const ALatebrakeRaceGameMode* Mod
         !latebrake::ValidGarageVehicleCardsLayout(Layout))return false;
     const auto Snapshot=Mode->GetGarageVehicleCardsSnapshot();
     if(!Snapshot.Open)return false;
-    const auto Cards=latebrake::DescribeGarageVehicleCards(Snapshot);
+    const auto Cards=latebrake::DescribeGarageVehicleCards(Snapshot,&GarageCatalogue);
     const bool Enabled=Snapshot.CanBrowse() && !GaragePalette.Open;
     const float S=static_cast<float>(Layout.Scale);
     UFont* Font=GEngine->GetSmallFont();
