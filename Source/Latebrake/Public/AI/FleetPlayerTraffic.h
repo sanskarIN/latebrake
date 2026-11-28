@@ -275,6 +275,124 @@ struct FleetPlayerTrafficSample final
     double AdvancedSeconds = 0.0;
 };
 
+// Each interval uses the intersection of physical rival identities at its
+// endpoints. Direction changes are kept separate, never interpreted as
+// sustained side-by-side contact or a completed pass.
+enum class FleetTrafficExposureDirection : std::uint8_t
+{
+    Front, Right, Rear, Left, SameCentre, Transition, Count
+};
+
+inline constexpr std::size_t FleetTrafficExposureDirectionCount=
+    static_cast<std::size_t>(FleetTrafficExposureDirection::Count);
+
+inline FleetTrafficExposureDirection TrafficExposureDirection(
+    FleetPlayerTrafficDirection direction) noexcept
+{
+    switch(direction)
+    {
+        case FleetPlayerTrafficDirection::Ahead:
+        case FleetPlayerTrafficDirection::AheadRight:
+        case FleetPlayerTrafficDirection::AheadLeft: return FleetTrafficExposureDirection::Front;
+        case FleetPlayerTrafficDirection::Right: return FleetTrafficExposureDirection::Right;
+        case FleetPlayerTrafficDirection::Behind:
+        case FleetPlayerTrafficDirection::BehindLeft:
+        case FleetPlayerTrafficDirection::BehindRight: return FleetTrafficExposureDirection::Rear;
+        case FleetPlayerTrafficDirection::Left: return FleetTrafficExposureDirection::Left;
+        case FleetPlayerTrafficDirection::SameCentre: return FleetTrafficExposureDirection::SameCentre;
+        default: return FleetTrafficExposureDirection::Transition;
+    }
+}
+
+inline const char* TrafficExposureDirectionName(FleetTrafficExposureDirection direction) noexcept
+{
+    switch(direction)
+    {
+        case FleetTrafficExposureDirection::Front: return "FRONT";
+        case FleetTrafficExposureDirection::Right: return "RIGHT";
+        case FleetTrafficExposureDirection::Rear: return "REAR";
+        case FleetTrafficExposureDirection::Left: return "LEFT";
+        case FleetTrafficExposureDirection::SameCentre: return "COINCIDENT CENTRES";
+        case FleetTrafficExposureDirection::Transition: return "CHANGING DIRECTION";
+        default: return "UNAVAILABLE";
+    }
+}
+
+struct FleetTrafficExposureEpisode final
+{
+    bool Valid=false;
+    int RivalSlot=-1;
+    double StartSeconds=0.0;
+    double EndSeconds=0.0;
+
+    double Duration() const noexcept {return Valid?EndSeconds-StartSeconds:0.0;}
+};
+
+struct FleetTrafficExposureSummary final
+{
+    // Per-rival seconds, not elapsed race seconds. Several rivals may
+    // contribute simultaneously. Each rival contributes to one direction.
+    std::array<double,FleetTrafficExposureDirectionCount> DirectionCarSeconds{};
+    // Exact count of rivals whose warning is present at BOTH endpoints.
+    // The zero bucket includes changes with no identity in common.
+    std::array<double,StartGridCapacity> SustainedWarningCountSeconds{};
+    FleetTrafficExposureEpisode LongestWarning{};
+    FleetTrafficExposureEpisode LongestProjectedPath{};
+    double ObservedCarWarningSeconds=0.0;
+
+    double MultiRivalSeconds() const noexcept
+    {
+        double total=0.0;
+        for(std::size_t i=2;i<SustainedWarningCountSeconds.size();++i)
+            total+=SustainedWarningCountSeconds[i];
+        return total;
+    }
+
+    FleetTrafficExposureDirection DominantDirection() const noexcept
+    {
+        auto result=FleetTrafficExposureDirection::Count;
+        double largest=0.0;
+        for(std::size_t i=0;i<DirectionCarSeconds.size();++i)
+        {
+            if(DirectionCarSeconds[i]>largest+FleetPlayerTrafficClockToleranceSeconds)
+            {
+                largest=DirectionCarSeconds[i];
+                result=static_cast<FleetTrafficExposureDirection>(i);
+            }
+        }
+        return result;
+    }
+
+    bool AccountsFor(double observedSeconds,double warningSeconds) const noexcept
+    {
+        if(!std::isfinite(observedSeconds) || !std::isfinite(warningSeconds) ||
+            observedSeconds<0.0 || warningSeconds<0.0 || warningSeconds>observedSeconds+
+                FleetPlayerTrafficClockToleranceSeconds)
+            return false;
+        double time=0.0, unionTime=0.0, carTime=0.0, directionTime=0.0;
+        for(std::size_t i=0;i<SustainedWarningCountSeconds.size();++i)
+        {
+            const double value=SustainedWarningCountSeconds[i];
+            if(!std::isfinite(value) || value<0.0) return false;
+            time+=value;
+            if(i>0) unionTime+=value;
+            carTime+=static_cast<double>(i)*value;
+        }
+        for(const double value:DirectionCarSeconds)
+        {
+            if(!std::isfinite(value) || value<0.0) return false;
+            directionTime+=value;
+        }
+        const double tolerance=FleetPlayerTrafficClockToleranceSeconds*
+            std::max(1.0,observedSeconds);
+        return std::isfinite(ObservedCarWarningSeconds) &&
+            std::abs(time-observedSeconds)<=tolerance &&
+            std::abs(unionTime-warningSeconds)<=tolerance &&
+            std::abs(carTime-ObservedCarWarningSeconds)<=tolerance &&
+            std::abs(directionTime-carTime)<=tolerance;
+    }
+};
+
 struct FleetPlayerTrafficSlotSummary final
 {
     int Slot = -1;
@@ -301,6 +419,8 @@ struct FleetPlayerTrafficSummary final
     bool HasDistance = false;
     double MinimumCentreDistanceCm = 0.0;
     int NearestObservedSlot = -1;
+    FleetTrafficExposureSummary Exposure{};
+    std::uint64_t RevisionRefusals=0;
     std::array<FleetPlayerTrafficSlotSummary, StartGridCapacity - 1> Rivals{};
 };
 
@@ -315,6 +435,10 @@ public:
         LastSeenEngineFrame = 0;
         LastSeenActiveSeconds = 0.0;
         HaveSeenFrame = false;
+        LastSeenEpoch=0;
+        LastSeenTeleport={};
+        CurrentWarnings={};
+        CurrentProjections={};
         Previous = {};
         HavePrevious = false;
         Summary = {};
@@ -324,6 +448,8 @@ public:
     {
         Previous = {};
         HavePrevious = false;
+        CurrentWarnings={};
+        CurrentProjections={};
     }
 
     bool Configure(std::uint64_t attempt, const SixCarIdentity& identity) noexcept
@@ -352,7 +478,7 @@ public:
         // A malformed same-attempt sample breaks continuity, but cannot
         // erase a completed history or replace the monotonic high-water mark.
         if (!ValidClock(sample.ActiveSeconds, sample.AdvancedSeconds) ||
-            sample.Physical.FrameToken == 0 ||
+            sample.Physical.FrameToken == 0 || sample.EngineFrame==0 || sample.SessionEpoch==0 ||
             (HaveSeenFrame &&
              (sample.Physical.FrameToken <= LastSeenFrame ||
               sample.EngineFrame <= LastSeenEngineFrame ||
@@ -368,16 +494,30 @@ public:
             return false;
         }
 
+        if(HaveSeenFrame)
+        {
+            bool rollback=sample.SessionEpoch<LastSeenEpoch;
+            for(std::size_t i=0;i<LastSeenTeleport.size();++i)
+                rollback=rollback || sample.TeleportRevisions[i]<LastSeenTeleport[i];
+            if(rollback)
+            {
+                Increment(Summary.RevisionRefusals);
+                Suspend();
+                return false;
+            }
+        }
         const bool contiguous = HavePrevious && IsContiguous(sample);
         if (contiguous)
         {
             const double duration = sample.ActiveSeconds - Previous.ActiveSeconds;
-            AccumulateInterval(Previous.Readout, now, duration);
+            AccumulateInterval(Previous.Readout, now, Previous.ActiveSeconds,sample.ActiveSeconds,duration);
             Increment(Summary.ContiguousIntervals);
         }
         else if (HaveSeenFrame)
         {
             Increment(Summary.DiscontinuousSamples);
+            CurrentWarnings={};
+            CurrentProjections={};
         }
         ObserveEndpoint(now);
         Summary.HasSamples = true;
@@ -386,6 +526,8 @@ public:
         LastSeenFrame = sample.Physical.FrameToken;
         LastSeenEngineFrame = sample.EngineFrame;
         LastSeenActiveSeconds = sample.ActiveSeconds;
+        LastSeenEpoch=sample.SessionEpoch;
+        LastSeenTeleport=sample.TeleportRevisions;
         HaveSeenFrame = true;
         Previous = {sample.Physical.FrameToken, sample.EngineFrame, sample.SessionEpoch,
             sample.TeleportRevisions, sample.ActiveSeconds, now};
@@ -440,15 +582,37 @@ private:
         total = std::min(FleetPlayerTrafficMaxClockSeconds, total + value);
     }
 
+    static void ExtendExposure(FleetTrafficExposureEpisode& current,
+        FleetTrafficExposureEpisode& longest,int slot,bool qualifies,
+        double start,double end) noexcept
+    {
+        if(!qualifies)
+        {
+            current={};
+            return;
+        }
+        if(!current.Valid || current.RivalSlot!=slot ||
+            std::abs(current.EndSeconds-start)>FleetPlayerTrafficClockToleranceSeconds)
+            current={true,slot,start,end};
+        else
+            current.EndSeconds=end;
+        if(!longest.Valid || current.Duration()>longest.Duration()+FleetPlayerTrafficClockToleranceSeconds ||
+            (std::abs(current.Duration()-longest.Duration())<=FleetPlayerTrafficClockToleranceSeconds &&
+             (current.StartSeconds<longest.StartSeconds ||
+              (current.StartSeconds==longest.StartSeconds && slot<longest.RivalSlot))))
+            longest=current;
+    }
+
     void AccumulateInterval(const FleetPlayerTrafficReadout& before,
                             const FleetPlayerTrafficReadout& after,
-                            double duration) noexcept
+                            double start,double end,double duration) noexcept
     {
         AddSeconds(Summary.ObservedSeconds, duration);
         bool near = false;
         bool warning = false;
         bool projected = false;
         bool padded = false;
+        std::size_t sustainedWarnings=0;
         for (std::size_t index = 0; index < Summary.Rivals.size(); ++index)
         {
             const auto& a = before.Rivals[index];
@@ -459,12 +623,25 @@ private:
                 AddSeconds(slot.NearbySeconds, duration);
                 near = true;
             }
-            if (IsFleetPlayerTrafficWarning(a.Severity) &&
-                IsFleetPlayerTrafficWarning(b.Severity))
+            const bool sustained=IsFleetPlayerTrafficWarning(a.Severity) &&
+                IsFleetPlayerTrafficWarning(b.Severity);
+            const bool sustainedProjection=a.ForecastOverlap && b.ForecastOverlap;
+            if (sustained)
             {
                 AddSeconds(slot.WarningSeconds, duration);
                 warning = true;
+                ++sustainedWarnings;
+                const auto first=TrafficExposureDirection(a.Direction);
+                const auto second=TrafficExposureDirection(b.Direction);
+                const auto direction=first==second?first:FleetTrafficExposureDirection::Transition;
+                // Car-seconds can exceed the elapsed clock by up to 5x.
+                Summary.Exposure.DirectionCarSeconds[static_cast<std::size_t>(direction)]+=duration;
+                Summary.Exposure.ObservedCarWarningSeconds+=duration;
             }
+            ExtendExposure(CurrentWarnings[index],Summary.Exposure.LongestWarning,
+                slot.Slot,sustained,start,end);
+            ExtendExposure(CurrentProjections[index],Summary.Exposure.LongestProjectedPath,
+                slot.Slot,sustainedProjection,start,end);
             if (a.ForecastOverlap && b.ForecastOverlap)
             {
                 AddSeconds(slot.ProjectedSeconds, duration);
@@ -476,6 +653,7 @@ private:
                 padded = true;
             }
         }
+        AddSeconds(Summary.Exposure.SustainedWarningCountSeconds[sustainedWarnings],duration);
         // Count the union once even when several rivals are nearby.
         if (near) AddSeconds(Summary.AnyNearbySeconds, duration);
         if (warning) AddSeconds(Summary.AnyWarningSeconds, duration);
@@ -514,6 +692,10 @@ private:
     std::uint64_t LastSeenEngineFrame = 0;
     double LastSeenActiveSeconds = 0.0;
     bool HaveSeenFrame = false;
+    std::uint64_t LastSeenEpoch=0;
+    std::array<std::uint64_t,StartGridCapacity> LastSeenTeleport{};
+    std::array<FleetTrafficExposureEpisode,StartGridCapacity-1> CurrentWarnings{};
+    std::array<FleetTrafficExposureEpisode,StartGridCapacity-1> CurrentProjections{};
     Endpoint Previous{};
     bool HavePrevious = false;
     FleetPlayerTrafficSummary Summary{};

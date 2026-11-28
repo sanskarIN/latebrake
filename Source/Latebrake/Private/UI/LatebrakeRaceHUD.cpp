@@ -1283,6 +1283,22 @@ void ALatebrakeRaceHUD::DrawHUD()
                     {
                         MenuLine(FString::Printf(TEXT("Traffic sampled %.1fs | alerts %.1fs | projected paths %.1fs"),
                             Traffic.ObservedSeconds,Traffic.AnyWarningSeconds,Traffic.AnyProjectedSeconds));
+                        if (!bCompact && Traffic.Exposure.AccountsFor(Traffic.ObservedSeconds,Traffic.AnyWarningSeconds))
+                        {
+                            const auto& Exposure=Traffic.Exposure;
+                            MenuLine(FString::Printf(TEXT("Multiple sustained rivals %.1fs | alert exposure %.1f car-s"),
+                                Exposure.MultiRivalSeconds(),Exposure.ObservedCarWarningSeconds));
+                            const auto Direction=Exposure.DominantDirection();
+                            if (Direction!=latebrake::FleetTrafficExposureDirection::Count)
+                                MenuLine(FString::Printf(TEXT("Main sampled alert direction: %s"),
+                                    UTF8_TO_TCHAR(latebrake::TrafficExposureDirectionName(Direction))));
+                            if (Exposure.LongestWarning.Valid)
+                                MenuLine(FString::Printf(TEXT("Longest sampled alert: AI %d | %.1fs"),
+                                    Exposure.LongestWarning.RivalSlot,Exposure.LongestWarning.Duration()));
+                            if (Exposure.LongestProjectedPath.Valid)
+                                MenuLine(FString::Printf(TEXT("Longest projected-path episode: AI %d | %.1fs"),
+                                    Exposure.LongestProjectedPath.RivalSlot,Exposure.LongestProjectedPath.Duration()));
+                        }
                         if (Traffic.HasDistance)
                             MenuLine(FString::Printf(TEXT("Closest sampled centres: AI %d | %.1fm | peak alerts %d"),
                                 Traffic.NearestObservedSlot,Traffic.MinimumCentreDistanceCm/100.0,

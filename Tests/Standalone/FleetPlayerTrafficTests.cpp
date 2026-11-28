@@ -262,6 +262,89 @@ void EndpointTransitionsAndForeignCalls()
     Require(Near(journal.Readout().ObservedSeconds,0.10),"invalid roster cannot bridge");
 }
 
+void DirectionalExposureAndEpisodes()
+{
+    Fixture f;
+    FleetPlayerTrafficJournal journal;
+    Require(journal.Configure(1,f.Ids),"exposure configuration");
+    f.Move(1,0,700,0,0);
+    f.Move(2,-700,0,0,0);
+    Require(journal.Observe(f.Sample(1,0.05)) && journal.Observe(f.Sample(2,0.10)),
+        "two sustained rivals");
+    auto r=journal.Readout();
+    const auto idx=[](FleetTrafficExposureDirection direction){return static_cast<std::size_t>(direction);};
+    Require(r.Exposure.AccountsFor(r.ObservedSeconds,r.AnyWarningSeconds) &&
+        Near(r.Exposure.MultiRivalSeconds(),0.05) &&
+        Near(r.Exposure.ObservedCarWarningSeconds,0.10) &&
+        Near(r.Exposure.DirectionCarSeconds[idx(FleetTrafficExposureDirection::Right)],0.05) &&
+        Near(r.Exposure.DirectionCarSeconds[idx(FleetTrafficExposureDirection::Rear)],0.05),
+        "two rival-seconds and one elapsed interval");
+    Require(r.Exposure.LongestWarning.Valid && r.Exposure.LongestWarning.RivalSlot==1 &&
+        Near(r.Exposure.LongestWarning.Duration(),0.05),"stable episode tie");
+    f.Move(1,0,-700,0,0);
+    f.Move(2,4000,4000,0,0);
+    Require(journal.Observe(f.Sample(3,0.15)),"same rival direction transition");
+    r=journal.Readout();
+    Require(Near(r.Exposure.DirectionCarSeconds[idx(FleetTrafficExposureDirection::Transition)],0.05) &&
+        Near(r.Exposure.SustainedWarningCountSeconds[1],0.05) &&
+        Near(r.Exposure.LongestWarning.Duration(),0.10),
+        "direction transition counted without guessing direction");
+    journal.Suspend();
+    Require(journal.Observe(f.Sample(4,0.20)) && journal.Observe(f.Sample(5,0.25)),
+        "resume");
+    r=journal.Readout();
+    Require(Near(r.Exposure.LongestWarning.Duration(),0.10) &&
+        Near(r.Exposure.DirectionCarSeconds[idx(FleetTrafficExposureDirection::Left)],0.05),
+        "pause does not join episodes");
+    f.Move(1,4000,4000,0,0);
+    f.Move(3,0,700,0,0);
+    Require(journal.Observe(f.Sample(6,0.30)),"warning identity changes");
+    r=journal.Readout();
+    Require(Near(r.Exposure.SustainedWarningCountSeconds[0],0.05) &&
+        r.Exposure.AccountsFor(r.ObservedSeconds,r.AnyWarningSeconds),
+        "identity handover counted in zero sustained bucket");
+    Require(!r.Exposure.AccountsFor(r.ObservedSeconds+1,r.AnyWarningSeconds),
+        "mismatched exposure rejected");
+    f.Move(3,100,0,0,0);
+    Require(journal.Observe(f.Sample(7,0.35)) && journal.Observe(f.Sample(8,0.40)),
+        "padded projection endpoints");
+    r=journal.Readout();
+    Require(r.Exposure.LongestProjectedPath.Valid &&
+        r.Exposure.LongestProjectedPath.RivalSlot==3 &&
+        Near(r.Exposure.LongestProjectedPath.Duration(),0.05),
+        "projected episode not a collision count");
+    journal.Reset();
+    Require(!journal.Readout().Exposure.LongestWarning.Valid,"reset clears episodes");
+}
+
+void MonotonicRevisionEvidence()
+{
+    Fixture f;
+    FleetPlayerTrafficJournal journal;
+    Require(journal.Configure(1,f.Ids),"configuration");
+    auto a=f.Sample(1,0.05,0.05,3);a.TeleportRevisions[2]=7;
+    Require(journal.Observe(a),"first authenticated revision");
+    auto b=f.Sample(2,0.10,0.05,2);b.TeleportRevisions[2]=7;
+    Require(!journal.Observe(b),"session epoch rollback");
+    b.SessionEpoch=3;b.TeleportRevisions[2]=6;
+    Require(!journal.Observe(b),"teleport rollback");
+    b.TeleportRevisions[2]=7;b.EngineFrame=0;
+    Require(!journal.Observe(b),"zero engine frame");
+    b.EngineFrame=102;b.SessionEpoch=0;
+    Require(!journal.Observe(b),"zero epoch");
+    b.SessionEpoch=3;
+    Require(journal.Observe(b),"valid baseline resumes");
+    auto c=f.Sample(3,0.15,0.05,3);c.TeleportRevisions[2]=7;
+    Require(journal.Observe(c),"valid adjacent observation");
+    const auto r=journal.Readout();
+    Require(r.RevisionRefusals==2 && r.AcceptedSamples==3 &&
+        Near(r.ObservedSeconds,0.05),"rollbacks cannot create observed duration");
+    journal.Reset();
+    Require(journal.Configure(2,f.Ids),"new attempt");
+    auto fresh=f.Sample(1,0.05);fresh.Physical.AttemptToken=2;
+    Require(journal.Observe(fresh),"new attempt resets monotonic witnesses");
+}
+
 void RandomizedFrameAndHistoryInvariants()
 {
     Fixture f;
@@ -311,6 +394,8 @@ void RandomizedFrameAndHistoryInvariants()
             summary.AnyProjectedSeconds<=summary.AnyWarningSeconds+1e-8 &&
             summary.AnyPaddedOverlapSeconds<=summary.AnyProjectedSeconds+1e-8 &&
             summary.MaximumConcurrentWarnings<=5,"bounded observed union");
+        Require(summary.Exposure.AccountsFor(summary.ObservedSeconds,summary.AnyWarningSeconds),
+            "direction and concurrency account for exact observed exposure");
         for (const auto& slot:summary.Rivals)
             Require(slot.NearbySeconds<=summary.AnyNearbySeconds+1e-8 &&
                 slot.WarningSeconds<=summary.AnyWarningSeconds+1e-8 &&
@@ -330,6 +415,8 @@ int main()
     MalformedRoster();
     JournalContinuityAndUnion();
     EndpointTransitionsAndForeignCalls();
+    DirectionalExposureAndEpisodes();
+    MonotonicRevisionEvidence();
     RandomizedFrameAndHistoryInvariants();
     std::cout<<"Fleet player proximity, prediction and observation journal passed\n";
 }

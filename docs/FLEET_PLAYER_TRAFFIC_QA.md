@@ -54,3 +54,15 @@ not extrapolated.
 8. Savegame, credits and race classification must be unaffected.
 
 Portable C++ and source-binding checks are not native gameplay evidence.
+
+### Sustained traffic exposure review
+
+Results now separates elapsed warning time from per-rival warning car-seconds.
+The concurrency histogram counts only physical rivals present in both adjacent
+observations. A direction change enters a transition bucket rather than being
+assigned to either direction. Longest warning and projected-path episodes
+are tracked per rival and never span suspension, missing frames or recovery.
+Session and teleport revisions cannot roll back within a bound attempt.
+These measurements are sampled advisory observations, not collision counts,
+passing verdicts or proof of safe driving. The expanded native Results UI
+still requires real-engine rendering and input validation.
