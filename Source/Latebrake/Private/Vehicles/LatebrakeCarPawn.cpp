@@ -3324,6 +3324,14 @@ void ALatebrakeCarPawn::FleetReplayHighlight()
     DispatchFleetReplayAction(static_cast<int32>(latebrake::FleetReplayAction::NextHighlight));
 }
 
+void ALatebrakeCarPawn::ToggleLapMotionPanel()
+{
+    auto* PC=Cast<APlayerController>(GetController());
+    if (!PC || !PC->IsLocalController() || PC->GetPawn()!=this)return;
+    if (auto* Hud=Cast<ALatebrakeRaceHUD>(PC->GetHUD()))
+        Hud->ToggleLapMotionPanel();
+}
+
 void ALatebrakeCarPawn::MenuMousePressed()
 {
 #if !PLATFORM_ANDROID
@@ -3346,7 +3354,8 @@ void ALatebrakeCarPawn::MenuMousePressed()
     {
         return;
     }
-    if(Hud->TryHandlePracticeResultsPointer(MouseX,MouseY) ||
+    if(Hud->TryHandleLapMotionPointer(MouseX,MouseY) ||
+        Hud->TryHandlePracticeResultsPointer(MouseX,MouseY) ||
         Hud->TryHandleQuickRaceChoicePointer(MouseX,MouseY) ||
         Hud->TryHandleSettingsPointer(MouseX,MouseY) ||
         Hud->TryHandleFleetReplayPointer(MouseX,MouseY) ||
@@ -3728,6 +3737,8 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
         &ALatebrakeCarPawn::FleetReplayPrevious).bExecuteWhenPaused=true;
     PlayerInputComponent->BindAction(TEXT("FleetReplayNext"),IE_Pressed,this,
         &ALatebrakeCarPawn::FleetReplayNext).bExecuteWhenPaused=true;
+    PlayerInputComponent->BindAction(TEXT("ToggleLapMotionPanel"),IE_Pressed,this,
+        &ALatebrakeCarPawn::ToggleLapMotionPanel).bExecuteWhenPaused=true;
     PlayerInputComponent->BindAction(TEXT("FleetReplayHighlight"),IE_Pressed,this,
         &ALatebrakeCarPawn::FleetReplayHighlight).bExecuteWhenPaused=true;
     FInputActionBinding& DuskView = PlayerInputComponent->BindAction(

@@ -384,6 +384,7 @@ private:
     void FleetReplayPrevious();
     void FleetReplayNext();
     void FleetReplayHighlight();
+    void ToggleLapMotionPanel();
     void CycleHudTelemetryMode();
     void DispatchFleetReplayAction(int32 Action);
     void ScrollMenuMouseWheel(int direction);

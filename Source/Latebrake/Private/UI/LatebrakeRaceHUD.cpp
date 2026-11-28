@@ -318,6 +318,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     PresentedQuickRace={};
     PresentedTrial={};
     PresentedPractice={};
+    PresentedLapMotion={};
     DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
@@ -1859,6 +1860,8 @@ void ALatebrakeRaceHUD::DrawHUD()
             if (LapMotion.Valid && LapMotion.Finished && LapMotion.CompletedLaps>0)
             {
                 MenuLine(TEXT("FULL LAP MOTION | ACTUAL OBSERVATIONS"),true);
+                if (!bTouchHUD && !Mode->IsExperimentalFleetRequested())
+                    MenuLine(TEXT("F11: TOGGLE FULL LAP CHART / SECTOR REVIEW"));
                 MenuLine(FString::Printf(TEXT("%d/%d QUALIFIED LAPS | %.0f%% OBSERVED CLOCK"),
                     LapMotion.QualifiedLaps,LapMotion.CompletedLaps,100.0*LapMotion.Completed.Coverage()));
                 if (LapMotion.Completed.ObservedSeconds>0)
@@ -2671,8 +2674,11 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawSettingsPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawQuickRaceChoicePanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawFleetReplayPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
-        if (!DrawPracticeResultsPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD))
-            DrawSectorMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
+        if (!DrawLapMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD))
+        {
+            if (!DrawPracticeResultsPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD))
+                DrawSectorMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
+        }
 
         // SAVE failures must stay visible even if every optional menu
         // detail row has already been consumed.
