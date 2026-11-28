@@ -33,6 +33,7 @@ constexpr int GarageLookChoice(GarageLook look, GarageLookLayer layer) noexcept
     case GarageLookLayer::Paint: return look.Paint;
     case GarageLookLayer::Stripe: return look.Stripe;
     case GarageLookLayer::Wheels: return look.Wheels;
+    case GarageLookLayer::Preset: return GarageLookPresetIndex(look);
     default: return -1;
     }
 }
@@ -56,6 +57,7 @@ constexpr GarageDirectAppearanceDecision PreviewGarageDirectAppearance(
     case GarageLookLayer::Paint: next.Paint=static_cast<std::uint8_t>(request.Choice); break;
     case GarageLookLayer::Stripe: next.Stripe=static_cast<std::uint8_t>(request.Choice); break;
     case GarageLookLayer::Wheels: next.Wheels=static_cast<std::uint8_t>(request.Choice); break;
+    case GarageLookLayer::Preset: next=GarageLookPresets[static_cast<std::size_t>(request.Choice)].Look; break;
     default: return {};
     }
     return {GarageDirectAppearanceStatus::Ready, next};
