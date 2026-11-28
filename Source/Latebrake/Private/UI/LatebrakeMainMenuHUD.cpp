@@ -63,7 +63,7 @@ bool ALatebrakeRaceHUD::DrawMainMenuDashboard(const ALatebrakeRaceGameMode* Mode
         return FMeasuredCaption{};
     };
     const auto Header=Measure(Snapshot.AllowsNavigation()?
-        TEXT("EXPLORE LATEBRAKE | CHOOSE A SECTION"):TEXT("NAVIGATION UNAVAILABLE"),
+        TEXT("BROWSE TO MOVE | SELECT TO OPEN"):TEXT("NAVIGATION UNAVAILABLE"),
         Snapshot.AllowsNavigation()?TEXT("CHOOSE A SECTION"):TEXT("INPUT LOCKED"),
         Layout.Header,0.86f*S);
     if(Header.Scale<=0)return false;
@@ -106,10 +106,13 @@ bool ALatebrakeRaceHUD::DrawMainMenuDashboard(const ALatebrakeRaceGameMode* Mode
     {
         const auto& C=Layout.Cards[I];
         const bool Hover=Enabled && HasCursor && C.Bounds.Contains(MouseX,MouseY);
+        const bool Focused=Enabled && Snapshot.Focused==static_cast<int>(I);
         Rect(C.Bounds,!Enabled?FLinearColor(0.08f,0.11f,0.15f):
-            Hover?FLinearColor(0.25f,0.21f,0.12f):FLinearColor(0.12f,0.19f,0.27f));
-        Rect({C.Bounds.X,C.Bounds.Y,3*S,C.Bounds.Height},Hover?Gold:Muted);
-        Text(Titles[I],C.Title,Hover?Gold:Enabled?White:Muted);
+            Focused?FLinearColor(0.27f,0.21f,0.11f):
+            Hover?FLinearColor(0.18f,0.28f,0.39f):FLinearColor(0.12f,0.19f,0.27f));
+        Rect({C.Bounds.X,C.Bounds.Y,3*S,C.Bounds.Height},Focused?Gold:Hover?White:Muted);
+        if(Focused)Rect({C.Bounds.X,C.Bounds.Y, C.Bounds.Width,2*S},Gold);
+        Text(Titles[I],C.Title,Focused?Gold:Enabled?White:Muted);
         Text(Descriptions[I],C.Description,Muted);
         Presentation.Rendered[I]=true;
     }
