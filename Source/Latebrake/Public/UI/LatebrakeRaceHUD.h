@@ -63,6 +63,7 @@ public:
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    latebrake::GarageCatalogCache GarageCatalogue;
     latebrake::GarageUnlockRouteCache UnlockRouteCache;
     bool DrawGarageUnlockRoute(const latebrake::GarageUnlockRouteLayout& Layout,
         const latebrake::GarageUnlockRouteReadout& Data);
