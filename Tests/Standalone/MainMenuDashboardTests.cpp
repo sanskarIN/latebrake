@@ -88,6 +88,41 @@ void ExplicitDestinations()
         !ValidMainMenuDestination(static_cast<MenuPage>(255)),"not an activation or close action");
 }
 
+void KeyboardAndControllerFocus()
+{
+    auto current=Snapshot();
+    for(int pass=0;pass<4;++pass)
+    {
+        for(int i=0;i<MainMenuDestinationCount;++i)
+        {
+            Require(current.Focused==i &&
+                MainMenuFocusDestination(current.Focused)==MainMenuDestinations[static_cast<std::size_t>(i)].Page,
+                "Browse selects exactly the visible destination");
+            const auto prior=current;
+            current.Focused=AdvanceMainMenuFocus(current.Focused,1);
+            ++current.Revision;
+            Require(current!=prior,"focus changes revoke previous draw receipt");
+        }
+        Require(current.Focused==0,"forward wraps all destinations");
+        current.Focused=AdvanceMainMenuFocus(current.Focused,-1);
+        Require(current.Focused==MainMenuDestinationCount-1,"backward wrap");
+        current.Focused=AdvanceMainMenuFocus(current.Focused,1);
+    }
+    Require(AdvanceMainMenuFocus(2,0)==2 && AdvanceMainMenuFocus(2,99)==2,
+        "invalid direction does not change focus");
+    Require(AdvanceMainMenuFocus(-1,1)==0 &&
+        MainMenuFocusDestination(-1)==MenuPage::Closed &&
+        MainMenuFocusDestination(MainMenuDestinationCount)==MenuPage::Closed,
+        "invalid focus cannot navigate");
+    current.Focused=-1;
+    Require(!current.AllowsNavigation(),"bad focus blocks pointer admission too");
+    current=Snapshot();
+    const auto shown=Presented(View().Plan());
+    current.Focused=1;
+    Require(Hit(shown,current,0).Destination==MenuPage::Closed,
+        "focus mismatch invalidates old pointer receipt even before version check");
+}
+
 void CheckLayout(const View& view,const MainMenuDashboardLayout& layout,int pinned)
 {
     Require(ValidMainMenuDashboardLayout(layout),"valid responsive dashboard");
@@ -240,6 +275,7 @@ void RandomViewportAndNavigation()
 int main()
 {
     ExplicitDestinations();
+    KeyboardAndControllerFocus();
     ResponsiveAndFallback();
     InputAdmissionAndStaleReceipts();
     CorruptLayoutRejection();
