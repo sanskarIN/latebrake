@@ -38,3 +38,7 @@ requirements. No new track or multiplayer capability is claimed.
 Portable tests verify the menu state space, preset definitions and source
 bindings. Actual Unreal physics, presentation and profile isolation still
 require a native playtest.
+
+## Whole-run practice timing
+
+Ten-lap practice results distinguish the full attempt from the retained eight-lap detail window. Whole-attempt mean, deviation, fastest/slowest lap identities, fee-free totals and streaks are computed from authoritative ordered lap completions using bounded constant-memory statistics. No extrapolation or extra persistent record is created. Invalid or missing active-clock evidence suppresses the full-run summary. Verify the first two laps remain included in the ten-lap aggregate even after they leave the recent window.

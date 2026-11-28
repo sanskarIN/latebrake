@@ -1757,6 +1757,35 @@ void ALatebrakeRaceHUD::DrawHUD()
                 }
             }
 
+            // Whole-run statistics are independent of the retained eight-lap
+            // detail window. Require a timing-qualified physical finish.
+            if (latebrake::CanAwardFinishedRace(Race))
+            {
+                const auto Whole=Race.GetWholeRaceLapSummary();
+                if (Whole.Valid && Whole.All.Count>latebrake::RecentTimedLaps::Capacity)
+                {
+                    MenuLine(FString::Printf(TEXT("FULL RUN: %d LAPS | %d FEE-FREE | %d PENALIZED"),
+                        Whole.All.Count,Whole.FeeFree.Count,Whole.Penalized.Count),true);
+                    MenuLine(FString::Printf(TEXT("FULL RUN MEAN %.2fs | SPREAD %.2fs | SD %.2fs"),
+                        Whole.All.MeanSeconds,Whole.All.SlowestSeconds-Whole.All.FastestSeconds,
+                        Whole.All.PopulationDeviationSeconds));
+                    MenuLine(FString::Printf(TEXT("FASTEST LAP %d: %.2fs | SLOWEST LAP %d: %.2fs"),
+                        Whole.All.FastestLap,Whole.All.FastestSeconds,
+                        Whole.All.SlowestLap,Whole.All.SlowestSeconds));
+                    if (Whole.FeeFree.Count>0)
+                        MenuLine(FString::Printf(TEXT("FULL RUN FEE-FREE BEST LAP %d: %.2fs"),
+                            Whole.FeeFree.FastestLap,Whole.FeeFree.FastestSeconds));
+                    if (!bCompact)
+                    {
+                        MenuLine(FString::Printf(TEXT("LONGEST FEE-FREE STREAK %d | FASTER COMPARISONS %d"),
+                            Whole.LongestFeeFreeStreak,Whole.LongestImprovementStreak));
+                        if (Whole.HasOpeningClosingComparison)
+                            MenuLine(FString::Printf(TEXT("FINAL VS OPENING LAP: %+.2fs (MEASURED)"),
+                                Whole.ClosingVsOpeningSeconds));
+                    }
+                }
+            }
+
             // Fee-free physical laps, not adjusted versions of penalized
             // times. Keep the retained-window scope explicit in Results.
             const auto CleanPace = latebrake::BuildCleanLapPaceReview(Race);

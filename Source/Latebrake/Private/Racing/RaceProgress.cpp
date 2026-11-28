@@ -21,6 +21,7 @@ void RaceProgress::Reset() noexcept
     ActiveTimedLapCount = 0;
     ActiveClockAdvancedThisLap = false;
     RecentLaps.Reset();
+    WholeLapHistory.Reset();
     ActiveClockAdvancedThisSector = false;
     MeasuredSplits.Reset(CheckpointCount);
     ElapsedSeconds = 0.0;
@@ -150,6 +151,8 @@ bool RaceProgress::PassCheckpoint(int checkpointIndex) noexcept
         LastLapPenaltySeconds = TotalPenaltySeconds - LapPenaltyStartSeconds;
         LapPenaltyStartSeconds = TotalPenaltySeconds;
         MeasuredSplits.Complete(CompletedLaps, LastLapSeconds, LastLapPenaltySeconds);
+        WholeLapHistory.Observe(CompletedLaps, LastLapSeconds,
+            lapHadActiveClockEvidence, LastLapPenaltySeconds);
         if (std::isfinite(LastLapSeconds) && LastLapSeconds > 0.0)
         {
             // Existing best/slowest semantics stay unchanged for legitimate
