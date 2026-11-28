@@ -308,6 +308,7 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
 void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
+    PresentedGarageCards={};
     PresentedMainMenu={};
     PresentedCareerCards={};
     PresentedGarageOffers = {};
@@ -841,6 +842,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                 // must remain visible on EVERY page, without adding a third
                 // header row or consuming the small-screen detail budget.
                 DrawPinned(Mode->GetGaragePurchaseDisplayFeedback(), true);
+                // Keep card browsing independent of all purchase controls.
+                const auto VehicleCards=latebrake::CalculateGarageVehicleCardsLayout(
+                    Canvas->SizeX,Canvas->SizeY,Layout,MenuPlan,ReadablePanel,
+                    SafeTextWidth,Y,DrawnMenuRows,true,bTouchHUD);
+                if (DrawGarageVehicleCards(Mode,VehicleCards))
+                {
+                    DrawnMenuRows+=VehicleCards.ReservedRows;
+                    Y=static_cast<float>(VehicleCards.NextDetailY);
+                }
                 // Keep the performance comparison in the left menu lane;
                 // it must never cover the showroom or a purchase target.
                 const auto ComparisonLayout=latebrake::CalculateGarageComparisonPanelLayout(
