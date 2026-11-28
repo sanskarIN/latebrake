@@ -28,6 +28,7 @@
 #include "UI/RaceResultsOverview.h"
 #include "UI/CareerEventCards.h"
 #include "UI/ProfileOverviewPanel.h"
+#include "UI/GarageVehicleCards.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -46,6 +47,7 @@ public:
     bool TryHandleSectorMotionPointer(double X,double Y);
     bool TryHandleLapMotionPointer(double X,double Y);
     void ToggleLapMotionPanel();
+    bool TryHandleGarageVehicleCardsPointer(double X,double Y);
     bool TryHandleCareerEventCardsPointer(double X,double Y);
     bool TryHandleMainMenuDashboardPointer(double X,double Y);
     bool TryHandleSettingsPointer(double X,double Y);
@@ -60,6 +62,9 @@ public:
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    latebrake::GarageVehicleCardsPresentation PresentedGarageCards{};
+    bool DrawGarageVehicleCards(const ALatebrakeRaceGameMode* Mode,
+        const latebrake::GarageVehicleCardsLayout& Layout);
     latebrake::MainMenuDashboardPresentation PresentedMainMenu{};
     latebrake::CareerEventCardsPresentation PresentedCareerCards{};
     bool DrawCareerEventCards(const ALatebrakeRaceGameMode* Mode,
