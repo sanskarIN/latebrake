@@ -21,7 +21,8 @@ constexpr GarageLookLayer NextGaragePaletteLayer(GarageLookLayer layer) noexcept
     {
     case GarageLookLayer::Paint: return GarageLookLayer::Stripe;
     case GarageLookLayer::Stripe: return GarageLookLayer::Wheels;
-    case GarageLookLayer::Wheels: return GarageLookLayer::Paint;
+    case GarageLookLayer::Wheels: return GarageLookLayer::Preset;
+    case GarageLookLayer::Preset: return GarageLookLayer::Paint;
     default: return GarageLookLayer::Paint;
     }
 }
@@ -31,7 +32,8 @@ constexpr int InitialGaragePaletteFocus(const GaragePaletteSession& session) noe
     if(!session.Open||!GarageState::IsVehicle(session.VehicleId)||
         !ValidGarageLook(session.Look))return -1;
     const int choice=GarageLookChoice(session.Look,session.Layer);
-    return choice>=0&&choice<GarageLookChoiceCount(session.Layer)?choice:-1;
+    return choice>=0&&choice<GarageLookChoiceCount(session.Layer)?choice:
+        session.Layer==GarageLookLayer::Preset?0:-1;
 }
 
 constexpr bool GaragePaletteFocusInRange(int index,int count) noexcept
