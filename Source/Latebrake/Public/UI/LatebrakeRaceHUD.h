@@ -24,6 +24,7 @@
 #include "UI/HudDriveCommandPanel.h"
 #include "UI/HudRaceStatusPanel.h"
 #include "UI/GarageComparisonPanel.h"
+#include "UI/MainMenuDashboard.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -42,6 +43,7 @@ public:
     bool TryHandleSectorMotionPointer(double X,double Y);
     bool TryHandleLapMotionPointer(double X,double Y);
     void ToggleLapMotionPanel();
+    bool TryHandleMainMenuDashboardPointer(double X,double Y);
     bool TryHandleSettingsPointer(double X,double Y);
     bool TryHandleQuickRaceChoicePointer(double X,double Y);
     bool TryHandlePracticeResultsPointer(double X,double Y);
@@ -54,6 +56,9 @@ public:
     latebrake::DesktopMenuMouseAction HitTestMenuMouse(double x, double y) const;
 
 private:
+    latebrake::MainMenuDashboardPresentation PresentedMainMenu{};
+    bool DrawMainMenuDashboard(const ALatebrakeRaceGameMode* Mode,
+        const latebrake::MainMenuDashboardLayout& Layout);
     bool DrawGarageComparisonPanel(const latebrake::GarageComparisonPanelLayout& Layout,
         const latebrake::GarageComparisonPanelReadout& Readout);
     bool DrawRaceStatusPanel(const latebrake::HudRaceStatusLayout& Layout,
