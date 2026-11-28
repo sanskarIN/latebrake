@@ -487,6 +487,7 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
                 Headway=FleetHeadway.Apply(FleetCommand,{
                     Ordinal,Route.GetNextWaypoint(),static_cast<double>(DeltaSeconds),
                     bCornerPhysicsQualified && !bOffPavement,Snapshot,PassingStamp});
+                Decision.Headway=latebrake::RecordFleetDecisionHeadway(FleetCommand,Headway);
                 FleetCommand=Headway.Command;
             }
             else FleetHeadway.Suspend();
@@ -497,9 +498,6 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
             Decision.RoadSpeedExceeded=Supervised.Forecast.RoadSpeedExceeded;
             Decision.LimitingSlot=Supervised.Forecast.LimitingSlot>=0?
                 Supervised.Forecast.LimitingSlot:Immediate.LimitingSlot;
-            if (Decision.LimitingSlot<0 && Headway.Restricted &&
-                Headway.Assessment.Leader.Valid && Headway.Assessment.TargetCeiling<1.0)
-                Decision.LimitingSlot=Headway.Assessment.Leader.Slot;
             if (FleetCommand.Brake || !Supervised.Qualified)
             {
                 FleetPassing.AbortTraffic();
