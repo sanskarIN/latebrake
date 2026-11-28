@@ -572,7 +572,11 @@ inline int HitFleetReplayMapCar(const FleetReplayPanelLayout& layout,
         const auto& car=map.Cars[i];
         if(!car.Visible) continue;
         if(!car.Observed || car.Slot!=static_cast<int>(i) ||
-            !car.Position.Valid || !layout.Map.Contains(car.Position.X,car.Position.Y))
+            !car.Position.Valid || !std::isfinite(car.Position.X) ||
+            !std::isfinite(car.Position.Y) || car.Position.X<layout.Map.X ||
+            car.Position.Y<layout.Map.Y ||
+            car.Position.X>layout.Map.X+layout.Map.Width ||
+            car.Position.Y>layout.Map.Y+layout.Map.Height)
             return -1;
         const double dx=car.Position.X-x;
         const double dy=car.Position.Y-y;

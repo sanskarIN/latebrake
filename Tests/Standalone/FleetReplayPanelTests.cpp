@@ -275,6 +275,12 @@ void MapFocusAndControlTelemetry()
     Require(v.SelectFocus(3,v.Readout().CursorSeconds,r) && !v.Readout().Playing,
         "exact presented selection stops playback");
 
+    auto boundary=m;
+    boundary.Cars[5].Position={true,l.Map.X+l.Map.Width,l.Map.Y+l.Map.Height};
+    Require(HitFleetReplayMapCar(l,boundary,hit.X,hit.Y)==3,
+        "valid boundary marker cannot disable other targets");
+    Require(HitFleetReplayMapCar(l,boundary,l.Map.X+l.Map.Width-1,
+        l.Map.Y+l.Map.Height-1)==5,"interior click can select clipped edge marker");
     m.Cars[2].Position=m.Cars[3].Position;
     Require(HitFleetReplayMapCar(l,m,hit.X,hit.Y)==-1,"overlapping markers ambiguous");
     m.Cars[2].Visible=false;
