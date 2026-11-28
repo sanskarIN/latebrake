@@ -3379,6 +3379,8 @@ void ALatebrakeCarPawn::MenuMousePressed()
     {
         if (Action == latebrake::DesktopMenuMouseAction::GaragePaletteClose)
             Hud->CloseGaragePalette();
+        else if (Action == latebrake::DesktopMenuMouseAction::GaragePaletteNextLayer)
+            Hud->AdvanceGaragePaletteLayer();
         else
             Hud->ApplyGaragePaletteChoice(Action);
         return;
