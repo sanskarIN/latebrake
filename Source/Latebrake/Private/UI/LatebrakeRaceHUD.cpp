@@ -15,6 +15,8 @@
 #include "Garage/GarageCatalogView.h"
 #include "Garage/GaragePurchasePlanner.h"
 #include "Garage/GarageComparisonView.h"
+#include "Garage/GarageLookShareCode.h"
+#include "Garage/GaragePaletteLegibility.h"
 #include "Career/CareerRoadmap.h"
 #include "Vehicles/VehicleBodyKitRecipe.h"
 #include "Vehicles/VehiclePaintRecipe.h"
@@ -30,6 +32,10 @@
 #include "Racing/CleanLapPaceReview.h"
 #include "Racing/BestSectorReview.h"
 #include "Racing/SampledDrivingReview.h"
+#include "Racing/DrivingCoachReview.h"
+#include "Racing/DrivingCoachPracticeGoals.h"
+#include "Racing/DrivingCoachIntegrity.h"
+#include "Racing/DrivingCoachFocusAreas.h"
 #include "Racing/LiveRacePaceProjection.h"
 #include "Racing/GateAwareRacePace.h"
 #include "Racing/TimeAttackPersonalBestTarget.h"
@@ -1222,8 +1228,13 @@ void ALatebrakeRaceHUD::DrawHUD()
             // Read-only visual comparison may inspect any locked car. Only
             // the owned car in GarageState can ever be equipped/raced.
             const int32 PreviewId = Mode->GetGaragePreviewVehicleId();
-            const auto& Preview = Catalog.Cars[
-                static_cast<std::size_t>(PreviewId)];
+            const auto* PreviewRow = latebrake::FindGarageCatalogEntry(Catalog, PreviewId);
+            if (!PreviewRow)
+            {
+                MenuLine(TEXT("GARAGE PREVIEW UNAVAILABLE: RETURN TO THE GARAGE"), true);
+                break;
+            }
+            const auto& Preview = *PreviewRow;
             MenuLine(FString::Printf(
                 TEXT("VIEWING %d/%d: %s | %s"),
                 PreviewId + 1, latebrake::VehicleCount,
@@ -1345,6 +1356,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("STYLE VIEWED OWNED CAR: F5/F6/F7 | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
+            MenuLine(TEXT("CTRL+Z UNDO LOOK / CTRL+Y REDO LOOK (SAVED)"));
             MenuLine(TEXT("N / PAD RIGHT: CYCLE CHOOSER TO FULL LOOK PRESETS."));
             if (ShowroomLane.Valid)
             {
@@ -1400,6 +1412,30 @@ void ALatebrakeRaceHUD::DrawHUD()
                     latebrake::GarageLookLayer::Stripe, ActiveLook.Stripe)),
                 UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
                     latebrake::GarageLookLayer::Wheels, ActiveLook.Wheels))), true);
+            // A shareable reference describes visible cosmetics only; it
+            // never grants ownership or makes a saved-look transaction.
+            const auto LookCode=latebrake::EncodeGarageLookShareCode(PreviewId,ViewedLook);
+            if (LookCode.Valid)
+                MenuLine(FString::Printf(
+                    TEXT("LOOK REFERENCE: %s | COSMETIC ONLY"),
+                    UTF8_TO_TCHAR(LookCode.Text.data())),true);
+            // Read-only paint contrast from original sRGB schematic tints.
+            // This never examines Unreal tone mapping, lighting or display.
+            const auto Legibility=latebrake::EvaluateGaragePaletteLegibility(
+                PreviewId,ViewedLook);
+            if(latebrake::ValidGaragePaletteLegibility(Legibility))
+            {
+                MenuLine(FString::Printf(TEXT("SCHEMATIC LOOK: %s"),
+                    UTF8_TO_TCHAR(latebrake::GaragePaletteVisibilityLabel(
+                        Legibility.Visibility))));
+                if(!bCompact)
+                    MenuLine(FString::Printf(
+                        TEXT("SCHEMATIC STRIPE CONTRAST %.1f:1 | %s"),
+                        Legibility.BodyStripeContrast,
+                        UTF8_TO_TCHAR(latebrake::GaragePaletteInkLabel(
+                            Legibility.Ink))));
+                MenuLine(TEXT("NOT A RENDERED CONTRAST AUDIT"));
+            }
             MenuLine(TEXT("SIX UE PROTOTYPE CARS / 12-CAR 2D TRIAL IS SEPARATE"), true);
             for (const latebrake::GarageCatalogEntry& Entry : Catalog.Cars)
             {
@@ -2255,6 +2291,106 @@ void ALatebrakeRaceHUD::DrawHUD()
                         MenuLine(FString::Printf(
                             TEXT("High lateral slip %.0f%% of sampled time"),
                             DriveReview.HighLateralSlipPercent));
+                    }
+                    // Optional run-local coaching uses the same accepted physical
+                    // samples as the telemetry above. It cannot affect results.
+                    const auto Coaching=Car->GetDrivingStats().GetCoachReview();
+                    const auto CoachIntegrity=latebrake::VerifyDrivingCoachIntegrity(
+                        Car->GetDrivingStats(),Coaching);
+                    if (CoachIntegrity.Valid)
+                    {
+                        const auto CoachDigest=latebrake::BuildDrivingCoachReview(Coaching);
+                        const auto CoachGoals=latebrake::BuildDrivingCoachGoals(Coaching);
+                        const auto CoachFocus=latebrake::BuildDrivingCoachFocusAreas(Coaching);
+                        MenuLine(UTF8_TO_TCHAR(latebrake::DrivingCoachIntegrityLabel(
+                            CoachIntegrity.Status)));
+                        MenuLine(TEXT("LOCAL DRIVING COACH | OBSERVED CHASSIS ONLY"), true);
+                        MenuLine(FString::Printf(
+                            TEXT("%.1fs sampled | %llu accepted frames"),
+                            Coaching.ObservedSeconds,
+                            static_cast<unsigned long long>(Coaching.AcceptedSamples)));
+                        MenuLine(UTF8_TO_TCHAR(latebrake::DrivingCoachMessageLabel(
+                            Coaching.Message)));
+                        if (!bCompact)
+                        {
+                            MenuLine(FString::Printf(
+                                TEXT("Coach: braking %.0f%% | high slip %.0f%%"),
+                                100.0*Coaching.BrakeFraction,
+                                100.0*Coaching.HighSlipFraction));
+                            MenuLine(FString::Printf(
+                                TEXT("Observed brake episodes %llu | slip episodes %llu"),
+                                static_cast<unsigned long long>(Coaching.AcceptedBrakeEpisodes),
+                                static_cast<unsigned long long>(Coaching.AcceptedSlipEpisodes)));
+                            if (CoachDigest.Valid &&
+                                CoachDigest.Trend!=latebrake::DrivingCoachPaceTrend::Unavailable)
+                                MenuLine(UTF8_TO_TCHAR(latebrake::DrivingCoachPaceTrendLabel(
+                                    CoachDigest.Trend)));
+                            if (CoachDigest.HasLongestBrake)
+                                MenuLine(FString::Printf(
+                                    TEXT("Longest sampled brake %.2fs"),
+                                    CoachDigest.LongestBrake.DurationSeconds));
+                            if (CoachGoals.Valid && CoachGoals.Count>0)
+                                MenuLine(UTF8_TO_TCHAR(latebrake::DrivingCoachGoalLabel(
+                                    CoachGoals.Goals[0].Kind)));
+                            if (CoachFocus.Valid && CoachFocus.Count>0)
+                            {
+                                const auto& Area=CoachFocus.Areas[0];
+                                MenuLine(FString::Printf(
+                                    TEXT("COACH FOCUS %.1f-%.1fs | %s"),
+                                    Area.StartedSeconds,Area.EndedSeconds,
+                                    UTF8_TO_TCHAR(latebrake::DrivingCoachFocusLabel(
+                                        Area.Kind))));
+                            }
+                            MenuLine(TEXT("COACH IS ADVISORY: NO TIMING OR CREDIT AUTHORITY"));
+                        }
+                    }
+                    // A real gate must have been accepted by RaceProgress,
+                    // and the coach's separate samples must cover its window.
+                    const auto Sectors=Mode->GetPlayerCoachSectorReview();
+                    if(Sectors.Valid)
+                    {
+                        MenuLine(TEXT("SAMPLED GATE INTERVALS (NOT OFFICIAL SPLITS)"),true);
+                        for(int Index=0;Index<Sectors.GateCount;++Index)
+                        {
+                            const auto& Sector=Sectors.BestSamples[
+                                static_cast<std::size_t>(Index)];
+                            if(!Sector.Valid)continue;
+                            MenuLine(FString::Printf(
+                                TEXT("GATE %d | %.1fs sampled | %.0f km/h | %.0f%% coverage"),
+                                Index+1,Sector.ChassisSampleSeconds,
+                                Sector.MeanSpeedKmh,100.0*Sector.ChassisCoverageFraction));
+                            if(!bCompact)
+                                MenuLine(FString::Printf(
+                                    TEXT("  SAMPLE BRAKE %.0f%% | SLIP %.0f%% | LAP %d"),
+                                    100.0*Sector.BrakingFraction,
+                                    100.0*Sector.HighSlipFraction,Sector.LapIndex+1));
+                        }
+                        const auto Overview=Mode->GetPlayerCoachSectorOverview();
+                        if(Overview.Valid && Overview.SuggestedReviewGate>=0)
+                        {
+                            const int Gate=Overview.SuggestedReviewGate;
+                            const auto& Entry=Overview.Gates[
+                                static_cast<std::size_t>(Gate)];
+                            MenuLine(FString::Printf(TEXT("SAMPLED GATE %d REVIEW: %s"),
+                                Gate+1,UTF8_TO_TCHAR(latebrake::CoachSectorAdvisoryFocusLabel(
+                                    Entry.Focus))));
+                        }
+                        if(!bCompact)
+                        {
+                            const auto Pair=Mode->GetPlayerCoachSectorPairOverview();
+                            if(Pair.Valid)
+                                for(int Gate=0;Gate<Pair.GateCount;++Gate)
+                                {
+                                    const auto& Entry=Pair.Gates[
+                                        static_cast<std::size_t>(Gate)];
+                                    if(!Entry.Valid)continue;
+                                    MenuLine(FString::Printf(
+                                        TEXT("GATE %d LAP %d VS %d | OBS SPEED %+.1f km/h"),
+                                        Gate+1,Entry.NewerLap+1,Entry.EarlierLap+1,
+                                        Entry.MeanSpeedKmh.Difference));
+                                }
+                        }
+                        MenuLine(TEXT("SAMPLED GATE INTERVALS DO NOT ALTER RACE RESULTS"));
                     }
                     const auto& Distribution=DriveReview.SpeedDistribution;
                     if (Distribution.Valid)

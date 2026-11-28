@@ -68,7 +68,7 @@ class GarageVehicleVisualBindingTests(unittest.TestCase):
         self.assertIn("Recipe.WingSpanScale", self.pawn)
         self.assertIn("GARAGE CAR %d/%d | OWNED %d/%d | %d CR", self.hud)
         self.assertIn("Catalog.OwnedVehicleCount", self.hud)
-        self.assertIn("BuildGarageCatalogView(Mode->GetGarageSnapshot())", self.hud)
+        self.assertIn("GarageCatalogue.Read(Mode->GetGarageSnapshot())", self.hud)
         self.assertIn("Entry.Effective.Acceleration", self.hud)
         self.assertIn("Entry.Effective.Grip", self.hud)
         self.assertIn("Entry.Effective.TopSpeed", self.hud)

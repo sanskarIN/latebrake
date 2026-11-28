@@ -26,6 +26,110 @@ bool Same(latebrake::GarageSnapshot a, latebrake::GarageSnapshot b)
         a.SelectedVehicle == b.SelectedVehicle &&
         a.EngineLevel == b.EngineLevel && a.GripLevel == b.GripLevel;
 }
+void CheckSameView(const latebrake::GarageCatalogView& actual,
+                   const latebrake::GarageCatalogView& expected)
+{
+    using namespace latebrake;
+    Check(actual.Credits == expected.Credits &&
+          actual.SelectedVehicle == expected.SelectedVehicle &&
+          actual.OwnedVehicleCount == expected.OwnedVehicleCount &&
+          actual.NextUnlockId == expected.NextUnlockId &&
+          actual.EngineLevel == expected.EngineLevel &&
+          actual.GripLevel == expected.GripLevel,
+          "cached catalog header equals direct build");
+    for (int id = 0; id < VehicleCount; ++id)
+    {
+        const auto* a = FindGarageCatalogEntry(actual, id);
+        const auto* b = FindGarageCatalogEntry(expected, id);
+        Check(a && b, "all six catalog slots resolve");
+        Check(a->VehicleId == b->VehicleId && a->Name == b->Name &&
+              a->Ownership == b->Ownership && a->UnlockCost == b->UnlockCost &&
+              a->CreditsShort == b->CreditsShort && a->RouteValid == b->RouteValid &&
+              a->RouteCars == b->RouteCars && a->RouteCost == b->RouteCost &&
+              a->RouteCreditsShort == b->RouteCreditsShort &&
+              a->RouteBudgetReady == b->RouteBudgetReady &&
+              a->IsNextUnlock == b->IsNextUnlock &&
+              Close(a->Effective.Acceleration, b->Effective.Acceleration) &&
+              Close(a->Effective.Grip, b->Effective.Grip) &&
+              Close(a->Effective.TopSpeed, b->Effective.TopSpeed),
+              "cached row equals direct build after snapshot transitions");
+    }
+}
+
+void CheckCatalogLookup()
+{
+    using namespace latebrake;
+    auto view = BuildGarageCatalogView({3400, 1, 0, 0, 0});
+    for (int id = 0; id < VehicleCount; ++id)
+        Check(FindGarageCatalogEntry(view, id) ==
+              &view.Cars[static_cast<std::size_t>(id)], "stable row identity");
+    for (int id : {std::numeric_limits<int>::min(), -1, VehicleCount,
+                   std::numeric_limits<int>::max()})
+        Check(!FindGarageCatalogEntry(view, id), "invalid preview never indexes catalog");
+    Check(!FindGarageCatalogEntry({}, 0), "default row lacks planner evidence");
+    auto malformed = view;
+    malformed.Cars[2].VehicleId = 1;
+    Check(!FindGarageCatalogEntry(malformed, 2), "mixed row identity rejected");
+    malformed = view;
+    malformed.Cars[2].RouteValid = false;
+    Check(!FindGarageCatalogEntry(malformed, 2), "missing route evidence rejected");
+    malformed = view;
+    malformed.Cars[2].Name = nullptr;
+    Check(!FindGarageCatalogEntry(malformed, 2), "null name rejected");
+    malformed.Cars[2].Name = "";
+    Check(!FindGarageCatalogEntry(malformed, 2), "empty name rejected");
+    Check(FindGarageCatalogEntry(view, 5)->Ownership == GarageCatalogOwnership::LockedAffordable,
+          "locked preview does not require ownership");
+}
+
+void CheckCatalogCache()
+{
+    using namespace latebrake;
+    GarageCatalogCache cache;
+    Check(cache.RebuildCount() == 0, "initial cache empty");
+    GarageSnapshot previous{};
+    bool initialized = false;
+    std::uint64_t expectedRebuilds = 0;
+    const auto verify = [&](GarageSnapshot input)
+    {
+        GarageState canonical;
+        canonical.Load(input);
+        const auto normalized = canonical.Snapshot();
+        if (!initialized || !Same(previous, normalized)) ++expectedRebuilds;
+        const auto direct = BuildGarageCatalogView(input);
+        const auto& cached = cache.Read(input);
+        CheckSameView(cached, direct);
+        Check(cache.RebuildCount() == expectedRebuilds, "rebuild only on canonical key change");
+        CheckSameView(cache.Read(normalized), direct);
+        Check(cache.RebuildCount() == expectedRebuilds, "normalized repeat is a cache hit");
+        previous = normalized;
+        initialized = true;
+    };
+    // Every economy key field independently changes, including equipped car.
+    for (const GarageSnapshot snapshot : {GarageSnapshot{1000, 3, 0, 0, 0},
+         {1001, 3, 0, 0, 0}, {1001, 7, 0, 0, 0}, {1001, 7, 2, 0, 0},
+         {1001, 7, 2, 1, 0}, {1001, 7, 2, 1, 1}})
+        verify(snapshot);
+    Check(expectedRebuilds == 6, "all five key fields invalidate independently");
+    verify({-10, -1, 999, 99, -3});
+    verify({-20, -2, -999, 4, -4});
+    Check(expectedRebuilds == 7, "distinct corrupt snapshots share a sanitized key");
+    // Sparse ownership, future mask bits and bounds all use the same planner.
+    for (int mask = 0; mask <= KnownVehicleMask; ++mask)
+    for (int credits : {0, 599, 600, 9500, std::numeric_limits<int>::max()})
+    for (int selected : {-1, 0, 3, 5, VehicleCount})
+    for (int engine : {-1, 0, 2, 3, 4})
+    for (int grip : {-1, 0, 3, 4})
+    {
+        verify({credits, mask, selected, engine, grip});
+        verify({credits, mask | (1 << 20), selected, engine, grip});
+    }
+    cache.Reset();
+    Check(cache.RebuildCount() == 0, "reset clears rebuild counter");
+    CheckSameView(cache.Read(previous), BuildGarageCatalogView(previous));
+    Check(cache.RebuildCount() == 1, "reset forces first rebuild even on former key");
+}
+
 }
 
 int main()
@@ -169,6 +273,9 @@ int main()
           misleading.Cars[5].RouteCreditsShort == 6100 &&
           !misleading.Cars[5].RouteBudgetReady && !misleading.Cars[5].IsNextUnlock,
           "Nova sticker affordability is not sequential route affordability");
+
+    CheckCatalogLookup();
+    CheckCatalogCache();
 
     std::cout << "Garage catalogue view tests passed.\n";
     return EXIT_SUCCESS;

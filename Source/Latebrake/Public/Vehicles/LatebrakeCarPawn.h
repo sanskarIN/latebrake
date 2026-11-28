@@ -403,6 +403,8 @@ private:
     void CycleGarageStripe();
     void CycleGarageWheels();
     void ResetGarageLook();
+    void UndoGarageLook();
+    void RedoGarageLook();
     void BrowseGarageNext();
     void BrowseGaragePrevious();
     void ToggleCircuitLighting();

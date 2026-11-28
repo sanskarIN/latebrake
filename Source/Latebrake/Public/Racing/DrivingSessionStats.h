@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Racing/SampledSpeedDistribution.h"
+#include "Racing/DrivingCoachInsights.h"
 
 namespace latebrake
 {
@@ -33,6 +34,10 @@ public:
         return SpeedDistribution.Review(AcceptedSamples,ActiveSeconds,
             DistanceCm,BrakingSeconds);
     }
+    DrivingCoachReadout GetCoachReview() const noexcept
+    {
+        return Coach.Review();
+    }
 
 private:
     double DistanceCm = 0.0;
@@ -44,5 +49,6 @@ private:
     int AcceptedSamples = 0;
     bool PreviousBraking = false;
     SampledSpeedAccumulator SpeedDistribution;
+    DrivingCoachAccumulator Coach;
 };
 } // namespace latebrake

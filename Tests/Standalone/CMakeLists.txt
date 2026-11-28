@@ -3,6 +3,238 @@ project(LatebrakePortableTests LANGUAGES CXX)
 
 enable_testing()
 
+# Read-only physical-sample coach: no scoring, savings or physics authority.
+add_executable(latebrake_driving_coach_insights_tests DrivingCoachInsightsTests.cpp)
+target_include_directories(latebrake_driving_coach_insights_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_insights_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_insights_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_insights_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachInsights COMMAND latebrake_driving_coach_insights_tests)
+
+# Optional practice goals are derived from verified telemetry, never reward state.
+add_executable(latebrake_driving_coach_practice_goals_tests DrivingCoachPracticeGoalsTests.cpp)
+target_include_directories(latebrake_driving_coach_practice_goals_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_practice_goals_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_practice_goals_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_practice_goals_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachPracticeGoals COMMAND latebrake_driving_coach_practice_goals_tests)
+
+# Screen-only review validates the source digest and its continuity boundaries.
+add_executable(latebrake_driving_coach_review_tests DrivingCoachReviewTests.cpp)
+target_include_directories(latebrake_driving_coach_review_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_review_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_review_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_review_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachReview COMMAND latebrake_driving_coach_review_tests)
+
+# Test the exact legacy DrivingSessionStats adapter with the new coach.
+add_executable(latebrake_driving_session_coach_integration_tests
+    DrivingSessionCoachIntegrationTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_driving_session_coach_integration_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_session_coach_integration_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_session_coach_integration_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_session_coach_integration_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingSessionCoachIntegration COMMAND latebrake_driving_session_coach_integration_tests)
+
+# Independent verification against legacy driving stats and speed bands.
+add_executable(latebrake_driving_coach_integrity_tests
+    DrivingCoachIntegrityTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_driving_coach_integrity_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_integrity_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_integrity_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_integrity_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachIntegrity COMMAND latebrake_driving_coach_integrity_tests)
+
+# Bounded observed-window driving focus ranking, never a race steward.
+add_executable(latebrake_driving_coach_focus_areas_tests DrivingCoachFocusAreasTests.cpp)
+target_include_directories(latebrake_driving_coach_focus_areas_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_focus_areas_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_focus_areas_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_focus_areas_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachFocusAreas COMMAND latebrake_driving_coach_focus_areas_tests)
+
+# Display-only stable visual reference; no persisted or purchase authority.
+add_executable(latebrake_garage_look_share_code_tests GarageLookShareCodeTests.cpp)
+target_include_directories(latebrake_garage_look_share_code_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_look_share_code_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_garage_look_share_code_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_look_share_code_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageLookShareCode COMMAND latebrake_garage_look_share_code_tests)
+
+# Transactional, bounded Garage cosmetic undo/redo - no SaveGame authority.
+add_executable(latebrake_garage_look_edit_history_tests GarageLookEditHistoryTests.cpp)
+target_include_directories(latebrake_garage_look_edit_history_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_look_edit_history_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_garage_look_edit_history_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_look_edit_history_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GarageLookEditHistory COMMAND latebrake_garage_look_edit_history_tests)
+
+# Strict offline QA analyzer uses the original DrivingSessionStats implementation.
+add_executable(latebrake_coach_csv_policy_tests
+    CoachCsvPolicyTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_coach_csv_policy_tests PRIVATE
+    ../../Source/Latebrake/Public ../../Tools/CoachTelemetry)
+target_compile_features(latebrake_coach_csv_policy_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_coach_csv_policy_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_coach_csv_policy_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CoachCsvPolicy COMMAND latebrake_coach_csv_policy_tests)
+
+add_executable(latebrake_coach_csv_inspector
+    ../../Tools/CoachTelemetry/CoachTelemetryInspector.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_coach_csv_inspector PRIVATE
+    ../../Source/Latebrake/Public ../../Tools/CoachTelemetry)
+target_compile_features(latebrake_coach_csv_inspector PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_coach_csv_inspector PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_coach_csv_inspector PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
+# Independent comparison of two unauthenticated coach CSV observations.
+add_executable(latebrake_coach_csv_comparison_tests
+    CoachCsvComparisonTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_coach_csv_comparison_tests PRIVATE
+    ../../Source/Latebrake/Public ../../Tools/CoachTelemetry)
+target_compile_features(latebrake_coach_csv_comparison_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_coach_csv_comparison_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_coach_csv_comparison_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CoachCsvComparison COMMAND latebrake_coach_csv_comparison_tests)
+
+# Gate-bound, read-only coaching samples after genuine checkpoint acceptance.
+add_executable(latebrake_driving_coach_sector_journal_tests DrivingCoachSectorJournalTests.cpp)
+target_include_directories(latebrake_driving_coach_sector_journal_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_sector_journal_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_sector_journal_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_sector_journal_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachSectorJournal COMMAND latebrake_driving_coach_sector_journal_tests)
+
+# Weighted per-gate chassis observations, never authoritative lap splits.
+add_executable(latebrake_driving_coach_sector_overview_tests DrivingCoachSectorOverviewTests.cpp)
+target_include_directories(latebrake_driving_coach_sector_overview_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_sector_overview_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_sector_overview_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_sector_overview_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachSectorOverview COMMAND latebrake_driving_coach_sector_overview_tests)
+
+# Same-gate cross-lap sample exposure, requiring two independent observed laps.
+add_executable(latebrake_driving_coach_sector_comparison_tests DrivingCoachSectorComparisonTests.cpp)
+target_include_directories(latebrake_driving_coach_sector_comparison_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_driving_coach_sector_comparison_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_driving_coach_sector_comparison_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_driving_coach_sector_comparison_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME DrivingCoachSectorComparison COMMAND latebrake_driving_coach_sector_comparison_tests)
+
+# Read-only schematic visual contrast, never an engine pixel accessibility claim.
+add_executable(latebrake_garage_palette_legibility_tests GaragePaletteLegibilityTests.cpp)
+target_include_directories(latebrake_garage_palette_legibility_tests PRIVATE ../../Source/Latebrake/Public)
+target_compile_features(latebrake_garage_palette_legibility_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_garage_palette_legibility_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_garage_palette_legibility_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GaragePaletteLegibility COMMAND latebrake_garage_palette_legibility_tests)
+
+# Offline QA quality diagnostics from the same validated source samples.
+add_executable(latebrake_coach_csv_quality_tests
+    CoachCsvQualityTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_coach_csv_quality_tests PRIVATE
+    ../../Source/Latebrake/Public ../../Tools/CoachTelemetry)
+target_compile_features(latebrake_coach_csv_quality_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_coach_csv_quality_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_coach_csv_quality_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CoachCsvQuality COMMAND latebrake_coach_csv_quality_tests)
+
+# Bounded cohort analysis from validated per-file quality and chassis snapshots.
+add_executable(latebrake_coach_csv_batch_tests
+    CoachCsvBatchTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_coach_csv_batch_tests PRIVATE
+    ../../Source/Latebrake/Public ../../Tools/CoachTelemetry)
+target_compile_features(latebrake_coach_csv_batch_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_coach_csv_batch_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_coach_csv_batch_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CoachCsvBatch COMMAND latebrake_coach_csv_batch_tests)
+
+# Offline pairwise review: bounded sample-cohort provenance only.
+add_executable(latebrake_coach_csv_batch_pairs_tests
+    CoachCsvBatchPairsTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_coach_csv_batch_pairs_tests PRIVATE
+    ../../Source/Latebrake/Public ../../Tools/CoachTelemetry)
+target_compile_features(latebrake_coach_csv_batch_pairs_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_coach_csv_batch_pairs_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_coach_csv_batch_pairs_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CoachCsvBatchPairs COMMAND latebrake_coach_csv_batch_pairs_tests)
+
+# Offline source-only 5-second window lineage, never a real lap-time claim.
+add_executable(latebrake_coach_csv_window_audit_tests
+    CoachCsvWindowAuditTests.cpp
+    ../../Source/Latebrake/Private/Racing/DrivingSessionStats.cpp)
+target_include_directories(latebrake_coach_csv_window_audit_tests PRIVATE
+    ../../Source/Latebrake/Public ../../Tools/CoachTelemetry)
+target_compile_features(latebrake_coach_csv_window_audit_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(latebrake_coach_csv_window_audit_tests PRIVATE /W4 /WX)
+else()
+    target_compile_options(latebrake_coach_csv_window_audit_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME CoachCsvWindowAudit COMMAND latebrake_coach_csv_window_audit_tests)
+
 add_executable(latebrake_race_tests
     RaceProgressTests.cpp
     ../../Source/Latebrake/Private/Racing/RaceProgress.cpp

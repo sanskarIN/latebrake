@@ -51,6 +51,19 @@ struct GarageCatalogView final
     int GripLevel = 0;
 };
 
+// Resolve only a coherent, fully planned row. Do not substitute the equipped
+// vehicle for a missing showroom target: doing so would mislabel the preview.
+inline const GarageCatalogEntry* FindGarageCatalogEntry(
+    const GarageCatalogView& catalog, int vehicleId) noexcept
+{
+    if (!GarageState::IsVehicle(vehicleId)) return nullptr;
+    const auto& entry = catalog.Cars[static_cast<std::size_t>(vehicleId)];
+    if (entry.VehicleId != vehicleId || !entry.RouteValid ||
+        !entry.Name || entry.Name[0] == '\0')
+        return nullptr;
+    return &entry;
+}
+
 inline GarageCatalogView BuildGarageCatalogView(GarageSnapshot persisted) noexcept
 {
     // Reuse the exact sanitation rules applied during SaveGame loading.

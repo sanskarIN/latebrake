@@ -3598,6 +3598,30 @@ void ALatebrakeCarPawn::ResetGarageLook()
     Mode->GarageResetAppearance();
 }
 
+void ALatebrakeCarPawn::UndoGarageLook()
+{
+    ALatebrakeRaceGameMode* Mode=GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(),Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageUndoAppearance();
+}
+
+void ALatebrakeCarPawn::RedoGarageLook()
+{
+    ALatebrakeRaceGameMode* Mode=GetWorld()
+        ? GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>() : nullptr;
+    if (!Mode || !latebrake::CanConsumeGarageShortcut(
+        Mode->IsMenuOpen(),Mode->GetMenuPage(),
+        Mode->IsFocusLossGuardActive() || Mode->IsManualRacePauseActive()))
+        return;
+    ClearDriverInputs();
+    Mode->GarageRedoAppearance();
+}
+
 void ALatebrakeCarPawn::BrowseGarageNext()
 {
     // Several gamepad buttons double as live driving controls (R3
@@ -3808,6 +3832,12 @@ void ALatebrakeCarPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
     FInputActionBinding& GarageResetKey = PlayerInputComponent->BindAction(
         TEXT("GarageResetLook"), IE_Pressed, this, &ALatebrakeCarPawn::ResetGarageLook);
     GarageResetKey.bExecuteWhenPaused = true;
+    FInputActionBinding& UndoLookKey=PlayerInputComponent->BindAction(
+        TEXT("GarageUndoLook"), IE_Pressed, this, &ALatebrakeCarPawn::UndoGarageLook);
+    UndoLookKey.bExecuteWhenPaused = true;
+    FInputActionBinding& RedoLookKey=PlayerInputComponent->BindAction(
+        TEXT("GarageRedoLook"), IE_Pressed, this, &ALatebrakeCarPawn::RedoGarageLook);
+    RedoLookKey.bExecuteWhenPaused = true;
     FInputActionBinding& BrowseNextKey = PlayerInputComponent->BindAction(
         TEXT("GarageBrowseNext"), IE_Pressed, this, &ALatebrakeCarPawn::BrowseGarageNext);
     BrowseNextKey.bExecuteWhenPaused = true;

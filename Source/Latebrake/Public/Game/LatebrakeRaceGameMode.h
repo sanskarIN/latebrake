@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Racing/RaceProgress.h"
+#include "Racing/DrivingCoachSectorJournal.h"
+#include "Racing/DrivingCoachSectorComparison.h"
 #include "Racing/PlayerSectorMotionReview.h"
 #include "Racing/PlayerLapMotionJournal.h"
 #include "UI/HudTelemetryPriority.h"
@@ -42,6 +44,7 @@
 #include "Racing/RaceEvents.h"
 #include "Garage/GarageState.h"
 #include "Garage/GarageAppearance.h"
+#include "Garage/GarageLookEditHistory.h"
 #include "Garage/GarageDirectAppearance.h"
 #include "Garage/GarageGalleryCursor.h"
 #include "Garage/GarageEquipUiPolicy.h"
@@ -229,6 +232,12 @@ public:
     }
 
     const latebrake::RaceProgress& GetRace() const { return Race; }
+    latebrake::DrivingCoachSectorReview GetPlayerCoachSectorReview() const noexcept
+    { return CoachSectorJournal.Review(); }
+    latebrake::CoachSectorOverview GetPlayerCoachSectorOverview() const noexcept
+    { return latebrake::BuildDrivingCoachSectorOverview(CoachSectorJournal); }
+    latebrake::CoachSectorPairOverview GetPlayerCoachSectorPairOverview() const noexcept
+    { return latebrake::BuildCoachSectorPairOverview(CoachSectorJournal); }
     latebrake::SectorMotionReview GetPlayerSectorMotionReview() const noexcept;
     latebrake::SectorMotionHistory GetPlayerSectorMotionHistory() const noexcept;
     latebrake::PlayerLapMotionReview GetPlayerLapMotionReview() const noexcept;
@@ -306,6 +315,8 @@ public:
     void GarageCycleStripe();
     void GarageCycleWheels();
     void GarageResetAppearance();
+    void GarageUndoAppearance();
+    void GarageRedoAppearance();
     void GarageChooseAppearance(latebrake::GarageDirectAppearanceRequest Request);
     int32 GetLastRaceCredits() const { return LastRaceCredits; }
 
@@ -346,6 +357,7 @@ private:
     void GarageCycleAppearance(latebrake::GarageLookLayer layer,
                               bool bReset = false,
                               const latebrake::GarageDirectAppearanceRequest* Direct = nullptr);
+    void CommitGarageAppearanceHistory(bool bUndo);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
     void RefreshGhostConfiguration(const ALatebrakeCarPawn* Car);
@@ -398,6 +410,7 @@ private:
     void ObservePlayerSectorMotion(double LiveDelta,bool bClockAdvanced);
     void ObservePlayerSectorGate(int32 Gate,int32 AcceptedOrdinal) noexcept;
     latebrake::RaceProgress Race{4, 3};
+    latebrake::DrivingCoachSectorJournal CoachSectorJournal;
     latebrake::PlayerSectorMotionJournal PlayerSectorMotion;
     latebrake::PlayerLapMotionJournal PlayerLapMotion;
     TWeakObjectPtr<ALatebrakeCarPawn> SectorMotionPawn;
@@ -441,6 +454,7 @@ private:
     int32 CompletedRaceCount = 0;
     latebrake::GarageState Garage;
     latebrake::GarageAppearanceState GarageLooks;
+    latebrake::GarageLookEditHistory GarageLookHistory;
     latebrake::GarageGalleryCursor GarageGallery;
     latebrake::GaragePurchaseConfirmation GaragePurchaseConfirm;
     latebrake::GarageTuningKey LastAppliedTuning;
