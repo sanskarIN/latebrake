@@ -899,6 +899,21 @@ void ALatebrakeRaceHUD::DrawHUD()
                     Y=static_cast<float>(Cards.NextDetailY);
                 }
             }
+            if (Mode->GetMenuPage()==latebrake::MenuPage::Profile)
+            {
+                const auto ProfileLayout=latebrake::CalculateProfileOverviewLayout(
+                    Layout,MenuPlan,ReadablePanel,SafeTextWidth,Y,DrawnMenuRows,true,bTouchHUD);
+                const auto Profile=latebrake::ReadProfileOverview({
+                    Mode->GetCareer().Snapshot(),Mode->GetGarageSnapshot(),
+                    Mode->GetCompletedRaceCount(),Mode->GetPersonalBestSeconds(),
+                    Mode->GetPersonalBestLapSeconds(),Mode->IsProfileReadOnly(),
+                    Mode->HasProgressSaveError()});
+                if (DrawProfileOverview(ProfileLayout,Profile))
+                {
+                    DrawnMenuRows+=ProfileLayout.ReservedRows;
+                    Y=static_cast<float>(ProfileLayout.NextDetailY);
+                }
+            }
         }
         if (!Mode->IsCircuitReadyForGameplay())
         {
@@ -2416,6 +2431,24 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Mode->GetCompletedRaceCount(), Mode->GetCareer().CompletedCount()));
             MenuLine(FString::Printf(TEXT("Banked credits: %d"),
                 Mode->GetTotalCredits()));
+            {
+                const auto Profile=latebrake::ReadProfileOverview({
+                    Mode->GetCareer().Snapshot(),Mode->GetGarageSnapshot(),
+                    Mode->GetCompletedRaceCount(),Mode->GetPersonalBestSeconds(),
+                    Mode->GetPersonalBestLapSeconds(),Mode->IsProfileReadOnly(),
+                    Mode->HasProgressSaveError()});
+                MenuLine(UTF8_TO_TCHAR(latebrake::ProfileOverviewStatusLabel(Profile.Status)),true);
+                MenuLine(FString::Printf(TEXT("MEDALS: BRONZE %d | SILVER %d | GOLD %d"),
+                    Profile.Bronze,Profile.Silver,Profile.Gold));
+                MenuLine(FString::Printf(TEXT("CARS %d/%d | EQUIPPED %s"),
+                    Profile.OwnedCars,latebrake::VehicleCount,
+                    UTF8_TO_TCHAR(latebrake::GarageState::Definition(Profile.EquippedCar).Name)));
+                MenuLine(FString::Printf(TEXT("ENGINE %d/3 | GRIP %d/3"),Profile.EngineLevel,Profile.GripLevel));
+                if(Profile.CircuitBestValid)
+                    MenuLine(FString::Printf(TEXT("CIRCUIT BEST %.2fs"),Profile.CircuitBest));
+                if(Profile.BestLapValid)
+                    MenuLine(FString::Printf(TEXT("BEST LAP %.2fs"),Profile.BestLap));
+            }
             break;
         default: break;
         }
