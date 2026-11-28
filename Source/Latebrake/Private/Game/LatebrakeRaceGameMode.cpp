@@ -149,6 +149,7 @@ void ALatebrakeRaceGameMode::BeginPlay()
     LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
+    GhostSetup.Reset();
 #if !UE_BUILD_SHIPPING
     StartRaceAuditAttempt(-1); // initial pawn placement not yet observed
 #endif
@@ -301,8 +302,9 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
         TrackLimits.Suspend();
     }
 
+    if (!Race.IsFinished()) RefreshGhostConfiguration(GhostDriver);
     if (bStartQualified && StartLights.IsGreen() && LiveDelta > 0.0 &&
-        IsValid(GhostDriver) && GhostDriver->IsRacePhysicsReady())
+        IsValid(GhostDriver) && GhostDriver->IsRacePhysicsReady() && GhostSetup.IsBound())
     {
         // A fresh lap may rebind its OWN driver/session after a previous
         // pause or recovery invalidated that previous candidate. Never
@@ -353,6 +355,29 @@ void ALatebrakeRaceGameMode::Tick(float DeltaSeconds)
     ApplyGarageToPlayer();
 }
 
+void ALatebrakeRaceGameMode::RefreshGhostConfiguration(const ALatebrakeCarPawn* Car)
+{
+    latebrake::GhostSetupStamp Stamp;
+    const auto Key=GetActivePracticeTrial().Key;
+    if (IsValid(Car) && Car->IsLocallyControlled() && Car->IsRacePhysicsReady() &&
+        LastTunedPawn.Get()==Car && LastAppliedTuning==Key && Car->GetSelectedVehicleId()==Key.Selected)
+    {
+        const auto Handling=Car->GetHandlingMode();
+        Stamp={static_cast<std::uint64_t>(Car->GetUniqueID())+1u,Key,
+            Handling==ELatebrakeHandlingMode::Arcade?0:
+            Handling==ELatebrakeHandlingMode::SimulationInspired?1:-1};
+    }
+    const auto Change=latebrake::RefreshGhostSetup(GhostSetup,GhostRecorder,Stamp,
+        Race.GetCurrentLapSeconds()==0.0 && !Race.IsFinished());
+    if (Change==latebrake::GhostSetupTransition::Lost ||
+        Change==latebrake::GhostSetupTransition::Rebound ||
+        Change==latebrake::GhostSetupTransition::Unavailable)
+    {
+        GhostTrackedPawn.Reset();
+        if (IsValid(BestLapGhostMarker)) BestLapGhostMarker->SetActorHiddenInGame(true);
+    }
+}
+
 void ALatebrakeRaceGameMode::SuspendBestLapGhost()
 {
     // Paused Unreal worlds can stop ticking before the next GameMode
@@ -392,7 +417,7 @@ bool ALatebrakeRaceGameMode::TryGetBestLapGhostSeparationMeters(
     // Only the currently rendered replay reference is measured. A hidden
     // marker, failed asset spawn or invalid race cannot show stale telemetry.
     if (!bCircuitReady || !StartLights.IsGreen() || Race.IsFinished() ||
-        Race.GetCompletedLaps() <= 0 || !GhostRecorder.HasBest() ||
+        Race.GetCompletedLaps() <= 0 || !GhostSetup.IsBound() || !GhostRecorder.HasBest() ||
         !GhostDisplay.IsEnabled() || Menu.IsOpen() ||
         UGameplayStatics::IsGamePaused(this) ||
         AppFocusGuard.IsSuspended() || ManualPause.IsSuspended() ||
@@ -431,7 +456,7 @@ void ALatebrakeRaceGameMode::UpdateBestLapGhostMarker(bool bReplayAuthorized)
     latebrake::LapGhostPose Sample;
     const bool bShouldShow = GhostDisplay.CanRender(bReplayAuthorized) &&
         !Race.IsFinished() &&
-        Race.GetCompletedLaps() > 0 && GhostRecorder.HasBest() &&
+        Race.GetCompletedLaps() > 0 && GhostSetup.IsBound() && GhostRecorder.HasBest() &&
         GhostRecorder.Evaluate(Race.GetCurrentLapSeconds(), Sample);
     if (!bShouldShow)
     {
@@ -1469,8 +1494,10 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         // ghost frame to accept a checkpoint or create an official time.
         const bool bRealLapHadActiveTime =
             Race.GetActiveTimedLapCount() == Race.GetCompletedLaps();
+        const auto* LapDriver=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        RefreshGhostConfiguration(LapDriver);
         GhostRecorder.FinishLap(Race.GetLastLapSeconds(),
-            bRealLapHadActiveTime,
+            bRealLapHadActiveTime && GhostSetup.IsBound(),
             Race.GetLastLapPenaltySeconds() == 0.0);
     }
     if (!Race.IsFinished())
@@ -2109,6 +2136,8 @@ latebrake::PracticeConfiguration ALatebrakeRaceGameMode::ReadPracticeConfigurati
 
 void ALatebrakeRaceGameMode::NotifyPracticeHandlingChange(const ALatebrakeCarPawn* Car)
 {
+    if (!Race.IsFinished() && IsValid(Car) && Car==UGameplayStatics::GetPlayerPawn(this,0))
+        RefreshGhostConfiguration(Car);
     if (IsPracticeRace() && !Race.IsFinished() && IsValid(Car) &&
         Car==UGameplayStatics::GetPlayerPawn(this,0))
     {
@@ -2578,6 +2607,7 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
             Requested.Selected, Look);
         LastTunedPawn = Car;
         LastAppliedTuning = Requested;
+        if (!Race.IsFinished()) RefreshGhostConfiguration(Car);
     }
     // Apply separately, including when the same vehicle receives a new
     // free paint/stripe/wheel choice. No force or collision body changes.
@@ -3226,6 +3256,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     LastRivalFinishObservation = {};
     LaunchMeter.Reset();
     GhostRecorder.ResetRun();
+    GhostSetup.Reset();
     GhostTrackedPawn.Reset();
     GhostTeleportRevision = 0;
     GhostSessionRevision = CheckpointSession.Current();

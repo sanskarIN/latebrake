@@ -34,6 +34,7 @@
 #include "Racing/RaceStartLights.h"
 #include "Racing/LaunchSpeedMeter.h"
 #include "Racing/BestLapGhost.h"
+#include "Racing/GhostSetupGuard.h"
 #include "Racing/GhostDisplayPreference.h"
 #include "Racing/RestartPlacementGuard.h"
 #include "Racing/AppFocusRaceGuard.h"
@@ -230,7 +231,7 @@ public:
     bool IsRaceStartGreen() const { return StartLights.IsGreen() && IsExperimentalFleetDriveReady(); }
     const latebrake::LaunchSpeedMeter& GetLaunchSpeedMeter() const { return LaunchMeter; }
     // A run-local cosmetic marker only. Not a saved or official record.
-    bool HasBestLapGhost() const { return GhostRecorder.HasBest(); }
+    bool HasBestLapGhost() const { return GhostSetup.IsBound() && GhostRecorder.HasBest(); }
     bool IsBestLapGhostDisplayEnabled() const { return GhostDisplay.IsEnabled(); }
     void ToggleBestLapGhostView();
     double GetBestLapGhostSeconds() const { return GhostRecorder.GetBestSeconds(); }
@@ -336,6 +337,7 @@ private:
                               const latebrake::GarageDirectAppearanceRequest* Direct = nullptr);
     void UpdateBestLapGhostMarker(bool bReplayAuthorized);
     void SuspendBestLapGhost();
+    void RefreshGhostConfiguration(const ALatebrakeCarPawn* Car);
     void CloseMenuForRace();
     void SyncDesktopMenuPointerMode();
     void ApplyCircuitLightingPreview();
@@ -404,6 +406,7 @@ private:
     latebrake::LaunchSpeedMeter LaunchMeter;
     // Fixed-size in-memory candidate/best traces never become SaveGame data.
     latebrake::BestLapGhost GhostRecorder;
+    latebrake::GhostSetupGuard GhostSetup;
     latebrake::GhostDisplayPreference GhostDisplay;
     TWeakObjectPtr<ALatebrakeCarPawn> GhostTrackedPawn;
     uint64 GhostTeleportRevision = 0;
