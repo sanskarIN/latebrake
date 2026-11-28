@@ -146,6 +146,7 @@ public:
     latebrake::MenuPage GetMenuPage() const { return Menu.Current(); }
     FString GetMenuPageTitle() const { return FString(UTF8_TO_TCHAR(Menu.Title())); }
     bool UsesMilesPerHour() const { return bMilesPerHour; }
+    latebrake::HudScalePreference GetHudScalePreference() const noexcept {return HudScale;}
     latebrake::HudTelemetryMode GetHudTelemetryMode() const noexcept { return HudTelemetryMode; }
     void CycleHudTelemetryMode();
     latebrake::CameraMotionMode GetCameraMotionMode() const noexcept {return CameraMotion;}
@@ -364,6 +365,7 @@ private:
     void BumpQuickChoiceRevision() noexcept {if(++QuickChoiceRevision==0)++QuickChoiceRevision;}
     bool bMilesPerHour = false;
     // Session-only display preference, never saved with progression.
+    latebrake::HudScalePreference HudScale=latebrake::HudScalePreference::Automatic;
     latebrake::HudTelemetryMode HudTelemetryMode=latebrake::HudTelemetryMode::Balanced;
     latebrake::CameraMotionMode CameraMotion=latebrake::CameraMotionMode::Dynamic;
     // Rendering-only session toggle. Never written to ULatebrakePlayerSave.
