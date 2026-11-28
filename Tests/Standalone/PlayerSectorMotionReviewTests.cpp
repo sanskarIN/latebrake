@@ -276,8 +276,12 @@ void FinishedReviewRequiresExactClocks()
         "post-finish fee cannot change frozen review");
     Require(!f.Journal.ReadFinishedHistory(ordinal,elapsed+1,fee+1).Valid,
         "finished export also requires exact clock");
-    Require(f.Journal.Read(ordinal,elapsed+SectorMotionClockTolerance/2,fee,true).Valid,
-        "floating point boundary tolerance retained");
+    const auto rounded=f.Journal.Read(ordinal,elapsed+SectorMotionClockTolerance/2,fee,true);
+    Require(rounded.Valid,"floating point boundary tolerance retained");
+    Require(rounded.ActiveSeconds==elapsed-fee,"finished clock stays canonical");
+    const auto history=f.Journal.ReadFinishedHistory(ordinal,elapsed+SectorMotionClockTolerance/2,fee);
+    Require(history.Valid && history.ActiveSeconds==elapsed-fee,
+        "finished export stays canonical");
 }
 
 void CutDoesNotEraseLatestSampleClock()
@@ -309,6 +313,35 @@ void CutDoesNotEraseLatestSampleClock()
     g.Tick();
     Require(Near(g.Read().Current.ObservedSeconds,0.10),
         "only real intervals on either side of cut counted");
+}
+
+void LiveReviewRejectsStaleClocks()
+{
+    Fixture f;
+    for(int i=0;i<20;++i) f.Tick();
+    const double elapsed=f.Frame.ElapsedSeconds;
+    const auto before=f.Read();
+    Require(before.Valid && before.Current.Intervals==19,"live review at current sample");
+    Require(!f.Journal.Read(0,elapsed-0.025,0,false).Valid,
+        "cannot attach future motion to stale elapsed clock");
+    f.Journal.Suspend();
+    Require(!f.Journal.Read(0,elapsed-0.025,0,false).Valid,
+        "suspension cannot erase latest sample clock");
+    f.Frame.ElapsedSeconds+=2.0;
+    f.Frame.PenaltySeconds+=2.0;
+    f.Tick();
+    Require(f.Read().Valid,"current penalized observation available");
+    Require(!f.Journal.Read(0,f.Frame.ElapsedSeconds,1.0,false).Valid,
+        "stale fee cannot overstate active time");
+    Require(!f.Journal.Read(0,f.Frame.ElapsedSeconds,2.025,false).Valid,
+        "later fee cannot rewind sampled active time");
+    Require(f.Journal.Read(0,f.Frame.ElapsedSeconds+0.05,2.0,false).Valid,
+        "newer clock without observation remains readable");
+    Require(f.Gate(),"authoritative gate still accepted");
+    Require(f.Read().Valid && f.Read().Current.Samples==0,
+        "completed sector clears its sample watermark");
+    f.Sector(20);
+    Require(f.Read().Last.Comparable(),"next sector still qualifies");
 }
 
 void ConditionalIntervalsAndLongRuns()
@@ -388,6 +421,7 @@ int main()
     ReceiptAndFinishAuthority();
     FinishedReviewRequiresExactClocks();
     CutDoesNotEraseLatestSampleClock();
+    LiveReviewRejectsStaleClocks();
     ConditionalIntervalsAndLongRuns();
     LongHistory();
     RandomizedCoverage();
