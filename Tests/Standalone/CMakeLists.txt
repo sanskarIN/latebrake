@@ -2698,6 +2698,7 @@ add_latebrake_portable_research_test(GarageComparisonPanel)
 add_latebrake_portable_research_test(MainMenuDashboard)
 add_latebrake_portable_research_test(CareerEventCards)
 add_latebrake_portable_research_test(ProfileOverviewPanel)
+add_latebrake_portable_research_test(HudScalePreference)
 add_latebrake_portable_research_test(RaceResultsOverview)
 target_sources(latebrake_research_RaceResultsOverview PRIVATE
     ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
