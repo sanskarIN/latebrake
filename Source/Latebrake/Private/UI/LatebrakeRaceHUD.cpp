@@ -839,6 +839,19 @@ void ALatebrakeRaceHUD::DrawHUD()
                 // must remain visible on EVERY page, without adding a third
                 // header row or consuming the small-screen detail budget.
                 DrawPinned(Mode->GetGaragePurchaseDisplayFeedback(), true);
+                // Keep the performance comparison in the left menu lane;
+                // it must never cover the showroom or a purchase target.
+                const auto ComparisonLayout=latebrake::CalculateGarageComparisonPanelLayout(
+                    Layout,MenuPlan,ReadablePanel,SafeTextWidth,Y,DrawnMenuRows,
+                    true,bTouchHUD);
+                const auto Comparison=latebrake::ReadGarageComparisonPanel(
+                    latebrake::BuildGarageCatalogView(Mode->GetGarageSnapshot()),
+                    Mode->GetGaragePreviewVehicleId());
+                if (DrawGarageComparisonPanel(ComparisonLayout,Comparison))
+                {
+                    DrawnMenuRows+=ComparisonLayout.ReservedRows;
+                    Y=static_cast<float>(ComparisonLayout.NextDetailY);
+                }
             }
             else
             {
