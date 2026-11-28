@@ -83,6 +83,21 @@ class FleetHeadwayGovernorBindingTests(unittest.TestCase):
         self.assertIn("Decision.LimitingSlot=Supervised.Forecast.LimitingSlot>=0?", block)
         self.assertNotIn("Decision.LimitingSlot=Headway", block)
 
+    def test_hud_reads_qualified_sampled_headway_without_driving(self):
+        hud = (ROOT / "Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp").read_text(
+            encoding="utf-8")
+        journal = (ROOT / "Source/Latebrake/Public/AI/FleetDecisionJournal.h").read_text(
+            encoding="utf-8")
+        self.assertIn("FleetReview.Decisions.CurrentHeadwayRestricted", hud)
+        self.assertIn("H.HeadwayQualifiedSeconds>0.0", hud)
+        self.assertIn("H.HeadwayRestrictionSeconds,H.HeadwayQualifiedSeconds,H.HeadwayReleaseSeconds",
+                      hud)
+        self.assertIn("ValidFleetDecisionHeadway(sample.Headway", journal)
+        self.assertIn("before.Headway.Qualified() && now.Headway.Qualified()", journal)
+        self.assertIn("before.Headway.Restricted() && now.Headway.Restricted()", journal)
+        self.assertNotIn("FleetHeadway.Apply(", hud)
+        self.assertNotIn("FleetDecisions.Observe(", hud)
+
     def test_portable_registration(self):
         self.assertIn("add_latebrake_portable_research_test(FleetHeadwayGovernor)",
                       PORTABLE.read_text(encoding="utf-8"))
