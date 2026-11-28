@@ -64,6 +64,7 @@ bool ALatebrakeRaceHUD::DrawGarageVehicleCards(const ALatebrakeRaceGameMode* Mod
     };
     const auto Header=Measure(GaragePalette.Open?TEXT("CLOSE PALETTE TO BROWSE"):
         !Enabled?TEXT("SHOWROOM INPUT LOCKED"):
+        Snapshot.ReadOnly?TEXT("READ-ONLY | CLICK TO VIEW"):
         TEXT("CLICK TO VIEW | SELECT TO EQUIP"),TEXT("VEHICLE COLLECTION"),
         Layout.Header,0.82f*S);
     if(Header.Scale<=0)return false;
