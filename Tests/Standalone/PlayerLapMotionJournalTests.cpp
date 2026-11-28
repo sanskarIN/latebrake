@@ -97,7 +97,7 @@ void MissingAndMalformedMotion()
         review.At(1).Totals.ObservedSeconds==10,"no invented missing motion");
     Require(journal.Accept({5,0,40,0,0},{}),"untimed legitimate gate");
     for(int i=6;i<=8;++i)
-        Require(journal.Accept({i,(i-1)%4,40+10*(i-5),0,10},Row(i,10,0,10)),
+        Require(journal.Accept({i,(i-1)%4,40.0+10.0*(i-5),0,10},Row(i,10,0,10)),
             "remaining gate");
     review=journal.Read(8,70,0,true);
     Require(review.Valid && review.MissingTimingLaps==1 &&
