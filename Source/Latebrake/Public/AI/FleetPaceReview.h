@@ -508,6 +508,39 @@ inline FleetPaceSectorComparison CompareFleetPaceSectors(const FleetPaceStream& 
     return out;
 }
 
+// Exact, consecutive retained gate intervals, which may include partial
+// laps. Distinct from whole-lap means or official sector records.
+struct FleetPaceRetainedSector final
+{
+    bool Valid=false;
+    int FromOrdinal=0;
+    int ToOrdinal=0;
+    int Gate=0;
+    int Lap=0;
+    double PlayerSeconds=0.0;
+    double RivalSeconds=0.0;
+    double RivalMinusPlayerSeconds=0.0;
+};
+
+struct FleetPaceRetainedWindow final
+{
+    bool Valid=false;
+    int FirstOrdinal=0;
+    int LastOrdinal=0;
+    int Count=0;
+    int PlayerShorter=0;
+    int RivalShorter=0;
+    int Close=0;
+    double PlayerTotalSeconds=0.0;
+    double RivalTotalSeconds=0.0;
+    double StartArrivalGapSeconds=0.0;
+    double EndArrivalGapSeconds=0.0;
+    double MeanAbsoluteDifferenceSeconds=0.0;
+    FleetPaceRetainedSector LargestPlayerGain{};
+    FleetPaceRetainedSector LargestPlayerLoss{};
+    FleetPaceRetainedSector Latest{};
+};
+
 struct FleetPaceRivalSummary final
 {
     int Slot = -1;
@@ -516,6 +549,7 @@ struct FleetPaceRivalSummary final
     FleetPacePairSummary CommonLaps{};
     FleetPacePairSummary CommonAfterLaunch{};
     FleetPaceSectorComparison Sectors{};
+    FleetPaceRetainedWindow RetainedSectors{};
 };
 
 struct FleetPaceCohortSummary final

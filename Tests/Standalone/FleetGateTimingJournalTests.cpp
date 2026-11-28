@@ -244,6 +244,62 @@ void RetentionAndLapBoundaries()
         "overwritten history never produces fabricated split");
 }
 
+void RetainedMatchedSectorWindow()
+{
+    Fixture f(4,3);
+    for(int ordinal=1;ordinal<=8;++ordinal) f.Gate(0,ordinal*10.0);
+    f.Gate(1,8);f.Gate(1,21);f.Gate(1,31);f.Gate(1,40);
+    f.Gate(1,49);f.Gate(1,59);
+    auto pace=f.Journal.ReviewPace(1,f.Ids,f.Gates,f.Laps,f.Clock,f.Evidence);
+    const auto& w=pace.Rivals[0].RetainedSectors;
+    Require(w.Valid && w.FirstOrdinal==1 && w.LastOrdinal==6 && w.Count==6 &&
+        w.PlayerShorter==1 && w.RivalShorter==3 && w.Close==2 &&
+        w.PlayerTotalSeconds==60 && w.RivalTotalSeconds==59 &&
+        w.StartArrivalGapSeconds==0 && w.EndArrivalGapSeconds==-1,
+        "asynchronous pair uses exact same six retained sectors");
+    Require(w.LargestPlayerGain.Valid && w.LargestPlayerGain.ToOrdinal==2 &&
+        w.LargestPlayerGain.RivalMinusPlayerSeconds==3 &&
+        w.LargestPlayerLoss.Valid && w.LargestPlayerLoss.ToOrdinal==1 &&
+        w.LargestPlayerLoss.RivalMinusPlayerSeconds==-2 &&
+        w.Latest.Gate==2 && w.Latest.Lap==2,
+        "sector extremes use exact ordinals and stable ties");
+    Require(!pace.Rivals[0].Sectors.Valid &&
+        !pace.Rivals[1].RetainedSectors.Valid,
+        "retained window does not invent whole-lap sector averages or missing rival");
+    f.Evidence[1].LastGateSeconds+=0.01;
+    pace=f.Journal.ReviewPace(1,f.Ids,f.Gates,f.Laps,f.Clock,f.Evidence);
+    Require(!pace.Rivals[0].RetainedSectors.Valid,"independent clock mismatch hides window");
+    f.Evidence[1].LastGateSeconds-=0.01;
+    f.Evidence[0].Verified=false;
+    Require(!f.Journal.ReviewPace(1,f.Ids,f.Gates,f.Laps,f.Clock,f.Evidence).ValidPlayer,
+        "invalid player evidence suppresses all comparisons");
+}
+
+void RetainedWindowRingBoundaries()
+{
+    Fixture f(256,3);
+    for(int ordinal=1;ordinal<=300;++ordinal) f.Gate(0,ordinal*2.0);
+    for(int ordinal=1;ordinal<=45;++ordinal) f.Gate(1,ordinal*3.0);
+    auto pace=f.Journal.ReviewPace(1,f.Ids,f.Gates,f.Laps,f.Clock,f.Evidence);
+    auto w=pace.Rivals[0].RetainedSectors;
+    Require(w.Valid && w.FirstOrdinal==45 && w.LastOrdinal==45 && w.Count==1 &&
+        w.PlayerTotalSeconds==2 && w.RivalTotalSeconds==3 &&
+        w.StartArrivalGapSeconds==44 && w.EndArrivalGapSeconds==45,
+        "first retained endpoint may not itself define sector");
+    f.Gate(0,602);
+    pace=f.Journal.ReviewPace(1,f.Ids,f.Gates,f.Laps,f.Clock,f.Evidence);
+    Require(!pace.Rivals[0].RetainedSectors.Valid,
+        "single shared gate cannot create a duration");
+    for(int ordinal=46;ordinal<=301;++ordinal) f.Gate(1,ordinal*3.0);
+    pace=f.Journal.ReviewPace(1,f.Ids,f.Gates,f.Laps,f.Clock,f.Evidence);
+    w=pace.Rivals[0].RetainedSectors;
+    Require(w.Valid && w.FirstOrdinal==46 && w.LastOrdinal==301 && w.Count==256 &&
+        w.PlayerShorter==256 && w.RivalShorter==0 && w.Close==0 &&
+        w.PlayerTotalSeconds==512 && w.RivalTotalSeconds==768 &&
+        w.EndArrivalGapSeconds-w.StartArrivalGapSeconds==256,
+        "maximum retained window never aliases expired gates");
+}
+
 void DeterministicAsynchronousSweep()
 {
     Fixture f(32,100);
@@ -308,6 +364,8 @@ int main()
     SectorTrendAndCohort();
     EvidenceAndClockBoundaries();
     RetentionAndLapBoundaries();
+    RetainedMatchedSectorWindow();
+    RetainedWindowRingBoundaries();
     DeterministicAsynchronousSweep();
     MaximumConfigurationAndFinalGate();
     std::cout<<"Fleet matched-gate timing journal passed\n";

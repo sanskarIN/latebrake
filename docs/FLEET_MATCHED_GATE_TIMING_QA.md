@@ -63,3 +63,15 @@ These observations are not physical speed estimates, placement or rewards.
 The standalone tests cover malformed receipts, asynchronous gate streams,
 cohort comparison, retention boundaries and maximum supported gate counts.
 Editor Python tests assert source binding order only, not native behavior.
+
+### Retained matched-sector Results window
+
+The frozen pace review now compares every consecutive sector whose two exact
+gate endpoints still exist in both physical streams. It works when one rival
+has fewer completed laps or a partial lap, and does not mix unmatched lap
+means. The first retained endpoint is never itself counted as a sector unless
+its predecessor is present (GO is a special zero-clock boundary). Results
+shows the exact retained ordinal range, counts using the two-endpoint timing
+uncertainty and the largest observed player loss when available. No expired
+receipt, official placement, or new record is inferred. Native rendering and
+actual driving qualification remain outstanding.

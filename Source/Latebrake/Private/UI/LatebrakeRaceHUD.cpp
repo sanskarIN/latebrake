@@ -1401,7 +1401,21 @@ void ALatebrakeRaceHUD::DrawHUD()
                                 Pace.Cohort.RivalShorterMeans,Pace.Cohort.CloseMeans));
                         for (const auto& Rival:Pace.Rivals)
                         {
-                            if (!Rival.EvidenceValid || !Rival.CommonLaps.Valid) continue;
+                            if (!Rival.EvidenceValid) continue;
+                            const auto& Window=Rival.RetainedSectors;
+                            if (!bCompact && Window.Valid)
+                            {
+                                MenuLine(FString::Printf(TEXT("AI %d | retained sectors G%d-%d | YOU shorter %d | AI %d | close %d"),
+                                    Rival.Slot,Window.FirstOrdinal,Window.LastOrdinal,Window.PlayerShorter,
+                                    Window.RivalShorter,Window.Close));
+                                if (Window.LargestPlayerLoss.Valid)
+                                {
+                                    const auto& Loss=Window.LargestPlayerLoss;
+                                    MenuLine(FString::Printf(TEXT("  Retained lap %d gate %d | your duration %.2fs longer"),
+                                        Loss.Lap,Loss.Gate,-Loss.RivalMinusPlayerSeconds));
+                                }
+                            }
+                            if (!Rival.CommonLaps.Valid) continue;
                             const auto& Pair=Rival.CommonLaps;
                             MenuLine(FString::Printf(TEXT("AI %d | same %d laps | mean AI-minus-you %+.2fs"),
                                 Rival.Slot,Pair.Count,Pair.Difference.Mean));

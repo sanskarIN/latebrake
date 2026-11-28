@@ -384,6 +384,7 @@ public:
                 continue;
             }
             row = BuildFleetPaceRival(slot,player.Pace,rival.Pace);
+            row.RetainedSectors=BuildRetainedSectorWindow(player,rival);
             ++out.VerifiedRivals;
             if (row.CommonLaps.Valid) ++out.ComparableRivals;
             cohort[index-1] = &rival.Pace;
@@ -508,6 +509,74 @@ private:
         const double rivalDuration = r1.Seconds - r0.Seconds;
         return {true, from, to, playerDuration, rivalDuration,
             rivalDuration - playerDuration};
+    }
+
+    FleetPaceRetainedWindow BuildRetainedSectorWindow(
+        const Stream& player,const Stream& rival) const noexcept
+    {
+        FleetPaceRetainedWindow out;
+        const int end=std::min(player.LastOrdinal,rival.LastOrdinal);
+        if(end<1 || GateCount<1) return out;
+        // Both physical streams must retain the previous endpoint.
+        // GO is usable only if gate one itself remains in both rings.
+        const int firstEndpoint=std::max(0,
+            std::max(player.LastOrdinal,rival.LastOrdinal)-FleetTimingHistoryCapacity+1);
+        if(firstEndpoint>=end) return out;
+        const auto pStart=At(player,firstEndpoint);
+        const auto rStart=At(rival,firstEndpoint);
+        const auto pEnd=At(player,end);
+        const auto rEnd=At(rival,end);
+        if(!pStart.Valid || !rStart.Valid || !pEnd.Valid || !rEnd.Valid)
+            return out;
+        out.StartArrivalGapSeconds=rStart.Seconds-pStart.Seconds;
+        out.EndArrivalGapSeconds=rEnd.Seconds-pEnd.Seconds;
+        for(int ordinal=firstEndpoint+1;ordinal<=end;++ordinal)
+        {
+            const auto interval=Interval(player,rival,ordinal-1,ordinal);
+            const auto trend=ClassifyFleetSectorTrend(interval);
+            if(trend==FleetSectorTrend::Unavailable) return {};
+            const FleetPaceRetainedSector row{true,ordinal-1,ordinal,
+                (ordinal-1)%GateCount+1,(ordinal-1)/GateCount+1,
+                interval.PlayerSeconds,interval.RivalSeconds,interval.RivalMinusPlayerSeconds};
+            ++out.Count;
+            out.PlayerTotalSeconds+=row.PlayerSeconds;
+            out.RivalTotalSeconds+=row.RivalSeconds;
+            out.MeanAbsoluteDifferenceSeconds+=std::abs(row.RivalMinusPlayerSeconds);
+            switch(trend)
+            {
+                case FleetSectorTrend::RivalLost:
+                    ++out.PlayerShorter;
+                    if(!out.LargestPlayerGain.Valid ||
+                        row.RivalMinusPlayerSeconds>out.LargestPlayerGain.RivalMinusPlayerSeconds)
+                        out.LargestPlayerGain=row;
+                    break;
+                case FleetSectorTrend::RivalGained:
+                    ++out.RivalShorter;
+                    if(!out.LargestPlayerLoss.Valid ||
+                        row.RivalMinusPlayerSeconds<out.LargestPlayerLoss.RivalMinusPlayerSeconds)
+                        out.LargestPlayerLoss=row;
+                    break;
+                case FleetSectorTrend::WithinClockWindow: ++out.Close; break;
+                default: return {};
+            }
+            out.Latest=row;
+        }
+        if(out.Count<1 || out.Count>FleetTimingHistoryCapacity ||
+            out.PlayerShorter+out.RivalShorter+out.Close!=out.Count)
+            return {};
+        // The sum of sector durations must telescope to the actual
+        // endpoint clocks. Allow only ordinary floating point error.
+        const double pDuration=pEnd.Seconds-pStart.Seconds;
+        const double rDuration=rEnd.Seconds-rStart.Seconds;
+        const double tolerance=1e-8*std::max({1.0,pDuration,rDuration});
+        if(std::abs(out.PlayerTotalSeconds-pDuration)>tolerance ||
+            std::abs(out.RivalTotalSeconds-rDuration)>tolerance)
+            return {};
+        out.FirstOrdinal=firstEndpoint+1;
+        out.LastOrdinal=end;
+        out.MeanAbsoluteDifferenceSeconds/=static_cast<double>(out.Count);
+        out.Valid=true;
+        return out;
     }
 
     FleetCohortSectorTiming BuildCohortSector(int ordinal) const noexcept

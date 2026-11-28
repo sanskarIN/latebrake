@@ -67,6 +67,9 @@ class FleetGateTimingBindingTests(unittest.TestCase):
         policy = read("Source/Latebrake/Public/AI/FleetGateTimingJournal.h")
         self.assertIn("out.CohortSector=BuildCohortSector(cohortOrdinal);", policy)
         self.assertIn("2.0*FleetTimingUncertainSeconds", policy)
+        self.assertIn("row.RetainedSectors=BuildRetainedSectorWindow(player,rival);", policy)
+        self.assertIn("Rival.RetainedSectors", hud)
+        self.assertIn("retained sectors G%d-%d", hud)
 
 
 if __name__ == "__main__":
