@@ -308,6 +308,7 @@ latebrake::DesktopMenuMouseAction ALatebrakeRaceHUD::HitTestMenuMouse(
 void ALatebrakeRaceHUD::DrawHUD()
 {
     Super::DrawHUD();
+    PresentedMainMenu={};
     PresentedGarageOffers = {};
     PresentedGaragePalette = {};
     PresentedReplay={};
@@ -859,6 +860,17 @@ void ALatebrakeRaceHUD::DrawHUD()
                     ? TEXT("UP/DOWN DETAILS | NEXT MENU | SELECT")
                     : TEXT("TAB CLOSE | PAGE UP/DOWN MENU | UP/DOWN DETAILS | ENTER"),
                     false);
+            }
+            if (Mode->GetMenuPage()==latebrake::MenuPage::Main)
+            {
+                const auto Dashboard=latebrake::CalculateMainMenuDashboardLayout(
+                    Canvas->SizeX,Canvas->SizeY,Layout,MenuPlan,ReadablePanel,
+                    SafeTextWidth,Y,DrawnMenuRows,bTouchHUD,Mode->GetMenuPage());
+                if (DrawMainMenuDashboard(Mode,Dashboard))
+                {
+                    DrawnMenuRows+=Dashboard.ReservedRows;
+                    Y=static_cast<float>(Dashboard.NextDetailY);
+                }
             }
         }
         if (!Mode->IsCircuitReadyForGameplay())
