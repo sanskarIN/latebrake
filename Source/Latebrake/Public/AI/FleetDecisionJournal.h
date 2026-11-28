@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AI/FleetPassingLane.h"
+#include "AI/FleetHeadwayGovernor.h"
 #include "AI/FleetQueueDeferral.h"
 #include "AI/RivalFleetRiskSupervisor.h"
 #include "AI/RivalPilot.h"
@@ -108,6 +108,76 @@ private:
     bool Invalid=false;
 };
 
+// Separate evidence for the headway restriction inside the predictive
+// traffic stage. The original collision forecast's limiting slot must
+// never be overwritten by a spacing candidate or a recovering cap.
+struct FleetDecisionHeadwayEvidence final
+{
+    bool Observed=false;
+    FleetHeadwayStatus Status=FleetHeadwayStatus::Unavailable;
+    int LeaderSlot=-1;
+    double Before=0.0;
+    double After=0.0;
+    double Ceiling=1.0;
+
+    bool Qualified() const noexcept
+    {
+        return Observed && (Status==FleetHeadwayStatus::Clear ||
+            Status==FleetHeadwayStatus::Following ||
+            Status==FleetHeadwayStatus::Releasing);
+    }
+
+    double Reduction() const noexcept
+    {
+        return Observed?std::max(0.0,Before-After):0.0;
+    }
+
+    bool Restricted() const noexcept
+    {
+        return Reduction()>FleetDecisionCommandEpsilon;
+    }
+};
+
+inline FleetDecisionHeadwayEvidence RecordFleetDecisionHeadway(
+    const PilotCommand& before,const FleetHeadwayReadout& result) noexcept
+{
+    const int slot=result.Assessment.Leader.Valid?result.Assessment.Leader.Slot:-1;
+    return {true,result.Status,slot,before.Throttle,result.Command.Throttle,
+        result.AppliedCeiling};
+}
+
+inline bool ValidFleetDecisionHeadway(const FleetDecisionHeadwayEvidence& evidence,
+    int selfSlot,bool trafficQualified,const PilotCommand& predictive) noexcept
+{
+    if(!evidence.Observed)
+        return evidence.Status==FleetHeadwayStatus::Unavailable && evidence.LeaderSlot==-1 &&
+            evidence.Before==0.0 && evidence.After==0.0 && evidence.Ceiling==1.0;
+    if(!trafficQualified || evidence.LeaderSlot< -1 ||
+        evidence.LeaderSlot>=StartGridCapacity || evidence.LeaderSlot==selfSlot ||
+        !std::isfinite(evidence.Before) || evidence.Before<0.0 || evidence.Before>1.0 ||
+        !std::isfinite(evidence.After) || evidence.After<0.0 ||
+        evidence.After>evidence.Before+FleetDecisionCommandEpsilon ||
+        !std::isfinite(evidence.Ceiling) || evidence.Ceiling<0.0 || evidence.Ceiling>1.0 ||
+        evidence.After>evidence.Ceiling+FleetDecisionCommandEpsilon ||
+        std::abs(evidence.After-predictive.Throttle)>FleetDecisionCommandEpsilon)
+        return false;
+    switch(evidence.Status)
+    {
+    case FleetHeadwayStatus::Unavailable:
+    case FleetHeadwayStatus::UnsupportedGeometry:
+        return evidence.LeaderSlot==-1 && evidence.Ceiling==1.0 && !evidence.Restricted();
+    case FleetHeadwayStatus::Interrupted:
+        return evidence.LeaderSlot==-1 && evidence.Ceiling==0.0 && evidence.After==0.0;
+    case FleetHeadwayStatus::Following:
+        return evidence.LeaderSlot>=0 && evidence.Ceiling<1.0;
+    case FleetHeadwayStatus::Releasing:
+        return evidence.Ceiling<1.0;
+    case FleetHeadwayStatus::Clear:
+        return evidence.Ceiling==1.0;
+    default:return false;
+    }
+}
+
 struct FleetDecisionSample final
 {
     std::uint64_t Attempt=0;
@@ -129,6 +199,7 @@ struct FleetDecisionSample final
     FleetRiskKind Risk=FleetRiskKind::Unqualified;
     FleetQueueStatus Queue=FleetQueueStatus::Inactive;
     FleetPassPhase Passing=FleetPassPhase::Idle;
+    FleetDecisionHeadwayEvidence Headway{};
     FleetDecisionTrace Trace{};
 
     void Set(FleetDecisionStage stage,PilotCommand command) noexcept
@@ -168,6 +239,7 @@ struct FleetDecisionEndpoint final
     FleetRiskKind Risk=FleetRiskKind::Unqualified;
     FleetQueueStatus Queue=FleetQueueStatus::Inactive;
     FleetPassPhase Passing=FleetPassPhase::Idle;
+    FleetDecisionHeadwayEvidence Headway{};
     std::array<FleetDecisionStageEffect,FleetDecisionStageCount> Effects{};
 };
 
@@ -291,6 +363,9 @@ inline FleetDecisionEndpoint AnalyzeFleetDecision(const FleetDecisionSample& sam
     for(const auto& command:stages)
         if(!ValidFleetDecisionCommand(command)) return out;
 
+    if(!ValidFleetDecisionHeadway(sample.Headway,sample.Slot,sample.TrafficQualified,
+        stages[FleetDecisionIndex(FleetDecisionStage::PredictiveTraffic)])) return out;
+
     out.Valid=true;
     out.Slot=sample.Slot;
     out.GateOrdinal=sample.GateOrdinal;
@@ -306,6 +381,7 @@ inline FleetDecisionEndpoint AnalyzeFleetDecision(const FleetDecisionSample& sam
     out.Risk=sample.Risk;
     out.Queue=sample.Queue;
     out.Passing=sample.Passing;
+    out.Headway=sample.Headway;
     if(stages.front().Brake)
     {
         out.BrakeOrigin=FleetDecisionStage::Route;
@@ -457,6 +533,13 @@ struct FleetDecisionSlotSummary final
     double TrafficHoldSeconds=0.0;
     double QueueSeconds=0.0;
     double PassingSeconds=0.0;
+    std::uint64_t HeadwaySamples=0;
+    std::uint64_t HeadwayRestrictionSamples=0;
+    double HeadwayQualifiedSeconds=0.0;
+    double HeadwayRestrictionSeconds=0.0;
+    double HeadwayReleaseSeconds=0.0;
+    double HeadwayReductionIntegral=0.0;
+    double MaxHeadwayReduction=0.0;
     double DegradedRoadSeconds=0.0;
     double MaxSpeedCmS=0.0;
     double IntegratedSpeed=0.0;
@@ -693,6 +776,7 @@ struct FleetDecisionReadout final
     int CurrentBraking=0;
     int CurrentTrafficHold=0;
     int CurrentPassing=0;
+    int CurrentHeadwayRestricted=0;
     FleetDecisionCoverage Coverage{};
     std::array<FleetDecisionRivalReview,StartGridCapacity-1> Rivals{};
 };
@@ -844,6 +928,8 @@ public:
                 if(row.Live.Final.Brake) ++out.CurrentBraking;
                 if(row.Live.BrakeHold) ++out.CurrentTrafficHold;
                 if(FleetDecisionPassingActive(row.Live.Passing)) ++out.CurrentPassing;
+                if(row.Live.Headway.Qualified() && row.Live.Headway.Restricted())
+                    ++out.CurrentHeadwayRestricted;
             }
         }
         return out;
@@ -895,6 +981,12 @@ private:
         history.LastGateOrdinal=now.GateOrdinal;
         history.MaxSpeedCmS=std::max(history.MaxSpeedCmS,now.SpeedCmS);
         Increment(history.Samples);
+        if(now.Headway.Qualified())
+        {
+            Increment(history.HeadwaySamples);
+            if(now.Headway.Restricted()) Increment(history.HeadwayRestrictionSamples);
+            history.MaxHeadwayReduction=std::max(history.MaxHeadwayReduction,now.Headway.Reduction());
+        }
         for(std::size_t i=0;i<now.Effects.size();++i)
         {
             const auto& e=now.Effects[i];
@@ -963,6 +1055,18 @@ private:
             AddSeconds(h.QueueSeconds,dt);
         if(FleetDecisionPassingActive(before.Passing) && FleetDecisionPassingActive(now.Passing))
             AddSeconds(h.PassingSeconds,dt);
+        if(before.Headway.Qualified() && now.Headway.Qualified())
+        {
+            AddSeconds(h.HeadwayQualifiedSeconds,dt);
+            if(before.Headway.Restricted() && now.Headway.Restricted())
+            {
+                AddSeconds(h.HeadwayRestrictionSeconds,dt);
+                h.HeadwayReductionIntegral+=(before.Headway.Reduction()+now.Headway.Reduction())*0.5*dt;
+            }
+            if(before.Headway.Status==FleetHeadwayStatus::Releasing &&
+                now.Headway.Status==FleetHeadwayStatus::Releasing)
+                AddSeconds(h.HeadwayReleaseSeconds,dt);
+        }
         if(before.OffroadBlockers>0 && now.OffroadBlockers>0)
             AddSeconds(h.DegradedRoadSeconds,dt);
 
