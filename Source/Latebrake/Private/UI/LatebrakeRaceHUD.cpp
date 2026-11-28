@@ -1434,6 +1434,46 @@ void ALatebrakeRaceHUD::DrawHUD()
                             }
                         }
                     }
+                    if (!bCompact)
+                    {
+                        const auto Setups=Mode->GetPracticeSetupCatalogue(Comparison.Configuration);
+                        if (Setups.Valid)
+                        {
+                            MenuLine(TEXT("OBSERVED SETUPS | SAME MODE & HANDLING | SESSION ONLY"),true);
+                            MenuLine(FString::Printf(TEXT("%d/%d SETUPS TESTED | %d FEE-FREE SETUPS"),
+                                Setups.All.Tested,latebrake::PracticeSetupsPerGroup,Setups.All.FeeFreeTested));
+                            const auto Ranking=latebrake::RankPracticeSetups(Setups,latebrake::PracticeSetupMetric::BestFinish);
+                            for (int I=0;I<FMath::Min(Ranking.Count,3);++I)
+                            {
+                                const auto& Row=Ranking.Rows[static_cast<std::size_t>(I)];
+                                MenuLine(FString::Printf(TEXT("%d. %s E%d/G%d | %.2fs | %u RUNS"),
+                                    I+1,UTF8_TO_TCHAR(latebrake::GarageState::Definition(Row.Key.Tuning.Selected).Name),
+                                    Row.Key.Tuning.Engine,Row.Key.Tuning.Grip,Row.BestFinish,Row.Finishes));
+                            }
+                            if (Ranking.SelectedRank>0)
+                                MenuLine(FString::Printf(TEXT("CURRENT SETUP LIST POSITION %d/%d"),
+                                    Ranking.SelectedRank,Ranking.Count));
+                            constexpr latebrake::PracticeSetupAxis Axes[]={
+                                latebrake::PracticeSetupAxis::Vehicle,latebrake::PracticeSetupAxis::Engine,
+                                latebrake::PracticeSetupAxis::Grip};
+                            const TCHAR* Labels[]={TEXT("CAR"),TEXT("ENGINE"),TEXT("GRIP")};
+                            for (int I=0;I<3;++I)
+                            {
+                                const auto Axis=latebrake::ReviewPracticeAxis(Setups,Axes[I],
+                                    latebrake::PracticeSetupMetric::BestFinish);
+                                if (Axis.FastestAlternative.Valid)
+                                {
+                                    const auto& Pair=Axis.FastestAlternative;
+                                    MenuLine(FString::Printf(TEXT("%s ONLY: %s E%d/G%d | %+.2fs | %d TESTED"),
+                                        Labels[I],UTF8_TO_TCHAR(latebrake::GarageState::Definition(
+                                            Pair.Candidate.Key.Tuning.Selected).Name),
+                                        Pair.Candidate.Key.Tuning.Engine,Pair.Candidate.Key.Tuning.Grip,
+                                        Pair.DeltaSeconds,Axis.TestedAlternatives));
+                                }
+                            }
+                            MenuLine(TEXT("OBSERVED TIMES, NOT CONTROLLED PERFORMANCE CLAIMS."));
+                        }
+                    }
                     if (Comparison.PreviousFinishSeconds>0.0 && !bCompact)
                         MenuLine(FString::Printf(TEXT("VS PREVIOUS COMPARABLE FINISH: %+.3fs"),
                             Comparison.DeltaToPreviousFinishSeconds));

@@ -23,6 +23,7 @@
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/PracticeSessionHistory.h"
 #include "Racing/PracticeTrialSetup.h"
+#include "Racing/PracticeSetupCatalogue.h"
 #include "Racing/PracticeGateReference.h"
 #include "Career/CareerMenuSelection.h"
 #include "Racing/RaceSessionEpoch.h"
@@ -90,6 +91,9 @@ public:
     latebrake::QuickPracticePreset GetQuickPracticeSelection() const { return QuickPracticeSelection; }
     latebrake::PracticeComparison GetPracticeComparison() const noexcept
     {return PracticeHistory.LastComparison();}
+    latebrake::PracticeSetupCatalogue GetPracticeSetupCatalogue(
+        latebrake::PracticeConfiguration Key) const noexcept
+    {return latebrake::BuildPracticeSetupCatalogue(PracticeHistory,Key);}
     latebrake::PracticeAttemptSeriesReview GetPracticeAttemptSeries(
         latebrake::PracticeConfiguration Key) const noexcept
     {return PracticeHistory.ReadSeries(Key);}
