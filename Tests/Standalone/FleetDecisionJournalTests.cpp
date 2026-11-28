@@ -20,6 +20,21 @@ void Require(bool value,const char* why)
 }
 bool Near(double a,double b,double epsilon=1e-8){return std::abs(a-b)<=epsilon;}
 
+void RecordCommands(FleetDecisionSample& s,const FleetDecisionTrace::CommandsType& commands)
+{
+    s.Trace={};
+    for(std::size_t i=0;i<commands.size();++i)
+        s.Set(static_cast<FleetDecisionStage>(i),commands[i]);
+}
+
+template<class Edit>
+void EditCommands(FleetDecisionSample& s,Edit edit)
+{
+    auto commands=s.Trace.Commands();
+    edit(commands);
+    RecordCommands(s,commands);
+}
+
 FleetDecisionSample Request(int slot=1)
 {
     FleetDecisionSample s;
@@ -31,17 +46,22 @@ FleetDecisionSample Request(int slot=1)
     s.TrafficObserved=true;
     s.TrafficQualified=true;
     s.Risk=FleetRiskKind::Clear;
-    s.Stages.fill({0.8,0.1,false,false});
+    FleetDecisionTrace::CommandsType commands{};
+    commands.fill({0.8,0.1,false,false});
+    RecordCommands(s,commands);
     return s;
 }
 
 void BrakeAt(FleetDecisionSample& s,FleetDecisionStage stage)
 {
-    for(std::size_t i=FleetDecisionIndex(stage);i<s.Stages.size();++i)
+    EditCommands(s,[stage](auto& commands)
     {
-        s.Stages[i].Throttle=0;
-        s.Stages[i].Brake=true;
-    }
+        for(std::size_t i=FleetDecisionIndex(stage);i<commands.size();++i)
+        {
+            commands[i].Throttle=0;
+            commands[i].Brake=true;
+        }
+    });
 }
 
 struct Fixture final
@@ -77,6 +97,8 @@ struct Fixture final
 void AnalyzeExactStageEffects()
 {
     auto s=Request();
+    s.Trace={};
+    s.Set(FleetDecisionStage::Route,{0.8,0.1,false,false});
     s.Set(FleetDecisionStage::Corner,{0.5,0.1,false,false});
     s.Set(FleetDecisionStage::Difficulty,{0.58,0.1,false,false});
     s.Set(FleetDecisionStage::Grip,{0.35,0.1,false,false});
@@ -108,8 +130,11 @@ void AnalyzeExactStageEffects()
 
     s=Request();
     BrakeAt(s,FleetDecisionStage::Route);
-    for(std::size_t i=FleetDecisionIndex(FleetDecisionStage::Grip);i<s.Stages.size();++i)
-        s.Stages[i]={0.5,0.1,false,false};
+    EditCommands(s,[](auto& commands)
+    {
+        for(std::size_t i=FleetDecisionIndex(FleetDecisionStage::Grip);i<commands.size();++i)
+            commands[i]={0.5,0.1,false,false};
+    });
     BrakeAt(s,FleetDecisionStage::Spin);
     const auto last=AnalyzeFleetDecision(s);
     Require(last.Valid && last.BrakeOrigin==FleetDecisionStage::Spin &&
@@ -128,8 +153,8 @@ void InvalidSamplesAndIdentity()
     bad=s;bad.GateOrdinal=25600;reject(bad);
     bad=s;bad.SpeedCmS=std::numeric_limits<double>::quiet_NaN();reject(bad);
     bad=s;bad.SpeedCmS=15001;reject(bad);
-    bad=s;bad.Stages[3].Throttle=1.1;reject(bad);
-    bad=s;bad.Stages[11].Steering=std::numeric_limits<double>::infinity();reject(bad);
+    bad=s;EditCommands(bad,[](auto& c){c[3].Throttle=1.1;});reject(bad);
+    bad=s;EditCommands(bad,[](auto& c){c[11].Steering=std::numeric_limits<double>::infinity();});reject(bad);
     bad=s;bad.Risk=static_cast<FleetRiskKind>(99);reject(bad);
     bad=s;bad.Passing=static_cast<FleetPassPhase>(99);reject(bad);
     bad=s;bad.Queue=static_cast<FleetQueueStatus>(99);reject(bad);
@@ -149,6 +174,56 @@ void InvalidSamplesAndIdentity()
         !journal.Configure(0,ids,12) && !journal.Configure(1,ids,0) &&
         !journal.Configure(1,ids,25601),"configuration bounds");
     Require(journal.Configure(1,ids,12) && !journal.Configure(1,ids,12),"one bound attempt");
+}
+
+void ExplicitStageTraceRequired()
+{
+    const auto normal=Request();
+    Require(normal.Trace.Complete(),"complete ordered stages");
+    auto empty=normal;empty.Trace={};
+    Require(!AnalyzeFleetDecision(empty).Valid,"default commands are not observations");
+
+    for(std::size_t omitted=0;omitted<FleetDecisionStageCount;++omitted)
+    {
+        auto s=normal;s.Trace={};
+        for(std::size_t i=0;i<FleetDecisionStageCount;++i)
+            if(i!=omitted)s.Set(static_cast<FleetDecisionStage>(i),normal.Trace.Commands()[i]);
+        Require(!s.Trace.Complete() && !AnalyzeFleetDecision(s).Valid,
+            "every omitted stage fails closed");
+        s.Set(static_cast<FleetDecisionStage>(omitted),normal.Trace.Commands()[omitted]);
+        Require(!s.Trace.Complete() || omitted==FleetDecisionStageCount-1,
+            "out-of-order writes cannot repair a trace");
+    }
+
+    for(std::size_t duplicate=0;duplicate<FleetDecisionStageCount;++duplicate)
+    {
+        auto s=normal;s.Trace={};
+        for(std::size_t i=0;i<FleetDecisionStageCount;++i)
+        {
+            const auto stage=static_cast<FleetDecisionStage>(i);
+            s.Set(stage,normal.Trace.Commands()[i]);
+            if(i==duplicate)s.Set(stage,normal.Trace.Commands()[i]);
+        }
+        Require(!AnalyzeFleetDecision(s).Valid,"duplicate stage invalidates entire trace");
+    }
+    auto invalid=normal;
+    invalid.Set(static_cast<FleetDecisionStage>(255),{});
+    Require(!AnalyzeFleetDecision(invalid).Valid,"out-of-range stage invalidates completed trace");
+    auto zero=normal;
+    EditCommands(zero,[](auto& c){c.fill({});});
+    Require(AnalyzeFleetDecision(zero).Valid,"explicit zero commands remain valid");
+
+    Fixture f;
+    f.Open();f.Add(normal);f.Next();
+    f.Open();f.Add(normal);f.Next();
+    f.Open();
+    Require(!f.Journal.Observe(f.Bind(empty)),"incomplete trace refused by journal");
+    Require(!f.Journal.Observe(f.Bind(normal)),"refused frame cannot be replayed");
+    Require(f.Read().CurrentRivals==0,"refused trace not exposed as live");
+    f.Next();f.Open();f.Add(normal);
+    const auto h=f.Read().Rivals[0].History;
+    Require(h.Refused==1 && h.Samples==3 && Near(h.ObservedSeconds,0.05),
+        "incomplete stage trace cuts observed duration");
 }
 
 void NativeFrameAuthority()
@@ -258,7 +333,7 @@ void NoDriveContextAccounting()
     Require(context(s)==FleetNoDriveContext::OtherBrake,"other requested brake");
     auto low=Request();
     low.SpeedCmS=50;
-    low.Stages.fill({0.0,0.0,false,false});
+    EditCommands(low,[](auto& c){c.fill({0.0,0.0,false,false});});
     Require(context(low)==FleetNoDriveContext::LowThrottle,"low throttle without brake");
     Require(context(Request())==FleetNoDriveContext::None,"moving car excluded");
 
@@ -328,7 +403,7 @@ void MissingFramesAndRecovery()
     f.Next();f.Open();f.Add(s);
     Require(Near(f.Read().Rivals[0].History.ObservedSeconds,0.15),"explicit suspension cut");
     f.Next();f.Open();
-    auto invalid=f.Bind(s);invalid.Stages[0].Throttle=-0.1;
+    auto invalid=f.Bind(s);EditCommands(invalid,[](auto& c){c[0].Throttle=-0.1;});
     Require(!f.Journal.Observe(invalid),"bad current command");
     Require(!f.Journal.Observe(f.Bind(s)),"no second chance same frame");
     f.Next();f.Open();f.Add(s);
@@ -472,6 +547,7 @@ int main()
 {
     AnalyzeExactStageEffects();
     InvalidSamplesAndIdentity();
+    ExplicitStageTraceRequired();
     NativeFrameAuthority();
     PerStageAndEpisodeAccounting();
     NoDriveContextAccounting();

@@ -79,6 +79,35 @@ struct FleetDecisionAdmission final
     double AdvancedSeconds=0.0;
 };
 
+// A command trace is valid only when every pipeline stage was explicitly
+// recorded once in order. A default PilotCommand is a legitimate command,
+// but is not evidence that its stage actually executed.
+class FleetDecisionTrace final
+{
+public:
+    using CommandsType=std::array<PilotCommand,FleetDecisionStageCount>;
+
+    void Record(FleetDecisionStage stage,PilotCommand command) noexcept
+    {
+        if(Invalid) return;
+        const auto index=FleetDecisionIndex(stage);
+        if(index>=Values.size() || index!=Next)
+        {
+            Invalid=true;
+            return;
+        }
+        Values[Next++]=command;
+    }
+
+    bool Complete() const noexcept {return !Invalid && Next==Values.size();}
+    const CommandsType& Commands() const noexcept {return Values;}
+
+private:
+    CommandsType Values{};
+    std::size_t Next=0;
+    bool Invalid=false;
+};
+
 struct FleetDecisionSample final
 {
     std::uint64_t Attempt=0;
@@ -100,12 +129,11 @@ struct FleetDecisionSample final
     FleetRiskKind Risk=FleetRiskKind::Unqualified;
     FleetQueueStatus Queue=FleetQueueStatus::Inactive;
     FleetPassPhase Passing=FleetPassPhase::Idle;
-    std::array<PilotCommand,FleetDecisionStageCount> Stages{};
+    FleetDecisionTrace Trace{};
 
     void Set(FleetDecisionStage stage,PilotCommand command) noexcept
     {
-        const auto index=FleetDecisionIndex(stage);
-        if(index<Stages.size()) Stages[index]=command;
+        Trace.Record(stage,command);
     }
 };
 
@@ -257,14 +285,16 @@ inline FleetDecisionEndpoint AnalyzeFleetDecision(const FleetDecisionSample& sam
         (!sample.TrafficObserved && (sample.LimitingSlot!=-1 ||
             sample.OffroadBlockers!=0 || sample.RoadSpeedExceeded || sample.BrakeHold)))
         return out;
-    for(const auto& command:sample.Stages)
+    if(!sample.Trace.Complete()) return out;
+    const auto& stages=sample.Trace.Commands();
+    for(const auto& command:stages)
         if(!ValidFleetDecisionCommand(command)) return out;
 
     out.Valid=true;
     out.Slot=sample.Slot;
     out.GateOrdinal=sample.GateOrdinal;
     out.SpeedCmS=sample.SpeedCmS;
-    out.Final=sample.Stages.back();
+    out.Final=stages.back();
     out.RoadQualified=sample.RoadQualified;
     out.TrafficObserved=sample.TrafficObserved;
     out.TrafficQualified=sample.TrafficQualified;
@@ -275,7 +305,7 @@ inline FleetDecisionEndpoint AnalyzeFleetDecision(const FleetDecisionSample& sam
     out.Risk=sample.Risk;
     out.Queue=sample.Queue;
     out.Passing=sample.Passing;
-    if(sample.Stages.front().Brake)
+    if(stages.front().Brake)
     {
         out.BrakeOrigin=FleetDecisionStage::Route;
         out.Effects[0].BrakeAsserted=true;
@@ -283,10 +313,10 @@ inline FleetDecisionEndpoint AnalyzeFleetDecision(const FleetDecisionSample& sam
     // Attribute actual changes between adjacent pipeline outputs.
     // If a stage releases braking, a later assertion gets its own
     // origin rather than attributing the final brake to a stale stage.
-    for(std::size_t i=1;i<sample.Stages.size();++i)
+    for(std::size_t i=1;i<stages.size();++i)
     {
-        const auto& before=sample.Stages[i-1];
-        const auto& after=sample.Stages[i];
+        const auto& before=stages[i-1];
+        const auto& after=stages[i];
         auto& effect=out.Effects[i];
         const auto stage=static_cast<FleetDecisionStage>(i);
         effect.Reduction=std::max(0.0,before.Throttle-after.Throttle);

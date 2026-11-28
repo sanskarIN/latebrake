@@ -43,3 +43,13 @@ player's elapsed fee-free active clock. Only independently verified,
 contiguous sampled intervals enter the numerator. One endpoint alone is
 not a duration. This deliberately exposes incomplete observation rather
 than normalizing missing rivals away; it is not a score for AI quality.
+
+### Explicit command-stage completeness
+
+Each rival command observation must contain all twelve stages, recorded once in
+pipeline order. Missing, repeated, out-of-order or unknown stage identifiers
+invalidate the entire trace; a default-initialized command is not evidence of
+execution. Explicit zero commands remain admissible. A rejected native sample
+cuts continuity and cannot be replaced in the same admitted frame, preventing
+invented braking duration and false coverage. Standalone regressions exercise
+every omitted and duplicate stage. Native UE gameplay remains unqualified.
