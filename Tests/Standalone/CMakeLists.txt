@@ -2702,6 +2702,7 @@ add_latebrake_portable_research_test(HudScalePreference)
 add_latebrake_portable_research_test(GarageVehicleCards)
 add_latebrake_portable_research_test(GarageLookPresets)
 add_latebrake_portable_research_test(GarageUnlockRoutePanel)
+add_latebrake_portable_research_test(GarageCatalogCache)
 add_latebrake_portable_research_test(RaceResultsOverview)
 target_sources(latebrake_research_RaceResultsOverview PRIVATE
     ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)
