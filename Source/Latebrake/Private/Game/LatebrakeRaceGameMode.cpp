@@ -132,6 +132,9 @@ void ALatebrakeRaceGameMode::BeginPlay()
     LoadRecords();
     AttemptPreviousBestSeconds = GetEventBestSeconds();
     BuildCircuit();
+    // A newly initialized world is an actual attempt boundary too. Replay
+    // and traffic adapters reserve zero for uninitialized session stamps.
+    CheckpointSession.OnRaceRestart();
     Race.Reset();
     ResetPlayerSectorMotion();
     TrackLimits.Reset();

@@ -16,6 +16,15 @@ class ExperimentalFleetRuntimeBindingTests(unittest.TestCase):
         self.assertIn("FleetBoundActors[static_cast<std::size_t>(Slot)].Get()!=Rival",mode)
         self.assertIn("IsArcadeSkidRoadPoint(Road,",mode)
         self.assertNotIn("&& Road==1",mode)
+    def test_initial_attempt_has_real_session_revision(self):
+        mode=read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
+        begin=mode.split("void ALatebrakeRaceGameMode::BeginPlay()",1)[1].split(
+            "\n}\n",1)[0]
+        self.assertEqual(begin.count("CheckpointSession.OnRaceRestart();"),1)
+        self.assertLess(begin.index("CheckpointSession.OnRaceRestart();"),
+                        begin.index("Race.Reset();"))
+        self.assertLess(begin.index("CheckpointSession.OnRaceRestart();"),
+                        begin.index("BeginExperimentalFleetAttempt();"))
     def test_no_experimental_finish_save(self):
         mode=read("Source/Latebrake/Private/Game/LatebrakeRaceGameMode.cpp")
         gate=mode.split("void ALatebrakeRaceGameMode::RegisterCheckpoint(",1)[1].split(
