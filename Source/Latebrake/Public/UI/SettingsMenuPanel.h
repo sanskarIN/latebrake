@@ -73,7 +73,7 @@ inline SettingsPanelLayout CalculateSettingsPanelLayout(double width,double heig
         bottom=std::max(bottom,button.Bounds.Y+button.Bounds.Height);
     }
     const double pad=8.0*s,gap=6.0*s,header=26.0*s;
-    const double rowHeight=std::max(60.0,72.0*s);
+    const double rowHeight=std::max(60.0,62.0*s);
     const double panelHeight=2.0*pad+header+SettingsControlCount*(rowHeight+gap);
     const double top=bottom+12.0*s;
     const DesktopMenuMouseRect panel{left,top,right-left,panelHeight};
