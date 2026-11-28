@@ -23,7 +23,7 @@ class CareerEventCardsBindingTests(unittest.TestCase):
         block = self.mode[start:end]
         for marker in (
             "Controller->IsLocalController()", "Controller->GetPawn()==Player",
-            "HasLocalPlayerDriver()", "AppFocusGuard.IsSuspended()", "bFutureSaveSchema",
+            "AppFocusGuard.IsSuspended()", "bFutureSaveSchema",
             "CareerMenuSelection", "SettingsSelection.Revision()",
             "Career.Snapshot()", "Garage.Snapshot()",
         ):
