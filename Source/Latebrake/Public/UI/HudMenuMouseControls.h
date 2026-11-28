@@ -27,7 +27,7 @@ enum class DesktopMenuMouseAction
     GarageUnlockOffer, GarageEngineOffer, GarageGripOffer,
     GarageLookChoice0, GarageLookChoice1, GarageLookChoice2, GarageLookChoice3,
     GarageLookChoice4, GarageLookChoice5, GarageLookChoice6, GarageLookChoice7,
-    GaragePaletteClose
+    GaragePaletteClose, GaragePaletteNextLayer
 };
 
 constexpr DesktopMenuMouseAction GarageQuickViewAction(int id) noexcept
