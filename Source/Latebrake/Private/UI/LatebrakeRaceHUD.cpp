@@ -623,7 +623,8 @@ void ALatebrakeRaceHUD::DrawHUD()
                     P.X,Close.Y,Close.X-P.X,Close.Height};
                 const FString HeaderText = GaragePalette.Layer == latebrake::GarageLookLayer::Paint
                     ? TEXT("CHOOSE PAINT") : GaragePalette.Layer == latebrake::GarageLookLayer::Stripe
-                    ? TEXT("CHOOSE STRIPES") : TEXT("CHOOSE RIMS");
+                    ? TEXT("CHOOSE STRIPES") : GaragePalette.Layer == latebrake::GarageLookLayer::Preset
+                    ? TEXT("CHOOSE FULL LOOK") : TEXT("CHOOSE RIMS");
                 DrawButtonCaption(HeaderText,FString(TEXT("CHOOSE")),Header,Gold,0.78f*UIScale,0.0);
                 DrawRect(FLinearColor(0.14f,0.20f,0.29f,0.98f),Close.X,Close.Y,Close.Width,Close.Height);
                 PresentedGaragePalette.CloseVisible =
@@ -710,7 +711,15 @@ void ALatebrakeRaceHUD::DrawHUD()
                     const bool bTitle = DrawButtonCaption(
                         FString(UTF8_TO_TCHAR(Choice.Label)),FString(UTF8_TO_TCHAR(Choice.ShortLabel)),
                         Title,Ink,0.76f*UIScale,Accessory);
-                    const FString Tag = bSelected ? TEXT("ACTIVE") : Choice.Factory ? TEXT("FACTORY") : TEXT("SELECT");
+                    FString Tag = bSelected ? TEXT("ACTIVE") : Choice.Factory ? TEXT("FACTORY") : TEXT("SELECT");
+                    if(GaragePalette.Layer==latebrake::GarageLookLayer::Preset &&
+                        i>=0 && i<latebrake::GaragePresetOptions)
+                    {
+                        const auto Look=latebrake::GarageLookPresets[static_cast<std::size_t>(i)].Look;
+                        Tag=FString::Printf(TEXT("%s | %s"),*Tag,
+                            UTF8_TO_TCHAR(latebrake::GarageLookChoiceName(
+                                latebrake::GarageLookLayer::Wheels,Look.Wheels)));
+                    }
                     const bool bTag = DrawButtonCaption(Tag,FString(),Footer,Ink,0.62f*UIScale,Accessory);
                     PresentedGaragePalette.ChoiceVisible[static_cast<std::size_t>(i)] = bTitle && bTag && bPreviewDrawn;
                     if (bFocused && bTitle && bTag && bPreviewDrawn)
@@ -1322,6 +1331,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("UP/DOWN: MORE GARAGE DETAILS"));
             MenuLine(TEXT("STYLE VIEWED OWNED CAR: F5/F6/F7 | F8 FACTORY (FREE)"), true);
             MenuLine(TEXT("F5 PAINT | F6 STRIPES | F7 RIMS | F8 FACTORY (FREE)"), true);
+            MenuLine(TEXT("N / PAD RIGHT: CYCLE CHOOSER TO FULL LOOK PRESETS."));
             if (ShowroomLane.Valid)
             {
                 MenuLine(TEXT("MOUSE: PAINT / STRIPE / RIMS OPENS CHOOSER (FREE)."));
