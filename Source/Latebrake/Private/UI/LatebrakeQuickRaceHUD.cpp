@@ -15,10 +15,23 @@ bool ALatebrakeRaceHUD::TryHandleQuickRaceChoicePointer(double X,double Y)
     if(!Mode || !Canvas || !PlayerOwner || !PlayerOwner->IsLocalController() ||
         !Mode->IsMenuOpen() || Mode->GetMenuPage()!=latebrake::MenuPage::QuickRace)
         return false;
+    const auto TrialSnapshot=latebrake::BuildPracticeTrialPanelSnapshot(
+        Mode->GetQuickRaceChoiceSnapshot(),Mode->GetPendingPracticeTrial(),
+        Mode->IsManualRacePauseActive());
+    const auto TrialHit=latebrake::HitPresentedPracticeTrial(PresentedTrial,
+        TrialSnapshot,Canvas->SizeX,Canvas->SizeY,X,Y);
+    if(TrialHit.Consumed)
+    {
+        PresentedTrial={};
+        PresentedQuickRace={};
+        if(TrialHit.Accepted)Mode->HandlePracticeTrialInput(TrialHit.Action,TrialHit.Vehicle);
+        return true;
+    }
     const auto Hit=latebrake::HitPresentedQuickRaceChoice(PresentedQuickRace,
         Mode->GetQuickRaceChoiceSnapshot(),Canvas->SizeX,Canvas->SizeY,X,Y);
     if(!Hit.Consumed)return false;
     PresentedQuickRace={};
+    PresentedTrial={};
     if(Hit.Index>=0)Mode->SelectQuickRaceChoice(Hit.Index);
     return true;
 #endif
@@ -29,6 +42,7 @@ void ALatebrakeRaceHUD::DrawQuickRaceChoicePanel(const ALatebrakeRaceGameMode* M
     const latebrake::HudMenuReadablePanel& Text,bool bTouch)
 {
     PresentedQuickRace={};
+    PresentedTrial={};
     if(!Mode || !Canvas || !PlayerOwner || !GEngine || !GEngine->GetSmallFont() ||
         !Mode->IsMenuOpen())return;
     const auto Layout=latebrake::CalculateQuickRaceChoicePanel(Canvas->SizeX,Canvas->SizeY,
@@ -96,4 +110,54 @@ void ALatebrakeRaceHUD::DrawQuickRaceChoicePanel(const ALatebrakeRaceGameMode* M
         Presentation.Rendered[I]=Title && DetailShown && Status;
     }
     PresentedQuickRace=Presentation;
+    if(!latebrake::IsQuickPractice(Mode->GetQuickPracticeSelection()))return;
+    const auto TrialLayout=latebrake::CalculatePracticeTrialPanel(Layout,Text);
+    if(!TrialLayout.Valid)return;
+    const auto Trial=Mode->GetPendingPracticeTrial();
+    const auto TrialSnapshot=latebrake::BuildPracticeTrialPanelSnapshot(
+        Snapshot,Trial,Mode->IsManualRacePauseActive());
+    latebrake::PracticeTrialPanelPresentation TrialPresentation;
+    TrialPresentation.Valid=true;
+    TrialPresentation.Layout=TrialLayout;
+    TrialPresentation.Snapshot=TrialSnapshot;
+    Rect(TrialLayout.Panel,Surface);
+    Rect({TrialLayout.Panel.X,TrialLayout.Panel.Y,TrialLayout.Panel.Width,2*S},Gold);
+    Label(TEXT("FREE PRACTICE SETUP | NEVER SAVED"),TEXT("TRIAL ONLY"),TrialLayout.Header,Gold,0.76f*S);
+    Label(FString::Printf(TEXT("%s | E%d G%d | %s"),
+        UTF8_TO_TCHAR(latebrake::GarageState::Definition(Trial.Key.Selected).Name),
+        Trial.Key.Engine,Trial.Key.Grip,
+        Trial.Enabled?(Trial.Owned?TEXT("OWNED"):TEXT("UNOWNED")):TEXT("GARAGE")),
+        FString(),TrialLayout.Summary,White,0.73f*S);
+    for(std::size_t I=0;I<TrialLayout.Controls.size();++I)
+    {
+        const auto& Button=TrialLayout.Controls[I];
+        const bool Enabled=latebrake::PracticeTrialControlEnabled(TrialSnapshot,Button);
+        const bool Selected=Button.Action==latebrake::PracticeTrialAction::ChooseCar &&
+            Button.Vehicle==Trial.Key.Selected;
+        const bool Hover=Enabled && HasCursor && Button.Bounds.Contains(MouseX,MouseY);
+        const auto Ink=Selected?Gold:Enabled?White:Muted;
+        Rect(Button.Bounds,Selected?FLinearColor(0.27f,0.21f,0.11f):
+            Hover?FLinearColor(0.18f,0.28f,0.39f):
+            Enabled?FLinearColor(0.12f,0.19f,0.27f):FLinearColor(0.08f,0.11f,0.15f));
+        FString Caption,Short;
+        switch(Button.Action)
+        {
+        case latebrake::PracticeTrialAction::Toggle:
+            Caption=Trial.Enabled?TEXT("USE SAVED GARAGE"):TEXT("ENABLE TRIAL");
+            Short=Trial.Enabled?TEXT("GARAGE"):TEXT("TRIAL ON");break;
+        case latebrake::PracticeTrialAction::Reset:Caption=TEXT("RESET TO GARAGE");Short=TEXT("RESET");break;
+        case latebrake::PracticeTrialAction::NextCar:Caption=TEXT("NEXT CAR");Short=TEXT("CAR");break;
+        case latebrake::PracticeTrialAction::NextEngine:
+            Caption=FString::Printf(TEXT("ENGINE %d"),Trial.Key.Engine);
+            Short=FString::Printf(TEXT("E%d"),Trial.Key.Engine);break;
+        case latebrake::PracticeTrialAction::NextGrip:
+            Caption=FString::Printf(TEXT("GRIP %d"),Trial.Key.Grip);
+            Short=FString::Printf(TEXT("G%d"),Trial.Key.Grip);break;
+        case latebrake::PracticeTrialAction::ChooseCar:
+            Caption=UTF8_TO_TCHAR(latebrake::GarageState::Definition(Button.Vehicle).Name);
+            Short=FString::FromInt(Button.Vehicle+1);break;
+        }
+        TrialPresentation.Rendered[I]=Label(Caption,Short,Button.Bounds,Ink,0.75f*S);
+    }
+    PresentedTrial=TrialPresentation;
 }

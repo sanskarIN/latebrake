@@ -3388,13 +3388,10 @@ void ALatebrakeCarPawn::MenuMousePressed()
     case latebrake::DesktopMenuMouseAction::Close:
         Mode->ToggleMenu(); break;
     case latebrake::DesktopMenuMouseAction::GarageUnlockOffer:
-        if (Mode->HandlePracticeTrialInput(latebrake::PracticeTrialAction::Toggle))return;
         Mode->GarageUnlockNext(); break;
     case latebrake::DesktopMenuMouseAction::GarageEngineOffer:
-        if (Mode->HandlePracticeTrialInput(latebrake::PracticeTrialAction::NextEngine))return;
         Mode->GarageUpgradeEngine(); break;
     case latebrake::DesktopMenuMouseAction::GarageGripOffer:
-        if (Mode->HandlePracticeTrialInput(latebrake::PracticeTrialAction::NextGrip))return;
         Mode->GarageUpgradeGrip(); break;
     case latebrake::DesktopMenuMouseAction::GaragePaint:
         if (!Hud->ToggleGaragePalette(latebrake::GarageLookLayer::Paint))
@@ -3502,6 +3499,7 @@ void ALatebrakeCarPawn::UnlockGarageVehicle()
 {
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
+        if (Mode->HandlePracticeTrialInput(latebrake::PracticeTrialAction::Toggle))return;
         Mode->GarageUnlockNext();
     }
 }
@@ -3510,6 +3508,7 @@ void ALatebrakeCarPawn::UpgradeGarageEngine()
 {
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
+        if (Mode->HandlePracticeTrialInput(latebrake::PracticeTrialAction::NextEngine))return;
         Mode->GarageUpgradeEngine();
     }
 }
@@ -3518,6 +3517,7 @@ void ALatebrakeCarPawn::UpgradeGarageGrip()
 {
     if (ALatebrakeRaceGameMode* Mode = GetWorld()->GetAuthGameMode<ALatebrakeRaceGameMode>())
     {
+        if (Mode->HandlePracticeTrialInput(latebrake::PracticeTrialAction::NextGrip))return;
         Mode->GarageUpgradeGrip();
     }
 }

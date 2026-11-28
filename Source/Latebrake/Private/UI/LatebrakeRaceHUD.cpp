@@ -316,6 +316,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     PresentedSectorRevision=0;
     PresentedSettings={};
     PresentedQuickRace={};
+    PresentedTrial={};
     PresentedPractice={};
     DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)

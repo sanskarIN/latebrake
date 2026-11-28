@@ -18,6 +18,7 @@
 #include "UI/SectorMotionResultsPanel.h"
 #include "UI/SettingsMenuPanel.h"
 #include "UI/QuickRaceChoicePanel.h"
+#include "UI/PracticeTrialPanel.h"
 #include "UI/PracticeGateResultsPanel.h"
 #include "UI/HudDriveCommandPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
@@ -55,6 +56,7 @@ private:
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);
     latebrake::SettingsPanelPresentation PresentedSettings{};
     latebrake::QuickRaceChoicePresentation PresentedQuickRace{};
+    latebrake::PracticeTrialPanelPresentation PresentedTrial{};
     void DrawQuickRaceChoicePanel(const ALatebrakeRaceGameMode* Mode,
         latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);
