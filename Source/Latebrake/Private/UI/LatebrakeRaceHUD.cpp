@@ -351,14 +351,14 @@ void ALatebrakeRaceHUD::DrawHUD()
         Mode->GetGaragePreviewLook(),Mode->CanCustomizeGarage()))
         CloseGaragePalette();
 
-    const latebrake::HudLayout Layout = latebrake::CalculateHudLayout(
-        static_cast<double>(Canvas->SizeX), static_cast<double>(Canvas->SizeY));
-    bool bCompact = Layout.Compact;
     bool bTouchHUD = false;
 #if PLATFORM_ANDROID
-    bCompact = true;
     bTouchHUD = true;
 #endif
+    const auto HudSizing=latebrake::ResolveHudScalePreference(
+        Canvas->SizeX,Canvas->SizeY,Mode->GetHudScalePreference(),Mode->IsMenuOpen(),bTouchHUD);
+    const latebrake::HudLayout Layout=HudSizing.Layout;
+    const bool bCompact=Layout.Compact || bTouchHUD;
     const latebrake::HudVerticalPlan VerticalPlan =
         latebrake::CalculateHudVerticalPlan(
             static_cast<double>(Canvas->SizeX),
@@ -2347,6 +2347,12 @@ void ALatebrakeRaceHUD::DrawHUD()
         case latebrake::MenuPage::Settings:
         {
             const auto Settings=Mode->GetSettingsMenuSnapshot();
+            const auto RaceSize=latebrake::ResolveHudScalePreference(Canvas->SizeX,Canvas->SizeY,
+                Settings.HudScale,false,bTouchHUD);
+            MenuLine(FString::Printf(TEXT("RACE HUD SIZE: %s | %.0f%% OF AUTO%s"),
+                UTF8_TO_TCHAR(latebrake::HudScalePreferenceName(Settings.HudScale)),
+                100.0*RaceSize.Layout.Scale/Layout.Scale,
+                RaceSize.Limited?TEXT(" | SCREEN LIMIT"):TEXT("")));
             // Pin the chosen setting first in the logical details. Even a
             // compact phone can read the current value before confirming.
             const auto Selected=latebrake::DescribeSettingsControl(Settings,Settings.Selected);
