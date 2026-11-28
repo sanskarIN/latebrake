@@ -18,6 +18,7 @@
 #include "UI/SectorMotionResultsPanel.h"
 #include "UI/SettingsMenuPanel.h"
 #include "UI/QuickRaceChoicePanel.h"
+#include "UI/PracticeGateResultsPanel.h"
 #include "UI/HudDriveCommandPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
@@ -37,6 +38,7 @@ public:
     bool TryHandleSectorMotionPointer(double X,double Y);
     bool TryHandleSettingsPointer(double X,double Y);
     bool TryHandleQuickRaceChoicePointer(double X,double Y);
+    bool TryHandlePracticeResultsPointer(double X,double Y);
     bool ToggleGaragePalette(latebrake::GarageLookLayer Layer);
     bool AdvanceGaragePaletteLayer();
     bool HandleGaragePaletteNavigation(latebrake::GaragePaletteNavigationInput Input);
@@ -60,6 +62,11 @@ private:
         latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);
     void DrawSectorMotionPanel(const ALatebrakeRaceGameMode* Mode,
+        latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
+        const latebrake::HudMenuReadablePanel& Text,bool bTouch);
+    latebrake::PracticeResultsViewer PracticeViewer;
+    latebrake::PracticePanelPresentation PresentedPractice{};
+    bool DrawPracticeResultsPanel(const ALatebrakeRaceGameMode* Mode,
         latebrake::HudLayout Hud,const latebrake::DesktopMenuMouseLayout& Dock,
         const latebrake::HudMenuReadablePanel& Text,bool bTouch);
     latebrake::SectorPanelViewer SectorViewer;

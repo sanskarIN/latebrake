@@ -316,6 +316,7 @@ void ALatebrakeRaceHUD::DrawHUD()
     PresentedSectorRevision=0;
     PresentedSettings={};
     PresentedQuickRace={};
+    PresentedPractice={};
     DrawnGaragePaletteFocus = -1;
     if (!GEngine || !PlayerOwner || !Canvas)
     {
@@ -2495,7 +2496,8 @@ void ALatebrakeRaceHUD::DrawHUD()
         DrawSettingsPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawQuickRaceChoicePanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
         DrawFleetReplayPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
-        DrawSectorMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
+        if (!DrawPracticeResultsPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD))
+            DrawSectorMotionPanel(Mode,Layout,MouseMenu,ReadablePanel,bTouchHUD);
 
         // SAVE failures must stay visible even if every optional menu
         // detail row has already been consumed.

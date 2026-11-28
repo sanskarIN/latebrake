@@ -54,3 +54,7 @@ A complete practice with positive active time in every sector can become a sessi
 ## Direct desktop mode chooser
 
 When the desktop menu has sufficient room, Quick Race shows eight mode cards below the existing navigation dock. A card chooses a pending preset only; a separate SELECT starts the race. Each card discloses lap count, requested local rivals and whether a finish can update saved records or remains session-only. The experimental fleet flag and read-only profile are reflected in normal mode cards. Stale, resized, unrendered or focus-suspended cards cannot select. Compact and touch layouts retain Browse/Select. Verify all cards, navigation, hover, narrow-window fallback and intentional launch separately in native gameplay.
+
+## Practice results inspection panel
+
+A complete matched practice reference unlocks a desktop Results inspection panel. Choose a gate, page through actual lap rows, and select a row to see its cumulative, active-clock and fee deltas. Diverging bars use one symmetric scale across all retained rows of that gate; negative is faster, positive slower. A missing comparison is not shown as a zero bar. The existing sector-motion panel remains the fallback when a complete practice comparison or sufficient desktop space is absent. Compact/touch layouts keep the text results. Native QA must exercise ten laps, multiple pages, resize/focus transitions and separate gameplay restart actions.
