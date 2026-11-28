@@ -1999,6 +1999,32 @@ bool ALatebrakeRaceGameMode::HandlePracticeTrialInput(
     return true;
 }
 
+latebrake::MainMenuDashboardSnapshot ALatebrakeRaceGameMode::GetMainMenuDashboardSnapshot() const
+{
+    const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+    const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
+    const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
+        Controller->GetPawn()==Player && HasLocalPlayerDriver();
+    return {Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
+        SettingsSelection.Revision()};
+}
+
+bool ALatebrakeRaceGameMode::NavigateMainMenuDashboard(latebrake::MenuPage Destination,
+    const latebrake::MainMenuDashboardSnapshot& Expected)
+{
+    const auto Current=GetMainMenuDashboardSnapshot();
+    if(!Current.AllowsNavigation() || Current!=Expected ||
+        !latebrake::ValidMainMenuDestination(Destination))return false;
+    // Page navigation only: do not start a race, equip, spend or unpause.
+    GaragePurchaseConfirm.Reset();
+    DismissGaragePalette();
+    Menu.Open(Destination);
+    SettingsSelection.Reset();
+    if(Destination==latebrake::MenuPage::QuickRace)BumpQuickChoiceRevision();
+    SyncGarageShowroomPreview();
+    return true;
+}
+
 void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
