@@ -135,7 +135,7 @@ inline GarageAppearanceGlyph CalculateGarageAppearanceGlyph(
         rect(x,y,w,h,GarageGlyphInk::Body);
         rect(x,y,w,h*0.10,GarageGlyphInk::Accent);
         rect(x,y+h*0.90,w,h*0.10,GarageGlyphInk::Accent);
-        if(layer==GarageLookLayer::Stripe)
+        if(layer==GarageLookLayer::Stripe || layer==GarageLookLayer::Preset)
         {
             if(look.Stripe==1u)
                 rect(x+w*0.08,cy-h*0.085,w*0.84,h*0.17,GarageGlyphInk::Stripe);
