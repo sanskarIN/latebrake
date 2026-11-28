@@ -15,7 +15,7 @@ class PracticeSetupCatalogueBindingTests(unittest.TestCase):
             self.assertNotIn(forbidden,p)
     def test_results_use_configuration_of_actual_finish(self):
         mode=read("Source/Latebrake/Public/Game/LatebrakeRaceGameMode.h")
-        self.assertIn("BuildPracticeSetupCatalogue(PracticeHistory,Key)",mode)
+        self.assertIn("PracticeAnalysis.ReadCatalogue(PracticeHistory,Key)",mode)
         hud=read("Source/Latebrake/Private/UI/LatebrakeRaceHUD.cpp")
         for token in ("GetPracticeSetupCatalogue(Comparison.Configuration)",
                       "OBSERVED SETUPS | SAME MODE & HANDLING | SESSION ONLY",

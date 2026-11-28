@@ -100,6 +100,7 @@ public:
     {
         Records.fill({});
         for(auto& series:Series)series.Reset();
+        BumpRevision();
         CancelAttempt();
     }
 
@@ -192,12 +193,22 @@ public:
         record.LastFinishSeconds=seconds;
         record.LastPenaltySeconds=race.GetTotalPenaltySeconds();
         Last.Record=record;
+        BumpRevision();
         return Last;
     }
 
     PracticeComparison LastComparison() const noexcept {return Last;}
+    // Only durable session observations change this revision. Beginning,
+    // canceling or rejecting an attempt does not invalidate analysis.
+    std::uint64_t AnalysisRevision() const noexcept {return Revision;}
 
 private:
+    void BumpRevision() noexcept
+    {
+        ++Revision;
+        if(Revision==0)++Revision;
+    }
+    std::uint64_t Revision=1;
     std::array<PracticeSessionRecord,PracticeConfigurationCount> Records{};
     std::array<PracticeAttemptSeries,PracticeConfigurationCount> Series{};
     bool Active=false;

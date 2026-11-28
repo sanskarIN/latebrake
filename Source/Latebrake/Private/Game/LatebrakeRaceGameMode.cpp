@@ -1936,7 +1936,7 @@ latebrake::PracticeExperimentPlan ALatebrakeRaceGameMode::GetPendingPracticeExpe
         Handling==ELatebrakeHandlingMode::SimulationInspired?1:-1;
     const latebrake::PracticeConfiguration Key{QuickPracticeSelection,
         GetPendingPracticeTrial().Key,HandlingId};
-    return latebrake::BuildPracticeExperimentPlan(GetPracticeSetupCatalogue(Key),Key);
+    return PracticeAnalysis.ReadPlan(PracticeHistory,Key);
 }
 
 bool ALatebrakeRaceGameMode::HandlePracticeTrialInput(

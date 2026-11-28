@@ -144,10 +144,12 @@ inline bool PracticeTrialControlEnabled(const PracticeTrialPanelSnapshot& snapsh
     {
     case PracticeTrialAction::NextTest:
         return control.Vehicle==-1 && snapshot.Experiments.NextValid &&
+            ValidPracticeExperimentReason(snapshot.Experiments.Reason) &&
             ValidPracticeTrialKey(snapshot.Experiments.Next) &&
             !(snapshot.Experiments.Next==snapshot.Key);
     case PracticeTrialAction::RetestBest:
         return control.Vehicle==-1 && snapshot.Experiments.BestValid &&
+            IsValidFinishedRaceTime(snapshot.Experiments.BestSeconds) &&
             ValidPracticeTrialKey(snapshot.Experiments.Best) &&
             !(snapshot.Experiments.Best==snapshot.Key);
     case PracticeTrialAction::ChooseCar:

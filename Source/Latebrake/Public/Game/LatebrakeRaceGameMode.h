@@ -25,6 +25,7 @@
 #include "Racing/PracticeTrialSetup.h"
 #include "Racing/PracticeSetupCatalogue.h"
 #include "Racing/PracticeExperimentPlan.h"
+#include "Racing/PracticeSetupAnalysisCache.h"
 #include "Racing/PracticeGateReference.h"
 #include "Career/CareerMenuSelection.h"
 #include "Racing/RaceSessionEpoch.h"
@@ -97,7 +98,7 @@ public:
     {return PracticeHistory.LastComparison();}
     latebrake::PracticeSetupCatalogue GetPracticeSetupCatalogue(
         latebrake::PracticeConfiguration Key) const noexcept
-    {return latebrake::BuildPracticeSetupCatalogue(PracticeHistory,Key);}
+    {return PracticeAnalysis.ReadCatalogue(PracticeHistory,Key);}
     latebrake::PracticeAttemptSeriesReview GetPracticeAttemptSeries(
         latebrake::PracticeConfiguration Key) const noexcept
     {return PracticeHistory.ReadSeries(Key);}
@@ -367,6 +368,7 @@ private:
     latebrake::PracticeTrialSetup PracticeTrial;
     latebrake::PracticeTrialAccess GetPracticeTrialAccess() const;
     latebrake::PracticeSessionHistory PracticeHistory;
+    mutable latebrake::PracticeSetupAnalysisCache PracticeAnalysis;
     latebrake::PracticeGateReferenceHistory PracticeGateHistory;
     latebrake::PracticeConfiguration ReadPracticeConfiguration(const ALatebrakeCarPawn* Car) const;
     latebrake::RivalDifficultyPreset ActiveRivalDifficulty =

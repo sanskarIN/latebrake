@@ -10,7 +10,7 @@ class PracticeExperimentPlanBindingTests(unittest.TestCase):
             "bool ALatebrakeRaceGameMode::HandlePracticeTrialInput",1)[0]
         for marker in ("GetPracticeTrialAccess().AllowsEdit()", "Car->GetHandlingMode()",
                        "QuickPracticeSelection", "GetPendingPracticeTrial().Key",
-                       "BuildPracticeExperimentPlan(GetPracticeSetupCatalogue(Key),Key)"):
+                       "PracticeAnalysis.ReadPlan(PracticeHistory,Key)"):
             self.assertIn(marker,plan)
         handler=mode.split("bool ALatebrakeRaceGameMode::HandlePracticeTrialInput",1)[1].split(
             "void ALatebrakeRaceGameMode::MenuNext",1)[0]
