@@ -233,7 +233,8 @@ inline bool ValidFleetDecisionQueue(FleetQueueStatus value) noexcept
         case FleetQueueStatus::NoVerifiedQueue:
         case FleetQueueStatus::Waiting:
         case FleetQueueStatus::BudgetExhausted:
-        case FleetQueueStatus::InvalidRoute: return true;
+        case FleetQueueStatus::InvalidRoute:
+        case FleetQueueStatus::InvalidFrame: return true;
         default: return false;
     }
 }

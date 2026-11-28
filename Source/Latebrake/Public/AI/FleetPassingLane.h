@@ -86,7 +86,9 @@ inline bool FleetPassFresh(const FleetPassStamp& previous,
     return previous.Valid() && current.Valid() &&
         current.Attempt == previous.Attempt &&
         current.Frame > previous.Frame &&
-        current.EngineFrame > previous.EngineFrame;
+        current.EngineFrame > previous.EngineFrame &&
+        current.SessionEpoch >= previous.SessionEpoch &&
+        current.TeleportRevision >= previous.TeleportRevision;
 }
 
 inline bool FleetPassContinuous(const FleetPassStamp& previous,

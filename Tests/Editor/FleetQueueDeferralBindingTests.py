@@ -15,6 +15,9 @@ class FleetQueueDeferralBindingTests(unittest.TestCase):
         self.assertEqual(offsets,sorted(offsets))
         self.assertEqual(tick.count("Route.ObserveVerifiedGate("),1)
         self.assertIn("FleetQueue.Suspend();",tick)
+        self.assertIn("FleetQueueFrameStamp QueueStamp{FleetFrame.AttemptToken",tick)
+        self.assertIn("CurrentSessionRevision,GetTeleportRevision()",tick)
+        self.assertIn("QueueSample,QueueStamp).DeferStallRecovery",tick)
         self.assertNotIn("FleetQueue.Reset();",tick)
     def test_real_gate_precedes_stationary_deferral(self):
         policy=read("Source/Latebrake/Public/AI/RivalRouteProgress.h")

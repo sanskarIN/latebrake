@@ -29,7 +29,8 @@ enum class FleetQueueStatus
     NoVerifiedQueue,
     Waiting,
     BudgetExhausted,
-    InvalidRoute
+    InvalidRoute,
+    InvalidFrame
 };
 
 struct FleetQueueEvidence final
@@ -37,6 +38,8 @@ struct FleetQueueEvidence final
     bool ValidRoster=false;
     int BlockerSlot=-1;
     double ForwardDistanceCm=0.0;
+    int SelfSlot=-1;
+    std::array<std::uint64_t,StartGridCapacity> Identity{};
     bool HasQueue() const noexcept {return ValidRoster && BlockerSlot>=0;}
 };
 
@@ -61,6 +64,8 @@ inline FleetQueueEvidence InspectFleetQueue(const RivalFleetTrafficSample& sampl
     }
     for(auto token:tokens)if(token==0)return result;
     result.ValidRoster=true;
+    result.SelfSlot=sample.Self.Slot;
+    result.Identity=tokens;
     if(std::hypot(sample.Self.VelocityX,sample.Self.VelocityY)>=FleetQueueMaximumSelfSpeedCmS)
         return result;
     const auto body=MakeStartGridRect(sample.Self.Pose);
@@ -106,12 +111,33 @@ struct FleetQueueReadout final
     bool DeferStallRecovery=false;
 };
 
+struct FleetQueueFrameStamp final
+{
+    std::uint64_t Attempt=0;
+    std::uint64_t Frame=0;
+    std::uint64_t EngineFrame=0;
+    std::uint64_t SessionEpoch=0;
+    std::uint64_t TeleportRevision=0;
+
+    bool Valid() const noexcept
+    {
+        return Attempt!=0 && Frame!=0 && EngineFrame!=0;
+    }
+
+    bool FreshAfter(const FleetQueueFrameStamp& previous) const noexcept
+    {
+        return Valid() && previous.Valid() && Attempt==previous.Attempt &&
+            Frame>previous.Frame && EngineFrame>previous.EngineFrame &&
+            SessionEpoch>=previous.SessionEpoch && TeleportRevision>=previous.TeleportRevision;
+    }
+};
+
 class FleetQueueDeferral final
 {
 public:
     static constexpr int MaxGateOrdinal=25600;
 
-    void Reset() noexcept {State={};}
+    void Reset() noexcept {State={};LastStamp={};Identity={};SelfSlot=-1;}
     // Pauses, invalid frames and missing observations clear current
     // permission, not the per-gate budget. The same route cannot acquire
     // a new wait allowance by repeatedly losing and regaining evidence.
@@ -125,24 +151,41 @@ public:
     FleetQueueReadout Readout() const noexcept {return State;}
 
     FleetQueueReadout Observe(int acceptedGateOrdinal,double deltaSeconds,
-        const RivalFleetTrafficSample& physical) noexcept
+        const RivalFleetTrafficSample& physical,const FleetQueueFrameStamp& stamp) noexcept
     {
         Suspend();
+        if(!stamp.Valid() || (LastStamp.Valid() && !stamp.FreshAfter(LastStamp)))
+        {
+            State.Status=FleetQueueStatus::InvalidFrame;
+            return State;
+        }
+        // A real frame is consumed once, even when no queue is present.
+        // Invalid snapshots cannot be repaired and replayed in that frame.
+        LastStamp=stamp;
         if(acceptedGateOrdinal<0 || acceptedGateOrdinal>=MaxGateOrdinal ||
             acceptedGateOrdinal<State.GateOrdinal)
         {
             State.Status=FleetQueueStatus::InvalidRoute;
             return State;
         }
+        if(!RivalRouteProgress::HasQualifiedFrameTime(deltaSeconds))
+            return State;
+        const auto evidence=InspectFleetQueue(physical);
+        if(!evidence.ValidRoster || (SelfSlot>=0 &&
+            (evidence.SelfSlot!=SelfSlot || evidence.Identity!=Identity)))
+        {
+            State.Status=FleetQueueStatus::NoVerifiedQueue;
+            return State;
+        }
+        Identity=evidence.Identity;
+        SelfSlot=evidence.SelfSlot;
         if(acceptedGateOrdinal>State.GateOrdinal)
         {
-            // A new route segment gets its own finite allowance. A
-            // recovery at the SAME gate does not reset it.
+            // A valid physical roster at an advanced route can earn
+            // a new allowance. A malformed roster cannot reset it.
             State={};
             State.GateOrdinal=acceptedGateOrdinal;
         }
-        if(!RivalRouteProgress::HasQualifiedFrameTime(deltaSeconds))
-            return State;
         if(State.RemainingSeconds<=FleetQueueTimeTolerance)
         {
             State.RemainingSeconds=0.0;
@@ -150,7 +193,6 @@ public:
             return State;
         }
 
-        const auto evidence=InspectFleetQueue(physical);
         if(!evidence.HasQueue())
         {
             State.Status=FleetQueueStatus::NoVerifiedQueue;
@@ -174,5 +216,8 @@ public:
     }
 private:
     FleetQueueReadout State{};
+    FleetQueueFrameStamp LastStamp{};
+    std::array<std::uint64_t,StartGridCapacity> Identity{};
+    int SelfSlot=-1;
 };
 } // namespace latebrake

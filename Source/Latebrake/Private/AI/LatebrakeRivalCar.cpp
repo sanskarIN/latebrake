@@ -190,8 +190,12 @@ void ALatebrakeRivalCar::Tick(float DeltaSeconds)
         if (Mode->TryGetFreshFleetTraffic(this,false,0.0,QueueSample))
         {
             const int Ordinal=Route.GetCompletedLaps()*Route.GetWaypointCount()+Next;
+            const auto FleetFrame=Mode->GetFleetAttemptReadout();
+            const latebrake::FleetQueueFrameStamp QueueStamp{FleetFrame.AttemptToken,
+                FleetFrame.LastFrame,static_cast<std::uint64_t>(GFrameCounter),
+                CurrentSessionRevision,GetTeleportRevision()};
             bVerifiedTrafficWait=FleetQueue.Observe(Ordinal,
-                static_cast<double>(DeltaSeconds),QueueSample).DeferStallRecovery;
+                static_cast<double>(DeltaSeconds),QueueSample,QueueStamp).DeferStallRecovery;
         }
         else FleetQueue.Suspend();
     }

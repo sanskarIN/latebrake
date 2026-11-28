@@ -59,9 +59,24 @@ void Evidence()
     std::swap(s.Blockers[0],s.Blockers[1]);
     Require(InspectFleetQueue(s).BlockerSlot==0,"order-independent blocker selection");
 }
+struct QueueFixture final
+{
+    FleetQueueDeferral Policy;
+    FleetQueueFrameStamp Stamp{1,1,101,1,0};
+    FleetQueueReadout Observe(int ordinal,double dt,const RivalFleetTrafficSample& sample)
+    {
+        auto out=Policy.Observe(ordinal,dt,sample,Stamp);
+        ++Stamp.Frame;++Stamp.EngineFrame;
+        return out;
+    }
+    void Suspend(){Policy.Suspend();}
+    void Reset(){Policy.Reset();}
+    FleetQueueReadout Readout() const {return Policy.Readout();}
+};
+
 void FiniteBudget()
 {
-    FleetQueueDeferral queue;
+    QueueFixture queue;
     auto s=Queue();
     for(int i=0;i<120;++i)
     {
@@ -86,9 +101,51 @@ void FiniteBudget()
     queue.Reset();
     Require(queue.Observe(0,0.1,s).DeferredSeconds==0.1,"explicit new attempt resets");
 }
+void FrameAndRosterAuthority()
+{
+    QueueFixture f;
+    const auto s=Queue();
+    Require(f.Observe(0,0.1,s).DeferStallRecovery,"valid first frame");
+    const auto baseline=f.Readout().DeferredSeconds;
+    auto duplicate=f.Stamp;--duplicate.Frame;--duplicate.EngineFrame;
+    Require(f.Policy.Observe(0,0.1,s,duplicate).Status==FleetQueueStatus::InvalidFrame &&
+        f.Readout().DeferredSeconds==baseline,"duplicate cannot spend budget");
+    auto wrong=f.Stamp;++wrong.Attempt;
+    Require(f.Policy.Observe(1,0.1,s,wrong).Status==FleetQueueStatus::InvalidFrame &&
+        f.Readout().GateOrdinal==0,"foreign attempt cannot refill");
+    auto roster=s;roster.Blockers[4].ActorToken=999;
+    Require(!f.Observe(1,0.1,roster).DeferStallRecovery &&
+        f.Readout().GateOrdinal==0,"replacement actor cannot refill");
+    auto missing=s;missing.BlockerCount=4;
+    Require(!f.Observe(1,0.1,missing).DeferStallRecovery &&
+        f.Readout().GateOrdinal==0,"missing body cannot refill");
+    Require(!f.Observe(1,0.11,s).DeferStallRecovery &&
+        f.Readout().GateOrdinal==0,"hitch cannot refill");
+    ++f.Stamp.SessionEpoch;f.Stamp.TeleportRevision=5;
+    Require(f.Observe(0,0.1,s).DeferStallRecovery &&
+        f.Readout().DeferredSeconds>baseline,"recovery retains remaining allowance");
+    auto stale=f.Stamp;--stale.SessionEpoch;
+    Require(f.Policy.Observe(1,0.1,s,stale).Status==FleetQueueStatus::InvalidFrame,
+        "session rollback rejected");
+    stale=f.Stamp;--stale.TeleportRevision;
+    Require(f.Policy.Observe(1,0.1,s,stale).Status==FleetQueueStatus::InvalidFrame,
+        "teleport rollback rejected");
+    Require(f.Observe(1,0.1,s).DeferStallRecovery &&
+        f.Readout().DeferredSeconds==0.1,"fresh exact next segment refills");
+    auto next=f.Stamp;
+    auto invalid=s;invalid.BlockerCount=3;
+    Require(!f.Policy.Observe(1,0.1,invalid,next).DeferStallRecovery,
+        "invalid frame consumed");
+    Require(f.Policy.Observe(1,0.1,s,next).Status==FleetQueueStatus::InvalidFrame,
+        "same frame cannot be replayed");
+    f.Reset();++f.Stamp.Attempt;f.Stamp.Frame=1;f.Stamp.EngineFrame=1;
+    f.Stamp.SessionEpoch=0;f.Stamp.TeleportRevision=0;
+    Require(f.Observe(0,0.1,s).DeferStallRecovery,"explicit attempt reset");
+}
+
 void RouteComposition()
 {
-    FleetQueueDeferral queue;
+    QueueFixture queue;
     RivalRouteProgress route;
     const auto sample=Queue();
     for(int i=0;i<120;++i)
@@ -126,6 +183,6 @@ void RouteComposition()
 }
 int main()
 {
-    Evidence();FiniteBudget();RouteComposition();
+    Evidence();FiniteBudget();FrameAndRosterAuthority();RouteComposition();
     std::cout<<"Fleet queue evidence and bounded recovery deferral passed\n";
 }

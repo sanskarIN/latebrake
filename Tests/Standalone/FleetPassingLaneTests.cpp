@@ -259,6 +259,12 @@ void FrameAuthorityAndDriftEnvelope()
     ++next.Attempt;++next.Frame;++next.EngineFrame;
     Require(!FleetPassFresh(stamp,next),"foreign attempt requires reset");
 
+    next=stamp;++next.Frame;++next.EngineFrame;--next.SessionEpoch;
+    Require(!FleetPassFresh(stamp,next),"session rollback is not fresh");
+    auto recoveredStamp=stamp;recoveredStamp.TeleportRevision=3;
+    next=recoveredStamp;++next.Frame;++next.EngineFrame;--next.TeleportRevision;
+    Require(!FleetPassFresh(recoveredStamp,next),"teleport rollback is not fresh");
+
     Fixture duplicate;
     Require(duplicate.Step().Phase==FleetPassPhase::Confirming,"confirmation begins");
     --duplicate.Sample.Stamp.Frame;--duplicate.Sample.Stamp.EngineFrame;
@@ -275,6 +281,15 @@ void FrameAuthorityAndDriftEnvelope()
     Require(recovery.Confirm().SteeringChanged,"active before recovery");
     ++recovery.Sample.Stamp.TeleportRevision;
     Require(!recovery.Step().SteeringChanged,"teleported body cannot borrow confirmation");
+
+    Fixture rollback;
+    rollback.Sample.Stamp.TeleportRevision=5;
+    Require(rollback.Confirm().SteeringChanged,"active before stale recovery");
+    rollback.Sample.GateOrdinal=4;
+    rollback.Sample.Stamp.TeleportRevision=4;
+    Require(!rollback.Step().SteeringChanged,"old revision cannot rearm at a new gate");
+    rollback.Sample.Stamp.TeleportRevision=5;
+    Require(rollback.Confirm().SteeringChanged,"current authenticated new gate can rearm");
 
     Fixture gap;
     Require(gap.Step().Phase==FleetPassPhase::Confirming,"gap fixture");
