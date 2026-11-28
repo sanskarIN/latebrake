@@ -1508,6 +1508,18 @@ void ALatebrakeRaceGameMode::RegisterCheckpoint(int32 CheckpointIndex)
         return;
     }
 
+    // Practice completes the same physical lap sequence but does not
+    // participate in any profile transaction or competitive observation.
+    if (IsPracticeRace())
+    {
+        LastRaceCredits = 0;
+        LastCareerAward = {};
+        LastRivalFinishObservation = {};
+        LastRivalFinishClockComparison = {};
+        CareerFeedback = TEXT("Practice complete: no saved records or rewards.");
+        return;
+    }
+
     // Read the live rival exactly when the player physically finishes. This
     // gate-order observation cannot classify winners, set medals or award
     // credits: Unreal may tick two physically crossing cars in either order.
@@ -1889,12 +1901,17 @@ void ALatebrakeRaceGameMode::MenuActivate()
     }
     else if (Page == latebrake::MenuPage::QuickRace)
     {
+        if (latebrake::IsQuickPractice(QuickPracticeSelection))
+        {
+            if (StartQuickPractice(QuickPracticeSelection)) CloseMenuForRace();
+            return;
+        }
         const latebrake::EventKind ChosenEvent =
             latebrake::QuickRaceMenuEvent({
                 QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection});
         // SelectRaceEvent already restarts when changing event or leaving
         // career mode. Avoid a second immediate reset in that case.
-        const bool bNeedsEventChange = bCareerRace || SelectedEvent != ChosenEvent;
+        const bool bNeedsEventChange = bCareerRace || IsPracticeRace() || SelectedEvent != ChosenEvent;
         if (bNeedsEventChange)
         {
             SelectRaceEvent(ChosenEvent);
@@ -1969,17 +1986,37 @@ void ALatebrakeRaceGameMode::MenuActivate()
 
 void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
 {
-    if (!latebrake::IsValidEvent(Kind) || (Kind == SelectedEvent && !bCareerRace))
+    if (!latebrake::IsValidEvent(Kind) || (Kind == SelectedEvent && !bCareerRace && !IsPracticeRace()))
     {
         return;
     }
     bCareerRace = false;
+    ActivePractice = latebrake::QuickPracticePreset::None;
     LastCareerAward = {};
     SelectedEvent = Kind;
     const latebrake::RaceEvent Definition = latebrake::GetRaceEvent(SelectedEvent);
     Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
     RestartRace();
     RefreshRival();
+}
+
+bool ALatebrakeRaceGameMode::StartQuickPractice(latebrake::QuickPracticePreset Preset)
+{
+    const auto Definition = latebrake::GetQuickPracticeDefinition(Preset);
+    if (!Definition.Valid || !Menu.IsOpen() ||
+        Menu.Current() != latebrake::MenuPage::QuickRace)
+        return false;
+    // Both active mode and physical race configuration change together.
+    // Browsing later does not affect this mode, its restart or lap count.
+    ActivePractice = Preset;
+    bCareerRace = false;
+    LastCareerAward = {};
+    SelectedEvent = Definition.Event;
+    Race = latebrake::RaceProgress(Definition.CheckpointCount, Definition.RequiredLaps);
+    RestartRace();
+    RefreshRival();
+    CareerFeedback = TEXT("Practice: run-local lap timing only; no profile rewards.");
+    return true;
 }
 
 FString ALatebrakeRaceGameMode::GetCareerEventName() const
@@ -2004,9 +2041,10 @@ void ALatebrakeRaceGameMode::CycleCareerEvent()
     {
         const latebrake::QuickRaceMenuChoice Next =
             latebrake::NextQuickRaceMenuChoice({
-                QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection});
+                QuickRaceDifficultySelection, bQuickRaceSoloTimeAttackSelection, QuickPracticeSelection});
         QuickRaceDifficultySelection = Next.Difficulty;
         bQuickRaceSoloTimeAttackSelection = Next.SoloTimeAttack;
+        QuickPracticeSelection = Next.Practice;
         return;
     }
     const int32 Original = CareerMenuSelection;
@@ -2077,6 +2115,7 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
     CareerMenuSelection = Id;
     CareerStartedVehicleId = Garage.SelectedVehicle();
     bCareerRace = true;
+    ActivePractice = latebrake::QuickPracticePreset::None;
     SelectedEvent = Event->SpawnRival
         ? latebrake::EventKind::Circuit : latebrake::EventKind::TimeAttack;
     Race = latebrake::RaceProgress(4, Event->Laps);
@@ -2090,6 +2129,7 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
 
 float ALatebrakeRaceGameMode::GetEventBestSeconds() const
 {
+    if (IsPracticeRace() || IsExperimentalFleetRequested()) return 0.f;
     return SelectedEvent == latebrake::EventKind::TimeAttack ? BestTimeAttackSeconds : PersonalBestSeconds;
 }
 
@@ -3076,7 +3116,7 @@ void ALatebrakeRaceGameMode::RestartRace()
     // Only a new, accepted race attempt latches the pending preset.
     // Career medals/challenges always use the existing Standard opponent.
     ActiveRivalDifficulty = latebrake::EffectiveRivalDifficulty(
-        QuickRaceDifficultySelection, bCareerRace ||
+        QuickRaceDifficultySelection, bCareerRace || IsPracticeRace() ||
             SelectedEvent == latebrake::EventKind::TimeAttack);
     RivalSplits.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());
     RivalFinishClocks.Configure(Race.GetCheckpointCount(), Race.GetRequiredLaps());

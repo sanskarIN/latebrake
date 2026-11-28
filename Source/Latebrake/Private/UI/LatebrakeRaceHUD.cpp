@@ -920,7 +920,13 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(TEXT("Offline racing. Select to open Quick Race."));
             break;
         case latebrake::MenuPage::QuickRace:
-            if (Mode->GetQuickRaceSoloTimeAttackSelection())
+            if (const auto Practice = latebrake::GetQuickPracticeDefinition(Mode->GetQuickPracticeSelection()); Practice.Valid)
+            {
+                MenuLine(UTF8_TO_TCHAR(Practice.Name), true);
+                MenuLine(Practice.SpawnRival ? TEXT("STANDARD LOCAL RIVAL") : TEXT("NO RIVAL"));
+                MenuLine(TEXT("PRACTICE ONLY: no profile credits, medals or PB records."));
+            }
+            else if (Mode->GetQuickRaceSoloTimeAttackSelection())
             {
                 MenuLine(TEXT("MODE: SOLO TIME ATTACK | 1 LAP | NO RIVAL"), true);
                 MenuLine(TEXT("The existing single-lap timed event and PB record."));
@@ -933,6 +939,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                         Mode->GetQuickRaceDifficultySelection()))));
             }
             MenuLine(TEXT("BROWSE/N or gamepad Right: ROOKIE / STANDARD / EXPERT / SOLO TIME ATTACK."));
+            MenuLine(TEXT("More choices: SOLO PRACTICE 3/5 LAPS | RIVAL PRACTICE 5/10 LAPS."));
             MenuLine(TEXT("Select starts choice. Career uses STANDARD; choices not saved."));
             break;
         case latebrake::MenuPage::Career:
@@ -1243,7 +1250,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         {
             const latebrake::QuickRaceRecordReview PB =
                 latebrake::ReviewQuickRaceRecord(
-                    Mode->GetSelectedEvent(), Mode->IsCareerRace(),
+                    Mode->GetSelectedEvent(), Mode->IsCareerRace() || Mode->IsPracticeRace() || Mode->IsExperimentalFleetRequested(),
                     latebrake::CanAwardFinishedRace(Race),
                     Mode->HasProgressSaveError(), Race.GetElapsedSeconds(),
                     Mode->GetAttemptPreviousBestSeconds(),
@@ -1274,6 +1281,10 @@ void ALatebrakeRaceHUD::DrawHUD()
             if (!latebrake::CanAwardFinishedRace(Mode->GetRace()))
             {
                 MenuLine(TEXT("FINISH NOT RECORDABLE - missing active timing or invalid clock"), true);
+            }
+            else if (Mode->IsPracticeRace())
+            {
+                MenuLine(TEXT("PRACTICE COMPLETE | NO SAVED REWARDS OR RECORDS"), true);
             }
             else
             {
@@ -2492,8 +2503,10 @@ void ALatebrakeRaceHUD::DrawHUD()
     Line(Mode->IsCareerRace()
         ? (bCompact ? FString(TEXT("CAREER RACE"))
                     : FString::Printf(TEXT("CAREER  %s"), *Mode->GetCareerEventName()))
-        : (bTimeAttack ? FString(TEXT("TIME ATTACK"))
-                       : FString(TEXT("CIRCUIT RACE"))), Accent, false, HudTelemetryKind::Context);
+        : (Mode->IsPracticeRace()
+            ? FString(UTF8_TO_TCHAR(latebrake::GetQuickPracticeDefinition(Mode->GetActivePractice()).Name))
+            : (bTimeAttack ? FString(TEXT("TIME ATTACK"))
+                           : FString(TEXT("CIRCUIT RACE")))), Accent, false, HudTelemetryKind::Context);
     if (Mode->IsCareerRace() && !bCompact)
     {
         const int32 Id = Mode->GetActiveCareerEventId();
@@ -2592,7 +2605,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             !UGameplayStatics::IsGamePaused(this);
         const latebrake::TimeAttackPersonalBestTarget PbTarget =
             latebrake::MeasureTimeAttackPersonalBestTarget(
-                Mode->GetSelectedEvent(), Mode->IsCareerRace(), bRunning,
+                Mode->GetSelectedEvent(), Mode->IsCareerRace() || Mode->IsPracticeRace(), bRunning,
                 Race.IsFinished(), Race.GetElapsedSeconds(),
                 Mode->GetEventBestSeconds());
         if (PbTarget.Valid)
@@ -3695,6 +3708,10 @@ void ALatebrakeRaceHUD::DrawHUD()
         if (!latebrake::CanAwardFinishedRace(Race))
         {
             Line(TEXT("FINISH NOT RECORDABLE - UNTIMED LAP OR INVALID CLOCK"), Accent, false, HudTelemetryKind::Blocking);
+        }
+        else if (Mode->IsPracticeRace())
+        {
+            Line(TEXT("PRACTICE COMPLETE | NO SAVED REWARDS"), Accent, false, HudTelemetryKind::Pace);
         }
         else
         {

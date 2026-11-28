@@ -72,6 +72,10 @@ public:
     void RegisterCheckpoint(int32 CheckpointIndex);
     void RestartRace();
     void SelectRaceEvent(latebrake::EventKind Kind);
+    bool StartQuickPractice(latebrake::QuickPracticePreset Preset);
+    bool IsPracticeRace() const { return latebrake::IsQuickPractice(ActivePractice); }
+    latebrake::QuickPracticePreset GetActivePractice() const { return ActivePractice; }
+    latebrake::QuickPracticePreset GetQuickPracticeSelection() const { return QuickPracticeSelection; }
     bool StartCareerEvent(int32 Id);
     void StartNextAvailableCareerEvent();
     void CycleCareerEvent();
@@ -324,6 +328,8 @@ private:
         latebrake::RivalDifficultyPreset::Standard;
     // Pending option only. Real event selection occurs on MenuActivate.
     bool bQuickRaceSoloTimeAttackSelection = false;
+    latebrake::QuickPracticePreset QuickPracticeSelection = latebrake::QuickPracticePreset::None;
+    latebrake::QuickPracticePreset ActivePractice = latebrake::QuickPracticePreset::None;
     latebrake::RivalDifficultyPreset ActiveRivalDifficulty =
         latebrake::RivalDifficultyPreset::Standard;
     int32 CareerStartedVehicleId = 0;

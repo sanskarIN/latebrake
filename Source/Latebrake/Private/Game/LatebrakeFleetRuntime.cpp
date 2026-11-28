@@ -24,7 +24,7 @@ bool ALatebrakeRaceGameMode::IsExperimentalFleetRequested() const noexcept
 #if UE_BUILD_SHIPPING
     return false;
 #else
-    return bExperimentalFleetFlag && !bCareerRace &&
+    return bExperimentalFleetFlag && !bCareerRace && !IsPracticeRace() &&
         SelectedEvent==latebrake::EventKind::Circuit;
 #endif
 }
