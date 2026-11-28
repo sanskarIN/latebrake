@@ -27,6 +27,7 @@
 #include "UI/MainMenuDashboard.h"
 #include "UI/RaceResultsOverview.h"
 #include "UI/CareerEventCards.h"
+#include "UI/ProfileOverviewPanel.h"
 #include "LatebrakeRaceHUD.generated.h"
 
 class APawn;
@@ -63,6 +64,8 @@ private:
     latebrake::CareerEventCardsPresentation PresentedCareerCards{};
     bool DrawCareerEventCards(const ALatebrakeRaceGameMode* Mode,
         const latebrake::CareerEventCardsLayout& Layout);
+    bool DrawProfileOverview(const latebrake::ProfileOverviewLayout& Layout,
+        const latebrake::ProfileOverviewReadout& Readout);
     bool DrawResultsOverview(const latebrake::ResultsOverviewLayout& Layout,
         const latebrake::ResultsOverviewReadout& Readout);
     bool DrawMainMenuDashboard(const ALatebrakeRaceGameMode* Mode,
