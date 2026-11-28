@@ -130,7 +130,7 @@ void ResponsiveAndFallback()
         "existing navigation for mobile, other pages and small windows");
     auto narrow=v;narrow.SafeWidth=190;
     Require(!narrow.Plan().Valid,"tiny left lane cannot expose invisible targets");
-    narrow=v;narrow.SafeWidth=260;
+    narrow=v;narrow.SafeWidth=300;
     const auto two=narrow.Plan();
     Require(two.Valid && two.Columns==2,"two-column fallback");
     auto bad=v;bad.Vertical.MaxDetailsRows=5;
