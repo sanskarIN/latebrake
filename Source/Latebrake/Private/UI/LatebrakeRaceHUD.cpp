@@ -2742,6 +2742,24 @@ void ALatebrakeRaceHUD::DrawHUD()
     const float Step = static_cast<float>(Layout.LineHeight);
     float Y = static_cast<float>(Layout.Top);
     int32 DrawnTelemetryLines = 0;
+    const bool bRaceStatusRunning=Mode->IsCircuitReadyForGameplay() &&
+        Mode->IsRestartPlacementReady() && Mode->HasLocalPlayerDriver() &&
+        Mode->IsRaceStartGreen() && !Mode->IsFocusLossGuardActive() &&
+        !Mode->IsManualRacePauseActive() && !UGameplayStatics::IsGamePaused(this) &&
+        (!Mode->IsExperimentalFleetRequested() || Mode->IsExperimentalFleetDriveReady());
+    const auto RaceStatusLayout=latebrake::CalculateHudRaceStatusLayout(
+        Canvas->SizeX,Canvas->SizeY,Layout,VerticalPlan,HorizontalBounds,SafeTextWidth,
+        bTouchHUD,Mode->IsMenuOpen(),Race.IsFinished(),bRaceStatusRunning);
+    const auto RaceStatus=latebrake::ReadHudRaceStatus({
+        Race.GetCompletedLaps(),Race.GetRequiredLaps(),Race.GetNextCheckpoint(),
+        Race.GetCheckpointCount(),Race.GetElapsedSeconds(),Car->GetSpeedKmH(),
+        Mode->UsesMilesPerHour(),Race.IsFinished(),bRaceStatusRunning,Car->IsRacePhysicsReady()});
+    // Only suppress the original numbers after the complete native panel
+    // was successfully drawn with the actual font metrics.
+    const bool bRaceStatusDrawn=DrawRaceStatusPanel(RaceStatusLayout,RaceStatus);
+    const int32 TelemetryRowLimit=bRaceStatusDrawn?
+        RaceStatusLayout.RemainingRows:VerticalPlan.MaxTelemetryLines;
+    if (bRaceStatusDrawn) Y=static_cast<float>(RaceStatusLayout.TelemetryTop);
 
     // Collect bounded candidates before drawing. The later semantic
     // selection protects current alerts from earlier optional rows.
@@ -2885,19 +2903,32 @@ void ALatebrakeRaceHUD::DrawHUD()
         ? FString::Printf(TEXT(" | NITRO %s %.0f%%"),
             *BoostStatusText, DisplayBoostCharge * 100.0)
         : FString();
-    Line((Car->IsHandbrakeHeld() && !bCompact
-        ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine) + NitroLabel, Primary, false, HudTelemetryKind::Speed);
+    if (!bRaceStatusDrawn)
+        Line((Car->IsHandbrakeHeld() && !bCompact
+            ? SpeedLine + TEXT(" | HANDBRAKE") : SpeedLine) + NitroLabel, Primary, false, HudTelemetryKind::Speed);
+    else
+    {
+        // Speed moved to its own tile; preserve the original auxiliary
+        // nitro observation and make a held handbrake explicitly visible.
+        if (Car->IsHandbrakeHeld())
+            Line(TEXT("HANDBRAKE HELD"),Accent,false,HudTelemetryKind::Urgent);
+        Line(FString::Printf(TEXT("NITRO %s %.0f%%"),*BoostStatusText,
+            DisplayBoostCharge*100.0),Primary,false,HudTelemetryKind::Vehicle);
+    }
 
     // Always prioritize authoritative lap/next gate and race clock above
     // optional proximity, wayfinding and driving telemetry on small phones.
-    Line(bTouchHUD
-        ? FString::Printf(TEXT("L%d/%d G%d/%d"),
-            DisplayLap, Race.GetRequiredLaps(),
-            Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount())
-        : FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
-            DisplayLap, Race.GetRequiredLaps(),
-            Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary, false, HudTelemetryKind::Progress);
-    Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true, HudTelemetryKind::Clock);
+    if (!bRaceStatusDrawn)
+    {
+        Line(bTouchHUD
+            ? FString::Printf(TEXT("L%d/%d G%d/%d"),
+                DisplayLap, Race.GetRequiredLaps(),
+                Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount())
+            : FString::Printf(TEXT("LAP  %d / %d  |  GATE  %d / %d"),
+                DisplayLap, Race.GetRequiredLaps(),
+                Race.GetNextCheckpoint() + 1, Race.GetCheckpointCount()), Primary, false, HudTelemetryKind::Progress);
+        Line(FString::Printf(TEXT("TIME  %02d:%05.2f"), Minutes, Seconds), Accent, true, HudTelemetryKind::Clock);
+    }
     // Optional, clearly ESTIMATED automatic gearbox telemetry on desktop.
     // Preserve gate/time rows and mobile touch controls as first priority.
     if (!bCompact && !bTouchHUD &&
@@ -4079,11 +4110,12 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(Mode->GetCareerSelectionFeedback(), Primary, false, HudTelemetryKind::Decorative);
     }
     const auto SelectedTelemetry=TelemetryQueue.Select(
-        Mode->GetHudTelemetryMode(),VerticalPlan.MaxTelemetryLines);
+        Mode->GetHudTelemetryMode(),TelemetryRowLimit);
     latebrake::DrawSelectedHudTelemetry(SelectedTelemetry,[&](int32 Index)
     {
         if (!TelemetryRows.IsValidIndex(Index) ||
-            DrawnTelemetryLines >= VerticalPlan.MaxTelemetryLines)
+            DrawnTelemetryLines >= VerticalPlan.MaxTelemetryLines ||
+            DrawnTelemetryLines >= TelemetryRowLimit)
             return false;
         const auto& Row=TelemetryRows[Index];
         const auto& Content=Row.Content;
