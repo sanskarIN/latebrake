@@ -1868,7 +1868,7 @@ latebrake::SettingsMenuSnapshot ALatebrakeRaceGameMode::GetSettingsMenuSnapshot(
     const bool CameraReady=Local && Player->CanApplyCameraMotionPreference();
     return {{Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
         ManualPause.IsSuspended(),bFutureSaveSchema,Lights,CameraReady},SettingsSelection.Current(),
-        bMilesPerHour,HudTelemetryMode,bDuskLightingPreview,SettingsSelection.Revision(),CameraMotion};
+        bMilesPerHour,HudTelemetryMode,bDuskLightingPreview,SettingsSelection.Revision(),CameraMotion,HudScale};
 }
 
 void ALatebrakeRaceGameMode::ActivateSettingsControl(latebrake::SettingsControl Control)
@@ -1908,6 +1908,10 @@ void ALatebrakeRaceGameMode::ActivateSettingsControl(latebrake::SettingsControl 
         SettingsSelection.Changed();
         break;
     }
+    case latebrake::SettingsControl::HudScale:
+        HudScale=latebrake::NextHudScalePreference(HudScale);
+        SettingsSelection.Changed();
+        break;
     default:break;
     }
 }
