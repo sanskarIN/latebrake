@@ -29,7 +29,7 @@ GaragePaletteLayout LayoutFor(GarageLookLayer layer)
 
 void ExhaustVisibleMasks()
 {
-    for(auto layer:{GarageLookLayer::Paint,GarageLookLayer::Stripe,GarageLookLayer::Wheels})
+    for(auto layer:{GarageLookLayer::Paint,GarageLookLayer::Stripe,GarageLookLayer::Wheels,GarageLookLayer::Preset})
     {
         const auto layout=LayoutFor(layer);
         Require(layout.Valid,"desktop navigation layout available");
@@ -80,10 +80,10 @@ void OpeningAndLayerIdentity()
                 {
                     const GarageLook look{static_cast<std::uint8_t>(p),
                         static_cast<std::uint8_t>(s),static_cast<std::uint8_t>(w)};
-                    for(auto layer:{GarageLookLayer::Paint,GarageLookLayer::Stripe,GarageLookLayer::Wheels})
+                    for(auto layer:{GarageLookLayer::Paint,GarageLookLayer::Stripe,GarageLookLayer::Wheels,GarageLookLayer::Preset})
                     {
                         const GaragePaletteSession session{true,id,look,layer};
-                        Require(InitialGaragePaletteFocus(session)==GarageLookChoice(look,layer),
+                        Require(InitialGaragePaletteFocus(session)==std::max(0,GarageLookChoice(look,layer)),
                             "opening focuses currently applied choice");
                         auto closed=session;
                         closed.Open=false;
@@ -92,8 +92,8 @@ void OpeningAndLayerIdentity()
                         invalid.VehicleId=-1;
                         Require(InitialGaragePaletteFocus(invalid)==-1,"invalid car owns no focus");
                         const auto next=NextGaragePaletteLayer(layer);
-                        Require(next!=layer&&NextGaragePaletteLayer(NextGaragePaletteLayer(next))==layer,
-                            "paint stripe rims cycle exactly once");
+                        Require(next!=layer&&NextGaragePaletteLayer(NextGaragePaletteLayer(NextGaragePaletteLayer(next)))==layer,
+                            "paint stripe rims presets cycle exactly once");
                     }
                 }
 }
