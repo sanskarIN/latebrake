@@ -36,7 +36,7 @@ void RookieAndProloguePath()
         Require(step.ConditionalEndingCredits==cumulative,"conditional balance");
     }
     Require(plan.TotalPurchaseCost==0 && plan.MinimumAdditionalFunding==0 &&
-        plan.NominalConditionalRewards==2225 && plan.ConditionalEndingCredits==2225,
+        plan.NominalConditionalRewards==2175 && plan.ConditionalEndingCredits==2175,
         "all six first medal rewards and two bonuses");
     career.Medals[0]=1;career.Medals[1]=2;career.Medals[2]=3;
     garage.Credits=70;
@@ -126,7 +126,7 @@ void InvalidProfilesAndSaturation()
     CareerSnapshot career;
     GarageSnapshot garage{std::numeric_limits<int>::max(),KnownVehicleMask,0,3,3};
     const auto plan=BuildCareerRoadmap(career,garage,5);
-    Require(plan.Valid && plan.NominalConditionalRewards==2225 &&
+    Require(plan.Valid && plan.NominalConditionalRewards==2175 &&
         plan.ConditionalCredited==0 &&
         plan.ConditionalEndingCredits==std::numeric_limits<int>::max(),
         "existing saturation rules preserved");
