@@ -1736,6 +1736,7 @@ void ALatebrakeRaceGameMode::ToggleMenu()
     DismissGaragePalette();
     SuspendBestLapGhost();
     Menu.Toggle();
+    MainMenuFocus=0;
     SettingsSelection.Reset();
     SyncGarageShowroomPreview();
     if (!Menu.IsOpen())
@@ -2004,9 +2005,11 @@ latebrake::MainMenuDashboardSnapshot ALatebrakeRaceGameMode::GetMainMenuDashboar
     const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
     const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
     const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
-        Controller->GetPawn()==Player && HasLocalPlayerDriver();
+        Controller->GetPawn()==Player;
+    // Menu navigation remains usable when chassis physics or grid setup
+    // fails. The local possession check is independent of race readiness.
     return {Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
-        SettingsSelection.Revision()};
+        SettingsSelection.Revision(),MainMenuFocus};
 }
 
 bool ALatebrakeRaceGameMode::NavigateMainMenuDashboard(latebrake::MenuPage Destination,
@@ -2019,6 +2022,7 @@ bool ALatebrakeRaceGameMode::NavigateMainMenuDashboard(latebrake::MenuPage Desti
     GaragePurchaseConfirm.Reset();
     DismissGaragePalette();
     Menu.Open(Destination);
+    MainMenuFocus=0;
     SettingsSelection.Reset();
     if(Destination==latebrake::MenuPage::QuickRace)BumpQuickChoiceRevision();
     SyncGarageShowroomPreview();
@@ -2030,7 +2034,7 @@ latebrake::CareerEventCardsSnapshot ALatebrakeRaceGameMode::GetCareerEventCardsS
     const auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
     const auto* Controller=IsValid(Player)?Cast<APlayerController>(Player->GetController()):nullptr;
     const bool Local=IsValid(Controller) && Controller->IsLocalController() &&
-        Controller->GetPawn()==Player && HasLocalPlayerDriver();
+        Controller->GetPawn()==Player;
     return latebrake::BuildCareerEventCardsSnapshot(Menu.IsOpen(),Menu.Current(),Local,
         AppFocusGuard.IsSuspended(),bFutureSaveSchema,CareerMenuSelection,
         SettingsSelection.Revision(),Career.Snapshot(),Garage.Snapshot());
@@ -2060,6 +2064,7 @@ void ALatebrakeRaceGameMode::MenuNext()
     GaragePurchaseConfirm.Reset();
     DismissGaragePalette();
     Menu.Next();
+    MainMenuFocus=0;
     SettingsSelection.Reset();
     SyncGarageShowroomPreview();
 }
@@ -2069,6 +2074,7 @@ void ALatebrakeRaceGameMode::MenuPrevious()
     GaragePurchaseConfirm.Reset();
     DismissGaragePalette();
     Menu.Previous();
+    MainMenuFocus=0;
     SettingsSelection.Reset();
     SyncGarageShowroomPreview();
 }
@@ -2081,8 +2087,8 @@ void ALatebrakeRaceGameMode::MenuActivate()
     const latebrake::MenuPage Page = Menu.Current();
     if (Page == latebrake::MenuPage::Main)
     {
-        Menu.Open(latebrake::MenuPage::QuickRace);
-        BumpQuickChoiceRevision();
+        const auto Snapshot=GetMainMenuDashboardSnapshot();
+        NavigateMainMenuDashboard(latebrake::MainMenuFocusDestination(Snapshot.Focused),Snapshot);
     }
     else if (Page == latebrake::MenuPage::QuickRace)
     {
@@ -2212,6 +2218,16 @@ FString ALatebrakeRaceGameMode::GetCareerEventName() const
 
 void ALatebrakeRaceGameMode::CycleCareerEvent()
 {
+    if (Menu.IsOpen() && Menu.Current()==latebrake::MenuPage::Main)
+    {
+        const auto Snapshot=GetMainMenuDashboardSnapshot();
+        if(Snapshot.AllowsNavigation())
+        {
+            MainMenuFocus=latebrake::AdvanceMainMenuFocus(Snapshot.Focused,1);
+            SettingsSelection.Changed();
+        }
+        return; // Main menu owns Browse even when input is suspended.
+    }
     if (Menu.IsOpen() && Menu.Current()==latebrake::MenuPage::Settings)
     {
         SettingsSelection.Browse(GetSettingsMenuSnapshot().Access);
