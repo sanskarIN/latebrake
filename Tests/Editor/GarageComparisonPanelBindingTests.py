@@ -19,7 +19,7 @@ class GarageComparisonPanelBindingTests(unittest.TestCase):
         start = self.hud.index("const auto ComparisonLayout=")
         end = self.hud.index("Y=static_cast<float>(ComparisonLayout.NextDetailY)", start)
         block = self.hud[start:end]
-        self.assertIn("latebrake::BuildGarageCatalogView(Mode->GetGarageSnapshot())", block)
+        self.assertIn("GarageCatalogue.Read(Mode->GetGarageSnapshot())", block)
         self.assertIn("Mode->GetGaragePreviewVehicleId()", block)
         self.assertIn("CompareGaragePerformance(catalogue,viewedId)", self.policy)
         self.assertIn("equipped.Ownership!=GarageCatalogOwnership::Equipped", self.policy)
