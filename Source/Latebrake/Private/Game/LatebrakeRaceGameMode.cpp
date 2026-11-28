@@ -1939,6 +1939,14 @@ latebrake::PracticeExperimentPlan ALatebrakeRaceGameMode::GetPendingPracticeExpe
     return PracticeAnalysis.ReadPlan(PracticeHistory,Key);
 }
 
+latebrake::PracticeLaunchPreview ALatebrakeRaceGameMode::GetPendingPracticeLaunchPreview() const
+{
+    const auto Plan=GetPendingPracticeExperimentPlan();
+    if (!Plan.Valid)return {};
+    return latebrake::BuildPracticeLaunchPreview(Plan.Selected,GetPendingPracticeTrial(),
+        PracticeHistory,PracticeGateHistory);
+}
+
 bool ALatebrakeRaceGameMode::HandlePracticeTrialInput(
     latebrake::PracticeTrialAction Action,int32 Vehicle)
 {

@@ -26,6 +26,7 @@
 #include "Racing/PracticeSetupCatalogue.h"
 #include "Racing/PracticeExperimentPlan.h"
 #include "Racing/PracticeSetupAnalysisCache.h"
+#include "Racing/PracticeLaunchPreview.h"
 #include "Racing/PracticeGateReference.h"
 #include "Career/CareerMenuSelection.h"
 #include "Racing/RaceSessionEpoch.h"
@@ -85,6 +86,7 @@ public:
     bool SelectQuickRaceChoice(int32 Index);
     bool HandlePracticeTrialInput(latebrake::PracticeTrialAction Action,int32 Vehicle=-1);
     latebrake::PracticeExperimentPlan GetPendingPracticeExperimentPlan() const;
+    latebrake::PracticeLaunchPreview GetPendingPracticeLaunchPreview() const;
     latebrake::PracticeExperimentChoices GetPendingPracticeExperimentChoices() const
     {return latebrake::GetPracticeExperimentChoices(GetPendingPracticeExperimentPlan());}
     latebrake::PracticeTrialReadout GetPendingPracticeTrial() const noexcept

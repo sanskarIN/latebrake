@@ -1016,6 +1016,34 @@ void ALatebrakeRaceHUD::DrawHUD()
                         MenuLine(TEXT("SUGGESTIONS ARE TEST COVERAGE, NOT PREDICTED SPEED."));
                     }
                 }
+                const auto Preview=Mode->GetPendingPracticeLaunchPreview();
+                if (Preview.Valid)
+                {
+                    MenuLine(FString::Printf(TEXT("NEXT PRACTICE | %d LAPS | %d GATES | %s"),
+                        Preview.Laps,Preview.Gates,Preview.Key.Handling==0?
+                            TEXT("ARCADE"):TEXT("SIM-INSPIRED")),true);
+                    if (!Preview.HasMeasuredFinish)
+                        MenuLine(TEXT("NO COMPARABLE FINISH FOR THIS EXACT SETUP"));
+                    else
+                    {
+                        MenuLine(FString::Printf(TEXT("EXACT SETUP | %u FINISHES | BEST %.2fs"),
+                            Preview.Record.FinishedAttempts,Preview.Record.BestFinishSeconds));
+                        MenuLine(FString::Printf(TEXT("LAST %.2fs | BEST LAP %.2fs"),
+                            Preview.Record.LastFinishSeconds,Preview.Record.BestLapSeconds));
+                        if (Preview.HasFeeFreeFinish)
+                            MenuLine(FString::Printf(TEXT("FEE-FREE BEST %.2fs | %u CLEAN FINISHES"),
+                                Preview.Series.FeeFreeFinish.Minimum,Preview.Series.FeeFreeFinishes));
+                        if (Preview.HasExactGateReference)
+                        {
+                            MenuLine(FString::Printf(TEXT("COMPLETE GATE REFERENCE %.2fs"),
+                                Preview.GateReferenceSeconds));
+                            if (Preview.GateReferenceGapSeconds>0.001)
+                                MenuLine(FString::Printf(TEXT("GATE REFERENCE +%.2fs VS SESSION BEST"),
+                                    Preview.GateReferenceGapSeconds));
+                        }
+                        else MenuLine(TEXT("NO COMPLETE GATE REFERENCE YET"));
+                    }
+                }
             }
             else if (Mode->GetQuickRaceSoloTimeAttackSelection())
             {
