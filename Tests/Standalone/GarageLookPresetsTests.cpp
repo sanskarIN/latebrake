@@ -124,7 +124,25 @@ void VisiblePresetGlyphsAndNavigation()
                 GaragePaletteNavigationInput::Confirm).Effect==GaragePaletteNavigationEffect::Ignore,
                 "invisible focus never saves");
         }
+        const auto& next=layout.NextLayer.Bounds;
+        const auto action=DesktopMenuMouseAction::GaragePaletteNextLayer;
+        Require(HitTestGaragePalette(layout,next.X+next.Width/2,next.Y+next.Height/2)==action,
+            "clickable layer-switch header");
+        Require(!CanClickPresentedGaragePalette(shown,session,layout,action),
+            "invisible header cannot switch layers");
+        shown.NextLayerVisible=true;
+        Require(CanClickPresentedGaragePalette(shown,session,layout,action),
+            "visible header can switch layers without choosing a look");
+        auto moved=layout;moved.NextLayer.Bounds.Width-=1;
+        Require(!CanClickPresentedGaragePalette(shown,session,moved,action),
+            "resized header requires a new presentation");
+        auto corrupt=layout;corrupt.NextLayer.Bounds=corrupt.Close.Bounds;
+        Require(!ValidGaragePaletteLayout(corrupt),"header and close never overlap");
+        corrupt=layout;corrupt.NextLayer.Bounds=corrupt.Choices[0].Bounds;
+        Require(!ValidGaragePaletteLayout(corrupt),"header cannot overlap a choice");
         auto stale=session;stale.Look.Paint=1;
+        Require(!CanClickPresentedGaragePalette(shown,stale,layout,action),
+            "changed look revokes layer switch receipt");
         Require(!CanClickPresentedGaragePalette(shown,stale,layout,GaragePaletteChoiceAction(0)),
             "preset receipt stale after appearance change");
     }
