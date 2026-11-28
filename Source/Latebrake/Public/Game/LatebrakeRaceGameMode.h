@@ -51,6 +51,7 @@
 #include "Career/CareerProgress.h"
 #include "UI/MenuNavigation.h"
 #include "UI/MainMenuDashboard.h"
+#include "UI/CareerEventCards.h"
 #include "UI/SettingsMenuSelection.h"
 #include "UI/QuickRaceChoicePanel.h"
 #include "LatebrakeRaceGameMode.generated.h"
@@ -134,6 +135,8 @@ public:
     latebrake::MainMenuDashboardSnapshot GetMainMenuDashboardSnapshot() const;
     bool NavigateMainMenuDashboard(latebrake::MenuPage Destination,
         const latebrake::MainMenuDashboardSnapshot& Expected);
+    latebrake::CareerEventCardsSnapshot GetCareerEventCardsSnapshot() const;
+    bool SelectCareerEventCard(int32 Id,const latebrake::CareerEventCardsSnapshot& Expected);
     void MenuNext();
     void MenuPrevious();
     void MenuActivate();
