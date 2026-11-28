@@ -42,7 +42,13 @@ inline bool ValidLapMotionMetrics(const SectorMotionMetrics& m,double active) no
     if(!std::isfinite(active) || active<=0 ||
         !std::isfinite(m.ObservedSeconds) || m.ObservedSeconds<0 ||
         m.ObservedSeconds>active+SectorMotionClockTolerance ||
-        m.Intervals>m.Samples ||
+        // An interval requires two accepted endpoints. Cuts can only reduce
+        // the number of intervals that a sample sequence contributes.
+        (m.Intervals && m.Intervals>=m.Samples) ||
+        m.RecoveryBreaks>m.Breaks || m.PositionBreaks>m.Breaks-m.RecoveryBreaks ||
+        m.Breaks>m.Samples ||
+        m.ObservedSeconds>static_cast<double>(m.Intervals)*
+            (SectorMotionMaximumDelta+SectorMotionClockTolerance)+SectorMotionClockTolerance ||
         !std::isfinite(m.SpeedIntegral) || m.SpeedIntegral<0 ||
         !std::isfinite(m.PlanarDistanceCm) || m.PlanarDistanceCm<0 ||
         !std::isfinite(m.PeakSpeed) || m.PeakSpeed<0 ||
@@ -56,7 +62,31 @@ inline bool ValidLapMotionMetrics(const SectorMotionMetrics& m,double active) no
     for(double seconds:durations)
         if(!std::isfinite(seconds) || seconds<0 ||
             seconds>m.ObservedSeconds+SectorMotionClockTolerance)return false;
-    return m.FullOffRoadSeconds<=m.PartialRoadSeconds+SectorMotionClockTolerance;
+    const double speeds[]={m.MinimumSpeed,m.FirstSpeed,m.LastSpeed};
+    for(double speed:speeds)
+        if(!std::isfinite(speed) || speed<0 || speed>m.PeakSpeed)return false;
+    if(m.MinimumSpeed>m.FirstSpeed || m.MinimumSpeed>m.LastSpeed ||
+        m.SpeedIntegral+SectorMotionClockTolerance<m.MinimumSpeed*m.ObservedSeconds ||
+        !std::isfinite(m.LateralIntegral) || m.LateralIntegral<0 ||
+        m.LateralIntegral>m.SpeedIntegral+SectorMotionClockTolerance)
+        return false;
+    const double episodes[]={m.LongestLowSpeedSeconds,m.LongestSlipSeconds};
+    const double totals[]={m.LowSpeedSeconds,m.HighSlipSeconds};
+    for(std::size_t i=0;i<2;++i)
+        if(!std::isfinite(episodes[i]) || episodes[i]<0 ||
+            episodes[i]>totals[i]+SectorMotionClockTolerance)return false;
+    const double changes[]={m.AccelerationIntegral,m.DecelerationIntegral};
+    for(double change:changes)
+        if(!std::isfinite(change) || change<0 ||
+            change>static_cast<double>(m.Intervals)*m.PeakSpeed)return false;
+    if(!m.Samples && (m.PeakSpeed!=0 || m.Breaks!=0))return false;
+    // The continuity check allows a bounded position residual per interval.
+    // Use that same conservative envelope rather than treating the path as
+    // exact wheel travel or accepting arbitrarily large recorded distance.
+    const double distanceBound=SectorMotionMaximumSpeed*m.ObservedSeconds+
+        SectorMotionPositionResidual*static_cast<double>(m.Intervals);
+    return m.PlanarDistanceCm<=distanceBound+SectorMotionClockTolerance &&
+        m.FullOffRoadSeconds<=m.PartialRoadSeconds+SectorMotionClockTolerance;
 }
 
 struct LapMotionTotals final
