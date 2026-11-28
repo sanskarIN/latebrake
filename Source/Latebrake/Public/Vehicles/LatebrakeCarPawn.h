@@ -16,6 +16,7 @@
 #include "Racing/SlipstreamDraftBoost.h"
 #include "Racing/FleetSlipstreamDraft.h"
 #include "Vehicles/CameraPresets.h"
+#include "Vehicles/CameraMotionPreference.h"
 #include "Vehicles/HeldLookBackCamera.h"
 #include "Vehicles/SpeedReactiveCameraFov.h"
 #include "Vehicles/CornerLookAheadCamera.h"
@@ -91,6 +92,8 @@ public:
     latebrake::DriveCommandReview GetDriveCommandReview(std::uint64_t Frame,
         std::uint64_t Session,bool bEligible) const noexcept;
     latebrake::CameraView GetCameraView() const noexcept { return CameraViews.Current(); }
+    bool CanApplyCameraMotionPreference() const;
+    bool RefreshCameraMotionPreference();
     void ResetDrivingStats() { LookBackReleased(); ResetSpeedCameraFov(); ResetCornerCameraYaw(); DrivingStats.Reset(); DriftMeter.Reset(); DriveTrace.Suspend(); GForceMeter.Reset(); SlipAngleMeter.Reset(); SpinAssist.Reset(); TireCondition.Reset(); BrakeHeat.Reset(); EngineHeat.Reset(); CollisionDamage.Reset(); SurfaceTraction.Reset(); Transmission.Reset(); LastGroundContact = {}; BrakeDistance.Reset(); NitroBoost.Reset(); PitJournal.Reset(); PitService.Reset(); bPitServiceHeld = false; TouchPit.Clear(); CurrentNitroSpeedCapScale = 1.f; SlipstreamBoost.Reset(); FleetSlipstreamBoost.Reset(); CurrentDraftAppliedFraction = 0.f; WheelMotion.Reset(); ApplyWheelVisualPose(); ResetSkidTrails(); }
     const latebrake::DriftComboMeter& GetDriftMeter() const { return DriftMeter; }
     const latebrake::VehicleGForceMeter& GetVehicleGForceMeter() const { return GForceMeter; }
@@ -352,6 +355,7 @@ private:
     void LookBackReleased();
     void ToggleBestLapGhost();
     void ApplyCameraPreset();
+    latebrake::CameraMotionEffects ReadCameraMotionEffects() const;
     void ResetSpeedCameraFov();
     void UpdateSpeedCameraFov(double FrameSeconds, double SignedForwardSpeedKmH);
     void ResetCornerCameraYaw();

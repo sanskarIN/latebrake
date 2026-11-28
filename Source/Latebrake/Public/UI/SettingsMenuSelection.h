@@ -2,6 +2,7 @@
 
 #include "UI/HudTelemetryPriority.h"
 #include "UI/MenuNavigation.h"
+#include "Vehicles/CameraMotionPreference.h"
 
 #include <array>
 #include <cstddef>
@@ -17,12 +18,14 @@ enum class SettingsControl : std::uint8_t
     SpeedUnits,
     HudDetail,
     CircuitLighting,
+    CameraMotion,
     Count
 };
 
 inline constexpr int SettingsControlCount=static_cast<int>(SettingsControl::Count);
 inline constexpr std::array<SettingsControl,SettingsControlCount> SettingsControls{{
-    SettingsControl::SpeedUnits,SettingsControl::HudDetail,SettingsControl::CircuitLighting
+    SettingsControl::SpeedUnits,SettingsControl::HudDetail,SettingsControl::CircuitLighting,
+    SettingsControl::CameraMotion
 }};
 
 constexpr bool ValidSettingsControl(SettingsControl control) noexcept
@@ -46,6 +49,7 @@ struct SettingsMenuAccess final
     bool ManualPauseSuspended=false;
     bool ProfileReadOnly=false;
     bool ActualLightsReady=false;
+    bool ActualCameraReady=false;
 
     constexpr bool OwnsInput() const noexcept
     {
@@ -59,6 +63,7 @@ struct SettingsMenuAccess final
         case SettingsControl::SpeedUnits:return !ProfileReadOnly;
         case SettingsControl::HudDetail:return true;
         case SettingsControl::CircuitLighting:return !ManualPauseSuspended && ActualLightsReady;
+        case SettingsControl::CameraMotion:return ActualCameraReady;
         default:return false;
         }
     }
@@ -73,6 +78,7 @@ struct SettingsMenuSnapshot final
     HudTelemetryMode HudMode=HudTelemetryMode::Balanced;
     bool Dusk=false;
     std::uint64_t Revision=0;
+    CameraMotionMode CameraMotion=CameraMotionMode::Dynamic;
     constexpr bool operator==(const SettingsMenuSnapshot&) const noexcept=default;
 };
 
@@ -91,7 +97,8 @@ struct SettingsControlDescription final
 constexpr SettingsControlDescription DescribeSettingsControl(
     const SettingsMenuSnapshot& snapshot,SettingsControl control) noexcept
 {
-    if(!ValidSettingsControl(control) || !ValidHudTelemetryMode(snapshot.HudMode))
+    if(!ValidSettingsControl(control) || !ValidHudTelemetryMode(snapshot.HudMode) ||
+        !ValidCameraMotionMode(snapshot.CameraMotion))
         return {};
     const bool enabled=snapshot.Access.Allows(control);
     const bool selected=snapshot.Selected==control;
@@ -125,6 +132,13 @@ constexpr SettingsControlDescription DescribeSettingsControl(
         value=snapshot.Dusk?"DUSK":"DAY";
         status=enabled?"SESSION VISUAL PREVIEW":!owns?"INPUT UNAVAILABLE":"PREVIEW UNAVAILABLE";
         shortStatus=enabled?"VISUAL":!owns?"LOCKED":"UNAVAILABLE";
+        break;
+    case SettingsControl::CameraMotion:
+        title="CAMERA EFFECTS";
+        shortTitle="CAMERA";
+        value=CameraMotionModeName(snapshot.CameraMotion);
+        status=enabled?"CURRENT SESSION ONLY":!owns?"INPUT UNAVAILABLE":"CAMERA UNAVAILABLE";
+        shortStatus=enabled?"SESSION":!owns?"LOCKED":"UNAVAILABLE";
         break;
     default:return {};
     }

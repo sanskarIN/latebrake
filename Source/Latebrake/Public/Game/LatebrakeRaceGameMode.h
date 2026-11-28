@@ -104,6 +104,7 @@ public:
     bool UsesMilesPerHour() const { return bMilesPerHour; }
     latebrake::HudTelemetryMode GetHudTelemetryMode() const noexcept { return HudTelemetryMode; }
     void CycleHudTelemetryMode();
+    latebrake::CameraMotionMode GetCameraMotionMode() const noexcept {return CameraMotion;}
     latebrake::SettingsMenuSnapshot GetSettingsMenuSnapshot() const;
     void ActivateSettingsControl(latebrake::SettingsControl Control);
     bool IsCareerRace() const { return bCareerRace; }
@@ -311,6 +312,7 @@ private:
     bool bMilesPerHour = false;
     // Session-only display preference, never saved with progression.
     latebrake::HudTelemetryMode HudTelemetryMode=latebrake::HudTelemetryMode::Balanced;
+    latebrake::CameraMotionMode CameraMotion=latebrake::CameraMotionMode::Dynamic;
     // Rendering-only session toggle. Never written to ULatebrakePlayerSave.
     bool bDuskLightingPreview = false;
     latebrake::CareerAward LastCareerAward;

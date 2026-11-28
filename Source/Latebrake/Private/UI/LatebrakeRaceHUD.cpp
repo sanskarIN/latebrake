@@ -1960,6 +1960,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             }
             MenuLine(FString::Printf(TEXT("HUD DETAIL: %s (SESSION ONLY)"),
                 UTF8_TO_TCHAR(latebrake::HudTelemetryModeName(Mode->GetHudTelemetryMode()))),true);
+            MenuLine(TEXT("CAMERA EFFECTS: DYNAMIC / REDUCED / FIXED LENS AND LOOK-AHEAD (SESSION)"));
 #if !PLATFORM_ANDROID
             MenuLine(TEXT("F2: cycle Focused / Balanced / Detailed"));
             MenuLine(TEXT("F3: TOGGLE DAY/DUSK | NOT SAVED | VISUAL ONLY"));

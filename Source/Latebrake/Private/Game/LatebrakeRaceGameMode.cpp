@@ -1802,9 +1802,10 @@ latebrake::SettingsMenuSnapshot ALatebrakeRaceGameMode::GetSettingsMenuSnapshot(
         Controller->GetPawn()==Player && HasLocalPlayerDriver();
     const bool Lights=IsValid(RuntimeSun) && IsValid(RuntimeSky) &&
         IsValid(RuntimeSun->GetLightComponent()) && IsValid(RuntimeSky->GetLightComponent());
+    const bool CameraReady=Local && Player->CanApplyCameraMotionPreference();
     return {{Menu.IsOpen(),Menu.Current(),Local,AppFocusGuard.IsSuspended(),
-        ManualPause.IsSuspended(),bFutureSaveSchema,Lights},SettingsSelection.Current(),
-        bMilesPerHour,HudTelemetryMode,bDuskLightingPreview,SettingsSelection.Revision()};
+        ManualPause.IsSuspended(),bFutureSaveSchema,Lights,CameraReady},SettingsSelection.Current(),
+        bMilesPerHour,HudTelemetryMode,bDuskLightingPreview,SettingsSelection.Revision(),CameraMotion};
 }
 
 void ALatebrakeRaceGameMode::ActivateSettingsControl(latebrake::SettingsControl Control)
@@ -1833,6 +1834,17 @@ void ALatebrakeRaceGameMode::ActivateSettingsControl(latebrake::SettingsControl 
     case latebrake::SettingsControl::CircuitLighting:
         ToggleCircuitLightingPreview();
         break;
+    case latebrake::SettingsControl::CameraMotion:
+    {
+        auto* Player=Cast<ALatebrakeCarPawn>(UGameplayStatics::GetPlayerPawn(this,0));
+        if (!IsValid(Player) || !Player->CanApplyCameraMotionPreference()) break;
+        const auto Previous=CameraMotion;
+        CameraMotion=latebrake::NextCameraMotionMode(CameraMotion);
+        if (!Player->RefreshCameraMotionPreference())
+            CameraMotion=Previous;
+        SettingsSelection.Changed();
+        break;
+    }
     default:break;
     }
 }

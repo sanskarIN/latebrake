@@ -75,3 +75,17 @@ These are source tests, **not Unreal Editor/UHT compilation**.
 ## Next-cycle temporary rear view (not a new camera preset)
 
 Hold **V** on keyboard or **left shoulder** on gamepad during an eligible active race to point the camera 180 degrees behind. Release immediately restores the current selected front-facing chase, close, hood or high view. Pausing or clearing driver input cancels the hold; it does not alter car heading or racing rules. [Separate source and real-game QA checklist](HELD_LOOK_BACK_CAMERA_QA.md). This has not been verified in Unreal Engine or on an installed device.
+
+### Camera motion preference (session only)
+
+Settings offers Dynamic, Reduced and Fixed Effects. Reduced limits optional
+speed-reactive FOV and corner yaw to 40% of their normal range. Fixed
+Effects disables both and snaps deliberate chase preset switches. All modes
+retain the normal selected camera's collision probe, follow movement and
+configured lag; hood and rear-view exclusions still apply. The local
+player's actual camera components must exist, and showroom presentation
+must be inactive, before the preference can change. Changing it restores
+the selected preset immediately, even while the menu pauses the world.
+This is a visual preference only, not a guarantee against discomfort.
+Test all views on native Windows and Android; source tests cover frame-rate
+independence, bounds, invalid strengths, controls and stale presentation.

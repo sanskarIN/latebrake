@@ -2647,6 +2647,7 @@ add_latebrake_portable_research_test(FleetSlipstreamDraft)
 add_latebrake_portable_research_test(FleetPassingLane)
 add_latebrake_portable_research_test(GarageBudgetAdvisor)
 add_latebrake_portable_research_test(CareerRoadmap)
+add_latebrake_portable_research_test(CameraMotionPreference)
 
 add_latebrake_portable_research_test(FleetPaceReview)
 

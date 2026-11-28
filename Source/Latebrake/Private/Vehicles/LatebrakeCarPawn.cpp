@@ -2558,6 +2558,30 @@ void ALatebrakeCarPawn::RestartPressed()
     }
 }
 
+bool ALatebrakeCarPawn::CanApplyCameraMotionPreference() const
+{
+    const auto* PC=Cast<APlayerController>(GetController());
+    return IsValid(PC) && PC->IsLocalController() && PC->GetPawn()==this &&
+        IsLocallyControlled() && IsValid(CameraBoom) && IsValid(FollowCamera) &&
+        !bGarageShowroomPreviewActive;
+}
+
+latebrake::CameraMotionEffects ALatebrakeCarPawn::ReadCameraMotionEffects() const
+{
+    const auto* World=GetWorld();
+    const auto* Mode=World?World->GetAuthGameMode<ALatebrakeRaceGameMode>():nullptr;
+    if(!Mode || !CanApplyCameraMotionPreference()) return {};
+    return latebrake::EffectsForCameraMotion(Mode->GetCameraMotionMode());
+}
+
+bool ALatebrakeCarPawn::RefreshCameraMotionPreference()
+{
+    if(!CanApplyCameraMotionPreference()) return false;
+    bBlendNextCameraPreset=false;
+    ApplyCameraPreset();
+    return true;
+}
+
 void ALatebrakeCarPawn::ApplyCameraPreset()
 {
     // Switching any preset or rear view starts the visual response from
@@ -2587,7 +2611,7 @@ void ALatebrakeCarPawn::ApplyCameraPreset()
         static_cast<double>(CameraBoom->GetRelativeRotation().Pitch),
         static_cast<double>(CameraBoom->SocketOffset.X),
         static_cast<double>(CameraBoom->SocketOffset.Z)};
-    const bool bTransitioning = bBlendChaseRig && IsLocallyControlled() &&
+    const bool bTransitioning = bBlendChaseRig && ReadCameraMotionEffects().BlendChase && IsLocallyControlled() &&
         Cast<APlayerController>(GetController()) != nullptr &&
         ChaseRigTransition.Begin(DisplayedPose, View);
     if (!bTransitioning)
@@ -2651,7 +2675,7 @@ void ALatebrakeCarPawn::UpdateSpeedCameraFov(
         IsLocallyControlled() && Cast<APlayerController>(GetController()) != nullptr;
     const double Fov = ReactiveFov.Sample(
         View.FieldOfViewDegrees, SignedForwardSpeedKmH, FrameSeconds,
-        bHumanPlayer, LookBackCamera.IsHeld());
+        bHumanPlayer, LookBackCamera.IsHeld(),ReadCameraMotionEffects().FovStrength);
     FollowCamera->SetFieldOfView(static_cast<float>(Fov));
 }
 
@@ -2696,7 +2720,7 @@ void ALatebrakeCarPawn::UpdateCornerCameraYaw(
         Cast<APlayerController>(GetController()) != nullptr;
     const double YawLead = CornerLookAhead.Sample(
         ForwardCmPerSecond, VisualSteering, FrameSeconds,
-        bHumanPlayer, LookBackCamera.IsHeld(), CameraViews.Current());
+        bHumanPlayer, LookBackCamera.IsHeld(), CameraViews.Current(),ReadCameraMotionEffects().YawStrength);
     if (!bHumanPlayer)
     {
         // Avoid an interrupted human camera animation surviving controller
@@ -2746,7 +2770,9 @@ void ALatebrakeCarPawn::ChangeCamera()
         bLiveHumanRace &&
         Previous != latebrake::CameraView::Hood &&
         Next != latebrake::CameraView::Hood &&
-        !LookBackCamera.IsHeld();
+        !LookBackCamera.IsHeld() &&
+        latebrake::AllowCameraMotionBlend(Mode?Mode->GetCameraMotionMode():
+            latebrake::CameraMotionMode::Fixed,Previous,Next,bLiveHumanRace,LookBackCamera.IsHeld());
     ApplyCameraPreset();
 }
 

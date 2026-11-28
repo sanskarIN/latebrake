@@ -41,7 +41,24 @@ class SettingsMenuPanelBindingTests(unittest.TestCase):
         self.assertIn("bMilesPerHour = PreviousMilesPerHour;", activate)
         self.assertIn("CycleHudTelemetryMode();", activate)
         self.assertIn("ToggleCircuitLightingPreview();", activate)
+        self.assertIn("Player->CanApplyCameraMotionPreference()", snap)
+        self.assertIn("CameraMotion=latebrake::NextCameraMotionMode(CameraMotion)", activate)
+        self.assertIn("Player->RefreshCameraMotionPreference()", activate)
         self.assertEqual(activate.count("SaveRecords();"), 1)
+
+    def test_camera_effects_are_local_and_session_only(self):
+        pawn = read("Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp")
+        block = pawn.split("bool ALatebrakeCarPawn::CanApplyCameraMotionPreference()", 1)[1].split(
+            "void ALatebrakeCarPawn::LookBackPressed()", 1)[0]
+        for marker in ("PC->IsLocalController()", "PC->GetPawn()==this",
+                       "!bGarageShowroomPreviewActive", "Mode->GetCameraMotionMode()",
+                       "ReadCameraMotionEffects().FovStrength", "ReadCameraMotionEffects().YawStrength",
+                       "AllowCameraMotionBlend(", "bBlendNextCameraPreset=false"):
+            self.assertIn(marker, block)
+        for forbidden in ("AddForce(", "AddTorque(", "SaveRecords(", "RegisterCheckpoint("):
+            self.assertNotIn(forbidden, block)
+        self.assertIn("add_latebrake_portable_research_test(CameraMotionPreference)",
+                      read("Tests/Standalone/CMakeLists.txt"))
 
     def test_pointer_only_after_full_caption_and_fresh_state(self):
         source = read("Source/Latebrake/Private/UI/LatebrakeSettingsHUD.cpp")

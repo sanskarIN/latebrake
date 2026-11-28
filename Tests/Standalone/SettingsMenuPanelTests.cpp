@@ -22,7 +22,7 @@ void Require(bool value,const char* reason)
 
 SettingsMenuAccess OpenAccess()
 {
-    return {true,MenuPage::Settings,true,false,false,false,true};
+    return {true,MenuPage::Settings,true,false,false,false,true,true};
 }
 
 SettingsPanelLayout DesktopLayout(double w,double h,bool touch=false,MenuPage page=MenuPage::Settings)
@@ -45,8 +45,10 @@ void TestAccessAndSelection()
         selection.Revision()!=before,"browse chooses without mutating a setting");
     Require(selection.Browse(access) && selection.Current()==SettingsControl::CircuitLighting,
         "lighting selectable");
+    Require(selection.Browse(access) && selection.Current()==SettingsControl::CameraMotion,
+        "camera effects selectable");
     Require(selection.Browse(access) && selection.Current()==SettingsControl::SpeedUnits,
-        "browse wraps after third control");
+        "browse wraps after fourth control");
     Require(selection.Select(access,SettingsControl::CircuitLighting),"direct card selection");
     selection.Reset();
     Require(selection.Current()==SettingsControl::SpeedUnits,"page transition reset");
@@ -78,6 +80,9 @@ void TestAccessAndSelection()
     access.ActualLightsReady=false;
     Require(!access.Allows(SettingsControl::CircuitLighting),"no light components means no preview");
     Require(selection.Browse(access),"read-only selection still inspectable");
+    Require(access.Allows(SettingsControl::CameraMotion),"camera effects independent of save and lighting");
+    access.ActualCameraReady=false;
+    Require(!access.Allows(SettingsControl::CameraMotion),"missing camera denies action");
 }
 
 void TestDescriptions()
@@ -113,6 +118,14 @@ void TestDescriptions()
         std::string_view(light.ShortStatus)=="UNAVAILABLE","unavailable selected light disclosed");
     snapshot.Access.FocusSuspended=true;
     Require(!DescribeSettingsControl(snapshot,SettingsControl::HudDetail).Enabled,"focus disables action");
+    snapshot.Access.FocusSuspended=false;
+    snapshot.CameraMotion=CameraMotionMode::Reduced;
+    auto camera=DescribeSettingsControl(snapshot,SettingsControl::CameraMotion);
+    Require(camera.Enabled && !camera.Saved && std::string_view(camera.Value)=="REDUCED",
+        "actual session camera preference");
+    snapshot.Access.ActualCameraReady=false;
+    Require(!DescribeSettingsControl(snapshot,SettingsControl::CameraMotion).Enabled,
+        "unavailable camera shown");
     snapshot.HudMode=static_cast<HudTelemetryMode>(255);
     Require(!DescribeSettingsControl(snapshot,SettingsControl::HudDetail).Enabled,"invalid mode fails closed");
 }
@@ -168,7 +181,7 @@ void TestPointerReceipt()
     Require(layout.Valid,"valid pointer test layout");
     SettingsMenuSnapshot snapshot{OpenAccess(),SettingsControl::SpeedUnits,false,
         HudTelemetryMode::Balanced,false,7};
-    SettingsPanelPresentation shown{true,layout,snapshot,{true,true,true}};
+    SettingsPanelPresentation shown{true,layout,snapshot,{true,true,true,true}};
     for(std::size_t i=0;i<layout.Rows.size();++i)
     {
         const auto& b=layout.Rows[i].Bounds;
@@ -186,6 +199,8 @@ void TestPointerReceipt()
     auto changed=snapshot;++changed.Revision;rejects(changed);
     changed=snapshot;changed.MilesPerHour=true;rejects(changed);
     changed=snapshot;changed.Dusk=true;rejects(changed);
+    changed=snapshot;changed.CameraMotion=CameraMotionMode::Reduced;rejects(changed);
+    changed=snapshot;changed.Access.ActualCameraReady=false;rejects(changed);
     changed=snapshot;changed.HudMode=HudTelemetryMode::Detailed;rejects(changed);
     changed=snapshot;changed.Selected=SettingsControl::HudDetail;rejects(changed);
     changed=snapshot;changed.Access.FocusSuspended=true;rejects(changed);
