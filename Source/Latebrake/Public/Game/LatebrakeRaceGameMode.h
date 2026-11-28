@@ -50,6 +50,7 @@
 #include "Garage/GarageTuningKey.h"
 #include "Career/CareerProgress.h"
 #include "UI/MenuNavigation.h"
+#include "UI/MainMenuDashboard.h"
 #include "UI/SettingsMenuSelection.h"
 #include "UI/QuickRaceChoicePanel.h"
 #include "LatebrakeRaceGameMode.generated.h"
@@ -130,6 +131,9 @@ public:
     void PauseForAppInterruption();
     bool IsFocusLossGuardActive() const { return AppFocusGuard.IsSuspended(); }
     bool IsManualRacePauseActive() const { return ManualPause.IsSuspended(); }
+    latebrake::MainMenuDashboardSnapshot GetMainMenuDashboardSnapshot() const;
+    bool NavigateMainMenuDashboard(latebrake::MenuPage Destination,
+        const latebrake::MainMenuDashboardSnapshot& Expected);
     void MenuNext();
     void MenuPrevious();
     void MenuActivate();
