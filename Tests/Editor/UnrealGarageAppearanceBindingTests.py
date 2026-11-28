@@ -102,7 +102,7 @@ class UnrealGarageAppearanceBindingTests(unittest.TestCase):
             "ApplyVehiclePaintRecipe(GarageVehicleId);",
         ):
             self.assertIn(token, self.pawn)
-        self.assertIn("Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()))",
+        self.assertIn("Car->SetGarageAppearance(Look)",
                       self.mode)
         self.assertLess(
             self.mode.index("Car->SetGarageTuning("),

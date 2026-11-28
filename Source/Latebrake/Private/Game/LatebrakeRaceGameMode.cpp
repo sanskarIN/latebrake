@@ -1919,6 +1919,28 @@ bool ALatebrakeRaceGameMode::SelectQuickRaceChoice(int32 Index)
     return true; // Deliberate SELECT still starts the race separately.
 }
 
+latebrake::PracticeTrialAccess ALatebrakeRaceGameMode::GetPracticeTrialAccess() const
+{
+    const auto Snapshot=GetQuickRaceChoiceSnapshot();
+    return {Snapshot.MenuOpen,Snapshot.Page,Snapshot.LocalPlayer,
+        Snapshot.FocusSuspended || IsManualRacePauseActive(),QuickPracticeSelection};
+}
+
+bool ALatebrakeRaceGameMode::HandlePracticeTrialInput(
+    latebrake::PracticeTrialAction Action,int32 Vehicle)
+{
+    // Consume all trial shortcuts on the visible practice setup page,
+    // including blocked edits. Never fall through to a paid garage action.
+    if (!Menu.IsOpen() || Menu.Current()!=latebrake::MenuPage::QuickRace ||
+        !latebrake::IsQuickPractice(QuickPracticeSelection))return false;
+    if (PracticeTrial.Edit(GetPracticeTrialAccess(),Action,Garage.Snapshot(),Vehicle))
+    {
+        BumpQuickChoiceRevision();
+        GaragePurchaseConfirm.Reset();
+    }
+    return true;
+}
+
 void ALatebrakeRaceGameMode::MenuNext()
 {
     GaragePurchaseConfirm.Reset();
@@ -2008,6 +2030,7 @@ void ALatebrakeRaceGameMode::SelectRaceEvent(latebrake::EventKind Kind)
         return;
     }
     bCareerRace = false;
+    PracticeTrial.EndPractice();
     ActivePractice = latebrake::QuickPracticePreset::None;
     LastCareerAward = {};
     SelectedEvent = Kind;
@@ -2025,6 +2048,8 @@ bool ALatebrakeRaceGameMode::StartQuickPractice(latebrake::QuickPracticePreset P
         return false;
     // Both active mode and physical race configuration change together.
     // Browsing later does not affect this mode, its restart or lap count.
+    auto Access=GetPracticeTrialAccess();
+    if (Access.Preset!=Preset || !PracticeTrial.BeginPractice(Access))return false;
     ActivePractice = Preset;
     bCareerRace = false;
     LastCareerAward = {};
@@ -2040,9 +2065,10 @@ latebrake::PracticeConfiguration ALatebrakeRaceGameMode::ReadPracticeConfigurati
     const ALatebrakeCarPawn* Car) const
 {
     if (!IsPracticeRace() || !IsValid(Car) || !Car->IsRacePhysicsReady() ||
-        LastTunedPawn.Get()!=Car || Car->GetSelectedVehicleId()!=Garage.SelectedVehicle())
+        LastTunedPawn.Get()!=Car)
         return {};
-    const auto Key=latebrake::MakeGarageTuningKey(Garage.Snapshot());
+    const auto Key=GetActivePracticeTrial().Key;
+    if (Car->GetSelectedVehicleId()!=Key.Selected)return {};
     if (!(Key==LastAppliedTuning)) return {};
     const auto Handling=Car->GetHandlingMode();
     const int HandlingId=Handling==ELatebrakeHandlingMode::Arcade?0:
@@ -2151,6 +2177,7 @@ bool ALatebrakeRaceGameMode::StartCareerEvent(int32 Id)
     CareerMenuSelection = Id;
     CareerStartedVehicleId = Garage.SelectedVehicle();
     bCareerRace = true;
+    PracticeTrial.EndPractice();
     ActivePractice = latebrake::QuickPracticePreset::None;
     SelectedEvent = Event->SpawnRival
         ? latebrake::EventKind::Circuit : latebrake::EventKind::TimeAttack;
@@ -2500,7 +2527,9 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
     {
         return;
     }
-    const latebrake::GarageTuningKey Requested = latebrake::MakeGarageTuningKey(Garage.Snapshot());
+    const auto Trial=GetActivePracticeTrial();
+    const latebrake::GarageTuningKey Requested = Trial.Key;
+    const auto Look=latebrake::PracticeTrialLook(Trial,GarageLooks);
     if (LastTunedPawn.Get() != Car || !(Requested == LastAppliedTuning))
     {
         if (IsPracticeRace() && !Race.IsFinished())
@@ -2510,19 +2539,18 @@ void ALatebrakeRaceGameMode::ApplyGarageToPlayer()
         }
         // Cosmetic changes must NEVER alter physics multiplier authority;
         // only actual garage tuning/selection changes call SetGarageTuning.
-        const latebrake::VehiclePerformance Performance = Garage.Performance();
+        const latebrake::VehiclePerformance Performance = Trial.Performance;
         Car->SetGarageTuning(
             static_cast<float>(Performance.Acceleration),
             static_cast<float>(Performance.Grip),
             static_cast<float>(Performance.TopSpeed),
-            Garage.SelectedVehicle(),
-            GarageLooks.Get(Garage.SelectedVehicle()));
+            Requested.Selected, Look);
         LastTunedPawn = Car;
         LastAppliedTuning = Requested;
     }
     // Apply separately, including when the same vehicle receives a new
     // free paint/stripe/wheel choice. No force or collision body changes.
-    Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()));
+    Car->SetGarageAppearance(Look);
     SyncGarageShowroomPreview();
 }
 

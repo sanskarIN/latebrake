@@ -20,8 +20,8 @@ class UnrealAtomicGarageVisualBindingTests(unittest.TestCase):
         mode=self.mode.split("void ALatebrakeRaceGameMode::ApplyGarageToPlayer()",1
         )[1].split("bool ALatebrakeRaceGameMode::CanBrowseGarage()",1)[0]
         self.assertIn("Car->SetGarageTuning(",mode)
-        self.assertIn("Garage.SelectedVehicle(),\n            GarageLooks.Get(Garage.SelectedVehicle()));",mode)
-        self.assertIn("Car->SetGarageAppearance(GarageLooks.Get(Garage.SelectedVehicle()))",mode)
+        self.assertIn("Requested.Selected, Look);",mode)
+        self.assertIn("Car->SetGarageAppearance(Look)",mode)
         self.assertLess(mode.index("Car->SetGarageTuning("),
                         mode.index("Car->SetGarageAppearance("))
         self.assertIn("LastAppliedTuning = Requested;",mode)

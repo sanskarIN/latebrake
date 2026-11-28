@@ -27,7 +27,7 @@ class PracticeSessionHistoryBindingTests(unittest.TestCase):
         self.assertIn("PracticeHistory.ObserveConfiguration(PracticeKey,PracticeActor)", mode)
         self.assertIn("LastTunedPawn.Get()!=Car", mode)
         self.assertIn("Key==LastAppliedTuning", mode)
-        self.assertIn("Car->GetSelectedVehicleId()!=Garage.SelectedVehicle()", mode)
+        self.assertIn("Car->GetSelectedVehicleId()!=Key.Selected", mode)
         self.assertIn("PracticeHistory.InvalidateConfiguration();", mode)
         pawn = (ROOT / "Source/Latebrake/Private/Vehicles/LatebrakeCarPawn.cpp").read_text()
         for method in ("SelectArcade", "SelectSimulation"):

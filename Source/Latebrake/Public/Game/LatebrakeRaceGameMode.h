@@ -22,6 +22,7 @@
 #include "AI/FleetFrameAuthority.h"
 #include "Racing/QuickRaceModePicker.h"
 #include "Racing/PracticeSessionHistory.h"
+#include "Racing/PracticeTrialSetup.h"
 #include "Racing/PracticeGateReference.h"
 #include "Career/CareerMenuSelection.h"
 #include "Racing/RaceSessionEpoch.h"
@@ -79,6 +80,11 @@ public:
     bool StartQuickPractice(latebrake::QuickPracticePreset Preset);
     latebrake::QuickRaceChoiceSnapshot GetQuickRaceChoiceSnapshot() const;
     bool SelectQuickRaceChoice(int32 Index);
+    bool HandlePracticeTrialInput(latebrake::PracticeTrialAction Action,int32 Vehicle=-1);
+    latebrake::PracticeTrialReadout GetPendingPracticeTrial() const noexcept
+    {return PracticeTrial.Pending(Garage.Snapshot());}
+    latebrake::PracticeTrialReadout GetActivePracticeTrial() const noexcept
+    {return PracticeTrial.Active(ActivePractice,Garage.Snapshot());}
     bool IsPracticeRace() const { return latebrake::IsQuickPractice(ActivePractice); }
     latebrake::QuickPracticePreset GetActivePractice() const { return ActivePractice; }
     latebrake::QuickPracticePreset GetQuickPracticeSelection() const { return QuickPracticeSelection; }
@@ -347,6 +353,8 @@ private:
     bool bQuickRaceSoloTimeAttackSelection = false;
     latebrake::QuickPracticePreset QuickPracticeSelection = latebrake::QuickPracticePreset::None;
     latebrake::QuickPracticePreset ActivePractice = latebrake::QuickPracticePreset::None;
+    latebrake::PracticeTrialSetup PracticeTrial;
+    latebrake::PracticeTrialAccess GetPracticeTrialAccess() const;
     latebrake::PracticeSessionHistory PracticeHistory;
     latebrake::PracticeGateReferenceHistory PracticeGateHistory;
     latebrake::PracticeConfiguration ReadPracticeConfiguration(const ALatebrakeCarPawn* Car) const;

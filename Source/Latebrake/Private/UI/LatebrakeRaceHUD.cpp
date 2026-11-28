@@ -969,6 +969,21 @@ void ALatebrakeRaceHUD::DrawHUD()
                 MenuLine(UTF8_TO_TCHAR(Practice.Name), true);
                 MenuLine(Practice.SpawnRival ? TEXT("STANDARD LOCAL RIVAL") : TEXT("NO RIVAL"));
                 MenuLine(TEXT("PRACTICE ONLY: no profile credits, medals or PB records."));
+                const auto Trial=Mode->GetPendingPracticeTrial();
+                MenuLine(Trial.Enabled?TEXT("FREE TRIAL SETUP | NOT SAVED"):
+                    TEXT("SAVED GARAGE SETUP | Q ENABLES FREE TRIAL"),true);
+                MenuLine(FString::Printf(TEXT("%s | ENGINE %d/3 | GRIP %d/3"),
+                    UTF8_TO_TCHAR(latebrake::GarageState::Definition(Trial.Key.Selected).Name),
+                    Trial.Key.Engine,Trial.Key.Grip));
+                if (Trial.Enabled)
+                {
+                    MenuLine(Trial.Owned?TEXT("OWNED CAR | TEMPORARY TUNING"):
+                        TEXT("UNOWNED CAR | PRACTICE ONLY"));
+                    MenuLine(FString::Printf(TEXT("ACCEL %.2fx | GRIP %.2fx | SPEED %.2fx"),
+                        Trial.Performance.Acceleration,Trial.Performance.Grip,Trial.Performance.TopSpeed));
+                    MenuLine(TEXT("E NEXT CAR | U ENGINE | I GRIP | CTRL+1..6 CAR"));
+                    MenuLine(TEXT("Q RETURNS TO SAVED GARAGE; SELECT STARTS PRACTICE."));
+                }
             }
             else if (Mode->GetQuickRaceSoloTimeAttackSelection())
             {
@@ -3791,7 +3806,7 @@ void ALatebrakeRaceHUD::DrawHUD()
         Line(FString::Printf(TEXT("%s  |  %s"),
             Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
                 ? TEXT("ARCADE") : TEXT("SIM-INSPIRED"),
-            *Mode->GetSelectedVehicleName()), Primary);
+            UTF8_TO_TCHAR(latebrake::GarageState::Definition(Car->GetSelectedVehicleId()).Name)), Primary);
         Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent, false, HudTelemetryKind::Decorative);
     }
     else
@@ -3803,6 +3818,15 @@ void ALatebrakeRaceHUD::DrawHUD()
         }
         Line(Car->GetHandlingMode() == ELatebrakeHandlingMode::Arcade
             ? TEXT("HANDLING  ARCADE") : TEXT("HANDLING  SIM-INSPIRED"), Primary);
+        const auto ActiveTrial=Mode->GetActivePracticeTrial();
+        if (ActiveTrial.Enabled)
+        {
+            Line(FString::Printf(TEXT("TRIAL %s | E%d/G%d | NOT SAVED"),
+                UTF8_TO_TCHAR(latebrake::GarageState::Definition(ActiveTrial.Key.Selected).Name),
+                ActiveTrial.Key.Engine,ActiveTrial.Key.Grip),Accent,false,HudTelemetryKind::Pace);
+        }
+        else
+        {
         Line(FString::Printf(TEXT("GARAGE  %s"), *Mode->GetSelectedVehicleName()), Accent, false, HudTelemetryKind::Decorative);
         Line(FString::Printf(TEXT("ENGINE %d/3 (NEXT %d) | GRIP %d/3 (NEXT %d)"),
             Mode->GetEngineUpgradeLevel(), Mode->GetNextEngineUpgradeCost(),
@@ -3813,6 +3837,7 @@ void ALatebrakeRaceHUD::DrawHUD()
             : FString(TEXT("ALL PROTOTYPE PROFILES UNLOCKED")), Primary, false, HudTelemetryKind::Decorative);
         Line(FString::Printf(TEXT("CREDITS  %d"), Mode->GetTotalCredits()), Accent, false, HudTelemetryKind::Decorative);
         Line(Mode->GetGarageFeedback(), Primary, false, HudTelemetryKind::Decorative);
+        }
     }
     // Dedicated warning baseline is independent of optional text overflow.
     // A save failure must remain visible after all racing stats are clipped.

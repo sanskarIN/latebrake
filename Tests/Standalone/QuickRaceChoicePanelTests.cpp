@@ -94,7 +94,7 @@ void LayoutAndHits()
         Require(hit.Consumed && hit.Index==-1,"stale pending choice blocked");
         stale=snapshot;++stale.PageRevision;
         Require(HitPresentedQuickRaceChoice(shown,stale,1280,720,x,y).Index==-1,"stale page");
-        stale=snapshot;stale.Selected=(i+1)%8;
+        stale=snapshot;stale.Selected=(snapshot.Selected+1)%8;
         Require(HitPresentedQuickRaceChoice(shown,stale,1280,720,x,y).Index==-1,"changed selection");
         stale=snapshot;stale.FocusSuspended=true;
         Require(HitPresentedQuickRaceChoice(shown,stale,1280,720,x,y).Index==-1,"focus lost");
