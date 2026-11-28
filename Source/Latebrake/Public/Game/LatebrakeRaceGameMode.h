@@ -358,6 +358,7 @@ private:
     latebrake::EventKind SelectedEvent = latebrake::EventKind::Circuit;
     latebrake::CareerProgress Career;
     latebrake::MenuNavigation Menu;
+    int32 MainMenuFocus = 0;
     latebrake::SettingsMenuSelection SettingsSelection;
     std::uint64_t QuickChoiceRevision=1;
     void BumpQuickChoiceRevision() noexcept {if(++QuickChoiceRevision==0)++QuickChoiceRevision;}
