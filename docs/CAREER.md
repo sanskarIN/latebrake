@@ -113,3 +113,7 @@ that native circuit/vehicle/save readiness checks will pass. The menu never
 performs an unlock, medal award or launch on the basis of this roadmap.
 Portable tests exhaust every 12-event raw medal mask and each target against
 sanitized progression; native menu readability still needs playtesting.
+
+### Full event catalogue
+
+Career, Championships and Challenges include a read-only catalogue of all events on that page, including locked events. The selected launch target still follows the eligible-event cursor. Locked rows show the first missing prerequisite route and separate required-car ownership costs; conditional route funding is not a purchase authorization. Page totals count each first-medal reward once and include only incomplete championship bonuses. The catalogue is cached by sanitized medals, credits and ownership, not by the selected event. Native menu pagination and readability remain part of playtesting.

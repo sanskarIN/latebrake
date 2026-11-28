@@ -2648,6 +2648,7 @@ add_latebrake_portable_research_test(FleetPassingLane)
 add_latebrake_portable_research_test(GarageBudgetAdvisor)
 add_latebrake_portable_research_test(CareerRoadmap)
 add_latebrake_portable_research_test(CareerMenuSelection)
+add_latebrake_portable_research_test(CareerCatalogue)
 add_latebrake_portable_research_test(WholeRaceLapHistory)
 target_sources(latebrake_research_WholeRaceLapHistory PRIVATE
     ../../Source/Latebrake/Private/Racing/RaceProgress.cpp)

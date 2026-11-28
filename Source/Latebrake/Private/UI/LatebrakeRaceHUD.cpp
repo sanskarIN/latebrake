@@ -914,6 +914,48 @@ void ALatebrakeRaceHUD::DrawHUD()
                 }
             }
         };
+        const auto DrawCareerCatalogue=[&]()
+        {
+            const auto& Catalogue=CareerCatalogue.Read(Mode->GetCareer().Snapshot(),
+                Mode->GetGarageSnapshot());
+            const auto* Section=Catalogue.Section(Mode->GetMenuPage());
+            if (!Section) return;
+            MenuLine(TEXT("EVENT CATALOGUE | LOCKED EVENTS ARE READ-ONLY"),true);
+            MenuLine(FString::Printf(TEXT("%d/%d MEDALS | %d GOLD | %d READY FIRST MEDALS"),
+                Section->Completed,Section->Count,Section->Gold,Section->ReadyFirstMedals));
+            MenuLine(FString::Printf(TEXT("PROFILE READY %d | LOCKED MEDALS %d | LOCKED CAR %d"),
+                Section->Ready,Section->LockedPrerequisite,Section->LockedCar));
+            MenuLine(FString::Printf(TEXT("UNCLAIMED FIRST MEDALS %d CR | SERIES BONUS %d CR (CONDITIONAL)"),
+                Section->RemainingFirstCredits,Section->RemainingSeriesBonus));
+            for (int Index=0;Index<Section->Count;++Index)
+            {
+                const int Id=Section->RowIds[static_cast<std::size_t>(Index)];
+                const auto& Row=Catalogue.Rows[static_cast<std::size_t>(Id)];
+                const auto* Event=latebrake::GetCareerEvent(Id);
+                if (!Event) continue;
+                const bool Selected=Id==Mode->GetMenuCareerEventId();
+                const TCHAR* Status=Row.Event.Readiness==latebrake::CareerRoadmapReadiness::PrerequisiteMissing?
+                    TEXT("LOCKED"):Row.Event.Readiness==latebrake::CareerRoadmapReadiness::RequiredCarMissing?
+                    TEXT("CAR REQUIRED"):Row.Event.Medal==latebrake::CareerMedal::Gold?TEXT("GOLD"):
+                    Row.Event.Medal==latebrake::CareerMedal::Silver?TEXT("SILVER"):
+                    Row.Event.Medal==latebrake::CareerMedal::Bronze?TEXT("BRONZE"):TEXT("READY");
+                MenuLine(FString::Printf(TEXT("%s%02d | %s | %s | %d LAP(S)"),
+                    Selected?TEXT("> "):TEXT(""),Id+1,UTF8_TO_TCHAR(Event->Name),Status,Event->Laps),Selected);
+                if (Row.Event.Readiness==latebrake::CareerRoadmapReadiness::PrerequisiteMissing)
+                {
+                    if (const auto* First=latebrake::GetCareerEvent(Row.FirstRouteEvent))
+                        MenuLine(FString::Printf(TEXT("  START WITH %s | %d PREREQUISITE MEDAL(S)"),
+                            UTF8_TO_TCHAR(First->Name),Row.MissingPrerequisiteMedals));
+                    if (!bCompact)
+                        MenuLine(FString::Printf(TEXT("  CONDITIONAL ROUTE: %d LAPS | EXTRA %lld CR"),
+                            Row.ConditionalRouteLaps,static_cast<long long>(Row.ConditionalAdditionalFunding)));
+                }
+                if (Row.Event.Readiness==latebrake::CareerRoadmapReadiness::RequiredCarMissing)
+                    MenuLine(FString::Printf(TEXT("  OWN %s | UNLOCK COST %d CR | NEED %lld"),
+                        UTF8_TO_TCHAR(latebrake::GarageState::Definition(Row.Event.RequiredVehicle).Name),
+                        Row.Event.RequiredUnlockCost,static_cast<long long>(Row.Event.CurrentUnlockShortfall)));
+            }
+        };
         switch (Mode->GetMenuPage())
         {
         case latebrake::MenuPage::Main:
@@ -948,6 +990,7 @@ void ALatebrakeRaceHUD::DrawHUD()
                 Mode->GetCareer().CompletedCount(), latebrake::CareerEventCount));
             DrawCareerRoadmapDetails();
             MenuLine(TEXT("Select to start; medals unlock following rounds."));
+            DrawCareerCatalogue();
             break;
         case latebrake::MenuPage::Championships:
             MenuLine(FString::Printf(TEXT("Rookie Cup: %d/30 pts | Prologue Cup: %d/30 pts"),
@@ -956,12 +999,14 @@ void ALatebrakeRaceHUD::DrawHUD()
             MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
             DrawCareerRoadmapDetails();
             MenuLine(TEXT("BROWSE/N selects an eligible round; select starts."));
+            DrawCareerCatalogue();
             break;
         case latebrake::MenuPage::Challenges:
             MenuLine(TEXT("Clock, clean, precision, consistency, Kestrel, endurance."));
             MenuLine(FString::Printf(TEXT("Selected: %s"), *Mode->GetCareerEventName()));
             DrawCareerRoadmapDetails();
             MenuLine(TEXT("BROWSE/N selects an eligible challenge; select starts."));
+            DrawCareerCatalogue();
             break;
         case latebrake::MenuPage::Garage:
         {
