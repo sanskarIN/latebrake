@@ -506,6 +506,157 @@ struct FleetDecisionRouteEvidence final
     int AcceptedGates=0;
 };
 
+// Fixed capacity, attempt-local observation. A sector is the route segment
+// ending at the next accepted gate. This does not infer gate-crossing time,
+// road length, official sector duration or responsibility for a delay.
+inline constexpr int FleetDecisionMaxSectors=256;
+inline constexpr double FleetSectorMinimumComparisonSeconds=0.5;
+
+struct FleetDecisionSectorBucket final
+{
+    std::uint64_t Intervals=0;
+    double ObservedSeconds=0.0;
+    double BrakingSeconds=0.0;
+    double NoDriveSeconds=0.0;
+    double QueueSeconds=0.0;
+    double TrafficUnavailableSeconds=0.0;
+    double SpeedIntegral=0.0;
+
+    bool Comparable() const noexcept
+    {
+        return ObservedSeconds+FleetDecisionClockTolerance>=FleetSectorMinimumComparisonSeconds;
+    }
+
+    double NoDriveFraction() const noexcept
+    {
+        return ObservedSeconds>0.0?std::clamp(NoDriveSeconds/ObservedSeconds,0.0,1.0):0.0;
+    }
+
+    double MeanSpeedKmh() const noexcept
+    {
+        return ObservedSeconds>0.0?0.036*SpeedIntegral/ObservedSeconds:0.0;
+    }
+};
+
+struct FleetDecisionSectorReview final
+{
+    bool Valid=false;
+    int SectorCount=0;
+    int ObservedSectors=0;
+    int ComparableSectors=0;
+    double AttributedSeconds=0.0;
+    double TransitionSeconds=0.0;
+    int MostNoDriveSector=0;
+    FleetDecisionSectorBucket MostNoDrive{};
+    int MostBrakingSector=0;
+    FleetDecisionSectorBucket MostBraking{};
+};
+
+class FleetDecisionSectorHistory final
+{
+public:
+    void Reset() noexcept
+    {
+        Sectors=0;
+        TotalGates=0;
+        Buckets={};
+        TransitionSeconds=0.0;
+    }
+
+    bool Configure(int sectors,int totalGates) noexcept
+    {
+        if(Sectors || sectors<1 || sectors>FleetDecisionMaxSectors ||
+            totalGates<sectors || totalGates>25600 || totalGates%sectors!=0)
+            return false;
+        Sectors=sectors;
+        TotalGates=totalGates;
+        return true;
+    }
+
+    // Called exclusively for already-admitted adjacent native samples.
+    // Both endpoints must name the same ordinal, not just the same
+    // modulo sector (a multi-gate jump cannot fabricate attribution).
+    bool Observe(const FleetDecisionEndpoint& a,const FleetDecisionEndpoint& b,
+        double dt) noexcept
+    {
+        if(!Sectors || !a.Valid || !b.Valid ||
+            a.GateOrdinal<0 || b.GateOrdinal<a.GateOrdinal ||
+            b.GateOrdinal>=TotalGates || !std::isfinite(dt) || dt<=0.0 ||
+            dt>FleetDecisionMaxFrameSeconds+FleetDecisionClockTolerance ||
+            !std::isfinite(a.SpeedCmS) || !std::isfinite(b.SpeedCmS) ||
+            a.SpeedCmS<0.0 || b.SpeedCmS<0.0 ||
+            a.SpeedCmS>FleetTrafficMaxSpeedCmS || b.SpeedCmS>FleetTrafficMaxSpeedCmS)
+            return false;
+        if(a.GateOrdinal!=b.GateOrdinal)
+        {
+            TransitionSeconds=std::min(FleetDecisionMaxSeconds,TransitionSeconds+dt);
+            return true;
+        }
+        auto& s=Buckets[static_cast<std::size_t>(a.GateOrdinal%Sectors)];
+        if(s.Intervals!=std::numeric_limits<std::uint64_t>::max()) ++s.Intervals;
+        s.ObservedSeconds+=dt;
+        if(a.Final.Brake && b.Final.Brake) s.BrakingSeconds+=dt;
+        if(a.StationaryNoDrive && b.StationaryNoDrive) s.NoDriveSeconds+=dt;
+        if(a.Queue==FleetQueueStatus::Waiting && b.Queue==FleetQueueStatus::Waiting)
+            s.QueueSeconds+=dt;
+        if(!a.TrafficQualified && !b.TrafficQualified) s.TrafficUnavailableSeconds+=dt;
+        s.SpeedIntegral+=(a.SpeedCmS+b.SpeedCmS)*0.5*dt;
+        return true;
+    }
+
+    bool TrySector(int gate,FleetDecisionSectorBucket& out) const noexcept
+    {
+        out={};
+        if(gate<1 || gate>Sectors) return false;
+        out=Buckets[static_cast<std::size_t>(gate-1)];
+        return out.Intervals>0;
+    }
+
+    FleetDecisionSectorReview Review(double observedSeconds) const noexcept
+    {
+        FleetDecisionSectorReview out;
+        if(!Sectors || !std::isfinite(observedSeconds) || observedSeconds<0.0 ||
+            observedSeconds>FleetDecisionMaxSeconds)
+            return out;
+        out.SectorCount=Sectors;
+        out.TransitionSeconds=TransitionSeconds;
+        for(int gate=1;gate<=Sectors;++gate)
+        {
+            FleetDecisionSectorBucket s;
+            if(!TrySector(gate,s)) continue;
+            ++out.ObservedSectors;
+            out.AttributedSeconds+=s.ObservedSeconds;
+            if(!s.Comparable()) continue;
+            ++out.ComparableSectors;
+            // Select by total sampled exposure, not an extrapolated
+            // fraction of a complete lap. Stable gate order breaks ties.
+            if(s.NoDriveSeconds>out.MostNoDrive.NoDriveSeconds+FleetDecisionClockTolerance)
+            {
+                out.MostNoDriveSector=gate;
+                out.MostNoDrive=s;
+            }
+            if(s.BrakingSeconds>out.MostBraking.BrakingSeconds+FleetDecisionClockTolerance)
+            {
+                out.MostBrakingSector=gate;
+                out.MostBraking=s;
+            }
+        }
+        // Every observed interval belongs to exactly one bucket or
+        // the unattributed gate-transition bucket.
+        if(std::abs(out.AttributedSeconds+out.TransitionSeconds-observedSeconds)>
+            FleetDecisionClockTolerance*std::max(1.0,observedSeconds))
+            return {};
+        out.Valid=true;
+        return out;
+    }
+
+private:
+    int Sectors=0;
+    int TotalGates=0;
+    std::array<FleetDecisionSectorBucket,FleetDecisionMaxSectors> Buckets{};
+    double TransitionSeconds=0.0;
+};
+
 struct FleetDecisionRivalReview final
 {
     int Slot=-1;
@@ -513,6 +664,7 @@ struct FleetDecisionRivalReview final
     bool LiveValid=false;
     FleetDecisionEndpoint Live{};
     FleetDecisionSlotSummary History{};
+    FleetDecisionSectorReview Sectors{};
 };
 
 // Coverage describes the sampled portion of the race clock, not the
@@ -558,16 +710,20 @@ public:
     }
 
     bool Configure(std::uint64_t attempt,const FleetDecisionIdentity& ids,
-        int totalGates) noexcept
+        int totalGates,int sectorsPerLap) noexcept
     {
         if(Attempt || !attempt || !ValidFleetDecisionIdentity(ids) ||
-            totalGates<1 || totalGates>25600) return false;
+            totalGates<1 || totalGates>25600 ||
+            sectorsPerLap<1 || sectorsPerLap>FleetDecisionMaxSectors ||
+            totalGates%sectorsPerLap!=0) return false;
         Attempt=attempt;
         Identity=ids;
         TotalGates=totalGates;
         for(int slot=1;slot<StartGridCapacity;++slot)
         {
-            auto& summary=Slots[static_cast<std::size_t>(slot-1)].History;
+            auto& state=Slots[static_cast<std::size_t>(slot-1)];
+            state.Sectors.Configure(sectorsPerLap,totalGates);
+            auto& summary=state.History;
             summary.Slot=slot;
             for(std::size_t i=0;i<summary.Stages.size();++i)
                 summary.Stages[i].Stage=static_cast<FleetDecisionStage>(i);
@@ -664,6 +820,7 @@ public:
                 continue;
             row.Valid=true;
             row.History=slot.History;
+            row.Sectors=slot.Sectors.Review(row.History.ObservedSeconds);
             ++out.ObservedRivals;
             if(out.Coverage.Valid)
             {
@@ -695,6 +852,7 @@ private:
     struct Slot final
     {
         FleetDecisionSlotSummary History{};
+        FleetDecisionSectorHistory Sectors{};
         FleetDecisionAdmission PreviousAdmission{};
         FleetDecisionEndpoint Previous{};
         std::uint64_t PreviousTeleport=0;
@@ -775,6 +933,7 @@ private:
         const double dt=end-start;
         Increment(h.Intervals);
         AddSeconds(h.ObservedSeconds,dt);
+        slot.Sectors.Observe(before,now,dt);
         // Durations require both endpoints. An unknown middle cannot
         // be counted across missing native samples, a hitch or recovery.
         const bool braking=before.Final.Brake && now.Final.Brake;

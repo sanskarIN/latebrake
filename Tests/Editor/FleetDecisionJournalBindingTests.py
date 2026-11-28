@@ -67,6 +67,10 @@ class FleetDecisionJournalBindingTests(unittest.TestCase):
         self.assertIn("Decisions.Coverage.Valid", hud)
         self.assertIn("Coverage.Fraction()", hud)
         self.assertIn("Coverage.DurationSlots", hud)
+        self.assertIn("Race.GetCheckpointCount()*Race.GetRequiredLaps(),Race.GetCheckpointCount()", runtime)
+        self.assertIn("Entry.Sectors", hud)
+        self.assertIn("gate transitions unassigned", hud)
+        self.assertIn("Most sampled no-drive: next gate", hud)
         self.assertNotIn("FleetDecisions.Observe(", hud)
         self.assertIn("add_latebrake_portable_research_test(FleetDecisionJournal)",
                       read("Tests/Standalone/CMakeLists.txt"))

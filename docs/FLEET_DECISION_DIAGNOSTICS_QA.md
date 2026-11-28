@@ -53,3 +53,16 @@ execution. Explicit zero commands remain admissible. A rejected native sample
 cuts continuity and cannot be replaced in the same admitted frame, preventing
 invented braking duration and false coverage. Standalone regressions exercise
 every omitted and duplicate stage. Native UE gameplay remains unqualified.
+
+### Sector-specific AI command review
+
+The exact configured gates per lap define sector buckets. An interval enters
+one bucket only if both adjacent, identity-bound endpoints report the same
+absolute next-gate ordinal. Gate transitions are reported separately; even
+identical modulo sectors on different laps are not stitched. Missing samples,
+recovery and suspension still cut the journal's continuity. Results lists
+observed-sector coverage and the sectors with the most sampled no-drive or
+brake exposure among buckets with at least 0.5 s of observations. These are
+not official sector times, estimates of lost time or a causal diagnosis.
+Verify on a native six-car run that a missing frame, gate change and recovery
+do not produce extra attributed seconds, and compact Results remain usable.

@@ -280,7 +280,7 @@ bool ALatebrakeRaceGameMode::ObserveExperimentalFleet(float DeltaSeconds,bool In
         if (LedgerBound && !FleetPlayerTraffic.Configure(FleetAttemptToken,FleetAttempt.BoundIdentity()))
             UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_TRAFFIC_CONFIGURATION_REFUSED"));
         if (LedgerBound && !FleetDecisions.Configure(FleetAttemptToken,FleetAttempt.BoundIdentity(),
-                Race.GetCheckpointCount()*Race.GetRequiredLaps()))
+                Race.GetCheckpointCount()*Race.GetRequiredLaps(),Race.GetCheckpointCount()))
             UE_LOG(LogTemp,Warning,TEXT("LATEBRAKE_FLEET_DECISION_CONFIGURATION_REFUSED"));
 #if !UE_BUILD_SHIPPING
         if (LedgerBound)

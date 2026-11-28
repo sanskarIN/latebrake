@@ -1344,6 +1344,20 @@ void ALatebrakeRaceHUD::DrawHUD()
                                 if (Context!=latebrake::FleetNoDriveContext::None)
                                     MenuLine(FString::Printf(TEXT("  Main sampled no-drive context: %s"),
                                         UTF8_TO_TCHAR(latebrake::FleetNoDriveContextName(Context))));
+                                const auto& Sectors=Entry.Sectors;
+                                if (Sectors.Valid && Sectors.ObservedSectors>0)
+                                {
+                                    MenuLine(FString::Printf(TEXT("  AI sector samples %d/%d | %.1fs gate transitions unassigned"),
+                                        Sectors.ObservedSectors,Sectors.SectorCount,Sectors.TransitionSeconds));
+                                    if (Sectors.MostNoDriveSector>0)
+                                        MenuLine(FString::Printf(TEXT("  Most sampled no-drive: next gate %d | %.1fs of %.1fs observed"),
+                                            Sectors.MostNoDriveSector,Sectors.MostNoDrive.NoDriveSeconds,
+                                            Sectors.MostNoDrive.ObservedSeconds));
+                                    if (Sectors.MostBrakingSector>0)
+                                        MenuLine(FString::Printf(TEXT("  Most sampled braking: next gate %d | %.1fs of %.1fs observed"),
+                                            Sectors.MostBrakingSector,Sectors.MostBraking.BrakingSeconds,
+                                            Sectors.MostBraking.ObservedSeconds));
+                                }
                                 const auto Stage=H.DominantBrakeOrigin();
                                 if (Stage!=latebrake::FleetDecisionStage::Count)
                                     MenuLine(FString::Printf(TEXT("  Main sampled brake origin: %s | longest %.1fs"),

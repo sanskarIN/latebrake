@@ -72,7 +72,7 @@ struct Fixture final
     std::array<FleetDecisionRouteEvidence,StartGridCapacity-1> Evidence{};
     Fixture()
     {
-        Require(Journal.Configure(1,Identity,12),"configure");
+        Require(Journal.Configure(1,Identity,12,4),"configure");
         for(auto& e:Evidence)e.Verified=true;
     }
     FleetDecisionSample Bind(FleetDecisionSample s) const
@@ -170,10 +170,10 @@ void InvalidSamplesAndIdentity()
     FleetDecisionJournal journal;
     FleetDecisionIdentity ids{100,101,102,103,104,105};
     auto malformed=ids;malformed[5]=malformed[0];
-    Require(!journal.Configure(1,malformed,12) &&
-        !journal.Configure(0,ids,12) && !journal.Configure(1,ids,0) &&
-        !journal.Configure(1,ids,25601),"configuration bounds");
-    Require(journal.Configure(1,ids,12) && !journal.Configure(1,ids,12),"one bound attempt");
+    Require(!journal.Configure(1,malformed,12,4) &&
+        !journal.Configure(0,ids,12,4) && !journal.Configure(1,ids,0,4) &&
+        !journal.Configure(1,ids,25601,4),"configuration bounds");
+    Require(journal.Configure(1,ids,12,4) && !journal.Configure(1,ids,12,4),"one bound attempt");
 }
 
 void ExplicitStageTraceRequired()
@@ -480,6 +480,91 @@ void FleetCoverageUsesAllFiveSlots()
         "foreign attempt cannot expose coverage");
 }
 
+void SectorAttributionAndCoverage()
+{
+    FleetDecisionSectorHistory history;
+    Require(!history.Configure(0,12) && !history.Configure(257,257) &&
+        !history.Configure(4,3) && !history.Configure(4,11) &&
+        !history.Configure(1,25601),"invalid sector layout");
+    Require(history.Configure(4,12) && !history.Configure(4,12),"fixed route layout");
+    auto request=Request();
+    request.SpeedCmS=50;
+    BrakeAt(request,FleetDecisionStage::PredictiveTraffic);
+    request.Queue=FleetQueueStatus::Waiting;
+    auto a=AnalyzeFleetDecision(request);
+    auto b=a;
+    for(int i=0;i<11;++i) Require(history.Observe(a,b,0.05),"sampled gate one");
+    b.GateOrdinal=1;
+    Require(history.Observe(a,b,0.05),"boundary is unassigned");
+    auto moving=AnalyzeFleetDecision(Request());
+    moving.GateOrdinal=1;
+    for(int i=0;i<14;++i) Require(history.Observe(moving,moving,0.05),"moving gate two");
+    a.GateOrdinal=4;b=a;
+    for(int i=0;i<3;++i) Require(history.Observe(a,b,0.05),"second lap gate one");
+    b.GateOrdinal=8;
+    Require(history.Observe(a,b,0.05),"same modulo different lap is not same sector");
+    a.GateOrdinal=10;b=a;
+    Require(history.Observe(a,b,0.05),"short third sector");
+    auto review=history.Review(1.55);
+    Require(review.Valid && review.ObservedSectors==3 && review.ComparableSectors==2 &&
+        review.MostNoDriveSector==1 && review.MostBrakingSector==1 &&
+        Near(review.AttributedSeconds,1.45) && Near(review.TransitionSeconds,0.10),
+        "observed seconds partitioned without assigning transition");
+    FleetDecisionSectorBucket bucket;
+    Require(history.TrySector(1,bucket) && bucket.Intervals==14 &&
+        Near(bucket.ObservedSeconds,0.70) && Near(bucket.NoDriveFraction(),1.0) &&
+        Near(bucket.QueueSeconds,0.70) && Near(bucket.MeanSpeedKmh(),1.8),
+        "same next gate aggregates observed laps");
+    Require(history.TrySector(2,bucket) && Near(bucket.MeanSpeedKmh(),43.2) &&
+        bucket.NoDriveSeconds==0.0,"moving observations not no-drive");
+    Require(!history.TrySector(4,bucket) && !history.TrySector(0,bucket) &&
+        !history.TrySector(5,bucket),"unseen and invalid sectors refused");
+    Require(!history.Review(1.0).Valid,"coverage mismatch suppressed");
+    b=a;b.GateOrdinal=9;
+    Require(!history.Observe(a,b,0.05),"route rollback refused");
+    b=a;b.GateOrdinal=12;
+    Require(!history.Observe(a,b,0.05),"past route end refused");
+    b=a;b.SpeedCmS=std::numeric_limits<double>::quiet_NaN();
+    Require(!history.Observe(a,b,0.05),"invalid sample speed");
+    Require(!history.Observe(a,a,0.0) && !history.Observe(a,a,0.2) &&
+        !history.Observe(a,a,std::numeric_limits<double>::infinity()),"invalid intervals");
+    Require(history.Review(1.55).Valid,"rejections do not modify history");
+    history.Reset();
+    Require(!history.Review(1.55).Valid && history.Configure(12,12),"reset clears route");
+}
+
+void SectorNativeJournalContinuity()
+{
+    Fixture f;
+    auto sample=Request();
+    sample.SpeedCmS=50;
+    BrakeAt(sample,FleetDecisionStage::Corner);
+    for(int i=0;i<12;++i){f.Open();f.Add(sample);f.Next();}
+    sample.GateOrdinal=1;f.Evidence[0].AcceptedGates=1;
+    f.Open();f.Add(sample);f.Next();
+    f.Open();f.Add(sample);f.Next();
+    f.Open();f.Next(); // missing frame
+    f.Open();f.Add(sample);f.Next();
+    ++sample.TeleportRevision;
+    f.Open();f.Add(sample);
+    auto r=f.Read();
+    const auto& row=r.Rivals[0];
+    Require(row.Sectors.Valid && row.Sectors.ObservedSectors==2 &&
+        Near(row.Sectors.AttributedSeconds,0.60) &&
+        Near(row.Sectors.TransitionSeconds,0.05) &&
+        Near(row.History.ObservedSeconds,0.65) &&
+        row.Sectors.MostNoDriveSector==1,
+        "missing frame and teleport excluded from sector sums");
+    f.Evidence[0].Verified=false;
+    r=f.Read(true);
+    Require(!r.Rivals[0].Sectors.Valid,"no sector review without verified route");
+    f.Evidence[0].Verified=true;
+    f.Evidence[0].AcceptedGates=0;
+    Require(!f.Read(true).Rivals[0].Sectors.Valid,"inconsistent ordinal hides sector review");
+    f.Journal.Reset();
+    Require(!f.Read().Valid,"restart clears sector review");
+}
+
 void RandomizedCoverageAndInvariants()
 {
     Fixture f;
@@ -512,6 +597,10 @@ void RandomizedCoverageAndInvariants()
             const auto& row=r.Rivals[i];
             if(!row.Valid) continue;
             const auto& h=row.History;
+            Require(row.Sectors.Valid &&
+                Near(row.Sectors.AttributedSeconds+row.Sectors.TransitionSeconds,h.ObservedSeconds) &&
+                row.Sectors.ComparableSectors<=row.Sectors.ObservedSectors,
+                "every observed interval accounted for by sector or transition");
             Require(h.Samples==accepted[i] && h.Intervals<h.Samples &&
                 h.ObservedSeconds<=f.Admission.ClockSeconds+1e-6,
                 "time and sample coverage bounded");
@@ -555,6 +644,8 @@ int main()
     MissingFramesAndRecovery();
     CurrentRowsAndIndependentRouteEvidence();
     FleetCoverageUsesAllFiveSlots();
+    SectorAttributionAndCoverage();
+    SectorNativeJournalContinuity();
     RandomizedCoverageAndInvariants();
     std::cout<<"Fleet AI command-stage observation and continuity tests passed\n";
 }
